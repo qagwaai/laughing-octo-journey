@@ -39,7 +39,7 @@ export class CursorPointer {
       [scale]="clicked() ? 1.5 : 1"
     >
       <ngt-box-geometry />
-      <ngt-mesh-basic-material [color]="hovered() ? 'hotpink' : 'orange'" />
+      <ngt-mesh-basic-material [color]="hovered() ? 'blue' : 'orange'" />
     </ngt-mesh>
 
     <ngt-grid-helper />
