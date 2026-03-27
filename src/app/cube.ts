@@ -1,5 +1,5 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, viewChild, signal, input } from "@angular/core";
-import { NgtArgs, beforeRender } from "angular-three";
+import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, signal, viewChild } from "@angular/core";
+import { beforeRender, NgtArgs } from "angular-three";
 import * as THREE from "three";
 
 @Component({
