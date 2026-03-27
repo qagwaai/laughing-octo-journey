@@ -33,7 +33,7 @@ extend(THREE);
         <ngts-orbit-controls [options]="{ zoomSpeed: 0.2 }" />
 
         <ngt-instanced-mesh #instances *args="[undefined, undefined, length]">
-            <ngt-box-geometry #boxGeometry *args="[0.15, 0.15, 0.15]">
+            <ngt-box-geometry #boxGeometry *args="[0.15, 0.25, 0.15]">
                 <ngt-instanced-buffer-attribute attach="attributes.color" *args="[randomColors, 3]" />
             </ngt-box-geometry>
             <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
@@ -44,7 +44,7 @@ extend(THREE);
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class SceneGraph implements AfterContentInit {
-    protected length = 100;
+    protected length = 10;
 
     protected readonly Math = Math;
     private store = injectStore();
@@ -61,7 +61,7 @@ export class SceneGraph implements AfterContentInit {
     constructor() {
         const o = new Object3D();
         
-        beforeRender(({ scene }) => {
+        beforeRender(({ scene, delta }) => {
 			// let count = 0;
 			const time = performance.now() / 1000;
 			// scene.traverse((child) => {
@@ -73,7 +73,19 @@ export class SceneGraph implements AfterContentInit {
                 console.log(time, "br Scene children size:", scene.children.length);
                 // scene.traverse((child) => {
                 //     console.log("traverse child", child);
+                //     if (child instanceof THREE.InstancedMesh) {
+                //         console.log("traverse child is InstancedMesh", child);
+                //         child.children.forEach((c) => {
+                //             console.log("traverse child InstancedMesh child", c);
+                //         });
+
+                //     }
                 // },)
+            }
+            let instancesRef = this.instancesRef()?.nativeElement;
+            if (instancesRef) {
+                //console.log("beforeRender instancesRef", instancesRef);
+                instancesRef.rotation.y += delta;
             }
 
 		});
@@ -85,6 +97,7 @@ export class SceneGraph implements AfterContentInit {
 			];
 			if (!instances || !boxGeometry) return;
 
+            console.log("effect", "boxGeometry", boxGeometry, "instances", instances);
             let i = 0;
 			const root = Math.round(Math.pow(this.length, 1 / 3));
 			const halfRoot = root / 2;
