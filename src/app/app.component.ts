@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
 import { Experience } from './experience/experience.component';
 import { SceneGraph } from './scene-graph';
+import { injectStore } from 'angular-three';
 
 // <app-experience *canvasContent />
 @Component({
@@ -11,6 +12,7 @@ import { SceneGraph } from './scene-graph';
       shadows 
       [camera]="{ position: [5, 5, 5] }" 
       [lookAt]="[0, 1, 0]"
+      (click)="onCanvasClick()"
     >
       <app-scene-graph *canvasContent />
     </ngt-canvas>
@@ -18,4 +20,8 @@ import { SceneGraph } from './scene-graph';
   host: { class: 'block h-dvh w-full' },
   imports: [NgtCanvas, Experience, SceneGraph],
 })
-export class AppComponent {}
+export class AppComponent {
+  onCanvasClick() {
+    console.log("Canvas clicked");
+  }
+}

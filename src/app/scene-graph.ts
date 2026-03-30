@@ -1,4 +1,4 @@
-import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
+import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, viewChild } from "@angular/core";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { NgtcPhysics } from 'angular-three-cannon';
@@ -7,14 +7,16 @@ import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import niceColors from "./colors";
 import { Cube } from "./cube";
 import { Button } from "./button";
+import { Triplet } from "@pmndrs/cannon-worker-api";
 
 extend(THREE);
 
 @Component({
     selector: "app-scene-graph",
     template: `
-        <ngt-ambient-light [intensity]="0.5" />
+        <ngt-ambient-light #ambient name="ambient" [intensity]="0.5" />
         <ngt-spot-light
+            name="spot"
             [position]="[5, 10, -10]"
             [intensity]="0.5 * Math.PI"
             [angle]="0.5"
@@ -22,20 +24,19 @@ extend(THREE);
             [decay]="0"
             castShadow
         />
-        <ngt-point-light [position]="-10" [intensity]="0.5 * Math.PI" [decay]="0" />
+        <ngt-point-light name="point" [position]="-10" [intensity]="0.5 * Math.PI" [decay]="0" />
+        <ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
 
         <ngtc-physics>
             <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
                 <ngt-circle-geometry *args="[4, 40]" />
                 <ngt-mesh-standard-material />
             </ngt-mesh>
-            <ngt-group #planets [position]="[0, 0, 0]"></ngt-group>
+            <ngt-group #planets [position]="[0, 0, 0]" (childadded)="onChildAdded()"></ngt-group>
 
-            <app-cube [positionX]="-2" />
-            <app-cube [positionX]="2" />
+            <app-cube [positionX]="-2" castShadow receiveShadow />
+            <app-cube [positionX]="2" castShadow receiveShadow />
             <app-button #button [position]="[-3, 3, -3]" (click)="onClick()"/>
-
-            <ngts-orbit-controls [options]="{ zoomSpeed: 0.2 }" />
 
             <ngt-instanced-mesh #instances *args="[undefined, undefined, length]">
                 <ngt-box-geometry #boxGeometry *args="[0.15, 0.25, 0.15]">
@@ -44,7 +45,6 @@ extend(THREE);
                 <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
             </ngt-instanced-mesh>
         </ngtc-physics>
-
     `,
     imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls],
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
@@ -64,21 +64,12 @@ export class SceneGraph implements AfterContentInit {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
 	private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
-    private buttonRef = viewChild<ElementRef<THREE.Group>>('button');
 
     constructor() {
         const o = new Object3D();
-        const planet = new Object3D();
         
         effect(() => {
-            const planets = this.planetsRef()?.nativeElement;
-            if (!planets) return;
-            console.log("effect planets", planets);
-            const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-            const material = new THREE.MeshStandardMaterial({ color: 'orange' });
-            const planetMesh = new THREE.Mesh(sphereGeometry, material);
-            planets.add(planetMesh);
-            planetMesh.position.set(2, 1, 1);
+            this.addPlanet('orange', [1, 1, 1]);
         });
 
         beforeRender(({ scene, delta }) => {
@@ -107,7 +98,16 @@ export class SceneGraph implements AfterContentInit {
                 //console.log("beforeRender instancesRef", instancesRef);
                 instancesRef.rotation.y += delta;
             }
+            const raycaster = this.store.raycaster();
+            const pointer = this.store.pointer();
+            const camera = this.store.camera();
 
+            if (!raycaster || !camera || !scene) return;
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            if (intersects.length > 0) {
+                console.log("Intersected objects:", intersects);
+            }
 		});
 
         effect(() => {
@@ -140,14 +140,25 @@ export class SceneGraph implements AfterContentInit {
     }
     onClick() {
         console.log("Button clicked");
+        this.addPlanet('darkblue', [3 * Math.random(), 3 * Math.random(), 3 * Math.random()]);
+    }
 
+    addPlanet(color: string = 'blue', position: Triplet = [3, 3, 3]) {
         const planets = this.planetsRef()?.nativeElement;
         if (!planets) return;
+        console.log("Current Planets count: ", planets.children.length);
         const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-        const material = new THREE.MeshStandardMaterial({ color: 'darkblue' });
+        const material = new THREE.MeshStandardMaterial({ color: color });
         const planetMesh = new THREE.Mesh(sphereGeometry, material);
         planets.add(planetMesh);
-        planetMesh.position.set(3 * this.Math.random(), 3 * this.Math.random(), 3 * this.Math.random());
+        planetMesh.name = "planetMesh" + (planets.children.length + 1);
+        planetMesh.castShadow = true;
+        planetMesh.receiveShadow = true;
+        planetMesh.position.set(position[0], position[1], position[2]);
+    }
+
+    onChildAdded() {
+        console.log("Child added to planets group");
     }
 
     ngAfterContentInit(): void {        
