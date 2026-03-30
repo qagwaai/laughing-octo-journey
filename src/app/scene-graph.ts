@@ -26,6 +26,7 @@ extend(THREE);
             <ngt-circle-geometry *args="[4, 40]" />
             <ngt-mesh-standard-material />
         </ngt-mesh>
+        <ngt-group #planets [position]="[0, 0, 0]"></ngt-group>
 
         <app-cube [positionX]="-2" />
         <app-cube [positionX]="2" />
@@ -57,10 +58,23 @@ export class SceneGraph implements AfterContentInit {
 
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
 	private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
+    private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
 
     constructor() {
         const o = new Object3D();
+        const planet = new Object3D();
         
+        effect(() => {
+            const planets = this.planetsRef()?.nativeElement;
+            if (!planets) return;
+            console.log("effect planets", planets);
+            const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ color: 'orange' });
+            const planetMesh = new THREE.Mesh(sphereGeometry, material);
+            planets.add(planetMesh);
+            planetMesh.position.set(2, 1, 1);
+        });
+
         beforeRender(({ scene, delta }) => {
 			// let count = 0;
 			const time = performance.now() / 1000;
@@ -116,6 +130,7 @@ export class SceneGraph implements AfterContentInit {
 					}
 			instances.instanceMatrix.needsUpdate = true;
         })
+
     }
 
     ngAfterContentInit(): void {        
