@@ -1,10 +1,12 @@
 import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { NgtcPhysics } from 'angular-three-cannon';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import niceColors from "./colors";
 import { Cube } from "./cube";
+import { Button } from "./button";
 
 extend(THREE);
 
@@ -22,26 +24,29 @@ extend(THREE);
         />
         <ngt-point-light [position]="-10" [intensity]="0.5 * Math.PI" [decay]="0" />
 
-        <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
-            <ngt-circle-geometry *args="[4, 40]" />
-            <ngt-mesh-standard-material />
-        </ngt-mesh>
-        <ngt-group #planets [position]="[0, 0, 0]"></ngt-group>
+        <ngtc-physics>
+            <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
+                <ngt-circle-geometry *args="[4, 40]" />
+                <ngt-mesh-standard-material />
+            </ngt-mesh>
+            <ngt-group #planets [position]="[0, 0, 0]"></ngt-group>
 
-        <app-cube [positionX]="-2" />
-        <app-cube [positionX]="2" />
+            <app-cube [positionX]="-2" />
+            <app-cube [positionX]="2" />
+            <app-button #button [position]="[-3, 3, -3]" (click)="onClick()"/>
 
-        <ngts-orbit-controls [options]="{ zoomSpeed: 0.2 }" />
+            <ngts-orbit-controls [options]="{ zoomSpeed: 0.2 }" />
 
-        <ngt-instanced-mesh #instances *args="[undefined, undefined, length]">
-            <ngt-box-geometry #boxGeometry *args="[0.15, 0.25, 0.15]">
-                <ngt-instanced-buffer-attribute attach="attributes.color" *args="[randomColors, 3]" />
-            </ngt-box-geometry>
-            <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
-        </ngt-instanced-mesh>
+            <ngt-instanced-mesh #instances *args="[undefined, undefined, length]">
+                <ngt-box-geometry #boxGeometry *args="[0.15, 0.25, 0.15]">
+                    <ngt-instanced-buffer-attribute attach="attributes.color" *args="[randomColors, 3]" />
+                </ngt-box-geometry>
+                <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
+            </ngt-instanced-mesh>
+        </ngtc-physics>
 
     `,
-    imports: [Cube, NgtArgs, NgtsOrbitControls],
+    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls],
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class SceneGraph implements AfterContentInit {
@@ -59,6 +64,7 @@ export class SceneGraph implements AfterContentInit {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
 	private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
+    private buttonRef = viewChild<ElementRef<THREE.Group>>('button');
 
     constructor() {
         const o = new Object3D();
@@ -84,7 +90,7 @@ export class SceneGraph implements AfterContentInit {
 			// 	count++;
 			// });
             if (time % 5 < 0.02) {
-                console.log(time, "br Scene children size:", scene.children.length);
+                // console.log(time, "br Scene children size:", scene.children.length);
                 // scene.traverse((child) => {
                 //     console.log("traverse child", child);
                 //     if (child instanceof THREE.InstancedMesh) {
@@ -131,6 +137,17 @@ export class SceneGraph implements AfterContentInit {
 			instances.instanceMatrix.needsUpdate = true;
         })
 
+    }
+    onClick() {
+        console.log("Button clicked");
+
+        const planets = this.planetsRef()?.nativeElement;
+        if (!planets) return;
+        const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        const material = new THREE.MeshStandardMaterial({ color: 'darkblue' });
+        const planetMesh = new THREE.Mesh(sphereGeometry, material);
+        planets.add(planetMesh);
+        planetMesh.position.set(3 * this.Math.random(), 3 * this.Math.random(), 3 * this.Math.random());
     }
 
     ngAfterContentInit(): void {        
