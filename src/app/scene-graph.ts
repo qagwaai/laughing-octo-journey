@@ -55,31 +55,31 @@ export class SceneGraph implements AfterContentInit {
     protected readonly Math = Math;
     private store = injectStore();
     private c = new Color();
-	protected randomColors = new Float32Array(
-		Array.from({ length: this.length }, () =>
-			this.c.set(niceColors[Math.floor(Math.random() * 5)]).toArray(),
-		).flat(),
-	);
+    protected randomColors = new Float32Array(
+        Array.from({ length: this.length }, () =>
+            this.c.set(niceColors[Math.floor(Math.random() * 5)]).toArray(),
+        ).flat(),
+    );
 
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
-	private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
+    private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
 
     constructor() {
         const o = new Object3D();
-        
+
         effect(() => {
             this.addPlanet('orange', [1, 1, 1]);
         });
 
         beforeRender(({ scene, delta }) => {
-			// let count = 0;
-			const time = performance.now() / 1000;
-			// scene.traverse((child) => {
-			// 	child.rotation.x = count + time / 3;
-			// 	child.rotation.z = count + time / 4;
-			// 	count++;
-			// });
+            // let count = 0;
+            const time = performance.now() / 1000;
+            // scene.traverse((child) => {
+            // 	child.rotation.x = count + time / 3;
+            // 	child.rotation.z = count + time / 4;
+            // 	count++;
+            // });
             if (time % 5 < 0.02) {
                 // console.log(time, "br Scene children size:", scene.children.length);
                 // scene.traverse((child) => {
@@ -98,6 +98,7 @@ export class SceneGraph implements AfterContentInit {
                 //console.log("beforeRender instancesRef", instancesRef);
                 instancesRef.rotation.y += delta;
             }
+
             const raycaster = this.store.raycaster();
             const pointer = this.store.pointer();
             const camera = this.store.camera();
@@ -105,36 +106,57 @@ export class SceneGraph implements AfterContentInit {
             if (!raycaster || !camera || !scene) return;
             raycaster.setFromCamera(pointer, camera);
             const intersects = raycaster.intersectObjects(scene.children, true);
+            const hitPlanets: string[] = [];
             if (intersects.length > 0) {
-                console.log("Intersected objects:", intersects);
+                const planets = intersects.filter((intersect) => intersect.object.name.startsWith("planetMesh"));
+                if (planets.length > 0) {
+                    const planet = scene.getObjectByName(planets[0].object.name);
+                    if (planet) {
+                        if (planet instanceof THREE.Mesh) {
+                            const material = planet.material as THREE.MeshStandardMaterial;
+                            material.color.set('red');
+                            hitPlanets.push(planet.name);
+                        }
+                    }
+                }
             }
-		});
+
+            this.planetsRef()?.nativeElement?.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.name.startsWith("planetMesh")) {
+                    if (!hitPlanets.includes(child.name)) {
+                        const origColor = child.userData['backupColor'];
+                        const material = child.material as THREE.MeshStandardMaterial;
+                        material.color.set(origColor);
+                    }
+                }
+            });
+        });
 
         effect(() => {
-			const [instances, boxGeometry] = [
-				this.instancesRef()?.nativeElement,
-				this.boxGeometryRef()?.nativeElement,
-			];
-			if (!instances || !boxGeometry) return;
+            const [instances, boxGeometry] = [
+                this.instancesRef()?.nativeElement,
+                this.boxGeometryRef()?.nativeElement,
+            ];
+            if (!instances || !boxGeometry) return;
 
             console.log("effect", "boxGeometry", boxGeometry, "instances", instances);
             let i = 0;
-			const root = Math.round(Math.pow(this.length, 1 / 3));
-			const halfRoot = root / 2;
-			for (let x = 0; x < root; x++)
-				for (let y = 0; y < root; y++)
-					for (let z = 0; z < root; z++) {
-						const id = i++;
-						o.rotation.set(Math.random(), Math.random(), Math.random());
-						o.position.set(
-							halfRoot - x + Math.random(),
-							halfRoot - y + Math.random(),
-							halfRoot - z + Math.random(),
-						);
-						o.updateMatrix();
-						instances.setMatrixAt(id, o.matrix);
-					}
-			instances.instanceMatrix.needsUpdate = true;
+            const root = Math.round(Math.pow(this.length, 1 / 3));
+            const halfRoot = root / 2;
+            for (let x = 0; x < root; x++)
+                for (let y = 0; y < root; y++)
+                    for (let z = 0; z < root; z++) {
+                        const id = i++;
+                        o.rotation.set(Math.random(), Math.random(), Math.random());
+                        o.position.set(
+                            halfRoot - x + Math.random(),
+                            halfRoot - y + Math.random(),
+                            halfRoot - z + Math.random(),
+                        );
+                        o.updateMatrix();
+                        instances.setMatrixAt(id, o.matrix);
+                    }
+            instances.instanceMatrix.needsUpdate = true;
         })
 
     }
@@ -150,6 +172,7 @@ export class SceneGraph implements AfterContentInit {
         const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
         const material = new THREE.MeshStandardMaterial({ color: color });
         const planetMesh = new THREE.Mesh(sphereGeometry, material);
+        planetMesh.userData['backupColor'] = color;
         planets.add(planetMesh);
         planetMesh.name = "planetMesh" + (planets.children.length + 1);
         planetMesh.castShadow = true;
@@ -161,7 +184,7 @@ export class SceneGraph implements AfterContentInit {
         console.log("Child added to planets group");
     }
 
-    ngAfterContentInit(): void {        
+    ngAfterContentInit(): void {
 
     }
 }
