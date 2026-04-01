@@ -16,7 +16,7 @@ import { box } from 'angular-three-cannon/body';
             castShadow
         >
             <ngt-box-geometry *args="[1, 1, 1]" />
-            <ngt-mesh-standard-material [color]="hovered() ? 'red' : 'darkred'" />
+            <ngt-mesh-standard-material [color]="hovered() ? hoverColor() : color()" />
         </ngt-mesh>
     `,
     imports: [NgtArgs],
@@ -24,6 +24,8 @@ import { box } from 'angular-three-cannon/body';
 })
 export class Button {
     position = input<Triplet>([0, 0, 0]);
+    color = input<string>('red');
+    hoverColor = input<string>('darkred');
     @Output() click: EventEmitter<any> = new EventEmitter();
 
     private mesh = viewChild.required<ElementRef<Mesh>>('mesh');

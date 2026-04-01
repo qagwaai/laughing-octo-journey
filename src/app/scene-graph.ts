@@ -1,13 +1,13 @@
-import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, viewChild } from "@angular/core";
+import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
+import { Triplet } from "@pmndrs/cannon-worker-api";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
-import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { NgtcPhysics } from 'angular-three-cannon';
+import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
+import { Button } from "./button";
 import niceColors from "./colors";
 import { Cube } from "./cube";
-import { Button } from "./button";
-import { Triplet } from "@pmndrs/cannon-worker-api";
 
 extend(THREE);
 
@@ -32,11 +32,18 @@ extend(THREE);
                 <ngt-circle-geometry *args="[4, 40]" />
                 <ngt-mesh-standard-material />
             </ngt-mesh>
-            <ngt-group #planets [position]="[0, 0, 0]" (childadded)="onChildAdded()"></ngt-group>
+            <ngt-group #planets [position]="[0, 0, 0]" (childadded)="onPlanetAdded()"></ngt-group>
+            <ngt-group name="blocks" #blocks [position]="[0, 0, 0]" (childadded)="onBlockAdded()">
+            @for (x of positions; track $index) {
+                <app-cube [positionX]="x" castShadow receiveShadow />
+            }
+
+            </ngt-group>
 
             <app-cube [positionX]="-2" castShadow receiveShadow />
             <app-cube [positionX]="2" castShadow receiveShadow />
-            <app-button #button [position]="[-3, 3, -3]" (click)="onClick()"/>
+            <app-button [position]="[-3, 3, -3]" [color]="'red'" [hoverColor]="'darkred'" (click)="onPlanetClick()"/>
+            <app-button [position]="[-1, 3, -5]" [color]="'green'" [hoverColor]="'darkgreen'" (click)="onBlockClick()"/>
 
             <ngt-instanced-mesh #instances *args="[undefined, undefined, length]">
                 <ngt-box-geometry #boxGeometry *args="[0.15, 0.25, 0.15]">
@@ -51,7 +58,7 @@ extend(THREE);
 })
 export class SceneGraph implements AfterContentInit {
     protected length = 10;
-
+    protected readonly positions: number[] = [];
     protected readonly Math = Math;
     private store = injectStore();
     private c = new Color();
@@ -64,6 +71,7 @@ export class SceneGraph implements AfterContentInit {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
+    private blocksRef = viewChild<ElementRef<THREE.Group>>('blocks');
 
     constructor() {
         const o = new Object3D();
@@ -160,9 +168,15 @@ export class SceneGraph implements AfterContentInit {
         })
 
     }
-    onClick() {
-        console.log("Button clicked");
+
+    onPlanetClick() {
+        console.log("Planet Button clicked");
         this.addPlanet('darkblue', [3 * Math.random(), 3 * Math.random(), 3 * Math.random()]);
+    }
+
+    onBlockClick() {
+        console.log("Block Button clicked");
+        this.positions.push(3 * Math.random() - 1.5);
     }
 
     addPlanet(color: string = 'blue', position: Triplet = [3, 3, 3]) {
@@ -180,8 +194,12 @@ export class SceneGraph implements AfterContentInit {
         planetMesh.position.set(position[0], position[1], position[2]);
     }
 
-    onChildAdded() {
+    onPlanetAdded() {
         console.log("Child added to planets group");
+    }
+
+    onBlockAdded() {
+        console.log("Child added to blocks group");
     }
 
     ngAfterContentInit(): void {
