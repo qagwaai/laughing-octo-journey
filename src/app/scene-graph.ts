@@ -1,4 +1,4 @@
-import { AfterContentInit, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
+import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
@@ -10,6 +10,7 @@ import niceColors from "./colors";
 import { Cube } from "./cube";
 import { textureResource } from "angular-three-soba/loaders";
 import { Cursor } from "./cursor";
+import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 
 extend(THREE);
 
@@ -64,9 +65,14 @@ extend(THREE);
                 <ngt-mesh-standard-material [map]="map" [bumpMap]="bumpMap" />
             </ngt-mesh>
         </ngtc-physics>
+
+        <ngts-rounded-box [options]="{ width: 1.5, height: 1.5, depth: 1.5, radius: 0.2, smoothness: 8 }">
+            <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
+        </ngts-rounded-box>
     `,
-    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls],
-    schemas: [CUSTOM_ELEMENTS_SCHEMA]
+    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA], 
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SceneGraph implements AfterContentInit {
     protected textures = textureResource(() => ({
