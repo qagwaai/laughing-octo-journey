@@ -8,6 +8,8 @@ import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import { Button } from "./button";
 import niceColors from "./colors";
 import { Cube } from "./cube";
+import { textureResource } from "angular-three-soba/loaders";
+import { Cursor } from "./cursor";
 
 extend(THREE);
 
@@ -51,12 +53,26 @@ extend(THREE);
                 </ngt-box-geometry>
                 <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
             </ngt-instanced-mesh>
+
+            <ngt-mesh cursor [position]="[4, 1.5, 0]" name="earth" castShadow receiveShadow>
+                <ngt-sphere-geometry *args="[1, 64, 64]" />
+
+                @let _textures = textures.value();
+                @let map = _textures?.map;
+                @let bumpMap = _textures?.bumpMap;
+
+                <ngt-mesh-standard-material [map]="map" [bumpMap]="bumpMap" />
+            </ngt-mesh>
         </ngtc-physics>
     `,
-    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls],
+    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls],
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class SceneGraph implements AfterContentInit {
+    protected textures = textureResource(() => ({
+        map: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg",
+        bumpMap: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg",
+    }));
     protected length = 10;
     protected readonly positions: number[] = [];
     protected readonly Math = Math;
@@ -147,7 +163,7 @@ export class SceneGraph implements AfterContentInit {
             ];
             if (!instances || !boxGeometry) return;
 
-            console.log("effect", "boxGeometry", boxGeometry, "instances", instances);
+            //console.log("effect", "boxGeometry", boxGeometry, "instances", instances);
             let i = 0;
             const root = Math.round(Math.pow(this.length, 1 / 3));
             const halfRoot = root / 2;
