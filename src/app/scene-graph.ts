@@ -16,6 +16,8 @@ import { NgtsPointsBuffer } from 'angular-three-soba/performances';
 import { random } from 'maath';
 extend(THREE);
 
+//         <ngt-point-light name="point" [position]="[5, 10, -10]" [intensity]="0.5 * Math.PI" [decay]="0" />
+
 @Component({
     selector: "app-scene-graph",
     template: `
@@ -29,7 +31,10 @@ extend(THREE);
             [decay]="0"
             castShadow
         />
-        <ngt-point-light name="point" [position]="-10" [intensity]="0.5 * Math.PI" [decay]="0" />
+        <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" [position]="[5, 10, -10]" receiveShadow>
+            <ngt-sphere-geometry *args="[1, 64, 64]" />
+            <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
+        </ngt-mesh>
         <ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
 
         <ngtc-physics>
@@ -57,7 +62,7 @@ extend(THREE);
                 <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
             </ngt-instanced-mesh>
 
-            <ngt-mesh cursor [position]="[4, 1.5, 0]" name="earth" castShadow receiveShadow>
+            <ngt-mesh #earth cursor [position]="[4, 1.5, 0]" name="earth" castShadow receiveShadow>
                 <ngt-sphere-geometry *args="[1, 64, 64]" />
 
                 @let _textures = textures.value();
@@ -113,7 +118,7 @@ export class SceneGraph implements AfterContentInit {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
-    private blocksRef = viewChild<ElementRef<THREE.Group>>('blocks');
+    private earthRef = viewChild<ElementRef<THREE.Group>>('earth');
 
     constructor() {
         const o = new Object3D();
@@ -147,6 +152,12 @@ export class SceneGraph implements AfterContentInit {
             if (instancesRef) {
                 //console.log("beforeRender instancesRef", instancesRef);
                 instancesRef.rotation.y += delta;
+            }
+
+            let earthRef = this.earthRef()?.nativeElement;
+            if (earthRef) {
+                //console.log("beforeRender earthRef", earthRef);
+                earthRef.rotation.y += delta / 5;
             }
 
             const raycaster = this.store.raycaster();
