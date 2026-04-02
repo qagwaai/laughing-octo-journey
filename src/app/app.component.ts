@@ -18,6 +18,7 @@ import { injectStore } from 'angular-three';
     </ngt-canvas>
   `,
   host: { class: 'block h-dvh w-full' },
+  styles: `:host { display: block; height: 100vh; width: 100vw; background: #050208; }`,
   imports: [NgtCanvas, Experience, SceneGraph],
 })
 export class AppComponent {

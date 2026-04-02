@@ -11,7 +11,9 @@ import { Cube } from "./cube";
 import { textureResource } from "angular-three-soba/loaders";
 import { Cursor } from "./cursor";
 import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
-
+import { NgtsPointMaterial } from 'angular-three-soba/materials';
+import { NgtsPointsBuffer } from 'angular-three-soba/performances';
+import { random } from 'maath';
 extend(THREE);
 
 @Component({
@@ -69,12 +71,30 @@ extend(THREE);
         <ngts-rounded-box [options]="{ width: 1.5, height: 1.5, depth: 1.5, radius: 0.2, smoothness: 8 }">
             <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
         </ngts-rounded-box>
+
+        <ngt-group [rotation]="[0, 0, Math.PI / 4]">
+			<ngts-points-buffer [positions]="sphere" [stride]="3" [options]="{ frustumCulled: false }">
+				<ngts-point-material
+					[options]="{
+						transparent: true,
+						color: '#ccc',
+						size: 0.005,
+						sizeAttenuation: true,
+						depthWrite: false,
+					}"
+				/>
+			</ngts-points-buffer>
+		</ngt-group>
     `,
-    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox],
+    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SceneGraph implements AfterContentInit {
+
+    protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
+
+	private pointsBufferRef = viewChild.required(NgtsPointsBuffer);
     protected textures = textureResource(() => ({
         map: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg",
         bumpMap: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg",
