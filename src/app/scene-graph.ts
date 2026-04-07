@@ -13,6 +13,7 @@ import { Cursor } from "./cursor";
 import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 import { NgtsPointMaterial } from 'angular-three-soba/materials';
 import { NgtsPointsBuffer } from 'angular-three-soba/performances';
+import { NgtsHTML } from 'angular-three-soba/misc';
 import { random } from 'maath';
 extend(THREE);
 
@@ -31,6 +32,11 @@ extend(THREE);
             [decay]="0"
             castShadow
         />
+        <ngt-mesh [position]="[0, 2, 0]">
+			<ngts-html [options]="{ transform: true }">
+				<div [htmlContent]="{ distanceFactor: 10 }">Label</div>
+			</ngts-html>
+		</ngt-mesh>
         <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" [position]="[5, 10, -10]" receiveShadow>
             <ngt-sphere-geometry *args="[1, 64, 64]" />
             <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
@@ -91,7 +97,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial],
+    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
