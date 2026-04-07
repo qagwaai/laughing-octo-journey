@@ -1,6 +1,6 @@
 import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
-import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
+import { beforeRender, loaderResource, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import * as THREE from "three";
@@ -8,13 +8,15 @@ import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import { Button } from "./button";
 import niceColors from "./colors";
 import { Cube } from "./cube";
-import { textureResource } from "angular-three-soba/loaders";
+import { injectGLTF, textureResource } from "angular-three-soba/loaders";
 import { Cursor } from "./cursor";
 import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 import { NgtsPointMaterial } from 'angular-three-soba/materials';
 import { NgtsPointsBuffer } from 'angular-three-soba/performances';
 import { NgtsHTML } from 'angular-three-soba/misc';
 import { random } from 'maath';
+
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 extend(THREE);
 
 //         <ngt-point-light name="point" [position]="[5, 10, -10]" [intensity]="0.5 * Math.PI" [decay]="0" />
@@ -127,6 +129,20 @@ export class SceneGraph implements AfterContentInit {
     private earthRef = viewChild<ElementRef<THREE.Group>>('earth');
 
     constructor() {
+        console.log("LoadingScene initialized");
+
+        var model = loaderResource(
+            () => GLTFLoader,
+            () => 'models/aLogo.glb',
+            {
+                onLoad: (data) => {
+                    console.log('Model loaded:', data);
+                },
+                onProgress: (event) => {
+                    console.log(`Loading: ${event.loaded / event.total * 100}%`);
+                }
+            }
+        );
         const o = new Object3D();
 
         effect(() => {
