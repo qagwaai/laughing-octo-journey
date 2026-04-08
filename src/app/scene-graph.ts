@@ -1,22 +1,22 @@
-import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
+import { AfterContentInit, ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
-import { beforeRender, loaderResource, extend, injectStore, NgtArgs } from "angular-three";
+import { beforeRender, extend, injectStore, loaderResource, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
+import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { gltfResource, textureResource } from "angular-three-soba/loaders";
+import { NgtsPointMaterial } from 'angular-three-soba/materials';
+import { NgtsHTML } from 'angular-three-soba/misc';
+import { NgtsPointsBuffer } from 'angular-three-soba/performances';
+import { random } from 'maath';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import { Button } from "./button";
 import niceColors from "./colors";
 import { Cube } from "./cube";
-import { injectGLTF, textureResource } from "angular-three-soba/loaders";
 import { Cursor } from "./cursor";
-import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
-import { NgtsPointMaterial } from 'angular-three-soba/materials';
-import { NgtsPointsBuffer } from 'angular-three-soba/performances';
-import { NgtsHTML } from 'angular-three-soba/misc';
-import { random } from 'maath';
 
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three-stdlib';
 extend(THREE);
 
 //         <ngt-point-light name="point" [position]="[5, 10, -10]" [intensity]="0.5 * Math.PI" [decay]="0" />
@@ -34,6 +34,11 @@ extend(THREE);
             [decay]="0"
             castShadow
         />
+
+        <ngt-primitive
+			*args="[aLogo()]"
+			[position]="[0, 13, -100]"
+		/>
         <ngt-mesh [position]="[0, 2, 0]">
 			<ngts-html [options]="{ transform: true }">
 				<div [htmlContent]="{ distanceFactor: 10 }">Label</div>
@@ -107,11 +112,11 @@ export class SceneGraph implements AfterContentInit {
 
     protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 
-	private pointsBufferRef = viewChild.required(NgtsPointsBuffer);
     protected textures = textureResource(() => ({
         map: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg",
         bumpMap: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg",
     }));
+    protected models = gltfResource(() => ({ alogo: 'models/aLogo.glb' }));
     protected length = 10;
     protected readonly positions: number[] = [];
     protected readonly Math = Math;
@@ -123,26 +128,22 @@ export class SceneGraph implements AfterContentInit {
         ).flat(),
     );
 
+    aLogo = computed(() => {
+        const gltf = this.models.asReadonly().value()?.alogo;
+        if (!gltf) {
+            console.log("GLTF model not loaded yet");
+            return null;
+        }
+        console.log("GLTF model loaded", gltf);
+        return gltf.scene
+    });
+
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
     private earthRef = viewChild<ElementRef<THREE.Group>>('earth');
 
     constructor() {
-        console.log("LoadingScene initialized");
-
-        var model = loaderResource(
-            () => GLTFLoader,
-            () => 'models/aLogo.glb',
-            {
-                onLoad: (data) => {
-                    console.log('Model loaded:', data);
-                },
-                onProgress: (event) => {
-                    console.log(`Loading: ${event.loaded / event.total * 100}%`);
-                }
-            }
-        );
         const o = new Object3D();
 
         effect(() => {
