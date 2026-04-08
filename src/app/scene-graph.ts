@@ -116,7 +116,11 @@ export class SceneGraph implements AfterContentInit {
         map: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg",
         bumpMap: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg",
     }));
-    protected models = gltfResource(() => ({ alogo: 'models/aLogo.glb' }));
+    protected models = gltfResource(() => ({ alogo: 'models/aLogo.glb' }), {
+        onLoad(data) {
+            console.log("GLTF model loaded successfully", data);
+        },
+    });
     protected length = 10;
     protected readonly positions: number[] = [];
     protected readonly Math = Math;
