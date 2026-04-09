@@ -11,10 +11,10 @@ import { NgtsPointsBuffer } from 'angular-three-soba/performances';
 import { random } from 'maath';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
-import { Button } from "./button";
-import niceColors from "./colors";
-import { Cube } from "./cube";
-import { Cursor } from "./cursor";
+import { Button } from "../shared/button";
+import niceColors from "../shared/colors";
+import { Cube } from "../shared/cube";
+import { Cursor } from "../shared/cursor";
 
 import { GLTFLoader } from 'three-stdlib';
 extend(THREE);

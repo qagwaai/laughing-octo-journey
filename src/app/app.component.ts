@@ -1,21 +1,11 @@
-import { ApplicationConfig, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, provideZonelessChangeDetection, signal, viewChild } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { NgtCanvasElement } from 'angular-three';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
-import { NgtCanvas, NgtCanvasImpl, provideNgtRenderer } from 'angular-three/dom';
-import { InstancedMesh } from "three";
+import { NgtCanvas } from 'angular-three/dom';
 import { Experience } from './experience/experience.component';
-import { SceneGraph } from './scene-graph';
-import { NgtCanvasElement } from 'angular-three';
+import { SceneGraph } from './scene/scene-graph';
 
-
-export const appConfig: ApplicationConfig = {
-    providers: [
-        provideZonelessChangeDetection(), // Recommended!
-        provideNgtRenderer(), // NEW: App-level renderer
-    ],
-};
-
-// <app-experience *canvasContent />
 @Component({
   selector: 'app-root',
   template: `
@@ -62,14 +52,17 @@ export class AppComponent {
   protected lockX = signal(false);
   protected lockY = signal(false);
   protected lockZ = signal(false);
-  private canvasRef = viewChild<ElementRef<NgtCanvasImpl>>('canvas');
+  private canvasRef = viewChild<ElementRef<NgtCanvasElement>>('canvas');
   reset() {
 		console.log("Resetting billboard settings");
 	}
-  onCanvasClick() {
-    console.log("Canvas clicked");
-  }
+
+  onCanvasClick() {}
+
   onStatsChange(value: boolean) {
-    console.log("Stats visibility changed:", value);
+    var statsElement = this.host.nativeElement.querySelector('.stats');
+    if (statsElement) {
+      statsElement.style.display = value ? 'block' : 'none';
+    }
   }
 }
