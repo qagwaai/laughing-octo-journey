@@ -16,10 +16,7 @@ import niceColors from "../shared/colors";
 import { Cube } from "../shared/cube";
 import { Cursor } from "../shared/cursor";
 
-import { GLTFLoader } from 'three-stdlib';
 extend(THREE);
-
-//         <ngt-point-light name="point" [position]="[5, 10, -10]" [intensity]="0.5 * Math.PI" [decay]="0" />
 
 @Component({
     selector: "app-scene-graph",

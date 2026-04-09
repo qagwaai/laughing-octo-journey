@@ -1,13 +1,11 @@
 import {
 	ChangeDetectionStrategy,
 	Component,
-	computed,
-	CUSTOM_ELEMENTS_SCHEMA,
-} from '@angular/core'
-import { extend, loaderResource, NgtArgs } from 'angular-three'
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { Mesh, PointLight, SphereGeometry, type Object3D } from 'three'
-import * as THREE from 'three';
+	CUSTOM_ELEMENTS_SCHEMA
+} from '@angular/core';
+import { extend, NgtArgs } from 'angular-three';
+import { gltfResource } from 'angular-three-soba/loaders';
+import { Mesh, PointLight, SphereGeometry, type Object3D } from 'three';
 extend({ Mesh, SphereGeometry, PointLight })
 
 @Component({
@@ -35,22 +33,12 @@ extend({ Mesh, SphereGeometry, PointLight })
 })
 export class LoadingScene {
 	protected Math = Math
-
-    constructor() {
-        console.log("LoadingScene initialized");
-        var model = loaderResource(
-            () => GLTFLoader,
-            () => 'models/aLogo.glb',
-            {
-                onProgress: (event) => {
-                    console.log(`Loading: ${event.loaded / event.total * 100}%`);
-                },
-                onLoad: (data) => {
-                    console.log('Model loaded:', data);
-                },
-            }
-        );
-    }  
+	protected model = gltfResource(() => ({ alogo: 'models/aLogo.glb' }), {
+		onLoad(data) {
+			console.log("GLTF model loaded successfully", data);
+		},
+	});
+    constructor() { }  
 
 	onBeforeRender(object: Object3D) {
 		object.rotation.y += 0.01
