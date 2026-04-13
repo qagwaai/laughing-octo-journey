@@ -15,6 +15,7 @@ import { Button } from "../shared/button";
 import niceColors from "../shared/colors";
 import { Cube } from "../shared/cube";
 import { Cursor } from "../shared/cursor";
+import { Earth } from "../shared/earth";
 
 extend(THREE);
 
@@ -72,16 +73,7 @@ extend(THREE);
                 </ngt-box-geometry>
                 <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
             </ngt-instanced-mesh>
-
-            <ngt-mesh #earth cursor [position]="[4, 1.5, 0]" name="earth" castShadow receiveShadow>
-                <ngt-sphere-geometry *args="[1, 64, 64]" />
-
-                @let _textures = textures.value();
-                @let map = _textures?.map;
-                @let bumpMap = _textures?.bumpMap;
-
-                <ngt-mesh-standard-material [map]="map" [bumpMap]="bumpMap" />
-            </ngt-mesh>
+            <app-earth />
         </ngtc-physics>
 
         <ngts-rounded-box [options]="{ width: 1.5, height: 1.5, depth: 1.5, radius: 0.2, smoothness: 8 }">
@@ -102,7 +94,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML],
+    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Earth],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -110,10 +102,6 @@ export default class SceneGraph implements AfterContentInit {
 
     protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 
-    protected textures = textureResource(() => ({
-        map: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg",
-        bumpMap: "https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg",
-    }));
     protected models = gltfResource(() => ({ alogo: 'models/aLogo.glb' }), {
         onLoad(data) {
             console.log("GLTF model loaded successfully", data);
@@ -177,12 +165,6 @@ export default class SceneGraph implements AfterContentInit {
             if (instancesRef) {
                 //console.log("beforeRender instancesRef", instancesRef);
                 instancesRef.rotation.y += delta;
-            }
-
-            let earthRef = this.earthRef()?.nativeElement;
-            if (earthRef) {
-                //console.log("beforeRender earthRef", earthRef);
-                earthRef.rotation.y += delta / 5;
             }
 
             const raycaster = this.store.raycaster();
