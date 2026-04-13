@@ -5,6 +5,8 @@ import { NgtsMeshTransmissionMaterial } from 'angular-three-soba/materials';
 @Component({
 	selector: 'app-knot',
 	template: `
+    	<ngt-color *args="['#f3f2f7']" attach="background" />
+
 		<ngt-mesh [receiveShadow]="true" [castShadow]="true">
 			<ngt-torus-knot-geometry *args="[3, 1, 256, 32]" />
 			<ngts-mesh-transmission-material [options]="{ backside: true, backsideThickness: 5, thickness: 2 }" />

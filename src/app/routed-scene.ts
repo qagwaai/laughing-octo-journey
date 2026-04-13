@@ -10,8 +10,6 @@ import { CurrentRoute } from './shared/current';
 @Component({
 	selector: 'app-routed-scene',
 	template: `
-		<ngt-color *args="['#090625']" attach="background" />
-
 		<app-current [position]="[0, 0, -10]" [text]="currentRoute()" />
 
 		<router-outlet />
@@ -34,7 +32,7 @@ export class RoutedScene {
 			map((ev) => ev.urlAfterRedirects.split('/routed').at(-1) as string),
 			startWith(this.router.url.split('/routed').at(-1) as string),
 		),
-		{ initialValue: '/knot' },
+		{ initialValue: '/scene-graph' },
 	);
 
 	constructor() {

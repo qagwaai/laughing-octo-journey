@@ -21,6 +21,8 @@ extend(THREE);
 @Component({
     selector: "app-scene-graph",
     template: `
+    	<ngt-color *args="['#090625']" attach="background" />
+
         <ngt-ambient-light #ambient name="ambient" [intensity]="0.5" />
         <ngt-spot-light
             name="spot"
@@ -54,10 +56,9 @@ extend(THREE);
             </ngt-mesh>
             <ngt-group #planets [position]="[0, 0, 0]" (childadded)="onPlanetAdded()"></ngt-group>
             <ngt-group name="blocks" #blocks [position]="[0, 0, 0]" (childadded)="onBlockAdded()">
-            @for (x of positions; track $index) {
-                <app-cube [positionX]="x" castShadow receiveShadow />
-            }
-
+                @for (x of positions; track $index) {
+                    <app-cube [positionX]="x" castShadow receiveShadow />
+                }
             </ngt-group>
 
             <app-cube [positionX]="-2" castShadow receiveShadow />
