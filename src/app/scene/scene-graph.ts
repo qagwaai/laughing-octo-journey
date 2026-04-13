@@ -105,7 +105,7 @@ extend(THREE);
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SceneGraph implements AfterContentInit {
+export default class SceneGraph implements AfterContentInit {
 
     protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 

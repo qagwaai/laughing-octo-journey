@@ -3,8 +3,8 @@ import { NgtCanvasElement } from 'angular-three';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
-import { Experience } from './experience/experience.component';
-import { SceneGraph } from './scene/scene-graph';
+import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RoutedScene } from './routed-scene';
 
 @Component({
   selector: 'app-root',
@@ -17,9 +17,7 @@ import { SceneGraph } from './scene/scene-graph';
       [lookAt]="[0, 1, 0]"
       (click)="onCanvasClick()"
     >
-      <ng-template canvasContent>
-        <app-scene-graph />
-      </ng-template>
+      <app-routed-scene *canvasContent />
     </ngt-canvas>
     <tweakpane-pane title="Options" [container]="host">
         <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
@@ -30,6 +28,28 @@ import { SceneGraph } from './scene/scene-graph';
         <tweakpane-color [(value)]="color" label="Color" />
         <tweakpane-button title="Reset" (click)="reset()" />
     </tweakpane-pane>
+    		<ul class="absolute bottom-4 left-4 flex items-center gap-2">
+			<li>
+				<a
+					routerLink="knot"
+					class="underline"
+					routerLinkActive="text-blue-500"
+					[routerLinkActiveOptions]="{ exact: true }"
+				>
+					knot
+				</a>
+			</li>
+			<li>
+				<a
+					routerLink="scene-graph"
+					class="underline"
+					routerLinkActive="text-blue-500"
+					[routerLinkActiveOptions]="{ exact: true }"
+				>
+					scene graph
+				</a>
+			</li>
+		</ul>
   `,
   host: { class: 'block h-dvh w-full' },
   styles: `:host { display: block; height: 100vh; width: 100vw; background: #050208;
@@ -42,7 +62,7 @@ import { SceneGraph } from './scene/scene-graph';
 			}
   }`,
   schemas: [CUSTOM_ELEMENTS_SCHEMA], 
-  imports: [NgtCanvas, Experience, SceneGraph, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats],
+  imports: [NgtCanvas, RoutedScene, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats, RouterLink, RouterLinkActive],
 })
 export class AppComponent {
   protected host = inject(ElementRef);
