@@ -1,25 +1,27 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { beforeRender, NgtArgs } from 'angular-three';
-import { NgtsContactShadows, NgtsEnvironment, NgtsFloat, NgtsLightformer } from 'angular-three-soba/staging';
-import { easing } from 'maath';
 import { filter, map, startWith } from 'rxjs';
 import { CurrentRoute } from './shared/current';
+import { LoadingScene } from './loading/loading-scene.component';
 
 @Component({
 	selector: 'app-routed-scene',
 	template: `
-		<app-current [position]="[0, 0, -10]" [text]="currentRoute()" />
-
-		<router-outlet />
+		@defer (prefetch on idle) {
+    		<app-current [position]="[0, 0, -10]" [text]="currentRoute()" />
+			<router-outlet />
+		} @placeholder (minimum 5s) {
+			<app-loading-scene />
+		}
+		
 	`,
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [
-		NgtArgs,
 		CurrentRoute,
-		RouterOutlet
+		RouterOutlet,
+        LoadingScene
 	],
 })
 export class RoutedScene {

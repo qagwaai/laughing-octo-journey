@@ -1,10 +1,10 @@
 import { AfterContentInit, ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
-import { beforeRender, extend, injectStore, loaderResource, NgtArgs } from "angular-three";
+import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
 import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { gltfResource, textureResource } from "angular-three-soba/loaders";
+import { gltfResource } from "angular-three-soba/loaders";
 import { NgtsPointMaterial } from 'angular-three-soba/materials';
 import { NgtsHTML } from 'angular-three-soba/misc';
 import { NgtsPointsBuffer } from 'angular-three-soba/performances';
@@ -14,7 +14,6 @@ import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import { Button } from "../shared/button";
 import niceColors from "../shared/colors";
 import { Cube } from "../shared/cube";
-import { Cursor } from "../shared/cursor";
 import { Earth } from "../shared/earth";
 
 extend(THREE);
@@ -73,7 +72,6 @@ extend(THREE);
                 </ngt-box-geometry>
                 <ngt-mesh-lambert-material vertexColors [toneMapped]="false" />
             </ngt-instanced-mesh>
-            <app-earth />
         </ngtc-physics>
 
         <ngts-rounded-box [options]="{ width: 1.5, height: 1.5, depth: 1.5, radius: 0.2, smoothness: 8 }">
@@ -94,7 +92,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, Cursor, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Earth],
+    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -131,7 +129,6 @@ export default class SceneGraph implements AfterContentInit {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
-    private earthRef = viewChild<ElementRef<THREE.Group>>('earth');
 
     constructor() {
         const o = new Object3D();

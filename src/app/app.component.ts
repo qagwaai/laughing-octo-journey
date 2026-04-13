@@ -1,9 +1,9 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { NgtCanvasElement } from 'angular-three';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
-import { RouterLink, RouterLinkActive } from '@angular/router';
 import { RoutedScene } from './routed-scene';
 
 @Component({
@@ -52,7 +52,7 @@ import { RoutedScene } from './routed-scene';
 		</ul>
   `,
   host: { class: 'block h-dvh w-full' },
-  styles: `:host { display: block; height: 100vh; width: 100vw; background: #050208;
+  styles: `:host { display: block; height: 100vh; width: 100vw;
     & .stats {
 				position: static !important;
 
