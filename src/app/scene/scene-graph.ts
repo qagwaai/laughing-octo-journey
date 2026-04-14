@@ -50,6 +50,8 @@ extend(THREE);
         </ngt-mesh>
         <app-sol [position]="[5, 5, -10]" />
         <ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
+            <app-cube [positionX]="-2" castShadow receiveShadow />
+            <app-cube [positionX]="2" castShadow receiveShadow />
 
         <ngtc-physics>
             <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
@@ -63,8 +65,6 @@ extend(THREE);
                 }
             </ngt-group>
 
-            <app-cube [positionX]="-2" castShadow receiveShadow />
-            <app-cube [positionX]="2" castShadow receiveShadow />
             <app-button [position]="[-3, 3, -3]" [color]="'red'" [hoverColor]="'darkred'" (click)="onPlanetClick()"/>
             <app-button [position]="[-1, 3, -5]" [color]="'green'" [hoverColor]="'darkgreen'" (click)="onBlockClick()"/>
 
