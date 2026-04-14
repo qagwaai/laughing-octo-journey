@@ -11,11 +11,11 @@ import { NgtsPointsBuffer } from 'angular-three-soba/performances';
 import { random } from 'maath';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
-import { Button } from "../shared/button";
-import niceColors from "../shared/colors";
-import { Cube } from "../shared/cube";
-import { Earth } from "../shared/earth";
-import { Sol } from "../shared/sol";
+import { Button } from "../component/button";
+import niceColors from "../component/colors";
+import { Cube } from "../component/cube";
+import { Earth } from "../component/earth";
+import { Sol } from "../component/sol";
 
 extend(THREE);
 

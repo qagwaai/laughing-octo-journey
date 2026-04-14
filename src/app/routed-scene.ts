@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, inject } fr
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
-import { CurrentRoute } from './shared/current';
-import { LoadingScene } from './loading/loading-scene.component';
+import { CurrentRoute } from './component/current';
+import { LoadingScene } from './scene/loading-scene.component';
 
 @Component({
 	selector: 'app-routed-scene',
