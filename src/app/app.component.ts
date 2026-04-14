@@ -1,6 +1,6 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { NgtCanvasElement } from 'angular-three';
+import { injectStore, NgtCanvasElement } from 'angular-three';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
@@ -72,7 +72,10 @@ export class AppComponent {
   protected lockX = signal(false);
   protected lockY = signal(false);
   protected lockZ = signal(false);
-  private canvasRef = viewChild<ElementRef<NgtCanvasElement>>('canvas');
+
+  constructor() { 
+  }
+
   reset() {
 		console.log("Resetting billboard settings");
 	}

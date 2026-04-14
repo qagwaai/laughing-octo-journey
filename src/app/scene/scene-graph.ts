@@ -15,6 +15,7 @@ import { Button } from "../shared/button";
 import niceColors from "../shared/colors";
 import { Cube } from "../shared/cube";
 import { Earth } from "../shared/earth";
+import { Sol } from "../shared/sol";
 
 extend(THREE);
 
@@ -47,6 +48,7 @@ extend(THREE);
             <ngt-sphere-geometry *args="[1, 64, 64]" />
             <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
         </ngt-mesh>
+        <app-sol [position]="[5, 5, -10]" />
         <ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
 
         <ngtc-physics>
@@ -92,7 +94,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML],
+    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })

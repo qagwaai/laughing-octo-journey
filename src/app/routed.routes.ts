@@ -9,7 +9,7 @@ const routes: Routes = [
 		path: 'scene-graph',
 		loadComponent: () => import('./scene/scene-graph'),
 	},
-	{ path: '', redirectTo: 'knot', pathMatch: 'full' },
+	{ path: '', redirectTo: 'scene-graph', pathMatch: 'full' },
 ];
 
 export default routes;
