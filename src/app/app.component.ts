@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { injectStore, NgtCanvasElement } from 'angular-three';
 import { NgtsStats } from 'angular-three-soba/stats';
@@ -9,58 +9,85 @@ import { RoutedScene } from './routed-scene';
 @Component({
   selector: 'app-root',
   template: `
-    <ngt-canvas
-      #canvas
-      [stats]="{ parent: host, domClass: 'stats' }"
-      shadows 
-      [camera]="{ position: [5, 5, 5] }" 
-      [lookAt]="[0, 0, 0]"
-      (click)="onCanvasClick()"
-    >
-      <app-routed-scene *canvasContent />
-    </ngt-canvas>
-    <tweakpane-pane title="Options" [container]="host">
-        <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
-        <tweakpane-checkbox [(value)]="follow" label="Follow" />
-        <tweakpane-checkbox [(value)]="lockX" label="Lock X" />
-        <tweakpane-checkbox [(value)]="lockY" label="Lock Y" />
-        <tweakpane-checkbox [(value)]="lockZ" label="Lock Z" />
-        <tweakpane-color [(value)]="color" label="Color" />
-        <tweakpane-button title="Reset" (click)="reset()" />
-    </tweakpane-pane>
-    <ul class="absolute bottom-4 left-4 flex items-center gap-2">
-    	<li>
-				<a
-					routerLink="intro"
-					class="underline"
-					routerLinkActive="text-blue-500"
-					[routerLinkActiveOptions]="{ exact: true }"
-				>
-					intro
-				</a>
-			</li>
+    <div class="flex h-dvh w-full" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
+      <!-- Left Content Area -->
+      <div class="bg-gray-900 text-white overflow-auto flex flex-col" #leftPanel>
+        <div class="p-4">
+          <tweakpane-pane title="Options" [container]="host">
+              <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
+              <tweakpane-checkbox [(value)]="follow" label="Follow" />
+              <tweakpane-checkbox [(value)]="lockX" label="Lock X" />
+              <tweakpane-checkbox [(value)]="lockY" label="Lock Y" />
+              <tweakpane-checkbox [(value)]="lockZ" label="Lock Z" />
+              <tweakpane-color [(value)]="color" label="Color" />
+              <tweakpane-button title="Reset" (click)="reset()" />
+          </tweakpane-pane>
+        </div>
+        <nav class="mt-auto p-4 border-t border-gray-700">
+          <button 
+            class="w-full mb-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            (click)="resetSplit()"
+          >
+            Reset Split (50/50)
+          </button>
+          <ul class="flex items-center gap-4">
+            <li>
+              <a
+                routerLink="intro"
+                class="underline hover:text-blue-400"
+                routerLinkActive="text-blue-500"
+                [routerLinkActiveOptions]="{ exact: true }"
+              >
+                intro
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="knot"
+                class="underline hover:text-blue-400"
+                routerLinkActive="text-blue-500"
+                [routerLinkActiveOptions]="{ exact: true }"
+              >
+                knot
+              </a>
+            </li>
+            <li>
+              <a
+                routerLink="scene-graph"
+                class="underline hover:text-blue-400"
+                routerLinkActive="text-blue-500"
+                [routerLinkActiveOptions]="{ exact: true }"
+              >
+                scene graph
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
 
-			<li>
-				<a
-					routerLink="knot"
-					class="underline"
-					routerLinkActive="text-blue-500"
-					[routerLinkActiveOptions]="{ exact: true }"
-				>
-					knot
-				</a>
-			</li>
-			<li>
-				<a
-					routerLink="scene-graph"
-					class="underline"
-					routerLinkActive="text-blue-500"
-					[routerLinkActiveOptions]="{ exact: true }"
-				>
-					scene graph
-				</a>
-			</li>
-		</ul>
+      <!-- Divider -->
+      <div 
+        #divider
+        class="bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors"
+        style="width: 2px; pointer-events: auto; user-select: none; z-index: 10; flex-shrink: 0;"
+        (mousedown)="startResize($event)"
+        (dblclick)="resetSplit()"
+      ></div>
+
+      <!-- Right Canvas Area -->
+      <div class="flex-1" #rightPanel>
+        <ngt-canvas
+          #canvas
+          [stats]="{ parent: host, domClass: 'stats' }"
+          shadows 
+          [camera]="{ position: [5, 5, 5] }" 
+          [lookAt]="[0, 0, 0]"
+          (click)="onCanvasClick()"
+        >
+          <app-routed-scene *canvasContent />
+        </ngt-canvas>
+      </div>
+    </div>
   `,
   host: { class: 'block h-dvh w-full' },
   styles: `:host { display: block; height: 100vh; width: 100vw;
@@ -71,20 +98,44 @@ import { RoutedScene } from './routed-scene';
 					margin-top: 0 !important;
 				}
 			}
+
+    &.resizing {
+      user-select: none;
+    }
   }`,
   schemas: [CUSTOM_ELEMENTS_SCHEMA], 
   imports: [NgtCanvas, RoutedScene, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats, RouterLink, RouterLinkActive],
 })
-export class AppComponent {
+export class AppComponent implements AfterViewInit, OnDestroy {
   protected host = inject(ElementRef);
+  protected ngZone = inject(NgZone);
+  protected cdr = inject(ChangeDetectorRef);
+  protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
+  protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
+  protected dividerRef = viewChild.required<ElementRef>('divider');
   protected color = signal('#ff0000');
   protected stats = signal(true);
   protected follow = signal(true);
   protected lockX = signal(false);
   protected lockY = signal(false);
   protected lockZ = signal(false);
+  protected leftPanelWidth = signal(50);
+  protected isResizing = signal(false);
+  private startX = 0;
 
   constructor() { 
+  }
+
+  ngAfterViewInit() {
+    // Initialize both panels after view is initialized
+    const leftPanel = this.leftPanelRef().nativeElement;
+    const rightPanel = this.rightPanelRef().nativeElement;
+    if (leftPanel && rightPanel) {
+      leftPanel.style.width = '50%';
+      leftPanel.style.flex = 'none';
+      rightPanel.style.width = '50%';
+      rightPanel.style.flex = 'none';
+    }
   }
 
   reset() {
@@ -98,5 +149,85 @@ export class AppComponent {
     if (statsElement) {
       statsElement.style.display = value ? 'block' : 'none';
     }
+  }
+
+  startResize(event: MouseEvent) {
+    this.isResizing.set(true);
+    this.startX = event.clientX;
+    this.host.nativeElement.classList.add('resizing');
+    
+    // Attach event listeners directly to document (they'll be removed on mouseup)
+    document.addEventListener('mousemove', this.onMouseMoveListener);
+    document.addEventListener('mouseup', this.onMouseUpListener);
+  }
+
+  resetSplit() {
+    // Reset the state
+    this.isResizing.set(false);
+    this.host.nativeElement.classList.remove('resizing');
+    
+    this.leftPanelWidth.set(50);
+    const leftPanel = this.leftPanelRef().nativeElement;
+    const rightPanel = this.rightPanelRef().nativeElement;
+    
+    if (leftPanel && rightPanel) {
+      leftPanel.style.width = '50%';
+      leftPanel.style.flex = 'none';
+      rightPanel.style.width = '50%';
+      rightPanel.style.flex = 'none';
+      
+      // Force a reflow to trigger layout recalculation
+      void leftPanel.offsetHeight;
+      void rightPanel.offsetHeight;
+      void this.host.nativeElement.offsetHeight;
+    }
+  }
+
+  private onMouseMoveListener = (event: MouseEvent) => {
+    if (!this.isResizing()) return;
+
+    try {
+      this.ngZone.run(() => {
+        const container = this.host.nativeElement;
+        const deltaX = event.clientX - this.startX;
+        const containerWidth = container.offsetWidth;
+        const newWidth = this.leftPanelWidth() + (deltaX / containerWidth) * 100;
+
+        // Constrain width between 20% and 80%
+        if (newWidth >= 20 && newWidth <= 80) {
+          this.leftPanelWidth.set(newWidth);
+          this.startX = event.clientX;
+          // Directly set the DOM element width for both panels
+          const leftPanel = this.leftPanelRef().nativeElement;
+          const rightPanel = this.rightPanelRef().nativeElement;
+          if (leftPanel && rightPanel) {
+            const rightWidth = 100 - newWidth;
+            leftPanel.style.width = newWidth + '%';
+            leftPanel.style.flex = 'none';
+            rightPanel.style.width = rightWidth + '%';
+            rightPanel.style.flex = 'none';
+          }
+        }
+      });
+    } catch (error) {
+      // Silently ignore errors during resize
+    }
+  };
+
+  private onMouseUpListener = (event: MouseEvent) => {
+    if (this.isResizing()) {
+      this.isResizing.set(false);
+      this.host.nativeElement.classList.remove('resizing');
+      
+      // Remove event listeners
+      document.removeEventListener('mousemove', this.onMouseMoveListener);
+      document.removeEventListener('mouseup', this.onMouseUpListener);
+    }
+  };
+
+  ngOnDestroy() {
+    // Clean up event listeners
+    document.removeEventListener('mousemove', this.onMouseMoveListener);
+    document.removeEventListener('mouseup', this.onMouseUpListener);
   }
 }

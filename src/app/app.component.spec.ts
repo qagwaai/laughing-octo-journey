@@ -20,6 +20,9 @@ describe("AppComponent Logic", () => {
         protected lockX = this.createSignal(false);
         protected lockY = this.createSignal(false);
         protected lockZ = this.createSignal(false);
+        protected leftPanelWidth = this.createSignal(50);
+        protected isResizing = this.createSignal(false);
+        private startX = 0;
 
         private createSignal<T>(initialValue: T) {
             let value = initialValue;
@@ -42,6 +45,30 @@ describe("AppComponent Logic", () => {
             if (statsElement) {
                 (statsElement as HTMLElement).style.display = value ? "block" : "none";
             }
+        }
+
+        startResize(event: MouseEvent) {
+            (this.isResizing as any).set(true);
+            this.startX = event.clientX;
+            this.host.nativeElement.classList.add('resizing');
+        }
+
+        resetSplit() {
+            (this.isResizing as any).set(false);
+            this.host.nativeElement.classList.remove('resizing');
+            (this.leftPanelWidth as any).set(50);
+        }
+
+        updatePanelWidths(newWidth: number) {
+            // Constrain width between 20% and 80%
+            if (newWidth >= 20 && newWidth <= 80) {
+                (this.leftPanelWidth as any).set(newWidth);
+            }
+        }
+
+        stopResize() {
+            (this.isResizing as any).set(false);
+            this.host.nativeElement.classList.remove('resizing');
         }
     }
 
@@ -238,6 +265,173 @@ describe("AppComponent Logic", () => {
                     (mockComponent as any)[method.name](...method.args);
                 }).not.toThrow();
             });
+        });
+    });
+
+    describe("Resizable split panel functionality", () => {
+        it("should initialize leftPanelWidth signal to 50", () => {
+            const width = (mockComponent as any).leftPanelWidth.call();
+            expect(width).toBe(50);
+        });
+
+        it("should initialize isResizing signal to false", () => {
+            const isResizing = (mockComponent as any).isResizing.call();
+            expect(isResizing).toBe(false);
+        });
+
+        it("should have startResize method", () => {
+            expect(mockComponent.startResize).toBeDefined();
+            expect(typeof mockComponent.startResize).toBe("function");
+        });
+
+        it("should have resetSplit method", () => {
+            expect(mockComponent.resetSplit).toBeDefined();
+            expect(typeof mockComponent.resetSplit).toBe("function");
+        });
+
+        it("should have stopResize method", () => {
+            expect(mockComponent.stopResize).toBeDefined();
+            expect(typeof mockComponent.stopResize).toBe("function");
+        });
+    });
+
+    describe("startResize() method", () => {
+        it("should set isResizing to true", () => {
+            const mouseEvent = new MouseEvent("mousedown", { clientX: 100 });
+            mockComponent.startResize(mouseEvent);
+            expect((mockComponent as any).isResizing.call()).toBe(true);
+        });
+
+        it("should add resizing class to host element", () => {
+            const mouseEvent = new MouseEvent("mousedown", { clientX: 100 });
+            mockComponent.startResize(mouseEvent);
+            expect((mockComponent as any).host.nativeElement.classList.contains("resizing")).toBe(true);
+        });
+
+        it("should store the starting X coordinate", () => {
+            const mouseEvent = new MouseEvent("mousedown", { clientX: 250 });
+            mockComponent.startResize(mouseEvent);
+            expect((mockComponent as any).startX).toBe(250);
+        });
+    });
+
+    describe("resetSplit() method", () => {
+        it("should reset leftPanelWidth to 50", () => {
+            // First, change the width
+            (mockComponent as any).leftPanelWidth.set(60);
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(60);
+
+            // Now reset
+            mockComponent.resetSplit();
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(50);
+        });
+
+        it("should set isResizing to false", () => {
+            // First, start resizing
+            (mockComponent as any).isResizing.set(true);
+            expect((mockComponent as any).isResizing.call()).toBe(true);
+
+            // Now reset
+            mockComponent.resetSplit();
+            expect((mockComponent as any).isResizing.call()).toBe(false);
+        });
+
+        it("should remove resizing class from host element", () => {
+            const hostElement = (mockComponent as any).host.nativeElement;
+            hostElement.classList.add("resizing");
+            mockComponent.resetSplit();
+            expect(hostElement.classList.contains("resizing")).toBe(false);
+        });
+
+        it("should execute reset without throwing", () => {
+            expect(() => mockComponent.resetSplit()).not.toThrow();
+        });
+    });
+
+    describe("stopResize() method", () => {
+        it("should set isResizing to false", () => {
+            (mockComponent as any).isResizing.set(true);
+            mockComponent.stopResize();
+            expect((mockComponent as any).isResizing.call()).toBe(false);
+        });
+
+        it("should remove resizing class from host element", () => {
+            const hostElement = (mockComponent as any).host.nativeElement;
+            hostElement.classList.add("resizing");
+            mockComponent.stopResize();
+            expect(hostElement.classList.contains("resizing")).toBe(false);
+        });
+    });
+
+    describe("updatePanelWidths() method", () => {
+        it("should update width when within constraints (20%-80%)", () => {
+            mockComponent.updatePanelWidths(60);
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(60);
+        });
+
+        it("should accept minimum width of 20%", () => {
+            mockComponent.updatePanelWidths(20);
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(20);
+        });
+
+        it("should accept maximum width of 80%", () => {
+            mockComponent.updatePanelWidths(80);
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(80);
+        });
+
+        it("should reject width below 20%", () => {
+            mockComponent.updatePanelWidths(50); // Start at valid width
+            const before = (mockComponent as any).leftPanelWidth.call();
+            mockComponent.updatePanelWidths(15); // Try to set invalid width
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(before); // Should not change
+        });
+
+        it("should reject width above 80%", () => {
+            mockComponent.updatePanelWidths(50); // Start at valid width
+            const before = (mockComponent as any).leftPanelWidth.call();
+            mockComponent.updatePanelWidths(85); // Try to set invalid width
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(before); // Should not change
+        });
+    });
+
+    describe("Panel width constraints", () => {
+        it("should maintain minimum 20% width", () => {
+            mockComponent.updatePanelWidths(20);
+            expect((mockComponent as any).leftPanelWidth.call()).toBeGreaterThanOrEqual(20);
+        });
+
+        it("should maintain maximum 80% width", () => {
+            mockComponent.updatePanelWidths(80);
+            expect((mockComponent as any).leftPanelWidth.call()).toBeLessThanOrEqual(80);
+        });
+
+        it("should allow 50% width (default)", () => {
+            mockComponent.updatePanelWidths(50);
+            expect((mockComponent as any).leftPanelWidth.call()).toBe(50);
+        });
+    });
+
+    describe("Resize state management", () => {
+        it("should track resizing state correctly", () => {
+            expect((mockComponent as any).isResizing.call()).toBe(false);
+
+            const mouseEvent = new MouseEvent("mousedown", { clientX: 100 });
+            mockComponent.startResize(mouseEvent);
+            expect((mockComponent as any).isResizing.call()).toBe(true);
+
+            mockComponent.stopResize();
+            expect((mockComponent as any).isResizing.call()).toBe(false);
+        });
+
+        it("should maintain resizing class on host during resize", () => {
+            const hostElement = (mockComponent as any).host.nativeElement;
+            const mouseEvent = new MouseEvent("mousedown", { clientX: 100 });
+            
+            mockComponent.startResize(mouseEvent);
+            expect(hostElement.classList.contains("resizing")).toBe(true);
+
+            mockComponent.stopResize();
+            expect(hostElement.classList.contains("resizing")).toBe(false);
         });
     });
 });
