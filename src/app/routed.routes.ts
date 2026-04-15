@@ -2,6 +2,10 @@ import { Routes } from '@angular/router';
 
 const routes: Routes = [
 	{
+		path: 'intro',
+		loadComponent: () => import('./page/intro'),
+	},
+	{
 		path: 'knot',
 		loadComponent: () => import('./scene/knot'),
 	},
@@ -9,7 +13,7 @@ const routes: Routes = [
 		path: 'scene-graph',
 		loadComponent: () => import('./scene/scene-graph'),
 	},
-	{ path: '', redirectTo: 'scene-graph', pathMatch: 'full' },
+	{ path: '', redirectTo: 'intro', pathMatch: 'full' },
 ];
 
 export default routes;

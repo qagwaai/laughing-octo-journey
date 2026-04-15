@@ -14,7 +14,7 @@ import { RoutedScene } from './routed-scene';
       [stats]="{ parent: host, domClass: 'stats' }"
       shadows 
       [camera]="{ position: [5, 5, 5] }" 
-      [lookAt]="[0, 1, 0]"
+      [lookAt]="[0, 0, 0]"
       (click)="onCanvasClick()"
     >
       <app-routed-scene *canvasContent />
@@ -28,7 +28,18 @@ import { RoutedScene } from './routed-scene';
         <tweakpane-color [(value)]="color" label="Color" />
         <tweakpane-button title="Reset" (click)="reset()" />
     </tweakpane-pane>
-    		<ul class="absolute bottom-4 left-4 flex items-center gap-2">
+    <ul class="absolute bottom-4 left-4 flex items-center gap-2">
+    	<li>
+				<a
+					routerLink="intro"
+					class="underline"
+					routerLinkActive="text-blue-500"
+					[routerLinkActiveOptions]="{ exact: true }"
+				>
+					intro
+				</a>
+			</li>
+
 			<li>
 				<a
 					routerLink="knot"

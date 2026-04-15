@@ -23,6 +23,7 @@ import { NgtpEffectComposer, NgtpGodRays } from 'angular-three-postprocessing';
                     weight: 0.6,
                     exposure: 0.55,
                     samples: 60,
+                    blur: true,
                 }"
             />
         </ngtp-effect-composer>
