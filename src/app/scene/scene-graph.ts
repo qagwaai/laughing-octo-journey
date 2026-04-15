@@ -16,6 +16,7 @@ import niceColors from "../component/colors";
 import { Cube } from "../component/cube";
 import { Earth } from "../component/earth";
 import { Sol } from "../component/sol";
+import { ExpendableDartDrone } from "../component/expendable-dart-drone";
 
 extend(THREE);
 
@@ -39,6 +40,7 @@ extend(THREE);
 			*args="[aLogo()]"
 			[position]="[0, 13, -100]"
 		/>
+        <app-expendible-dart-drone [position]="[4, 1.5, 0]" />
         <ngt-mesh [position]="[0, 2, 0]">
 			<ngts-html [options]="{ transform: true }">
 				<div [htmlContent]="{ distanceFactor: 10 }">Label</div>
@@ -94,7 +96,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol],
+    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
