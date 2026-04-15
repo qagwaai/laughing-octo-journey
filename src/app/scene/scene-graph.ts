@@ -17,6 +17,7 @@ import { Cube } from "../component/cube";
 import { Earth } from "../component/earth";
 import { Sol } from "../component/sol";
 import { ExpendableDartDrone } from "../component/expendable-dart-drone";
+import { AngularLogo } from "../component/angular-logo";
 
 extend(THREE);
 
@@ -36,10 +37,7 @@ extend(THREE);
             castShadow
         />
 
-        <ngt-primitive
-			*args="[aLogo()]"
-			[position]="[0, 13, -100]"
-		/>
+        <app-angular-logo [position]="[0, 13, -100]" />
         <app-expendible-dart-drone [position]="[4, 1.5, 0]" />
         <ngt-mesh [position]="[0, 2, 0]">
 			<ngts-html [options]="{ transform: true }">
@@ -96,7 +94,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone],
+    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone, AngularLogo],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -104,11 +102,6 @@ export default class SceneGraph implements AfterContentInit {
 
     protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 
-    protected models = gltfResource(() => ({ alogo: 'models/aLogo.glb' }), {
-        onLoad(data) {
-            console.log("GLTF model loaded successfully", data);
-        },
-    });
     protected length = 10;
     protected readonly positions: number[] = [];
     protected readonly Math = Math;
@@ -119,16 +112,6 @@ export default class SceneGraph implements AfterContentInit {
             this.c.set(niceColors[Math.floor(Math.random() * 5)]).toArray(),
         ).flat(),
     );
-
-    aLogo = computed(() => {
-        const gltf = this.models.asReadonly().value()?.alogo;
-        if (!gltf) {
-            console.log("GLTF model not loaded yet");
-            return null;
-        }
-        console.log("GLTF model loaded", gltf);
-        return gltf.scene
-    });
 
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
