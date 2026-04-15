@@ -1,4 +1,4 @@
-import { AfterContentInit, ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, viewChild } from "@angular/core";
+import { AfterContentInit, ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, OnDestroy, OnInit, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
@@ -18,6 +18,7 @@ import { Earth } from "../component/earth";
 import { Sol } from "../component/sol";
 import { ExpendableDartDrone } from "../component/expendable-dart-drone";
 import { AngularLogo } from "../component/angular-logo";
+import { SocketService } from "../services/socket.service";
 
 extend(THREE);
 
@@ -98,7 +99,7 @@ extend(THREE);
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export default class SceneGraph implements AfterContentInit {
+export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
 
     protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 
@@ -117,7 +118,7 @@ export default class SceneGraph implements AfterContentInit {
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
 
-    constructor() {
+    constructor(private socket: SocketService) {
         const o = new Object3D();
 
         effect(() => {
@@ -211,6 +212,17 @@ export default class SceneGraph implements AfterContentInit {
             instances.instanceMatrix.needsUpdate = true;
         })
 
+    }
+    ngOnDestroy(): void {
+        this.socket.disconnect();
+    }
+    ngOnInit(): void {
+        this.socket.connect('http://localhost:3000');
+        this.socket.on('message', (data) => console.log(data));
+    }
+
+    sendMessage(msg: string) {
+        this.socket.emit('message', { text: msg });
     }
 
     onPlanetClick() {
