@@ -1,5 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
@@ -101,7 +101,15 @@ import { RoutedScene } from './routed-scene';
     }
   }`,
   schemas: [CUSTOM_ELEMENTS_SCHEMA], 
-  imports: [NgtCanvas, RoutedScene, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    NgtCanvas, 
+    TweakpanePane, 
+    TweakpaneCheckbox, 
+    TweakpaneColor, 
+    TweakpaneButton, 
+    NgtsStats, 
+    RoutedScene, 
+    RouterOutlet],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
   protected host = inject(ElementRef);
@@ -112,7 +120,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
   protected color = signal('#ff0000');
-  protected stats = signal(true);
+  protected stats = signal(false);
   protected follow = signal(true);
   protected lockX = signal(false);
   protected lockY = signal(false);
