@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal }
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../model/register';
+import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
 export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
@@ -21,6 +22,7 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
 })
 export default class RegistrationPage implements OnDestroy {
 	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
@@ -67,6 +69,9 @@ export default class RegistrationPage implements OnDestroy {
 			(response: RegisterResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
+					if (response.sessionKey) {
+						this.sessionService.setSessionKey(response.sessionKey);
+					}
 					this.successMessage.set(response.message);
 					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
 						preserveFragment: true,

@@ -28,6 +28,14 @@ interface MockRouter {
 	navigate: jest.Mock;
 }
 
+interface MockSessionService {
+	storedKey: string | null;
+	setSessionKey(key: string): void;
+	getSessionKey(): string | null;
+	clearSession(): void;
+	hasSession(): boolean;
+}
+
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
@@ -48,9 +56,21 @@ function createMockSocketService(): MockSocketService {
 	};
 }
 
+function createMockSessionService(): MockSessionService {
+	const state = { key: null as string | null };
+	return {
+		get storedKey() { return state.key; },
+		setSessionKey(key: string) { state.key = key; },
+		getSessionKey() { return state.key; },
+		clearSession() { state.key = null; },
+		hasSession() { return state.key !== null; },
+	};
+}
+
 class MockLoginPage {
 	private socketService: MockSocketService;
 	private router: MockRouter;
+	private sessionService: MockSessionService;
 	private unsubscribeResponse?: () => void;
 
 	loginForm = {
@@ -74,9 +94,10 @@ class MockLoginPage {
 	errorMessage = createSignal<string | null>(null);
 	canNavigateToRegister = createSignal(false);
 
-	constructor(socketService: MockSocketService, router: MockRouter) {
+	constructor(socketService: MockSocketService, router: MockRouter, sessionService: MockSessionService) {
 		this.socketService = socketService;
 		this.router = router;
+		this.sessionService = sessionService;
 	}
 
 	submit(): void {
@@ -101,6 +122,9 @@ class MockLoginPage {
 			(response: LoginResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
+					if (response.sessionKey) {
+						this.sessionService.setSessionKey(response.sessionKey);
+					}
 					this.successMessage.set(response.message);
 					this.canNavigateToRegister.set(false);
 					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
@@ -141,13 +165,15 @@ describe('LoginPage', () => {
 	let component: MockLoginPage;
 	let socketService: MockSocketService;
 	let router: MockRouter;
+	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		router = {
 			navigate: jest.fn(),
 		};
-		component = new MockLoginPage(socketService, router);
+		sessionService = createMockSessionService();
+		component = new MockLoginPage(socketService, router, sessionService);
 	});
 
 	afterEach(() => {
@@ -210,6 +236,7 @@ describe('LoginPage', () => {
 				success: true,
 				message: 'Login successful.',
 				playerId: 'abc-123',
+				sessionKey: 'session-abc-123',
 			} satisfies LoginResponse);
 
 			expect(component.successMessage()).toBe('Login successful.');
@@ -219,6 +246,28 @@ describe('LoginPage', () => {
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
+		});
+
+		it('should store the session key returned from login', () => {
+			submitForm();
+			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+				success: true,
+				message: 'Login successful.',
+				sessionKey: 'session-xyz-789',
+			} satisfies LoginResponse);
+
+			expect(sessionService.storedKey).toBe('session-xyz-789');
+			expect(sessionService.hasSession()).toBe(true);
+		});
+
+		it('should not call setSessionKey when sessionKey is absent', () => {
+			submitForm();
+			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+				success: true,
+				message: 'Login successful.',
+			} satisfies LoginResponse);
+
+			expect(sessionService.storedKey).toBeNull();
 		});
 
 		it('should handle unregistered player name failure', () => {
@@ -275,6 +324,7 @@ describe('LoginPage', () => {
 			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
 				success: true,
 				message: 'Login successful.',
+				sessionKey: 'session-abc-123',
 			} satisfies LoginResponse);
 
 			expect(component.canNavigateToRegister()).toBe(false);
@@ -285,6 +335,7 @@ describe('LoginPage', () => {
 			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
 				success: true,
 				message: 'Login successful.',
+				sessionKey: 'session-abc-123',
 			} satisfies LoginResponse);
 
 			expect(socketService.registeredListeners.has(LOGIN_RESPONSE_EVENT)).toBe(false);

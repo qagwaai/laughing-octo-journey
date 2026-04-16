@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character-list';
 import CharacterSetupPage from './page/character-setup';
 
@@ -10,11 +11,12 @@ const routes: Routes = [
 	},
 	{
 		path: 'knot',
-		loadComponent: () => import('./scene/knot'),
+		loadComponent: () => import('./scene/knot')
 	},
 	{
 		path: 'scene-graph',
 		loadComponent: () => import('./scene/scene-graph'),
+		canActivate: [authGuard],
 	},
 	{
 		path: 'registration',
@@ -27,10 +29,12 @@ const routes: Routes = [
 	{
 		path: 'character-setup',
 		component: CharacterSetupPage,
+		canActivate: [authGuard],
 	},
 	{
 		path: 'character-list',
 		component: CharacterListPage,
+		canActivate: [authGuard],
 	},
 	// Auxiliary outlet routes (left panel)
 	{
@@ -62,11 +66,13 @@ const routes: Routes = [
 		path: 'character-setup',
 		outlet: 'left',
 		component: CharacterSetupPage,
+		canActivate: [authGuard],
 	},
 	{
 		path: 'character-list',
 		outlet: 'left',
 		component: CharacterListPage,
+		canActivate: [authGuard],
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 ];

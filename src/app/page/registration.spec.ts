@@ -36,6 +36,14 @@ interface MockRouter {
 	navigate: jest.Mock;
 }
 
+interface MockSessionService {
+	storedKey: string | null;
+	setSessionKey(key: string): void;
+	getSessionKey(): string | null;
+	clearSession(): void;
+	hasSession(): boolean;
+}
+
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
@@ -56,11 +64,23 @@ function createMockSocketService(): MockSocketService {
 	};
 }
 
+function createMockSessionService(): MockSessionService {
+	const state = { key: null as string | null };
+	return {
+		get storedKey() { return state.key; },
+		setSessionKey(key: string) { state.key = key; },
+		getSessionKey() { return state.key; },
+		clearSession() { state.key = null; },
+		hasSession() { return state.key !== null; },
+	};
+}
+
 // ── Mock component ────────────────────────────────────────────────────────────
 
 class MockRegistrationPage {
 	private socketService: MockSocketService;
 	private router: MockRouter;
+	private sessionService: MockSessionService;
 	private unsubscribeResponse?: () => void;
 
 	registrationForm = {
@@ -91,9 +111,10 @@ class MockRegistrationPage {
 	successMessage = createSignal<string | null>(null);
 	errorMessage = createSignal<string | null>(null);
 
-	constructor(socketService: MockSocketService, router: MockRouter) {
+	constructor(socketService: MockSocketService, router: MockRouter, sessionService: MockSessionService) {
 		this.socketService = socketService;
 		this.router = router;
+		this.sessionService = sessionService;
 	}
 
 	submit(): void {
@@ -114,6 +135,9 @@ class MockRegistrationPage {
 			(response: RegisterResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
+					if (response.sessionKey) {
+						this.sessionService.setSessionKey(response.sessionKey);
+					}
 					this.successMessage.set(response.message);
 					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
 						preserveFragment: true,
@@ -145,11 +169,13 @@ describe('RegistrationPage', () => {
 	let component: MockRegistrationPage;
 	let socketService: MockSocketService;
 	let router: MockRouter;
+	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		router = { navigate: jest.fn() };
-		component = new MockRegistrationPage(socketService, router);
+		sessionService = createMockSessionService();
+		component = new MockRegistrationPage(socketService, router, sessionService);
 	});
 
 	afterEach(() => {
@@ -238,6 +264,7 @@ describe('RegistrationPage', () => {
 				success: true,
 				message: 'Registration successful!',
 				playerId: 'abc-123',
+				sessionKey: 'session-abc-123',
 			} satisfies RegisterResponse);
 
 			expect(component.successMessage()).toBe('Registration successful!');
@@ -248,6 +275,28 @@ describe('RegistrationPage', () => {
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
+		});
+
+		it('should store the session key returned from registration', () => {
+			submitForm();
+			socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+				success: true,
+				message: 'Registration successful!',
+				sessionKey: 'session-reg-456',
+			} satisfies RegisterResponse);
+
+			expect(sessionService.storedKey).toBe('session-reg-456');
+			expect(sessionService.hasSession()).toBe(true);
+		});
+
+		it('should not call setSessionKey when sessionKey is absent', () => {
+			submitForm();
+			socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+				success: true,
+				message: 'Registration successful!',
+			} satisfies RegisterResponse);
+
+			expect(sessionService.storedKey).toBeNull();
 		});
 
 		it('should set errorMessage on failure response', () => {
@@ -267,6 +316,7 @@ describe('RegistrationPage', () => {
 			socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
 				success: true,
 				message: 'Registration successful!',
+				sessionKey: 'session-abc-123',
 			} satisfies RegisterResponse);
 
 			expect(socketService.registeredListeners.has(REGISTER_RESPONSE_EVENT)).toBe(false);

@@ -10,6 +10,7 @@ import {
 	CharacterListRequest,
 	CharacterListResponse,
 } from '../model/character-list';
+import { INVALID_SESSION_EVENT } from '../model/session';
 
 function createSignal<T>(initial: T) {
 	let value = initial;
@@ -35,6 +36,14 @@ interface MockSocketService {
 
 interface MockRouter {
 	navigate: jest.Mock;
+}
+
+interface MockSessionService {
+	storedKey: string | null;
+	setSessionKey(key: string): void;
+	getSessionKey(): string | null;
+	clearSession(): void;
+	hasSession(): boolean;
 }
 
 function createMockSocketService(): MockSocketService {
@@ -73,11 +82,24 @@ function createMockSocketService(): MockSocketService {
 	};
 }
 
+function createMockSessionService(initialKey: string | null = null): MockSessionService {
+	const state = { key: initialKey };
+	return {
+		get storedKey() { return state.key; },
+		setSessionKey(key: string) { state.key = key; },
+		getSessionKey() { return state.key; },
+		clearSession() { state.key = null; },
+		hasSession() { return state.key !== null; },
+	};
+}
+
 class MockCharacterListPage {
 	private socketService: MockSocketService;
 	private router: MockRouter;
+	private sessionService: MockSessionService;
 	private unsubscribeResponse?: () => void;
 	private unsubscribeDeleteResponse?: () => void;
+	private unsubscribeInvalidSession?: () => void;
 
 	playerName = createSignal('Pioneer');
 	characters = createSignal<any[]>([]);
@@ -86,9 +108,18 @@ class MockCharacterListPage {
 	pendingDeleteCharacter = createSignal<any | null>(null);
 	isDeleting = createSignal(false);
 
-	constructor(socketService: MockSocketService, router: MockRouter) {
+	constructor(socketService: MockSocketService, router: MockRouter, sessionService: MockSessionService) {
 		this.socketService = socketService;
 		this.router = router;
+		this.sessionService = sessionService;
+
+		this.unsubscribeInvalidSession = this.socketService.on(
+			INVALID_SESSION_EVENT,
+			() => {
+				this.sessionService.clearSession();
+				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+			},
+		);
 
 		if (this.socketService.getIsConnected()) {
 			this.loadCharacters();
@@ -123,7 +154,7 @@ class MockCharacterListPage {
 			},
 		);
 
-		const request: CharacterListRequest = { playerName };
+		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
 	}
 
@@ -172,6 +203,7 @@ class MockCharacterListPage {
 			playerName,
 			characterId: character.id,
 			characterName: character.characterName,
+			sessionKey: this.sessionService.getSessionKey()!,
 		};
 		this.socketService.emit(CHARACTER_DELETE_REQUEST_EVENT, request);
 	}
@@ -187,6 +219,7 @@ class MockCharacterListPage {
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 		this.unsubscribeDeleteResponse?.();
+		this.unsubscribeInvalidSession?.();
 	}
 }
 
@@ -194,11 +227,13 @@ describe('CharacterListPage', () => {
 	let component: MockCharacterListPage;
 	let socketService: MockSocketService;
 	let router: MockRouter;
+	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		router = { navigate: jest.fn() };
-		component = new MockCharacterListPage(socketService, router);
+		sessionService = createMockSessionService('test-session-key');
+		component = new MockCharacterListPage(socketService, router, sessionService);
 	});
 
 	afterEach(() => {
@@ -219,7 +254,7 @@ describe('CharacterListPage', () => {
 		it('should load characters immediately when socket is already connected', () => {
 			const connectedSocket = createMockSocketService();
 			connectedSocket.connected = true;
-			const autoLoadComponent = new MockCharacterListPage(connectedSocket, router);
+			const autoLoadComponent = new MockCharacterListPage(connectedSocket, router, sessionService);
 
 			expect(autoLoadComponent.isLoading()).toBe(true);
 			expect(connectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
@@ -228,7 +263,7 @@ describe('CharacterListPage', () => {
 		it('should load characters when connect event fires if initially disconnected', () => {
 			const disconnectedSocket = createMockSocketService();
 			disconnectedSocket.connected = false;
-			const autoLoadComponent = new MockCharacterListPage(disconnectedSocket, router);
+			const autoLoadComponent = new MockCharacterListPage(disconnectedSocket, router, sessionService);
 
 			expect(disconnectedSocket.emittedEvents).toHaveLength(0);
 			disconnectedSocket.triggerOnceEvent('connect');
@@ -246,6 +281,7 @@ describe('CharacterListPage', () => {
 			expect(socketService.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
 			expect(socketService.emittedEvents[0].data).toEqual<CharacterListRequest>({
 				playerName: 'Pioneer',
+				sessionKey: 'test-session-key',
 			});
 		});
 
@@ -331,6 +367,7 @@ describe('CharacterListPage', () => {
 				playerName: 'Pioneer',
 				characterId: '1',
 				characterName: 'Nova',
+				sessionKey: 'test-session-key',
 			});
 			expect(component.isDeleting()).toBe(true);
 		});
@@ -375,6 +412,30 @@ describe('CharacterListPage', () => {
 			component.cancelDeleteCharacter();
 
 			expect(component.pendingDeleteCharacter()).toBeNull();
+		});
+	});
+
+	describe('invalid session handling', () => {
+		it('should clear session and navigate to login on invalid-session event', () => {
+			expect(sessionService.hasSession()).toBe(true);
+
+			socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
+
+			expect(sessionService.hasSession()).toBe(false);
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['login'] } }],
+				{ preserveFragment: true },
+			);
+		});
+	});
+
+	describe('ngOnDestroy()', () => {
+		it('should unsubscribe all listeners on destroy', () => {
+			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(true);
+
+			component.ngOnDestroy();
+
+			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(false);
 		});
 	});
 });

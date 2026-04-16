@@ -5,6 +5,7 @@ export interface CharacterDeleteRequest {
 	playerName: string;
 	characterId: string;
 	characterName?: string;
+	sessionKey: string;
 }
 
 export interface CharacterDeleteResponse {

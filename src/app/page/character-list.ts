@@ -13,6 +13,8 @@ import {
 	CharacterListResponse,
 	PlayerCharacterSummary,
 } from '../model/character-list';
+import { INVALID_SESSION_EVENT } from '../model/session';
+import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
 @Component({
@@ -23,9 +25,11 @@ import { SocketService } from '../services/socket.service';
 })
 export default class CharacterListPage implements OnDestroy {
 	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
 	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
 	private unsubscribeDeleteResponse?: () => void;
+	private unsubscribeInvalidSession?: () => void;
 
 	protected playerName = signal<string>(
 		(this.router.getCurrentNavigation()?.extras.state?.['playerName'] as string | undefined) ??
@@ -42,6 +46,14 @@ export default class CharacterListPage implements OnDestroy {
 		effect(() => {
 			this.socketService.connect(this.socketService.serverUrl);
 		});
+
+		this.unsubscribeInvalidSession = this.socketService.on(
+			INVALID_SESSION_EVENT,
+			() => {
+				this.sessionService.clearSession();
+				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+			},
+		);
 
 		if (this.socketService.getIsConnected()) {
 			this.loadCharacters();
@@ -76,7 +88,7 @@ export default class CharacterListPage implements OnDestroy {
 			},
 		);
 
-		const request: CharacterListRequest = { playerName };
+		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
 	}
 
@@ -125,6 +137,7 @@ export default class CharacterListPage implements OnDestroy {
 			playerName,
 			characterId: character.id,
 			characterName: character.characterName,
+			sessionKey: this.sessionService.getSessionKey()!,
 		};
 		this.socketService.emit(CHARACTER_DELETE_REQUEST_EVENT, request);
 	}
@@ -140,5 +153,6 @@ export default class CharacterListPage implements OnDestroy {
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 		this.unsubscribeDeleteResponse?.();
+		this.unsubscribeInvalidSession?.();
 	}
 }

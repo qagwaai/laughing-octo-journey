@@ -4,6 +4,7 @@ export const CHARACTER_ADD_RESPONSE_EVENT = 'character-add-response';
 export interface CharacterAddRequest {
 	playerName: string;
 	characterName: string;
+	sessionKey: string;
 }
 
 export interface CharacterAddResponse {

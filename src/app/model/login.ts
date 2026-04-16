@@ -13,4 +13,5 @@ export interface LoginResponse {
 	message: string;
 	reason?: LoginFailureReason;
 	playerId?: string;
+	sessionKey?: string;
 }

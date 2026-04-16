@@ -7,6 +7,8 @@ import {
 	CharacterAddRequest,
 	CharacterAddResponse,
 } from '../model/character-add';
+import { INVALID_SESSION_EVENT } from '../model/session';
+import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
 @Component({
@@ -20,7 +22,9 @@ export default class CharacterSetupPage implements OnDestroy {
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
 	private unsubscribeAddResponse?: () => void;
+	private unsubscribeInvalidSession?: () => void;
 
 	protected playerName = signal<string>(
 		(this.router.getCurrentNavigation()?.extras.state?.['playerName'] as string | undefined) ??
@@ -44,6 +48,14 @@ export default class CharacterSetupPage implements OnDestroy {
 		effect(() => {
 			this.socketService.connect(this.socketService.serverUrl);
 		});
+
+		this.unsubscribeInvalidSession = this.socketService.on(
+			INVALID_SESSION_EVENT,
+			() => {
+				this.sessionService.clearSession();
+				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+			},
+		);
 	}
 
 	saveCharacter(): void {
@@ -87,6 +99,7 @@ export default class CharacterSetupPage implements OnDestroy {
 		const request: CharacterAddRequest = {
 			playerName,
 			characterName,
+			sessionKey: this.sessionService.getSessionKey()!,
 		};
 		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
 	}
@@ -101,5 +114,6 @@ export default class CharacterSetupPage implements OnDestroy {
 
 	ngOnDestroy(): void {
 		this.unsubscribeAddResponse?.();
+		this.unsubscribeInvalidSession?.();
 	}
 }

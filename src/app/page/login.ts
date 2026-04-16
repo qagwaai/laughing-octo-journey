@@ -7,6 +7,7 @@ import {
 	LoginRequest,
 	LoginResponse,
 } from '../model/login';
+import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { SocketService } from '../services/socket.service';
 })
 export default class LoginPage implements OnDestroy {
 	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
@@ -60,6 +62,9 @@ export default class LoginPage implements OnDestroy {
 			(response: LoginResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
+					if (response.sessionKey) {
+						this.sessionService.setSessionKey(response.sessionKey);
+					}
 					this.successMessage.set(response.message);
 					this.canNavigateToRegister.set(false);
 					this.router.navigate([{ outlets: { left: ['character-list'] } }], {

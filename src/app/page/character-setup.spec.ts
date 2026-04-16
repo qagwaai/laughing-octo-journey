@@ -11,6 +11,7 @@ import {
 	CharacterAddRequest,
 	CharacterAddResponse,
 } from '../model/character-add';
+import { INVALID_SESSION_EVENT } from '../model/session';
 
 function createSignal<T>(initial: T) {
 	let value = initial;
@@ -23,6 +24,14 @@ function createSignal<T>(initial: T) {
 
 interface MockRouter {
 	navigate: jest.Mock;
+}
+
+interface MockSessionService {
+	storedKey: string | null;
+	setSessionKey(key: string): void;
+	getSessionKey(): string | null;
+	clearSession(): void;
+	hasSession(): boolean;
 }
 
 interface MockSocketService {
@@ -53,10 +62,23 @@ function createMockSocketService(): MockSocketService {
 	};
 }
 
+function createMockSessionService(initialKey: string | null = null): MockSessionService {
+	const state = { key: initialKey };
+	return {
+		get storedKey() { return state.key; },
+		setSessionKey(key: string) { state.key = key; },
+		getSessionKey() { return state.key; },
+		clearSession() { state.key = null; },
+		hasSession() { return state.key !== null; },
+	};
+}
+
 class MockCharacterSetupPage {
 	private router: MockRouter;
 	private socketService: MockSocketService;
+	private sessionService: MockSessionService;
 	private unsubscribeAddResponse?: () => void;
+	private unsubscribeInvalidSession?: () => void;
 
 	playerName = createSignal<string>('Pioneer');
 	isSaved = createSignal(false);
@@ -76,9 +98,18 @@ class MockCharacterSetupPage {
 		},
 	};
 
-	constructor(router: MockRouter, socketService: MockSocketService) {
+	constructor(router: MockRouter, socketService: MockSocketService, sessionService: MockSessionService) {
 		this.router = router;
 		this.socketService = socketService;
+		this.sessionService = sessionService;
+
+		this.unsubscribeInvalidSession = this.socketService.on(
+			INVALID_SESSION_EVENT,
+			() => {
+				this.sessionService.clearSession();
+				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+			},
+		);
 	}
 
 	saveCharacter(): void {
@@ -119,7 +150,7 @@ class MockCharacterSetupPage {
 			},
 		);
 
-		const request: CharacterAddRequest = { playerName, characterName };
+		const request: CharacterAddRequest = { playerName, characterName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
 	}
 
@@ -133,6 +164,7 @@ class MockCharacterSetupPage {
 
 	ngOnDestroy(): void {
 		this.unsubscribeAddResponse?.();
+		this.unsubscribeInvalidSession?.();
 	}
 }
 
@@ -140,11 +172,13 @@ describe('CharacterSetupPage', () => {
 	let component: MockCharacterSetupPage;
 	let router: MockRouter;
 	let socketService: MockSocketService;
+	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		router = { navigate: jest.fn() };
 		socketService = createMockSocketService();
-		component = new MockCharacterSetupPage(router, socketService);
+		sessionService = createMockSessionService('test-session-key');
+		component = new MockCharacterSetupPage(router, socketService, sessionService);
 	});
 
 	afterEach(() => {
@@ -198,6 +232,7 @@ describe('CharacterSetupPage', () => {
 			expect(socketService.emittedEvents[0].data).toEqual<CharacterAddRequest>({
 				playerName: 'Pioneer',
 				characterName: 'Nova-Prime',
+				sessionKey: 'test-session-key',
 			});
 			expect(component.isSubmitting()).toBe(true);
 		});
@@ -282,6 +317,27 @@ describe('CharacterSetupPage', () => {
 
 			component.ngOnDestroy();
 			expect(socketService.registeredListeners.has(CHARACTER_ADD_RESPONSE_EVENT)).toBe(false);
+		});
+
+		it('should unsubscribe invalid-session listener on destroy', () => {
+			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(true);
+
+			component.ngOnDestroy();
+			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(false);
+		});
+	});
+
+	describe('invalid session handling', () => {
+		it('should clear session and navigate to login on invalid-session event', () => {
+			expect(sessionService.hasSession()).toBe(true);
+
+			socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
+
+			expect(sessionService.hasSession()).toBe(false);
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['login'] } }],
+				{ preserveFragment: true },
+			);
 		});
 	});
 });

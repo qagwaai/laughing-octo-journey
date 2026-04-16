@@ -3,6 +3,7 @@ export const CHARACTER_LIST_RESPONSE_EVENT = 'character-list-response';
 
 export interface CharacterListRequest {
 	playerName: string;
+	sessionKey: string;
 }
 
 export interface PlayerCharacterSummary {
