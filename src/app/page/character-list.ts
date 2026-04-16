@@ -65,6 +65,14 @@ export default class CharacterListPage implements OnDestroy {
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
 	}
 
+	navigateToCharacterSetup(): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+			preserveFragment: true,
+			state: { playerName },
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 	}

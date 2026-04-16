@@ -62,7 +62,7 @@ export default class LoginPage implements OnDestroy {
 				if (response.success) {
 					this.successMessage.set(response.message);
 					this.canNavigateToRegister.set(false);
-					this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
 						preserveFragment: true,
 						state: { playerName: request.playerName },
 					});

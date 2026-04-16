@@ -9,6 +9,7 @@
 	<button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
 		{{ isLoading() ? 'Loading...' : 'Load Characters' }}
 	</button>
+	<button class="setup-btn" (click)="navigateToCharacterSetup()">Create / Edit Character</button>
 
 	@if (errorMessage()) {
 		<div class="status-message error-message">{{ errorMessage() }}</div>

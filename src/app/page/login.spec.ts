@@ -103,7 +103,7 @@ class MockLoginPage {
 				if (response.success) {
 					this.successMessage.set(response.message);
 					this.canNavigateToRegister.set(false);
-					this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
 						preserveFragment: true,
 						state: { playerName: request.playerName },
 					});
@@ -216,7 +216,7 @@ describe('LoginPage', () => {
 			expect(component.errorMessage()).toBeNull();
 			expect(component.isSubmitting()).toBe(false);
 			expect(router.navigate).toHaveBeenCalledWith(
-				[{ outlets: { left: ['character-setup'] } }],
+				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
 		});

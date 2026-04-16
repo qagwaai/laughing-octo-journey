@@ -22,6 +22,10 @@ interface MockSocketService {
 	triggerEvent(event: string, data: any): void;
 }
 
+interface MockRouter {
+	navigate: jest.Mock;
+}
+
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
@@ -44,6 +48,7 @@ function createMockSocketService(): MockSocketService {
 
 class MockCharacterListPage {
 	private socketService: MockSocketService;
+	private router: MockRouter;
 	private unsubscribeResponse?: () => void;
 
 	playerName = createSignal('Pioneer');
@@ -51,8 +56,9 @@ class MockCharacterListPage {
 	isLoading = createSignal(false);
 	errorMessage = createSignal<string | null>(null);
 
-	constructor(socketService: MockSocketService) {
+	constructor(socketService: MockSocketService, router: MockRouter) {
 		this.socketService = socketService;
+		this.router = router;
 	}
 
 	loadCharacters(): void {
@@ -85,6 +91,14 @@ class MockCharacterListPage {
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
 	}
 
+	navigateToCharacterSetup(): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+			preserveFragment: true,
+			state: { playerName },
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 	}
@@ -93,10 +107,12 @@ class MockCharacterListPage {
 describe('CharacterListPage', () => {
 	let component: MockCharacterListPage;
 	let socketService: MockSocketService;
+	let router: MockRouter;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		component = new MockCharacterListPage(socketService);
+		router = { navigate: jest.fn() };
+		component = new MockCharacterListPage(socketService, router);
 	});
 
 	afterEach(() => {
@@ -162,6 +178,18 @@ describe('CharacterListPage', () => {
 			expect(component.characters()).toEqual([]);
 			expect(component.errorMessage()).toBe('Player not found.');
 			expect(component.isLoading()).toBe(false);
+		});
+	});
+
+	describe('navigateToCharacterSetup()', () => {
+		it('should navigate to character-setup with playerName in left outlet', () => {
+			component.playerName.set('Pioneer');
+			component.navigateToCharacterSetup();
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-setup'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
 		});
 	});
 });
