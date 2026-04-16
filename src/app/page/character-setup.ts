@@ -1,6 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import {
+	CHARACTER_ADD_REQUEST_EVENT,
+	CHARACTER_ADD_RESPONSE_EVENT,
+	CharacterAddRequest,
+	CharacterAddResponse,
+} from '../model/character-add';
+import { SocketService } from '../services/socket.service';
 
 @Component({
 	selector: 'app-character-setup-page',
@@ -9,9 +16,11 @@ import { Router } from '@angular/router';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [ReactiveFormsModule],
 })
-export default class CharacterSetupPage {
+export default class CharacterSetupPage implements OnDestroy {
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
+	private socketService = inject(SocketService);
+	private unsubscribeAddResponse?: () => void;
 
 	protected playerName = signal<string>(
 		(this.router.getCurrentNavigation()?.extras.state?.['playerName'] as string | undefined) ??
@@ -28,6 +37,14 @@ export default class CharacterSetupPage {
 
 	protected isSaved = signal(false);
 	protected successMessage = signal<string | null>(null);
+	protected errorMessage = signal<string | null>(null);
+	protected isSubmitting = signal(false);
+
+	constructor() {
+		effect(() => {
+			this.socketService.connect(this.socketService.serverUrl);
+		});
+	}
 
 	saveCharacter(): void {
 		if (this.characterForm.invalid) {
@@ -35,9 +52,43 @@ export default class CharacterSetupPage {
 			return;
 		}
 
+		const playerName = this.playerName().trim();
 		const characterName = this.characterForm.value.characterName!;
-		this.isSaved.set(true);
-		this.successMessage.set(`Character '${characterName}' is ready for launch.`);
+
+		if (!playerName) {
+			this.errorMessage.set('Player name is required to add a character.');
+			this.isSaved.set(false);
+			return;
+		}
+
+		this.isSubmitting.set(true);
+		this.errorMessage.set(null);
+		this.successMessage.set(null);
+		this.isSaved.set(false);
+		this.unsubscribeAddResponse?.();
+
+		this.unsubscribeAddResponse = this.socketService.on(
+			CHARACTER_ADD_RESPONSE_EVENT,
+			(response: CharacterAddResponse) => {
+				this.isSubmitting.set(false);
+				if (response.success) {
+					this.isSaved.set(true);
+					this.successMessage.set(response.message);
+					this.errorMessage.set(null);
+				} else {
+					this.isSaved.set(false);
+					this.successMessage.set(null);
+					this.errorMessage.set(response.message);
+				}
+				this.unsubscribeAddResponse?.();
+			},
+		);
+
+		const request: CharacterAddRequest = {
+			playerName,
+			characterName,
+		};
+		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
 	}
 
 	navigateToCharacterList(): void {
@@ -46,5 +97,9 @@ export default class CharacterSetupPage {
 			preserveFragment: true,
 			state: { playerName },
 		});
+	}
+
+	ngOnDestroy(): void {
+		this.unsubscribeAddResponse?.();
 	}
 }

@@ -24,10 +24,15 @@
 			}
 		</div>
 
-		<button type="submit" [disabled]="characterForm.invalid" class="submit-btn">Save Character</button>
+		<button type="submit" [disabled]="characterForm.invalid || isSubmitting()" class="submit-btn">
+			{{ isSubmitting() ? 'Saving Character...' : 'Save Character' }}
+		</button>
 		<button type="button" class="list-btn" (click)="navigateToCharacterList()">View Character List</button>
 	</form>
 
+	@if (errorMessage()) {
+		<div class="status-message error-message">{{ errorMessage() }}</div>
+	}
 	@if (isSaved() && successMessage()) {
 		<div class="status-message success-message">{{ successMessage() }}</div>
 	}

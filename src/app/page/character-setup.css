@@ -120,6 +120,12 @@ input:focus {
 	font-size: 0.95rem;
 }
 
+.error-message {
+	background: rgba(255, 80, 80, 0.2);
+	border: 1px solid rgba(255, 80, 80, 0.5);
+	color: #ff7c7c;
+}
+
 .success-message {
 	background: rgba(80, 200, 120, 0.2);
 	border: 1px solid rgba(80, 200, 120, 0.5);
