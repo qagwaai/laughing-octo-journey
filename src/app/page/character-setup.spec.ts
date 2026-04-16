@@ -14,7 +14,13 @@ function createSignal<T>(initial: T) {
 	return sig;
 }
 
+interface MockRouter {
+	navigate: jest.Mock;
+}
+
 class MockCharacterSetupPage {
+	private router: MockRouter;
+
 	playerName = createSignal<string>('Pioneer');
 	isSaved = createSignal(false);
 	successMessage = createSignal<string | null>(null);
@@ -31,6 +37,10 @@ class MockCharacterSetupPage {
 		},
 	};
 
+	constructor(router: MockRouter) {
+		this.router = router;
+	}
+
 	saveCharacter(): void {
 		if (this.characterForm.invalid) {
 			this.characterForm.markAllAsTouched();
@@ -41,13 +51,23 @@ class MockCharacterSetupPage {
 		this.isSaved.set(true);
 		this.successMessage.set(`Character '${characterName}' is ready for launch.`);
 	}
+
+	navigateToCharacterList(): void {
+		const playerName = this.playerName() || this.characterForm.value.characterName || '';
+		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+			preserveFragment: true,
+			state: { playerName },
+		});
+	}
 }
 
 describe('CharacterSetupPage', () => {
 	let component: MockCharacterSetupPage;
+	let router: MockRouter;
 
 	beforeEach(() => {
-		component = new MockCharacterSetupPage();
+		router = { navigate: jest.fn() };
+		component = new MockCharacterSetupPage(router);
 	});
 
 	it('should create', () => {
@@ -87,6 +107,29 @@ describe('CharacterSetupPage', () => {
 			component.saveCharacter();
 
 			expect(component.successMessage()).toContain('Atlas');
+		});
+	});
+
+	describe('navigateToCharacterList()', () => {
+		it('should navigate to character-list with playerName from login context', () => {
+			component.playerName.set('Pioneer');
+			component.navigateToCharacterList();
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-list'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
+		});
+
+		it('should fallback to character name when playerName is empty', () => {
+			component.playerName.set('');
+			component.characterForm.characterName = 'Nova';
+			component.navigateToCharacterList();
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-list'] } }],
+				{ preserveFragment: true, state: { playerName: 'Nova' } },
+			);
 		});
 	});
 });

@@ -39,4 +39,12 @@ export default class CharacterSetupPage {
 		this.isSaved.set(true);
 		this.successMessage.set(`Character '${characterName}' is ready for launch.`);
 	}
+
+	navigateToCharacterList(): void {
+		const playerName = this.playerName() || this.characterForm.value.characterName || '';
+		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+			preserveFragment: true,
+			state: { playerName },
+		});
+	}
 }

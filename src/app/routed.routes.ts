@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import CharacterListPage from './page/character-list';
 import CharacterSetupPage from './page/character-setup';
 
 const routes: Routes = [
@@ -26,6 +27,10 @@ const routes: Routes = [
 	{
 		path: 'character-setup',
 		component: CharacterSetupPage,
+	},
+	{
+		path: 'character-list',
+		component: CharacterListPage,
 	},
 	// Auxiliary outlet routes (left panel)
 	{
@@ -57,6 +62,11 @@ const routes: Routes = [
 		path: 'character-setup',
 		outlet: 'left',
 		component: CharacterSetupPage,
+	},
+	{
+		path: 'character-list',
+		outlet: 'left',
+		component: CharacterListPage,
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 ];

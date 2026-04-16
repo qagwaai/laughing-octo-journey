@@ -25,6 +25,7 @@
 		</div>
 
 		<button type="submit" [disabled]="characterForm.invalid" class="submit-btn">Save Character</button>
+		<button type="button" class="list-btn" (click)="navigateToCharacterList()">View Character List</button>
 	</form>
 
 	@if (isSaved() && successMessage()) {
