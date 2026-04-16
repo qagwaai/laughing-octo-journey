@@ -68,6 +68,10 @@ export default class RegistrationPage implements OnDestroy {
 				this.isSubmitting.set(false);
 				if (response.success) {
 					this.successMessage.set(response.message);
+					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+						preserveFragment: true,
+						state: { playerName: request.playerName },
+					});
 					this.registrationForm.reset();
 				} else {
 					this.errorMessage.set(response.message);

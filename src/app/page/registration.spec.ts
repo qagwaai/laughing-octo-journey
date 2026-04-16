@@ -115,6 +115,10 @@ class MockRegistrationPage {
 				this.isSubmitting.set(false);
 				if (response.success) {
 					this.successMessage.set(response.message);
+					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+						preserveFragment: true,
+						state: { playerName: request.playerName },
+					});
 					this.registrationForm.reset();
 				} else {
 					this.errorMessage.set(response.message);
@@ -240,6 +244,10 @@ describe('RegistrationPage', () => {
 			expect(component.errorMessage()).toBeNull();
 			expect(component.isSubmitting()).toBe(false);
 			expect(component.registrationForm.value.playerName).toBe('');
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-list'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
 		});
 
 		it('should set errorMessage on failure response', () => {
