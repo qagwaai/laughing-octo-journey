@@ -1,4 +1,4 @@
-import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../model/register';
+import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../../model/register';
 
 const passwordMatchValidator = (group: any) => {
 	const password = group.get('password')?.value;

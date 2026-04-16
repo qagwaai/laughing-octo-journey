@@ -5,17 +5,17 @@ import {
 	CHARACTER_DELETE_RESPONSE_EVENT,
 	CharacterDeleteRequest,
 	CharacterDeleteResponse,
-} from '../model/character-delete';
+} from '../../model/character-delete';
 import {
 	CHARACTER_LIST_REQUEST_EVENT,
 	CHARACTER_LIST_RESPONSE_EVENT,
 	CharacterListRequest,
 	CharacterListResponse,
 	PlayerCharacterSummary,
-} from '../model/character-list';
-import { INVALID_SESSION_EVENT } from '../model/session';
-import { SessionService } from '../services/session.service';
-import { SocketService } from '../services/socket.service';
+} from '../../model/character-list';
+import { INVALID_SESSION_EVENT } from '../../model/session';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
 
 @Component({
 	selector: 'app-character-list-page',

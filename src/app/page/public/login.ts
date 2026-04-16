@@ -6,9 +6,9 @@ import {
 	LOGIN_RESPONSE_EVENT,
 	LoginRequest,
 	LoginResponse,
-} from '../model/login';
-import { SessionService } from '../services/session.service';
-import { SocketService } from '../services/socket.service';
+} from '../../model/login';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
 
 @Component({
 	selector: 'app-login-page',

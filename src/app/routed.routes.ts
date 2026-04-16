@@ -1,13 +1,13 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
-import CharacterListPage from './page/character-list';
-import CharacterSetupPage from './page/character-setup';
+import CharacterListPage from './page/character/character-list';
+import CharacterSetupPage from './page/character/character-setup';
 
 const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
 	{
 		path: 'intro',
-		loadComponent: () => import('./page/intro'),
+		loadComponent: () => import('./page/public/intro'),
 	},
 	{
 		path: 'knot',
@@ -20,11 +20,11 @@ const routes: Routes = [
 	},
 	{
 		path: 'registration',
-		loadComponent: () => import('./page/registration'),
+		loadComponent: () => import('./page/public/registration'),
 	},
 	{
 		path: 'login',
-		loadComponent: () => import('./page/login'),
+		loadComponent: () => import('./page/public/login'),
 	},
 	{
 		path: 'character-setup',
@@ -40,27 +40,27 @@ const routes: Routes = [
 	{
 		path: 'controls',
 		outlet: 'left',
-		loadComponent: () => import('./page/intro'),
+		loadComponent: () => import('./page/public/intro'),
 	},
 	{
 		path: 'menu',
 		outlet: 'left',
-		loadComponent: () => import('./page/intro'),
+		loadComponent: () => import('./page/public/intro'),
 	},
 	{
 		path: 'intro',
 		outlet: 'left',
-		loadComponent: () => import('./page/intro'),
+		loadComponent: () => import('./page/public/intro'),
 	},
 	{
 		path: 'registration',
 		outlet: 'left',
-		loadComponent: () => import('./page/registration'),
+		loadComponent: () => import('./page/public/registration'),
 	},
 	{
 		path: 'login',
 		outlet: 'left',
-		loadComponent: () => import('./page/login'),
+		loadComponent: () => import('./page/public/login'),
 	},
 	{
 		path: 'character-setup',

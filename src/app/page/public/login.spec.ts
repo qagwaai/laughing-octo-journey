@@ -1,4 +1,4 @@
-import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, LoginRequest, LoginResponse } from '../model/login';
+import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, LoginRequest, LoginResponse } from '../../model/login';
 
 /**
  * Unit tests for LoginPage component

@@ -3,14 +3,14 @@ import {
 	CHARACTER_DELETE_RESPONSE_EVENT,
 	CharacterDeleteRequest,
 	CharacterDeleteResponse,
-} from '../model/character-delete';
+} from '../../model/character-delete';
 import {
 	CHARACTER_LIST_REQUEST_EVENT,
 	CHARACTER_LIST_RESPONSE_EVENT,
 	CharacterListRequest,
 	CharacterListResponse,
-} from '../model/character-list';
-import { INVALID_SESSION_EVENT } from '../model/session';
+} from '../../model/character-list';
+import { INVALID_SESSION_EVENT } from '../../model/session';
 
 function createSignal<T>(initial: T) {
 	let value = initial;

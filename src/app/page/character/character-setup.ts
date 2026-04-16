@@ -6,10 +6,10 @@ import {
 	CHARACTER_ADD_RESPONSE_EVENT,
 	CharacterAddRequest,
 	CharacterAddResponse,
-} from '../model/character-add';
-import { INVALID_SESSION_EVENT } from '../model/session';
-import { SessionService } from '../services/session.service';
-import { SocketService } from '../services/socket.service';
+} from '../../model/character-add';
+import { INVALID_SESSION_EVENT } from '../../model/session';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
 
 @Component({
 	selector: 'app-character-setup-page',

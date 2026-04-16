@@ -10,8 +10,8 @@ import {
 	CHARACTER_ADD_RESPONSE_EVENT,
 	CharacterAddRequest,
 	CharacterAddResponse,
-} from '../model/character-add';
-import { INVALID_SESSION_EVENT } from '../model/session';
+} from '../../model/character-add';
+import { INVALID_SESSION_EVENT } from '../../model/session';
 
 function createSignal<T>(initial: T) {
 	let value = initial;
