@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import CharacterSetupPage from './page/character-setup';
 
 const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
@@ -21,6 +22,10 @@ const routes: Routes = [
 	{
 		path: 'login',
 		loadComponent: () => import('./page/login'),
+	},
+	{
+		path: 'character-setup',
+		component: CharacterSetupPage,
 	},
 	// Auxiliary outlet routes (left panel)
 	{
@@ -47,6 +52,11 @@ const routes: Routes = [
 		path: 'login',
 		outlet: 'left',
 		loadComponent: () => import('./page/login'),
+	},
+	{
+		path: 'character-setup',
+		outlet: 'left',
+		component: CharacterSetupPage,
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 ];

@@ -103,6 +103,10 @@ class MockLoginPage {
 				if (response.success) {
 					this.successMessage.set(response.message);
 					this.canNavigateToRegister.set(false);
+					this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+						preserveFragment: true,
+						state: { playerName: request.playerName },
+					});
 					this.unsubscribeResponse?.();
 					return;
 				}
@@ -211,6 +215,10 @@ describe('LoginPage', () => {
 			expect(component.successMessage()).toBe('Login successful.');
 			expect(component.errorMessage()).toBeNull();
 			expect(component.isSubmitting()).toBe(false);
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-setup'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
 		});
 
 		it('should handle unregistered player name failure', () => {
