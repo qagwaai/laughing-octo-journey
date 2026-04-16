@@ -1,6 +1,5 @@
-import { AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
-import { injectStore, NgtCanvasElement } from 'angular-three';
+import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
@@ -10,8 +9,9 @@ import { RoutedScene } from './routed-scene';
   selector: 'app-root',
   template: `
     <div class="flex h-dvh w-full" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
-      <!-- Left Content Area -->
+      <!-- Left Content Area with Router Outlet -->
       <div class="bg-gray-900 text-white overflow-auto flex flex-col" #leftPanel>
+        <router-outlet name="left" />
         <div class="p-4">
           <tweakpane-pane title="Options" [container]="host">
               <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
@@ -33,30 +33,27 @@ import { RoutedScene } from './routed-scene';
           <ul class="flex items-center gap-4">
             <li>
               <a
-                routerLink="intro"
-                class="underline hover:text-blue-400"
-                routerLinkActive="text-blue-500"
-                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="navigateTo('intro')"
+                [class.text-blue-500]="isRouteActive('intro')"
+                class="underline hover:text-blue-400 cursor-pointer"
               >
                 intro
               </a>
             </li>
             <li>
               <a
-                routerLink="knot"
-                class="underline hover:text-blue-400"
-                routerLinkActive="text-blue-500"
-                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="navigateTo('knot')"
+                [class.text-blue-500]="isRouteActive('knot')"
+                class="underline hover:text-blue-400 cursor-pointer"
               >
                 knot
               </a>
             </li>
             <li>
               <a
-                routerLink="scene-graph"
-                class="underline hover:text-blue-400"
-                routerLinkActive="text-blue-500"
-                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="navigateTo('scene-graph')"
+                [class.text-blue-500]="isRouteActive('scene-graph')"
+                class="underline hover:text-blue-400 cursor-pointer"
               >
                 scene graph
               </a>
@@ -104,12 +101,13 @@ import { RoutedScene } from './routed-scene';
     }
   }`,
   schemas: [CUSTOM_ELEMENTS_SCHEMA], 
-  imports: [NgtCanvas, RoutedScene, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats, RouterLink, RouterLinkActive],
+  imports: [NgtCanvas, RoutedScene, TweakpanePane, TweakpaneCheckbox, TweakpaneColor, TweakpaneButton, NgtsStats, RouterLink, RouterLinkActive, RouterOutlet],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
   protected host = inject(ElementRef);
   protected ngZone = inject(NgZone);
   protected cdr = inject(ChangeDetectorRef);
+  protected router = inject(Router);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
@@ -124,6 +122,27 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private startX = 0;
 
   constructor() { 
+  }
+
+  /**
+   * Navigate to a route in the primary outlet (right panel)
+   * Optionally navigate to a route in the left panel using auxiliary outlet
+   */
+  navigateTo(primaryRoute: string, leftRoute?: string) {
+    const commands: any[] = [primaryRoute];
+    if (leftRoute) {
+      commands.push({ outlets: { left: [leftRoute] } });
+    }
+    this.router.navigate(commands);
+  }
+
+  /**
+   * Check if a route is currently active in the primary outlet
+   */
+  isRouteActive(route: string): boolean {
+    return this.router.routerState.root.firstChild?.component === undefined
+      ? this.router.url.includes(route) || this.router.url === '/' && route === 'intro'
+      : this.router.routerState.root.firstChild?.routeConfig?.path === route;
   }
 
   ngAfterViewInit() {
