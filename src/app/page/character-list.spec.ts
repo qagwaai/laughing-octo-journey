@@ -23,9 +23,14 @@ function createSignal<T>(initial: T) {
 interface MockSocketService {
 	emittedEvents: Array<{ event: string; data: any }>;
 	registeredListeners: Map<string, (data: any) => void>;
+	onceListeners: Map<string, (data?: any) => void>;
+	connected: boolean;
 	emit(event: string, data?: any): void;
 	on(event: string, cb: (data: any) => void): () => void;
+	once(event: string, cb: (data?: any) => void): void;
+	getIsConnected(): boolean;
 	triggerEvent(event: string, data: any): void;
+	triggerOnceEvent(event: string, data?: any): void;
 }
 
 interface MockRouter {
@@ -35,10 +40,13 @@ interface MockRouter {
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
+	const onceListeners = new Map<string, (data?: any) => void>();
 
 	return {
 		emittedEvents,
 		registeredListeners,
+		onceListeners,
+		connected: false,
 		emit(event: string, data?: any) {
 			emittedEvents.push({ event, data });
 		},
@@ -46,8 +54,21 @@ function createMockSocketService(): MockSocketService {
 			registeredListeners.set(event, cb);
 			return () => registeredListeners.delete(event);
 		},
+		once(event: string, cb: (data?: any) => void) {
+			onceListeners.set(event, cb);
+		},
+		getIsConnected() {
+			return this.connected;
+		},
 		triggerEvent(event: string, data: any) {
 			registeredListeners.get(event)?.(data);
+		},
+		triggerOnceEvent(event: string, data?: any) {
+			const cb = onceListeners.get(event);
+			if (cb) {
+				onceListeners.delete(event);
+				cb(data);
+			}
 		},
 	};
 }
@@ -68,6 +89,12 @@ class MockCharacterListPage {
 	constructor(socketService: MockSocketService, router: MockRouter) {
 		this.socketService = socketService;
 		this.router = router;
+
+		if (this.socketService.getIsConnected()) {
+			this.loadCharacters();
+		} else {
+			this.socketService.once('connect', () => this.loadCharacters());
+		}
 	}
 
 	loadCharacters(): void {
@@ -186,6 +213,28 @@ describe('CharacterListPage', () => {
 		expect(component.characters()).toEqual([]);
 		expect(component.errorMessage()).toBeNull();
 		expect(component.isLoading()).toBe(false);
+	});
+
+	describe('constructor auto-load behavior', () => {
+		it('should load characters immediately when socket is already connected', () => {
+			const connectedSocket = createMockSocketService();
+			connectedSocket.connected = true;
+			const autoLoadComponent = new MockCharacterListPage(connectedSocket, router);
+
+			expect(autoLoadComponent.isLoading()).toBe(true);
+			expect(connectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
+		});
+
+		it('should load characters when connect event fires if initially disconnected', () => {
+			const disconnectedSocket = createMockSocketService();
+			disconnectedSocket.connected = false;
+			const autoLoadComponent = new MockCharacterListPage(disconnectedSocket, router);
+
+			expect(disconnectedSocket.emittedEvents).toHaveLength(0);
+			disconnectedSocket.triggerOnceEvent('connect');
+			expect(disconnectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
+			autoLoadComponent.ngOnDestroy();
+		});
 	});
 
 	describe('loadCharacters()', () => {

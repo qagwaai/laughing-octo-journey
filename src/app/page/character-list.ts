@@ -42,6 +42,12 @@ export default class CharacterListPage implements OnDestroy {
 		effect(() => {
 			this.socketService.connect(this.socketService.serverUrl);
 		});
+
+		if (this.socketService.getIsConnected()) {
+			this.loadCharacters();
+		} else {
+			this.socketService.once('connect', () => this.loadCharacters());
+		}
 	}
 
 	loadCharacters(): void {
