@@ -1,4 +1,10 @@
 import {
+	CHARACTER_DELETE_REQUEST_EVENT,
+	CHARACTER_DELETE_RESPONSE_EVENT,
+	CharacterDeleteRequest,
+	CharacterDeleteResponse,
+} from '../model/character-delete';
+import {
 	CHARACTER_LIST_REQUEST_EVENT,
 	CHARACTER_LIST_RESPONSE_EVENT,
 	CharacterListRequest,
@@ -50,11 +56,14 @@ class MockCharacterListPage {
 	private socketService: MockSocketService;
 	private router: MockRouter;
 	private unsubscribeResponse?: () => void;
+	private unsubscribeDeleteResponse?: () => void;
 
 	playerName = createSignal('Pioneer');
 	characters = createSignal<any[]>([]);
 	isLoading = createSignal(false);
 	errorMessage = createSignal<string | null>(null);
+	pendingDeleteCharacter = createSignal<any | null>(null);
+	isDeleting = createSignal(false);
 
 	constructor(socketService: MockSocketService, router: MockRouter) {
 		this.socketService = socketService;
@@ -91,6 +100,55 @@ class MockCharacterListPage {
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
 	}
 
+	requestDeleteCharacter(character: any): void {
+		this.errorMessage.set(null);
+		this.pendingDeleteCharacter.set(character);
+	}
+
+	cancelDeleteCharacter(): void {
+		if (this.isDeleting()) {
+			return;
+		}
+		this.pendingDeleteCharacter.set(null);
+	}
+
+	confirmDeleteCharacter(): void {
+		const playerName = this.playerName().trim();
+		const character = this.pendingDeleteCharacter();
+		if (!character) {
+			return;
+		}
+		if (!playerName) {
+			this.errorMessage.set('Player name is required to delete a character.');
+			return;
+		}
+
+		this.isDeleting.set(true);
+		this.errorMessage.set(null);
+		this.unsubscribeDeleteResponse?.();
+
+		this.unsubscribeDeleteResponse = this.socketService.on(
+			CHARACTER_DELETE_RESPONSE_EVENT,
+			(response: CharacterDeleteResponse) => {
+				this.isDeleting.set(false);
+				if (response.success) {
+					this.characters.set(this.characters().filter((c) => c.id !== character.id));
+					this.pendingDeleteCharacter.set(null);
+				} else {
+					this.errorMessage.set(response.message);
+				}
+				this.unsubscribeDeleteResponse?.();
+			},
+		);
+
+		const request: CharacterDeleteRequest = {
+			playerName,
+			characterId: character.id,
+			characterName: character.characterName,
+		};
+		this.socketService.emit(CHARACTER_DELETE_REQUEST_EVENT, request);
+	}
+
 	navigateToCharacterSetup(): void {
 		const playerName = this.playerName();
 		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
@@ -101,6 +159,7 @@ class MockCharacterListPage {
 
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
+		this.unsubscribeDeleteResponse?.();
 	}
 }
 
@@ -190,6 +249,83 @@ describe('CharacterListPage', () => {
 				[{ outlets: { left: ['character-setup'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
+		});
+	});
+
+	describe('delete character workflow', () => {
+		beforeEach(() => {
+			component.characters.set([
+				{ id: '1', characterName: 'Nova', level: 5 },
+				{ id: '2', characterName: 'Atlas', level: 8 },
+			]);
+		});
+
+		it('should open confirmation dialog when delete is requested', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+
+			expect(component.pendingDeleteCharacter()).toEqual({ id: '1', characterName: 'Nova' });
+		});
+
+		it('should cancel delete and clear pending character', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.cancelDeleteCharacter();
+
+			expect(component.pendingDeleteCharacter()).toBeNull();
+		});
+
+		it('should emit character delete request on confirm', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.confirmDeleteCharacter();
+
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].event).toBe(CHARACTER_DELETE_REQUEST_EVENT);
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual<CharacterDeleteRequest>({
+				playerName: 'Pioneer',
+				characterId: '1',
+				characterName: 'Nova',
+			});
+			expect(component.isDeleting()).toBe(true);
+		});
+
+		it('should remove character and close dialog on successful delete response', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.confirmDeleteCharacter();
+			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
+				success: true,
+				message: 'Character deleted.',
+				playerName: 'Pioneer',
+				characterId: '1',
+			} satisfies CharacterDeleteResponse);
+
+			expect(component.characters()).toEqual([{ id: '2', characterName: 'Atlas', level: 8 }]);
+			expect(component.pendingDeleteCharacter()).toBeNull();
+			expect(component.isDeleting()).toBe(false);
+		});
+
+		it('should keep dialog open and show error on failed delete response', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.confirmDeleteCharacter();
+			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
+				success: false,
+				message: 'Character cannot be deleted.',
+				playerName: 'Pioneer',
+			} satisfies CharacterDeleteResponse);
+
+			expect(component.errorMessage()).toBe('Character cannot be deleted.');
+			expect(component.pendingDeleteCharacter()).toEqual({ id: '1', characterName: 'Nova' });
+			expect(component.isDeleting()).toBe(false);
+		});
+
+		it('should allow cancel after failed delete response', () => {
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.confirmDeleteCharacter();
+			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
+				success: false,
+				message: 'Character cannot be deleted.',
+				playerName: 'Pioneer',
+			} satisfies CharacterDeleteResponse);
+			component.cancelDeleteCharacter();
+
+			expect(component.pendingDeleteCharacter()).toBeNull();
 		});
 	});
 });

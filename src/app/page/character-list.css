@@ -103,13 +103,97 @@ h1 {
 	background: rgba(255, 255, 255, 0.08);
 }
 
+.character-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+}
+
 .character-name {
 	font-weight: bold;
 	font-size: 1rem;
+}
+
+.delete-link {
+	background: transparent;
+	border: none;
+	color: #ff9f9f;
+	text-decoration: underline;
+	font-size: 0.9rem;
+	cursor: pointer;
+	padding: 0;
+}
+
+.delete-link:hover {
+	color: #ff7c7c;
 }
 
 .character-meta {
 	font-size: 0.85rem;
 	opacity: 0.8;
 	margin-top: 0.25rem;
+}
+
+.dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	padding: 1rem;
+}
+
+.dialog-panel {
+	width: min(420px, 100%);
+	background: #1f1a36;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 10px;
+	padding: 1rem;
+	box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.dialog-panel h2 {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.2rem;
+}
+
+.dialog-panel p {
+	margin: 0 0 1rem 0;
+	opacity: 0.9;
+}
+
+.dialog-actions {
+	display: flex;
+	gap: 0.75rem;
+	justify-content: flex-end;
+}
+
+.confirm-delete-btn,
+.cancel-delete-btn {
+	padding: 0.6rem 1rem;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	cursor: pointer;
+	border: 1px solid transparent;
+}
+
+.confirm-delete-btn {
+	background: rgba(255, 80, 80, 0.2);
+	border-color: rgba(255, 80, 80, 0.5);
+	color: #ffb3b3;
+}
+
+.cancel-delete-btn {
+	background: rgba(255, 255, 255, 0.12);
+	border-color: rgba(255, 255, 255, 0.3);
+	color: white;
+}
+
+.confirm-delete-btn:disabled,
+.cancel-delete-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }

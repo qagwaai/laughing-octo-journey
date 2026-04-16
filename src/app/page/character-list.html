@@ -23,12 +23,32 @@
 		<ul class="character-list">
 			@for (character of characters(); track character.id) {
 				<li class="character-item">
-					<div class="character-name">{{ character.characterName }}</div>
+					<div class="character-row">
+						<div class="character-name">{{ character.characterName }}</div>
+						<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
+					</div>
 					@if (character.level !== undefined) {
 						<div class="character-meta">Level {{ character.level }}</div>
 					}
 				</li>
 			}
 		</ul>
+	}
+
+	@if (pendingDeleteCharacter()) {
+		<div class="dialog-backdrop">
+			<div class="dialog-panel">
+				<h2>Delete Character</h2>
+				<p>Are you sure you want to delete <strong>{{ pendingDeleteCharacter()!.characterName }}</strong>?</p>
+				<div class="dialog-actions">
+					<button type="button" class="confirm-delete-btn" (click)="confirmDeleteCharacter()" [disabled]="isDeleting()">
+						{{ isDeleting() ? 'Deleting...' : 'Confirm Delete' }}
+					</button>
+					<button type="button" class="cancel-delete-btn" (click)="cancelDeleteCharacter()" [disabled]="isDeleting()">
+						Cancel
+					</button>
+				</div>
+			</div>
+		</div>
 	}
 </div>
