@@ -163,6 +163,18 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       rightPanel.style.width = '50%';
       rightPanel.style.flex = 'none';
     }
+
+    // Hide stats by default - run outside Angular zone then back inside for DOM manipulation
+    this.ngZone.runOutsideAngular(() => {
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          const statsElement = this.host.nativeElement.querySelector('.stats');
+          if (statsElement) {
+            statsElement.style.display = 'none';
+          }
+        });
+      }, 1000);
+    });
   }
 
   reset() {
