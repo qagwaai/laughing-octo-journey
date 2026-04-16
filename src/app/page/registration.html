@@ -1,0 +1,61 @@
+<div class="registration-container">
+	<h1>Register</h1>
+	<p class="subtitle">Create your Pioneer account to join Project Stellar</p>
+
+	<form [formGroup]="registrationForm" (ngSubmit)="submit()" class="registration-form">
+
+		<div class="form-group">
+			<label for="playerName">Player Name</label>
+			<input id="playerName" type="text" formControlName="playerName" placeholder="Choose your callsign" />
+			@if (registrationForm.get('playerName')?.invalid && registrationForm.get('playerName')?.touched) {
+				<span class="field-error">
+					@if (registrationForm.get('playerName')?.errors?.['required']) { Player name is required. }
+					@if (registrationForm.get('playerName')?.errors?.['minlength']) { Must be at least 3 characters. }
+					@if (registrationForm.get('playerName')?.errors?.['maxlength']) { Must be 20 characters or fewer. }
+				</span>
+			}
+		</div>
+
+		<div class="form-group">
+			<label for="email">Email</label>
+			<input id="email" type="email" formControlName="email" placeholder="your@email.com" />
+			@if (registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched) {
+				<span class="field-error">
+					@if (registrationForm.get('email')?.errors?.['required']) { Email is required. }
+					@if (registrationForm.get('email')?.errors?.['email']) { Must be a valid email address. }
+				</span>
+			}
+		</div>
+
+		<div class="form-group">
+			<label for="password">Password</label>
+			<input id="password" type="password" formControlName="password" placeholder="Min. 8 characters" />
+			@if (registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched) {
+				<span class="field-error">
+					@if (registrationForm.get('password')?.errors?.['required']) { Password is required. }
+					@if (registrationForm.get('password')?.errors?.['minlength']) { Must be at least 8 characters. }
+				</span>
+			}
+		</div>
+
+		<div class="form-group">
+			<label for="confirmPassword">Confirm Password</label>
+			<input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repeat your password" />
+			@if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
+				<span class="field-error">Passwords do not match.</span>
+			}
+		</div>
+
+		@if (errorMessage()) {
+			<div class="status-message error-message">{{ errorMessage() }}</div>
+		}
+		@if (successMessage()) {
+			<div class="status-message success-message">{{ successMessage() }}</div>
+		}
+
+		<button type="submit" [disabled]="registrationForm.invalid || isSubmitting()" class="submit-btn">
+			{{ isSubmitting() ? 'Registering...' : 'Register' }}
+		</button>
+
+	</form>
+</div>

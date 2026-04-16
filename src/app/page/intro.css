@@ -54,3 +54,16 @@ blockquote {
 	font-style: italic;
 	line-height: 1.6;
 }
+
+.register-link a,
+.register-link-text {
+	color: #a78bfa;
+	text-decoration: underline;
+	cursor: pointer;
+	transition: color 0.2s;
+}
+
+.register-link a:hover,
+.register-link-text:hover {
+	color: #c4b5fd;
+}

@@ -12,6 +12,7 @@ import { io, Socket } from 'socket.io-client';
   providedIn: 'root'
 })
 export class SocketService {
+  public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
   private socket: Socket | null = null;
   
   // Signal to track connection state

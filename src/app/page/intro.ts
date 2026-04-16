@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
 	selector: 'app-intro-page',
@@ -8,4 +9,9 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 })
 export default class IntroPage {
 	protected projectName = 'Stellar';
+	private router = inject(Router);
+
+	navigateToRegistration(): void {
+		this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
+	}
 }

@@ -14,6 +14,10 @@ const routes: Routes = [
 		path: 'scene-graph',
 		loadComponent: () => import('./scene/scene-graph'),
 	},
+	{
+		path: 'registration',
+		loadComponent: () => import('./page/registration'),
+	},
 	// Auxiliary outlet routes (left panel)
 	{
 		path: 'controls',
@@ -29,6 +33,11 @@ const routes: Routes = [
 		path: 'intro',
 		outlet: 'left',
 		loadComponent: () => import('./page/intro'),
+	},
+	{
+		path: 'registration',
+		outlet: 'left',
+		loadComponent: () => import('./page/registration'),
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 ];
