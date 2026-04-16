@@ -1,0 +1,39 @@
+<div class="login-container">
+	<h1>Login</h1>
+	<p class="subtitle">Welcome back, Pioneer. Enter your credentials to continue.</p>
+
+	<form [formGroup]="loginForm" (ngSubmit)="submit()" class="login-form">
+		<div class="form-group">
+			<label for="playerName">Player Name</label>
+			<input id="playerName" type="text" formControlName="playerName" placeholder="Your callsign" />
+			@if (loginForm.get('playerName')?.invalid && loginForm.get('playerName')?.touched) {
+				<span class="field-error">
+					@if (loginForm.get('playerName')?.errors?.['required']) { Player name is required. }
+					@if (loginForm.get('playerName')?.errors?.['minlength']) { Must be at least 3 characters. }
+				</span>
+			}
+		</div>
+
+		<div class="form-group">
+			<label for="password">Password</label>
+			<input id="password" type="password" formControlName="password" placeholder="Your password" />
+			@if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+				<span class="field-error">
+					@if (loginForm.get('password')?.errors?.['required']) { Password is required. }
+					@if (loginForm.get('password')?.errors?.['minlength']) { Must be at least 8 characters. }
+				</span>
+			}
+		</div>
+
+		@if (errorMessage()) {
+			<div class="status-message error-message">{{ errorMessage() }}</div>
+		}
+		@if (successMessage()) {
+			<div class="status-message success-message">{{ successMessage() }}</div>
+		}
+
+		<button type="submit" [disabled]="loginForm.invalid || isSubmitting()" class="submit-btn">
+			{{ isSubmitting() ? 'Logging in...' : 'Login' }}
+		</button>
+	</form>
+</div>

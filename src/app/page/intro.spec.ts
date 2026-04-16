@@ -7,9 +7,18 @@
  */
 
 describe("IntroPage Logic", () => {
+    interface MockRouter {
+        navigate: jest.Mock;
+    }
+
     // Mock implementation to test component behavior
     class MockIntroPage {
         protected projectName = 'ngt-template';
+        private router: MockRouter;
+
+        constructor(router: MockRouter) {
+            this.router = router;
+        }
 
         getProjectName() {
             return this.projectName;
@@ -22,12 +31,24 @@ describe("IntroPage Logic", () => {
         getWelcomeMessage() {
             return `Welcome to ${this.projectName}`;
         }
+
+        navigateToRegistration(): void {
+            this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
+        }
+
+        navigateToLogin(): void {
+            this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+        }
     }
 
     let mockComponent: MockIntroPage;
+    let mockRouter: MockRouter;
 
     beforeEach(() => {
-        mockComponent = new MockIntroPage();
+        mockRouter = {
+            navigate: jest.fn(),
+        };
+        mockComponent = new MockIntroPage(mockRouter);
     });
 
     it("should create component instance", () => {
@@ -224,12 +245,42 @@ describe("IntroPage Logic", () => {
             expect(typeof mockComponent.getWelcomeMessage).toBe('function');
         });
 
+        it("should expose navigateToRegistration method", () => {
+            expect(typeof mockComponent.navigateToRegistration).toBe('function');
+        });
+
+        it("should expose navigateToLogin method", () => {
+            expect(typeof mockComponent.navigateToLogin).toBe('function');
+        });
+
         it("should all public methods callable", () => {
             expect(() => {
                 mockComponent.getProjectName();
                 mockComponent.getWelcomeMessage();
                 mockComponent.setProjectName('test');
+                mockComponent.navigateToRegistration();
+                mockComponent.navigateToLogin();
             }).not.toThrow();
+        });
+    });
+
+    describe("Navigation", () => {
+        it("should navigate to registration in left outlet", () => {
+            mockComponent.navigateToRegistration();
+
+            expect(mockRouter.navigate).toHaveBeenCalledWith(
+                [{ outlets: { left: ['registration'] } }],
+                { preserveFragment: true },
+            );
+        });
+
+        it("should navigate to login in left outlet", () => {
+            mockComponent.navigateToLogin();
+
+            expect(mockRouter.navigate).toHaveBeenCalledWith(
+                [{ outlets: { left: ['login'] } }],
+                { preserveFragment: true },
+            );
         });
     });
 

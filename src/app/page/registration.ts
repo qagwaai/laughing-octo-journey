@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../model/register';
 import { SocketService } from '../services/socket.service';
 
@@ -21,6 +22,7 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
 export default class RegistrationPage implements OnDestroy {
 	private socketService = inject(SocketService);
 	private fb = inject(FormBuilder);
+	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
 
 	protected registrationForm = this.fb.group(
@@ -76,6 +78,10 @@ export default class RegistrationPage implements OnDestroy {
 
 		this.socketService.emit(REGISTER_EVENT, request);
 	}
+
+		navigateToLogin(): void {
+			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+		}
 
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();

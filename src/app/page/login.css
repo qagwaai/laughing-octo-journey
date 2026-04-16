@@ -1,4 +1,4 @@
-.registration-container {
+.login-container {
 	display: flex;
 	flex-direction: column;
 	align-items: left;
@@ -23,7 +23,7 @@ h1 {
 	opacity: 0.8;
 }
 
-.registration-form {
+.login-form {
 	display: flex;
 	flex-direction: column;
 	gap: 1.25rem;
@@ -107,19 +107,4 @@ input:focus {
 .submit-btn:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
-}
-
-.login-link {
-	margin-top: 0.5rem;
-}
-
-.login-link-text {
-	color: #a78bfa;
-	text-decoration: underline;
-	cursor: pointer;
-	transition: color 0.2s;
-}
-
-.login-link-text:hover {
-	color: #c4b5fd;
 }

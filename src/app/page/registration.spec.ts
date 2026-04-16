@@ -25,6 +25,10 @@ interface MockSocketService {
 	triggerEvent(event: string, data: any): void;
 }
 
+interface MockRouter {
+	navigate: jest.Mock;
+}
+
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
@@ -49,6 +53,7 @@ function createMockSocketService(): MockSocketService {
 
 class MockRegistrationPage {
 	private socketService: MockSocketService;
+	private router: MockRouter;
 	private unsubscribeResponse?: () => void;
 
 	registrationForm = {
@@ -79,8 +84,9 @@ class MockRegistrationPage {
 	successMessage = createSignal<string | null>(null);
 	errorMessage = createSignal<string | null>(null);
 
-	constructor(socketService: MockSocketService) {
+	constructor(socketService: MockSocketService, router: MockRouter) {
 		this.socketService = socketService;
+		this.router = router;
 	}
 
 	submit(): void {
@@ -113,6 +119,10 @@ class MockRegistrationPage {
 		this.socketService.emit(REGISTER_EVENT, request);
 	}
 
+		navigateToLogin(): void {
+			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+		}
+
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 	}
@@ -123,10 +133,12 @@ class MockRegistrationPage {
 describe('RegistrationPage', () => {
 	let component: MockRegistrationPage;
 	let socketService: MockSocketService;
+	let router: MockRouter;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		component = new MockRegistrationPage(socketService);
+		router = { navigate: jest.fn() };
+		component = new MockRegistrationPage(socketService, router);
 	});
 
 	afterEach(() => {
@@ -262,6 +274,21 @@ describe('RegistrationPage', () => {
 
 		it('should not throw when destroyed without a pending submission', () => {
 			expect(() => component.ngOnDestroy()).not.toThrow();
+		});
+	});
+
+	describe('navigation', () => {
+		it('should expose navigateToLogin method', () => {
+			expect(typeof component.navigateToLogin).toBe('function');
+		});
+
+		it('should navigate to login in left outlet', () => {
+			component.navigateToLogin();
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['login'] } }],
+				{ preserveFragment: true },
+			);
 		});
 	});
 });

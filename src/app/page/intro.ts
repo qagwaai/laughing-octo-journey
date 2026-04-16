@@ -14,4 +14,8 @@ export default class IntroPage {
 	navigateToRegistration(): void {
 		this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
 	}
+
+	navigateToLogin(): void {
+		this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+	}
 }
