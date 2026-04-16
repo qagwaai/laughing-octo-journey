@@ -4,17 +4,14 @@ const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
 	{
 		path: 'intro',
-		outlet: 'right',
 		loadComponent: () => import('./page/intro'),
 	},
 	{
 		path: 'knot',
-		outlet: 'right',
 		loadComponent: () => import('./scene/knot'),
 	},
 	{
 		path: 'scene-graph',
-		outlet: 'right',
 		loadComponent: () => import('./scene/scene-graph'),
 	},
 	// Auxiliary outlet routes (left panel)
@@ -28,7 +25,12 @@ const routes: Routes = [
 		outlet: 'left',
 		loadComponent: () => import('./page/intro'),
 	},
-	{ path: '', redirectTo: 'intro', pathMatch: 'full' },
+	{
+		path: 'intro',
+		outlet: 'left',
+		loadComponent: () => import('./page/intro'),
+	},
+	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 ];
 
 export default routes;
