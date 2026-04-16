@@ -151,7 +151,7 @@ describe("IntroPage Logic", () => {
 
     describe("Component initialization", () => {
         it("should initialize without errors", () => {
-            expect(() => new MockIntroPage()).not.toThrow();
+            expect(() => new MockIntroPage(mockRouter)).not.toThrow();
         });
 
         it("should have all required methods", () => {
@@ -161,7 +161,7 @@ describe("IntroPage Logic", () => {
         });
 
         it("should start with default values", () => {
-            const newComponent = new MockIntroPage();
+            const newComponent = new MockIntroPage(mockRouter);
             expect(newComponent.getProjectName()).toBe('ngt-template');
         });
     });

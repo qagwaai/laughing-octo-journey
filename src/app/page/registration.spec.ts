@@ -1,5 +1,12 @@
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../model/register';
-import { passwordMatchValidator } from './registration';
+
+const passwordMatchValidator = (group: any) => {
+	const password = group.get('password')?.value;
+	const confirmPassword = group.get('confirmPassword')?.value;
+	return password && confirmPassword && password !== confirmPassword
+		? { passwordMismatch: true }
+		: null;
+};
 
 /**
  * Unit tests for RegistrationPage component

@@ -24,6 +24,10 @@ interface MockSocketService {
 	triggerEvent(event: string, data: any): void;
 }
 
+interface MockRouter {
+	navigate: jest.Mock;
+}
+
 function createMockSocketService(): MockSocketService {
 	const emittedEvents: Array<{ event: string; data: any }> = [];
 	const registeredListeners = new Map<string, (data: any) => void>();
@@ -46,6 +50,7 @@ function createMockSocketService(): MockSocketService {
 
 class MockLoginPage {
 	private socketService: MockSocketService;
+	private router: MockRouter;
 	private unsubscribeResponse?: () => void;
 
 	loginForm = {
@@ -67,9 +72,11 @@ class MockLoginPage {
 	isSubmitting = createSignal(false);
 	successMessage = createSignal<string | null>(null);
 	errorMessage = createSignal<string | null>(null);
+	canNavigateToRegister = createSignal(false);
 
-	constructor(socketService: MockSocketService) {
+	constructor(socketService: MockSocketService, router: MockRouter) {
 		this.socketService = socketService;
+		this.router = router;
 	}
 
 	submit(): void {
@@ -87,6 +94,7 @@ class MockLoginPage {
 		this.isSubmitting.set(true);
 		this.successMessage.set(null);
 		this.errorMessage.set(null);
+		this.canNavigateToRegister.set(false);
 
 		this.unsubscribeResponse = this.socketService.on(
 			LOGIN_RESPONSE_EVENT,
@@ -94,22 +102,30 @@ class MockLoginPage {
 				this.isSubmitting.set(false);
 				if (response.success) {
 					this.successMessage.set(response.message);
+					this.canNavigateToRegister.set(false);
 					this.unsubscribeResponse?.();
 					return;
 				}
 
 				if (response.reason === 'PLAYER_NOT_REGISTERED') {
 					this.errorMessage.set('Player name is not registered. Please register first.');
+					this.canNavigateToRegister.set(true);
 				} else if (response.reason === 'PASSWORD_MISMATCH') {
 					this.errorMessage.set('Password does not match the player name.');
+					this.canNavigateToRegister.set(false);
 				} else {
 					this.errorMessage.set(response.message);
+					this.canNavigateToRegister.set(false);
 				}
 				this.unsubscribeResponse?.();
 			},
 		);
 
 		this.socketService.emit(LOGIN_EVENT, request);
+	}
+
+	navigateToRegistration(): void {
+		this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
 	}
 
 	ngOnDestroy(): void {
@@ -120,10 +136,14 @@ class MockLoginPage {
 describe('LoginPage', () => {
 	let component: MockLoginPage;
 	let socketService: MockSocketService;
+	let router: MockRouter;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		component = new MockLoginPage(socketService);
+		router = {
+			navigate: jest.fn(),
+		};
+		component = new MockLoginPage(socketService, router);
 	});
 
 	afterEach(() => {
@@ -138,6 +158,7 @@ describe('LoginPage', () => {
 		expect(component.isSubmitting()).toBe(false);
 		expect(component.successMessage()).toBeNull();
 		expect(component.errorMessage()).toBeNull();
+		expect(component.canNavigateToRegister()).toBe(false);
 	});
 
 	describe('submit()', () => {
@@ -203,6 +224,7 @@ describe('LoginPage', () => {
 			expect(component.errorMessage()).toBe('Player name is not registered. Please register first.');
 			expect(component.successMessage()).toBeNull();
 			expect(component.isSubmitting()).toBe(false);
+			expect(component.canNavigateToRegister()).toBe(true);
 		});
 
 		it('should handle password mismatch failure', () => {
@@ -216,6 +238,7 @@ describe('LoginPage', () => {
 			expect(component.errorMessage()).toBe('Password does not match the player name.');
 			expect(component.successMessage()).toBeNull();
 			expect(component.isSubmitting()).toBe(false);
+			expect(component.canNavigateToRegister()).toBe(false);
 		});
 
 		it('should fallback to response message for unknown errors', () => {
@@ -227,6 +250,26 @@ describe('LoginPage', () => {
 			} satisfies LoginResponse);
 
 			expect(component.errorMessage()).toBe('Service unavailable.');
+			expect(component.canNavigateToRegister()).toBe(false);
+		});
+
+		it('should clear register navigation state on successful login', () => {
+			submitForm();
+			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+				success: false,
+				message: 'No such player.',
+				reason: 'PLAYER_NOT_REGISTERED',
+			} satisfies LoginResponse);
+
+			expect(component.canNavigateToRegister()).toBe(true);
+
+			submitForm();
+			socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+				success: true,
+				message: 'Login successful.',
+			} satisfies LoginResponse);
+
+			expect(component.canNavigateToRegister()).toBe(false);
 		});
 
 		it('should unsubscribe listener after handling a response', () => {
@@ -250,6 +293,17 @@ describe('LoginPage', () => {
 
 			component.ngOnDestroy();
 			expect(socketService.registeredListeners.has(LOGIN_RESPONSE_EVENT)).toBe(false);
+		});
+	});
+
+	describe('navigation', () => {
+		it('should navigate to registration in left outlet', () => {
+			component.navigateToRegistration();
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['registration'] } }],
+				{ preserveFragment: true },
+			);
 		});
 	});
 });

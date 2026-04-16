@@ -28,6 +28,11 @@
 		@if (errorMessage()) {
 			<div class="status-message error-message">{{ errorMessage() }}</div>
 		}
+		@if (canNavigateToRegister()) {
+			<p class="register-link">
+				<a (click)="navigateToRegistration()" class="register-link-text">Player not found. Register here.</a>
+			</p>
+		}
 		@if (successMessage()) {
 			<div class="status-message success-message">{{ successMessage() }}</div>
 		}

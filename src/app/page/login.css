@@ -108,3 +108,18 @@ input:focus {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
+
+.register-link {
+	margin: 0;
+}
+
+.register-link-text {
+	color: #a78bfa;
+	text-decoration: underline;
+	cursor: pointer;
+	transition: color 0.2s;
+}
+
+.register-link-text:hover {
+	color: #c4b5fd;
+}
