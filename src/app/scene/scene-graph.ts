@@ -1,23 +1,21 @@
-import { AfterContentInit, ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, OnDestroy, OnInit, viewChild } from "@angular/core";
+import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, OnDestroy, OnInit, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
 import { NgtsRoundedBox } from 'angular-three-soba/abstractions';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { gltfResource } from "angular-three-soba/loaders";
 import { NgtsPointMaterial } from 'angular-three-soba/materials';
 import { NgtsHTML } from 'angular-three-soba/misc';
 import { NgtsPointsBuffer } from 'angular-three-soba/performances';
 import { random } from 'maath';
 import * as THREE from "three";
 import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
+import { AngularLogo } from "../component/angular-logo";
 import { Button } from "../component/button";
 import niceColors from "../component/colors";
 import { Cube } from "../component/cube";
-import { Earth } from "../component/earth";
-import { Sol } from "../component/sol";
 import { ExpendableDartDrone } from "../component/expendable-dart-drone";
-import { AngularLogo } from "../component/angular-logo";
+import { Sol } from "../component/sol";
 import { SocketService } from "../services/socket.service";
 
 extend(THREE);

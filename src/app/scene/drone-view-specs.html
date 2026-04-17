@@ -1,0 +1,12 @@
+<ngt-color *args="['#090625']" attach="background" />
+<ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
+
+<app-expendible-dart-drone [position]="[4, 1.5, 0]" />
+
+        <ngt-mesh #mesh 
+            [position]="[1, 1, 0]"
+            castShadow
+        >
+            <ngt-box-geometry *args="[1, 2, 1]" />
+            <ngt-mesh-standard-material [color]="'purple'" />
+        </ngt-mesh>
