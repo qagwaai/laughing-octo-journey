@@ -7,6 +7,9 @@ function createSignal<T>(initial: T) {
 	return sig;
 }
 
+const DRONE_LIST_REQUEST_EVENT = 'drone-list-request';
+const DRONE_LIST_RESPONSE_EVENT = 'drone-list-response';
+
 interface GameJoinState {
 	playerName?: string;
 	joinCharacter?: {
@@ -17,20 +20,158 @@ interface GameJoinState {
 }
 
 class MockGameJoinPage {
+	private socketService: MockSocketService;
+	private sessionService: MockSessionService;
+	private unsubscribeDroneListResponse?: () => void;
+
 	playerName = createSignal<string>('');
 	joinCharacter = createSignal<GameJoinState['joinCharacter'] | null>(null);
 	characterName = createSignal<string>('Unknown Character');
+    drones = createSignal<Array<{ id: string; name: string; status?: string; model?: string }>>([]);
+	isLoadingDrones = createSignal(false);
+	droneListError = createSignal<string | null>(null);
 
-	constructor(state?: GameJoinState) {
+	constructor(socketService: MockSocketService, sessionService: MockSessionService, state?: GameJoinState) {
+		this.socketService = socketService;
+		this.sessionService = sessionService;
 		this.playerName.set(state?.playerName ?? '');
 		this.joinCharacter.set(state?.joinCharacter ?? null);
 		this.characterName.set(state?.joinCharacter?.characterName ?? 'Unknown Character');
+
+		if (this.socketService.getIsConnected()) {
+			this.loadDronesForCharacter();
+		} else {
+			this.socketService.once('connect', () => this.loadDronesForCharacter());
+		}
+	}
+
+	loadDronesForCharacter(): void {
+		const playerName = this.playerName().trim();
+		const character = this.joinCharacter();
+
+		if (!playerName) {
+			this.droneListError.set('Player name is required to load drones.');
+			this.drones.set([]);
+			return;
+		}
+
+		if (!character?.id) {
+			this.droneListError.set('Character id is required to load drones.');
+			this.drones.set([]);
+			return;
+		}
+
+		this.isLoadingDrones.set(true);
+		this.droneListError.set(null);
+		this.unsubscribeDroneListResponse?.();
+
+		this.unsubscribeDroneListResponse = this.socketService.on(
+			DRONE_LIST_RESPONSE_EVENT,
+			(response: {
+				success: boolean;
+				message: string;
+				playerName: string;
+				characterId: string;
+				drones: Array<{ id: string; name: string; status?: string; model?: string }>;
+			}) => {
+				this.isLoadingDrones.set(false);
+				if (response.success) {
+					this.drones.set(response.drones ?? []);
+					this.droneListError.set(null);
+				} else {
+					this.drones.set([]);
+					this.droneListError.set(response.message);
+				}
+				this.unsubscribeDroneListResponse?.();
+			},
+		);
+
+		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, {
+			playerName,
+			characterId: character.id,
+			sessionKey: this.sessionService.getSessionKey()!,
+		});
+	}
+
+	ngOnDestroy(): void {
+		this.unsubscribeDroneListResponse?.();
 	}
 }
 
+interface MockSocketService {
+	emittedEvents: Array<{ event: string; data: any }>;
+	registeredListeners: Map<string, (data: any) => void>;
+	onceListeners: Map<string, (data?: any) => void>;
+	connected: boolean;
+	emit(event: string, data?: any): void;
+	on(event: string, cb: (data: any) => void): () => void;
+	once(event: string, cb: (data?: any) => void): void;
+	getIsConnected(): boolean;
+	triggerEvent(event: string, data: any): void;
+	triggerOnceEvent(event: string, data?: any): void;
+}
+
+interface MockSessionService {
+	getSessionKey(): string | null;
+}
+
+function createMockSocketService(): MockSocketService {
+	const emittedEvents: Array<{ event: string; data: any }> = [];
+	const registeredListeners = new Map<string, (data: any) => void>();
+	const onceListeners = new Map<string, (data?: any) => void>();
+
+	return {
+		emittedEvents,
+		registeredListeners,
+		onceListeners,
+		connected: false,
+		emit(event: string, data?: any) {
+			emittedEvents.push({ event, data });
+		},
+		on(event: string, cb: (data: any) => void) {
+			registeredListeners.set(event, cb);
+			return () => registeredListeners.delete(event);
+		},
+		once(event: string, cb: (data?: any) => void) {
+			onceListeners.set(event, cb);
+		},
+		getIsConnected() {
+			return this.connected;
+		},
+		triggerEvent(event: string, data: any) {
+			registeredListeners.get(event)?.(data);
+		},
+		triggerOnceEvent(event: string, data?: any) {
+			const cb = onceListeners.get(event);
+			if (cb) {
+				onceListeners.delete(event);
+				cb(data);
+			}
+		},
+	};
+}
+
+function createMockSessionService(initialKey: string | null = null): MockSessionService {
+	const state = { key: initialKey };
+	return {
+		getSessionKey() {
+			return state.key;
+		},
+	};
+}
+
 describe('GameJoinPage', () => {
+	let socketService: MockSocketService;
+	let sessionService: MockSessionService;
+
+	beforeEach(() => {
+		socketService = createMockSocketService();
+		sessionService = createMockSessionService('test-session-key');
+	});
+
 	it('should initialize character name from navigation state', () => {
-		const component = new MockGameJoinPage({
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime', level: 7 },
 		});
@@ -38,13 +179,92 @@ describe('GameJoinPage', () => {
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova-Prime', level: 7 });
 		expect(component.characterName()).toBe('Nova-Prime');
+		expect(socketService.emittedEvents[0]).toEqual({
+			event: DRONE_LIST_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				sessionKey: 'test-session-key',
+			},
+		});
+
+		component.ngOnDestroy();
 	});
 
 	it('should fall back to Unknown Character when no character is provided', () => {
-		const component = new MockGameJoinPage({ playerName: 'Pioneer' });
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, { playerName: 'Pioneer' });
 
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toBeNull();
 		expect(component.characterName()).toBe('Unknown Character');
+		expect(component.droneListError()).toBe('Character id is required to load drones.');
+		expect(socketService.emittedEvents).toHaveLength(0);
+
+		component.ngOnDestroy();
+	});
+
+	it('should request drones when connect event fires for initially disconnected socket', () => {
+		socketService.connected = false;
+		const component = new MockGameJoinPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		expect(socketService.emittedEvents).toHaveLength(0);
+		socketService.triggerOnceEvent('connect');
+		expect(socketService.emittedEvents[0].event).toBe(DRONE_LIST_REQUEST_EVENT);
+
+		component.ngOnDestroy();
+	});
+
+	it('should populate drones on successful response', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			playerName: 'Pioneer',
+			characterId: 'c-1',
+			drones: [
+				{ id: 'd-1', name: 'Surveyor' },
+				{ id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
+			],
+		});
+
+		expect(component.isLoadingDrones()).toBe(false);
+		expect(component.droneListError()).toBeNull();
+		expect(component.drones()).toEqual([
+			{ id: 'd-1', name: 'Surveyor' },
+			{ id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
+		]);
+
+		component.ngOnDestroy();
+	});
+
+	it('should set error and clear drones on failed response', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+			success: false,
+			message: 'Character drones unavailable.',
+			playerName: 'Pioneer',
+			characterId: 'c-1',
+			drones: [],
+		});
+
+		expect(component.isLoadingDrones()).toBe(false);
+		expect(component.drones()).toEqual([]);
+		expect(component.droneListError()).toBe('Character drones unavailable.');
+
+		component.ngOnDestroy();
 	});
 });

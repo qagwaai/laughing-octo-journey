@@ -9,4 +9,38 @@
 	<p class="character-display">
 		Character: <strong>{{ characterName() }}</strong>
 	</p>
+
+	<section class="drone-list-section">
+		<h2>Drones</h2>
+
+		@if (isLoadingDrones()) {
+			<p class="drone-status">Loading drones...</p>
+		}
+
+		@if (droneListError()) {
+			<p class="drone-status error">{{ droneListError() }}</p>
+		}
+
+		@if (!isLoadingDrones() && !droneListError() && drones().length === 0) {
+			<p class="drone-status">No drones found for this character.</p>
+		}
+
+		@if (drones().length > 0) {
+			<ul class="drone-list">
+				@for (drone of drones(); track drone.id) {
+					<li class="drone-item">
+						<div class="drone-name">{{ drone.name }}</div>
+						@if (drone.model || drone.status) {
+							<div class="drone-meta">
+								{{ drone.model ?? 'Unknown Model' }}
+								@if (drone.status) {
+									<span> - {{ drone.status }}</span>
+								}
+							</div>
+						}
+					</li>
+				}
+			</ul>
+		}
+	</section>
 </div>

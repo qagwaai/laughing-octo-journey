@@ -34,6 +34,8 @@ This document describes the socket message contracts currently used by the appli
 | `character-delete-response` | server -> client | Return character delete result |
 | `game-join` | client -> server | Validate and begin game join for selected character |
 | `game-join-response` | server -> client | Return game join validation/result |
+| `drone-list-request` | client -> server | Fetch drone list for selected character |
+| `drone-list-response` | server -> client | Return drone list for selected character |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
 
 ---
@@ -371,6 +373,61 @@ Edge cases:
 - If `characterId` does not belong to `playerName`, return `success: false` with a non-sensitive message.
 - If character record exists but is not currently joinable (for example locked/inactive), return `success: false` with a clear reason.
 - If client sends stale character IDs from older list state, return deterministic not-found/not-joinable error.
+
+---
+
+## Drone List
+
+### `drone-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string"
+}
+```
+
+Client-side behavior:
+
+- Emitted immediately when game-join page renders (once socket is connected).
+- Request targets the selected character context used to enter game-join.
+- Client requires non-empty `playerName` and `characterId` before emitting.
+
+Server requirements:
+
+- Validate `sessionKey` and ensure `characterId` belongs to `playerName`.
+- Return `drone-list-response` for every `drone-list-request`.
+- Emit `invalid-session` for expired/revoked/invalid sessions.
+
+### `drone-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "drones": [
+    {
+      "id": "string",
+      "name": "string",
+      "status": "string (optional)",
+      "model": "string (optional)"
+    }
+  ]
+}
+```
+
+Edge cases:
+
+- If the character is valid but has no drones, return `success: true` with `drones: []`.
+- If `characterId` is stale or unauthorized, return `success: false` with user-safe message.
+- `drones` should always be present as an array to avoid ambiguous UI state.
 
 ---
 
