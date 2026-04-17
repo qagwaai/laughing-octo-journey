@@ -10,6 +10,10 @@ import {
 	CharacterListRequest,
 	CharacterListResponse,
 } from '../../model/character-list';
+import {
+	GAME_JOIN_REQUEST_EVENT,
+	GameJoinRequest,
+} from '../../model/game-join';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
 function createSignal<T>(initial: T) {
@@ -229,7 +233,23 @@ class MockCharacterListPage {
 	}
 
 	navigateToGameJoin(character: any): void {
-		const playerName = this.playerName();
+		const playerName = this.playerName().trim();
+		if (!playerName) {
+			this.errorMessage.set('Player name is required to join a game.');
+			return;
+		}
+		if (!character.id) {
+			this.errorMessage.set('Character id is required to join a game.');
+			return;
+		}
+
+		const request: GameJoinRequest = {
+			playerName,
+			characterId: character.id,
+			sessionKey: this.sessionService.getSessionKey()!,
+		};
+		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
+
 		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
@@ -382,6 +402,15 @@ describe('CharacterListPage', () => {
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
 
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
+				event: GAME_JOIN_REQUEST_EVENT,
+				data: {
+					playerName: 'Pioneer',
+					characterId: '1',
+					sessionKey: 'test-session-key',
+				},
+			});
+
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['game-join'] } }],
 				{
@@ -392,6 +421,25 @@ describe('CharacterListPage', () => {
 					},
 				},
 			);
+		});
+
+		it('should set error and not navigate when playerName is empty for game join', () => {
+			const character = { id: '1', characterName: 'Nova', level: 5 };
+			component.playerName.set('   ');
+			component.navigateToGameJoin(character);
+
+			expect(component.errorMessage()).toBe('Player name is required to join a game.');
+			expect(router.navigate).not.toHaveBeenCalled();
+			expect(socketService.emittedEvents).toHaveLength(0);
+		});
+
+		it('should set error and not navigate when character id is missing for game join', () => {
+			component.playerName.set('Pioneer');
+			component.navigateToGameJoin({ characterName: 'Nova' });
+
+			expect(component.errorMessage()).toBe('Character id is required to join a game.');
+			expect(router.navigate).not.toHaveBeenCalled();
+			expect(socketService.emittedEvents).toHaveLength(0);
 		});
 	});
 

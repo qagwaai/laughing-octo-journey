@@ -32,6 +32,8 @@ This document describes the socket message contracts currently used by the appli
 | `character-edit-response` | server -> client | Return character edit result |
 | `character-delete-request` | client -> server | Delete an existing character |
 | `character-delete-response` | server -> client | Return character delete result |
+| `game-join` | client -> server | Validate and begin game join for selected character |
+| `game-join-response` | server -> client | Return game join validation/result |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
 
 ---
@@ -321,6 +323,54 @@ Edge cases:
   - Either idempotent success with message, or
   - failure with explicit not-found message.
 - Returning `characterId` helps client reconciliation in multi-tab scenarios.
+
+---
+
+## Game Join
+
+### `game-join` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string"
+}
+```
+
+Client-side behavior:
+
+- Emitted from Character List when user clicks `Join Game`.
+- Client requires non-empty `playerName` and `characterId` before emitting.
+- Client also navigates to game-join page with selected character state for display context.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership of `characterId` under `playerName`.
+- Reject joins for unknown, deleted, or unauthorized characters.
+- Return `game-join-response` for each `game-join` request.
+- Emit `invalid-session` when session is missing/expired/revoked.
+
+### `game-join-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string"
+}
+```
+
+Edge cases:
+
+- If `characterId` does not belong to `playerName`, return `success: false` with a non-sensitive message.
+- If character record exists but is not currently joinable (for example locked/inactive), return `success: false` with a clear reason.
+- If client sends stale character IDs from older list state, return deterministic not-found/not-joinable error.
 
 ---
 

@@ -13,6 +13,10 @@ import {
 	CharacterListResponse,
 	PlayerCharacterSummary,
 } from '../../model/character-list';
+import {
+	GAME_JOIN_REQUEST_EVENT,
+	GameJoinRequest,
+} from '../../model/game-join';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -163,7 +167,23 @@ export default class CharacterListPage implements OnDestroy {
 	}
 
 	navigateToGameJoin(character: PlayerCharacterSummary): void {
-		const playerName = this.playerName();
+		const playerName = this.playerName().trim();
+		if (!playerName) {
+			this.errorMessage.set('Player name is required to join a game.');
+			return;
+		}
+		if (!character.id) {
+			this.errorMessage.set('Character id is required to join a game.');
+			return;
+		}
+
+		const request: GameJoinRequest = {
+			playerName,
+			characterId: character.id,
+			sessionKey: this.sessionService.getSessionKey()!,
+		};
+		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
+
 		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
