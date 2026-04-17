@@ -104,6 +104,20 @@ export default class GameJoinPage {
 		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, request);
 	}
 
+	navigateToDroneSpecs(drone: DroneSummary): void {
+		const playerName = this.playerName();
+		const joinCharacter = this.joinCharacter();
+
+		this.router.navigate([{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName,
+				joinCharacter,
+				joinDrone: drone,
+			},
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeDroneListResponse?.();
 		this.unsubscribeInvalidSession?.();

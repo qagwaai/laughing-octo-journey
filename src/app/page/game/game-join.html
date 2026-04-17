@@ -29,7 +29,10 @@
 			<ul class="drone-list">
 				@for (drone of drones(); track drone.id) {
 					<li class="drone-item">
-						<div class="drone-name">{{ drone.name }}</div>
+						<div class="drone-row">
+							<div class="drone-name">{{ drone.name }}</div>
+							<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">View Specs</button>
+						</div>
 						@if (drone.model || drone.status) {
 							<div class="drone-meta">
 								{{ drone.model ?? 'Unknown Model' }}

@@ -19,9 +19,14 @@ interface GameJoinState {
 	};
 }
 
+interface MockRouter {
+	navigate: jest.Mock;
+}
+
 class MockGameJoinPage {
 	private socketService: MockSocketService;
 	private sessionService: MockSessionService;
+	private router: MockRouter;
 	private unsubscribeDroneListResponse?: () => void;
 
 	playerName = createSignal<string>('');
@@ -31,9 +36,10 @@ class MockGameJoinPage {
 	isLoadingDrones = createSignal(false);
 	droneListError = createSignal<string | null>(null);
 
-	constructor(socketService: MockSocketService, sessionService: MockSessionService, state?: GameJoinState) {
+	constructor(socketService: MockSocketService, sessionService: MockSessionService, router: MockRouter, state?: GameJoinState) {
 		this.socketService = socketService;
 		this.sessionService = sessionService;
+		this.router = router;
 		this.playerName.set(state?.playerName ?? '');
 		this.joinCharacter.set(state?.joinCharacter ?? null);
 		this.characterName.set(state?.joinCharacter?.characterName ?? 'Unknown Character');
@@ -90,6 +96,17 @@ class MockGameJoinPage {
 			playerName,
 			characterId: character.id,
 			sessionKey: this.sessionService.getSessionKey()!,
+		});
+	}
+
+	navigateToDroneSpecs(drone: { id: string; name: string; status?: string; model?: string }): void {
+		this.router.navigate([{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+				joinDrone: drone,
+			},
 		});
 	}
 
@@ -163,15 +180,17 @@ function createMockSessionService(initialKey: string | null = null): MockSession
 describe('GameJoinPage', () => {
 	let socketService: MockSocketService;
 	let sessionService: MockSessionService;
+	let router: MockRouter;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
+		router = { navigate: jest.fn() };
 	});
 
 	it('should initialize character name from navigation state', () => {
 		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, {
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime', level: 7 },
 		});
@@ -193,7 +212,7 @@ describe('GameJoinPage', () => {
 
 	it('should fall back to Unknown Character when no character is provided', () => {
 		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, { playerName: 'Pioneer' });
+		const component = new MockGameJoinPage(socketService, sessionService, router, { playerName: 'Pioneer' });
 
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toBeNull();
@@ -206,7 +225,7 @@ describe('GameJoinPage', () => {
 
 	it('should request drones when connect event fires for initially disconnected socket', () => {
 		socketService.connected = false;
-		const component = new MockGameJoinPage(socketService, sessionService, {
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
@@ -220,7 +239,7 @@ describe('GameJoinPage', () => {
 
 	it('should populate drones on successful response', () => {
 		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, {
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
@@ -248,7 +267,7 @@ describe('GameJoinPage', () => {
 
 	it('should set error and clear drones on failed response', () => {
 		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, {
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
@@ -264,6 +283,31 @@ describe('GameJoinPage', () => {
 		expect(component.isLoadingDrones()).toBe(false);
 		expect(component.drones()).toEqual([]);
 		expect(component.droneListError()).toBe('Character drones unavailable.');
+
+		component.ngOnDestroy();
+	});
+
+	it('should navigate to drone-view-specs by changing primary outlet and preserving left game-join', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		const drone = { id: 'd-1', name: 'Surveyor', status: 'ACTIVE' };
+		component.navigateToDroneSpecs(drone);
+
+		expect(router.navigate).toHaveBeenCalledWith(
+			[{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+					joinDrone: drone,
+				},
+			},
+		);
 
 		component.ngOnDestroy();
 	});

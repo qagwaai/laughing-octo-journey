@@ -1,0 +1,23 @@
+<div class="drone-specs-container">
+	<h1>Drone Specs</h1>
+	<p class="subtitle">Operational details for your selected drone.</p>
+
+	@if (playerName()) {
+		<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+	}
+
+	@if (joinCharacter()) {
+		<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+	}
+
+	@if (joinDrone()) {
+		<div class="spec-card">
+			<p><strong>Name:</strong> {{ joinDrone()!.name }}</p>
+			<p><strong>ID:</strong> {{ joinDrone()!.id }}</p>
+			<p><strong>Model:</strong> {{ joinDrone()!.model ?? 'Unknown Model' }}</p>
+			<p><strong>Status:</strong> {{ joinDrone()!.status ?? 'Unknown Status' }}</p>
+		</div>
+	} @else {
+		<p class="empty-state">No drone selected.</p>
+	}
+</div>

@@ -59,8 +59,29 @@ h1 {
 	background: rgba(28, 46, 78, 0.5);
 }
 
+.drone-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.75rem;
+}
+
 .drone-name {
 	font-weight: 600;
+}
+
+.drone-spec-link {
+	background: transparent;
+	border: none;
+	color: #b6ffbe;
+	text-decoration: underline;
+	font-size: 0.88rem;
+	cursor: pointer;
+	padding: 0;
+}
+
+.drone-spec-link:hover {
+	color: #daffde;
 }
 
 .drone-meta {

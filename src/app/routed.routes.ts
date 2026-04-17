@@ -3,6 +3,7 @@ import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
 import GameJoinPage from './page/game/game-join';
+import DroneViewSpecsPage from './page/game/drone-view-specs';
 
 const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
@@ -40,6 +41,11 @@ const routes: Routes = [
 	{
 		path: 'game-join',
 		component: GameJoinPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'drone-view-specs',
+		component: DroneViewSpecsPage,
 		canActivate: [authGuard],
 	},
 	// Auxiliary outlet routes (left panel)
