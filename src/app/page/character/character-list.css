@@ -121,6 +121,20 @@ h1 {
 	gap: 0.75rem;
 }
 
+.join-link {
+	background: transparent;
+	border: none;
+	color: #b6ffbe;
+	text-decoration: underline;
+	font-size: 0.9rem;
+	cursor: pointer;
+	padding: 0;
+}
+
+.join-link:hover {
+	color: #daffde;
+}
+
 .edit-link {
 	background: transparent;
 	border: none;

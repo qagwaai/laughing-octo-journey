@@ -1,0 +1,12 @@
+<div class="game-join-container">
+	<h1>Game Join</h1>
+	<p class="subtitle">Preparing to join with your selected character.</p>
+
+	@if (playerName()) {
+		<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
+	}
+
+	<p class="character-display">
+		Character: <strong>{{ characterName() }}</strong>
+	</p>
+</div>

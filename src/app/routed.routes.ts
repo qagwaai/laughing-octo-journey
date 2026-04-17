@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
+import GameJoinPage from './page/game/game-join';
 
 const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
@@ -34,6 +35,11 @@ const routes: Routes = [
 	{
 		path: 'character-list',
 		component: CharacterListPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'game-join',
+		component: GameJoinPage,
 		canActivate: [authGuard],
 	},
 	// Auxiliary outlet routes (left panel)
@@ -72,6 +78,12 @@ const routes: Routes = [
 		path: 'character-list',
 		outlet: 'left',
 		component: CharacterListPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'game-join',
+		outlet: 'left',
+		component: GameJoinPage,
 		canActivate: [authGuard],
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },

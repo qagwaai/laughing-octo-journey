@@ -162,6 +162,17 @@ export default class CharacterListPage implements OnDestroy {
 		});
 	}
 
+	navigateToGameJoin(character: PlayerCharacterSummary): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName,
+				joinCharacter: character,
+			},
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 		this.unsubscribeDeleteResponse?.();

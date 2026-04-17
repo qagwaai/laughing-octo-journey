@@ -228,6 +228,17 @@ class MockCharacterListPage {
 		});
 	}
 
+	navigateToGameJoin(character: any): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName,
+				joinCharacter: character,
+			},
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
 		this.unsubscribeDeleteResponse?.();
@@ -361,6 +372,23 @@ describe('CharacterListPage', () => {
 						playerName: 'Pioneer',
 						mode: 'edit',
 						editCharacter: character,
+					},
+				},
+			);
+		});
+
+		it('should navigate to game-join with selected character state', () => {
+			const character = { id: '1', characterName: 'Nova', level: 5 };
+			component.playerName.set('Pioneer');
+			component.navigateToGameJoin(character);
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['game-join'] } }],
+				{
+					preserveFragment: true,
+					state: {
+						playerName: 'Pioneer',
+						joinCharacter: character,
 					},
 				},
 			);

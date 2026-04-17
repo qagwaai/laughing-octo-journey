@@ -26,6 +26,7 @@
 					<div class="character-row">
 						<div class="character-name">{{ character.characterName }}</div>
 						<div class="character-actions">
+							<button class="join-link" type="button" (click)="navigateToGameJoin(character)">Join Game</button>
 							<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">Edit</button>
 							<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
 						</div>
