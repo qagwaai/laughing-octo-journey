@@ -1,26 +1,11 @@
+const { createCjsPreset } = require('jest-preset-angular/presets');
+
 module.exports = {
-  preset: 'jest-preset-angular',
+  ...createCjsPreset(),
+  testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
-  testPathIgnorePatterns: [
-    '<rootDir>/node_modules/',
-    '<rootDir>/dist/'
-  ],
-  coveragePathIgnorePatterns: [
-    '/node_modules/'
-  ],
-  transform: {
-    '^.+\\.(ts|mjs|js|html)$': [
-      'jest-preset-angular',
-      {
-        tsconfig: '<rootDir>/tsconfig.spec.json',
-        stringifyContentPathRegex: '\\.(html|svg)$',
-      },
-    ],
-  },
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.spec.ts',
-    '!src/main.ts',
-    '!src/polyfills.ts',
-  ],
+  testMatch: ['<rootDir>/src/**/*.spec.ts'],
+  moduleFileExtensions: ['ts', 'html', 'js', 'json', 'mjs'],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/main.ts', '!src/polyfills.ts'],
 };
