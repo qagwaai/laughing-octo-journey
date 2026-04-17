@@ -7,9 +7,22 @@ import {
 	CharacterAddRequest,
 	CharacterAddResponse,
 } from '../../model/character-add';
+import {
+	CHARACTER_EDIT_REQUEST_EVENT,
+	CHARACTER_EDIT_RESPONSE_EVENT,
+	CharacterEditRequest,
+	CharacterEditResponse,
+} from '../../model/character-edit';
+import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+
+interface CharacterSetupNavigationState {
+	playerName?: string;
+	mode?: 'create' | 'edit';
+	editCharacter?: PlayerCharacterSummary;
+}
 
 @Component({
 	selector: 'app-character-setup-page',
@@ -25,16 +38,23 @@ export default class CharacterSetupPage implements OnDestroy {
 	private sessionService = inject(SessionService);
 	private unsubscribeAddResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
+	private setupState: CharacterSetupNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
+		(history.state as CharacterSetupNavigationState | undefined) ??
+		{};
 
 	protected playerName = signal<string>(
-		(this.router.getCurrentNavigation()?.extras.state?.['playerName'] as string | undefined) ??
-			(history.state?.playerName as string | undefined) ??
+		this.setupState.playerName ??
 			'',
+	);
+	protected editCharacter = signal<PlayerCharacterSummary | null>(this.setupState.editCharacter ?? null);
+	protected isEditMode = signal(
+		this.setupState.mode === 'edit' && !!this.setupState.editCharacter,
 	);
 
 	protected characterForm = this.fb.group({
 		characterName: [
-			this.playerName(),
+			this.editCharacter()?.characterName ?? this.playerName(),
 			[Validators.required, Validators.minLength(2), Validators.maxLength(24)],
 		],
 	});
@@ -68,7 +88,7 @@ export default class CharacterSetupPage implements OnDestroy {
 		const characterName = this.characterForm.value.characterName!;
 
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to add a character.');
+			this.errorMessage.set('Player name is required to save a character.');
 			this.isSaved.set(false);
 			return;
 		}
@@ -79,9 +99,21 @@ export default class CharacterSetupPage implements OnDestroy {
 		this.isSaved.set(false);
 		this.unsubscribeAddResponse?.();
 
+		const isEditMode = this.isEditMode();
+		if (isEditMode) {
+			const editCharacter = this.editCharacter();
+			if (!editCharacter?.id) {
+				this.isSubmitting.set(false);
+				this.errorMessage.set('Character id is required to edit a character.');
+				return;
+			}
+		}
+
+		const responseEventName = isEditMode ? CHARACTER_EDIT_RESPONSE_EVENT : CHARACTER_ADD_RESPONSE_EVENT;
+
 		this.unsubscribeAddResponse = this.socketService.on(
-			CHARACTER_ADD_RESPONSE_EVENT,
-			(response: CharacterAddResponse) => {
+			responseEventName,
+			(response: CharacterAddResponse | CharacterEditResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
 					this.isSaved.set(true);
@@ -95,6 +127,18 @@ export default class CharacterSetupPage implements OnDestroy {
 				this.unsubscribeAddResponse?.();
 			},
 		);
+
+		if (isEditMode) {
+			const editCharacter = this.editCharacter()!;
+			const request: CharacterEditRequest = {
+				characterId: editCharacter.id,
+				playerName,
+				characterName,
+				sessionKey: this.sessionService.getSessionKey()!,
+			};
+			this.socketService.emit(CHARACTER_EDIT_REQUEST_EVENT, request);
+			return;
+		}
 
 		const request: CharacterAddRequest = {
 			playerName,

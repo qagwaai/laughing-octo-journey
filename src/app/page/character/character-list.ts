@@ -146,7 +146,19 @@ export default class CharacterListPage implements OnDestroy {
 		const playerName = this.playerName();
 		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
 			preserveFragment: true,
-			state: { playerName },
+			state: { playerName, mode: 'create' },
+		});
+	}
+
+	navigateToCharacterEdit(character: PlayerCharacterSummary): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName,
+				mode: 'edit',
+				editCharacter: character,
+			},
 		});
 	}
 

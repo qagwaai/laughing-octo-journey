@@ -25,7 +25,10 @@
 				<li class="character-item">
 					<div class="character-row">
 						<div class="character-name">{{ character.characterName }}</div>
-						<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
+						<div class="character-actions">
+							<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">Edit</button>
+							<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
+						</div>
 					</div>
 					@if (character.level !== undefined) {
 						<div class="character-meta">Level {{ character.level }}</div>

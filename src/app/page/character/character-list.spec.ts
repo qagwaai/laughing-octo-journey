@@ -212,7 +212,19 @@ class MockCharacterListPage {
 		const playerName = this.playerName();
 		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
 			preserveFragment: true,
-			state: { playerName },
+			state: { playerName, mode: 'create' },
+		});
+	}
+
+	navigateToCharacterEdit(character: any): void {
+		const playerName = this.playerName();
+		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName,
+				mode: 'edit',
+				editCharacter: character,
+			},
 		});
 	}
 
@@ -332,7 +344,25 @@ describe('CharacterListPage', () => {
 
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-setup'] } }],
-				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+				{ preserveFragment: true, state: { playerName: 'Pioneer', mode: 'create' } },
+			);
+		});
+
+		it('should navigate to character-setup in edit mode with selected character state', () => {
+			const character = { id: '1', characterName: 'Nova', level: 5 };
+			component.playerName.set('Pioneer');
+			component.navigateToCharacterEdit(character);
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-setup'] } }],
+				{
+					preserveFragment: true,
+					state: {
+						playerName: 'Pioneer',
+						mode: 'edit',
+						editCharacter: character,
+					},
+				},
 			);
 		});
 	});

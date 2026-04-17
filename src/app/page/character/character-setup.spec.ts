@@ -11,6 +11,11 @@ import {
 	CharacterAddRequest,
 	CharacterAddResponse,
 } from '../../model/character-add';
+import {
+	CHARACTER_EDIT_REQUEST_EVENT,
+	CHARACTER_EDIT_RESPONSE_EVENT,
+	CharacterEditResponse,
+} from '../../model/character-edit';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
 function createSignal<T>(initial: T) {
@@ -40,6 +45,12 @@ interface MockSocketService {
 	emit(event: string, data?: any): void;
 	on(event: string, cb: (data: any) => void): () => void;
 	triggerEvent(event: string, data: any): void;
+}
+
+interface SetupState {
+	playerName?: string;
+	mode?: 'create' | 'edit';
+	editCharacter?: { id: string; characterName: string; level?: number };
 }
 
 function createMockSocketService(): MockSocketService {
@@ -79,8 +90,10 @@ class MockCharacterSetupPage {
 	private sessionService: MockSessionService;
 	private unsubscribeAddResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
+	private editCharacterId: string | null = null;
 
 	playerName = createSignal<string>('Pioneer');
+	isEditMode = createSignal(false);
 	isSaved = createSignal(false);
 	successMessage = createSignal<string | null>(null);
 	errorMessage = createSignal<string | null>(null);
@@ -98,10 +111,27 @@ class MockCharacterSetupPage {
 		},
 	};
 
-	constructor(router: MockRouter, socketService: MockSocketService, sessionService: MockSessionService) {
+	constructor(
+		router: MockRouter,
+		socketService: MockSocketService,
+		sessionService: MockSessionService,
+		setupState?: SetupState,
+	) {
 		this.router = router;
 		this.socketService = socketService;
 		this.sessionService = sessionService;
+
+		if (setupState?.playerName !== undefined) {
+			this.playerName.set(setupState.playerName);
+		}
+
+		if (setupState?.mode === 'edit' && setupState.editCharacter) {
+			this.isEditMode.set(true);
+			this.characterForm.characterName = setupState.editCharacter.characterName;
+			this.editCharacterId = setupState.editCharacter.id;
+		} else {
+			this.characterForm.characterName = this.playerName();
+		}
 
 		this.unsubscribeInvalidSession = this.socketService.on(
 			INVALID_SESSION_EVENT,
@@ -122,7 +152,7 @@ class MockCharacterSetupPage {
 		const characterName = this.characterForm.value.characterName;
 
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to add a character.');
+			this.errorMessage.set('Player name is required to save a character.');
 			this.isSaved.set(false);
 			return;
 		}
@@ -133,9 +163,18 @@ class MockCharacterSetupPage {
 		this.isSaved.set(false);
 		this.unsubscribeAddResponse?.();
 
+		const isEditMode = this.isEditMode();
+		if (isEditMode && !this.editCharacterId) {
+			this.isSubmitting.set(false);
+			this.errorMessage.set('Character id is required to edit a character.');
+			return;
+		}
+
+		const responseEventName = isEditMode ? CHARACTER_EDIT_RESPONSE_EVENT : CHARACTER_ADD_RESPONSE_EVENT;
+
 		this.unsubscribeAddResponse = this.socketService.on(
-			CHARACTER_ADD_RESPONSE_EVENT,
-			(response: CharacterAddResponse) => {
+			responseEventName,
+			(response: CharacterAddResponse | CharacterEditResponse) => {
 				this.isSubmitting.set(false);
 				if (response.success) {
 					this.isSaved.set(true);
@@ -149,6 +188,16 @@ class MockCharacterSetupPage {
 				this.unsubscribeAddResponse?.();
 			},
 		);
+
+		if (isEditMode) {
+			this.socketService.emit(CHARACTER_EDIT_REQUEST_EVENT, {
+				characterId: this.editCharacterId!,
+				playerName,
+				characterName,
+				sessionKey: this.sessionService.getSessionKey()!,
+			});
+			return;
+		}
 
 		const request: CharacterAddRequest = { playerName, characterName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
@@ -193,6 +242,25 @@ describe('CharacterSetupPage', () => {
 		expect(component.playerName()).toBe('Pioneer');
 	});
 
+	it('should initialize form in edit mode using selected character name', () => {
+		const editModeComponent = new MockCharacterSetupPage(
+			router,
+			socketService,
+			sessionService,
+			{
+				playerName: 'Pioneer',
+				mode: 'edit',
+				editCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+		);
+
+		expect(editModeComponent.isEditMode()).toBe(true);
+		expect(editModeComponent.characterForm.characterName).toBe('Nova-Prime');
+		expect(editModeComponent.playerName()).toBe('Pioneer');
+
+		editModeComponent.ngOnDestroy();
+	});
+
 	it('should initialize with unsaved and idle state', () => {
 		expect(component.isSaved()).toBe(false);
 		expect(component.successMessage()).toBeNull();
@@ -217,9 +285,70 @@ describe('CharacterSetupPage', () => {
 			component.characterForm.characterName = 'Nova';
 			component.saveCharacter();
 
-			expect(component.errorMessage()).toBe('Player name is required to add a character.');
+			expect(component.errorMessage()).toBe('Player name is required to save a character.');
 			expect(component.isSaved()).toBe(false);
 			expect(socketService.emittedEvents).toHaveLength(0);
+		});
+
+		it('should emit save request in edit mode with updated character name', () => {
+			const editModeComponent = new MockCharacterSetupPage(
+				router,
+				socketService,
+				sessionService,
+				{
+					playerName: 'Pioneer',
+					mode: 'edit',
+					editCharacter: { id: 'c-1', characterName: 'Nova' },
+				},
+			);
+			editModeComponent.characterForm.invalid = false;
+			editModeComponent.characterForm.characterName = 'Nova-Prime';
+			editModeComponent.saveCharacter();
+
+			expect(editModeComponent.isEditMode()).toBe(true);
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
+				event: CHARACTER_EDIT_REQUEST_EVENT,
+				data: {
+					characterId: 'c-1',
+					playerName: 'Pioneer',
+					characterName: 'Nova-Prime',
+					sessionKey: 'test-session-key',
+				},
+			});
+
+			editModeComponent.ngOnDestroy();
+		});
+
+		it('should handle successful character-edit response in edit mode', () => {
+			const editModeComponent = new MockCharacterSetupPage(
+				router,
+				socketService,
+				sessionService,
+				{
+					playerName: 'Pioneer',
+					mode: 'edit',
+					editCharacter: { id: 'c-1', characterName: 'Nova' },
+				},
+			);
+
+			editModeComponent.characterForm.invalid = false;
+			editModeComponent.characterForm.characterName = 'Nova-Prime';
+			editModeComponent.saveCharacter();
+
+			socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
+				success: true,
+				message: "Character 'Nova-Prime' updated.",
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				characterName: 'Nova-Prime',
+			} satisfies CharacterEditResponse);
+
+			expect(editModeComponent.isSubmitting()).toBe(false);
+			expect(editModeComponent.isSaved()).toBe(true);
+			expect(editModeComponent.successMessage()).toBe("Character 'Nova-Prime' updated.");
+			expect(editModeComponent.errorMessage()).toBeNull();
+
+			editModeComponent.ngOnDestroy();
 		});
 
 		it('should emit character-add request when valid', () => {

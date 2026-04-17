@@ -115,6 +115,26 @@ h1 {
 	font-size: 1rem;
 }
 
+.character-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.edit-link {
+	background: transparent;
+	border: none;
+	color: #a6d4ff;
+	text-decoration: underline;
+	font-size: 0.9rem;
+	cursor: pointer;
+	padding: 0;
+}
+
+.edit-link:hover {
+	color: #d0e7ff;
+}
+
 .delete-link {
 	background: transparent;
 	border: none;
