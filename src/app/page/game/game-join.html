@@ -30,7 +30,10 @@
 				@for (drone of drones(); track drone.id) {
 					<li class="drone-item">
 						<div class="drone-row">
-							<div class="drone-name">{{ drone.name }}</div>
+							<div class="drone-identity">
+								<div class="drone-name"><strong>Name:</strong> {{ getDroneDisplayName(drone) }}</div>
+								<div class="drone-id"><strong>ID:</strong> {{ drone.id }}</div>
+							</div>
 							<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">View Specs</button>
 						</div>
 						@if (drone.model || drone.status) {
@@ -41,6 +44,7 @@
 								}
 							</div>
 						}
+						<div class="drone-kinematics"><strong>Kinematics:</strong> {{ getDroneKinematicsSummary(drone) }}</div>
 					</li>
 				}
 			</ul>

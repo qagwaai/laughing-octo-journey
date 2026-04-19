@@ -112,6 +112,40 @@ class MockGameJoinPage {
 		});
 	}
 
+	getDroneDisplayName(drone: { id: string; name: string }): string {
+		return drone.name.trim() || 'Unnamed Drone';
+	}
+
+	getDroneKinematicsSummary(drone: {
+		kinematics?: {
+			position: { x: number; y: number; z: number };
+			velocity: { x: number; y: number; z: number };
+			reference: {
+				referenceKind: string;
+				distanceUnit: 'km';
+				velocityUnit: 'km/s';
+			};
+		};
+	}): string {
+		const kinematics = drone.kinematics;
+		if (!kinematics) {
+			return 'Kinematics unavailable';
+		}
+
+		const speedKmPerSec = Math.sqrt(
+			kinematics.velocity.x ** 2 +
+			kinematics.velocity.y ** 2 +
+			kinematics.velocity.z ** 2,
+		);
+		const position = `(${kinematics.position.x}, ${kinematics.position.y}, ${kinematics.position.z}) ${kinematics.reference.distanceUnit}`;
+		if (speedKmPerSec <= 1e-9) {
+			return `${kinematics.reference.referenceKind}, position ${position}, stationary at ${speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}`;
+		}
+
+		const heading = `(${(kinematics.velocity.x / speedKmPerSec).toFixed(3)}, ${(kinematics.velocity.y / speedKmPerSec).toFixed(3)}, ${(kinematics.velocity.z / speedKmPerSec).toFixed(3)})`;
+		return `${kinematics.reference.referenceKind}, position ${position}, speed ${speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}, heading ${heading}`;
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeDroneListResponse?.();
 	}
@@ -267,6 +301,99 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
+	it('should recover drone names from alternate payload fields', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		const normalizeDroneSummary = (drone: { id: string; name?: string; droneName?: string; displayName?: string }) => ({
+			...drone,
+			name: drone.name?.trim() || drone.droneName?.trim() || drone.displayName?.trim() || drone.id,
+		});
+
+		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			playerName: 'Pioneer',
+			characterId: 'c-1',
+			drones: [
+				normalizeDroneSummary({ id: 'd-1', droneName: 'Surveyor' }),
+				normalizeDroneSummary({ id: 'd-2', name: '   ', displayName: 'Guardian' }),
+			],
+		});
+
+		expect(component.drones()).toEqual([
+			{ id: 'd-1', droneName: 'Surveyor', name: 'Surveyor' },
+			{ id: 'd-2', name: 'Guardian', displayName: 'Guardian' },
+		]);
+
+		component.ngOnDestroy();
+	});
+
+	it('should preserve alternate top-level kinematics payload fields', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		const normalizeDroneSummary = (drone: {
+			id: string;
+			name?: string;
+			location?: { x: number; y: number; z: number };
+			velocityVector?: { x: number; y: number; z: number };
+			solarSystemId?: string;
+			referenceKind?: 'barycentric' | 'body-centered';
+			distanceUnit?: 'km';
+			velocityUnit?: 'km/s';
+		}) => ({
+			...drone,
+			name: drone.name?.trim() || drone.id,
+			kinematics: drone.location && drone.velocityVector ? {
+				position: drone.location,
+				velocity: drone.velocityVector,
+				reference: {
+					solarSystemId: drone.solarSystemId ?? 'unknown-system',
+					referenceKind: drone.referenceKind ?? 'barycentric',
+					distanceUnit: drone.distanceUnit ?? 'km',
+					velocityUnit: drone.velocityUnit ?? 'km/s',
+					epochMs: jasmine.any(Number),
+				},
+			} : undefined,
+		});
+
+		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			playerName: 'Pioneer',
+			characterId: 'c-1',
+			drones: [
+				normalizeDroneSummary({
+					id: 'd-1',
+					name: 'Surveyor',
+					location: { x: 10, y: 20, z: 30 },
+					velocityVector: { x: 3, y: 4, z: 0 },
+					solarSystemId: 'sol',
+					referenceKind: 'barycentric',
+					distanceUnit: 'km',
+					velocityUnit: 'km/s',
+				}),
+			],
+		});
+
+		expect(component.getDroneKinematicsSummary(component.drones()[0] as {
+			kinematics?: {
+				position: { x: number; y: number; z: number };
+				velocity: { x: number; y: number; z: number };
+				reference: { referenceKind: string; distanceUnit: 'km'; velocityUnit: 'km/s' };
+			};
+		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
+
+		component.ngOnDestroy();
+	});
+
 	it('should set error and clear drones on failed response', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
@@ -310,6 +437,52 @@ describe('GameJoinPage', () => {
 				},
 			},
 		);
+
+		component.ngOnDestroy();
+	});
+
+	it('should return a fallback display name for blank drone names', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		expect(component.getDroneDisplayName({ id: 'd-1', name: '   ' })).toBe('Unnamed Drone');
+
+		component.ngOnDestroy();
+	});
+
+	it('should summarize drone kinematics for the list', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		expect(component.getDroneKinematicsSummary({
+			kinematics: {
+				position: { x: 10, y: 20, z: 30 },
+				velocity: { x: 3, y: 4, z: 0 },
+				reference: {
+					referenceKind: 'barycentric',
+					distanceUnit: 'km',
+					velocityUnit: 'km/s',
+				},
+			},
+		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
+
+		component.ngOnDestroy();
+	});
+
+	it('should return an explicit fallback when kinematics are missing', () => {
+		socketService.connected = true;
+		const component = new MockGameJoinPage(socketService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		});
+
+		expect(component.getDroneKinematicsSummary({})).toBe('Kinematics unavailable');
 
 		component.ngOnDestroy();
 	});
