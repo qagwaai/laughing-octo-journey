@@ -23,6 +23,8 @@ export interface SpatialReference {
 	solarSystemId: string;
 	referenceKind: SpatialReferenceKind;
 	referenceBodyId?: string;
+	distanceUnit: 'km';
+	velocityUnit: 'km/s';
 	epochMs: number;
 }
 

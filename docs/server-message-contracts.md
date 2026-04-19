@@ -425,6 +425,8 @@ Payload:
           "solarSystemId": "string",
           "referenceKind": "barycentric | body-centered",
           "referenceBodyId": "string (required only for body-centered)",
+          "distanceUnit": "km",
+          "velocityUnit": "km/s",
           "epochMs": 0
         }
       }
@@ -438,6 +440,7 @@ Notes:
 - `kinematics` is optional for backward compatibility with older servers.
 - `velocity` is the direction of travel plus speed magnitude.
 - Use `referenceKind: "barycentric"` for multi-star systems (for example, binary stars) so position/velocity remain stable relative to the system barycenter.
+- `distanceUnit` must be `"km"` and `velocityUnit` must be `"km/s"`.
 
 Edge cases:
 

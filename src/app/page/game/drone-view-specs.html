@@ -16,6 +16,31 @@
 			<p><strong>ID:</strong> {{ joinDrone()!.id }}</p>
 			<p><strong>Model:</strong> {{ joinDrone()!.model ?? 'Unknown Model' }}</p>
 			<p><strong>Status:</strong> {{ joinDrone()!.status ?? 'Unknown Status' }}</p>
+
+			@if (joinDrone()!.kinematics) {
+				<p>
+					<strong>Position:</strong>
+					({{ joinDrone()!.kinematics!.position.x }}, {{ joinDrone()!.kinematics!.position.y }}, {{ joinDrone()!.kinematics!.position.z }})
+					{{ joinDrone()!.kinematics!.reference.distanceUnit }}
+				</p>
+				<p>
+					<strong>Velocity:</strong>
+					({{ joinDrone()!.kinematics!.velocity.x }}, {{ joinDrone()!.kinematics!.velocity.y }}, {{ joinDrone()!.kinematics!.velocity.z }})
+					{{ joinDrone()!.kinematics!.reference.velocityUnit }}
+				</p>
+				<p><strong>Speed:</strong> {{ droneMotion()!.speedKmPerSec.toFixed(3) }} km/s</p>
+				<p><strong>Reference Frame:</strong> {{ joinDrone()!.kinematics!.reference.referenceKind }}</p>
+				@if (droneMotion()!.headingUnitVector) {
+					<p>
+						<strong>Heading (unit vector):</strong>
+						({{ droneMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ droneMotion()!.headingUnitVector!.y.toFixed(4) }}, {{ droneMotion()!.headingUnitVector!.z.toFixed(4) }})
+					</p>
+				} @else {
+					<p><strong>Heading:</strong> Stationary (insufficient velocity)</p>
+				}
+			} @else {
+				<p><strong>Kinematics:</strong> Not available</p>
+			}
 		</div>
 	} @else {
 		<p class="empty-state">No drone selected.</p>
