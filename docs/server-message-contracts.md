@@ -417,11 +417,27 @@ Payload:
       "id": "string",
       "name": "string",
       "status": "string (optional)",
-      "model": "string (optional)"
+      "model": "string (optional)",
+      "kinematics": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "velocity": { "x": 0, "y": 0, "z": 0 },
+        "reference": {
+          "solarSystemId": "string",
+          "referenceKind": "barycentric | body-centered",
+          "referenceBodyId": "string (required only for body-centered)",
+          "epochMs": 0
+        }
+      }
     }
   ]
 }
 ```
+
+Notes:
+
+- `kinematics` is optional for backward compatibility with older servers.
+- `velocity` is the direction of travel plus speed magnitude.
+- Use `referenceKind: "barycentric"` for multi-star systems (for example, binary stars) so position/velocity remain stable relative to the system barycenter.
 
 Edge cases:
 

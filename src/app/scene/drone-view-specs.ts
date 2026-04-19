@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgtArgs } from 'angular-three';
-import { NgtsMeshTransmissionMaterial } from 'angular-three-soba/materials';
-import { PlayerCharacterSummary } from '../model/character-list';
-import { DroneSummary } from '../model/drone-list';
-import { ExpendableDartDrone } from "../component/expendable-dart-drone";
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { textureResource } from "angular-three-soba/loaders";
+import { ExpendableDartDrone } from "../component/expendable-dart-drone";
+import { PlayerCharacterSummary } from '../model/character-list';
+import { DroneSummary } from '../model/drone-list';
 
 interface DroneViewSpecsNavigationState {
 	playerName?: string;
@@ -17,7 +16,7 @@ interface DroneViewSpecsNavigationState {
 @Component({
 	selector: 'app-drone-view-specs',
 	templateUrl: './drone-view-specs.html',
-	imports: [NgtArgs, NgtsMeshTransmissionMaterial, ExpendableDartDrone, NgtsOrbitControls],
+	imports: [NgtArgs, ExpendableDartDrone, NgtsOrbitControls],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
