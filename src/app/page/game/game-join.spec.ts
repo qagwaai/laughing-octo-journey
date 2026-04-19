@@ -1,3 +1,5 @@
+export {};
+
 function createSignal<T>(initial: T) {
 	let value = initial;
 	const sig = () => value;
@@ -20,7 +22,7 @@ interface GameJoinState {
 }
 
 interface MockRouter {
-	navigate: jest.Mock;
+	navigate: jasmine.Spy;
 }
 
 class MockGameJoinPage {
@@ -185,7 +187,7 @@ describe('GameJoinPage', () => {
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
-		router = { navigate: jest.fn() };
+		router = { navigate: jasmine.createSpy() };
 	});
 
 	it('should initialize character name from navigation state', () => {
@@ -218,7 +220,7 @@ describe('GameJoinPage', () => {
 		expect(component.joinCharacter()).toBeNull();
 		expect(component.characterName()).toBe('Unknown Character');
 		expect(component.droneListError()).toBe('Character id is required to load drones.');
-		expect(socketService.emittedEvents).toHaveLength(0);
+		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 
 		component.ngOnDestroy();
 	});
@@ -230,7 +232,7 @@ describe('GameJoinPage', () => {
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		expect(socketService.emittedEvents).toHaveLength(0);
+		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		socketService.triggerOnceEvent('connect');
 		expect(socketService.emittedEvents[0].event).toBe(DRONE_LIST_REQUEST_EVENT);
 

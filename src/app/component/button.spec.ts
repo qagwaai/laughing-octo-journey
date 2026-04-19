@@ -125,7 +125,7 @@ describe("Button Logic", () => {
         });
 
         it("should be subscribable to click event", () => {
-            const spy = jest.fn();
+            const spy = jasmine.createSpy();
             mockComponent.click.subscribe(spy);
             mockComponent.onClick();
             expect(spy).toHaveBeenCalled();
@@ -231,13 +231,13 @@ describe("Button Logic", () => {
         });
 
         it("should log click state on onClick", () => {
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleSpy = spyOn(console, 'log').and.callFake(() => {});
             mockComponent.onClick();
             expect(consoleSpy).toHaveBeenCalledWith(
                 "Button clicked: clicked state is now",
                 true
             );
-            consoleSpy.mockRestore();
+            consoleSpy.calls.reset();
         });
 
         it("should emit click event during onClick", (done) => {
@@ -453,7 +453,7 @@ describe("Button Logic", () => {
 
     describe("Integration", () => {
         it("should support complete button lifecycle", () => {
-            const spy = jest.fn();
+            const spy = jasmine.createSpy();
             mockComponent.click.subscribe(spy);
 
             mockComponent.hovered_set(true);

@@ -1,23 +1,14 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { ExpendableDartDrone } from "./expendable-dart-drone";
+import { ExpendableDartDrone, BEFORE_RENDER_FN, GLTF_RESOURCE_FN } from "./expendable-dart-drone";
 import { CUSTOM_ELEMENTS_SCHEMA } from "@angular/core";
-import { beforeRender } from "angular-three";
-import { gltfResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
-
-jest.mock("angular-three");
-jest.mock("angular-three-soba/loaders");
-
-// Initialize the Angular testing environment
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-);
 
 describe("ExpendableDartDrone", () => {
     let component: ExpendableDartDrone;
     let fixture: ComponentFixture<ExpendableDartDrone>;
+    let beforeRenderSpy: jasmine.Spy;
+    let gltfResourceSpy: jasmine.Spy;
+    let beforeRenderCallbacks: Array<(state: any) => void>;
 
     const mockScene = new THREE.Scene();
     const mockGltf = {
@@ -25,27 +16,31 @@ describe("ExpendableDartDrone", () => {
     };
 
     beforeEach(async () => {
-        (gltfResource as unknown as jest.Mock).mockReturnValue({
-            asReadonly: jest.fn().mockReturnValue({
-                value: jest.fn().mockReturnValue({
+        beforeRenderCallbacks = [];
+        beforeRenderSpy = jasmine.createSpy('beforeRender').and.callFake((callback: any) => {
+            beforeRenderCallbacks.push(callback);
+            return () => {};
+        });
+
+        gltfResourceSpy = jasmine.createSpy('gltfResource').and.returnValue({
+            asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                value: jasmine.createSpy('value').and.returnValue({
                     expendableDartDrone: mockGltf,
                 }),
             }),
         });
 
-        const beforeRenderCallbacks: any[] = [];
-        (beforeRender as unknown as jest.Mock).mockImplementation((callback: any) => {
-            beforeRenderCallbacks.push(callback);
-        });
-
         await TestBed.configureTestingModule({
             imports: [ExpendableDartDrone],
+            providers: [
+                { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                { provide: GLTF_RESOURCE_FN, useValue: gltfResourceSpy }
+            ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
         }).compileComponents();
 
         fixture = TestBed.createComponent(ExpendableDartDrone);
         component = fixture.componentInstance;
-        // Store the callbacks on component after creation
         (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
 
@@ -89,15 +84,21 @@ describe("ExpendableDartDrone", () => {
         });
 
         it("should return null if model is not loaded", () => {
-            // Reset the mock for this specific test
-            jest.resetModules();
-            (gltfResource as unknown as jest.Mock).mockReturnValue({
-                asReadonly: jest.fn().mockReturnValue({
-                    value: jest.fn().mockReturnValue(null),
+            const nullGltfSpy = jasmine.createSpy('gltfResource').and.returnValue({
+                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                    value: jasmine.createSpy('value').and.returnValue(null),
                 }),
             });
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                imports: [ExpendableDartDrone],
+                providers: [
+                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                    { provide: GLTF_RESOURCE_FN, useValue: nullGltfSpy }
+                ],
+                schemas: [CUSTOM_ELEMENTS_SCHEMA],
+            });
 
-            // Create a fresh component instance with the new mock
             const testFixture = TestBed.createComponent(ExpendableDartDrone);
             const testComponent = testFixture.componentInstance;
             const expendableDartDroneSignal = (testComponent as any).expendableDartDrone();
@@ -105,23 +106,23 @@ describe("ExpendableDartDrone", () => {
         });
 
         it("should call gltfResource with correct model path", () => {
-            expect(gltfResource).toHaveBeenCalledWith(
-                expect.any(Function),
-                expect.any(Object)
+            expect(gltfResourceSpy).toHaveBeenCalledWith(
+                jasmine.any(Function),
+                jasmine.any(Object)
             );
         });
     });
 
     describe("beforeRender hook", () => {
         it("should register beforeRender callback on construction", () => {
-            expect(beforeRender).toHaveBeenCalled();
+            expect(beforeRenderSpy).toHaveBeenCalled();
         });
 
         it("should rotate mesh on beforeRender", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.z = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -134,7 +135,7 @@ describe("ExpendableDartDrone", () => {
         });
 
         it("should handle missing mesh reference gracefully", () => {
-            (component as any).meshRef = jest.fn().mockReturnValue(null);
+            (component as any).meshRef = jasmine.createSpy().and.returnValue(null);
 
             expect(() => {
                 if ((component as any).beforeRenderCallback) {

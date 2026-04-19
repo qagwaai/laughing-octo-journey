@@ -1,8 +1,15 @@
-import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, signal, viewChild } from "@angular/core";
+import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, InjectionToken, input, signal, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api/dist/types";
-import { beforeRender, NgtArgs } from "angular-three";
-import { gltfResource } from "angular-three-soba/loaders";
+import { beforeRender as _beforeRender, NgtArgs } from "angular-three";
+import { gltfResource as _gltfResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
+
+export const BEFORE_RENDER_FN = new InjectionToken('BEFORE_RENDER_FN', {
+    providedIn: 'root', factory: () => _beforeRender
+});
+export const GLTF_RESOURCE_FN = new InjectionToken('GLTF_RESOURCE_FN', {
+    providedIn: 'root', factory: () => _gltfResource
+});
 
 @Component({
     selector: "app-expendible-dart-drone",
@@ -30,7 +37,7 @@ export class ExpendableDartDrone {
     protected hovered = signal(false);
     protected clicked = signal(false);
 
-    protected models = gltfResource(() => ({ expendableDartDrone: 'models/expendable_dart_drone_mod.glb' }), {
+    protected models = inject(GLTF_RESOURCE_FN)(() => ({ expendableDartDrone: 'models/expendable_dart_drone_mod.glb' }), {
         onLoad(data) {},
     });
 
@@ -45,6 +52,7 @@ export class ExpendableDartDrone {
     private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('expendibleDartDrone');
     
     constructor() {
+        const beforeRender = inject(BEFORE_RENDER_FN);
         beforeRender(({ delta }) => {
             let expendibleDartDroneRef = this.meshRef()?.nativeElement;
             if (expendibleDartDroneRef) {

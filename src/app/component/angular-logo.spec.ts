@@ -1,23 +1,14 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { AngularLogo } from "./angular-logo";
+import { AngularLogo, BEFORE_RENDER_FN, GLTF_RESOURCE_FN } from "./angular-logo";
 import { CUSTOM_ELEMENTS_SCHEMA } from "@angular/core";
-import { beforeRender } from "angular-three";
-import { gltfResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
-
-jest.mock("angular-three");
-jest.mock("angular-three-soba/loaders");
-
-// Initialize the Angular testing environment
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-);
 
 describe("AngularLogo", () => {
     let component: AngularLogo;
     let fixture: ComponentFixture<AngularLogo>;
+    let beforeRenderSpy: jasmine.Spy;
+    let gltfResourceSpy: jasmine.Spy;
+    let beforeRenderCallbacks: Array<(state: any) => void>;
 
     const mockScene = new THREE.Scene();
     const mockModel = {
@@ -29,25 +20,29 @@ describe("AngularLogo", () => {
     };
 
     beforeEach(async () => {
-        (gltfResource as unknown as jest.Mock).mockReturnValue({
-            asReadonly: jest.fn().mockReturnValue({
-                value: jest.fn().mockReturnValue(mockModels),
-            }),
+        beforeRenderCallbacks = [];
+        beforeRenderSpy = jasmine.createSpy('beforeRender').and.callFake((callback: any) => {
+            beforeRenderCallbacks.push(callback);
+            return () => {};
         });
 
-        const beforeRenderCallbacks: any[] = [];
-        (beforeRender as unknown as jest.Mock).mockImplementation((callback: any) => {
-            beforeRenderCallbacks.push(callback);
+        gltfResourceSpy = jasmine.createSpy('gltfResource').and.returnValue({
+            asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                value: jasmine.createSpy('value').and.returnValue(mockModels),
+            }),
         });
 
         await TestBed.configureTestingModule({
             imports: [AngularLogo],
+            providers: [
+                { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                { provide: GLTF_RESOURCE_FN, useValue: gltfResourceSpy }
+            ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
         }).compileComponents();
 
         fixture = TestBed.createComponent(AngularLogo);
         component = fixture.componentInstance;
-        // Store the callbacks on component after creation
         (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
 
@@ -133,19 +128,25 @@ describe("AngularLogo", () => {
         });
 
         it("should call gltfResource with correct model path", () => {
-            expect(gltfResource).toHaveBeenCalled();
-            const callArgs = (gltfResource as unknown as jest.Mock).mock.calls[0];
+            expect(gltfResourceSpy).toHaveBeenCalled();
+            const callArgs = gltfResourceSpy.calls.argsFor(0);
             expect(typeof callArgs[0]).toBe("function");
         });
 
         it("should return null if model is not loaded", () => {
-            (gltfResource as unknown as jest.Mock).mockReturnValue({
-                asReadonly: jest.fn().mockReturnValue({
-                    value: jest.fn().mockReturnValue(null),
+            const nullGltfSpy = jasmine.createSpy('gltfResource').and.returnValue({
+                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                    value: jasmine.createSpy('value').and.returnValue(null),
                 }),
             });
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                    { provide: GLTF_RESOURCE_FN, useValue: nullGltfSpy }
+                ]
+            });
 
-            // Create a fresh component instance with the new mock
             const testFixture = TestBed.createComponent(AngularLogo);
             const testComponent = testFixture.componentInstance;
             const models = (testComponent as any).models.asReadonly().value();
@@ -153,10 +154,17 @@ describe("AngularLogo", () => {
         });
 
         it("should return null from computed if model is not loaded", () => {
-            (gltfResource as unknown as jest.Mock).mockReturnValue({
-                asReadonly: jest.fn().mockReturnValue({
-                    value: jest.fn().mockReturnValue(null),
+            const nullGltfSpy = jasmine.createSpy('gltfResource').and.returnValue({
+                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                    value: jasmine.createSpy('value').and.returnValue(null),
                 }),
+            });
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                    { provide: GLTF_RESOURCE_FN, useValue: nullGltfSpy }
+                ]
             });
 
             const testFixture = TestBed.createComponent(AngularLogo);
@@ -178,10 +186,17 @@ describe("AngularLogo", () => {
         });
 
         it("should handle null model gracefully", () => {
-            (gltfResource as unknown as jest.Mock).mockReturnValue({
-                asReadonly: jest.fn().mockReturnValue({
-                    value: jest.fn().mockReturnValue(null),
+            const nullGltfSpy = jasmine.createSpy('gltfResource').and.returnValue({
+                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                    value: jasmine.createSpy('value').and.returnValue(null),
                 }),
+            });
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                    { provide: GLTF_RESOURCE_FN, useValue: nullGltfSpy }
+                ]
             });
 
             const testFixture = TestBed.createComponent(AngularLogo);
@@ -196,14 +211,14 @@ describe("AngularLogo", () => {
 
     describe("beforeRender hook", () => {
         it("should register beforeRender callback on construction", () => {
-            expect(beforeRender).toHaveBeenCalled();
+            expect(beforeRenderSpy).toHaveBeenCalled();
         });
 
         it("should rotate mesh on y-axis on beforeRender", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -219,7 +234,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -233,7 +248,7 @@ describe("AngularLogo", () => {
         });
 
         it("should handle missing mesh reference gracefully", () => {
-            (component as any).meshRef = jest.fn().mockReturnValue(null);
+            (component as any).meshRef = jasmine.createSpy().and.returnValue(null);
 
             expect(() => {
                 if ((component as any).beforeRenderCallback) {
@@ -246,7 +261,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -261,7 +276,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 10;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -482,8 +497,8 @@ describe("AngularLogo", () => {
 
     describe("Model lifecycle", () => {
         it("should provide onLoad callback", () => {
-            expect(gltfResource).toHaveBeenCalled();
-            const callArgs = (gltfResource as unknown as jest.Mock).mock.calls[0];
+            expect(gltfResourceSpy).toHaveBeenCalled();
+            const callArgs = gltfResourceSpy.calls.argsFor(0);
             expect(callArgs[1]).toBeDefined();
             expect(typeof callArgs[1].onLoad).toBe('function');
         });
@@ -502,7 +517,7 @@ describe("AngularLogo", () => {
 
         it("should update mesh reference on rotation", () => {
             const mockMesh = new THREE.Mesh();
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -519,7 +534,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -538,7 +553,7 @@ describe("AngularLogo", () => {
             mockMesh.position.set(1, 2, 3);
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -559,7 +574,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -577,7 +592,7 @@ describe("AngularLogo", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 

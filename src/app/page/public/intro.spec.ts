@@ -8,7 +8,7 @@
 
 describe("IntroPage Logic", () => {
     interface MockRouter {
-        navigate: jest.Mock;
+        navigate: jasmine.Spy;
     }
 
     // Mock implementation to test component behavior
@@ -46,7 +46,7 @@ describe("IntroPage Logic", () => {
 
     beforeEach(() => {
         mockRouter = {
-            navigate: jest.fn(),
+            navigate: jasmine.createSpy(),
         };
         mockComponent = new MockIntroPage(mockRouter);
     });

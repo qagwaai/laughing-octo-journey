@@ -1,6 +1,15 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, input, signal, viewChild } from "@angular/core";
-import { beforeRender, NgtArgs } from "angular-three";
+import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, InjectionToken, input, signal, viewChild } from "@angular/core";
+import { beforeRender as _beforeRender, NgtArgs } from "angular-three";
 import * as THREE from "three";
+
+/**
+ * Injection token wrapping angular-three's beforeRender so it can be replaced
+ * in unit tests without Jest's module-mocking infrastructure.
+ */
+export const BEFORE_RENDER_FN = new InjectionToken<typeof _beforeRender>(
+    'BEFORE_RENDER_FN',
+    { providedIn: 'root', factory: () => _beforeRender }
+);
 
 @Component({
     selector: "app-cube",
@@ -29,6 +38,7 @@ export class Cube {
     protected clicked = signal(false);
 
     constructor() {
+        const beforeRender = inject(BEFORE_RENDER_FN);
         beforeRender(({ delta }) => {
             this.meshRef().nativeElement.rotation.y += delta;
         });

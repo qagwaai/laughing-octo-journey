@@ -1,23 +1,14 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { Earth } from "./earth";
+import { Earth, BEFORE_RENDER_FN, TEXTURE_RESOURCE_FN } from "./earth";
 import { CUSTOM_ELEMENTS_SCHEMA } from "@angular/core";
-import { beforeRender } from "angular-three";
-import { textureResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
-
-jest.mock("angular-three");
-jest.mock("angular-three-soba/loaders");
-
-// Initialize the Angular testing environment
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-);
 
 describe("Earth", () => {
     let component: Earth;
     let fixture: ComponentFixture<Earth>;
+    let beforeRenderSpy: jasmine.Spy;
+    let textureResourceSpy: jasmine.Spy;
+    let beforeRenderCallbacks: Array<(state: any) => void>;
 
     const mockTexture = new THREE.Texture();
     mockTexture.wrapS = THREE.ClampToEdgeWrapping;
@@ -29,25 +20,29 @@ describe("Earth", () => {
     };
 
     beforeEach(async () => {
-        (textureResource as unknown as jest.Mock).mockReturnValue({
-            asReadonly: jest.fn().mockReturnValue({
-                value: jest.fn().mockReturnValue(mockTextures),
-            }),
+        beforeRenderCallbacks = [];
+        beforeRenderSpy = jasmine.createSpy('beforeRender').and.callFake((callback: any) => {
+            beforeRenderCallbacks.push(callback);
+            return () => {};
         });
 
-        const beforeRenderCallbacks: any[] = [];
-        (beforeRender as unknown as jest.Mock).mockImplementation((callback: any) => {
-            beforeRenderCallbacks.push(callback);
+        textureResourceSpy = jasmine.createSpy('textureResource').and.returnValue({
+            asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                value: jasmine.createSpy('value').and.returnValue(mockTextures),
+            }),
         });
 
         await TestBed.configureTestingModule({
             imports: [Earth],
+            providers: [
+                { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                { provide: TEXTURE_RESOURCE_FN, useValue: textureResourceSpy }
+            ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
         }).compileComponents();
 
         fixture = TestBed.createComponent(Earth);
         component = fixture.componentInstance;
-        // Store the callbacks on component after creation
         (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
 
@@ -95,13 +90,21 @@ describe("Earth", () => {
         });
 
         it("should return null if textures are not loaded", () => {
-            (textureResource as unknown as jest.Mock).mockReturnValue({
-                asReadonly: jest.fn().mockReturnValue({
-                    value: jest.fn().mockReturnValue(null),
+            const nullTextureSpy = jasmine.createSpy('textureResource').and.returnValue({
+                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
+                    value: jasmine.createSpy('value').and.returnValue(null),
                 }),
             });
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                imports: [Earth],
+                providers: [
+                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+                    { provide: TEXTURE_RESOURCE_FN, useValue: nullTextureSpy }
+                ],
+                schemas: [CUSTOM_ELEMENTS_SCHEMA],
+            });
 
-            // Create a fresh component instance with the new mock
             const testFixture = TestBed.createComponent(Earth);
             const testComponent = testFixture.componentInstance;
             const textures = (testComponent as any).textures.asReadonly().value();
@@ -109,22 +112,22 @@ describe("Earth", () => {
         });
 
         it("should call textureResource with correct texture paths", () => {
-            expect(textureResource).toHaveBeenCalled();
-            const callArgs = (textureResource as unknown as jest.Mock).mock.calls[0];
+            expect(textureResourceSpy).toHaveBeenCalled();
+            const callArgs = textureResourceSpy.calls.argsFor(0);
             expect(typeof callArgs[0]).toBe("function");
         });
     });
 
     describe("beforeRender hook", () => {
         it("should register beforeRender callback on construction", () => {
-            expect(beforeRender).toHaveBeenCalled();
+            expect(beforeRenderSpy).toHaveBeenCalled();
         });
 
         it("should rotate mesh on y-axis on beforeRender", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -137,7 +140,7 @@ describe("Earth", () => {
         });
 
         it("should handle missing mesh reference gracefully", () => {
-            (component as any).meshRef = jest.fn().mockReturnValue(null);
+            (component as any).meshRef = jasmine.createSpy().and.returnValue(null);
 
             expect(() => {
                 if ((component as any).beforeRenderCallback) {
@@ -147,7 +150,7 @@ describe("Earth", () => {
         });
 
         it("should handle undefined mesh element", () => {
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: undefined,
             });
 
@@ -177,7 +180,7 @@ describe("Earth", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.material = mockMaterial;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -195,7 +198,7 @@ describe("Earth", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.material = mockMaterial;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 

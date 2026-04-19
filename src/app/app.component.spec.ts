@@ -128,10 +128,10 @@ describe("AppComponent Logic", () => {
         });
 
         it("should log reset message to console", () => {
-            const consoleSpy = jest.spyOn(console, "log").mockImplementation();
+            const consoleSpy = spyOn(console, "log").and.callFake(() => {});
             mockComponent.reset();
             expect(consoleSpy).toHaveBeenCalledWith("Resetting billboard settings");
-            consoleSpy.mockRestore();
+            consoleSpy.calls.reset();
         });
     });
 

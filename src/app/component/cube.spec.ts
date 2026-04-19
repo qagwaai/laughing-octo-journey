@@ -1,36 +1,34 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { Cube } from "./cube";
+import { Cube, BEFORE_RENDER_FN } from "./cube";
 import { CUSTOM_ELEMENTS_SCHEMA } from "@angular/core";
-import { beforeRender } from "angular-three";
 import * as THREE from "three";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
 
-jest.mock("angular-three");
-
-// Initialize the Angular testing environment
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-);
+// The Jasmine equivalent of jest.mock('angular-three') for beforeRender:
+// provide BEFORE_RENDER_FN via TestBed so no ES module export is mutated.
 
 describe("Cube", () => {
     let component: Cube;
     let fixture: ComponentFixture<Cube>;
+    let beforeRenderSpy: jasmine.Spy;
+    let beforeRenderCallbacks: Array<(state: any) => void>;
 
     beforeEach(async () => {
-        const beforeRenderCallbacks: any[] = [];
-        (beforeRender as unknown as jest.Mock).mockImplementation((callback: any) => {
+        beforeRenderCallbacks = [];
+        beforeRenderSpy = jasmine.createSpy('beforeRender').and.callFake((callback: any) => {
             beforeRenderCallbacks.push(callback);
+            return () => {};
         });
 
         await TestBed.configureTestingModule({
             imports: [Cube],
+            providers: [
+                { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy }
+            ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
         }).compileComponents();
 
         fixture = TestBed.createComponent(Cube);
         component = fixture.componentInstance;
-        // Store the callbacks on component after creation
         (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
 
@@ -73,14 +71,14 @@ describe("Cube", () => {
 
     describe("beforeRender hook", () => {
         it("should register beforeRender callback on construction", () => {
-            expect(beforeRender).toHaveBeenCalled();
+            expect(beforeRenderSpy).toHaveBeenCalled();
         });
 
         it("should rotate mesh on y-axis on beforeRender", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -96,7 +94,7 @@ describe("Cube", () => {
             const mockMesh = new THREE.Mesh();
             mockMesh.rotation.y = 0;
 
-            (component as any).meshRef = jest.fn().mockReturnValue({
+            (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
@@ -411,3 +409,4 @@ describe("Cube", () => {
         });
     });
 });
+

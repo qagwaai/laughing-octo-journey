@@ -25,7 +25,7 @@ interface MockSocketService {
 }
 
 interface MockRouter {
-	navigate: jest.Mock;
+	navigate: jasmine.Spy;
 }
 
 interface MockSessionService {
@@ -170,7 +170,7 @@ describe('LoginPage', () => {
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		router = {
-			navigate: jest.fn(),
+			navigate: jasmine.createSpy(),
 		};
 		sessionService = createMockSessionService();
 		component = new MockLoginPage(socketService, router, sessionService);
@@ -196,7 +196,7 @@ describe('LoginPage', () => {
 			component.loginForm.invalid = true;
 			component.submit();
 			expect(component.loginForm.touched).toBe(true);
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it(`should emit '${LOGIN_EVENT}' with correct payload`, () => {
@@ -205,9 +205,9 @@ describe('LoginPage', () => {
 			component.loginForm.password = 'password123';
 			component.submit();
 
-			expect(socketService.emittedEvents).toHaveLength(1);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
 			expect(socketService.emittedEvents[0].event).toBe(LOGIN_EVENT);
-			expect(socketService.emittedEvents[0].data).toEqual<LoginRequest>({
+			expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				password: 'password123',
 			});

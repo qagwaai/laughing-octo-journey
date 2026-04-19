@@ -106,10 +106,10 @@ describe("CurrentRoute Logic", () => {
 
         it("should have all required rendering properties", () => {
             const options = mockComponent.getTextRenderingOptions();
-            expect(options).toHaveProperty("fontSize");
-            expect(options).toHaveProperty("color");
-            expect(options).toHaveProperty("letterSpacing");
-            expect(options).toHaveProperty("position");
+            expect(options.fontSize).toBeDefined();
+            expect(options.color).toBeDefined();
+            expect(options.letterSpacing).toBeDefined();
+            expect(options.position).toBeDefined();
         });
     });
 

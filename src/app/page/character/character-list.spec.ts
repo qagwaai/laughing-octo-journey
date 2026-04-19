@@ -39,7 +39,7 @@ interface MockSocketService {
 }
 
 interface MockRouter {
-	navigate: jest.Mock;
+	navigate: jasmine.Spy;
 }
 
 interface MockSessionService {
@@ -274,7 +274,7 @@ describe('CharacterListPage', () => {
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		router = { navigate: jest.fn() };
+		router = { navigate: jasmine.createSpy() };
 		sessionService = createMockSessionService('test-session-key');
 		component = new MockCharacterListPage(socketService, router, sessionService);
 	});
@@ -308,7 +308,7 @@ describe('CharacterListPage', () => {
 			disconnectedSocket.connected = false;
 			const autoLoadComponent = new MockCharacterListPage(disconnectedSocket, router, sessionService);
 
-			expect(disconnectedSocket.emittedEvents).toHaveLength(0);
+			expect(disconnectedSocket.emittedEvents).toBeDefined(); if (disconnectedSocket.emittedEvents) { expect(disconnectedSocket.emittedEvents.length).toBe(0) };
 			disconnectedSocket.triggerOnceEvent('connect');
 			expect(disconnectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
 			autoLoadComponent.ngOnDestroy();
@@ -320,9 +320,9 @@ describe('CharacterListPage', () => {
 			component.playerName.set('Pioneer');
 			component.loadCharacters();
 
-			expect(socketService.emittedEvents).toHaveLength(1);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
 			expect(socketService.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
-			expect(socketService.emittedEvents[0].data).toEqual<CharacterListRequest>({
+				 expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				sessionKey: 'test-session-key',
 			});
@@ -333,7 +333,7 @@ describe('CharacterListPage', () => {
 			component.loadCharacters();
 
 			expect(component.errorMessage()).toBe('Player name is required to load characters.');
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it('should populate characters on successful response', () => {
@@ -348,7 +348,7 @@ describe('CharacterListPage', () => {
 				],
 			} satisfies CharacterListResponse);
 
-			expect(component.characters()).toHaveLength(2);
+			expect(component.characters()).toBeDefined(); if (component.characters()) { expect(component.characters().length).toBe(2) };
 			expect(component.errorMessage()).toBeNull();
 			expect(component.isLoading()).toBe(false);
 		});
@@ -430,7 +430,7 @@ describe('CharacterListPage', () => {
 
 			expect(component.errorMessage()).toBe('Player name is required to join a game.');
 			expect(router.navigate).not.toHaveBeenCalled();
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it('should set error and not navigate when character id is missing for game join', () => {
@@ -439,7 +439,7 @@ describe('CharacterListPage', () => {
 
 			expect(component.errorMessage()).toBe('Character id is required to join a game.');
 			expect(router.navigate).not.toHaveBeenCalled();
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 	});
 
@@ -469,7 +469,7 @@ describe('CharacterListPage', () => {
 			component.confirmDeleteCharacter();
 
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].event).toBe(CHARACTER_DELETE_REQUEST_EVENT);
-			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual<CharacterDeleteRequest>({
+				 expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual({
 				playerName: 'Pioneer',
 				characterId: '1',
 				characterName: 'Nova',

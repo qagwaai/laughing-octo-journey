@@ -52,7 +52,7 @@ describe('SocketService', () => {
 
   describe('emit', () => {
     it('should warn if socket not connected', () => {
-      const warnSpy = jest.spyOn(console, 'warn');
+      const warnSpy = spyOn(console, 'warn');
       
       service.emit('test', { data: 'test' });
       
@@ -107,7 +107,7 @@ describe('SocketService', () => {
 
   describe('on', () => {
     it('should warn if socket not initialized', () => {
-      const warnSpy = jest.spyOn(console, 'warn');
+      const warnSpy = spyOn(console, 'warn');
       
       const unsubscribe = service.on('test', () => {});
       
@@ -146,7 +146,7 @@ describe('SocketService', () => {
 
   describe('once', () => {
     it('should warn if socket not initialized', () => {
-      const warnSpy = jest.spyOn(console, 'warn');
+      const warnSpy = spyOn(console, 'warn');
       
       service.once('test', () => {});
       

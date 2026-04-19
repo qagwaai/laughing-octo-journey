@@ -1,11 +1,18 @@
-import { AfterContentInit, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, input, signal, viewChild } from "@angular/core";
-import { beforeRender, NgtArgs } from "angular-three";
-import { textureResource } from "angular-three-soba/loaders";
+import { AfterContentInit, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, inject, InjectionToken, input, signal, viewChild } from "@angular/core";
+import { beforeRender as _beforeRender, NgtArgs } from "angular-three";
+import { textureResource as _textureResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
 import { Cursor } from "./cursor";
 import { Triplet } from '@pmndrs/cannon-worker-api';
 import { max } from "rxjs";
 import { NgtpEffectComposer, NgtpGodRays } from 'angular-three-postprocessing';
+
+export const BEFORE_RENDER_FN = new InjectionToken('BEFORE_RENDER_FN', {
+    providedIn: 'root', factory: () => _beforeRender
+});
+export const TEXTURE_RESOURCE_FN = new InjectionToken('TEXTURE_RESOURCE_FN', {
+    providedIn: 'root', factory: () => _textureResource
+});
 
 @Component({
     selector: "app-sol",
@@ -35,7 +42,7 @@ export class Sol {
     position = input<Triplet>([0, 0, 0]);
     
     protected meshRef = viewChild.required<ElementRef<THREE.Mesh>>('sol');
-    protected textures = textureResource(() => ({
+    protected textures = inject(TEXTURE_RESOURCE_FN)(() => ({
         sunTexture: "images/sol_surface.png",
         sunColorLookupTexture: "images/sol_colorshift.png",
         solarflareTexture: "images/solarflare.png",
@@ -48,6 +55,7 @@ export class Sol {
     protected clicked = signal(false);
 
     constructor() {
+        const beforeRender = inject(BEFORE_RENDER_FN);
         beforeRender(({ delta }) => {
             let solRef = this.meshRef()?.nativeElement;
             if (solRef) {

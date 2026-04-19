@@ -28,7 +28,7 @@ function createSignal<T>(initial: T) {
 }
 
 interface MockRouter {
-	navigate: jest.Mock;
+	navigate: jasmine.Spy;
 }
 
 interface MockSessionService {
@@ -224,7 +224,7 @@ describe('CharacterSetupPage', () => {
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
-		router = { navigate: jest.fn() };
+		router = { navigate: jasmine.createSpy() };
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
 		component = new MockCharacterSetupPage(router, socketService, sessionService);
@@ -276,7 +276,7 @@ describe('CharacterSetupPage', () => {
 			expect(component.characterForm.touched).toBe(true);
 			expect(component.isSaved()).toBe(false);
 			expect(component.successMessage()).toBeNull();
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it('should set error when playerName is missing', () => {
@@ -287,7 +287,7 @@ describe('CharacterSetupPage', () => {
 
 			expect(component.errorMessage()).toBe('Player name is required to save a character.');
 			expect(component.isSaved()).toBe(false);
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it('should emit save request in edit mode with updated character name', () => {
@@ -356,9 +356,9 @@ describe('CharacterSetupPage', () => {
 			component.characterForm.characterName = 'Nova-Prime';
 			component.saveCharacter();
 
-			expect(socketService.emittedEvents).toHaveLength(1);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
 			expect(socketService.emittedEvents[0].event).toBe(CHARACTER_ADD_REQUEST_EVENT);
-			expect(socketService.emittedEvents[0].data).toEqual<CharacterAddRequest>({
+				expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				characterName: 'Nova-Prime',
 				sessionKey: 'test-session-key',

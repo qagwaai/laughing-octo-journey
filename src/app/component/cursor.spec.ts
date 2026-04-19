@@ -1,23 +1,14 @@
 import { TestBed } from "@angular/core/testing";
-import { Cursor } from "./cursor";
+import { Cursor, OBJECT_EVENTS_FN } from "./cursor";
 import { DOCUMENT, ElementRef, Injector } from "@angular/core";
-import { objectEvents } from "angular-three";
 import * as THREE from "three";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
-
-jest.mock("angular-three");
-
-// Initialize the Angular testing environment
-TestBed.initTestEnvironment(
-    BrowserDynamicTestingModule,
-    platformBrowserDynamicTesting(),
-);
 
 describe("Cursor", () => {
     let mockMesh: any;
     let mockElementRef: ElementRef<any>;
     let mockDocument: Document;
     let mockInjector: Injector;
+    let objectEventsSpy: jasmine.Spy;
 
     beforeEach(() => {
         mockMesh = {
@@ -35,9 +26,8 @@ describe("Cursor", () => {
             },
         } as any;
 
-        (objectEvents as unknown as jest.Mock).mockImplementation(
+        objectEventsSpy = jasmine.createSpy('objectEvents').and.callFake(
             (objectFn: any, handlers: any) => {
-                // Return the handlers object for the test to use
                 return handlers;
             }
         );
@@ -47,6 +37,7 @@ describe("Cursor", () => {
                 Cursor,
                 { provide: DOCUMENT, useValue: mockDocument },
                 { provide: ElementRef, useValue: mockElementRef },
+                { provide: OBJECT_EVENTS_FN, useValue: objectEventsSpy }
             ],
         });
 
@@ -85,7 +76,7 @@ describe("Cursor", () => {
 
         it("should register event handlers when element is a mesh", () => {
             const directive = mockInjector.get(Cursor);
-            expect(objectEvents).toHaveBeenCalled();
+            expect(objectEventsSpy).toHaveBeenCalled();
         });
 
         it("should not register event handlers if element is not a mesh", () => {
@@ -101,30 +92,30 @@ describe("Cursor", () => {
                 ],
             });
 
-            (objectEvents as unknown as jest.Mock).mockClear();
+            objectEventsSpy.calls.reset();
             const injector = TestBed.inject(Injector);
             injector.get(Cursor);
 
             // objectEvents should not be called for non-mesh elements
-            expect(objectEvents).not.toHaveBeenCalled();
+            expect(objectEventsSpy).not.toHaveBeenCalled();
         });
     });
 
     describe("objectEvents integration", () => {
         it("should register objectEvents on construction", () => {
             mockInjector.get(Cursor);
-            expect(objectEvents).toHaveBeenCalled();
+            expect(objectEventsSpy).toHaveBeenCalled();
         });
 
         it("should pass the native mesh element to objectEvents", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             expect(typeof callArgs[0]).toBe("function");
         });
 
         it("should provide pointerover and pointerout handlers", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             const handlers = callArgs[1];
             expect(handlers.pointerover).toBeDefined();
             expect(handlers.pointerout).toBeDefined();
@@ -134,7 +125,7 @@ describe("Cursor", () => {
     describe("Event handler execution", () => {
         it("should execute pointerover handler without throwing", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             const handlers = callArgs[1];
 
             expect(() => {
@@ -144,7 +135,7 @@ describe("Cursor", () => {
 
         it("should execute pointerout handler without throwing", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             const handlers = callArgs[1];
 
             expect(() => {
@@ -205,12 +196,12 @@ describe("Cursor", () => {
     describe("Handler callbacks", () => {
         it("should call pointerover handler exactly once per event", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             const handlers = callArgs[1];
 
-            const spy = jest.fn();
+            const spy = jasmine.createSpy();
             const originalPointerover = handlers.pointerover;
-            handlers.pointerover = spy.mockImplementation(originalPointerover);
+            handlers.pointerover = spy.and.callFake(originalPointerover);
 
             handlers.pointerover();
             expect(spy).toHaveBeenCalledTimes(1);
@@ -218,12 +209,12 @@ describe("Cursor", () => {
 
         it("should call pointerout handler exactly once per event", () => {
             mockInjector.get(Cursor);
-            const callArgs = (objectEvents as unknown as jest.Mock).mock.calls[0];
+            const callArgs = objectEventsSpy.calls.argsFor(0);
             const handlers = callArgs[1];
 
-            const spy = jest.fn();
+            const spy = jasmine.createSpy();
             const originalPointerout = handlers.pointerout;
-            handlers.pointerout = spy.mockImplementation(originalPointerout);
+            handlers.pointerout = spy.and.callFake(originalPointerout);
 
             handlers.pointerout();
             expect(spy).toHaveBeenCalledTimes(1);

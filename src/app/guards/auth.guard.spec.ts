@@ -1,3 +1,5 @@
+export {};
+
 /**
  * Unit tests for authGuard
  *
@@ -14,7 +16,7 @@ interface MockSessionService {
 }
 
 interface MockRouter {
-	createUrlTree: jest.Mock;
+	createUrlTree: jasmine.Spy;
 }
 
 function createMockSessionService(initialKey: string | null = null): MockSessionService {
@@ -45,7 +47,7 @@ describe('authGuard', () => {
 
 	beforeEach(() => {
 		sessionService = createMockSessionService();
-		router = { createUrlTree: jest.fn().mockReturnValue({ type: 'redirect', url: 'login' }) };
+		router = { createUrlTree: jasmine.createSpy().and.returnValue({ type: 'redirect', url: 'login' }) };
 	});
 
 	it('should allow activation when a session key is present', () => {

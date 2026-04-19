@@ -33,7 +33,7 @@ interface MockSocketService {
 }
 
 interface MockRouter {
-	navigate: jest.Mock;
+	navigate: jasmine.Spy;
 }
 
 interface MockSessionService {
@@ -173,7 +173,7 @@ describe('RegistrationPage', () => {
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		router = { navigate: jest.fn() };
+		router = { navigate: jasmine.createSpy() };
 		sessionService = createMockSessionService();
 		component = new MockRegistrationPage(socketService, router, sessionService);
 	});
@@ -197,7 +197,7 @@ describe('RegistrationPage', () => {
 			component.registrationForm.invalid = true;
 			component.submit();
 			expect(component.registrationForm.touched).toBe(true);
-			expect(socketService.emittedEvents).toHaveLength(0);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		});
 
 		it('should set isSubmitting to true after submission', () => {
@@ -216,9 +216,9 @@ describe('RegistrationPage', () => {
 			component.registrationForm.password = 'password123';
 			component.submit();
 
-			expect(socketService.emittedEvents).toHaveLength(1);
+			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
 			expect(socketService.emittedEvents[0].event).toBe(REGISTER_EVENT);
-			expect(socketService.emittedEvents[0].data).toEqual<RegisterRequest>({
+			expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				email: 'pioneer@stellar.com',
 				password: 'password123',
