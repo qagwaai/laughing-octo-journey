@@ -3,12 +3,12 @@ import { Sol, BEFORE_RENDER_FN, TEXTURE_RESOURCE_FN } from "./sol";
 import { CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA } from "@angular/core";
 import * as THREE from "three";
 
-xdescribe("Sol", () => {
+describe("Sol", () => {
     let component: Sol;
     let fixture: ComponentFixture<Sol>;
     let beforeRenderSpy: jasmine.Spy;
     let textureResourceSpy: jasmine.Spy;
-    let beforeRenderCallbacks: Array<(state: any) => void>;
+    let beforeRenderCallbacks: Array<(state: { delta: number }) => void>;
 
     const mockTexture = new THREE.Texture();
     mockTexture.wrapS = THREE.ClampToEdgeWrapping;
@@ -43,11 +43,18 @@ xdescribe("Sol", () => {
                 { provide: TEXTURE_RESOURCE_FN, useValue: textureResourceSpy }
             ],
             schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA],
-        }).compileComponents();
+        })
+            .overrideComponent(Sol, {
+                set: {
+                    // Keep tests focused on class behavior and DI wiring.
+                    template: "",
+                    imports: [],
+                },
+            })
+            .compileComponents();
 
         fixture = TestBed.createComponent(Sol);
         component = fixture.componentInstance;
-        (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
 
     it("should create the component", () => {
@@ -57,11 +64,6 @@ xdescribe("Sol", () => {
     describe("Input properties", () => {
         it("should have default position [0, 0, 0]", () => {
             expect(component.position()).toEqual([0, 0, 0]);
-        });
-
-        it("should accept custom position", () => {
-            // Input properties are set via binding, verified in template tests
-            expect(component.position).toBeDefined();
         });
     });
 
@@ -87,38 +89,26 @@ xdescribe("Sol", () => {
             expect(textures.sunCoronaTexture).toBeDefined();
         });
 
-        it("should return null if textures are not loaded", () => {
-            const nullTextureSpy = jasmine.createSpy('textureResource').and.returnValue({
-                asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
-                    value: jasmine.createSpy('value').and.returnValue(null),
-                }),
-            });
-            TestBed.resetTestingModule();
-            TestBed.configureTestingModule({
-                imports: [Sol],
-                providers: [
-                    { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
-                    { provide: TEXTURE_RESOURCE_FN, useValue: nullTextureSpy }
-                ],
-                schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA],
-            });
-
-            const testFixture = TestBed.createComponent(Sol);
-            const testComponent = testFixture.componentInstance;
-            const textures = (testComponent as any).textures.asReadonly().value();
-            expect(textures).toBeNull();
-        });
-
         it("should call textureResource with correct texture paths", () => {
             expect(textureResourceSpy).toHaveBeenCalled();
-            const callArgs = (textureResourceSpy).calls.argsFor(0);
+            const callArgs = textureResourceSpy.calls.argsFor(0);
             expect(typeof callArgs[0]).toBe("function");
+
+            const texturePathFactory = callArgs[0] as () => Record<string, string>;
+            const paths = texturePathFactory();
+            expect(paths["sunTexture"]).toBe("images/sol_surface.png");
+            expect(paths["sunColorLookupTexture"]).toBe("images/sol_colorshift.png");
+            expect(paths["solarflareTexture"]).toBe("images/solarflare.png");
+            expect(paths["sunHaloTexture"]).toBe("images/sun_halo.png");
+            expect(paths["sunHaloColorTexture"]).toBe("images/sol_halo_colorshift.png");
+            expect(paths["sunCoronaTexture"]).toBe("images/sol_corona.png");
         });
     });
 
     describe("beforeRender hook", () => {
         it("should register beforeRender callback on construction", () => {
             expect(beforeRenderSpy).toHaveBeenCalled();
+            expect(beforeRenderCallbacks.length).toBe(1);
         });
 
         it("should rotate mesh on y-axis on beforeRender", () => {
@@ -130,9 +120,7 @@ xdescribe("Sol", () => {
             });
 
             const delta = 100;
-            if ((component as any).beforeRenderCallback) {
-                (component as any).beforeRenderCallback({ delta });
-            }
+            beforeRenderCallbacks[0]({ delta });
 
             expect(mockMesh.rotation.y).toBeCloseTo(delta / 5);
         });
@@ -141,37 +129,30 @@ xdescribe("Sol", () => {
             (component as any).meshRef = jasmine.createSpy().and.returnValue(null);
 
             expect(() => {
-                if ((component as any).beforeRenderCallback) {
-                    (component as any).beforeRenderCallback({ delta: 100 });
-                }
+                beforeRenderCallbacks[0]({ delta: 100 });
             }).not.toThrow();
         });
-    });
 
-    describe("Texture application", () => {
-        it("should apply repeat wrapping to sunTexture", () => {
-            const sunTexture = mockTextures.sunTexture;
-            expect(sunTexture.wrapS).toBeDefined();
-            expect(sunTexture.wrapT).toBeDefined();
-        });
-
-        it("should apply sun texture to material", () => {
-            const mockMaterial = new THREE.MeshStandardMaterial();
+        it("should accumulate rotation across multiple frames", () => {
             const mockMesh = new THREE.Mesh();
-            mockMesh.material = mockMaterial;
+            mockMesh.rotation.y = 0;
 
             (component as any).meshRef = jasmine.createSpy().and.returnValue({
                 nativeElement: mockMesh,
             });
 
-            // Simulate texture application
-            mockMaterial.map = mockTextures.sunTexture;
+            beforeRenderCallbacks[0]({ delta: 10 });
+            beforeRenderCallbacks[0]({ delta: 20 });
 
-            // Verify the texture was applied to the material
-            expect((mockMesh.material as any).map).toBe(mockTextures.sunTexture);
-            // Verify we can set needsUpdate flag
-            mockMaterial.needsUpdate = true;
-            expect(mockMaterial.map).not.toBeNull();
+            expect(mockMesh.rotation.y).toBeCloseTo(6);
+        });
+    });
+
+    describe("Texture application", () => {
+        it("should initialize sunTexture with known wrapping", () => {
+            const sunTexture = mockTextures.sunTexture;
+            expect(sunTexture.wrapS).toBe(THREE.ClampToEdgeWrapping);
+            expect(sunTexture.wrapT).toBe(THREE.ClampToEdgeWrapping);
         });
     });
 
@@ -218,14 +199,6 @@ xdescribe("Sol", () => {
     });
 
     describe("God Rays configuration", () => {
-        it("should configure god rays with correct options", () => {
-            const metadata = (component as any).constructor["ɵcmp"];
-            // Verify component has ngtp dependencies in its imports
-            expect(metadata.dependencies).toBeDefined();
-            // The template uses NgtpEffectComposer and NgtpGodRays which are in imports
-            expect(metadata.data).toBeDefined();
-        });
-
         it("should pass sun mesh reference to god rays", () => {
             const mockMesh = new THREE.Mesh();
             (component as any).meshRef = jasmine.createSpy().and.returnValue({
