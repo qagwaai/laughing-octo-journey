@@ -309,7 +309,7 @@ describe('GameJoinPage', () => {
 		});
 
 		const normalizeDroneSummary = (drone: { id: string; name?: string; droneName?: string; displayName?: string }) => ({
-			...drone,
+			id: drone.id,
 			name: drone.name?.trim() || drone.droneName?.trim() || drone.displayName?.trim() || drone.id,
 		});
 
@@ -325,8 +325,8 @@ describe('GameJoinPage', () => {
 		});
 
 		expect(component.drones()).toEqual([
-			{ id: 'd-1', droneName: 'Surveyor', name: 'Surveyor' },
-			{ id: 'd-2', name: 'Guardian', displayName: 'Guardian' },
+			{ id: 'd-1', name: 'Surveyor' },
+			{ id: 'd-2', name: 'Guardian' },
 		]);
 
 		component.ngOnDestroy();
@@ -349,7 +349,7 @@ describe('GameJoinPage', () => {
 			distanceUnit?: 'km';
 			velocityUnit?: 'km/s';
 		}) => ({
-			...drone,
+			id: drone.id,
 			name: drone.name?.trim() || drone.id,
 			kinematics: drone.location && drone.velocityVector ? {
 				position: drone.location,
