@@ -35,4 +35,6 @@ export default class DroneViewSpecs {
 		specsheet: "images/Expendable_Dart_Drone_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"
 	}));
 
+	// Expose Math for template usage with lighting calculations
+	protected Math = Math;
 }
