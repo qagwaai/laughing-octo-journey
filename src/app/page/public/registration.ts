@@ -54,10 +54,20 @@ export default class RegistrationPage implements OnDestroy {
 		}
 
 		const { playerName, email, password } = this.registrationForm.value;
+		const normalizedPlayerName = playerName?.trim() ?? '';
+		const normalizedEmail = email?.trim() ?? '';
+		const normalizedPassword = password ?? '';
+
+		if (!normalizedPlayerName || !normalizedEmail || !normalizedPassword) {
+			this.registrationForm.markAllAsTouched();
+			this.errorMessage.set('Player name, email, and password are required.');
+			return;
+		}
+
 		const request: RegisterRequest = {
-			playerName: playerName!,
-			email: email!,
-			password: password!,
+			playerName: normalizedPlayerName,
+			email: normalizedEmail,
+			password: normalizedPassword,
 		};
 
 		this.isSubmitting.set(true);

@@ -124,7 +124,21 @@ class MockRegistrationPage {
 		}
 
 		const { playerName, email, password } = this.registrationForm.value;
-		const request: RegisterRequest = { playerName: playerName!, email: email!, password: password! };
+		const normalizedPlayerName = playerName?.trim() ?? '';
+		const normalizedEmail = email?.trim() ?? '';
+		const normalizedPassword = password ?? '';
+
+		if (!normalizedPlayerName || !normalizedEmail || !normalizedPassword) {
+			this.registrationForm.markAllAsTouched();
+			this.errorMessage.set('Player name, email, and password are required.');
+			return;
+		}
+
+		const request: RegisterRequest = {
+			playerName: normalizedPlayerName,
+			email: normalizedEmail,
+			password: normalizedPassword,
+		};
 
 		this.isSubmitting.set(true);
 		this.successMessage.set(null);
@@ -211,8 +225,8 @@ describe('RegistrationPage', () => {
 
 		it(`should emit '${REGISTER_EVENT}' with correct payload`, () => {
 			component.registrationForm.invalid = false;
-			component.registrationForm.playerName = 'Pioneer';
-			component.registrationForm.email = 'pioneer@stellar.com';
+			component.registrationForm.playerName = '  Pioneer  ';
+			component.registrationForm.email = '  pioneer@stellar.com  ';
 			component.registrationForm.password = 'password123';
 			component.submit();
 
@@ -223,6 +237,18 @@ describe('RegistrationPage', () => {
 				email: 'pioneer@stellar.com',
 				password: 'password123',
 			});
+		});
+
+		it('should reject whitespace-only player name', () => {
+			component.registrationForm.invalid = false;
+			component.registrationForm.playerName = '   ';
+			component.registrationForm.email = 'pioneer@stellar.com';
+			component.registrationForm.password = 'password123';
+			component.submit();
+
+			expect(component.registrationForm.touched).toBe(true);
+			expect(component.errorMessage()).toBe('Player name, email, and password are required.');
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it(`should register a listener for '${REGISTER_RESPONSE_EVENT}'`, () => {

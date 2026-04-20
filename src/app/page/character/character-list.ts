@@ -83,7 +83,7 @@ export default class CharacterListPage implements OnDestroy {
 			(response: CharacterListResponse) => {
 				this.isLoading.set(false);
 				if (response.success) {
-					this.characters.set(response.characters ?? []);
+					this.characters.set(this.normalizeCharacters(response.characters));
 				} else {
 					this.characters.set([]);
 					this.errorMessage.set(response.message);
@@ -94,6 +94,45 @@ export default class CharacterListPage implements OnDestroy {
 
 		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
+	}
+
+	private normalizeCharacters(characters: unknown): PlayerCharacterSummary[] {
+		if (!Array.isArray(characters)) {
+			return [];
+		}
+
+		return characters.map((raw, index) => {
+			const item = (raw ?? {}) as {
+				id?: unknown;
+				characterId?: unknown;
+				characterName?: unknown;
+				name?: unknown;
+				character?: { name?: unknown };
+				level?: unknown;
+				createdAt?: unknown;
+			};
+
+			const nameFromObject =
+				typeof item.character?.name === 'string' ? item.character.name : undefined;
+			const resolvedCharacterName =
+				typeof item.characterName === 'string'
+					? item.characterName
+					: typeof item.name === 'string'
+						? item.name
+						: nameFromObject;
+
+			return {
+				id:
+					typeof item.id === 'string'
+						? item.id
+						: typeof item.characterId === 'string'
+							? item.characterId
+							: `char-${index}`,
+				characterName: (resolvedCharacterName ?? '').trim(),
+				level: typeof item.level === 'number' ? item.level : undefined,
+				createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
+			};
+		});
 	}
 
 	requestDeleteCharacter(character: PlayerCharacterSummary): void {

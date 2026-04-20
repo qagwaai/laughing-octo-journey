@@ -149,7 +149,7 @@ class MockCharacterListPage {
 			(response: CharacterListResponse) => {
 				this.isLoading.set(false);
 				if (response.success) {
-					this.characters.set(response.characters ?? []);
+					this.characters.set(this.normalizeCharacters(response.characters));
 				} else {
 					this.characters.set([]);
 					this.errorMessage.set(response.message);
@@ -160,6 +160,45 @@ class MockCharacterListPage {
 
 		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
 		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
+	}
+
+	private normalizeCharacters(characters: unknown): any[] {
+		if (!Array.isArray(characters)) {
+			return [];
+		}
+
+		return characters.map((raw, index) => {
+			const item = (raw ?? {}) as {
+				id?: unknown;
+				characterId?: unknown;
+				characterName?: unknown;
+				name?: unknown;
+				character?: { name?: unknown };
+				level?: unknown;
+				createdAt?: unknown;
+			};
+
+			const nameFromObject =
+				typeof item.character?.name === 'string' ? item.character.name : undefined;
+			const resolvedCharacterName =
+				typeof item.characterName === 'string'
+					? item.characterName
+					: typeof item.name === 'string'
+						? item.name
+						: nameFromObject;
+
+			return {
+				id:
+					typeof item.id === 'string'
+						? item.id
+						: typeof item.characterId === 'string'
+							? item.characterId
+							: `char-${index}`,
+				characterName: (resolvedCharacterName ?? '').trim(),
+				level: typeof item.level === 'number' ? item.level : undefined,
+				createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
+			};
+		});
 	}
 
 	requestDeleteCharacter(character: any): void {
@@ -351,6 +390,24 @@ describe('CharacterListPage', () => {
 			expect(component.characters()).toBeDefined(); if (component.characters()) { expect(component.characters().length).toBe(2) };
 			expect(component.errorMessage()).toBeNull();
 			expect(component.isLoading()).toBe(false);
+		});
+
+		it('should map alternate backend name fields to characterName', () => {
+			component.loadCharacters();
+			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characters: [
+					{ id: '1', name: 'Nova' },
+					{ characterId: '2', character: { name: 'Atlas' } },
+				],
+			} as any);
+
+			expect(component.characters()).toEqual([
+				{ id: '1', characterName: 'Nova', level: undefined, createdAt: undefined },
+				{ id: '2', characterName: 'Atlas', level: undefined, createdAt: undefined },
+			]);
 		});
 
 		it('should set error and clear list on failure response', () => {

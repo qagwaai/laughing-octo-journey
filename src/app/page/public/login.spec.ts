@@ -107,9 +107,19 @@ class MockLoginPage {
 		}
 
 		const { playerName, password } = this.loginForm.value;
+		const normalizedPlayerName = playerName?.trim() ?? '';
+		const normalizedPassword = password ?? '';
+
+		if (!normalizedPlayerName || !normalizedPassword) {
+			this.loginForm.markAllAsTouched();
+			this.errorMessage.set('Player name and password are required.');
+			this.canNavigateToRegister.set(false);
+			return;
+		}
+
 		const request: LoginRequest = {
-			playerName: playerName!,
-			password: password!,
+			playerName: normalizedPlayerName,
+			password: normalizedPassword,
 		};
 
 		this.isSubmitting.set(true);
@@ -201,7 +211,7 @@ describe('LoginPage', () => {
 
 		it(`should emit '${LOGIN_EVENT}' with correct payload`, () => {
 			component.loginForm.invalid = false;
-			component.loginForm.playerName = 'Pioneer';
+			component.loginForm.playerName = '  Pioneer  ';
 			component.loginForm.password = 'password123';
 			component.submit();
 
@@ -211,6 +221,17 @@ describe('LoginPage', () => {
 				playerName: 'Pioneer',
 				password: 'password123',
 			});
+		});
+
+		it('should reject whitespace-only player name', () => {
+			component.loginForm.invalid = false;
+			component.loginForm.playerName = '   ';
+			component.loginForm.password = 'password123';
+			component.submit();
+
+			expect(component.loginForm.touched).toBe(true);
+			expect(component.errorMessage()).toBe('Player name and password are required.');
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it(`should register a listener for '${LOGIN_RESPONSE_EVENT}'`, () => {

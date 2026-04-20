@@ -47,9 +47,19 @@ export default class LoginPage implements OnDestroy {
 		}
 
 		const { playerName, password } = this.loginForm.value;
+		const normalizedPlayerName = playerName?.trim() ?? '';
+		const normalizedPassword = password ?? '';
+
+		if (!normalizedPlayerName || !normalizedPassword) {
+			this.loginForm.markAllAsTouched();
+			this.errorMessage.set('Player name and password are required.');
+			this.canNavigateToRegister.set(false);
+			return;
+		}
+
 		const request: LoginRequest = {
-			playerName: playerName!,
-			password: password!,
+			playerName: normalizedPlayerName,
+			password: normalizedPassword,
 		};
 
 		this.isSubmitting.set(true);
