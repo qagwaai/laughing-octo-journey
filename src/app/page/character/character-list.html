@@ -1,43 +1,46 @@
 <div class="character-list-container">
-	<h1>Character List</h1>
-	<p class="subtitle">Review characters created for your player profile.</p>
+	<app-guarded-left-menu [playerName]="playerName()"></app-guarded-left-menu>
+	<div class="page-main">
+		<h1>Character List</h1>
+		<p class="subtitle">Review characters created for your player profile.</p>
 
-	@if (playerName()) {
-		<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
-	}
+		@if (playerName()) {
+			<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
+		}
 
-	<button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
-		{{ isLoading() ? 'Loading...' : 'Load Characters' }}
-	</button>
-	<button class="setup-btn" (click)="navigateToCharacterSetup()">Create / Edit Character</button>
+		<button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
+			{{ isLoading() ? 'Loading...' : 'Load Characters' }}
+		</button>
+		<button class="setup-btn" (click)="navigateToCharacterSetup()">Create / Edit Character</button>
 
-	@if (errorMessage()) {
-		<div class="status-message error-message">{{ errorMessage() }}</div>
-	}
+		@if (errorMessage()) {
+			<div class="status-message error-message">{{ errorMessage() }}</div>
+		}
 
-	@if (!errorMessage() && !isLoading() && characters().length === 0) {
-		<p class="empty-state">No characters loaded yet.</p>
-	}
+		@if (!errorMessage() && !isLoading() && characters().length === 0) {
+			<p class="empty-state">No characters loaded yet.</p>
+		}
 
-	@if (characters().length > 0) {
-		<ul class="character-list">
-			@for (character of characters(); track character.id) {
-				<li class="character-item">
-					<div class="character-row">
-						<div class="character-name">{{ character.characterName }}</div>
-						<div class="character-actions">
-							<button class="join-link" type="button" (click)="navigateToGameJoin(character)">Join Game</button>
-							<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">Edit</button>
-							<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
+		@if (characters().length > 0) {
+			<ul class="character-list">
+				@for (character of characters(); track character.id) {
+					<li class="character-item">
+						<div class="character-row">
+							<div class="character-name">{{ character.characterName }}</div>
+							<div class="character-actions">
+								<button class="join-link" type="button" (click)="navigateToGameJoin(character)">Join Game</button>
+								<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">Edit</button>
+								<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">Delete</button>
+							</div>
 						</div>
-					</div>
-					@if (character.level !== undefined) {
-						<div class="character-meta">Level {{ character.level }}</div>
-					}
-				</li>
-			}
-		</ul>
-	}
+						@if (character.level !== undefined) {
+							<div class="character-meta">Level {{ character.level }}</div>
+						}
+					</li>
+				}
+			</ul>
+		}
+	</div>
 
 	@if (pendingDeleteCharacter()) {
 		<div class="dialog-backdrop">

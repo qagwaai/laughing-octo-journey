@@ -1,0 +1,32 @@
+.ops-menu {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	position: sticky;
+	top: 1rem;
+}
+
+.ops-menu button {
+	padding: 0.45rem 0.55rem;
+	border-radius: 8px;
+	border: 1px solid rgba(140, 190, 255, 0.35);
+	background: rgba(20, 33, 56, 0.9);
+	color: #e8f2ff;
+	font-size: 0.82rem;
+	cursor: pointer;
+}
+
+.ops-menu button:hover {
+	background: rgba(35, 57, 95, 0.95);
+}
+
+.ops-menu button.logout {
+	border-color: rgba(255, 150, 150, 0.45);
+	background: rgba(80, 24, 24, 0.9);
+}
+
+@media (max-width: 900px) {
+	.ops-menu {
+		position: static;
+	}
+}

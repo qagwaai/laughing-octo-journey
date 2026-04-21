@@ -15,6 +15,7 @@ import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { Triple } from '../../model/triple';
+import { GuardedLeftMenu } from './guarded-left-menu';
 
 interface GameJoinNavigationState {
 	playerName?: string;
@@ -26,6 +27,7 @@ interface GameJoinNavigationState {
 	templateUrl: './game-join.html',
 	styleUrls: ['./game-join.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
+	imports: [GuardedLeftMenu],
 })
 export default class GameJoinPage {
 	private router = inject(Router);

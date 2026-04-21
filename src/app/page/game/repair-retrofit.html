@@ -1,0 +1,20 @@
+<div class="ops-page-container">
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+	<div class="page-main">
+		<h1>Repair &amp; Retrofit</h1>
+		<p class="subtitle">Maintenance bay work orders and hardware upgrade planning.</p>
+
+		@if (playerName()) {
+			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+		}
+
+		@if (joinCharacter()) {
+			<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+		}
+
+		<section class="ops-card">
+			<h2>Service Queue</h2>
+			<p>Sample module: review damaged components, estimated repair windows, and retrofit options.</p>
+		</section>
+	</div>
+</div>

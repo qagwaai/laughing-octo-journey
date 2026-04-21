@@ -2,8 +2,15 @@ import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
+import CharacterProfilePage from './page/game/character-profile';
 import DroneViewSpecsPage from './page/game/drone-view-specs';
+import DroneHangarPage from './page/game/drone-hangar';
+import FabricationLabPage from './page/game/fabrication-lab';
 import GameJoinPage from './page/game/game-join';
+import LogoutPage from './page/game/logout';
+import MarketHubPage from './page/game/market-hub';
+import RepairRetrofitPage from './page/game/repair-retrofit';
+import StellarInitiationPage from './page/game/stellar-initiation';
 import DroneViewSpecs from './scene/drone-view-specs';
 
 const routes: Routes = [
@@ -91,6 +98,48 @@ const routes: Routes = [
 		path: 'game-join',
 		outlet: 'left',
 		component: GameJoinPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'stellar-initiation',
+		outlet: 'left',
+		component: StellarInitiationPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'character-profile',
+		outlet: 'left',
+		component: CharacterProfilePage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'drone-hangar',
+		outlet: 'left',
+		component: DroneHangarPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'repair-retrofit',
+		outlet: 'left',
+		component: RepairRetrofitPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'market-hub',
+		outlet: 'left',
+		component: MarketHubPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'fabrication-lab',
+		outlet: 'left',
+		component: FabricationLabPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'logout',
+		outlet: 'left',
+		component: LogoutPage,
 		canActivate: [authGuard],
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },

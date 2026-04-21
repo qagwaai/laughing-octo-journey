@@ -1,39 +1,42 @@
 <div class="character-setup-container">
-	<h1>{{ isEditMode() ? 'Edit Character' : 'Character Setup' }}</h1>
-	<p class="subtitle">{{ isEditMode() ? 'Update your pilot profile.' : 'Finalize your pilot profile before launch.' }}</p>
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="editCharacter()"></app-guarded-left-menu>
+	<div class="page-main">
+		<h1>{{ isEditMode() ? 'Edit Character' : 'Character Setup' }}</h1>
+		<p class="subtitle">{{ isEditMode() ? 'Update your pilot profile.' : 'Finalize your pilot profile before launch.' }}</p>
 
-	@if (playerName()) {
-		<p class="player-name">Logged in as: <strong>{{ playerName() }}</strong></p>
-	}
+		@if (playerName()) {
+			<p class="player-name">Logged in as: <strong>{{ playerName() }}</strong></p>
+		}
 
-	<form [formGroup]="characterForm" (ngSubmit)="saveCharacter()" class="character-setup-form">
-		<div class="form-group">
-			<label for="characterName">Character Name</label>
-			<input
-				id="characterName"
-				type="text"
-				formControlName="characterName"
-				placeholder="Enter your character name"
-			/>
-			@if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
-				<span class="field-error">
-					@if (characterForm.get('characterName')?.errors?.['required']) { Character name is required. }
-					@if (characterForm.get('characterName')?.errors?.['minlength']) { Must be at least 2 characters. }
-					@if (characterForm.get('characterName')?.errors?.['maxlength']) { Must be 24 characters or fewer. }
-				</span>
-			}
-		</div>
+		<form [formGroup]="characterForm" (ngSubmit)="saveCharacter()" class="character-setup-form">
+			<div class="form-group">
+				<label for="characterName">Character Name</label>
+				<input
+					id="characterName"
+					type="text"
+					formControlName="characterName"
+					placeholder="Enter your character name"
+				/>
+				@if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
+					<span class="field-error">
+						@if (characterForm.get('characterName')?.errors?.['required']) { Character name is required. }
+						@if (characterForm.get('characterName')?.errors?.['minlength']) { Must be at least 2 characters. }
+						@if (characterForm.get('characterName')?.errors?.['maxlength']) { Must be 24 characters or fewer. }
+					</span>
+				}
+			</div>
 
-		<button type="submit" [disabled]="characterForm.invalid || isSubmitting()" class="submit-btn">
-			{{ isSubmitting() ? 'Saving Character...' : (isEditMode() ? 'Save Character Changes' : 'Save Character') }}
-		</button>
-		<button type="button" class="list-btn" (click)="navigateToCharacterList()">View Character List</button>
-	</form>
+			<button type="submit" [disabled]="characterForm.invalid || isSubmitting()" class="submit-btn">
+				{{ isSubmitting() ? 'Saving Character...' : (isEditMode() ? 'Save Character Changes' : 'Save Character') }}
+			</button>
+			<button type="button" class="list-btn" (click)="navigateToCharacterList()">View Character List</button>
+		</form>
 
-	@if (errorMessage()) {
-		<div class="status-message error-message">{{ errorMessage() }}</div>
-	}
-	@if (isSaved() && successMessage()) {
-		<div class="status-message success-message">{{ successMessage() }}</div>
-	}
+		@if (errorMessage()) {
+			<div class="status-message error-message">{{ errorMessage() }}</div>
+		}
+		@if (isSaved() && successMessage()) {
+			<div class="status-message success-message">{{ successMessage() }}</div>
+		}
+	</div>
 </div>

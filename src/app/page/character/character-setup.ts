@@ -13,6 +13,7 @@ import {
 	CharacterEditRequest,
 	CharacterEditResponse,
 } from '../../model/character-edit';
+import { GuardedLeftMenu } from '../game/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
@@ -29,7 +30,7 @@ interface CharacterSetupNavigationState {
 	templateUrl: './character-setup.html',
 	styleUrls: ['./character-setup.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [ReactiveFormsModule],
+	imports: [ReactiveFormsModule, GuardedLeftMenu],
 })
 export default class CharacterSetupPage implements OnDestroy {
 	private fb = inject(FormBuilder);

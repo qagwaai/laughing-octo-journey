@@ -1,53 +1,56 @@
 <div class="game-join-container">
-	<h1>Game Join</h1>
-	<p class="subtitle">Preparing to join with your selected character.</p>
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+	<div class="page-main">
+		<h1>Game Join</h1>
+		<p class="subtitle">Preparing to join with your selected character.</p>
 
-	@if (playerName()) {
-		<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
-	}
-
-	<p class="character-display">
-		Character: <strong>{{ characterName() }}</strong>
-	</p>
-
-	<section class="drone-list-section">
-		<h2>Drones</h2>
-
-		@if (isLoadingDrones()) {
-			<p class="drone-status">Loading drones...</p>
+		@if (playerName()) {
+			<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
 		}
 
-		@if (droneListError()) {
-			<p class="drone-status error">{{ droneListError() }}</p>
-		}
+		<p class="character-display">
+			Character: <strong>{{ characterName() }}</strong>
+		</p>
 
-		@if (!isLoadingDrones() && !droneListError() && drones().length === 0) {
-			<p class="drone-status">No drones found for this character.</p>
-		}
+		<section class="drone-list-section">
+			<h2>Drones</h2>
 
-		@if (drones().length > 0) {
-			<ul class="drone-list">
-				@for (drone of drones(); track drone.id) {
-					<li class="drone-item">
-						<div class="drone-row">
-							<div class="drone-identity">
-								<div class="drone-name"><strong>Name:</strong> {{ getDroneDisplayName(drone) }}</div>
-								<div class="drone-id"><strong>ID:</strong> {{ drone.id }}</div>
+			@if (isLoadingDrones()) {
+				<p class="drone-status">Loading drones...</p>
+			}
+
+			@if (droneListError()) {
+				<p class="drone-status error">{{ droneListError() }}</p>
+			}
+
+			@if (!isLoadingDrones() && !droneListError() && drones().length === 0) {
+				<p class="drone-status">No drones found for this character.</p>
+			}
+
+			@if (drones().length > 0) {
+				<ul class="drone-list">
+					@for (drone of drones(); track drone.id) {
+						<li class="drone-item">
+							<div class="drone-row">
+								<div class="drone-identity">
+									<div class="drone-name"><strong>Name:</strong> {{ getDroneDisplayName(drone) }}</div>
+									<div class="drone-id"><strong>ID:</strong> {{ drone.id }}</div>
+								</div>
+								<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">View Specs</button>
 							</div>
-							<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">View Specs</button>
-						</div>
-						@if (drone.model || drone.status) {
-							<div class="drone-meta">
-								{{ drone.model ?? 'Unknown Model' }}
-								@if (drone.status) {
-									<span> - {{ drone.status }}</span>
-								}
-							</div>
-						}
-						<div class="drone-kinematics"><strong>Kinematics:</strong> {{ getDroneKinematicsSummary(drone) }}</div>
-					</li>
-				}
-			</ul>
-		}
-	</section>
+							@if (drone.model || drone.status) {
+								<div class="drone-meta">
+									{{ drone.model ?? 'Unknown Model' }}
+									@if (drone.status) {
+										<span> - {{ drone.status }}</span>
+									}
+								</div>
+							}
+							<div class="drone-kinematics"><strong>Kinematics:</strong> {{ getDroneKinematicsSummary(drone) }}</div>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	</div>
 </div>

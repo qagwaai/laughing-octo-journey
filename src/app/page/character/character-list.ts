@@ -17,6 +17,7 @@ import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
 } from '../../model/game-join';
+import { GuardedLeftMenu } from '../game/guarded-left-menu';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -26,6 +27,7 @@ import { SocketService } from '../../services/socket.service';
 	templateUrl: './character-list.html',
 	styleUrls: ['./character-list.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
+	imports: [GuardedLeftMenu],
 })
 export default class CharacterListPage implements OnDestroy {
 	private socketService = inject(SocketService);

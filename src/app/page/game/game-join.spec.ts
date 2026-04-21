@@ -102,7 +102,7 @@ class MockGameJoinPage {
 	}
 
 	navigateToDroneSpecs(drone: { id: string; name: string; status?: string; model?: string }): void {
-		this.router.navigate([{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName: this.playerName(),
@@ -427,7 +427,7 @@ describe('GameJoinPage', () => {
 		component.navigateToDroneSpecs(drone);
 
 		expect(router.navigate).toHaveBeenCalledWith(
-			[{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }],
+			[{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }],
 			{
 				preserveFragment: true,
 				state: {
