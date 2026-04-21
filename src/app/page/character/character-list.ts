@@ -225,7 +225,7 @@ export default class CharacterListPage implements OnDestroy {
 		};
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
-		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName,

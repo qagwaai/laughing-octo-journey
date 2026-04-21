@@ -60,6 +60,15 @@ import { RoutedScene } from './routed-scene';
                 scene graph
               </a>
             </li>
+            <li>
+              <a
+                (click)="navigateTo('opening-cold-boot', 'opening-cold-boot')"
+                [class.text-blue-500]="isRouteActive('opening-cold-boot')"
+                class="underline hover:text-blue-400 cursor-pointer"
+              >
+                cold boot
+              </a>
+            </li>
           </ul>
         </nav>
       </div>

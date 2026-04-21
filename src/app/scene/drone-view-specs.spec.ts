@@ -1,3 +1,5 @@
+export {};
+
 function createSignal<T>(initial: T) {
 	let value = initial;
 	const sig = () => value;

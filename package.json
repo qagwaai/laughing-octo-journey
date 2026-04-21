@@ -6,10 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
-    "test:watch": "ng test",
-    "test:ci": "ng test --watch=false --code-coverage",
-    "test:debug": "ng test --browsers=Chrome --watch"
+    "test": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test",
+    "test:watch": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test",
+    "test:ci": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test --watch=false --code-coverage",
+    "test:debug": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test --browsers=Chrome --watch"
   },
   "private": true,
   "dependencies": {

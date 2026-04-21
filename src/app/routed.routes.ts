@@ -12,6 +12,8 @@ import MarketHubPage from './page/game/market-hub';
 import RepairRetrofitPage from './page/game/repair-retrofit';
 import StellarInitiationPage from './page/game/stellar-initiation';
 import DroneViewSpecs from './scene/drone-view-specs';
+import ColdBootOpeningPage from './page/opening/cold-boot';
+import ColdBootHudScene from './scene/hud/cold-boot-hud-scene';
 
 const routes: Routes = [
 	// Primary outlet routes (right panel - canvas content)
@@ -56,6 +58,11 @@ const routes: Routes = [
 		component: DroneViewSpecs,
 		canActivate: [authGuard],
 	},
+	{
+		path: 'opening-cold-boot',
+		component: ColdBootHudScene,
+		canActivate: [authGuard],
+	},
 	// Auxiliary outlet routes (left panel)
 	{
 		path: 'controls',
@@ -98,6 +105,12 @@ const routes: Routes = [
 		path: 'game-join',
 		outlet: 'left',
 		component: GameJoinPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'opening-cold-boot',
+		outlet: 'left',
+		component: ColdBootOpeningPage,
 		canActivate: [authGuard],
 	},
 	{

@@ -289,7 +289,7 @@ class MockCharacterListPage {
 		};
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
-		this.router.navigate([{ outlets: { left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName,
@@ -454,7 +454,7 @@ describe('CharacterListPage', () => {
 			);
 		});
 
-		it('should navigate to game-join with selected character state', () => {
+		it('should navigate to opening-cold-boot in primary and left outlets with selected character state', () => {
 			const character = { id: '1', characterName: 'Nova', level: 5 };
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
@@ -469,7 +469,7 @@ describe('CharacterListPage', () => {
 			});
 
 			expect(router.navigate).toHaveBeenCalledWith(
-				[{ outlets: { left: ['game-join'] } }],
+				[{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }],
 				{
 					preserveFragment: true,
 					state: {

@@ -1,0 +1,36 @@
+<section class="cold-boot-container" aria-label="Opening Sequence Cold Boot">
+	<header>
+		<p class="eyebrow">{{ content().eyebrow }}</p>
+		<h1>{{ content().sequenceTitle }}</h1>
+		<p class="boot-progress">Boot Stage {{ stage() }} / 3</p>
+		<button type="button" class="audio-toggle" (click)="enableAudio()" [disabled]="audioEnabled()">
+			{{ audioEnabled() ? 'Audio Hooks Armed' : 'Enable Audio Hooks' }}
+		</button>
+	</header>
+
+	<article class="phase" [class.visible]="stage() >= 1">
+		<h2>{{ content().phaseOneTitle }}</h2>
+		<p>
+			{{ content().phaseOneDescription }}
+		</p>
+		<div class="terminal" role="status" aria-live="polite">
+			@for (line of visibleSystemChecks(); track line) {
+				<p>{{ line }}</p>
+			}
+		</div>
+	</article>
+
+	<article class="phase" [class.visible]="stage() >= 2">
+		<h2>{{ content().phaseTwoTitle }}</h2>
+		<p>
+			{{ content().phaseTwoDescription }}
+		</p>
+	</article>
+
+	<article class="phase" [class.visible]="stage() >= 3">
+		<h2>{{ content().phaseThreeTitle }}</h2>
+		<blockquote>
+			"{{ content().aiTransmission }}"
+		</blockquote>
+	</article>
+</section>
