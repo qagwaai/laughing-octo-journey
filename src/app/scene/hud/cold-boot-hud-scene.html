@@ -1,13 +1,18 @@
 <ngt-color *args="['#01040a']" attach="background" />
-<ngt-fog *args="['#01040a', 4, 16]" attach="fog" />
+<ngt-fog *args="['#01040a', 12, 28]" attach="fog" />
 
-<ngt-ambient-light [intensity]="0.35" />
-<ngt-directional-light [position]="[-6, 4, -8]" [intensity]="1.2" [color]="'#4ba5ff'" />
+<ngt-ambient-light [intensity]="1.4" />
+<ngt-directional-light [position]="[-6, 4, -8]" [intensity]="2.2" [color]="'#4ba5ff'" />
 <ngt-point-light [position]="[4.2, -0.8, -2.8]" [intensity]="0.55" [distance]="6" [color]="'#6cd8ff'" />
+<!-- Fill light sitting just behind the cockpit glass to illuminate debris visible through it -->
+<ngt-point-light [position]="[0, 0.5, 0]" [intensity]="2.0" [distance]="18" />
 
-<ngts-orbit-controls
-	[options]="{ enablePan: false, enableZoom: false, minPolarAngle: 1.35, maxPolarAngle: 1.8, autoRotate: true, autoRotateSpeed: 0.12 }"
-/>
+<!-- Simple, visible critical beacon mounted on the right cockpit wall -->
+<ngt-point-light [position]="[4.25, 1.15, 1.5]" [intensity]="alertLightIntensity()" [distance]="14" [color]="'#ff2a2a'" [decay]="1.2" />
+<ngt-mesh [position]="[4.1, 1.15, 1.25]">
+	<ngt-box-geometry *args="[0.32, 0.32, 0.18]" />
+	<ngt-mesh-standard-material [color]="'#ff3b30'" [emissive]="'#ff2218'" [emissiveIntensity]="alertEmitterIntensity()" [metalness]="0.2" [roughness]="0.35" />
+</ngt-mesh>
 
 <app-cracked-cockpit-window />
 
@@ -16,6 +21,6 @@
 @for (debris of visibleDebris(); track $index) {
 	<ngt-mesh [position]="debris.position" [rotation]="debris.rotation" [scale]="debris.scale">
 		<ngt-box-geometry *args="[1, 1, 1]" />
-		<ngt-mesh-standard-material [color]="'#161f2c'" [metalness]="0.58" [roughness]="0.76" />
+		<ngt-mesh-standard-material [color]="'#2a4468'" [metalness]="0.45" [roughness]="0.6" />
 	</ngt-mesh>
 }
