@@ -1,4 +1,4 @@
-import { LOCALE_ID, ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { LOCALE_ID, ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { OpeningAudioService } from '../../services';
@@ -15,37 +15,12 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private openingAudio = inject(OpeningAudioService);
 	private timers: number[] = [];
-	private onFirstGesture = () => {
-		void this.enableAudio();
-	};
+	private didStartBedForCurrentEnablement = false;
 
 	protected readonly t = locale;
 	protected stage = signal(0);
 	protected audioEnabled = signal(false);
 	protected audioBedRunning = signal(false);
-	protected speechAvailable = signal(false);
-
-	protected armedStatusTooltip = computed(() =>
-		this.audioEnabled()
-			? this.t.opening.coldBoot.armedTooltipOn
-			: this.t.opening.coldBoot.armedTooltipOff,
-	);
-
-	protected bedStatusTooltip = computed(() => {
-		if (!this.audioEnabled()) {
-			return this.t.opening.coldBoot.bedTooltipDisarmed;
-		}
-		if (!this.audioBedRunning()) {
-			return this.t.opening.coldBoot.bedTooltipStopped;
-		}
-		return this.t.opening.coldBoot.bedTooltipRunning;
-	});
-
-	protected speechStatusTooltip = computed(() =>
-		this.speechAvailable()
-			? this.t.opening.coldBoot.speechTooltipAvailable
-			: this.t.opening.coldBoot.speechTooltipUnavailable,
-	);
 
 	protected content = signal(
 		resolveOpeningSequenceContent(this.locale, this.route.snapshot.queryParamMap.get('variant') ?? undefined),
@@ -65,57 +40,44 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 		return checks;
 	});
 
+	constructor() {
+		effect(() => {
+			const hooksEnabled = this.openingAudio.isAudioHooksEnabled();
+			const armed = this.openingAudio.isArmed();
+			this.audioEnabled.set(hooksEnabled);
+
+			if (!hooksEnabled) {
+				this.openingAudio.stopCinematicBed();
+				this.audioBedRunning.set(false);
+				this.didStartBedForCurrentEnablement = false;
+				return;
+			}
+
+			if (!armed) {
+				this.audioBedRunning.set(false);
+				return;
+			}
+
+			const running = this.openingAudio.startCinematicBed();
+			this.audioBedRunning.set(running);
+			if (!this.didStartBedForCurrentEnablement && running) {
+				this.openingAudio.playBlackoutPulse();
+				this.didStartBedForCurrentEnablement = true;
+			}
+		});
+	}
+
 	ngOnInit(): void {
-		this.speechAvailable.set(this.openingAudio.isSpeechSynthesisAvailable());
 		this.scheduleStageAdvances();
-		this.installAudioGestureHooks();
 	}
 
 	ngOnDestroy(): void {
 		this.openingAudio.stopCinematicBed();
 		this.audioBedRunning.set(false);
-		this.removeAudioGestureHooks();
 		for (const timerId of this.timers) {
 			clearTimeout(timerId);
 		}
 		this.timers = [];
-	}
-
-	protected async enableAudio(): Promise<void> {
-		if (this.audioEnabled()) {
-			return;
-		}
-
-		const armed = await this.openingAudio.armFromUserGesture();
-		this.audioEnabled.set(armed);
-		if (armed) {
-			this.audioBedRunning.set(this.openingAudio.startCinematicBed());
-			this.openingAudio.playBlackoutPulse();
-			this.removeAudioGestureHooks();
-		} else {
-			this.audioBedRunning.set(false);
-		}
-	}
-
-	protected async toggleAudio(): Promise<void> {
-		if (this.audioEnabled()) {
-			this.openingAudio.stopCinematicBed();
-			this.audioBedRunning.set(false);
-			this.audioEnabled.set(false);
-			return;
-		}
-
-		await this.enableAudio();
-	}
-
-	private installAudioGestureHooks(): void {
-		window.addEventListener('pointerdown', this.onFirstGesture, { once: true, passive: true });
-		window.addEventListener('keydown', this.onFirstGesture, { once: true });
-	}
-
-	private removeAudioGestureHooks(): void {
-		window.removeEventListener('pointerdown', this.onFirstGesture);
-		window.removeEventListener('keydown', this.onFirstGesture);
 	}
 
 	private scheduleStageAdvances(): void {

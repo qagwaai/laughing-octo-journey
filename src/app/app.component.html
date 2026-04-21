@@ -5,6 +5,10 @@
     <div class="p-4">
       <tweakpane-pane title="Options" [container]="host">
         <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
+        <tweakpane-checkbox [(value)]="audioHooksEnabled" label="Audio Hooks" (valueChange)="onAudioHooksChange($event)" />
+        <tweakpane-checkbox [(value)]="audioArmed" [label]="audioArmedLabel()" [disabled]="true" />
+        <tweakpane-checkbox [(value)]="audioBedRunning" [label]="audioBedLabel()" [disabled]="true" />
+        <tweakpane-checkbox [(value)]="speechAvailable" label="Speech Synth" [disabled]="true" />
         <tweakpane-checkbox [(value)]="follow" label="Follow" />
         <tweakpane-checkbox [(value)]="lockX" label="Lock X" />
         <tweakpane-checkbox [(value)]="lockY" label="Lock Y" />

@@ -6,6 +6,7 @@ import { Injectable, signal } from '@angular/core';
 export class OpeningAudioService {
 	private audioContext: AudioContext | null = null;
 	private armed = signal(false);
+	private audioHooksEnabled = signal(false);
 	private masterGain: GainNode | null = null;
 	private ambienceBus: GainNode | null = null;
 	private fxBus: GainNode | null = null;
@@ -13,9 +14,46 @@ export class OpeningAudioService {
 	private thrumLfos: OscillatorNode[] = [];
 	private breathingLoopId: number | null = null;
 	private ambienceRunning = signal(false);
+	private listenersInstalled = false;
+	private onFirstGesture = async () => {
+		const armed = await this.armFromUserGesture();
+		if (armed) {
+			this.removeGestureHooks();
+		}
+	};
 
 	isArmed(): boolean {
 		return this.armed();
+	}
+
+	audioHooksEnabledSignal() {
+		return this.audioHooksEnabled.asReadonly();
+	}
+
+	audioArmedSignal() {
+		return this.armed.asReadonly();
+	}
+
+	cinematicBedRunningSignal() {
+		return this.ambienceRunning.asReadonly();
+	}
+
+	isAudioHooksEnabled(): boolean {
+		return this.audioHooksEnabled();
+	}
+
+	setAudioHooksEnabled(enabled: boolean): void {
+		this.audioHooksEnabled.set(enabled);
+		if (!enabled) {
+			this.removeGestureHooks();
+			this.stopCinematicBed();
+			if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+				window.speechSynthesis.cancel();
+			}
+			return;
+		}
+
+		this.installGestureHooks();
 	}
 
 	isCinematicBedRunning(): boolean {
@@ -47,6 +85,9 @@ export class OpeningAudioService {
 		this.initializeAudioGraph();
 
 		this.armed.set(this.audioContext.state === 'running');
+		if (this.armed()) {
+			this.removeGestureHooks();
+		}
 		return this.armed();
 	}
 
@@ -308,5 +349,23 @@ export class OpeningAudioService {
 		oscillator.start(startAt);
 		oscillator.stop(stopAt + 0.01);
 		return true;
+	}
+
+	private installGestureHooks(): void {
+		if (typeof window === 'undefined' || this.listenersInstalled || this.armed()) {
+			return;
+		}
+		window.addEventListener('pointerdown', this.onFirstGesture, { passive: true });
+		window.addEventListener('keydown', this.onFirstGesture);
+		this.listenersInstalled = true;
+	}
+
+	private removeGestureHooks(): void {
+		if (typeof window === 'undefined' || !this.listenersInstalled) {
+			return;
+		}
+		window.removeEventListener('pointerdown', this.onFirstGesture);
+		window.removeEventListener('keydown', this.onFirstGesture);
+		this.listenersInstalled = false;
 	}
 }

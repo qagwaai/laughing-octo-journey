@@ -6,6 +6,7 @@ import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
 import { RoutedScene } from './routed-scene';
+import { OpeningAudioService } from './services';
 
 @Component({
   selector: 'app-root',
@@ -41,6 +42,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected ngZone = inject(NgZone);
   protected cdr = inject(ChangeDetectorRef);
   protected router = inject(Router);
+  protected openingAudio = inject(OpeningAudioService);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
@@ -50,6 +52,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected lockX = signal(false);
   protected lockY = signal(false);
   protected lockZ = signal(false);
+  protected audioHooksEnabled = signal(this.openingAudio.isAudioHooksEnabled());
+  protected audioArmed = signal(this.openingAudio.isArmed());
+  protected audioBedRunning = signal(this.openingAudio.isCinematicBedRunning());
+  protected speechAvailable = signal(this.openingAudio.isSpeechSynthesisAvailable());
+  protected audioArmedLabel = computed(() =>
+    `Armed: ${this.openingAudio.isArmed() ? '●' : '○'}`
+  );
+  protected audioBedLabel = computed(() =>
+    `Bed: ${this.openingAudio.isCinematicBedRunning() ? '●' : '○'}`
+  );
   protected leftPanelWidth = signal(50);
   protected isResizing = signal(false);
   protected lookHintOpacity = signal(0);
@@ -157,6 +169,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     if (statsElement) {
       statsElement.style.display = value ? 'block' : 'none';
     }
+  }
+
+  onAudioHooksChange(value: boolean) {
+    this.openingAudio.setAudioHooksEnabled(value);
   }
 
   startResize(event: MouseEvent) {
