@@ -11,6 +11,14 @@ describe('OpeningAudioService', () => {
 		expect(service.isArmed()).toBe(false);
 	});
 
+	it('should initialize with cinematic bed stopped', () => {
+		expect(service.isCinematicBedRunning()).toBe(false);
+	});
+
+	it('should report speech synthesis availability as boolean', () => {
+		expect(typeof service.isSpeechSynthesisAvailable()).toBe('boolean');
+	});
+
 	it('should not play blackout pulse before arming', () => {
 		expect(service.playBlackoutPulse()).toBe(false);
 	});

@@ -14,9 +14,36 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private openingAudio = inject(OpeningAudioService);
 	private timers: number[] = [];
+	private onFirstGesture = () => {
+		void this.enableAudio();
+	};
 
 	protected stage = signal(0);
 	protected audioEnabled = signal(false);
+	protected audioBedRunning = signal(false);
+	protected speechAvailable = signal(false);
+
+	protected armedStatusTooltip = computed(() =>
+		this.audioEnabled()
+			? 'Audio is armed and can play cinematic layers.'
+			: 'Audio is disabled. Click Enable Audio Hooks (or first pointer/key gesture) to unlock playback.',
+	);
+
+	protected bedStatusTooltip = computed(() => {
+		if (!this.audioEnabled()) {
+			return 'Bed is stopped because audio is not armed yet.';
+		}
+		if (!this.audioBedRunning()) {
+			return 'Bed is stopped. Re-enter this sequence or re-arm audio to start the loop again.';
+		}
+		return 'Bed loop is currently running.';
+	});
+
+	protected speechStatusTooltip = computed(() =>
+		this.speechAvailable()
+			? 'Speech synthesis is available for AI transmissions.'
+			: 'Speech synthesis is unavailable in this browser or current environment.',
+	);
 
 	protected content = signal(
 		resolveOpeningSequenceContent(this.locale, this.route.snapshot.queryParamMap.get('variant') ?? undefined),
@@ -37,11 +64,15 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	});
 
 	ngOnInit(): void {
+		this.speechAvailable.set(this.openingAudio.isSpeechSynthesisAvailable());
 		this.scheduleStageAdvances();
+		this.installAudioGestureHooks();
 	}
 
 	ngOnDestroy(): void {
 		this.openingAudio.stopCinematicBed();
+		this.audioBedRunning.set(false);
+		this.removeAudioGestureHooks();
 		for (const timerId of this.timers) {
 			clearTimeout(timerId);
 		}
@@ -49,12 +80,40 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	}
 
 	protected async enableAudio(): Promise<void> {
+		if (this.audioEnabled()) {
+			return;
+		}
+
 		const armed = await this.openingAudio.armFromUserGesture();
 		this.audioEnabled.set(armed);
 		if (armed) {
-			this.openingAudio.startCinematicBed();
+			this.audioBedRunning.set(this.openingAudio.startCinematicBed());
 			this.openingAudio.playBlackoutPulse();
+			this.removeAudioGestureHooks();
+		} else {
+			this.audioBedRunning.set(false);
 		}
+	}
+
+	protected async toggleAudio(): Promise<void> {
+		if (this.audioEnabled()) {
+			this.openingAudio.stopCinematicBed();
+			this.audioBedRunning.set(false);
+			this.audioEnabled.set(false);
+			return;
+		}
+
+		await this.enableAudio();
+	}
+
+	private installAudioGestureHooks(): void {
+		window.addEventListener('pointerdown', this.onFirstGesture, { once: true, passive: true });
+		window.addEventListener('keydown', this.onFirstGesture, { once: true });
+	}
+
+	private removeAudioGestureHooks(): void {
+		window.removeEventListener('pointerdown', this.onFirstGesture);
+		window.removeEventListener('keydown', this.onFirstGesture);
 	}
 
 	private scheduleStageAdvances(): void {

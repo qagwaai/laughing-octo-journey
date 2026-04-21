@@ -3,9 +3,24 @@
 		<p class="eyebrow">{{ content().eyebrow }}</p>
 		<h1>{{ content().sequenceTitle }}</h1>
 		<p class="boot-progress">Boot Stage {{ stage() }} / 3</p>
-		<button type="button" class="audio-toggle" (click)="enableAudio()" [disabled]="audioEnabled()">
-			{{ audioEnabled() ? 'Audio Hooks Armed' : 'Enable Audio Hooks' }}
+		<button type="button" class="audio-toggle" (click)="toggleAudio()" [attr.aria-pressed]="audioEnabled()">
+			{{ audioEnabled() ? 'Disable Audio Hooks' : 'Enable Audio Hooks' }}
 		</button>
+		<section class="audio-status" aria-label="Audio Status">
+			<p class="audio-status-title">Audio Status</p>
+			<p [class.status-on]="audioEnabled()" [class.status-off]="!audioEnabled()" [attr.title]="armedStatusTooltip()">
+				Armed: {{ audioEnabled() ? 'Yes' : 'No' }}
+				<span class="status-hint" aria-hidden="true">?</span>
+			</p>
+			<p [class.status-on]="audioBedRunning()" [class.status-off]="!audioBedRunning()" [attr.title]="bedStatusTooltip()">
+				Bed: {{ audioBedRunning() ? 'Running' : 'Stopped' }}
+				<span class="status-hint" aria-hidden="true">?</span>
+			</p>
+			<p [class.status-on]="speechAvailable()" [class.status-off]="!speechAvailable()" [attr.title]="speechStatusTooltip()">
+				Speech: {{ speechAvailable() ? 'Available' : 'Unavailable' }}
+				<span class="status-hint" aria-hidden="true">?</span>
+			</p>
+		</section>
 	</header>
 
 	<article class="phase" [class.visible]="stage() >= 1">

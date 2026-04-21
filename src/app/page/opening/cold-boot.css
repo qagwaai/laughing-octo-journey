@@ -56,6 +56,52 @@ h1 {
 	cursor: default;
 }
 
+.audio-status {
+	margin-top: 0.7rem;
+	padding: 0.55rem 0.65rem;
+	border: 1px solid rgba(106, 177, 235, 0.3);
+	background: rgba(4, 11, 20, 0.65);
+}
+
+.audio-status-title {
+	margin: 0 0 0.35rem;
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: #98c8ea;
+}
+
+.audio-status p {
+	margin: 0.14rem 0;
+	font-size: 0.74rem;
+	letter-spacing: 0.03em;
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: help;
+}
+
+.status-hint {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 0.9rem;
+	height: 0.9rem;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	font-size: 0.62rem;
+	line-height: 1;
+	opacity: 0.8;
+}
+
+.status-on {
+	color: #9dffb2;
+}
+
+.status-off {
+	color: #ffb4b4;
+}
+
 .phase {
 	margin-bottom: 1.1rem;
 	padding: 0.9rem;

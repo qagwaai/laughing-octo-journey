@@ -18,6 +18,14 @@ export class OpeningAudioService {
 		return this.armed();
 	}
 
+	isCinematicBedRunning(): boolean {
+		return this.ambienceRunning();
+	}
+
+	isSpeechSynthesisAvailable(): boolean {
+		return typeof window !== 'undefined' && 'speechSynthesis' in window;
+	}
+
 	async armFromUserGesture(): Promise<boolean> {
 		if (this.armed()) {
 			return true;
@@ -83,14 +91,14 @@ export class OpeningAudioService {
 	}
 
 	playBlackoutPulse(): boolean {
-		return this.playTone(68, 0.34, 'triangle', 0.055);
+		return this.playTone(160, 0.32, 'triangle', 0.09);
 	}
 
 	playHudFlicker(): boolean {
 		const first = this.playTone(360, 0.06, 'sawtooth', 0.022);
 		const second = this.playTone(220, 0.07, 'square', 0.017, 0.08);
-		const third = this.playNoiseBurst(0.06, 0.012, 0.05);
-		const fourth = this.playNoiseBurst(0.04, 0.01, 0.13);
+		const third = this.playNoiseBurst(0.06, 0.025, 0.05);
+		const fourth = this.playNoiseBurst(0.04, 0.02, 0.13);
 		return first || second || third || fourth;
 	}
 
@@ -110,16 +118,16 @@ export class OpeningAudioService {
 			started = true;
 		}
 
-		const shimmerA = this.playTone(174, 0.4, 'sawtooth', 0.011);
-		const shimmerB = this.playTone(210, 0.37, 'square', 0.009, 0.05);
-		const staticTail = this.playNoiseBurst(0.25, 0.008, 0.02);
+		const shimmerA = this.playTone(240, 0.42, 'sawtooth', 0.02);
+		const shimmerB = this.playTone(320, 0.37, 'square', 0.016, 0.05);
+		const staticTail = this.playNoiseBurst(0.25, 0.018, 0.02);
 		return started || shimmerA || shimmerB || staticTail;
 	}
 
 	playAiAwakening(): boolean {
-		const first = this.playTone(320, 0.15, 'triangle', 0.03);
-		const second = this.playTone(248, 0.25, 'triangle', 0.028, 0.14);
-		const staticTail = this.playNoiseBurst(0.16, 0.012, 0.04);
+		const first = this.playTone(420, 0.15, 'triangle', 0.05);
+		const second = this.playTone(310, 0.25, 'triangle', 0.042, 0.14);
+		const staticTail = this.playNoiseBurst(0.16, 0.02, 0.04);
 		return first || second || staticTail;
 	}
 
@@ -136,11 +144,11 @@ export class OpeningAudioService {
 		compressor.release.value = 0.18;
 
 		this.masterGain = this.audioContext.createGain();
-		this.masterGain.gain.value = 0.45;
+		this.masterGain.gain.value = 0.78;
 		this.ambienceBus = this.audioContext.createGain();
-		this.ambienceBus.gain.value = 0.55;
+		this.ambienceBus.gain.value = 0.72;
 		this.fxBus = this.audioContext.createGain();
-		this.fxBus.gain.value = 0.65;
+		this.fxBus.gain.value = 0.88;
 
 		this.ambienceBus.connect(this.masterGain);
 		this.fxBus.connect(this.masterGain);
@@ -156,28 +164,28 @@ export class OpeningAudioService {
 		const now = this.audioContext.currentTime;
 		const base = this.audioContext.createOscillator();
 		base.type = 'sine';
-		base.frequency.setValueAtTime(42, now);
+		base.frequency.setValueAtTime(94, now);
 
 		const harmonic = this.audioContext.createOscillator();
 		harmonic.type = 'triangle';
-		harmonic.frequency.setValueAtTime(84, now);
+		harmonic.frequency.setValueAtTime(188, now);
 
 		const driveGain = this.audioContext.createGain();
-		driveGain.gain.value = 0.038;
+		driveGain.gain.value = 0.065;
 
 		const harmonicGain = this.audioContext.createGain();
-		harmonicGain.gain.value = 0.02;
+		harmonicGain.gain.value = 0.036;
 
 		const lowpass = this.audioContext.createBiquadFilter();
 		lowpass.type = 'lowpass';
-		lowpass.frequency.value = 180;
+		lowpass.frequency.value = 320;
 		lowpass.Q.value = 0.8;
 
 		const lfo = this.audioContext.createOscillator();
 		lfo.type = 'sine';
 		lfo.frequency.value = 0.27;
 		const lfoDepth = this.audioContext.createGain();
-		lfoDepth.gain.value = 22;
+		lfoDepth.gain.value = 48;
 		lfo.connect(lfoDepth);
 		lfoDepth.connect(lowpass.frequency);
 
@@ -217,14 +225,14 @@ export class OpeningAudioService {
 		const burst = this.createNoiseSource();
 		const bandpass = this.audioContext.createBiquadFilter();
 		bandpass.type = 'bandpass';
-		bandpass.frequency.value = 660;
+		bandpass.frequency.value = 1200;
 		bandpass.Q.value = 0.55;
 
 		const gainNode = this.audioContext.createGain();
 		const now = this.audioContext.currentTime;
 		gainNode.gain.setValueAtTime(0.0001, now);
-		gainNode.gain.exponentialRampToValueAtTime(0.012, now + 0.38);
-		gainNode.gain.exponentialRampToValueAtTime(0.007, now + 1.25);
+		gainNode.gain.exponentialRampToValueAtTime(0.03, now + 0.38);
+		gainNode.gain.exponentialRampToValueAtTime(0.014, now + 1.25);
 		gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
 		burst.source.connect(bandpass);
@@ -243,7 +251,7 @@ export class OpeningAudioService {
 		const burst = this.createNoiseSource();
 		const highpass = this.audioContext.createBiquadFilter();
 		highpass.type = 'highpass';
-		highpass.frequency.value = 700;
+		highpass.frequency.value = 1200;
 
 		const gainNode = this.audioContext.createGain();
 		const startAt = this.audioContext.currentTime + delaySeconds;
