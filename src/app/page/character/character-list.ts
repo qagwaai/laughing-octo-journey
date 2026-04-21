@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { locale } from '../../i18n/locale';
 import {
 	CHARACTER_DELETE_REQUEST_EVENT,
 	CHARACTER_DELETE_RESPONSE_EVENT,
@@ -30,6 +31,7 @@ import { SocketService } from '../../services/socket.service';
 	imports: [GuardedLeftMenu],
 })
 export default class CharacterListPage implements OnDestroy {
+	protected readonly t = locale;
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private router = inject(Router);

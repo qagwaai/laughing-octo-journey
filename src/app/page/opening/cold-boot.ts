@@ -2,6 +2,7 @@ import { LOCALE_ID, ChangeDetectionStrategy, Component, OnDestroy, OnInit, compu
 import { ActivatedRoute } from '@angular/router';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { OpeningAudioService } from '../../services';
+import { locale } from '../../i18n/locale';
 
 @Component({
 	selector: 'app-cold-boot-opening-page',
@@ -18,6 +19,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 		void this.enableAudio();
 	};
 
+	protected readonly t = locale;
 	protected stage = signal(0);
 	protected audioEnabled = signal(false);
 	protected audioBedRunning = signal(false);
@@ -25,24 +27,24 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 
 	protected armedStatusTooltip = computed(() =>
 		this.audioEnabled()
-			? 'Audio is armed and can play cinematic layers.'
-			: 'Audio is disabled. Click Enable Audio Hooks (or first pointer/key gesture) to unlock playback.',
+			? this.t.opening.coldBoot.armedTooltipOn
+			: this.t.opening.coldBoot.armedTooltipOff,
 	);
 
 	protected bedStatusTooltip = computed(() => {
 		if (!this.audioEnabled()) {
-			return 'Bed is stopped because audio is not armed yet.';
+			return this.t.opening.coldBoot.bedTooltipDisarmed;
 		}
 		if (!this.audioBedRunning()) {
-			return 'Bed is stopped. Re-enter this sequence or re-arm audio to start the loop again.';
+			return this.t.opening.coldBoot.bedTooltipStopped;
 		}
-		return 'Bed loop is currently running.';
+		return this.t.opening.coldBoot.bedTooltipRunning;
 	});
 
 	protected speechStatusTooltip = computed(() =>
 		this.speechAvailable()
-			? 'Speech synthesis is available for AI transmissions.'
-			: 'Speech synthesis is unavailable in this browser or current environment.',
+			? this.t.opening.coldBoot.speechTooltipAvailable
+			: this.t.opening.coldBoot.speechTooltipUnavailable,
 	);
 
 	protected content = signal(

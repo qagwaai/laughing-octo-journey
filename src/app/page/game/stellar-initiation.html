@@ -1,20 +1,20 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Stellar Initiation</h1>
-		<p class="subtitle">Mission onboarding, flight checks, and launch readiness.</p>
+		<h1>{{ t.game.stellarInitiation.title }}</h1>
+		<p class="subtitle">{{ t.game.stellarInitiation.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		@if (joinCharacter()) {
-			<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
 		}
 
 		<section class="ops-card">
-			<h2>Checklist</h2>
-			<p>Sample module: run diagnostics, validate credentials, and confirm launch corridor assignment.</p>
+			<h2>{{ t.game.stellarInitiation.sectionTitle }}</h2>
+			<p>{{ t.game.stellarInitiation.sectionDescription }}</p>
 		</section>
 	</div>
 </div>

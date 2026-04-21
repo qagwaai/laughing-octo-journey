@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from './guarded-left-menu';
+import { locale } from '../../i18n/locale';
 
 interface FabricationLabNavigationState {
 	playerName?: string;
@@ -16,6 +17,7 @@ interface FabricationLabNavigationState {
 	imports: [GuardedLeftMenu],
 })
 export default class FabricationLabPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private navigationState: FabricationLabNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as FabricationLabNavigationState | undefined) ??

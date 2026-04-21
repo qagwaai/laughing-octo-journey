@@ -1,17 +1,17 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Logout</h1>
-		<p class="subtitle">Exit your current authenticated session.</p>
+		<h1>{{ t.game.logout.title }}</h1>
+		<p class="subtitle">{{ t.game.logout.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		<section class="ops-card">
-			<h2>Sign Out</h2>
-			<p>Use this sample page action to clear the session and return to login.</p>
-			<button type="button" class="logout-btn" (click)="confirmLogout()">Confirm Logout</button>
+			<h2>{{ t.game.logout.sectionTitle }}</h2>
+			<p>{{ t.game.logout.sectionDescription }}</p>
+			<button type="button" class="logout-btn" (click)="confirmLogout()">{{ t.game.logout.confirmLabel }}</button>
 		</section>
 	</div>
 </div>

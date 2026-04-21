@@ -1,20 +1,20 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Character Profile</h1>
-		<p class="subtitle">Identity records, progression milestones, and mission reputation.</p>
+		<h1>{{ t.game.characterProfile.title }}</h1>
+		<p class="subtitle">{{ t.game.characterProfile.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		@if (joinCharacter()) {
-			<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
 		}
 
 		<section class="ops-card">
-			<h2>Profile Snapshot</h2>
-			<p>Sample module: display rank history, specialization badges, and current assignment.</p>
+			<h2>{{ t.game.characterProfile.sectionTitle }}</h2>
+			<p>{{ t.game.characterProfile.sectionDescription }}</p>
 		</section>
 	</div>
 </div>

@@ -1,20 +1,20 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Market Hub</h1>
-		<p class="subtitle">Exchange terminal for equipment bids, contracts, and resource trading.</p>
+		<h1>{{ t.game.marketHub.title }}</h1>
+		<p class="subtitle">{{ t.game.marketHub.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		@if (joinCharacter()) {
-			<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
 		}
 
 		<section class="ops-card">
-			<h2>Trade Board</h2>
-			<p>Sample module: browse listings, evaluate prices, and prepare purchase orders.</p>
+			<h2>{{ t.game.marketHub.sectionTitle }}</h2>
+			<p>{{ t.game.marketHub.sectionDescription }}</p>
 		</section>
 	</div>
 </div>

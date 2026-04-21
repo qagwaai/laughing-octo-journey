@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { locale } from '../../i18n/locale';
 import {
 	CHARACTER_ADD_REQUEST_EVENT,
 	CHARACTER_ADD_RESPONSE_EVENT,
@@ -33,6 +34,7 @@ interface CharacterSetupNavigationState {
 	imports: [ReactiveFormsModule, GuardedLeftMenu],
 })
 export default class CharacterSetupPage implements OnDestroy {
+	protected readonly t = locale;
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private socketService = inject(SocketService);

@@ -1,20 +1,20 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Fabrication Lab</h1>
-		<p class="subtitle">Blueprint management and component manufacturing pipeline.</p>
+		<h1>{{ t.game.fabricationLab.title }}</h1>
+		<p class="subtitle">{{ t.game.fabricationLab.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		@if (joinCharacter()) {
-			<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
 		}
 
 		<section class="ops-card">
-			<h2>Build Queue</h2>
-			<p>Sample module: schedule production runs and inspect fabrication output quality.</p>
+			<h2>{{ t.game.fabricationLab.sectionTitle }}</h2>
+			<p>{{ t.game.fabricationLab.sectionDescription }}</p>
 		</section>
 	</div>
 </div>

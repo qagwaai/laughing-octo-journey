@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { locale } from '../../i18n/locale';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
 	DRONE_LIST_REQUEST_EVENT,
@@ -30,6 +31,7 @@ interface GameJoinNavigationState {
 	imports: [GuardedLeftMenu],
 })
 export default class GameJoinPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);

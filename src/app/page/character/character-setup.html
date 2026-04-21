@@ -1,35 +1,35 @@
 <div class="character-setup-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="editCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>{{ isEditMode() ? 'Edit Character' : 'Character Setup' }}</h1>
-		<p class="subtitle">{{ isEditMode() ? 'Update your pilot profile.' : 'Finalize your pilot profile before launch.' }}</p>
+		<h1>{{ isEditMode() ? t.character.setup.editTitle : t.character.setup.title }}</h1>
+		<p class="subtitle">{{ isEditMode() ? t.character.setup.editSubtitle : t.character.setup.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="player-name">Logged in as: <strong>{{ playerName() }}</strong></p>
+			<p class="player-name">{{ t.common.loggedInAsPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		<form [formGroup]="characterForm" (ngSubmit)="saveCharacter()" class="character-setup-form">
 			<div class="form-group">
-				<label for="characterName">Character Name</label>
+				<label for="characterName">{{ t.character.setup.characterNameLabel }}</label>
 				<input
 					id="characterName"
 					type="text"
 					formControlName="characterName"
-					placeholder="Enter your character name"
+					[placeholder]="t.character.setup.characterNamePlaceholder"
 				/>
 				@if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
 					<span class="field-error">
-						@if (characterForm.get('characterName')?.errors?.['required']) { Character name is required. }
-						@if (characterForm.get('characterName')?.errors?.['minlength']) { Must be at least 2 characters. }
-						@if (characterForm.get('characterName')?.errors?.['maxlength']) { Must be 24 characters or fewer. }
+						@if (characterForm.get('characterName')?.errors?.['required']) { {{ t.character.setup.errors.characterNameRequired }} }
+						@if (characterForm.get('characterName')?.errors?.['minlength']) { {{ t.character.setup.errors.characterNameMinLength }} }
+						@if (characterForm.get('characterName')?.errors?.['maxlength']) { {{ t.character.setup.errors.characterNameMaxLength }} }
 					</span>
 				}
 			</div>
 
 			<button type="submit" [disabled]="characterForm.invalid || isSubmitting()" class="submit-btn">
-				{{ isSubmitting() ? 'Saving Character...' : (isEditMode() ? 'Save Character Changes' : 'Save Character') }}
+				{{ isSubmitting() ? t.character.setup.submittingLabel : (isEditMode() ? t.character.setup.editSubmitLabel : t.character.setup.submitLabel) }}
 			</button>
-			<button type="button" class="list-btn" (click)="navigateToCharacterList()">View Character List</button>
+			<button type="button" class="list-btn" (click)="navigateToCharacterList()">{{ t.character.setup.listLabel }}</button>
 		</form>
 
 		@if (errorMessage()) {

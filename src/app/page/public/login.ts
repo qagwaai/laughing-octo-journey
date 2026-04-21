@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { locale } from '../../i18n/locale';
 import {
 	LOGIN_EVENT,
 	LOGIN_RESPONSE_EVENT,
@@ -18,6 +19,7 @@ import { SocketService } from '../../services/socket.service';
 	imports: [ReactiveFormsModule],
 })
 export default class LoginPage implements OnDestroy {
+	protected readonly t = locale;
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);

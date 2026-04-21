@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from './guarded-left-menu';
+import { locale } from '../../i18n/locale';
 
 interface MarketHubNavigationState {
 	playerName?: string;
@@ -16,6 +17,7 @@ interface MarketHubNavigationState {
 	imports: [GuardedLeftMenu],
 })
 export default class MarketHubPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private navigationState: MarketHubNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as MarketHubNavigationState | undefined) ??

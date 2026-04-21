@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from './guarded-left-menu';
+import { locale } from '../../i18n/locale';
 
 interface RepairRetrofitNavigationState {
 	playerName?: string;
@@ -16,6 +17,7 @@ interface RepairRetrofitNavigationState {
 	imports: [GuardedLeftMenu],
 })
 export default class RepairRetrofitPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private navigationState: RepairRetrofitNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as RepairRetrofitNavigationState | undefined) ??

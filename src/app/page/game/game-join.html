@@ -1,22 +1,22 @@
 <div class="game-join-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>Game Join</h1>
-		<p class="subtitle">Preparing to join with your selected character.</p>
+		<h1>{{ t.game.join.title }}</h1>
+		<p class="subtitle">{{ t.game.join.subtitle }}</p>
 
 		@if (playerName()) {
-			<p class="player-name">Player: <strong>{{ playerName() }}</strong></p>
+			<p class="player-name">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
 		}
 
 		<p class="character-display">
-			Character: <strong>{{ characterName() }}</strong>
+			{{ t.common.characterPrefix }} <strong>{{ characterName() }}</strong>
 		</p>
 
 		<section class="drone-list-section">
-			<h2>Drones</h2>
+			<h2>{{ t.game.join.dronesTitle }}</h2>
 
 			@if (isLoadingDrones()) {
-				<p class="drone-status">Loading drones...</p>
+				<p class="drone-status">{{ t.game.join.droneLoadingStatus }}</p>
 			}
 
 			@if (droneListError()) {
@@ -24,7 +24,7 @@
 			}
 
 			@if (!isLoadingDrones() && !droneListError() && drones().length === 0) {
-				<p class="drone-status">No drones found for this character.</p>
+				<p class="drone-status">{{ t.game.join.droneEmptyStatus }}</p>
 			}
 
 			@if (drones().length > 0) {
@@ -33,20 +33,20 @@
 						<li class="drone-item">
 							<div class="drone-row">
 								<div class="drone-identity">
-									<div class="drone-name"><strong>Name:</strong> {{ getDroneDisplayName(drone) }}</div>
-									<div class="drone-id"><strong>ID:</strong> {{ drone.id }}</div>
+									<div class="drone-name"><strong>{{ t.game.join.droneNameLabel }}</strong> {{ getDroneDisplayName(drone) }}</div>
+									<div class="drone-id"><strong>{{ t.game.join.droneIdLabel }}</strong> {{ drone.id }}</div>
 								</div>
-								<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">View Specs</button>
+								<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">{{ t.game.join.droneViewSpecsLabel }}</button>
 							</div>
 							@if (drone.model || drone.status) {
 								<div class="drone-meta">
-									{{ drone.model ?? 'Unknown Model' }}
+									{{ drone.model ?? t.game.join.droneUnknownModel }}
 									@if (drone.status) {
 										<span> - {{ drone.status }}</span>
 									}
 								</div>
 							}
-							<div class="drone-kinematics"><strong>Kinematics:</strong> {{ getDroneKinematicsSummary(drone) }}</div>
+							<div class="drone-kinematics"><strong>{{ t.game.join.droneKinematicsLabel }}</strong> {{ getDroneKinematicsSummary(drone) }}</div>
 						</li>
 					}
 				</ul>

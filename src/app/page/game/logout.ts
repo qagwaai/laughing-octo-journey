@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { SessionService } from '../../services/session.service';
 import { GuardedLeftMenu } from './guarded-left-menu';
+import { locale } from '../../i18n/locale';
 
 interface LogoutNavigationState {
 	playerName?: string;
@@ -17,6 +18,7 @@ interface LogoutNavigationState {
 	imports: [GuardedLeftMenu],
 })
 export default class LogoutPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private sessionService = inject(SessionService);
 	private navigationState: LogoutNavigationState =

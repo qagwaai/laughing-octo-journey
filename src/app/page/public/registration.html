@@ -1,48 +1,48 @@
 <div class="registration-container">
-	<h1>Register</h1>
-	<p class="subtitle">Create your Pioneer account to join Project Stellar</p>
+	<h1>{{ t.public.registration.title }}</h1>
+	<p class="subtitle">{{ t.public.registration.subtitle }}</p>
 
 	<form [formGroup]="registrationForm" (ngSubmit)="submit()" class="registration-form">
 
 		<div class="form-group">
-			<label for="playerName">Player Name</label>
-			<input id="playerName" type="text" formControlName="playerName" placeholder="Choose your callsign" />
+			<label for="playerName">{{ t.public.registration.playerNameLabel }}</label>
+			<input id="playerName" type="text" formControlName="playerName" [placeholder]="t.public.registration.playerNamePlaceholder" />
 			@if (registrationForm.get('playerName')?.invalid && registrationForm.get('playerName')?.touched) {
 				<span class="field-error">
-					@if (registrationForm.get('playerName')?.errors?.['required']) { Player name is required. }
-					@if (registrationForm.get('playerName')?.errors?.['minlength']) { Must be at least 3 characters. }
-					@if (registrationForm.get('playerName')?.errors?.['maxlength']) { Must be 20 characters or fewer. }
+					@if (registrationForm.get('playerName')?.errors?.['required']) { {{ t.public.registration.errors.playerNameRequired }} }
+					@if (registrationForm.get('playerName')?.errors?.['minlength']) { {{ t.public.registration.errors.playerNameMinLength }} }
+					@if (registrationForm.get('playerName')?.errors?.['maxlength']) { {{ t.public.registration.errors.playerNameMaxLength }} }
 				</span>
 			}
 		</div>
 
 		<div class="form-group">
-			<label for="email">Email</label>
-			<input id="email" type="email" formControlName="email" placeholder="your@email.com" />
+			<label for="email">{{ t.public.registration.emailLabel }}</label>
+			<input id="email" type="email" formControlName="email" [placeholder]="t.public.registration.emailPlaceholder" />
 			@if (registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched) {
 				<span class="field-error">
-					@if (registrationForm.get('email')?.errors?.['required']) { Email is required. }
-					@if (registrationForm.get('email')?.errors?.['email']) { Must be a valid email address. }
+					@if (registrationForm.get('email')?.errors?.['required']) { {{ t.public.registration.errors.emailRequired }} }
+					@if (registrationForm.get('email')?.errors?.['email']) { {{ t.public.registration.errors.emailInvalid }} }
 				</span>
 			}
 		</div>
 
 		<div class="form-group">
-			<label for="password">Password</label>
-			<input id="password" type="password" formControlName="password" placeholder="Min. 8 characters" />
+			<label for="password">{{ t.public.registration.passwordLabel }}</label>
+			<input id="password" type="password" formControlName="password" [placeholder]="t.public.registration.passwordPlaceholder" />
 			@if (registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched) {
 				<span class="field-error">
-					@if (registrationForm.get('password')?.errors?.['required']) { Password is required. }
-					@if (registrationForm.get('password')?.errors?.['minlength']) { Must be at least 8 characters. }
+					@if (registrationForm.get('password')?.errors?.['required']) { {{ t.public.registration.errors.passwordRequired }} }
+					@if (registrationForm.get('password')?.errors?.['minlength']) { {{ t.public.registration.errors.passwordMinLength }} }
 				</span>
 			}
 		</div>
 
 		<div class="form-group">
-			<label for="confirmPassword">Confirm Password</label>
-			<input id="confirmPassword" type="password" formControlName="confirmPassword" placeholder="Repeat your password" />
+			<label for="confirmPassword">{{ t.public.registration.confirmPasswordLabel }}</label>
+			<input id="confirmPassword" type="password" formControlName="confirmPassword" [placeholder]="t.public.registration.confirmPasswordPlaceholder" />
 			@if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
-				<span class="field-error">Passwords do not match.</span>
+				<span class="field-error">{{ t.public.registration.errors.passwordMismatch }}</span>
 			}
 		</div>
 
@@ -54,11 +54,11 @@
 		}
 
 		<button type="submit" [disabled]="registrationForm.invalid || isSubmitting()" class="submit-btn">
-			{{ isSubmitting() ? 'Registering...' : 'Register' }}
+			{{ isSubmitting() ? t.public.registration.submittingLabel : t.public.registration.submitLabel }}
 		</button>
 
 		<p class="login-link">
-			<a (click)="navigateToLogin()" class="login-link-text">Existing Users Login here</a>
+			<a (click)="navigateToLogin()" class="login-link-text">{{ t.public.registration.loginLink }}</a>
 		</p>
 
 	</form>

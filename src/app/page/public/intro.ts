@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { locale } from '../../i18n/locale';
 
 @Component({
 	selector: 'app-intro-page',
@@ -8,7 +9,7 @@ import { Router } from '@angular/router';
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class IntroPage {
-	protected projectName = 'Stellar';
+	protected readonly t = locale;
 	private router = inject(Router);
 
 	navigateToRegistration(): void {

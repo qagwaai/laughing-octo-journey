@@ -2,22 +2,22 @@
 	<header>
 		<p class="eyebrow">{{ content().eyebrow }}</p>
 		<h1>{{ content().sequenceTitle }}</h1>
-		<p class="boot-progress">Boot Stage {{ stage() }} / 3</p>
+		<p class="boot-progress">{{ t.opening.coldBoot.bootStageLabel }} {{ stage() }} / 3</p>
 		<button type="button" class="audio-toggle" (click)="toggleAudio()" [attr.aria-pressed]="audioEnabled()">
-			{{ audioEnabled() ? 'Disable Audio Hooks' : 'Enable Audio Hooks' }}
+			{{ audioEnabled() ? t.opening.coldBoot.disableAudioHooksLabel : t.opening.coldBoot.enableAudioHooksLabel }}
 		</button>
 		<section class="audio-status" aria-label="Audio Status">
-			<p class="audio-status-title">Audio Status</p>
+			<p class="audio-status-title">{{ t.opening.coldBoot.audioStatusTitle }}</p>
 			<p [class.status-on]="audioEnabled()" [class.status-off]="!audioEnabled()" [attr.title]="armedStatusTooltip()">
-				Armed: {{ audioEnabled() ? 'Yes' : 'No' }}
+				{{ t.opening.coldBoot.armedLabel }}: {{ audioEnabled() ? t.opening.coldBoot.yesLabel : t.opening.coldBoot.noLabel }}
 				<span class="status-hint" aria-hidden="true">?</span>
 			</p>
 			<p [class.status-on]="audioBedRunning()" [class.status-off]="!audioBedRunning()" [attr.title]="bedStatusTooltip()">
-				Bed: {{ audioBedRunning() ? 'Running' : 'Stopped' }}
+				{{ t.opening.coldBoot.bedLabel }}: {{ audioBedRunning() ? t.opening.coldBoot.runningLabel : t.opening.coldBoot.stoppedLabel }}
 				<span class="status-hint" aria-hidden="true">?</span>
 			</p>
 			<p [class.status-on]="speechAvailable()" [class.status-off]="!speechAvailable()" [attr.title]="speechStatusTooltip()">
-				Speech: {{ speechAvailable() ? 'Available' : 'Unavailable' }}
+				{{ t.opening.coldBoot.speechLabel }}: {{ speechAvailable() ? t.opening.coldBoot.availableLabel : t.opening.coldBoot.unavailableLabel }}
 				<span class="status-hint" aria-hidden="true">?</span>
 			</p>
 		</section>

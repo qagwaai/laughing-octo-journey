@@ -41,6 +41,9 @@ Layered cinematic audio now includes:
 Content is centralized in a variant/localization-ready model:
 
 - `src/app/model/opening-sequence.ts`
+- `src/app/model/opening-sequence.locale.ts`
+
+Both narrative copy and Cold Boot page UI labels (button text, audio status labels, and tooltip strings) are now externalized in the locale catalog file.
 
 Current variants:
 
