@@ -1,7 +1,7 @@
-import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, computed, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter, map, startWith } from 'rxjs';
+import { Subscription, filter, map, startWith } from 'rxjs';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
@@ -83,7 +83,7 @@ import { RoutedScene } from './routed-scene';
       ></div>
 
       <!-- Right Canvas Area -->
-      <div class="flex-1" #rightPanel>
+      <div class="flex-1 relative" #rightPanel>
         @if (rightOutletActive()) {
           <div class="h-full overflow-auto bg-gray-950 text-white">
             <router-outlet name="right" />
@@ -99,6 +99,15 @@ import { RoutedScene } from './routed-scene';
           >
             <app-routed-scene *canvasContent />
           </ngt-canvas>
+
+      @if (showColdBootLookHint()) {
+        <div
+          class="pointer-events-none absolute left-1/2 bottom-5 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
+          [style.opacity]="lookHintOpacity()"
+        >
+          HOLD DRAG TO LOOK
+        </div>
+      }
         }
       </div>
     </div>
@@ -129,6 +138,7 @@ import { RoutedScene } from './routed-scene';
     RouterOutlet],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
+  private static readonly LOOK_HINT_HIDE_DELAY_MS = 2000;
   protected host = inject(ElementRef);
   protected ngZone = inject(NgZone);
   protected cdr = inject(ChangeDetectorRef);
@@ -144,7 +154,28 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected lockZ = signal(false);
   protected leftPanelWidth = signal(50);
   protected isResizing = signal(false);
+  protected lookHintOpacity = signal(0);
+
+  protected currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map((ev) => ev.urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  protected isColdBootSceneActive = computed(() =>
+    this.currentUrl().includes('opening-cold-boot') && !this.rightOutletActive(),
+  );
+
+  protected showColdBootLookHint = computed(() =>
+    this.isColdBootSceneActive() && this.lookHintOpacity() > 0,
+  );
+
   private startX = 0;
+  private lookHintTimerId: number | null = null;
+  private navigationSubscription: Subscription;
 
   protected rightOutletActive = toSignal(
     this.router.events.pipe(
@@ -155,7 +186,17 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     { initialValue: false },
   );
 
-  constructor() { 
+  constructor() {
+    this.navigationSubscription = this.router.events
+      .pipe(
+        filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+        map((ev) => ev.urlAfterRedirects),
+        startWith(this.router.url),
+      )
+      .subscribe((url) => {
+        const isColdBootPrimary = url.includes('opening-cold-boot') && !url.includes('right:');
+        this.configureColdBootLookHint(isColdBootPrimary);
+      });
   }
 
   /**
@@ -298,5 +339,29 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     // Clean up event listeners
     document.removeEventListener('mousemove', this.onMouseMoveListener);
     document.removeEventListener('mouseup', this.onMouseUpListener);
+    this.clearLookHintTimer();
+    this.navigationSubscription.unsubscribe();
+  }
+
+  private configureColdBootLookHint(isActive: boolean): void {
+    this.clearLookHintTimer();
+    if (!isActive) {
+      this.lookHintOpacity.set(0);
+      return;
+    }
+
+    this.lookHintOpacity.set(0.82);
+    this.lookHintTimerId = window.setTimeout(() => {
+      this.lookHintOpacity.set(0);
+      this.lookHintTimerId = null;
+    }, AppComponent.LOOK_HINT_HIDE_DELAY_MS);
+  }
+
+  private clearLookHintTimer(): void {
+    if (this.lookHintTimerId === null) {
+      return;
+    }
+    clearTimeout(this.lookHintTimerId);
+    this.lookHintTimerId = null;
   }
 }

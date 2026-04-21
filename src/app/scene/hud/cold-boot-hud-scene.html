@@ -30,8 +30,6 @@
 
 <app-cracked-cockpit-window />
 
-<app-hud-overlay [title]="hudTitle()" [aiLabel]="aiLabel()" [systemChecks]="visibleSystemChecks()" [aiMessage]="visibleAiMessage()" />
-
 @for (debris of visibleDebris(); track $index) {
 	<ngt-mesh [position]="debris.position" [rotation]="debris.rotation" [scale]="debris.scale">
 		<ngt-box-geometry *args="[1, 1, 1]" />

@@ -15,13 +15,12 @@ import { injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { CrackedCockpitWindow } from './cracked-cockpit-window';
-import { HudOverlay } from './hud-overlay';
 
 @Component({
 	selector: 'app-cold-boot-hud-scene',
 	templateUrl: './cold-boot-hud-scene.html',
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
-	imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow, HudOverlay],
+	imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ColdBootHudScene implements OnInit, OnDestroy {
@@ -55,23 +54,6 @@ export default class ColdBootHudScene implements OnInit, OnDestroy {
 	protected alertLightIntensity = computed(() => 1.2 + this.alertPulse() * 6.8);
 	protected alertEmitterIntensity = computed(() => 0.9 + this.alertPulse() * 5.1);
 
-	protected visibleSystemChecks = computed(() => {
-		const checks = this.content().systemChecks;
-		if (this.stage() < 1) {
-			return [];
-		}
-		if (this.stage() === 1) {
-			return checks.slice(0, 1);
-		}
-		if (this.stage() === 2) {
-			return checks.slice(0, 2);
-		}
-		return checks;
-	});
-
-	protected hudTitle = computed(() => this.content().hudTitle);
-	protected aiLabel = computed(() => this.content().aiLabel);
-	protected visibleAiMessage = computed(() => (this.stage() >= 3 ? this.content().aiTransmission : ''));
 	protected visibleDebris = computed(() => (this.stage() >= 2 ? this.debrisField : []));
 
 	protected readonly debrisField = [
