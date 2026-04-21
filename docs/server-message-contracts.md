@@ -36,6 +36,10 @@ This document describes the socket message contracts currently used by the appli
 | `game-join-response` | server -> client | Return game join validation/result |
 | `drone-list-request` | client -> server | Fetch drone list for selected character |
 | `drone-list-response` | server -> client | Return drone list for selected character |
+| `add-mission-request` | client -> server | Add mission status record for selected character |
+| `add-mission-response` | server -> client | Return mission add result |
+| `list-missions-request` | client -> server | Fetch missions and statuses for selected character |
+| `list-missions-response` | server -> client | Return mission list/statuses |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
 
 ---
@@ -447,6 +451,148 @@ Edge cases:
 - If the character is valid but has no drones, return `success: true` with `drones: []`.
 - If `characterId` is stale or unauthorized, return `success: false` with user-safe message.
 - `drones` should always be present as an array to avoid ambiguous UI state.
+
+---
+
+## Mission Add
+
+### `add-mission-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "missionId": "string",
+  "sessionKey": "string",
+  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in (optional)"
+}
+```
+
+Client-side behavior:
+
+- Use this event to create or upsert a mission status entry for one character.
+- If `status` is omitted, server should default to `available`.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership of `characterId` for `playerName`.
+- Validate `missionId` against server mission catalog.
+- Accept canonical statuses and optionally server-defined extensions.
+- Return `add-mission-response` for each request.
+- Emit `invalid-session` for expired/revoked/invalid sessions.
+
+### `add-mission-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "mission": {
+    "missionId": "string",
+    "status": "string",
+    "startedAt": "string (optional)",
+    "inProgressAt": "string (optional)",
+    "failedAt": "string (optional)",
+    "completedAt": "string (optional)",
+    "updatedAt": "string (optional)",
+    "failureReason": "string (optional)",
+    "statusDetail": "string (optional)"
+  }
+}
+```
+
+Edge cases:
+
+- If mission already exists for the character, prefer deterministic upsert semantics and return updated `mission`.
+- If mission is unknown, return `success: false` with a safe message.
+- If a status transition is invalid by server rules, return `success: false` with transition guidance.
+
+---
+
+## Mission List
+
+### `list-missions-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string",
+  "statuses": ["available", "started", "in-progress", "failed", "completed"]
+}
+```
+
+Client-side behavior:
+
+- Request all character missions when entering progression or mission views.
+- `statuses` is optional and can be used as a server-side filter.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership of `characterId`.
+- Return `list-missions-response` for every `list-missions-request`.
+- Emit `invalid-session` for invalid session context.
+
+### `list-missions-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "missions": [
+    {
+      "missionId": "string",
+      "status": "string",
+      "startedAt": "string (optional)",
+      "inProgressAt": "string (optional)",
+      "failedAt": "string (optional)",
+      "completedAt": "string (optional)",
+      "updatedAt": "string (optional)",
+      "failureReason": "string (optional)",
+      "statusDetail": "string (optional)"
+    }
+  ]
+}
+```
+
+Edge cases:
+
+- If the character has no missions yet, return `success: true` and `missions: []`.
+- `missions` should always be present as an array.
+- If filters are applied, return only matching statuses.
+
+---
+
+## Mission Locale Content
+
+Client mission narrative text should be sourced from locale content rather than hard-coded in pages.
+
+Canonical mission ID:
+
+- `first-target`
+
+English mission content:
+
+- Title: `The First Mission: Your First Target`
+- Briefing line 1: `Yes, the player starts by targeting an asteroid, but with a twist: The Dart Maneuver.`
+- Briefing line 2: `Instead of a mining laser, you are given a single Expendable "Dart" Drone. Since you have no "Permanent" drones yet, you must use your own ship's HUD to manually lock onto a nearby Level 1 Silicate Asteroid.`
+- Gameplay loop title: `The Gameplay Loop of the Tutorial`
+- Step 1: `Scanning: You move your crosshair over a cluster of rocks. The HUD identifies a "High-Iron Trace."`
+- Step 2: `Launching: You press the ignition. The Expendable "Dart" (like the one you saw in the hangar) screams out of your launch tube.`
+- Step 3: `The Impact: The Dart does not mine - it impacts. It slams into the asteroid, shattering it into three manageable chunks.`
+- Step 4: `The Manual Retrieval: Without a Tug Drone, you must manually pilot your Scavenger Pod to "catch" the floating debris in your gravity scoop.`
 
 ---
 
