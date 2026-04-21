@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { injectStore, NgtArgs } from 'angular-three';
+import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { CrackedCockpitWindow } from './cracked-cockpit-window';
 import { HudOverlay } from './hud-overlay';
@@ -20,7 +21,7 @@ import { HudOverlay } from './hud-overlay';
 	selector: 'app-cold-boot-hud-scene',
 	templateUrl: './cold-boot-hud-scene.html',
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
-	imports: [NgtArgs, CrackedCockpitWindow, HudOverlay],
+	imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow, HudOverlay],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ColdBootHudScene implements OnInit, OnDestroy {
@@ -31,14 +32,17 @@ export default class ColdBootHudScene implements OnInit, OnDestroy {
 	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private store = injectStore();
 	private timers: number[] = [];
+	private cameraInitialized = false;
 
 	constructor() {
-		// Lock camera to a fixed first-person cockpit perspective — straight-on, no orbit.
+		// Initialize the cockpit camera once, then let constrained orbit controls handle look-around.
 		effect(() => {
+			if (this.cameraInitialized) return;
 			const camera = this.store.camera();
 			if (!camera) return;
 			camera.position.set(0, 0, 6);
 			camera.lookAt(0, 0, 0);
+			this.cameraInitialized = true;
 		});
 	}
 
