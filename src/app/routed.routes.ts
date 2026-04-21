@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
+import DroneViewSpecsPage from './page/game/drone-view-specs';
 import GameJoinPage from './page/game/game-join';
 import DroneViewSpecs from './scene/drone-view-specs';
 
@@ -93,6 +94,13 @@ const routes: Routes = [
 		canActivate: [authGuard],
 	},
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
+	// Right panel – Angular page routes (replaces ngt-canvas when active)
+	{
+		path: 'drone-view-specs',
+		outlet: 'right',
+		component: DroneViewSpecsPage,
+		canActivate: [authGuard],
+	},
 ];
 
 export default routes;

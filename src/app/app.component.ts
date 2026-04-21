@@ -1,5 +1,7 @@
 import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
@@ -73,16 +75,22 @@ import { RoutedScene } from './routed-scene';
 
       <!-- Right Canvas Area -->
       <div class="flex-1" #rightPanel>
-        <ngt-canvas
-          #canvas
-          [stats]="{ parent: host, domClass: 'stats' }"
-          shadows 
-          [camera]="{ position: [5, 5, 5] }" 
-          [lookAt]="[0, 0, 0]"
-          (click)="onCanvasClick()"
-        >
-          <app-routed-scene *canvasContent />
-        </ngt-canvas>
+        @if (rightOutletActive()) {
+          <div class="h-full overflow-auto bg-gray-950 text-white">
+            <router-outlet name="right" />
+          </div>
+        } @else {
+          <ngt-canvas
+            #canvas
+            [stats]="{ parent: host, domClass: 'stats' }"
+            shadows 
+            [camera]="{ position: [5, 5, 5] }" 
+            [lookAt]="[0, 0, 0]"
+            (click)="onCanvasClick()"
+          >
+            <app-routed-scene *canvasContent />
+          </ngt-canvas>
+        }
       </div>
     </div>
   `,
@@ -129,19 +137,32 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected isResizing = signal(false);
   private startX = 0;
 
+  protected rightOutletActive = toSignal(
+    this.router.events.pipe(
+      filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map((ev) => ev.urlAfterRedirects.includes('right:')),
+      startWith(this.router.url.includes('right:')),
+    ),
+    { initialValue: false },
+  );
+
   constructor() { 
   }
 
   /**
-   * Navigate to a route in the primary outlet (right panel)
-   * Optionally navigate to a route in the left panel using auxiliary outlet
+   * Navigate to a route in the primary outlet (canvas/scene).
+   * Optionally activate a left-panel or right-panel route at the same time.
+   * When rightRoute is omitted the right outlet is cleared so the canvas shows.
    */
-  navigateTo(primaryRoute: string, leftRoute?: string) {
-    const commands: any[] = [primaryRoute];
+  navigateTo(primaryRoute: string, leftRoute?: string, rightRoute?: string) {
+    const outlets: Record<string, string[] | null> = {
+      primary: [primaryRoute],
+      right: rightRoute ? [rightRoute] : null,
+    };
     if (leftRoute) {
-      commands.push({ outlets: { left: [leftRoute] } });
+      outlets['left'] = [leftRoute];
     }
-    this.router.navigate(commands);
+    this.router.navigate([{ outlets }], { preserveFragment: true });
   }
 
   /**

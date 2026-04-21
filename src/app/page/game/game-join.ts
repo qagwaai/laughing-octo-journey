@@ -199,7 +199,7 @@ export default class GameJoinPage {
 		const playerName = this.playerName();
 		const joinCharacter = this.joinCharacter();
 
-		this.router.navigate([{ outlets: { primary: ['drone-view-specs'], left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName,
