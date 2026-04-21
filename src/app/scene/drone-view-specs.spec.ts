@@ -16,6 +16,7 @@ interface DroneViewSpecsState {
 }
 
 class MockDroneViewSpecsScene {
+	currentRouteLabel = '/drone-view-specs';
 	playerName = createSignal<string>('');
 	joinCharacter = createSignal<DroneViewSpecsState['joinCharacter'] | null>(null);
 	joinDrone = createSignal<DroneViewSpecsState['joinDrone'] | null>(null);
@@ -46,5 +47,10 @@ describe('DroneViewSpecs Scene', () => {
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toBeNull();
 		expect(component.joinDrone()).toBeNull();
+	});
+
+	it('should define its own current route label for in-canvas display', () => {
+		const component = new MockDroneViewSpecsScene();
+		expect(component.currentRouteLabel).toBe('/drone-view-specs');
 	});
 });

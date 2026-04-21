@@ -13,6 +13,7 @@ import { BoxGeometry, Color, InstancedMesh, Object3D } from "three";
 import { AngularLogo } from "../component/angular-logo";
 import { Button } from "../component/button";
 import niceColors from "../component/colors";
+import { CurrentRoute } from "../component/current";
 import { Cube } from "../component/cube";
 import { ExpendableDartDrone } from "../component/expendable-dart-drone";
 import { Sol } from "../component/sol";
@@ -24,6 +25,7 @@ extend(THREE);
     selector: "app-scene-graph",
     template: `
     	<ngt-color *args="['#090625']" attach="background" />
+		<app-current [position]="[0, 0, -10]" [text]="'/scene-graph'" />
 
         <ngt-ambient-light #ambient name="ambient" [intensity]="0.5" />
         <ngt-spot-light
@@ -93,7 +95,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone, AngularLogo],
+    imports: [Button, Cube, CurrentRoute, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone, AngularLogo],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })

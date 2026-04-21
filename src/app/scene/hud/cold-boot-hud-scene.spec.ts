@@ -2,6 +2,7 @@ export {};
 
 class MockColdBootHudScene {
 	stage = 0;
+	currentRouteLabel = '/opening-cold-boot';
 	content = {
 		hudTitle: 'COLD BOOT // TIER 1 SCAVENGER POD',
 		aiLabel: 'AI LINK // DEGRADED CHANNEL',
@@ -77,5 +78,10 @@ describe('ColdBootHudScene', () => {
 		const scene = new MockColdBootHudScene();
 		expect(scene.content.hudTitle).toContain('COLD BOOT');
 		expect(scene.content.aiLabel).toContain('AI LINK');
+	});
+
+	it('should own route label rendering for this scene', () => {
+		const scene = new MockColdBootHudScene();
+		expect(scene.currentRouteLabel).toBe('/opening-cold-boot');
 	});
 });

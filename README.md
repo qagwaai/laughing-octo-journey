@@ -16,6 +16,13 @@ This is a template to get started with Angular Three.
 - Tailwind CSS
 - Prettier
 
+## Scene Route Label Ownership
+
+Route labels rendered with `app-current` are owned by individual scene components, not by the routed scene shell.
+
+- Shell responsibility: `src/app/routed-scene.ts` renders `<router-outlet />` and loading fallback only.
+- Scene responsibility: each canvas scene template places its own `app-current` marker so overlays can be positioned per scene (for example, cold-boot HUD avoids cockpit crack overlap).
+
 ## Opening Sequence: Cold Boot
 
 The opening sequence is split across both panes:

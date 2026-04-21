@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { textureResource } from "angular-three-soba/loaders";
+import { CurrentRoute } from '../component/current';
 import { ExpendableDartDrone } from "../component/expendable-dart-drone";
 import { PlayerCharacterSummary } from '../model/character-list';
 import { DroneSummary } from '../model/drone-list';
@@ -16,7 +17,7 @@ interface DroneViewSpecsNavigationState {
 @Component({
 	selector: 'app-drone-view-specs',
 	templateUrl: './drone-view-specs.html',
-	imports: [NgtArgs, ExpendableDartDrone, NgtsOrbitControls],
+	imports: [NgtArgs, ExpendableDartDrone, NgtsOrbitControls, CurrentRoute],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })

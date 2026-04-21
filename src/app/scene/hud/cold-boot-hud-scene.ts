@@ -12,6 +12,7 @@ import {
 import { ActivatedRoute } from '@angular/router';
 import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { CurrentRoute } from '../../component/current';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { CrackedCockpitWindow } from './cracked-cockpit-window';
 import { HudOverlay } from './hud-overlay';
@@ -20,7 +21,7 @@ import { HudOverlay } from './hud-overlay';
 	selector: 'app-cold-boot-hud-scene',
 	templateUrl: './cold-boot-hud-scene.html',
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
-	imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow, HudOverlay],
+	imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow, HudOverlay, CurrentRoute],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ColdBootHudScene implements OnInit, OnDestroy {
