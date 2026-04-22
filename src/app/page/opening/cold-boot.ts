@@ -26,7 +26,6 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	private sessionService = inject(SessionService);
 	private timers: number[] = [];
 	private didStartBedForCurrentEnablement = false;
-	private didRequestInitialMission = false;
 	private navigationState: ColdBootNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ColdBootNavigationState | undefined) ??
 		(history.state as ColdBootNavigationState | undefined) ??
@@ -36,6 +35,8 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	protected stage = signal(0);
 	protected audioEnabled = signal(false);
 	protected audioBedRunning = signal(false);
+	protected scanActionPending = signal(false);
+	protected scanActionError = signal('');
 
 	protected content = signal(
 		resolveOpeningSequenceContent(this.locale, this.route.snapshot.queryParamMap.get('variant') ?? undefined),
@@ -83,7 +84,6 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	}
 
 	ngOnInit(): void {
-		this.requestInitialMission();
 		this.scheduleStageAdvances();
 	}
 
@@ -120,26 +120,51 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 		}
 	}
 
-	private requestInitialMission(): void {
-		if (this.didRequestInitialMission) {
+	protected async startScanning(): Promise<void> {
+		if (this.scanActionPending()) {
 			return;
 		}
 
+		const missionRequest = this.buildMissionRequest();
+		if (!missionRequest) {
+			this.scanActionError.set(this.t.opening.coldBoot.startScanningErrorLabel);
+			return;
+		}
+
+		this.scanActionPending.set(true);
+		this.scanActionError.set('');
+
+		const result = await this.missionService.upsertMissionStatus(missionRequest);
+		if (result !== 'updated') {
+			this.scanActionPending.set(false);
+			this.scanActionError.set(this.t.opening.coldBoot.startScanningErrorLabel);
+			return;
+		}
+
+		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }], {
+			preserveFragment: true,
+			state: {
+				...this.navigationState,
+			},
+		});
+		this.scanActionPending.set(false);
+	}
+
+	private buildMissionRequest() {
 		const playerName = this.navigationState.playerName?.trim() ?? '';
 		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
-		const sessionKey = this.sessionService.getSessionKey();
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName || !characterId || !sessionKey) {
-			return;
+			return null;
 		}
 
-		this.didRequestInitialMission = true;
-		void this.missionService.ensureMissionExists({
+		return {
 			playerName,
 			characterId,
 			sessionKey,
 			missionId: FIRST_TARGET_MISSION_ID,
-			initialStatus: 'started',
-		});
+			status: 'started' as const,
+		};
 	}
 }

@@ -9,6 +9,7 @@ import FabricationLabPage from './page/game/fabrication-lab';
 import GameJoinPage from './page/game/game-join';
 import LogoutPage from './page/game/logout';
 import MarketHubPage from './page/game/market-hub';
+import ColdBootScanPage from './page/opening/cold-boot-scan';
 import RepairRetrofitPage from './page/game/repair-retrofit';
 import StellarInitiationPage from './page/game/stellar-initiation';
 import DroneViewSpecs from './scene/drone-view-specs';
@@ -161,6 +162,12 @@ const routes: Routes = [
 		path: 'drone-view-specs',
 		outlet: 'right',
 		component: DroneViewSpecsPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'opening-cold-boot-scan',
+		outlet: 'right',
+		component: ColdBootScanPage,
 		canActivate: [authGuard],
 	},
 ];

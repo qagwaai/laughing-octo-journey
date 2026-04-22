@@ -38,6 +38,8 @@ This document describes the socket message contracts currently used by the appli
 | `drone-list-response` | server -> client | Return drone list for selected character |
 | `add-mission-request` | client -> server | Add mission status record for selected character |
 | `add-mission-response` | server -> client | Return mission add result |
+| `mission-upsert-request` | client -> server | Upsert mission status for selected character (logical contract; currently sent as `add-mission-request`) |
+| `mission-upsert-response` | server -> client | Return mission upsert result (logical contract; currently received as `add-mission-response`) |
 | `list-missions-request` | client -> server | Fetch missions and statuses for selected character |
 | `list-missions-response` | server -> client | Return mission list/statuses |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
@@ -512,6 +514,74 @@ Edge cases:
 - If mission already exists for the character, prefer deterministic upsert semantics and return updated `mission`.
 - If mission is unknown, return `success: false` with a safe message.
 - If a status transition is invalid by server rules, return `success: false` with transition guidance.
+
+---
+
+## Mission Upsert
+
+`mission-upsert` is the explicit client-side contract for status updates and status-aware creation.
+
+Compatibility mapping (current implementation):
+
+- `mission-upsert-request` maps to wire event `add-mission-request`.
+- `mission-upsert-response` maps to wire event `add-mission-response`.
+
+### `mission-upsert-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "missionId": "string",
+  "sessionKey": "string",
+  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in"
+}
+```
+
+Client-side behavior:
+
+- Use this contract when a flow must explicitly set mission status (for example transitioning `first-target` to `started`).
+- Unlike Mission Add, `status` is required for upsert requests.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership of `characterId` for `playerName`.
+- Validate `missionId` against server mission catalog.
+- Apply deterministic upsert semantics: create mission if missing or update existing mission status if present.
+- Return `mission-upsert-response` (currently emitted as `add-mission-response`) for each request.
+- Emit `invalid-session` for expired/revoked/invalid sessions.
+
+### `mission-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "mission": {
+    "missionId": "string",
+    "status": "string",
+    "startedAt": "string (optional)",
+    "inProgressAt": "string (optional)",
+    "failedAt": "string (optional)",
+    "completedAt": "string (optional)",
+    "updatedAt": "string (optional)",
+    "failureReason": "string (optional)",
+    "statusDetail": "string (optional)"
+  }
+}
+```
+
+Edge cases:
+
+- If mission does not exist, server should create then return the created/updated mission snapshot.
+- If a status transition is invalid by server rules, return `success: false` with transition guidance.
+- Return the authoritative stored status/timestamps in `mission` after transition.
 
 ---
 

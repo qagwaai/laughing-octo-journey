@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT, MissionAddResponse } from '../model/mission-add';
 import {
+	MISSION_UPSERT_REQUEST_EVENT,
+	MISSION_UPSERT_RESPONSE_EVENT,
+	MissionUpsertRequest,
+	MissionUpsertResponse,
+} from '../model/mission-upsert';
+import {
 	MISSION_LIST_REQUEST_EVENT,
 	MISSION_LIST_RESPONSE_EVENT,
 	MissionListRequest,
@@ -24,6 +30,13 @@ export type EnsureMissionExistsResult =
 	| 'not-connected'
 	| 'list-failed'
 	| 'add-failed'
+	| 'timeout';
+
+export type UpsertMissionStatusResult =
+	| 'updated'
+	| 'invalid-request'
+	| 'not-connected'
+	| 'update-failed'
 	| 'timeout';
 
 @Injectable({
@@ -114,6 +127,61 @@ export class MissionService {
 			);
 
 			this.socketService.emit(MISSION_LIST_REQUEST_EVENT, listRequest);
+		});
+	}
+
+	async upsertMissionStatus(request: MissionUpsertRequest): Promise<UpsertMissionStatusResult> {
+		const playerName = request.playerName.trim();
+		const characterId = request.characterId.trim();
+		const missionId = request.missionId.trim();
+		const sessionKey = request.sessionKey.trim();
+		const status = request.status.trim();
+
+		if (!playerName || !characterId || !missionId || !sessionKey || !status) {
+			return 'invalid-request';
+		}
+
+		const isConnected = await this.ensureConnected();
+		if (!isConnected) {
+			return 'not-connected';
+		}
+
+		return new Promise<UpsertMissionStatusResult>((resolve) => {
+			let settled = false;
+			let unsubscribeAdd: (() => void) | undefined;
+
+			const settle = (result: UpsertMissionStatusResult) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				clearTimeout(timeoutId);
+				unsubscribeAdd?.();
+				resolve(result);
+			};
+
+			const timeoutId = window.setTimeout(() => {
+				settle('timeout');
+			}, MissionService.RESPONSE_TIMEOUT_MS);
+
+			unsubscribeAdd = this.socketService.on(
+				MISSION_UPSERT_RESPONSE_EVENT,
+				(addResponse: MissionUpsertResponse) => {
+					if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
+						return;
+					}
+
+					settle(addResponse.success ? 'updated' : 'update-failed');
+				},
+			);
+
+			this.socketService.emit(MISSION_UPSERT_REQUEST_EVENT, {
+				playerName,
+				characterId,
+				missionId,
+				sessionKey,
+				status,
+			});
 		});
 	}
 

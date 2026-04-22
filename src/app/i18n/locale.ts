@@ -222,6 +222,11 @@ export const locale = {
 	opening: {
 		coldBoot: {
 			bootStageLabel: 'Boot Stage',
+			startScanningDescription:
+				'Start scanning the nearby region for raw materials to use in printing a Fabrication Unit?',
+			startScanningLabel: 'Start Scanning?',
+			startScanningPendingLabel: 'Starting Scan...',
+			startScanningErrorLabel: 'Scanning handoff failed. Retry after comms stabilize.',
 			enableAudioHooksLabel: 'Enable Audio Hooks',
 			disableAudioHooksLabel: 'Disable Audio Hooks',
 			audioStatusTitle: 'Audio Status',

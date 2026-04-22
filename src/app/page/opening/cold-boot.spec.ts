@@ -3,11 +3,15 @@ export {};
 const FIRST_TARGET_MISSION_ID = 'first-target';
 
 interface MockMissionService {
-	ensureMissionExists: jasmine.Spy;
+	upsertMissionStatus: jasmine.Spy;
 }
 
 interface MockSessionService {
 	getSessionKey: () => string | null;
+}
+
+interface MockRouter {
+	navigate: jasmine.Spy;
 }
 
 interface ColdBootNavigationState {
@@ -20,7 +24,8 @@ interface ColdBootNavigationState {
 
 class MockColdBootOpeningPage {
 	stage = 0;
-	private didRequestInitialMission = false;
+	scanActionPending = false;
+	scanActionError = '';
 	content = {
 		sequenceTitle: 'Opening Sequence: Cold Boot',
 		eyebrow: 'Mission Bootstrap',
@@ -35,10 +40,18 @@ class MockColdBootOpeningPage {
 		aiTransmission:
 			'Pilot, the Reactor Drone has been lost. We are drifting on residual battery. To survive, we must secure high-density matter for the Fabrication Unit. Deployment of the last Expendable unit is authorized.',
 	};
+	t = {
+		opening: {
+			coldBoot: {
+				startScanningErrorLabel: 'Scanning handoff failed. Retry after comms stabilize.',
+			},
+		},
+	};
 
 	constructor(
-		private missionService: MockMissionService = { ensureMissionExists: jasmine.createSpy('ensureMissionExists') },
+		private missionService: MockMissionService = { upsertMissionStatus: jasmine.createSpy('upsertMissionStatus') },
 		private sessionService: MockSessionService = { getSessionKey: () => 'session-key' },
+		private router: MockRouter = { navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)) },
 		private navigationState: ColdBootNavigationState = {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'char-1', characterName: 'Nova' },
@@ -46,7 +59,7 @@ class MockColdBootOpeningPage {
 	) {}
 
 	ngOnInit() {
-		this.requestInitialMission();
+		return;
 	}
 
 	visibleSystemChecks() {
@@ -62,27 +75,50 @@ class MockColdBootOpeningPage {
 		return this.content.systemChecks;
 	}
 
-	private requestInitialMission(): void {
-		if (this.didRequestInitialMission) {
+		async startScanning(): Promise<void> {
+		if (this.scanActionPending) {
 			return;
 		}
 
+		const missionRequest = this.buildMissionRequest();
+		if (!missionRequest) {
+			this.scanActionError = this.t.opening.coldBoot.startScanningErrorLabel;
+			return;
+		}
+
+		this.scanActionPending = true;
+		this.scanActionError = '';
+
+		const result = await this.missionService.upsertMissionStatus(missionRequest);
+		if (result !== 'updated') {
+			this.scanActionPending = false;
+			this.scanActionError = this.t.opening.coldBoot.startScanningErrorLabel;
+			return;
+		}
+
+		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }], {
+			preserveFragment: true,
+			state: this.navigationState,
+		});
+		this.scanActionPending = false;
+	}
+
+	private buildMissionRequest() {
 		const playerName = this.navigationState.playerName?.trim() ?? '';
 		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
 		const sessionKey = this.sessionService.getSessionKey();
 
 		if (!playerName || !characterId || !sessionKey) {
-			return;
+			return null;
 		}
 
-		this.didRequestInitialMission = true;
-		void this.missionService.ensureMissionExists({
+		return {
 			playerName,
 			characterId,
 			sessionKey,
 			missionId: FIRST_TARGET_MISSION_ID,
-			initialStatus: 'started',
-		});
+			status: 'started',
+		};
 	}
 }
 
@@ -127,9 +163,9 @@ describe('ColdBootOpeningPage', () => {
 		expect(component.visibleSystemChecks().length).toBe(3);
 	});
 
-	it('should request first mission once on init', () => {
+	it('should not start mission automatically on init', () => {
 		const missionService: MockMissionService = {
-			ensureMissionExists: jasmine.createSpy('ensureMissionExists').and.returnValue(Promise.resolve('added')),
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
 		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
 		const component = new MockColdBootOpeningPage(missionService, sessionService, {
@@ -140,28 +176,76 @@ describe('ColdBootOpeningPage', () => {
 		component.ngOnInit();
 		component.ngOnInit();
 
-		expect(missionService.ensureMissionExists.calls.count()).toBe(1);
-		expect(missionService.ensureMissionExists).toHaveBeenCalledWith({
+		expect(missionService.upsertMissionStatus.calls.count()).toBe(0);
+	});
+
+	it('should start first mission and navigate to scanning pane when requested', async () => {
+		const missionService: MockMissionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
+		};
+		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
+		const router: MockRouter = {
+			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
+		};
+		const component = new MockColdBootOpeningPage(missionService, sessionService, router, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'char-1', characterName: 'Nova' },
+		});
+
+		await component.startScanning();
+
+		expect(missionService.upsertMissionStatus).toHaveBeenCalledWith({
 			playerName: 'Pioneer',
 			characterId: 'char-1',
 			sessionKey: 'session-key',
 			missionId: FIRST_TARGET_MISSION_ID,
-			initialStatus: 'started',
+			status: 'started',
 		});
+		expect(router.navigate).toHaveBeenCalledWith(
+			[{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'char-1', characterName: 'Nova' },
+				},
+			},
+		);
+		expect(component.scanActionError).toBe('');
+		expect(component.scanActionPending).toBe(false);
 	});
 
-	it('should not request mission when required context is missing', () => {
+	it('should surface an error when mission start context is missing', async () => {
 		const missionService: MockMissionService = {
-			ensureMissionExists: jasmine.createSpy('ensureMissionExists').and.returnValue(Promise.resolve('added')),
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
 		const sessionService: MockSessionService = { getSessionKey: () => null };
-		const component = new MockColdBootOpeningPage(missionService, sessionService, {
+		const component = new MockColdBootOpeningPage(missionService, sessionService);
+
+		await component.startScanning();
+
+		expect(missionService.upsertMissionStatus).not.toHaveBeenCalled();
+		expect(component.scanActionError).toBe('Scanning handoff failed. Retry after comms stabilize.');
+	});
+
+	it('should surface an error when mission status update fails', async () => {
+		const missionService: MockMissionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('update-failed')),
+		};
+		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
+		const router: MockRouter = {
+			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
+		};
+		const component = new MockColdBootOpeningPage(missionService, sessionService, router, {
 			playerName: 'Pioneer',
-			joinCharacter: { id: 'char-1' },
+			joinCharacter: { id: 'char-1', characterName: 'Nova' },
 		});
 
-		component.ngOnInit();
+		await component.startScanning();
 
-		expect(missionService.ensureMissionExists.calls.count()).toBe(0);
+		expect(router.navigate).not.toHaveBeenCalled();
+		expect(component.scanActionError).toBe('Scanning handoff failed. Retry after comms stabilize.');
+		expect(component.scanActionPending).toBe(false);
+		});
 	});
 });

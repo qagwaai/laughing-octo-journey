@@ -1,5 +1,6 @@
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT } from '../model/mission-add';
 import { MISSION_LIST_REQUEST_EVENT, MISSION_LIST_RESPONSE_EVENT } from '../model/mission-list';
+import { MISSION_UPSERT_REQUEST_EVENT, MISSION_UPSERT_RESPONSE_EVENT } from '../model/mission-upsert';
 import { MissionService } from './mission.service';
 
 type Listener = (payload: any) => void;
@@ -279,5 +280,73 @@ describe('MissionService', () => {
 			jasmine.clock().uninstall();
 			(MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS = previousTimeout;
 		}
+	});
+
+	it('should upsert mission status directly through add mission event', async () => {
+		const updatePromise = service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: 'started',
+		});
+		await Promise.resolve();
+
+		expect(socketService.emittedEvents.length).toBe(1);
+		expect(socketService.emittedEvents[0]).toEqual({
+			event: MISSION_UPSERT_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				characterId: 'char-1',
+				missionId: 'first-target',
+				sessionKey: 'session-1',
+				status: 'started',
+			},
+		});
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'updated',
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			mission: { missionId: 'first-target', status: 'started' },
+		});
+
+		const result = await updatePromise;
+		expect(result).toBe('updated');
+	});
+
+	it('should reject mission status upsert when required fields are missing', async () => {
+		const result = await service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: ' ',
+		});
+
+		expect(result).toBe('invalid-request');
+		expect(socketService.emittedEvents.length).toBe(0);
+	});
+
+	it('should return update-failed when mission status upsert fails', async () => {
+		const updatePromise = service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: 'started',
+		});
+		await Promise.resolve();
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: false,
+			message: 'nope',
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+		});
+
+		const result = await updatePromise;
+		expect(result).toBe('update-failed');
 	});
 });

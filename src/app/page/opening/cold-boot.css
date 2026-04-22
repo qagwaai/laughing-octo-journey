@@ -154,3 +154,59 @@ blockquote {
 	line-height: 1.55;
 	color: #d7efff;
 }
+
+.scan-action {
+	margin-bottom: 1.1rem;
+	padding: 1rem;
+	border: 1px solid rgba(109, 217, 255, 0.28);
+	background: linear-gradient(180deg, rgba(3, 12, 17, 0.88), rgba(4, 17, 24, 0.68));
+	box-shadow: inset 0 0 0 1px rgba(78, 125, 156, 0.25);
+	opacity: 0;
+	transform: translateY(14px);
+	transition: opacity 420ms ease, transform 420ms ease;
+}
+
+.scan-action.visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.scan-action p {
+	margin: 0;
+	font-size: 0.84rem;
+	line-height: 1.5;
+	color: #d7efff;
+}
+
+.scan-action-button {
+	margin-top: 0.8rem;
+	padding: 0.7rem 0.95rem;
+	border: 1px solid rgba(126, 230, 255, 0.58);
+	background: linear-gradient(180deg, rgba(11, 36, 48, 0.96), rgba(10, 20, 28, 0.96));
+	color: #d9fbff;
+	font: inherit;
+	font-size: 0.8rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	cursor: pointer;
+	transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.scan-action-button:hover:not(:disabled),
+.scan-action-button:focus-visible:not(:disabled) {
+	border-color: rgba(158, 241, 255, 0.85);
+	box-shadow: 0 0 18px rgba(92, 209, 255, 0.18);
+	transform: translateY(-1px);
+	outline: none;
+}
+
+.scan-action-button:disabled {
+	opacity: 0.7;
+	cursor: progress;
+	transform: none;
+}
+
+.scan-action-error {
+	margin-top: 0.65rem;
+	color: #ffb8b8;
+}
