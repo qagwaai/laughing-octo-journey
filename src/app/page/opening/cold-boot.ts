@@ -1,8 +1,15 @@
 import { LOCALE_ID, ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { PlayerCharacterSummary } from '../../model/character-list';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
-import { OpeningAudioService } from '../../services';
+import { MissionService, OpeningAudioService, SessionService } from '../../services';
 import { locale } from '../../i18n/locale';
+
+interface ColdBootNavigationState {
+	playerName?: string;
+	joinCharacter?: PlayerCharacterSummary;
+}
 
 @Component({
 	selector: 'app-cold-boot-opening-page',
@@ -12,10 +19,18 @@ import { locale } from '../../i18n/locale';
 })
 export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	private route = inject(ActivatedRoute);
+	private router = inject(Router);
 	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private openingAudio = inject(OpeningAudioService);
+	private missionService = inject(MissionService);
+	private sessionService = inject(SessionService);
 	private timers: number[] = [];
 	private didStartBedForCurrentEnablement = false;
+	private didRequestInitialMission = false;
+	private navigationState: ColdBootNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as ColdBootNavigationState | undefined) ??
+		(history.state as ColdBootNavigationState | undefined) ??
+		{};
 
 	protected readonly t = locale;
 	protected stage = signal(0);
@@ -68,6 +83,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	}
 
 	ngOnInit(): void {
+		this.requestInitialMission();
 		this.scheduleStageAdvances();
 	}
 
@@ -102,5 +118,28 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 			this.openingAudio.playAiAwakening();
 			this.openingAudio.playAiTransmissionLine(this.content().aiTransmission);
 		}
+	}
+
+	private requestInitialMission(): void {
+		if (this.didRequestInitialMission) {
+			return;
+		}
+
+		const playerName = this.navigationState.playerName?.trim() ?? '';
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey();
+
+		if (!playerName || !characterId || !sessionKey) {
+			return;
+		}
+
+		this.didRequestInitialMission = true;
+		void this.missionService.ensureMissionExists({
+			playerName,
+			characterId,
+			sessionKey,
+			missionId: FIRST_TARGET_MISSION_ID,
+			initialStatus: 'started',
+		});
 	}
 }
