@@ -5,7 +5,7 @@ import {
 	MISSION_UPSERT_RESPONSE_EVENT,
 	MissionUpsertRequest,
 	MissionUpsertResponse,
-} from '../model/mission-upsert';
+} from '../model/mission-upsert.model';
 import {
 	MISSION_LIST_REQUEST_EVENT,
 	MISSION_LIST_RESPONSE_EVENT,
