@@ -13,6 +13,7 @@ import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
+import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
 import { PlayerCharacterSummary } from '../model/character-list';
 
 interface ColdBootScanNavigationState {
@@ -25,6 +26,7 @@ interface AsteroidScanSample {
 	position: [number, number, number];
 	scanProgress: number;
 	scanned: boolean;
+	revealedMaterial: AsteroidMaterialProfile | null;
 }
 
 @Component({
@@ -50,11 +52,11 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
 	protected activeScanAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([
-		{ id: 'sample-a1', position: [-2.4, 0.65, 0.25], scanProgress: 0, scanned: false },
-		{ id: 'sample-a2', position: [-1.15, 0.38, -0.95], scanProgress: 0, scanned: false },
-		{ id: 'sample-a3', position: [0.0, 0.82, -0.45], scanProgress: 0, scanned: false },
-		{ id: 'sample-a4', position: [1.3, 0.46, -1.2], scanProgress: 0, scanned: false },
-		{ id: 'sample-a5', position: [2.5, 0.61, 0.42], scanProgress: 0, scanned: false },
+		{ id: 'sample-a1', position: [-2.4, 0.65, 0.25], scanProgress: 0, scanned: false, revealedMaterial: null },
+		{ id: 'sample-a2', position: [-1.15, 0.38, -0.95], scanProgress: 0, scanned: false, revealedMaterial: null },
+		{ id: 'sample-a3', position: [0.0, 0.82, -0.45], scanProgress: 0, scanned: false, revealedMaterial: null },
+		{ id: 'sample-a4', position: [1.3, 0.46, -1.2], scanProgress: 0, scanned: false, revealedMaterial: null },
+		{ id: 'sample-a5', position: [2.5, 0.61, 0.42], scanProgress: 0, scanned: false, revealedMaterial: null },
 	]);
 
 	protected scanStatusLine = computed(() => {
@@ -129,7 +131,8 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 				return {
 					...sample,
 					scanProgress: nextProgress,
-					scanned: completedNow
+					scanned: completedNow,
+					revealedMaterial: completedNow ? sample.revealedMaterial ?? pickWeightedAsteroidMaterial() : sample.revealedMaterial,
 				};
 			}),
 		);

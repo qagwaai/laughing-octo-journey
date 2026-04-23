@@ -121,19 +121,29 @@ describe('Asteroid', () => {
 
 describe('resolveAsteroidMaterialColor', () => {
 	it('should prioritize scanned color', () => {
-		expect(resolveAsteroidMaterialColor(0, false, true)).toBe('#8df7b2');
+		expect(resolveAsteroidMaterialColor(0, false, true, null)).toBe('#8df7b2');
+	});
+
+	it('should use selected material color when scanned', () => {
+		expect(
+			resolveAsteroidMaterialColor(100, false, true, {
+				rarity: 'Rare',
+				material: 'Silver',
+				textureColor: '#cad5e3',
+			}),
+		).toBe('#cad5e3');
 	});
 
 	it('should use hover color while scanning', () => {
-		expect(resolveAsteroidMaterialColor(35, true, false)).toBe('#8de8ff');
+		expect(resolveAsteroidMaterialColor(35, true, false, null)).toBe('#8de8ff');
 	});
 
 	it('should use in-progress color when partially scanned', () => {
-		expect(resolveAsteroidMaterialColor(22, false, false)).toBe('#63a7bc');
+		expect(resolveAsteroidMaterialColor(22, false, false, null)).toBe('#63a7bc');
 	});
 
 	it('should use idle color before scan starts', () => {
-		expect(resolveAsteroidMaterialColor(0, false, false)).toBe('#5f6d7b');
+		expect(resolveAsteroidMaterialColor(0, false, false, null)).toBe('#5f6d7b');
 	});
 });
 

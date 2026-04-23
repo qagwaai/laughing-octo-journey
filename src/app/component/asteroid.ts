@@ -13,6 +13,7 @@ import {
 	computed,
 } from '@angular/core';
 import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
+import { AsteroidMaterialProfile } from '../model/asteroid-materials';
 import * as THREE from 'three';
 
 export interface AsteroidHoverEvent {
@@ -35,9 +36,14 @@ export const ASTEROID_BEFORE_RENDER_FN = new InjectionToken<typeof _beforeRender
 	{ providedIn: 'root', factory: () => _beforeRender },
 );
 
-export function resolveAsteroidMaterialColor(scanProgress: number, hovered: boolean, scanned: boolean): string {
+export function resolveAsteroidMaterialColor(
+	scanProgress: number,
+	hovered: boolean,
+	scanned: boolean,
+	revealedMaterial: AsteroidMaterialProfile | null,
+): string {
 	if (scanned) {
-		return '#8df7b2';
+		return revealedMaterial?.textureColor ?? '#8df7b2';
 	}
 	if (hovered) {
 		return '#8de8ff';
@@ -92,6 +98,7 @@ export class Asteroid {
 	position = input<[number, number, number]>([0, 0, 0]);
 	scanProgress = input(0);
 	scanned = input(false);
+	revealedMaterial = input<AsteroidMaterialProfile | null>(null);
 
 	@Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
 
@@ -126,8 +133,9 @@ export class Asteroid {
 	protected morphShellOpacity = computed(() => this.morphPulse() * 0.55);
 	protected morphTiltX = computed(() => Math.sin(this.pulsePhase() * 2.3) * this.morphPulse() * 0.16);
 	protected morphTiltZ = computed(() => Math.cos(this.pulsePhase() * 1.9) * this.morphPulse() * 0.12);
+	protected revealedMaterialColor = computed(() => this.revealedMaterial()?.textureColor ?? '#8df7b2');
 	protected materialColor = computed(() =>
-		resolveAsteroidMaterialColor(this.scanProgress(), this.hovered(), this.scanned()),
+		resolveAsteroidMaterialColor(this.scanProgress(), this.hovered(), this.scanned(), this.revealedMaterial()),
 	);
 	protected beamOpacity = computed(() =>
 		resolveAsteroidBeamOpacity(this.scanProgress(), this.hovered(), this.scanned()),

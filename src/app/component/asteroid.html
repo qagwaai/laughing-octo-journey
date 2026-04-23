@@ -16,7 +16,7 @@
 		}
 		<ngt-mesh-standard-material
 			[color]="materialColor()"
-			[emissive]="scanned() ? '#1e5030' : hovered() ? '#16404a' : '#0f141d'"
+			[emissive]="scanned() ? revealedMaterialColor() : hovered() ? '#16404a' : '#0f141d'"
 			[emissiveIntensity]="scanned() ? 0.8 : hovered() ? 0.5 : 0.25"
 		/>
 	</ngt-mesh>
