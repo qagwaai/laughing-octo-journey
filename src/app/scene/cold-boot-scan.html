@@ -6,6 +6,20 @@
 
 <ngts-orbit-controls [options]="{ minDistance: 3, maxDistance: 14, enablePan: false }" />
 
+<ngt-group>
+	@for (star of backgroundStars(); track star.id) {
+		<ngt-mesh [position]="star.position" [scale]="star.scale">
+			<ngt-sphere-geometry *args="[1, 6, 6]" />
+			<ngt-mesh-basic-material
+				[color]="star.color"
+				[transparent]="true"
+				[opacity]="star.opacity"
+				[depthWrite]="false"
+			/>
+		</ngt-mesh>
+	}
+</ngt-group>
+
 <ngt-group [position]="[0, 0, -1.5]">
 
 	@for (sample of asteroidSamples(); track sample.id) {
