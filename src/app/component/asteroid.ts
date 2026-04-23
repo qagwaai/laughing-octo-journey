@@ -13,6 +13,7 @@ import {
 	computed,
 } from '@angular/core';
 import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
+import { NgtsBillboard, NgtsText } from 'angular-three-soba/abstractions';
 import { AsteroidMaterialProfile } from '../model/asteroid-materials';
 import * as THREE from 'three';
 
@@ -90,7 +91,7 @@ export function generateRandomAsteroidRevealProfile(random: () => number = Math.
 @Component({
 	selector: 'app-asteroid',
 	templateUrl: './asteroid.html',
-	imports: [NgtArgs],
+	imports: [NgtArgs, NgtsBillboard, NgtsText],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class Asteroid {
@@ -134,6 +135,9 @@ export class Asteroid {
 	protected morphTiltX = computed(() => Math.sin(this.pulsePhase() * 2.3) * this.morphPulse() * 0.16);
 	protected morphTiltZ = computed(() => Math.cos(this.pulsePhase() * 1.9) * this.morphPulse() * 0.12);
 	protected revealedMaterialColor = computed(() => this.revealedMaterial()?.textureColor ?? '#8df7b2');
+	protected showResultDialog = computed(() => this.scanned() && this.hovered() && !!this.revealedMaterial());
+	protected resultDialogMaterialText = computed(() => `MATERIAL: ${this.revealedMaterial()?.material ?? 'UNKNOWN'}`);
+	protected resultDialogRarityText = computed(() => `RARITY: ${this.revealedMaterial()?.rarity ?? 'UNKNOWN'}`);
 	protected materialColor = computed(() =>
 		resolveAsteroidMaterialColor(this.scanProgress(), this.hovered(), this.scanned(), this.revealedMaterial()),
 	);

@@ -22,6 +22,30 @@
 	</ngt-mesh>
 </ngt-group>
 
+@if (showResultDialog()) {
+	<ngts-billboard [options]="{ position: [position()[0], position()[1] + 1.2, position()[2]], follow: true }">
+		<ngt-mesh>
+			<ngt-plane-geometry *args="[2.35, 0.62]" />
+			<ngt-mesh-basic-material
+				[color]="'#102334'"
+				[transparent]="true"
+				[opacity]="0.86"
+				[depthWrite]="false"
+			/>
+		</ngt-mesh>
+
+		<ngts-text
+			[text]="resultDialogMaterialText()"
+			[options]="{ fontSize: 0.09, color: 'white', letterSpacing: -0.02, position: [0, 0.1, 0.02] }"
+		/>
+
+		<ngts-text
+			[text]="resultDialogRarityText()"
+			[options]="{ fontSize: 0.08, color: '#9ed6ff', letterSpacing: -0.018, position: [0, -0.08, 0.02] }"
+		/>
+	</ngts-billboard>
+}
+
 <ngt-mesh
 	[visible]="morphShellOpacity() > 0.01"
 	[position]="position()"

@@ -117,6 +117,26 @@ describe('Asteroid', () => {
 		expect((component as any).ringOpacityB()).toBe(0);
 		expect((component as any).ringOpacityC()).toBe(0);
 	});
+
+	it('should show material dialog only when scanned and hovered with material', () => {
+		fixture.componentRef.setInput('revealedMaterial', {
+			rarity: 'Rare',
+			material: 'Silver',
+			textureColor: '#cad5e3',
+		});
+		fixture.componentRef.setInput('scanned', true);
+		fixture.detectChanges();
+
+		expect((component as any).showResultDialog()).toBeFalse();
+
+		(component as any).emitHover(true);
+		expect((component as any).showResultDialog()).toBeTrue();
+		expect((component as any).resultDialogMaterialText()).toContain('Silver');
+		expect((component as any).resultDialogRarityText()).toContain('Rare');
+
+		(component as any).emitHover(false);
+		expect((component as any).showResultDialog()).toBeFalse();
+	});
 });
 
 describe('resolveAsteroidMaterialColor', () => {
