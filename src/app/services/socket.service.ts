@@ -6,6 +6,12 @@ import {
   CelestialBodyUpsertRequest,
   CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
+import {
+  DRONE_UPSERT_REQUEST_EVENT,
+  DRONE_UPSERT_RESPONSE_EVENT,
+  DroneUpsertRequest,
+  DroneUpsertResponse,
+} from '../model/drone-upsert';
 
 /**
  * Socket.IO Service
@@ -96,6 +102,20 @@ export class SocketService {
     }
 
     this.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, request);
+  }
+
+  /**
+   * Emit a drone upsert request and optionally handle a one-time response.
+   */
+  upsertDrone(
+    request: DroneUpsertRequest,
+    onResponse?: (response: DroneUpsertResponse) => void,
+  ): void {
+    if (onResponse) {
+      this.once(DRONE_UPSERT_RESPONSE_EVENT, onResponse);
+    }
+
+    this.emit(DRONE_UPSERT_REQUEST_EVENT, request);
   }
 
   /**

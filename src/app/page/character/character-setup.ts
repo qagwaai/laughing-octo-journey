@@ -14,6 +14,12 @@ import {
 	CharacterEditRequest,
 	CharacterEditResponse,
 } from '../../model/character-edit';
+import {
+	DRONE_LIST_REQUEST_EVENT,
+	type DroneListRequest,
+} from '../../model/drone-list';
+import { type DroneUpsertResponse } from '../../model/drone-upsert';
+import { generateDeterministicStarterDrone } from '../../model/starter-drone';
 import { GuardedLeftMenu } from '../game/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
@@ -122,6 +128,10 @@ export default class CharacterSetupPage implements OnDestroy {
 					this.isSaved.set(true);
 					this.successMessage.set(response.message);
 					this.errorMessage.set(null);
+					if (!isEditMode) {
+						const addResponse = response as CharacterAddResponse;
+						this.createStarterDroneForCharacter(addResponse.characterId);
+					}
 				} else {
 					this.isSaved.set(false);
 					this.successMessage.set(null);
@@ -149,6 +159,41 @@ export default class CharacterSetupPage implements OnDestroy {
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
 		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
+	}
+
+	private createStarterDroneForCharacter(characterId?: string): void {
+		const playerName = this.playerName().trim();
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+		const resolvedCharacterId = characterId?.trim() ?? '';
+		const characterName = this.characterForm.value.characterName?.trim() ?? '';
+
+		if (!playerName || !sessionKey || !resolvedCharacterId || !characterName) {
+			console.warn('Skipping starter drone upsert due to missing character context.');
+			return;
+		}
+
+		const starterDrone = generateDeterministicStarterDrone(playerName, resolvedCharacterId, characterName);
+		this.socketService.upsertDrone(
+			{
+				playerName,
+				characterId: resolvedCharacterId,
+				sessionKey,
+				drone: starterDrone,
+			},
+			(response: DroneUpsertResponse) => {
+				if (!response.success) {
+					console.warn('Starter drone upsert failed:', response.message);
+					return;
+				}
+
+				const followupRequest: DroneListRequest = {
+					playerName,
+					characterId: resolvedCharacterId,
+					sessionKey,
+				};
+				this.socketService.emit(DRONE_LIST_REQUEST_EVENT, followupRequest);
+			},
+		);
 	}
 
 	navigateToCharacterList(): void {

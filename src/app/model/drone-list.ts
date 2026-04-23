@@ -1,4 +1,5 @@
 import { Triple } from './triple';
+import { CelestialBodyLocation } from './celestial-body-location';
 
 export const DRONE_LIST_REQUEST_EVENT = 'drone-list-request';
 export const DRONE_LIST_RESPONSE_EVENT = 'drone-list-response';
@@ -14,6 +15,7 @@ export interface DroneSummary {
 	name: string;
 	status?: string;
 	model?: string;
+	location?: CelestialBodyLocation;
 	kinematics?: DroneKinematics;
 }
 

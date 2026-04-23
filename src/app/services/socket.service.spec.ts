@@ -4,6 +4,11 @@ import {
   CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
   type CelestialBodyUpsertRequest,
 } from '../model/celestial-body-upsert';
+import {
+  DRONE_UPSERT_REQUEST_EVENT,
+  DRONE_UPSERT_RESPONSE_EVENT,
+  type DroneUpsertRequest,
+} from '../model/drone-upsert';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -166,6 +171,66 @@ describe('SocketService', () => {
       expect(emittedPayload).toEqual(request);
 
       const fakeResponse = { success: true, message: 'ok', celestialBody: request.celestialBody };
+      responseCallback?.(fakeResponse);
+      expect(callbackResponse).toEqual(fakeResponse);
+    });
+  });
+
+  describe('upsertDrone', () => {
+    it('should emit drone upsert request and register one-time response listener', () => {
+      let emittedEvent: string | null = null;
+      let emittedPayload: unknown;
+      let onceEvent: string | null = null;
+      let responseCallback: ((data: unknown) => void) | undefined;
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvent = event;
+          emittedPayload = data;
+        },
+        once: (event: string, callback: (data: unknown) => void) => {
+          onceEvent = event;
+          responseCallback = callback;
+        },
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {}
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: DroneUpsertRequest = {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        sessionKey: 'session-123',
+        drone: {
+          id: 'starter-char-1',
+          name: 'Pioneer-Starter-Dart',
+          location: { positionKm: { x: 1, y: 2, z: 3 } },
+          kinematics: {
+            position: { x: 1, y: 2, z: 3 },
+            velocity: { x: 0.1, y: 0, z: 0.2 },
+            reference: {
+              solarSystemId: 'sol',
+              referenceKind: 'barycentric',
+              distanceUnit: 'km',
+              velocityUnit: 'km/s',
+              epochMs: 123,
+            },
+          },
+        },
+      };
+
+      let callbackResponse: unknown;
+      service.upsertDrone(request, (response) => {
+        callbackResponse = response;
+      });
+
+      expect(onceEvent).toBe(DRONE_UPSERT_RESPONSE_EVENT);
+      expect(emittedEvent).toBe(DRONE_UPSERT_REQUEST_EVENT);
+      expect(emittedPayload).toEqual(request);
+
+      const fakeResponse = { success: true, message: 'ok', playerName: 'Pioneer', characterId: 'char-1', drone: request.drone };
       responseCallback?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });

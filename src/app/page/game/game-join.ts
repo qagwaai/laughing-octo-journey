@@ -5,12 +5,13 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import {
 	DRONE_LIST_REQUEST_EVENT,
 	DRONE_LIST_RESPONSE_EVENT,
-	DroneKinematics,
 	DroneListRequest,
+	DroneKinematics,
 	DroneListResponse,
 	DroneSummary,
 	SpatialReference,
 } from '../../model/drone-list';
+import { CelestialBodyLocation } from '../../model/celestial-body-location';
 import { summarizeDroneMotion } from '../../model/kinematics';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
@@ -118,6 +119,7 @@ export default class GameJoinPage {
 			displayName?: string;
 			position?: Triple;
 			location?: Triple;
+			bodyLocation?: CelestialBodyLocation;
 			velocity?: Triple;
 			velocityVector?: Triple;
 			directionOfTravel?: Triple;
@@ -143,6 +145,7 @@ export default class GameJoinPage {
 	private normalizeDroneKinematics(drone: DroneSummary & {
 		position?: Triple;
 		location?: Triple;
+		bodyLocation?: CelestialBodyLocation;
 		velocity?: Triple;
 		velocityVector?: Triple;
 		directionOfTravel?: Triple;
@@ -158,7 +161,11 @@ export default class GameJoinPage {
 			return drone.kinematics;
 		}
 
-		const position = this.normalizeTriple(drone.position) ?? this.normalizeTriple(drone.location);
+		const positionFromLocation = drone.location?.positionKm ?? drone.bodyLocation?.positionKm;
+		const position =
+			this.normalizeTriple(drone.position) ??
+			this.normalizeTriple(positionFromLocation) ??
+			this.normalizeTriple(drone.location);
 		const velocity =
 			this.normalizeTriple(drone.velocity) ??
 			this.normalizeTriple(drone.velocityVector) ??

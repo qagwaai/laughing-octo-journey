@@ -36,6 +36,8 @@ This document describes the socket message contracts currently used by the appli
 | `game-join-response` | server -> client | Return game join validation/result |
 | `drone-list-request` | client -> server | Fetch drone list for selected character |
 | `drone-list-response` | server -> client | Return drone list for selected character |
+| `drone-upsert-request` | client -> server | Upsert a drone record owned by player+character |
+| `drone-upsert-response` | server -> client | Return drone upsert result |
 | `celestial-body-upsert-request` | client -> server | Upsert scanned celestial body record under a solar system |
 | `celestial-body-upsert-response` | server -> client | Return celestial body upsert result |
 | `add-mission-request` | client -> server | Add mission status record for selected character |
@@ -426,6 +428,9 @@ Payload:
       "name": "string",
       "status": "string (optional)",
       "model": "string (optional)",
+      "location": {
+        "positionKm": { "x": 0, "y": 0, "z": 0 }
+      },
       "kinematics": {
         "position": { "x": 0, "y": 0, "z": 0 },
         "velocity": { "x": 0, "y": 0, "z": 0 },
@@ -445,7 +450,7 @@ Payload:
 
 Notes:
 
-- `kinematics` is optional for backward compatibility with older servers.
+- `location.positionKm` and `kinematics` are required by the current client contract.
 - `velocity` is the direction of travel plus speed magnitude.
 - Use `referenceKind: "barycentric"` for multi-star systems (for example, binary stars) so position/velocity remain stable relative to the system barycenter.
 - `distanceUnit` must be `"km"` and `velocityUnit` must be `"km/s"`.
@@ -455,6 +460,70 @@ Edge cases:
 - If the character is valid but has no drones, return `success: true` with `drones: []`.
 - If `characterId` is stale or unauthorized, return `success: false` with user-safe message.
 - `drones` should always be present as an array to avoid ambiguous UI state.
+
+---
+
+## Drone Upsert
+
+### `drone-upsert-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string",
+  "drone": {
+    "id": "string",
+    "name": "string",
+    "status": "string (optional)",
+    "model": "string (optional)",
+    "location": {
+      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    },
+    "kinematics": {
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "velocity": { "x": 0, "y": 0, "z": 0 },
+      "reference": {
+        "solarSystemId": "sol",
+        "referenceKind": "barycentric",
+        "distanceUnit": "km",
+        "velocityUnit": "km/s",
+        "epochMs": 0
+      }
+    }
+  }
+}
+```
+
+Client-side behavior:
+
+- On successful character creation (create mode), client generates deterministic starter drone data in Sol asteroid-belt region and upserts it.
+- Client follows up with `drone-list-request` to fetch canonical server state.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership (`playerName` + `characterId`).
+- Upsert by stable drone id, preserving ownership semantics.
+- Return `drone-upsert-response` for every request.
+
+### `drone-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "drone": {
+    "id": "string",
+    "name": "string"
+  }
+}
+```
 
 ---
 
