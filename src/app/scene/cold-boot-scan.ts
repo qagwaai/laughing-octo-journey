@@ -51,30 +51,54 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
 	protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
 	protected activeScanAsteroidId = signal<string | null>(null);
-	protected asteroidSamples = signal<AsteroidScanSample[]>([
-		{ id: 'sample-a1', position: [-2.4, 0.65, 0.25], scanProgress: 0, scanned: false, revealedMaterial: null },
-		{ id: 'sample-a2', position: [-1.15, 0.38, -0.95], scanProgress: 0, scanned: false, revealedMaterial: null },
-		{ id: 'sample-a3', position: [0.0, 0.82, -0.45], scanProgress: 0, scanned: false, revealedMaterial: null },
-		{ id: 'sample-a4', position: [1.3, 0.46, -1.2], scanProgress: 0, scanned: false, revealedMaterial: null },
-		{ id: 'sample-a5', position: [2.5, 0.61, 0.42], scanProgress: 0, scanned: false, revealedMaterial: null },
-	]);
+	protected asteroidSamples = signal<AsteroidScanSample[]>(ColdBootScanScene.generateAsteroidSamples());
+
+	private static generateAsteroidSamples(): AsteroidScanSample[] {
+		const count = Math.floor(Math.random() * 16) + 5; // 5–20
+		const samples: AsteroidScanSample[] = [];
+		const usedAngles: number[] = [];
+
+		for (let i = 0; i < count; i++) {
+			// Spread asteroids evenly around a circle with jitter, avoiding crowding
+			const baseAngle = (i / count) * Math.PI * 2;
+			const angleJitter = (Math.random() - 0.5) * (Math.PI / count);
+			const angle = baseAngle + angleJitter;
+			usedAngles.push(angle);
+
+			const distance = 6 + Math.random() * 14; // 6–20 units from centre
+			const x = Math.cos(angle) * distance;
+			const z = Math.sin(angle) * distance;
+			const y = (Math.random() - 0.5) * 8; // -4 to +4 vertical spread
+
+			samples.push({
+				id: `sample-a${i + 1}`,
+				position: [+x.toFixed(2), +y.toFixed(2), +z.toFixed(2)],
+				scanProgress: 0,
+				scanned: false,
+				revealedMaterial: null,
+			});
+		}
+
+		return samples;
+	}
 
 	protected scanStatusLine = computed(() => {
 		const asteroids = this.asteroidSamples();
+		const total = asteroids.length;
 		const completedCount = asteroids.filter((sample) => sample.scanned).length;
 
-		if (completedCount === asteroids.length) {
-			return 'SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED';
+		if (completedCount === total) {
+			return `SCAN COMPLETE // ALL ${total} SAMPLES CATALOGUED`;
 		}
 
 		const activeId = this.activeScanAsteroidId();
 		if (!activeId) {
-			return `HOVER OVER ASTEROID SAMPLES TO SCAN // ${completedCount}/5 COMPLETE`;
+			return `HOVER OVER ASTEROID SAMPLES TO SCAN // ${completedCount}/${total} COMPLETE`;
 		}
 
 		const active = asteroids.find((sample) => sample.id === activeId);
 		if (!active) {
-			return `HOVER OVER ASTEROID SAMPLES TO SCAN // ${completedCount}/5 COMPLETE`;
+			return `HOVER OVER ASTEROID SAMPLES TO SCAN // ${completedCount}/${total} COMPLETE`;
 		}
 
 		return `SCANNING ${active.id.toUpperCase()} // ${Math.floor(active.scanProgress)}%`;

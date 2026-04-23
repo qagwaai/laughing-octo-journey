@@ -12,7 +12,7 @@ import {
 	viewChild,
 	computed,
 } from '@angular/core';
-import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
+import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsBillboard, NgtsText } from 'angular-three-soba/abstractions';
 import { AsteroidMaterialProfile } from '../model/asteroid-materials';
 import * as THREE from 'three';
@@ -138,6 +138,12 @@ export class Asteroid {
 	protected showResultDialog = computed(() => this.scanned() && this.hovered() && !!this.revealedMaterial());
 	protected resultDialogMaterialText = computed(() => `MATERIAL: ${this.revealedMaterial()?.material ?? 'UNKNOWN'}`);
 	protected resultDialogRarityText = computed(() => `RARITY: ${this.revealedMaterial()?.rarity ?? 'UNKNOWN'}`);
+	private cameraDistance = signal(1);
+	protected dialogScale = computed(() => {
+		const d = this.cameraDistance();
+		// Keep billboard at a constant apparent size; calibrated to look right at ~6 units
+		return Math.max(1, d / 6);
+	});
 	protected materialColor = computed(() =>
 		resolveAsteroidMaterialColor(this.scanProgress(), this.hovered(), this.scanned(), this.revealedMaterial()),
 	);
@@ -172,6 +178,9 @@ export class Asteroid {
 
 	constructor() {
 		const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);
+		const store = injectStore();
+		const _pos = new THREE.Vector3();
+
 		effect(() => {
 			const scanComplete = this.scanProgress() >= 100;
 			if (!this.completionEdgePrimed && scanComplete && !this.scanned()) {
@@ -198,6 +207,11 @@ export class Asteroid {
 				Math.min(MORPH_PULSE_DURATION_SECONDS, elapsed + delta),
 			);
 			this.pulsePhase.update((phase) => (phase + delta * 2.1) % (Math.PI * 2));
+
+			const pos = this.position();
+			_pos.set(pos[0], pos[1], pos[2]);
+			const cam = store.snapshot.camera;
+			this.cameraDistance.set(cam.position.distanceTo(_pos));
 		});
 	}
 

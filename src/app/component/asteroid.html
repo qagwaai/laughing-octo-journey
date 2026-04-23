@@ -24,7 +24,7 @@
 </ngt-group>
 
 @if (showResultDialog()) {
-	<ngts-billboard [options]="{ position: [position()[0], position()[1] + 1.2, position()[2]], follow: true }">
+	<ngts-billboard [options]="{ position: [position()[0], position()[1] + 1.2, position()[2]], follow: true, scale: dialogScale() }">
 		<ngt-mesh [name]="asteroidId() + '-result-dialog-panel'">
 			<ngt-plane-geometry *args="[2.35, 0.62]" />
 			<ngt-mesh-basic-material
