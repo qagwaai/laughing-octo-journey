@@ -13,6 +13,7 @@ import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
+import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/asteroid-kinematics';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
 import { PlayerCharacterSummary } from '../model/character-list';
 
@@ -27,6 +28,7 @@ interface AsteroidScanSample {
 	scanProgress: number;
 	scanned: boolean;
 	revealedMaterial: AsteroidMaterialProfile | null;
+	revealedKinematics: AsteroidKinematics | null;
 }
 
 @Component({
@@ -76,6 +78,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 				scanProgress: 0,
 				scanned: false,
 				revealedMaterial: null,
+				revealedKinematics: null,
 			});
 		}
 
@@ -157,6 +160,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 					scanProgress: nextProgress,
 					scanned: completedNow,
 					revealedMaterial: completedNow ? sample.revealedMaterial ?? pickWeightedAsteroidMaterial() : sample.revealedMaterial,
+					revealedKinematics: completedNow ? sample.revealedKinematics ?? generateRandomAsteroidKinematics() : sample.revealedKinematics,
 				};
 			}),
 		);

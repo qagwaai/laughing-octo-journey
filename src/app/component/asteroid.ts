@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsBillboard, NgtsText } from 'angular-three-soba/abstractions';
+import { AsteroidKinematics } from '../model/asteroid-kinematics';
 import { AsteroidMaterialProfile } from '../model/asteroid-materials';
 import * as THREE from 'three';
 
@@ -100,6 +101,7 @@ export class Asteroid {
 	scanProgress = input(0);
 	scanned = input(false);
 	revealedMaterial = input<AsteroidMaterialProfile | null>(null);
+	revealedKinematics = input<AsteroidKinematics | null>(null);
 
 	@Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
 
@@ -138,6 +140,35 @@ export class Asteroid {
 	protected showResultDialog = computed(() => this.scanned() && this.hovered() && !!this.revealedMaterial());
 	protected resultDialogMaterialText = computed(() => `MATERIAL: ${this.revealedMaterial()?.material ?? 'UNKNOWN'}`);
 	protected resultDialogRarityText = computed(() => `RARITY: ${this.revealedMaterial()?.rarity ?? 'UNKNOWN'}`);
+	protected resultDialogVelocityText = computed(() => {
+		const k = this.revealedKinematics();
+		if (!k) return 'VEL: ---';
+		const { x, y, z } = k.velocityKmPerSec;
+		const speed = Math.sqrt(x * x + y * y + z * z);
+		return `VEL: ${speed.toFixed(1)} km/s`;
+	});
+	protected resultDialogSpinText = computed(() => {
+		const k = this.revealedKinematics();
+		if (!k) return 'SPIN: ---';
+		const { x, y, z } = k.angularVelocityRadPerSec;
+		const spin = Math.sqrt(x * x + y * y + z * z);
+		return `SPIN: ${spin.toFixed(4)} rad/s`;
+	});
+	protected resultDialogMassText = computed(() => {
+		const k = this.revealedKinematics();
+		if (!k) return 'MASS: ---';
+		const kg = k.estimatedMassKg;
+		if (kg >= 1e12) return `MASS: ${(kg / 1e12).toFixed(2)}e12 kg`;
+		if (kg >= 1e9) return `MASS: ${(kg / 1e9).toFixed(2)}e9 kg`;
+		return `MASS: ${kg.toFixed(0)} kg`;
+	});
+	protected resultDialogDiameterText = computed(() => {
+		const k = this.revealedKinematics();
+		if (!k) return 'DIAM: ---';
+		return k.estimatedDiameterM >= 1000
+			? `DIAM: ${(k.estimatedDiameterM / 1000).toFixed(2)} km`
+			: `DIAM: ${k.estimatedDiameterM} m`;
+	});
 	private cameraDistance = signal(1);
 	protected dialogScale = computed(() => {
 		const d = this.cameraDistance();
@@ -201,8 +232,17 @@ export class Asteroid {
 
 		beforeRender(({ delta }) => {
 			const mesh = this.meshRef().nativeElement;
-			mesh.rotation.y += delta * 0.45;
-			mesh.rotation.x += delta * 0.1;
+			const k = this.revealedKinematics();
+			if (k && this.scanned()) {
+				// Scale rad/s values up so subtle kinematics are visible in scene units
+				const SPIN_SCALE = 20;
+				mesh.rotation.x += delta * k.angularVelocityRadPerSec.x * SPIN_SCALE;
+				mesh.rotation.y += delta * k.angularVelocityRadPerSec.y * SPIN_SCALE;
+				mesh.rotation.z += delta * k.angularVelocityRadPerSec.z * SPIN_SCALE;
+			} else {
+				mesh.rotation.y += delta * 0.45;
+				mesh.rotation.x += delta * 0.1;
+			}
 			this.morphPulseElapsedSeconds.update((elapsed) =>
 				Math.min(MORPH_PULSE_DURATION_SECONDS, elapsed + delta),
 			);

@@ -26,7 +26,7 @@
 @if (showResultDialog()) {
 	<ngts-billboard [options]="{ position: [position()[0], position()[1] + 1.2, position()[2]], follow: true, scale: dialogScale() }">
 		<ngt-mesh [name]="asteroidId() + '-result-dialog-panel'">
-			<ngt-plane-geometry *args="[2.35, 0.62]" />
+			<ngt-plane-geometry *args="[2.35, 1.1]" />
 			<ngt-mesh-basic-material
 				[color]="'#102334'"
 				[transparent]="true"
@@ -37,12 +37,27 @@
 
 		<ngts-text
 			[text]="resultDialogMaterialText()"
-			[options]="{ fontSize: 0.09, color: 'white', letterSpacing: -0.02, position: [0, 0.1, 0.02] }"
+			[options]="{ fontSize: 0.09, color: 'white', letterSpacing: -0.02, position: [0, 0.38, 0.02] }"
 		/>
-
 		<ngts-text
 			[text]="resultDialogRarityText()"
-			[options]="{ fontSize: 0.08, color: '#9ed6ff', letterSpacing: -0.018, position: [0, -0.08, 0.02] }"
+			[options]="{ fontSize: 0.08, color: '#9ed6ff', letterSpacing: -0.018, position: [0, 0.22, 0.02] }"
+		/>
+		<ngts-text
+			[text]="resultDialogVelocityText()"
+			[options]="{ fontSize: 0.08, color: '#b8f7d4', letterSpacing: -0.018, position: [0, 0.04, 0.02] }"
+		/>
+		<ngts-text
+			[text]="resultDialogSpinText()"
+			[options]="{ fontSize: 0.08, color: '#b8f7d4', letterSpacing: -0.018, position: [0, -0.12, 0.02] }"
+		/>
+		<ngts-text
+			[text]="resultDialogMassText()"
+			[options]="{ fontSize: 0.08, color: '#ffd97a', letterSpacing: -0.018, position: [0, -0.28, 0.02] }"
+		/>
+		<ngts-text
+			[text]="resultDialogDiameterText()"
+			[options]="{ fontSize: 0.08, color: '#ffd97a', letterSpacing: -0.018, position: [0, -0.44, 0.02] }"
 		/>
 	</ngts-billboard>
 }
