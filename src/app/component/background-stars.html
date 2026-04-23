@@ -1,6 +1,6 @@
 <ngt-group>
 	@for (star of stars(); track star.id) {
-		<ngt-mesh [position]="star.position" [scale]="star.scale">
+		<ngt-mesh [name]="'background-star-' + star.id" [position]="star.position" [scale]="star.scale">
 			<ngt-sphere-geometry *args="[1, 6, 6]" />
 			<ngt-mesh-basic-material
 				[color]="star.color"

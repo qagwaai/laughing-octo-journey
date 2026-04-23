@@ -1,6 +1,7 @@
 <ngt-group [position]="position()" [rotation]="[morphTiltX(), 0, morphTiltZ()]">
 	<ngt-mesh
 		#mesh
+		[name]="asteroidId() + '-core-mesh'"
 		[scale]="meshScale()"
 		(pointerover)="emitHover(true)"
 		(pointerout)="emitHover(false)"
@@ -24,7 +25,7 @@
 
 @if (showResultDialog()) {
 	<ngts-billboard [options]="{ position: [position()[0], position()[1] + 1.2, position()[2]], follow: true }">
-		<ngt-mesh>
+		<ngt-mesh [name]="asteroidId() + '-result-dialog-panel'">
 			<ngt-plane-geometry *args="[2.35, 0.62]" />
 			<ngt-mesh-basic-material
 				[color]="'#102334'"
@@ -47,6 +48,7 @@
 }
 
 <ngt-mesh
+	[name]="asteroidId() + '-morph-shell'"
 	[visible]="morphShellOpacity() > 0.01"
 	[position]="position()"
 	[rotation]="[pulsePhase() * 0.6, pulsePhase() * 1.2, 0]"
@@ -62,7 +64,13 @@
 	/>
 </ngt-mesh>
 
-<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, pulsePhase(), 0]" [scale]="ringScaleA()">
+<ngt-mesh
+	[name]="asteroidId() + '-scan-ring-a'"
+	[visible]="showScanFx()"
+	[position]="position()"
+	[rotation]="[Math.PI / 2, pulsePhase(), 0]"
+	[scale]="ringScaleA()"
+>
 	<ngt-torus-geometry *args="[0.8, 0.025, 12, 48]" />
 	<ngt-mesh-basic-material
 		[color]="'#86e8ff'"
@@ -72,7 +80,13 @@
 	/>
 </ngt-mesh>
 
-<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, -pulsePhase() * 0.8, 0]" [scale]="ringScaleB()">
+<ngt-mesh
+	[name]="asteroidId() + '-scan-ring-b'"
+	[visible]="showScanFx()"
+	[position]="position()"
+	[rotation]="[Math.PI / 2, -pulsePhase() * 0.8, 0]"
+	[scale]="ringScaleB()"
+>
 	<ngt-torus-geometry *args="[0.92, 0.018, 12, 48]" />
 	<ngt-mesh-basic-material
 		[color]="'#4dc7f2'"
@@ -82,7 +96,13 @@
 	/>
 </ngt-mesh>
 
-<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, pulsePhase() * 1.4, 0]" [scale]="ringScaleC()">
+<ngt-mesh
+	[name]="asteroidId() + '-scan-ring-c'"
+	[visible]="showScanFx()"
+	[position]="position()"
+	[rotation]="[Math.PI / 2, pulsePhase() * 1.4, 0]"
+	[scale]="ringScaleC()"
+>
 	<ngt-torus-geometry *args="[1.05, 0.012, 10, 40]" />
 	<ngt-mesh-basic-material
 		[color]="'#9defff'"
@@ -93,6 +113,7 @@
 </ngt-mesh>
 
 <ngt-mesh
+	[name]="asteroidId() + '-hover-sweep'"
 	[visible]="hovered()"
 	[position]="[position()[0], position()[1] + sweepOffsetY(), position()[2]]"
 	[rotation]="[0, pulsePhase() * 1.35, 0]"

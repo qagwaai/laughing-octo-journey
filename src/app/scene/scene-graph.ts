@@ -40,12 +40,12 @@ extend(THREE);
 
         <app-angular-logo [position]="[0, 13, -100]" />
         <app-expendible-dart-drone [position]="[4, 1.5, 0]" />
-        <ngt-mesh [position]="[0, 2, 0]">
+        <ngt-mesh name="label-anchor" [position]="[0, 2, 0]">
 			<ngts-html [options]="{ transform: true }">
 				<div [htmlContent]="{ distanceFactor: 10 }">Label</div>
 			</ngts-html>
 		</ngt-mesh>
-        <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" [position]="[5, 10, -10]" receiveShadow>
+        <ngt-mesh name="sphere" [rotation]="[-Math.PI / 2, 0, 0]" [position]="[5, 10, -10]" receiveShadow>
             <ngt-sphere-geometry *args="[1, 64, 64]" />
             <ngt-mesh-standard-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
         </ngt-mesh>
@@ -55,7 +55,7 @@ extend(THREE);
             <app-cube [positionX]="2" castShadow receiveShadow />
 
         <ngtc-physics>
-            <ngt-mesh [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
+            <ngt-mesh name="physics-floor" [rotation]="[-Math.PI / 2, 0, 0]" receiveShadow>
                 <ngt-circle-geometry *args="[4, 40]" />
                 <ngt-mesh-standard-material />
             </ngt-mesh>

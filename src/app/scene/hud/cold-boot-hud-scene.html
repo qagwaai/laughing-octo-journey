@@ -23,7 +23,7 @@
 
 <!-- Simple, visible critical beacon mounted on the right cockpit wall -->
 <ngt-point-light [position]="[4.25, 1.15, 1.5]" [intensity]="alertLightIntensity()" [distance]="14" [color]="'#ff2a2a'" [decay]="1.2" />
-<ngt-mesh [position]="[4.1, 1.15, 1.25]">
+<ngt-mesh name="alert-beacon" [position]="[4.1, 1.15, 1.25]">
 	<ngt-box-geometry *args="[0.32, 0.32, 0.18]" />
 	<ngt-mesh-standard-material [color]="'#ff3b30'" [emissive]="'#ff2218'" [emissiveIntensity]="alertEmitterIntensity()" [metalness]="0.2" [roughness]="0.35" />
 </ngt-mesh>
@@ -31,7 +31,7 @@
 <app-cracked-cockpit-window />
 
 @for (debris of visibleDebris(); track $index) {
-	<ngt-mesh [position]="debris.position" [rotation]="debris.rotation" [scale]="debris.scale">
+	<ngt-mesh [name]="'debris-' + $index" [position]="debris.position" [rotation]="debris.rotation" [scale]="debris.scale">
 		<ngt-box-geometry *args="[1, 1, 1]" />
 		<ngt-mesh-standard-material [color]="'#2a4468'" [metalness]="0.45" [roughness]="0.6" />
 	</ngt-mesh>

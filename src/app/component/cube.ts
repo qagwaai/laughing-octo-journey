@@ -14,7 +14,8 @@ export const BEFORE_RENDER_FN = new InjectionToken<typeof _beforeRender>(
 @Component({
     selector: "app-cube",
     template: `
-        <ngt-mesh #mesh 
+        <ngt-mesh #mesh name="cube"
+            
             [position]="[positionX(), 1, 0]"
             [scale]="clicked() ? 1.5 : 1"
             (pointerover)="hovered.set(true)"

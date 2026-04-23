@@ -9,7 +9,7 @@ import { CurrentRoute } from '../component/current';
     	<ngt-color *args="['#f3f2f7']" attach="background" />
 		<app-current [position]="[0, 0, -10]" [text]="'/knot'" />
 
-		<ngt-mesh [receiveShadow]="true" [castShadow]="true">
+		<ngt-mesh name="knot" [receiveShadow]="true" [castShadow]="true">
 			<ngt-torus-knot-geometry *args="[3, 1, 256, 32]" />
 			<ngts-mesh-transmission-material [options]="{ backside: true, backsideThickness: 5, thickness: 2 }" />
 		</ngt-mesh>
