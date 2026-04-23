@@ -35,6 +35,9 @@
 		@if (errorMessage()) {
 			<div class="status-message error-message">{{ errorMessage() }}</div>
 		}
+		@if (warningMessage()) {
+			<div class="status-message warning-message">{{ warningMessage() }}</div>
+		}
 		@if (isSaved() && successMessage()) {
 			<div class="status-message success-message">{{ successMessage() }}</div>
 		}

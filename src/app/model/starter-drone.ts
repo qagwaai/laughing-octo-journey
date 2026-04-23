@@ -1,5 +1,6 @@
 import { CelestialBodyLocation, generateRandomAsteroidBeltClusterCenterKm } from './celestial-body-location';
-import { DroneKinematics, DroneSummary } from './drone-list';
+import { DroneKinematics } from './drone-list';
+import { DroneUpsertPayload } from './drone-upsert';
 
 function hashToSeed(input: string): number {
 	let hash = 2166136261;
@@ -16,11 +17,6 @@ function seededRandom(seed: number): () => number {
 		state = (Math.imul(1664525, state) + 1013904223) >>> 0;
 		return state / 0x100000000;
 	};
-}
-
-function formatStarterDroneName(characterName: string): string {
-	const base = characterName.trim() || 'Pilot';
-	return `${base}-Starter-Dart`;
 }
 
 function buildStarterDroneKinematics(location: CelestialBodyLocation, random: () => number): DroneKinematics {
@@ -49,22 +45,19 @@ function buildStarterDroneKinematics(location: CelestialBodyLocation, random: ()
 	};
 }
 
-export function generateDeterministicStarterDrone(
+export function generateDeterministicStarterDroneUpdate(
 	playerName: string,
 	characterId: string,
-	characterName: string,
-): DroneSummary {
+	droneId: string,
+): DroneUpsertPayload {
 	const random = seededRandom(hashToSeed(`${playerName}::${characterId}`));
 	const center = generateRandomAsteroidBeltClusterCenterKm(random);
 	const location: CelestialBodyLocation = { positionKm: center };
 	const kinematics = buildStarterDroneKinematics(location, random);
 
 	return {
-		id: `starter-${characterId}`,
-		name: formatStarterDroneName(characterName),
-		status: 'active',
-		model: 'Expendable Dart Drone',
+		id: droneId,
 		location,
 		kinematics,
-	};
+	} satisfies DroneUpsertPayload;
 }

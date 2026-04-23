@@ -205,7 +205,6 @@ describe('SocketService', () => {
         sessionKey: 'session-123',
         drone: {
           id: 'starter-char-1',
-          name: 'Pioneer-Starter-Dart',
           location: { positionKm: { x: 1, y: 2, z: 3 } },
           kinematics: {
             position: { x: 1, y: 2, z: 3 },
@@ -230,7 +229,13 @@ describe('SocketService', () => {
       expect(emittedEvent).toBe(DRONE_UPSERT_REQUEST_EVENT);
       expect(emittedPayload).toEqual(request);
 
-      const fakeResponse = { success: true, message: 'ok', playerName: 'Pioneer', characterId: 'char-1', drone: request.drone };
+      const fakeResponse = {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        drone: { ...request.drone, droneName: 'Starter Drone' },
+      };
       responseCallback?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });

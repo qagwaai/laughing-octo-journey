@@ -141,3 +141,9 @@ input:focus {
 	border: 1px solid rgba(80, 200, 120, 0.5);
 	color: #7fff9f;
 }
+
+.warning-message {
+	background: rgba(255, 196, 80, 0.2);
+	border: 1px solid rgba(255, 196, 80, 0.5);
+	color: #ffd58a;
+}

@@ -476,9 +476,6 @@ Required payload:
   "sessionKey": "string",
   "drone": {
     "id": "string",
-    "name": "string",
-    "status": "string (optional)",
-    "model": "string (optional)",
     "location": {
       "positionKm": { "x": 0, "y": 0, "z": 0 }
     },
@@ -499,8 +496,8 @@ Required payload:
 
 Client-side behavior:
 
-- On successful character creation (create mode), client generates deterministic starter drone data in Sol asteroid-belt region and upserts it.
-- Client follows up with `drone-list-request` to fetch canonical server state.
+- Client first requests `drone-list` and then upserts by existing starter drone `id` (contract requires existing drone ownership).
+- Upsert payload mutates location/kinematics for that existing drone.
 
 Server requirements:
 
@@ -520,7 +517,21 @@ Payload:
   "characterId": "string",
   "drone": {
     "id": "string",
-    "name": "string"
+    "droneName": "string (optional)",
+    "location": {
+      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    },
+    "kinematics": {
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "velocity": { "x": 0, "y": 0, "z": 0 },
+      "reference": {
+        "solarSystemId": "string",
+        "referenceKind": "barycentric | body-centered",
+        "distanceUnit": "km",
+        "velocityUnit": "km/s",
+        "epochMs": 0
+      }
+    }
   }
 }
 ```
