@@ -18,6 +18,8 @@
 			[scanned]="sample.scanned"
 			[revealedMaterial]="sample.revealedMaterial"
 			[revealedKinematics]="sample.revealedKinematics"
+			[revealedLocation]="sample.scanned ? sample.solarSystemLocation : null"
+			[revealedClusterCenterKm]="sample.scanned ? sample.clusterCenterKm : null"
 			(hoverChange)="onAsteroidHoverChange($event)"
 		/>
 	}

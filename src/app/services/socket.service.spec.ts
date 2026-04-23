@@ -1,4 +1,9 @@
 import { SocketService } from './socket.service';
+import {
+  CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
+  CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
+  type CelestialBodyUpsertRequest,
+} from '../model/celestial-body-upsert';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -102,6 +107,65 @@ describe('SocketService', () => {
       service.emit('test', { data: 'test' });
       
       expect(emitCalled).toBe(true);
+    });
+  });
+
+  describe('upsertCelestialBody', () => {
+    it('should emit celestial body upsert request and register one-time response listener', () => {
+      let emittedEvent: string | null = null;
+      let emittedPayload: unknown;
+      let onceEvent: string | null = null;
+      let responseCallback: ((data: unknown) => void) | undefined;
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvent = event;
+          emittedPayload = data;
+        },
+        once: (event: string, callback: (data: unknown) => void) => {
+          onceEvent = event;
+          responseCallback = callback;
+        },
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {}
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: CelestialBodyUpsertRequest = {
+        sessionKey: 'session-123',
+        celestialBody: {
+          id: 'cb-1',
+          catalogId: 'sol-cb-1',
+          solarSystemId: 'sol',
+          sourceScanId: 'sample-a1',
+          createdByCharacterId: 'char-1',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          location: { positionKm: { x: 1, y: 2, z: 3 } },
+          kinematics: {
+            velocityKmPerSec: { x: 0, y: 0, z: 0 },
+            angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+            estimatedMassKg: 10,
+            estimatedDiameterM: 4,
+          },
+          composition: { rarity: 'Common', material: 'Carbon', textureColor: '#6f7785' },
+        },
+      };
+
+      let callbackResponse: unknown;
+      service.upsertCelestialBody(request, (response) => {
+        callbackResponse = response;
+      });
+
+      expect(onceEvent).toBe(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT);
+      expect(emittedEvent).toBe(CELESTIAL_BODY_UPSERT_REQUEST_EVENT);
+      expect(emittedPayload).toEqual(request);
+
+      const fakeResponse = { success: true, message: 'ok', celestialBody: request.celestialBody };
+      responseCallback?.(fakeResponse);
+      expect(callbackResponse).toEqual(fakeResponse);
     });
   });
 

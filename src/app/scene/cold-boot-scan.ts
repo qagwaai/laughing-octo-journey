@@ -15,7 +15,20 @@ import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
 import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/asteroid-kinematics';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
+import {
+	DEFAULT_SOLAR_SYSTEM_ID,
+	type CelestialBodyUpsertRequest,
+	type CelestialBodyUpsertResponse,
+} from '../model/celestial-body-upsert';
+import {
+	generateRandomAsteroidBeltClusterCenterKm,
+	generateRandomCelestialBodyLocationNear,
+	type CelestialBodyLocation,
+} from '../model/celestial-body-location';
 import { PlayerCharacterSummary } from '../model/character-list';
+import { Triple } from '../model/triple';
+import { SessionService } from '../services/session.service';
+import { SocketService } from '../services/socket.service';
 
 interface ColdBootScanNavigationState {
 	playerName?: string;
@@ -31,6 +44,8 @@ interface AsteroidScanSample {
 	revealedMaterial: AsteroidMaterialProfile | null;
 	revealedKinematics: AsteroidKinematics | null;
 	capturedKinematics: AsteroidKinematics;
+	solarSystemLocation: CelestialBodyLocation;
+	clusterCenterKm: Triple;
 	motionPhase: number;
 	motionRate: number;
 	motionRadius: number;
@@ -52,8 +67,11 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 
 	private router = inject(Router);
+	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
 	private scanIntervalId: number | null = null;
 	private sceneElapsedSeconds = 0;
+	private sentCelestialBodyUpserts = new Set<string>();
 	private navigationState: ColdBootScanNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ColdBootScanNavigationState | undefined) ??
 		(history.state as ColdBootScanNavigationState | undefined) ??
@@ -67,6 +85,9 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	private static generateAsteroidSamples(): AsteroidScanSample[] {
 		const count = Math.floor(Math.random() * 16) + 5; // 5–20
 		const samples: AsteroidScanSample[] = [];
+		// All asteroids in this scan share a cluster center within the main
+		// asteroid belt so their solar-system locations read as "neighbours".
+		const clusterCenterKm = generateRandomAsteroidBeltClusterCenterKm();
 
 		for (let i = 0; i < count; i++) {
 			// Spread asteroids evenly around a circle with jitter, avoiding crowding
@@ -77,6 +98,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			const distance = 6 + Math.random() * 14; // 6–20 units from centre
 			const x = Math.cos(angle) * distance;
 			const z = Math.sin(angle) * distance;
+			const solarSystemLocation = generateRandomCelestialBodyLocationNear(clusterCenterKm);
 			const y = (Math.random() - 0.5) * 8; // -4 to +4 vertical spread
 			const basePosition: [number, number, number] = [+x.toFixed(2), +y.toFixed(2), +z.toFixed(2)];
 			const capturedKinematics = generateRandomAsteroidKinematics();
@@ -92,6 +114,8 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 				scanned: false,
 				revealedMaterial: null,
 				revealedKinematics: null,
+				solarSystemLocation,
+				clusterCenterKm,
 				capturedKinematics,
 				motionPhase: Math.random() * Math.PI * 2,
 				motionRate: 0.2 + speedFactor * 0.55,
@@ -164,6 +188,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	);
 
 	ngOnInit(): void {
+		this.socketService.connect(this.socketService.serverUrl);
 		this.scanIntervalId = window.setInterval(() => {
 			this.tickScene();
 		}, ColdBootScanScene.SCAN_TICK_MS);
@@ -216,16 +241,69 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 
 				const nextProgress = Math.min(100, sample.scanProgress + ColdBootScanScene.SCAN_STEP);
 				const completedNow = nextProgress >= 100;
+				const revealedMaterial = completedNow
+					? sample.revealedMaterial ?? pickWeightedAsteroidMaterial()
+					: sample.revealedMaterial;
+				const revealedKinematics = completedNow
+					? sample.revealedKinematics ?? sample.capturedKinematics
+					: sample.revealedKinematics;
+
+				if (completedNow && !sample.scanned) {
+					this.emitCelestialBodyUpsert(sample, revealedMaterial, revealedKinematics);
+				}
+
 				return {
 					...sample,
 					position: animatedPosition,
 					scanProgress: nextProgress,
 					scanned: completedNow,
-					revealedMaterial: completedNow ? sample.revealedMaterial ?? pickWeightedAsteroidMaterial() : sample.revealedMaterial,
-					revealedKinematics: completedNow ? sample.revealedKinematics ?? sample.capturedKinematics : sample.revealedKinematics,
+					revealedMaterial,
+					revealedKinematics,
 				};
 			}),
 		);
+	}
+
+	private emitCelestialBodyUpsert(
+		sample: AsteroidScanSample,
+		revealedMaterial: AsteroidMaterialProfile | null,
+		revealedKinematics: AsteroidKinematics | null,
+	): void {
+		if (this.sentCelestialBodyUpserts.has(sample.id)) {
+			return;
+		}
+
+		const sessionKey = this.sessionService.getSessionKey();
+		const createdByCharacterId = this.navigationState.joinCharacter?.id;
+		if (!sessionKey || !createdByCharacterId || !revealedMaterial || !revealedKinematics) {
+			return;
+		}
+
+		const nowIso = new Date().toISOString();
+		const uniqueSuffix = Math.random().toString(16).slice(2, 10);
+		const request: CelestialBodyUpsertRequest = {
+			sessionKey,
+			celestialBody: {
+				id: `cb-${sample.id}-${uniqueSuffix}`,
+				catalogId: `sol-${sample.id}-${uniqueSuffix}`,
+				solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+				sourceScanId: sample.id,
+				createdByCharacterId,
+				createdAt: nowIso,
+				updatedAt: nowIso,
+				location: sample.solarSystemLocation,
+				kinematics: revealedKinematics,
+				composition: revealedMaterial,
+			},
+		};
+
+		this.socketService.upsertCelestialBody(request, (response: CelestialBodyUpsertResponse) => {
+			if (!response.success) {
+				console.warn('Celestial body upsert failed:', response.message);
+			}
+		});
+
+		this.sentCelestialBodyUpserts.add(sample.id);
 	}
 
 	private resetPartialScanProgress(sampleId: string): void {

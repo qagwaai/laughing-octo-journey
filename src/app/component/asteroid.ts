@@ -15,7 +15,9 @@ import {
 import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsBillboard, NgtsText } from 'angular-three-soba/abstractions';
 import { AsteroidKinematics } from '../model/asteroid-kinematics';
+import { CelestialBodyLocation } from '../model/celestial-body-location';
 import { AsteroidMaterialProfile } from '../model/asteroid-materials';
+import { Triple } from '../model/triple';
 import * as THREE from 'three';
 
 export interface AsteroidHoverEvent {
@@ -102,6 +104,8 @@ export class Asteroid {
 	scanned = input(false);
 	revealedMaterial = input<AsteroidMaterialProfile | null>(null);
 	revealedKinematics = input<AsteroidKinematics | null>(null);
+	revealedLocation = input<CelestialBodyLocation | null>(null);
+	revealedClusterCenterKm = input<Triple | null>(null);
 
 	@Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
 
@@ -168,6 +172,36 @@ export class Asteroid {
 		return k.estimatedDiameterM >= 1000
 			? `DIAM: ${(k.estimatedDiameterM / 1000).toFixed(2)} km`
 			: `DIAM: ${k.estimatedDiameterM} m`;
+	});
+	protected resultDialogLocationText = computed(() => {
+		const location = this.revealedLocation();
+		if (!location) return 'LOC: ---';
+
+		const { x, y, z } = location.positionKm;
+		const xM = (x / 1e6).toFixed(3);
+		const yM = (y / 1e6).toFixed(3);
+		const zM = (z / 1e6).toFixed(3);
+		return `LOC(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
+	});
+	protected resultDialogClusterText = computed(() => {
+		const center = this.revealedClusterCenterKm();
+		if (!center) return 'CLUSTER(Mkm): ---';
+
+		const xM = (center.x / 1e6).toFixed(3);
+		const yM = (center.y / 1e6).toFixed(3);
+		const zM = (center.z / 1e6).toFixed(3);
+		return `CLUSTER(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
+	});
+	protected resultDialogOffsetText = computed(() => {
+		const location = this.revealedLocation();
+		const center = this.revealedClusterCenterKm();
+		if (!location || !center) return 'OFFSET(km): ---';
+
+		const dx = location.positionKm.x - center.x;
+		const dy = location.positionKm.y - center.y;
+		const dz = location.positionKm.z - center.z;
+		const distance = Math.hypot(dx, dy, dz);
+		return `OFFSET(km): dX ${dx.toFixed(0)} dY ${dy.toFixed(0)} dZ ${dz.toFixed(0)} | R ${distance.toFixed(0)}`;
 	});
 	private cameraDistance = signal(1);
 	protected dialogScale = computed(() => {

@@ -36,6 +36,8 @@ This document describes the socket message contracts currently used by the appli
 | `game-join-response` | server -> client | Return game join validation/result |
 | `drone-list-request` | client -> server | Fetch drone list for selected character |
 | `drone-list-response` | server -> client | Return drone list for selected character |
+| `celestial-body-upsert-request` | client -> server | Upsert scanned celestial body record under a solar system |
+| `celestial-body-upsert-response` | server -> client | Return celestial body upsert result |
 | `add-mission-request` | client -> server | Add mission status record for selected character |
 | `add-mission-response` | server -> client | Return mission add result |
 | `mission-upsert-request` | client -> server | Upsert mission status for selected character (logical contract; currently sent as `add-mission-request`) |
@@ -514,6 +516,82 @@ Edge cases:
 - If mission already exists for the character, prefer deterministic upsert semantics and return updated `mission`.
 - If mission is unknown, return `success: false` with a safe message.
 - If a status transition is invalid by server rules, return `success: false` with transition guidance.
+
+---
+
+## Celestial Body Upsert
+
+### `celestial-body-upsert-request` (request)
+
+Required payload:
+
+```json
+{
+  "sessionKey": "string",
+  "celestialBody": {
+    "id": "string",
+    "catalogId": "string",
+    "solarSystemId": "sol | string",
+    "sourceScanId": "string",
+    "createdByCharacterId": "string",
+    "createdAt": "ISO-8601 string",
+    "updatedAt": "ISO-8601 string",
+    "location": {
+      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    },
+    "kinematics": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
+      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 },
+      "estimatedMassKg": 0,
+      "estimatedDiameterM": 0
+    },
+    "composition": {
+      "rarity": "Common | Uncommon | Rare | Exotic",
+      "material": "string",
+      "textureColor": "string"
+    }
+  }
+}
+```
+
+Client-side behavior:
+
+- Emitted immediately after a successful asteroid scan completes.
+- Not associated with `playerName`; ownership/audit identity is `createdByCharacterId`.
+- Current client defaults `solarSystemId` to `sol` for filtering.
+
+Server requirements:
+
+- Validate `sessionKey` and that `createdByCharacterId` belongs to the authenticated session context.
+- Upsert by stable identity (`id` and/or `sourceScanId` + `solarSystemId`) with deterministic behavior.
+- Preserve `createdAt` for existing records and update `updatedAt` on every accepted mutation.
+- Return `celestial-body-upsert-response` for every request.
+
+### `celestial-body-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "celestialBody": {
+    "id": "string",
+    "catalogId": "string",
+    "solarSystemId": "string",
+    "sourceScanId": "string",
+    "createdByCharacterId": "string",
+    "createdAt": "ISO-8601 string",
+    "updatedAt": "ISO-8601 string"
+  }
+}
+```
+
+Edge cases:
+
+- If the same source scan is sent repeatedly, return deterministic idempotent success with the authoritative stored record.
+- If `solarSystemId` is unknown, return `success: false` with a user-safe message.
+- If timestamps are malformed, either normalize server-side or reject with explicit validation guidance.
 
 ---
 
