@@ -528,6 +528,8 @@ Required payload:
 ```json
 {
   "sessionKey": "string",
+  "playerName": "string",
+  "createdByCharacterId": "string",
   "celestialBody": {
     "id": "string",
     "catalogId": "string",
@@ -557,7 +559,8 @@ Required payload:
 Client-side behavior:
 
 - Emitted immediately after a successful asteroid scan completes.
-- Not associated with `playerName`; ownership/audit identity is `createdByCharacterId`.
+- Includes `playerName` as request context for audit/logging, but ownership association remains character-scoped.
+- Uses `createdByCharacterId` both at top-level and inside `celestialBody` for compatibility with backend parsers.
 - Current client defaults `solarSystemId` to `sol` for filtering.
 
 Server requirements:

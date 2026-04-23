@@ -274,8 +274,10 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		}
 
 		const sessionKey = this.sessionService.getSessionKey();
+		const playerName = this.playerName().trim();
 		const createdByCharacterId = this.navigationState.joinCharacter?.id;
-		if (!sessionKey || !createdByCharacterId || !revealedMaterial || !revealedKinematics) {
+		if (!sessionKey || !playerName || !createdByCharacterId || !revealedMaterial || !revealedKinematics) {
+			console.warn('Skipping celestial body upsert due to missing actor/session context.');
 			return;
 		}
 
@@ -283,6 +285,8 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		const uniqueSuffix = Math.random().toString(16).slice(2, 10);
 		const request: CelestialBodyUpsertRequest = {
 			sessionKey,
+			playerName,
+			createdByCharacterId,
 			celestialBody: {
 				id: `cb-${sample.id}-${uniqueSuffix}`,
 				catalogId: `sol-${sample.id}-${uniqueSuffix}`,

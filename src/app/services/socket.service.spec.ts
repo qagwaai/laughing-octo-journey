@@ -135,6 +135,8 @@ describe('SocketService', () => {
 
       const request: CelestialBodyUpsertRequest = {
         sessionKey: 'session-123',
+        playerName: 'Pioneer',
+        createdByCharacterId: 'char-1',
         celestialBody: {
           id: 'cb-1',
           catalogId: 'sol-cb-1',

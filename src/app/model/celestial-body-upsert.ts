@@ -29,6 +29,10 @@ export interface CelestialBodyUpsertEntity {
 
 export interface CelestialBodyUpsertRequest {
 	sessionKey: string;
+	/** Context player name for audit/logging (not ownership association). */
+	playerName: string;
+	/** Explicit actor character id for easier backend extraction. */
+	createdByCharacterId: string;
 	celestialBody: CelestialBodyUpsertEntity;
 }
 
