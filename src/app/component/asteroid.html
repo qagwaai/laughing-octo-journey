@@ -1,0 +1,97 @@
+<ngt-mesh
+	[visible]="beamOpacity() > 0"
+	[position]="[position()[0], position()[1] + 1.2, position()[2]]"
+	[rotation]="[Math.PI / 2, 0, 0]"
+>
+	<ngt-cylinder-geometry *args="[0.03, 0.12, 2.5, 14, 1, true]" />
+	<ngt-mesh-basic-material
+		[color]="'#7ae8ff'"
+		[transparent]="true"
+		[opacity]="beamOpacity()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-group [position]="position()" [rotation]="[morphTiltX(), 0, morphTiltZ()]">
+	<ngt-mesh
+		#mesh
+		[scale]="meshScale()"
+		(pointerover)="emitHover(true)"
+		(pointerout)="emitHover(false)"
+		input
+		castShadow
+	>
+		@if (activeGeometry() === 'icosahedron') {
+			<ngt-icosahedron-geometry *args="[0.55, activeDetail()]" />
+		} @else if (activeGeometry() === 'octahedron') {
+			<ngt-octahedron-geometry *args="[0.55, activeDetail()]" />
+		} @else {
+			<ngt-dodecahedron-geometry *args="[0.55, activeDetail()]" />
+		}
+		<ngt-mesh-standard-material
+			[color]="materialColor()"
+			[emissive]="scanned() ? '#1e5030' : hovered() ? '#16404a' : '#0f141d'"
+			[emissiveIntensity]="scanned() ? 0.8 : hovered() ? 0.5 : 0.25"
+		/>
+	</ngt-mesh>
+</ngt-group>
+
+<ngt-mesh
+	[visible]="morphShellOpacity() > 0.01"
+	[position]="position()"
+	[rotation]="[pulsePhase() * 0.6, pulsePhase() * 1.2, 0]"
+	[scale]="morphShellScale()"
+>
+	<ngt-sphere-geometry *args="[0.72, 18, 18]" />
+	<ngt-mesh-basic-material
+		[color]="'#c7fbff'"
+		[wireframe]="true"
+		[transparent]="true"
+		[opacity]="morphShellOpacity()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, pulsePhase(), 0]" [scale]="ringScaleA()">
+	<ngt-torus-geometry *args="[0.8, 0.025, 12, 48]" />
+	<ngt-mesh-basic-material
+		[color]="'#86e8ff'"
+		[transparent]="true"
+		[opacity]="ringOpacityA()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, -pulsePhase() * 0.8, 0]" [scale]="ringScaleB()">
+	<ngt-torus-geometry *args="[0.92, 0.018, 12, 48]" />
+	<ngt-mesh-basic-material
+		[color]="'#4dc7f2'"
+		[transparent]="true"
+		[opacity]="ringOpacityB()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh [visible]="showScanFx()" [position]="position()" [rotation]="[Math.PI / 2, pulsePhase() * 1.4, 0]" [scale]="ringScaleC()">
+	<ngt-torus-geometry *args="[1.05, 0.012, 10, 40]" />
+	<ngt-mesh-basic-material
+		[color]="'#9defff'"
+		[transparent]="true"
+		[opacity]="ringOpacityC()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh
+	[visible]="hovered()"
+	[position]="[position()[0], position()[1] + sweepOffsetY(), position()[2]]"
+	[rotation]="[0, pulsePhase() * 1.35, 0]"
+>
+	<ngt-box-geometry *args="[2.1, 0.03, 0.03]" />
+	<ngt-mesh-basic-material
+		[color]="'#c9f6ff'"
+		[transparent]="true"
+		[opacity]="sweepOpacity()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>

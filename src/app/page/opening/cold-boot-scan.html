@@ -1,16 +1,5 @@
-<section class="cold-boot-scan" aria-label="Cold boot scanning pane">
-	<p class="eyebrow">Regional Sweep</p>
-	<h1>Scanning Scene Standby</h1>
-	<p class="summary">
-		The right pane has been handed off to the scanning sequence. Visual scan instrumentation will be defined in the
-		next step.
-	</p>
-	<div class="scan-grid" aria-hidden="true">
-		<span></span>
-		<span></span>
-		<span></span>
-		<span></span>
-		<span></span>
-		<span></span>
-	</div>
-</section>
+<div class="cold-boot-scan-host">
+	<ngt-canvas shadows [camera]="{ position: [0, 1.8, 6.6], fov: 52 }" [lookAt]="[0, 0, 0]">
+		<app-cold-boot-scan-scene *canvasContent />
+	</ngt-canvas>
+</div>

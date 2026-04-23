@@ -75,7 +75,7 @@ class MockColdBootOpeningPage {
 		return this.content.systemChecks;
 	}
 
-		async startScanning(): Promise<void> {
+	async startScanning(): Promise<void> {
 		if (this.scanActionPending) {
 			return;
 		}
@@ -168,7 +168,10 @@ describe('ColdBootOpeningPage', () => {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
 		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
-		const component = new MockColdBootOpeningPage(missionService, sessionService, {
+		const router: MockRouter = {
+			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
+		};
+		const component = new MockColdBootOpeningPage(missionService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'char-1' },
 		});
@@ -246,6 +249,5 @@ describe('ColdBootOpeningPage', () => {
 		expect(router.navigate).not.toHaveBeenCalled();
 		expect(component.scanActionError).toBe('Scanning handoff failed. Retry after comms stabilize.');
 		expect(component.scanActionPending).toBe(false);
-		});
 	});
 });
