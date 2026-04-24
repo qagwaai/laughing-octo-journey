@@ -35,7 +35,7 @@ export const OPENING_SEQUENCE_LIBRARY: Record<string, OpeningSequenceLocaleBundl
 					'NEURAL LINK... ESTABLISHED',
 				],
 				aiTransmission:
-					'Pilot, the Reactor Drone has been lost. We are drifting on residual battery. To survive, we must secure high-density matter for the Fabrication Unit. Deployment of the last Expendable unit is authorized.',
+					'Pilot, the Reactor Ship has been lost. We are drifting on residual battery. To survive, we must secure high-density matter for the Fabrication Unit. Deployment of the last Expendable unit is authorized.',
 				hudTitle: 'COLD BOOT // TIER 1 SCAVENGER POD',
 				aiLabel: 'AI LINK // DEGRADED CHANNEL',
 			},
@@ -55,7 +55,7 @@ export const OPENING_SEQUENCE_LIBRARY: Record<string, OpeningSequenceLocaleBundl
 					'NEURAL LINK... ESTABLISHED',
 				],
 				aiTransmission:
-					'Pilot, telemetry confirms Reactor Drone destruction. Residual battery is collapsing. Prioritize high-density matter acquisition for Fabrication Unit continuity. Final Expendable authorization granted.',
+					'Pilot, telemetry confirms Reactor Ship destruction. Residual battery is collapsing. Prioritize high-density matter acquisition for Fabrication Unit continuity. Final Expendable authorization granted.',
 				hudTitle: 'COLD BOOT // DISTRESS PROFILE',
 				aiLabel: 'AI LINK // EMERGENCY CHANNEL',
 			},

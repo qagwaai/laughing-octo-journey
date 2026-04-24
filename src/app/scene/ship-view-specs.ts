@@ -4,33 +4,33 @@ import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { textureResource } from "angular-three-soba/loaders";
 import { CurrentRoute } from '../component/current';
-import { ExpendableDartDrone } from "../component/expendable-dart-drone";
+import { ExpendableDartShip } from "../component/expendable-dart-drone";
 import { PlayerCharacterSummary } from '../model/character-list';
-import { DroneSummary } from '../model/drone-list';
+import { ShipSummary } from '../model/ship-list';
 
-interface DroneViewSpecsNavigationState {
+interface ShipViewSpecsNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
-	joinDrone?: DroneSummary;
+	joinShip?: ShipSummary;
 }
 
 @Component({
-	selector: 'app-drone-view-specs',
-	templateUrl: './drone-view-specs.html',
-	imports: [NgtArgs, ExpendableDartDrone, NgtsOrbitControls, CurrentRoute],
+	selector: 'app-ship-view-specs',
+	templateUrl: './ship-view-specs.html',
+	imports: [NgtArgs, ExpendableDartShip, NgtsOrbitControls, CurrentRoute],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class DroneViewSpecs {
+export default class ShipViewSpecs {
 	private router = inject(Router);
-	private navigationState: DroneViewSpecsNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as DroneViewSpecsNavigationState | undefined) ??
-		(history.state as DroneViewSpecsNavigationState | undefined) ??
+	private navigationState: ShipViewSpecsNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as ShipViewSpecsNavigationState | undefined) ??
+		(history.state as ShipViewSpecsNavigationState | undefined) ??
 		{};
 
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
-	protected joinDrone = signal<DroneSummary | null>(this.navigationState.joinDrone ?? null);
+	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 
 	protected textures = textureResource(() => ({
 		specsheet: "images/Expendable_Dart_Drone_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"

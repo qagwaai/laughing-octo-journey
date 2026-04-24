@@ -4,24 +4,24 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from './guarded-left-menu';
 import { locale } from '../../i18n/locale';
 
-interface DroneHangarNavigationState {
+interface ShipHangarNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
 }
 
 @Component({
-	selector: 'app-drone-hangar-page',
-	templateUrl: './drone-hangar.html',
-	styleUrls: ['./drone-hangar.css'],
+	selector: 'app-ship-hangar-page',
+	templateUrl: './ship-hangar.html',
+	styleUrls: ['./ship-hangar.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 	imports: [GuardedLeftMenu],
 })
-export default class DroneHangarPage {
+export default class ShipHangarPage {
 	protected readonly t = locale;
 	private router = inject(Router);
-	private navigationState: DroneHangarNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as DroneHangarNavigationState | undefined) ??
-		(history.state as DroneHangarNavigationState | undefined) ??
+	private navigationState: ShipHangarNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
+		(history.state as ShipHangarNavigationState | undefined) ??
 		{};
 
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');

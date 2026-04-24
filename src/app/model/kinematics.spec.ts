@@ -1,5 +1,5 @@
-import { getHeadingUnitVector, getVectorMagnitude, summarizeDroneMotion } from './kinematics';
-import { DroneKinematics } from './drone-list';
+import { getHeadingUnitVector, getVectorMagnitude, summarizeShipMotion } from './kinematics';
+import { ShipKinematics } from './ship-list';
 
 describe('kinematics helpers', () => {
 	it('computes vector magnitude for velocity', () => {
@@ -17,7 +17,7 @@ describe('kinematics helpers', () => {
 	});
 
 	it('summarizes speed and heading from kinematics', () => {
-		const kinematics: DroneKinematics = {
+		const kinematics: ShipKinematics = {
 			position: { x: 1000, y: 2000, z: 3000 },
 			velocity: { x: 6, y: 8, z: 0 },
 			reference: {
@@ -29,7 +29,7 @@ describe('kinematics helpers', () => {
 			},
 		};
 
-		const summary = summarizeDroneMotion(kinematics);
+		const summary = summarizeShipMotion(kinematics);
 		expect(summary.speedKmPerSec).toBe(10);
 		expect(summary.headingUnitVector).toEqual({ x: 0.6, y: 0.8, z: 0 });
 	});

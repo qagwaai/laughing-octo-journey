@@ -15,7 +15,7 @@ import { Button } from "../component/button";
 import niceColors from "../component/colors";
 import { CurrentRoute } from "../component/current";
 import { Cube } from "../component/cube";
-import { ExpendableDartDrone } from "../component/expendable-dart-drone";
+import { ExpendableDartShip } from "../component/expendable-dart-drone";
 import { Sol } from "../component/sol";
 import { SocketService } from "../services/socket.service";
 
@@ -39,7 +39,7 @@ extend(THREE);
         />
 
         <app-angular-logo [position]="[0, 13, -100]" />
-        <app-expendible-dart-drone [position]="[4, 1.5, 0]" />
+        <app-expendible-dart-ship [position]="[4, 1.5, 0]" />
         <ngt-mesh name="label-anchor" [position]="[0, 2, 0]">
 			<ngts-html [options]="{ transform: true }">
 				<div [htmlContent]="{ distanceFactor: 10 }">Label</div>
@@ -95,7 +95,7 @@ extend(THREE);
 			</ngts-points-buffer>
 		</ngt-group>
     `,
-    imports: [Button, Cube, CurrentRoute, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartDrone, AngularLogo],
+    imports: [Button, Cube, CurrentRoute, NgtArgs, NgtcPhysics, NgtsOrbitControls, NgtsRoundedBox, NgtsPointsBuffer, NgtsPointMaterial, NgtsHTML, Sol, ExpendableDartShip, AngularLogo],
     schemas: [CUSTOM_ELEMENTS_SCHEMA], 
     changeDetection: ChangeDetectionStrategy.OnPush
 })

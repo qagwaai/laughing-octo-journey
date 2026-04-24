@@ -3,8 +3,8 @@ import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
 import CharacterProfilePage from './page/game/character-profile';
-import DroneViewSpecsPage from './page/game/drone-view-specs';
-import DroneHangarPage from './page/game/drone-hangar';
+import ShipViewSpecsPage from './page/game/ship-view-specs';
+import ShipHangarPage from './page/game/ship-hangar';
 import FabricationLabPage from './page/game/fabrication-lab';
 import GameMainPage from './page/game/game-main';
 import GameJoinPage from './page/game/game-join';
@@ -14,7 +14,7 @@ import ColdBootScanPage from './page/opening/cold-boot-scan';
 import RepairRetrofitPage from './page/game/repair-retrofit';
 import StellarInitiationPage from './page/game/stellar-initiation';
 import ColdBootScanScene from './scene/cold-boot-scan';
-import DroneViewSpecs from './scene/drone-view-specs';
+import ShipViewSpecs from './scene/ship-view-specs';
 import ColdBootOpeningPage from './page/opening/cold-boot';
 import ColdBootHudScene from './scene/hud/cold-boot-hud-scene';
 
@@ -57,8 +57,8 @@ const routes: Routes = [
 		canActivate: [authGuard],
 	},
 	{
-		path: 'drone-view-specs',
-		component: DroneViewSpecs,
+		path: 'ship-view-specs',
+		component: ShipViewSpecs,
 		canActivate: [authGuard],
 	},
 	{
@@ -129,9 +129,9 @@ const routes: Routes = [
 		canActivate: [authGuard],
 	},
 	{
-		path: 'drone-hangar',
+		path: 'ship-hangar',
 		outlet: 'left',
-		component: DroneHangarPage,
+		component: ShipHangarPage,
 		canActivate: [authGuard],
 	},
 	{
@@ -167,9 +167,9 @@ const routes: Routes = [
 	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
 	// Right panel – Angular page routes (replaces ngt-canvas when active)
 	{
-		path: 'drone-view-specs',
+		path: 'ship-view-specs',
 		outlet: 'right',
-		component: DroneViewSpecsPage,
+		component: ShipViewSpecsPage,
 		canActivate: [authGuard],
 	},
 	{

@@ -14,7 +14,7 @@ interface NavigationState {
 	joinCharacter?: { id: string; characterName: string };
 }
 
-class MockDroneHangarPage {
+class MockShipHangarPage {
 	playerName = createSignal<string>('');
 	joinCharacter = createSignal<NavigationState['joinCharacter'] | null>(null);
 
@@ -24,9 +24,9 @@ class MockDroneHangarPage {
 	}
 }
 
-describe('DroneHangarPage', () => {
+describe('ShipHangarPage', () => {
 	it('should initialize from navigation state', () => {
-		const component = new MockDroneHangarPage({
+		const component = new MockShipHangarPage({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 		});
@@ -36,7 +36,7 @@ describe('DroneHangarPage', () => {
 	});
 
 	it('should fallback to empty values', () => {
-		const component = new MockDroneHangarPage();
+		const component = new MockShipHangarPage();
 		expect(component.playerName()).toBe('');
 		expect(component.joinCharacter()).toBeNull();
 	});

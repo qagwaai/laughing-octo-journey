@@ -252,11 +252,11 @@ class MockColdBootScanSceneSeeding {
 
 	/**
 	 * Mirrors seedAsteroidsForInProgressMission() synchronously for unit tests
-	 * by accepting pre-resolved drone center + cb-list response.
+	 * by accepting pre-resolved ship center + cb-list response.
 	 */
 	seedForInProgress(
 		auth: { playerName: string; characterId: string; sessionKey: string },
-		droneCenter: { x: number; y: number; z: number } | null,
+		shipCenter: { x: number; y: number; z: number } | null,
 		existingBodies: MockCelestialBodyItem[],
 		randomTargetCount: number,
 	): void {
@@ -266,7 +266,7 @@ class MockColdBootScanSceneSeeding {
 			return;
 		}
 
-		if (!droneCenter) {
+		if (!shipCenter) {
 			this.asteroidSamples = this.makeRawSamples(5);
 			this.seedingPath = 'fallback';
 			return;
@@ -322,7 +322,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
 		expect(scene.asteroidSamples.every((s) => !s.scanned)).toBe(true);
 	});
 
-	it('should fall back to random seeding when drone has no location', () => {
+	it('should fall back to random seeding when ship has no location', () => {
 		const scene = new MockColdBootScanSceneSeeding();
 		scene.seedForInProgress({ playerName: 'p', characterId: 'c', sessionKey: 'k' }, null, [], 5);
 		expect(scene.seedingPath).toBe('fallback');

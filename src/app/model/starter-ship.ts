@@ -1,6 +1,6 @@
 import { CelestialBodyLocation, generateRandomAsteroidBeltClusterCenterKm } from './celestial-body-location';
-import { DroneKinematics } from './drone-list';
-import { DroneUpsertPayload } from './drone-upsert';
+import { ShipKinematics } from './ship-list';
+import { ShipUpsertPayload } from './ship-upsert';
 
 function hashToSeed(input: string): number {
 	let hash = 2166136261;
@@ -19,7 +19,7 @@ function seededRandom(seed: number): () => number {
 	};
 }
 
-function buildStarterDroneKinematics(location: CelestialBodyLocation, random: () => number): DroneKinematics {
+function buildStarterShipKinematics(location: CelestialBodyLocation, random: () => number): ShipKinematics {
 	const { x, y, z } = location.positionKm;
 	const planar = Math.hypot(x, z);
 	const tangentX = planar > 0 ? -z / planar : 0;
@@ -45,19 +45,19 @@ function buildStarterDroneKinematics(location: CelestialBodyLocation, random: ()
 	};
 }
 
-export function generateDeterministicStarterDroneUpdate(
+export function generateDeterministicStarterShipUpdate(
 	playerName: string,
 	characterId: string,
-	droneId: string,
-): DroneUpsertPayload {
+	shipId: string,
+): ShipUpsertPayload {
 	const random = seededRandom(hashToSeed(`${playerName}::${characterId}`));
 	const center = generateRandomAsteroidBeltClusterCenterKm(random);
 	const location: CelestialBodyLocation = { positionKm: center };
-	const kinematics = buildStarterDroneKinematics(location, random);
+	const kinematics = buildStarterShipKinematics(location, random);
 
 	return {
-		id: droneId,
+		id: shipId,
 		location,
 		kinematics,
-	} satisfies DroneUpsertPayload;
+	} satisfies ShipUpsertPayload;
 }

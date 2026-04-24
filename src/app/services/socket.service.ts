@@ -13,11 +13,11 @@ import {
   CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
 import {
-  DRONE_UPSERT_REQUEST_EVENT,
-  DRONE_UPSERT_RESPONSE_EVENT,
-  DroneUpsertRequest,
-  DroneUpsertResponse,
-} from '../model/drone-upsert';
+  SHIP_UPSERT_REQUEST_EVENT,
+  SHIP_UPSERT_RESPONSE_EVENT,
+  ShipUpsertRequest,
+  ShipUpsertResponse,
+} from '../model/ship-upsert';
 
 /**
  * Socket.IO Service
@@ -125,17 +125,17 @@ export class SocketService {
   }
 
   /**
-   * Emit a drone upsert request and optionally handle a one-time response.
+   * Emit a ship upsert request and optionally handle a one-time response.
    */
-  upsertDrone(
-    request: DroneUpsertRequest,
-    onResponse?: (response: DroneUpsertResponse) => void,
+  upsertShip(
+    request: ShipUpsertRequest,
+    onResponse?: (response: ShipUpsertResponse) => void,
   ): void {
     if (onResponse) {
-      this.once(DRONE_UPSERT_RESPONSE_EVENT, onResponse);
+      this.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
     }
 
-    this.emit(DRONE_UPSERT_REQUEST_EVENT, request);
+    this.emit(SHIP_UPSERT_REQUEST_EVENT, request);
   }
 
   /**

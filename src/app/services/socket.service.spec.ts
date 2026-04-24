@@ -5,10 +5,10 @@ import {
   type CelestialBodyUpsertRequest,
 } from '../model/celestial-body-upsert';
 import {
-  DRONE_UPSERT_REQUEST_EVENT,
-  DRONE_UPSERT_RESPONSE_EVENT,
-  type DroneUpsertRequest,
-} from '../model/drone-upsert';
+  SHIP_UPSERT_REQUEST_EVENT,
+  SHIP_UPSERT_RESPONSE_EVENT,
+  type ShipUpsertRequest,
+} from '../model/ship-upsert';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -178,8 +178,8 @@ describe('SocketService', () => {
     });
   });
 
-  describe('upsertDrone', () => {
-    it('should emit drone upsert request and register one-time response listener', () => {
+  describe('upsertShip', () => {
+    it('should emit ship upsert request and register one-time response listener', () => {
       let emittedEvent: string | null = null;
       let emittedPayload: unknown;
       let onceEvent: string | null = null;
@@ -201,11 +201,11 @@ describe('SocketService', () => {
       };
       service['socket'] = mockSocket as any;
 
-      const request: DroneUpsertRequest = {
+      const request: ShipUpsertRequest = {
         playerName: 'Pioneer',
         characterId: 'char-1',
         sessionKey: 'session-123',
-        drone: {
+        ship: {
           id: 'starter-char-1',
           location: { positionKm: { x: 1, y: 2, z: 3 } },
           kinematics: {
@@ -223,14 +223,14 @@ describe('SocketService', () => {
       };
 
       let callbackResponse: unknown;
-      service.upsertDrone(request, (response) => {
+      service.upsertShip(request, (response) => {
         callbackResponse = response;
       });
 
       expect(onceEvent).not.toBeNull();
-      expect(onceEvent!).toBe(DRONE_UPSERT_RESPONSE_EVENT);
+      expect(onceEvent!).toBe(SHIP_UPSERT_RESPONSE_EVENT);
       expect(emittedEvent).not.toBeNull();
-      expect(emittedEvent!).toBe(DRONE_UPSERT_REQUEST_EVENT);
+      expect(emittedEvent!).toBe(SHIP_UPSERT_REQUEST_EVENT);
       expect(emittedPayload).toEqual(request);
 
       const fakeResponse = {
@@ -238,7 +238,7 @@ describe('SocketService', () => {
         message: 'ok',
         playerName: 'Pioneer',
         characterId: 'char-1',
-        drone: { ...request.drone, droneName: 'Starter Drone' },
+        ship: { ...request.ship, shipName: 'Starter Ship' },
       };
       responseCallback?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);

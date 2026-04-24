@@ -1,22 +1,22 @@
 import { Triple } from './triple';
 import { CelestialBodyLocation } from './celestial-body-location';
 
-export const DRONE_LIST_REQUEST_EVENT = 'drone-list-request';
-export const DRONE_LIST_RESPONSE_EVENT = 'drone-list-response';
+export const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
+export const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 
-export interface DroneListRequest {
+export interface ShipListRequest {
 	playerName: string;
 	characterId: string;
 	sessionKey: string;
 }
 
-export interface DroneSummary {
+export interface ShipSummary {
 	id: string;
 	name: string;
 	status?: string;
 	model?: string;
 	location?: CelestialBodyLocation;
-	kinematics?: DroneKinematics;
+	kinematics?: ShipKinematics;
 }
 
 export type SpatialReferenceKind = 'barycentric' | 'body-centered';
@@ -30,16 +30,16 @@ export interface SpatialReference {
 	epochMs: number;
 }
 
-export interface DroneKinematics {
+export interface ShipKinematics {
 	position: Triple;
 	velocity: Triple;
 	reference: SpatialReference;
 }
 
-export interface DroneListResponse {
+export interface ShipListResponse {
 	success: boolean;
 	message: string;
 	playerName: string;
 	characterId: string;
-	drones: DroneSummary[];
+	ships: ShipSummary[];
 }

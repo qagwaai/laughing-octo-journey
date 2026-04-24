@@ -12,13 +12,13 @@ export const GLTF_RESOURCE_FN = new InjectionToken('GLTF_RESOURCE_FN', {
 });
 
 @Component({
-    selector: "app-expendible-dart-drone",
+    selector: "app-expendible-dart-ship",
     template: `
         <ngt-primitive
-            #expendibleDartDrone
+            #expendibleDartShip
             castShadow
             receiveShadow
-			*args="[expendableDartDrone()]"
+			*args="[expendableDartShip()]"
 			[position]="position()"
             [hoverColor]="hoverColor()"
             [color]="color()"
@@ -29,7 +29,7 @@ export const GLTF_RESOURCE_FN = new InjectionToken('GLTF_RESOURCE_FN', {
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 
-export class ExpendableDartDrone {
+export class ExpendableDartShip {
     position = input<Triplet>([0, 0, 0]);
     color = input<string>('red');
     hoverColor = input<string>('darkred');
@@ -37,26 +37,26 @@ export class ExpendableDartDrone {
     protected hovered = signal(false);
     protected clicked = signal(false);
 
-    protected models = inject(GLTF_RESOURCE_FN)(() => ({ expendableDartDrone: 'models/expendable_dart_drone_mod.glb' }), {
+    protected models = inject(GLTF_RESOURCE_FN)(() => ({ expendableDartShip: 'models/expendable_dart_ship_mod.glb' }), {
         onLoad(data) {},
     });
 
-    protected expendableDartDrone = computed(() => {
-        const gltf = this.models.asReadonly().value()?.expendableDartDrone;
+    protected expendableDartShip = computed(() => {
+        const gltf = this.models.asReadonly().value()?.expendableDartShip;
         if (!gltf) {
             return null;
         }
         return gltf.scene
     });
     
-    private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('expendibleDartDrone');
+    private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('expendibleDartShip');
     
     constructor() {
         const beforeRender = inject(BEFORE_RENDER_FN);
         beforeRender(({ delta }) => {
-            let expendibleDartDroneRef = this.meshRef()?.nativeElement;
-            if (expendibleDartDroneRef) {
-                expendibleDartDroneRef.rotation.z += delta / 5;
+            let expendibleDartShipRef = this.meshRef()?.nativeElement;
+            if (expendibleDartShipRef) {
+                expendibleDartShipRef.rotation.z += delta / 5;
             }
         });
     }

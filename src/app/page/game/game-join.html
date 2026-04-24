@@ -12,41 +12,41 @@
 			{{ t.common.characterPrefix }} <strong>{{ characterName() }}</strong>
 		</p>
 
-		<section class="drone-list-section">
-			<h2>{{ t.game.join.dronesTitle }}</h2>
+		<section class="ship-list-section">
+			<h2>{{ t.game.join.shipsTitle }}</h2>
 
-			@if (isLoadingDrones()) {
-				<p class="drone-status">{{ t.game.join.droneLoadingStatus }}</p>
+			@if (isLoadingShips()) {
+				<p class="ship-status">{{ t.game.join.shipLoadingStatus }}</p>
 			}
 
-			@if (droneListError()) {
-				<p class="drone-status error">{{ droneListError() }}</p>
+			@if (shipListError()) {
+				<p class="ship-status error">{{ shipListError() }}</p>
 			}
 
-			@if (!isLoadingDrones() && !droneListError() && drones().length === 0) {
-				<p class="drone-status">{{ t.game.join.droneEmptyStatus }}</p>
+			@if (!isLoadingShips() && !shipListError() && ships().length === 0) {
+				<p class="ship-status">{{ t.game.join.shipEmptyStatus }}</p>
 			}
 
-			@if (drones().length > 0) {
-				<ul class="drone-list">
-					@for (drone of drones(); track drone.id) {
-						<li class="drone-item">
-							<div class="drone-row">
-								<div class="drone-identity">
-									<div class="drone-name"><strong>{{ t.game.join.droneNameLabel }}</strong> {{ getDroneDisplayName(drone) }}</div>
-									<div class="drone-id"><strong>{{ t.game.join.droneIdLabel }}</strong> {{ drone.id }}</div>
+			@if (ships().length > 0) {
+				<ul class="ship-list">
+					@for (ship of ships(); track ship.id) {
+						<li class="ship-item">
+							<div class="ship-row">
+								<div class="ship-identity">
+									<div class="ship-name"><strong>{{ t.game.join.shipNameLabel }}</strong> {{ getShipDisplayName(ship) }}</div>
+									<div class="ship-id"><strong>{{ t.game.join.shipIdLabel }}</strong> {{ ship.id }}</div>
 								</div>
-								<button class="drone-spec-link" type="button" (click)="navigateToDroneSpecs(drone)">{{ t.game.join.droneViewSpecsLabel }}</button>
+								<button class="ship-spec-link" type="button" (click)="navigateToShipSpecs(ship)">{{ t.game.join.shipViewSpecsLabel }}</button>
 							</div>
-							@if (drone.model || drone.status) {
-								<div class="drone-meta">
-									{{ drone.model ?? t.game.join.droneUnknownModel }}
-									@if (drone.status) {
-										<span> - {{ drone.status }}</span>
+							@if (ship.model || ship.status) {
+								<div class="ship-meta">
+									{{ ship.model ?? t.game.join.shipUnknownModel }}
+									@if (ship.status) {
+										<span> - {{ ship.status }}</span>
 									}
 								</div>
 							}
-							<div class="drone-kinematics"><strong>{{ t.game.join.droneKinematicsLabel }}</strong> {{ getDroneKinematicsSummary(drone) }}</div>
+							<div class="ship-kinematics"><strong>{{ t.game.join.shipKinematicsLabel }}</strong> {{ getShipKinematicsSummary(ship) }}</div>
 						</li>
 					}
 				</ul>

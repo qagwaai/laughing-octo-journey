@@ -39,7 +39,7 @@ export const locale = {
 				'Space is cold, but industry is hot. You will manage volatile fluids like Hydrazine in Chemical Mixers and install Heat Sinks to prevent your advanced processors from melting under the strain of deep-space operations.',
 			logisticsTitle: 'Automated Logistics',
 			logisticsBody:
-				"You aren't meant to work alone. Craft Logic Chips and Sensor Arrays to breathe life into your drone fleet. From the humble Scavenger Dart to the massive Heavy Hauler, your drones do the work while you design the systems.",
+				"You aren't meant to work alone. Craft Logic Chips and Sensor Arrays to breathe life into your ship fleet. From the humble Scavenger Dart to the massive Heavy Hauler, your ships do the work while you design the systems.",
 			progressionTitle: 'Player Progression: From Scavenger to Architect',
 			progressionBody:
 				'Your progression is measured across 50 Levels of Technological Breakthroughs, divided into three distinct eras:',
@@ -48,7 +48,7 @@ export const locale = {
 				'Mastering the basics of metallurgy and mechanical assembly. You will focus on building your first Arc Welder and establishing a steady supply of Solid Fuel Pellets to keep your early base powered.',
 			precisionAge: 'The Precision Age (Levels 16–35)',
 			precisionAgeBody:
-				'Transitioning into micro-engineering. You will utilize Lithography Kits and Silver Contacts to create high-tier AI. At this stage, you stop managing individual drones and start managing Relay Hubs that coordinate entire wings of automated workers.',
+				'Transitioning into micro-engineering. You will utilize Lithography Kits and Silver Contacts to create high-tier AI. At this stage, you stop managing individual ships and start managing Relay Hubs that coordinate entire wings of automated workers.',
 			atomicAge: 'The Atomic Age (Levels 36–50)',
 			atomicAgeBody:
 				'Manipulating matter at its most fundamental level. Using Atomic Layerers and Synthesis Engines, you will harness exotic materials like Rhodium and Unobtainium to power Fusion Reactors and reach the pinnacle of engineering.',
@@ -56,7 +56,7 @@ export const locale = {
 			endgameBody1:
 				'The ultimate goal of Project Stellar is the transition from Manual Control to Total Autonomy.',
 			endgameBody2:
-				'Upon reaching Level 50, you will unlock the blueprint for The Hive-Mind. This is not just a ship or a building; it is a capital asset that links every drone, relay, and refinery in your empire into a single, sentient network.',
+				'Upon reaching Level 50, you will unlock the blueprint for The Hive-Mind. This is not just a ship or a building; it is a capital asset that links every ship, relay, and refinery in your empire into a single, sentient network.',
 			endgameBody3:
 				"With the Warp Drive online and the Quantum Matrix processing billions of calculations per second, you will no longer be a mere pilot in the belt—you will be the intelligence that commands the stars. The galaxy is a resource; it's time to harvest it.",
 			quote: 'The stars are not just lights in the sky; they are the fuel for the next evolution.',
@@ -154,14 +154,14 @@ export const locale = {
 		join: {
 			title: 'Game Join',
 			subtitle: 'Preparing to join with your selected character.',
-			dronesTitle: 'Drones',
-			droneLoadingStatus: 'Loading drones...',
-			droneEmptyStatus: 'No drones found for this character.',
-			droneNameLabel: 'Name:',
-			droneIdLabel: 'ID:',
-			droneUnknownModel: 'Unknown Model',
-			droneViewSpecsLabel: 'View Specs',
-			droneKinematicsLabel: 'Kinematics:',
+			shipsTitle: 'Ships',
+			shipLoadingStatus: 'Loading ships...',
+			shipEmptyStatus: 'No ships found for this character.',
+			shipNameLabel: 'Name:',
+			shipIdLabel: 'ID:',
+			shipUnknownModel: 'Unknown Model',
+			shipViewSpecsLabel: 'View Specs',
+			shipKinematicsLabel: 'Kinematics:',
 		},
 
 		main: {
@@ -203,12 +203,12 @@ export const locale = {
 			sectionDescription: 'Sample module: browse listings, evaluate prices, and prepare purchase orders.',
 		},
 
-		droneHangar: {
-			title: 'Drone Hangar',
-			subtitle: 'Fleet roster, deployment readiness, and drone assignment queue.',
+		shipHangar: {
+			title: 'Ship Hangar',
+			subtitle: 'Fleet roster, deployment readiness, and ship assignment queue.',
 			sectionTitle: 'Hangar Board',
 			sectionDescription:
-				'Sample module: list docked drones, sortie status, and launch bay reservations.',
+				'Sample module: list docked ships, sortie status, and launch bay reservations.',
 		},
 
 		fabricationLab: {

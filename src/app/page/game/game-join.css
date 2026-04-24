@@ -37,27 +37,27 @@ h1 {
 	margin: 0.5rem 0;
 }
 
-.drone-list-section {
+.ship-list-section {
 	margin-top: 1.25rem;
 	padding-top: 0.75rem;
 	border-top: 1px solid rgba(180, 207, 255, 0.25);
 }
 
-.drone-list-section h2 {
+.ship-list-section h2 {
 	margin: 0 0 0.75rem 0;
 	font-size: 1.15rem;
 }
 
-.drone-status {
+.ship-status {
 	margin: 0.5rem 0;
 	color: #c8ddff;
 }
 
-.drone-status.error {
+.ship-status.error {
 	color: #ff9f9f;
 }
 
-.drone-list {
+.ship-list {
 	list-style: none;
 	padding: 0;
 	margin: 0;
@@ -66,36 +66,36 @@ h1 {
 	gap: 0.6rem;
 }
 
-.drone-item {
+.ship-item {
 	padding: 0.6rem 0.75rem;
 	border-radius: 6px;
 	border: 1px solid rgba(140, 190, 255, 0.25);
 	background: rgba(28, 46, 78, 0.5);
 }
 
-.drone-row {
+.ship-row {
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: 0.75rem;
 }
 
-.drone-identity {
+.ship-identity {
 	display: flex;
 	flex-direction: column;
 	gap: 0.15rem;
 }
 
-.drone-name {
+.ship-name {
 	font-weight: 600;
 }
 
-.drone-id {
+.ship-id {
 	font-size: 0.88rem;
 	color: #c8ddff;
 }
 
-.drone-spec-link {
+.ship-spec-link {
 	background: transparent;
 	border: none;
 	color: #b6ffbe;
@@ -105,17 +105,17 @@ h1 {
 	padding: 0;
 }
 
-.drone-spec-link:hover {
+.ship-spec-link:hover {
 	color: #daffde;
 }
 
-.drone-meta {
+.ship-meta {
 	margin-top: 0.2rem;
 	font-size: 0.9rem;
 	color: #b4cfff;
 }
 
-.drone-kinematics {
+.ship-kinematics {
 	margin-top: 0.35rem;
 	font-size: 0.85rem;
 	line-height: 1.35;

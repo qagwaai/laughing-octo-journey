@@ -38,7 +38,7 @@ class MockColdBootOpeningPage {
 		'NEURAL LINK... ESTABLISHED',
 		],
 		aiTransmission:
-			'Pilot, the Reactor Drone has been lost. We are drifting on residual battery. To survive, we must secure high-density matter for the Fabrication Unit. Deployment of the last Expendable unit is authorized.',
+			'Pilot, the Reactor Ship has been lost. We are drifting on residual battery. To survive, we must secure high-density matter for the Fabrication Unit. Deployment of the last Expendable unit is authorized.',
 	};
 	t = {
 		opening: {

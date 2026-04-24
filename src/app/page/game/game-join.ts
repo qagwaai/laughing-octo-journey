@@ -3,16 +3,16 @@ import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
-	DRONE_LIST_REQUEST_EVENT,
-	DRONE_LIST_RESPONSE_EVENT,
-	DroneListRequest,
-	DroneKinematics,
-	DroneListResponse,
-	DroneSummary,
+	SHIP_LIST_REQUEST_EVENT,
+	SHIP_LIST_RESPONSE_EVENT,
+	ShipListRequest,
+	ShipKinematics,
+	ShipListResponse,
+	ShipSummary,
 	SpatialReference,
-} from '../../model/drone-list';
+} from '../../model/ship-list';
 import { CelestialBodyLocation } from '../../model/celestial-body-location';
-import { summarizeDroneMotion } from '../../model/kinematics';
+import { summarizeShipMotion } from '../../model/kinematics';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -36,7 +36,7 @@ export default class GameJoinPage {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
-	private unsubscribeDroneListResponse?: () => void;
+	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 	private navigationState: GameJoinNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as GameJoinNavigationState | undefined) ??
@@ -46,9 +46,9 @@ export default class GameJoinPage {
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 	protected characterName = signal<string>(this.joinCharacter()?.characterName ?? 'Unknown Character');
-	protected drones = signal<DroneSummary[]>([]);
-	protected isLoadingDrones = signal(false);
-	protected droneListError = signal<string | null>(null);
+	protected ships = signal<ShipSummary[]>([]);
+	protected isLoadingShips = signal(false);
+	protected shipListError = signal<string | null>(null);
 
 	constructor() {
 		effect(() => {
@@ -64,58 +64,58 @@ export default class GameJoinPage {
 		);
 
 		if (this.socketService.getIsConnected()) {
-			this.loadDronesForCharacter();
+			this.loadShipsForCharacter();
 		} else {
-			this.socketService.once('connect', () => this.loadDronesForCharacter());
+			this.socketService.once('connect', () => this.loadShipsForCharacter());
 		}
 	}
 
-	loadDronesForCharacter(): void {
+	loadShipsForCharacter(): void {
 		const playerName = this.playerName().trim();
 		const character = this.joinCharacter();
 
 		if (!playerName) {
-			this.droneListError.set('Player name is required to load drones.');
-			this.drones.set([]);
+			this.shipListError.set('Player name is required to load ships.');
+			this.ships.set([]);
 			return;
 		}
 
 		if (!character?.id) {
-			this.droneListError.set('Character id is required to load drones.');
-			this.drones.set([]);
+			this.shipListError.set('Character id is required to load ships.');
+			this.ships.set([]);
 			return;
 		}
 
-		this.isLoadingDrones.set(true);
-		this.droneListError.set(null);
-		this.unsubscribeDroneListResponse?.();
+		this.isLoadingShips.set(true);
+		this.shipListError.set(null);
+		this.unsubscribeShipListResponse?.();
 
-		this.unsubscribeDroneListResponse = this.socketService.on(
-			DRONE_LIST_RESPONSE_EVENT,
-			(response: DroneListResponse) => {
-				this.isLoadingDrones.set(false);
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: ShipListResponse) => {
+				this.isLoadingShips.set(false);
 				if (response.success) {
-					this.drones.set((response.drones ?? []).map((drone) => this.normalizeDroneSummary(drone)));
-					this.droneListError.set(null);
+					this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+					this.shipListError.set(null);
 				} else {
-					this.drones.set([]);
-					this.droneListError.set(response.message);
+					this.ships.set([]);
+					this.shipListError.set(response.message);
 				}
-				this.unsubscribeDroneListResponse?.();
+				this.unsubscribeShipListResponse?.();
 			},
 		);
 
-		const request: DroneListRequest = {
+		const request: ShipListRequest = {
 			playerName,
 			characterId: character.id,
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
-		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, request);
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
-	private normalizeDroneSummary(drone: DroneSummary): DroneSummary {
-		const rawDrone = drone as DroneSummary & {
-			droneName?: string;
+	private normalizeShipSummary(ship: ShipSummary): ShipSummary {
+		const rawShip = ship as ShipSummary & {
+			shipName?: string;
 			displayName?: string;
 			position?: Triple;
 			location?: Triple;
@@ -132,17 +132,17 @@ export default class GameJoinPage {
 			epochMs?: number;
 		};
 
-		const normalizedName = rawDrone.name?.trim() || rawDrone.droneName?.trim() || rawDrone.displayName?.trim() || rawDrone.id;
-		const normalizedKinematics = this.normalizeDroneKinematics(rawDrone);
+		const normalizedName = rawShip.name?.trim() || rawShip.shipName?.trim() || rawShip.displayName?.trim() || rawShip.id;
+		const normalizedKinematics = this.normalizeShipKinematics(rawShip);
 
 		return {
-			...drone,
+			...ship,
 			name: normalizedName,
 			kinematics: normalizedKinematics,
 		};
 	}
 
-	private normalizeDroneKinematics(drone: DroneSummary & {
+	private normalizeShipKinematics(ship: ShipSummary & {
 		position?: Triple;
 		location?: Triple;
 		bodyLocation?: CelestialBodyLocation;
@@ -156,20 +156,20 @@ export default class GameJoinPage {
 		distanceUnit?: SpatialReference['distanceUnit'];
 		velocityUnit?: SpatialReference['velocityUnit'];
 		epochMs?: number;
-	}): DroneKinematics | undefined {
-		if (drone.kinematics) {
-			return drone.kinematics;
+	}): ShipKinematics | undefined {
+		if (ship.kinematics) {
+			return ship.kinematics;
 		}
 
-		const positionFromLocation = drone.location?.positionKm ?? drone.bodyLocation?.positionKm;
+		const positionFromLocation = ship.location?.positionKm ?? ship.bodyLocation?.positionKm;
 		const position =
-			this.normalizeTriple(drone.position) ??
+			this.normalizeTriple(ship.position) ??
 			this.normalizeTriple(positionFromLocation) ??
-			this.normalizeTriple(drone.location);
+			this.normalizeTriple(ship.location);
 		const velocity =
-			this.normalizeTriple(drone.velocity) ??
-			this.normalizeTriple(drone.velocityVector) ??
-			this.normalizeTriple(drone.directionOfTravel);
+			this.normalizeTriple(ship.velocity) ??
+			this.normalizeTriple(ship.velocityVector) ??
+			this.normalizeTriple(ship.directionOfTravel);
 
 		if (!position || !velocity) {
 			return undefined;
@@ -179,12 +179,12 @@ export default class GameJoinPage {
 			position,
 			velocity,
 			reference: {
-				solarSystemId: drone.reference?.solarSystemId ?? drone.solarSystemId ?? 'unknown-system',
-				referenceKind: drone.reference?.referenceKind ?? drone.referenceKind ?? 'barycentric',
-				referenceBodyId: drone.reference?.referenceBodyId ?? drone.referenceBodyId,
-				distanceUnit: drone.reference?.distanceUnit ?? drone.distanceUnit ?? 'km',
-				velocityUnit: drone.reference?.velocityUnit ?? drone.velocityUnit ?? 'km/s',
-				epochMs: drone.reference?.epochMs ?? drone.epochMs ?? Date.now(),
+				solarSystemId: ship.reference?.solarSystemId ?? ship.solarSystemId ?? 'unknown-system',
+				referenceKind: ship.reference?.referenceKind ?? ship.referenceKind ?? 'barycentric',
+				referenceBodyId: ship.reference?.referenceBodyId ?? ship.referenceBodyId,
+				distanceUnit: ship.reference?.distanceUnit ?? ship.distanceUnit ?? 'km',
+				velocityUnit: ship.reference?.velocityUnit ?? ship.velocityUnit ?? 'km/s',
+				epochMs: ship.reference?.epochMs ?? ship.epochMs ?? Date.now(),
 			},
 		};
 	}
@@ -206,31 +206,31 @@ export default class GameJoinPage {
 		};
 	}
 
-	navigateToDroneSpecs(drone: DroneSummary): void {
+	navigateToShipSpecs(ship: ShipSummary): void {
 		const playerName = this.playerName();
 		const joinCharacter = this.joinCharacter();
 
-		this.router.navigate([{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName,
 				joinCharacter,
-				joinDrone: drone,
+				joinShip: ship,
 			},
 		});
 	}
 
-	protected getDroneDisplayName(drone: DroneSummary): string {
-		return drone.name.trim() || 'Unnamed Drone';
+	protected getShipDisplayName(ship: ShipSummary): string {
+		return ship.name.trim() || 'Unnamed Ship';
 	}
 
-	protected getDroneKinematicsSummary(drone: DroneSummary): string {
-		const kinematics = drone.kinematics;
+	protected getShipKinematicsSummary(ship: ShipSummary): string {
+		const kinematics = ship.kinematics;
 		if (!kinematics) {
 			return 'Kinematics unavailable';
 		}
 
-		const motion = summarizeDroneMotion(kinematics);
+		const motion = summarizeShipMotion(kinematics);
 		const speed = `${motion.speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}`;
 		const position = `(${kinematics.position.x}, ${kinematics.position.y}, ${kinematics.position.z}) ${kinematics.reference.distanceUnit}`;
 
@@ -243,7 +243,7 @@ export default class GameJoinPage {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 }

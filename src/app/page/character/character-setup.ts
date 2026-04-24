@@ -15,13 +15,13 @@ import {
 	CharacterEditResponse,
 } from '../../model/character-edit';
 import {
-	DRONE_LIST_REQUEST_EVENT,
-	DRONE_LIST_RESPONSE_EVENT,
-	type DroneListRequest,
-	type DroneListResponse,
-} from '../../model/drone-list';
-import { type DroneUpsertResponse } from '../../model/drone-upsert';
-import { generateDeterministicStarterDroneUpdate } from '../../model/starter-drone';
+	SHIP_LIST_REQUEST_EVENT,
+	SHIP_LIST_RESPONSE_EVENT,
+	type ShipListRequest,
+	type ShipListResponse,
+} from '../../model/ship-list';
+import { type ShipUpsertResponse } from '../../model/ship-upsert';
+import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { GuardedLeftMenu } from '../game/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
@@ -48,7 +48,7 @@ export default class CharacterSetupPage implements OnDestroy {
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private unsubscribeAddResponse?: () => void;
-	private unsubscribeDroneListResponse?: () => void;
+	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 	private setupState: CharacterSetupNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
@@ -135,7 +135,7 @@ export default class CharacterSetupPage implements OnDestroy {
 					this.errorMessage.set(null);
 					if (!isEditMode) {
 						const addResponse = response as CharacterAddResponse;
-						this.createStarterDroneForCharacter(addResponse.characterId);
+						this.createStarterShipForCharacter(addResponse.characterId);
 					}
 				} else {
 					this.isSaved.set(false);
@@ -166,47 +166,47 @@ export default class CharacterSetupPage implements OnDestroy {
 		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
 	}
 
-	private createStarterDroneForCharacter(characterId?: string): void {
+	private createStarterShipForCharacter(characterId?: string): void {
 		const playerName = this.playerName().trim();
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 		const resolvedCharacterId = characterId?.trim() ?? '';
 
 		if (!playerName || !sessionKey || !resolvedCharacterId) {
-			console.warn('Skipping starter drone upsert due to missing character context.');
-			this.warningMessage.set('Character created, but starter drone initialization is pending.');
+			console.warn('Skipping starter ship upsert due to missing character context.');
+			this.warningMessage.set('Character created, but starter ship initialization is pending.');
 			return;
 		}
 
-		this.unsubscribeDroneListResponse?.();
-		this.unsubscribeDroneListResponse = this.socketService.on(
-			DRONE_LIST_RESPONSE_EVENT,
-			(response: DroneListResponse) => {
-				this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: ShipListResponse) => {
+				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
-					console.warn('Unable to resolve starter drone from drone-list:', response.message);
-					this.warningMessage.set('Character created, but starter drone could not be resolved yet.');
+					console.warn('Unable to resolve starter ship from ship-list:', response.message);
+					this.warningMessage.set('Character created, but starter ship could not be resolved yet.');
 					return;
 				}
 
-				const starterDroneId = response.drones?.[0]?.id?.trim();
-				if (!starterDroneId) {
-					console.warn('Starter drone id was not returned by drone-list response.');
-					this.warningMessage.set('Character created, but no starter drone record was returned.');
+				const starterShipId = response.ships?.[0]?.id?.trim();
+				if (!starterShipId) {
+					console.warn('Starter ship id was not returned by ship-list response.');
+					this.warningMessage.set('Character created, but no starter ship record was returned.');
 					return;
 				}
 
-				const droneUpdate = generateDeterministicStarterDroneUpdate(playerName, resolvedCharacterId, starterDroneId);
-				this.socketService.upsertDrone(
+				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
+				this.socketService.upsertShip(
 					{
 						playerName,
 						characterId: resolvedCharacterId,
 						sessionKey,
-						drone: droneUpdate,
+						ship: shipUpdate,
 					},
-					(upsertResponse: DroneUpsertResponse) => {
+					(upsertResponse: ShipUpsertResponse) => {
 						if (!upsertResponse.success) {
-							console.warn('Starter drone upsert failed:', upsertResponse.message);
-							this.warningMessage.set('Character created, but starter drone position update failed.');
+							console.warn('Starter ship upsert failed:', upsertResponse.message);
+							this.warningMessage.set('Character created, but starter ship position update failed.');
 							return;
 						}
 
@@ -216,12 +216,12 @@ export default class CharacterSetupPage implements OnDestroy {
 			},
 		);
 
-		const followupRequest: DroneListRequest = {
+		const followupRequest: ShipListRequest = {
 			playerName,
 			characterId: resolvedCharacterId,
 			sessionKey,
 		};
-		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, followupRequest);
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, followupRequest);
 	}
 
 	navigateToCharacterList(): void {
@@ -234,7 +234,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
 	ngOnDestroy(): void {
 		this.unsubscribeAddResponse?.();
-		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 }

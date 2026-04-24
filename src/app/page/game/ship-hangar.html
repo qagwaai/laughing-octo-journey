@@ -1,8 +1,8 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>{{ t.game.droneHangar.title }}</h1>
-		<p class="subtitle">{{ t.game.droneHangar.subtitle }}</p>
+		<h1>{{ t.game.shipHangar.title }}</h1>
+		<p class="subtitle">{{ t.game.shipHangar.subtitle }}</p>
 
 		@if (playerName()) {
 			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
@@ -13,8 +13,8 @@
 		}
 
 		<section class="ops-card">
-			<h2>{{ t.game.droneHangar.sectionTitle }}</h2>
-			<p>{{ t.game.droneHangar.sectionDescription }}</p>
+			<h2>{{ t.game.shipHangar.sectionTitle }}</h2>
+			<p>{{ t.game.shipHangar.sectionDescription }}</p>
 		</section>
 	</div>
 </div>

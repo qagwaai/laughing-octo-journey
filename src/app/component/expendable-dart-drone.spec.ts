@@ -1,11 +1,11 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { ExpendableDartDrone, BEFORE_RENDER_FN, GLTF_RESOURCE_FN } from "./expendable-dart-drone";
+import { ExpendableDartShip, BEFORE_RENDER_FN, GLTF_RESOURCE_FN } from "./expendable-dart-drone";
 import { CUSTOM_ELEMENTS_SCHEMA } from "@angular/core";
 import * as THREE from "three";
 
-describe("ExpendableDartDrone", () => {
-    let component: ExpendableDartDrone;
-    let fixture: ComponentFixture<ExpendableDartDrone>;
+describe("ExpendableDartShip", () => {
+    let component: ExpendableDartShip;
+    let fixture: ComponentFixture<ExpendableDartShip>;
     let beforeRenderSpy: jasmine.Spy;
     let gltfResourceSpy: jasmine.Spy;
     let beforeRenderCallbacks: Array<(state: any) => void>;
@@ -25,13 +25,13 @@ describe("ExpendableDartDrone", () => {
         gltfResourceSpy = jasmine.createSpy('gltfResource').and.returnValue({
             asReadonly: jasmine.createSpy('asReadonly').and.returnValue({
                 value: jasmine.createSpy('value').and.returnValue({
-                    expendableDartDrone: mockGltf,
+                    expendableDartShip: mockGltf,
                 }),
             }),
         });
 
         await TestBed.configureTestingModule({
-            imports: [ExpendableDartDrone],
+            imports: [ExpendableDartShip],
             providers: [
                 { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
                 { provide: GLTF_RESOURCE_FN, useValue: gltfResourceSpy }
@@ -39,7 +39,7 @@ describe("ExpendableDartDrone", () => {
             schemas: [CUSTOM_ELEMENTS_SCHEMA],
         }).compileComponents();
 
-        fixture = TestBed.createComponent(ExpendableDartDrone);
+        fixture = TestBed.createComponent(ExpendableDartShip);
         component = fixture.componentInstance;
         (component as any).beforeRenderCallback = beforeRenderCallbacks[0];
     });
@@ -78,9 +78,9 @@ describe("ExpendableDartDrone", () => {
     });
 
     describe("Model loading", () => {
-        it("should load the expendable dart drone model", () => {
-            const expendableDartDroneSignal = (component as any).expendableDartDrone();
-            expect(expendableDartDroneSignal).toBe(mockScene);
+        it("should load the expendable dart ship model", () => {
+            const expendableDartShipSignal = (component as any).expendableDartShip();
+            expect(expendableDartShipSignal).toBe(mockScene);
         });
 
         it("should return null if model is not loaded", () => {
@@ -91,7 +91,7 @@ describe("ExpendableDartDrone", () => {
             });
             TestBed.resetTestingModule();
             TestBed.configureTestingModule({
-                imports: [ExpendableDartDrone],
+                imports: [ExpendableDartShip],
                 providers: [
                     { provide: BEFORE_RENDER_FN, useValue: beforeRenderSpy },
                     { provide: GLTF_RESOURCE_FN, useValue: nullGltfSpy }
@@ -99,10 +99,10 @@ describe("ExpendableDartDrone", () => {
                 schemas: [CUSTOM_ELEMENTS_SCHEMA],
             });
 
-            const testFixture = TestBed.createComponent(ExpendableDartDrone);
+            const testFixture = TestBed.createComponent(ExpendableDartShip);
             const testComponent = testFixture.componentInstance;
-            const expendableDartDroneSignal = (testComponent as any).expendableDartDrone();
-            expect(expendableDartDroneSignal).toBeNull();
+            const expendableDartShipSignal = (testComponent as any).expendableDartShip();
+            expect(expendableDartShipSignal).toBeNull();
         });
 
         it("should call gltfResource with correct model path", () => {
@@ -148,7 +148,7 @@ describe("ExpendableDartDrone", () => {
     describe("Template and attributes", () => {
         it("should have correct component selector", () => {
             const metadata = (component as any).constructor["ɵcmp"];
-            expect(metadata.selectors[0][0]).toBe("app-expendible-dart-drone");
+            expect(metadata.selectors[0][0]).toBe("app-expendible-dart-ship");
         });
 
         it("should include NgtArgs in imports", () => {

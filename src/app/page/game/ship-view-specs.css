@@ -1,4 +1,4 @@
-.drone-specs-container {
+.ship-specs-container {
 	margin: 1rem;
 	padding: 1.25rem;
 	border-radius: 12px;
@@ -37,12 +37,12 @@ h1 {
 	color: #c8ddff;
 }
 
-.drone-image-block {
+.ship-image-block {
 	margin-top: 1.25rem;
 	text-align: center;
 }
 
-.drone-image {
+.ship-image {
 	max-width: 100%;
 	border-radius: 8px;
 	border: 1px solid rgba(140, 190, 255, 0.25);

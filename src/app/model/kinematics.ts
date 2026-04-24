@@ -1,9 +1,9 @@
 import { Triple } from './triple';
-import { DroneKinematics } from './drone-list';
+import { ShipKinematics } from './ship-list';
 
 const MIN_SPEED_EPSILON_KM_PER_SEC = 1e-9;
 
-export interface DroneMotionSummary {
+export interface ShipMotionSummary {
 	speedKmPerSec: number;
 	headingUnitVector: Triple | null;
 }
@@ -25,7 +25,7 @@ export function getHeadingUnitVector(velocity: Triple): Triple | null {
 	};
 }
 
-export function summarizeDroneMotion(kinematics: DroneKinematics): DroneMotionSummary {
+export function summarizeShipMotion(kinematics: ShipKinematics): ShipMotionSummary {
 	return {
 		speedKmPerSec: getVectorMagnitude(kinematics.velocity),
 		headingUnitVector: getHeadingUnitVector(kinematics.velocity),

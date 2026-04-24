@@ -1,0 +1,56 @@
+<div class="ship-specs-container">
+	<h1>Ship Specs</h1>
+	<p class="subtitle">Operational details for your selected ship.</p>
+
+	@if (playerName()) {
+		<p class="context">Player: <strong>{{ playerName() }}</strong></p>
+	}
+
+	@if (joinCharacter()) {
+		<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+	}
+
+	@if (joinShip()) {
+		<div class="spec-card">
+			<p><strong>Name:</strong> {{ joinShip()!.name }}</p>
+			<p><strong>ID:</strong> {{ joinShip()!.id }}</p>
+			<p><strong>Model:</strong> {{ joinShip()!.model ?? 'Unknown Model' }}</p>
+			<p><strong>Status:</strong> {{ joinShip()!.status ?? 'Unknown Status' }}</p>
+
+			@if (joinShip()!.kinematics) {
+				<p>
+					<strong>Position:</strong>
+					({{ joinShip()!.kinematics!.position.x }}, {{ joinShip()!.kinematics!.position.y }}, {{ joinShip()!.kinematics!.position.z }})
+					{{ joinShip()!.kinematics!.reference.distanceUnit }}
+				</p>
+				<p>
+					<strong>Velocity:</strong>
+					({{ joinShip()!.kinematics!.velocity.x }}, {{ joinShip()!.kinematics!.velocity.y }}, {{ joinShip()!.kinematics!.velocity.z }})
+					{{ joinShip()!.kinematics!.reference.velocityUnit }}
+				</p>
+				<p><strong>Speed:</strong> {{ shipMotion()!.speedKmPerSec.toFixed(3) }} km/s</p>
+				<p><strong>Reference Frame:</strong> {{ joinShip()!.kinematics!.reference.referenceKind }}</p>
+				@if (shipMotion()!.headingUnitVector) {
+					<p>
+						<strong>Heading (unit vector):</strong>
+						({{ shipMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.y.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.z.toFixed(4) }})
+					</p>
+				} @else {
+					<p><strong>Heading:</strong> Stationary (insufficient velocity)</p>
+				}
+			} @else {
+				<p><strong>Kinematics:</strong> Not available</p>
+			}
+
+			<div class="ship-image-block">
+				<img
+					src="images/Expendable_Dart_Ship_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"
+					alt="Expendable Dart Ship"
+					class="ship-image"
+				/>
+			</div>
+		</div>
+	} @else {
+		<p class="empty-state">No ship selected.</p>
+	}
+</div>

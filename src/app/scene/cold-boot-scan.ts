@@ -35,11 +35,11 @@ import {
 import { type MissionStatus } from '../model/mission';
 import { PlayerCharacterSummary } from '../model/character-list';
 import {
-	DRONE_LIST_REQUEST_EVENT,
-	DRONE_LIST_RESPONSE_EVENT,
-	type DroneListRequest,
-	type DroneListResponse,
-} from '../model/drone-list';
+	SHIP_LIST_REQUEST_EVENT,
+	SHIP_LIST_RESPONSE_EVENT,
+	type ShipListRequest,
+	type ShipListResponse,
+} from '../model/ship-list';
 import { Triple } from '../model/triple';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
@@ -104,7 +104,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	private scanIntervalId: number | null = null;
 	private sceneElapsedSeconds = 0;
 	private sentCelestialBodyUpserts = new Set<string>();
-	private unsubscribeDroneListResponse?: () => void;
+	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeCelestialBodyListResponse?: () => void;
 	private navigationState: ColdBootScanNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ColdBootScanNavigationState | undefined) ??
@@ -226,7 +226,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		if (this.navigationState.firstTargetMissionStatus === 'started') {
 			this.seedAsteroidsForInProgressMission();
 		} else {
-			this.seedAsteroidsAroundStarterDrone();
+			this.seedAsteroidsAroundStarterShip();
 		}
 		this.scanIntervalId = window.setInterval(() => {
 			this.tickScene();
@@ -234,7 +234,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
 		this.unsubscribeCelestialBodyListResponse?.();
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
@@ -254,19 +254,19 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			return;
 		}
 
-		this.unsubscribeDroneListResponse?.();
-		this.unsubscribeDroneListResponse = this.socketService.on(
-			DRONE_LIST_RESPONSE_EVENT,
-			(droneResponse: DroneListResponse) => {
-				this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(shipResponse: ShipListResponse) => {
+				this.unsubscribeShipListResponse?.();
 
-				const firstDrone = droneResponse.success ? droneResponse.drones?.[0] : undefined;
-				const center = firstDrone?.location?.positionKm;
+				const firstShip = shipResponse.success ? shipResponse.ships?.[0] : undefined;
+				const center = firstShip?.location?.positionKm;
 
 				if (!center) {
 					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
-					console.warn('ColdBootScan (in-progress) drone missing location; using fallback random center.');
+					console.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
 					return;
 				}
 
@@ -319,11 +319,11 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			},
 		);
 
-		const droneRequest: DroneListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, droneRequest);
+		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, shipRequest);
 	}
 
-	private seedAsteroidsAroundStarterDrone(): void {
+	private seedAsteroidsAroundStarterShip(): void {
 		const playerName = this.navigationState.playerName?.trim() ?? '';
 		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
@@ -335,39 +335,39 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			return;
 		}
 
-		this.unsubscribeDroneListResponse?.();
-		this.unsubscribeDroneListResponse = this.socketService.on(
-			DRONE_LIST_RESPONSE_EVENT,
-			(response: DroneListResponse) => {
-				this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: ShipListResponse) => {
+				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
-					console.warn('ColdBootScan starter drone lookup failed; using fallback random center.', response.message);
+					console.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
 					return;
 				}
 
-				const firstDrone = response.drones?.[0];
-				const center = firstDrone?.location?.positionKm;
+				const firstShip = response.ships?.[0];
+				const center = firstShip?.location?.positionKm;
 				if (!center) {
 					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
-					console.warn('ColdBootScan drone list missing required location.positionKm; using fallback random center.');
+					console.warn('ColdBootScan ship list missing required location.positionKm; using fallback random center.');
 					return;
 				}
 
 				const rng = seededRandom(hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`));
 				const samples = ColdBootScanScene.generateAsteroidSamples(center, rng);
 				this.asteroidSamples.set(samples);
-				console.info('ColdBootScan seeded asteroids around starter drone center.', {
+				console.info('ColdBootScan seeded asteroids around starter ship center.', {
 					count: samples.length,
 					centerKm: center,
 				});
 			},
 		);
 
-		const request: DroneListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, request);
+		const request: ShipListRequest = { playerName, characterId, sessionKey };
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
 	protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {

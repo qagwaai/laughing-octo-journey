@@ -9,8 +9,8 @@ function createSignal<T>(initial: T) {
 	return sig;
 }
 
-const DRONE_LIST_REQUEST_EVENT = 'drone-list-request';
-const DRONE_LIST_RESPONSE_EVENT = 'drone-list-response';
+const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
+const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 
 interface GameJoinState {
 	playerName?: string;
@@ -29,14 +29,14 @@ class MockGameJoinPage {
 	private socketService: MockSocketService;
 	private sessionService: MockSessionService;
 	private router: MockRouter;
-	private unsubscribeDroneListResponse?: () => void;
+	private unsubscribeShipListResponse?: () => void;
 
 	playerName = createSignal<string>('');
 	joinCharacter = createSignal<GameJoinState['joinCharacter'] | null>(null);
 	characterName = createSignal<string>('Unknown Character');
-    drones = createSignal<Array<{ id: string; name: string; status?: string; model?: string }>>([]);
-	isLoadingDrones = createSignal(false);
-	droneListError = createSignal<string | null>(null);
+    ships = createSignal<Array<{ id: string; name: string; status?: string; model?: string }>>([]);
+	isLoadingShips = createSignal(false);
+	shipListError = createSignal<string | null>(null);
 
 	constructor(socketService: MockSocketService, sessionService: MockSessionService, router: MockRouter, state?: GameJoinState) {
 		this.socketService = socketService;
@@ -47,76 +47,76 @@ class MockGameJoinPage {
 		this.characterName.set(state?.joinCharacter?.characterName ?? 'Unknown Character');
 
 		if (this.socketService.getIsConnected()) {
-			this.loadDronesForCharacter();
+			this.loadShipsForCharacter();
 		} else {
-			this.socketService.once('connect', () => this.loadDronesForCharacter());
+			this.socketService.once('connect', () => this.loadShipsForCharacter());
 		}
 	}
 
-	loadDronesForCharacter(): void {
+	loadShipsForCharacter(): void {
 		const playerName = this.playerName().trim();
 		const character = this.joinCharacter();
 
 		if (!playerName) {
-			this.droneListError.set('Player name is required to load drones.');
-			this.drones.set([]);
+			this.shipListError.set('Player name is required to load ships.');
+			this.ships.set([]);
 			return;
 		}
 
 		if (!character?.id) {
-			this.droneListError.set('Character id is required to load drones.');
-			this.drones.set([]);
+			this.shipListError.set('Character id is required to load ships.');
+			this.ships.set([]);
 			return;
 		}
 
-		this.isLoadingDrones.set(true);
-		this.droneListError.set(null);
-		this.unsubscribeDroneListResponse?.();
+		this.isLoadingShips.set(true);
+		this.shipListError.set(null);
+		this.unsubscribeShipListResponse?.();
 
-		this.unsubscribeDroneListResponse = this.socketService.on(
-			DRONE_LIST_RESPONSE_EVENT,
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
 			(response: {
 				success: boolean;
 				message: string;
 				playerName: string;
 				characterId: string;
-				drones: Array<{ id: string; name: string; status?: string; model?: string }>;
+				ships: Array<{ id: string; name: string; status?: string; model?: string }>;
 			}) => {
-				this.isLoadingDrones.set(false);
+				this.isLoadingShips.set(false);
 				if (response.success) {
-					this.drones.set(response.drones ?? []);
-					this.droneListError.set(null);
+					this.ships.set(response.ships ?? []);
+					this.shipListError.set(null);
 				} else {
-					this.drones.set([]);
-					this.droneListError.set(response.message);
+					this.ships.set([]);
+					this.shipListError.set(response.message);
 				}
-				this.unsubscribeDroneListResponse?.();
+				this.unsubscribeShipListResponse?.();
 			},
 		);
 
-		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, {
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, {
 			playerName,
 			characterId: character.id,
 			sessionKey: this.sessionService.getSessionKey()!,
 		});
 	}
 
-	navigateToDroneSpecs(drone: { id: string; name: string; status?: string; model?: string }): void {
-		this.router.navigate([{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }], {
+	navigateToShipSpecs(ship: { id: string; name: string; status?: string; model?: string }): void {
+		this.router.navigate([{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
-				joinDrone: drone,
+				joinShip: ship,
 			},
 		});
 	}
 
-	getDroneDisplayName(drone: { id: string; name: string }): string {
-		return drone.name.trim() || 'Unnamed Drone';
+	getShipDisplayName(ship: { id: string; name: string }): string {
+		return ship.name.trim() || 'Unnamed Ship';
 	}
 
-	getDroneKinematicsSummary(drone: {
+	getShipKinematicsSummary(ship: {
 		kinematics?: {
 			position: { x: number; y: number; z: number };
 			velocity: { x: number; y: number; z: number };
@@ -127,7 +127,7 @@ class MockGameJoinPage {
 			};
 		};
 	}): string {
-		const kinematics = drone.kinematics;
+		const kinematics = ship.kinematics;
 		if (!kinematics) {
 			return 'Kinematics unavailable';
 		}
@@ -147,7 +147,7 @@ class MockGameJoinPage {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeShipListResponse?.();
 	}
 }
 
@@ -235,7 +235,7 @@ describe('GameJoinPage', () => {
 		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova-Prime', level: 7 });
 		expect(component.characterName()).toBe('Nova-Prime');
 		expect(socketService.emittedEvents[0]).toEqual({
-			event: DRONE_LIST_REQUEST_EVENT,
+			event: SHIP_LIST_REQUEST_EVENT,
 			data: {
 				playerName: 'Pioneer',
 				characterId: 'c-1',
@@ -253,13 +253,13 @@ describe('GameJoinPage', () => {
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toBeNull();
 		expect(component.characterName()).toBe('Unknown Character');
-		expect(component.droneListError()).toBe('Character id is required to load drones.');
+		expect(component.shipListError()).toBe('Character id is required to load ships.');
 		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 
 		component.ngOnDestroy();
 	});
 
-	it('should request drones when connect event fires for initially disconnected socket', () => {
+	it('should request ships when connect event fires for initially disconnected socket', () => {
 		socketService.connected = false;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
@@ -268,32 +268,32 @@ describe('GameJoinPage', () => {
 
 		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
 		socketService.triggerOnceEvent('connect');
-		expect(socketService.emittedEvents[0].event).toBe(DRONE_LIST_REQUEST_EVENT);
+		expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_REQUEST_EVENT);
 
 		component.ngOnDestroy();
 	});
 
-	it('should populate drones on successful response', () => {
+	it('should populate ships on successful response', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
 			success: true,
 			message: 'ok',
 			playerName: 'Pioneer',
 			characterId: 'c-1',
-			drones: [
+			ships: [
 				{ id: 'd-1', name: 'Surveyor' },
 				{ id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
 			],
 		});
 
-		expect(component.isLoadingDrones()).toBe(false);
-		expect(component.droneListError()).toBeNull();
-		expect(component.drones()).toEqual([
+		expect(component.isLoadingShips()).toBe(false);
+		expect(component.shipListError()).toBeNull();
+		expect(component.ships()).toEqual([
 			{ id: 'd-1', name: 'Surveyor' },
 			{ id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
 		]);
@@ -301,30 +301,30 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should recover drone names from alternate payload fields', () => {
+	it('should recover ship names from alternate payload fields', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		const normalizeDroneSummary = (drone: { id: string; name?: string; droneName?: string; displayName?: string }) => ({
-			id: drone.id,
-			name: drone.name?.trim() || drone.droneName?.trim() || drone.displayName?.trim() || drone.id,
+		const normalizeShipSummary = (ship: { id: string; name?: string; shipName?: string; displayName?: string }) => ({
+			id: ship.id,
+			name: ship.name?.trim() || ship.shipName?.trim() || ship.displayName?.trim() || ship.id,
 		});
 
-		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
 			success: true,
 			message: 'ok',
 			playerName: 'Pioneer',
 			characterId: 'c-1',
-			drones: [
-				normalizeDroneSummary({ id: 'd-1', droneName: 'Surveyor' }),
-				normalizeDroneSummary({ id: 'd-2', name: '   ', displayName: 'Guardian' }),
+			ships: [
+				normalizeShipSummary({ id: 'd-1', shipName: 'Surveyor' }),
+				normalizeShipSummary({ id: 'd-2', name: '   ', displayName: 'Guardian' }),
 			],
 		});
 
-		expect(component.drones()).toEqual([
+		expect(component.ships()).toEqual([
 			{ id: 'd-1', name: 'Surveyor' },
 			{ id: 'd-2', name: 'Guardian' },
 		]);
@@ -339,7 +339,7 @@ describe('GameJoinPage', () => {
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		const normalizeDroneSummary = (drone: {
+		const normalizeShipSummary = (ship: {
 			id: string;
 			name?: string;
 			location?: { x: number; y: number; z: number };
@@ -349,28 +349,28 @@ describe('GameJoinPage', () => {
 			distanceUnit?: 'km';
 			velocityUnit?: 'km/s';
 		}) => ({
-			id: drone.id,
-			name: drone.name?.trim() || drone.id,
-			kinematics: drone.location && drone.velocityVector ? {
-				position: drone.location,
-				velocity: drone.velocityVector,
+			id: ship.id,
+			name: ship.name?.trim() || ship.id,
+			kinematics: ship.location && ship.velocityVector ? {
+				position: ship.location,
+				velocity: ship.velocityVector,
 				reference: {
-					solarSystemId: drone.solarSystemId ?? 'unknown-system',
-					referenceKind: drone.referenceKind ?? 'barycentric',
-					distanceUnit: drone.distanceUnit ?? 'km',
-					velocityUnit: drone.velocityUnit ?? 'km/s',
+					solarSystemId: ship.solarSystemId ?? 'unknown-system',
+					referenceKind: ship.referenceKind ?? 'barycentric',
+					distanceUnit: ship.distanceUnit ?? 'km',
+					velocityUnit: ship.velocityUnit ?? 'km/s',
 					epochMs: jasmine.any(Number),
 				},
 			} : undefined,
 		});
 
-		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
 			success: true,
 			message: 'ok',
 			playerName: 'Pioneer',
 			characterId: 'c-1',
-			drones: [
-				normalizeDroneSummary({
+			ships: [
+				normalizeShipSummary({
 					id: 'd-1',
 					name: 'Surveyor',
 					location: { x: 10, y: 20, z: 30 },
@@ -383,7 +383,7 @@ describe('GameJoinPage', () => {
 			],
 		});
 
-		expect(component.getDroneKinematicsSummary(component.drones()[0] as {
+		expect(component.getShipKinematicsSummary(component.ships()[0] as {
 			kinematics?: {
 				position: { x: number; y: number; z: number };
 				velocity: { x: number; y: number; z: number };
@@ -394,46 +394,46 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should set error and clear drones on failed response', () => {
+	it('should set error and clear ships on failed response', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		socketService.triggerEvent(DRONE_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
 			success: false,
-			message: 'Character drones unavailable.',
+			message: 'Character ships unavailable.',
 			playerName: 'Pioneer',
 			characterId: 'c-1',
-			drones: [],
+			ships: [],
 		});
 
-		expect(component.isLoadingDrones()).toBe(false);
-		expect(component.drones()).toEqual([]);
-		expect(component.droneListError()).toBe('Character drones unavailable.');
+		expect(component.isLoadingShips()).toBe(false);
+		expect(component.ships()).toEqual([]);
+		expect(component.shipListError()).toBe('Character ships unavailable.');
 
 		component.ngOnDestroy();
 	});
 
-	it('should navigate to drone-view-specs by changing primary outlet and preserving left game-join', () => {
+	it('should navigate to ship-view-specs by changing primary outlet and preserving left game-join', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		const drone = { id: 'd-1', name: 'Surveyor', status: 'ACTIVE' };
-		component.navigateToDroneSpecs(drone);
+		const ship = { id: 'd-1', name: 'Surveyor', status: 'ACTIVE' };
+		component.navigateToShipSpecs(ship);
 
 		expect(router.navigate).toHaveBeenCalledWith(
-			[{ outlets: { right: ['drone-view-specs'], left: ['game-join'] } }],
+			[{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }],
 			{
 				preserveFragment: true,
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-					joinDrone: drone,
+					joinShip: ship,
 				},
 			},
 		);
@@ -441,26 +441,26 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should return a fallback display name for blank drone names', () => {
+	it('should return a fallback display name for blank ship names', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		expect(component.getDroneDisplayName({ id: 'd-1', name: '   ' })).toBe('Unnamed Drone');
+		expect(component.getShipDisplayName({ id: 'd-1', name: '   ' })).toBe('Unnamed Ship');
 
 		component.ngOnDestroy();
 	});
 
-	it('should summarize drone kinematics for the list', () => {
+	it('should summarize ship kinematics for the list', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		expect(component.getDroneKinematicsSummary({
+		expect(component.getShipKinematicsSummary({
 			kinematics: {
 				position: { x: 10, y: 20, z: 30 },
 				velocity: { x: 3, y: 4, z: 0 },
@@ -482,7 +482,7 @@ describe('GameJoinPage', () => {
 			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 		});
 
-		expect(component.getDroneKinematicsSummary({})).toBe('Kinematics unavailable');
+		expect(component.getShipKinematicsSummary({})).toBe('Kinematics unavailable');
 
 		component.ngOnDestroy();
 	});
