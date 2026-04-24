@@ -25,6 +25,8 @@ import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 
+const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+
 @Component({
 	selector: 'app-character-list-page',
 	templateUrl: './character-list.html',
@@ -261,6 +263,10 @@ export default class CharacterListPage implements OnDestroy {
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
 		const firstTargetStatus = this.getFirstTargetStatus(character);
+		if (firstTargetStatus === 'started') {
+			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+		}
+
 		const outlets =
 			firstTargetStatus === 'started'
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
@@ -271,6 +277,7 @@ export default class CharacterListPage implements OnDestroy {
 			state: {
 				playerName,
 				joinCharacter: character,
+				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});
 	}

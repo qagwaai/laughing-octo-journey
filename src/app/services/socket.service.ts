@@ -1,6 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import {
+  CELESTIAL_BODY_LIST_REQUEST_EVENT,
+  CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+  CelestialBodyListRequest,
+  CelestialBodyListResponse,
+} from '../model/celestial-body-list';
+import {
   CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
   CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
   CelestialBodyUpsertRequest,
@@ -102,6 +108,20 @@ export class SocketService {
     }
 
     this.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, request);
+  }
+
+  /**
+   * Emit a celestial-body list request and optionally handle a one-time response.
+   */
+  listCelestialBodies(
+    request: CelestialBodyListRequest,
+    onResponse?: (response: CelestialBodyListResponse) => void,
+  ): void {
+    if (onResponse) {
+      this.once(CELESTIAL_BODY_LIST_RESPONSE_EVENT, onResponse);
+    }
+
+    this.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, request);
   }
 
   /**

@@ -16,6 +16,7 @@ interface ColdBootScanNavigationState {
 		id: string;
 		characterName?: string;
 	};
+	firstTargetMissionStatus?: string;
 }
 
 class MockColdBootScanScene {
@@ -122,6 +123,17 @@ describe('ColdBootScanScene', () => {
 		expect(component.characterName).toBe('Nova Prime');
 	});
 
+	it('should read firstTargetMissionStatus from navigation state', () => {
+		const component = new MockColdBootScanScene({
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova Prime' },
+			firstTargetMissionStatus: 'started',
+		});
+
+		expect(component.playerName).toBe('Pioneer');
+		expect(component.characterName).toBe('Nova Prime');
+	});
+
 	it('should trim character name and fallback when blank', () => {
 		const withSpaces = new MockColdBootScanScene({
 			joinCharacter: { id: 'c-1', characterName: '  Echo  ' },
@@ -202,5 +214,215 @@ describe('ColdBootScanScene', () => {
 		}));
 
 		expect(component.scanStatusLine()).toBe('SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// In-progress seeding logic
+// ---------------------------------------------------------------------------
+
+interface MockCelestialBodyItem {
+	id: string;
+	composition: { rarity: string; material: string; textureColor: string };
+	kinematics: object;
+	location: { positionKm: { x: number; y: number; z: number } };
+	distanceKm: number;
+}
+
+interface AsteroidSampleFull {
+	id: string;
+	scanProgress: number;
+	scanned: boolean;
+	revealedMaterial: { rarity: string; material: string; textureColor: string } | null;
+	revealedKinematics: object | null;
+}
+
+/** Mirrors the seeding-branch and merge logic from ColdBootScanScene. */
+class MockColdBootScanSceneSeeding {
+	asteroidSamples: AsteroidSampleFull[] = [];
+	seedingPath: 'in-progress' | 'just-started' | 'fallback' | null = null;
+
+	ngOnInit(firstTargetMissionStatus?: string): void {
+		if (firstTargetMissionStatus === 'started') {
+			this.seedingPath = 'in-progress';
+		} else {
+			this.seedingPath = 'just-started';
+		}
+	}
+
+	/**
+	 * Mirrors seedAsteroidsForInProgressMission() synchronously for unit tests
+	 * by accepting pre-resolved drone center + cb-list response.
+	 */
+	seedForInProgress(
+		auth: { playerName: string; characterId: string; sessionKey: string },
+		droneCenter: { x: number; y: number; z: number } | null,
+		existingBodies: MockCelestialBodyItem[],
+		randomTargetCount: number,
+	): void {
+		if (!auth.playerName || !auth.characterId || !auth.sessionKey) {
+			this.asteroidSamples = this.makeRawSamples(5);
+			this.seedingPath = 'fallback';
+			return;
+		}
+
+		if (!droneCenter) {
+			this.asteroidSamples = this.makeRawSamples(5);
+			this.seedingPath = 'fallback';
+			return;
+		}
+
+		const total = Math.max(existingBodies.length, randomTargetCount);
+		const allSamples = this.makeRawSamples(total);
+
+		this.asteroidSamples = allSamples.map((sample, index) => {
+			const existing = existingBodies[index];
+			if (!existing) {
+				return sample;
+			}
+			return {
+				...sample,
+				scanProgress: 100,
+				scanned: true,
+				revealedMaterial: existing.composition,
+				revealedKinematics: existing.kinematics,
+			};
+		});
+	}
+
+	private makeRawSamples(count: number): AsteroidSampleFull[] {
+		return Array.from({ length: count }, (_, i) => ({
+			id: `sample-a${i + 1}`,
+			scanProgress: 0,
+			scanned: false,
+			revealedMaterial: null,
+			revealedKinematics: null,
+		}));
+	}
+}
+
+describe('ColdBootScanScene in-progress seeding', () => {
+	it('should route to in-progress seeding path when firstTargetMissionStatus is started', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		scene.ngOnInit('started');
+		expect(scene.seedingPath).toBe('in-progress');
+	});
+
+	it('should route to just-started seeding path when firstTargetMissionStatus is absent', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		scene.ngOnInit();
+		expect(scene.seedingPath).toBe('just-started');
+	});
+
+	it('should fall back to random seeding when auth context is missing', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		scene.seedForInProgress({ playerName: '', characterId: '', sessionKey: '' }, null, [], 5);
+		expect(scene.seedingPath).toBe('fallback');
+		expect(scene.asteroidSamples.length).toBe(5);
+		expect(scene.asteroidSamples.every((s) => !s.scanned)).toBe(true);
+	});
+
+	it('should fall back to random seeding when drone has no location', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		scene.seedForInProgress({ playerName: 'p', characterId: 'c', sessionKey: 'k' }, null, [], 5);
+		expect(scene.seedingPath).toBe('fallback');
+		expect(scene.asteroidSamples.length).toBe(5);
+	});
+
+	it('should mark fetched celestial bodies as already-scanned in the merged set', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		const existing: MockCelestialBodyItem[] = [
+			{
+				id: 'cb-1',
+				composition: { rarity: 'Rare', material: 'Nickel-Iron', textureColor: '#8df7b2' },
+				kinematics: { velocityKmPerSec: { x: 0, y: 0, z: 0 }, angularVelocityRadPerSec: { x: 0, y: 0, z: 0 }, estimatedMassKg: 1e9, estimatedDiameterM: 200 },
+				location: { positionKm: { x: 1, y: 2, z: 3 } },
+				distanceKm: 1.5,
+			},
+		];
+
+		scene.seedForInProgress(
+			{ playerName: 'Pioneer', characterId: 'char-1', sessionKey: 'sk' },
+			{ x: 100, y: 200, z: 50 },
+			existing,
+			5,
+		);
+
+		expect(scene.asteroidSamples[0].scanned).toBe(true);
+		expect(scene.asteroidSamples[0].scanProgress).toBe(100);
+		expect(scene.asteroidSamples[0].revealedMaterial).toEqual(existing[0].composition);
+		expect(scene.asteroidSamples[0].revealedKinematics).toEqual(existing[0].kinematics);
+	});
+
+	it('should leave top-up asteroids as unscanned fresh samples', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		const existing: MockCelestialBodyItem[] = [
+			{
+				id: 'cb-1',
+				composition: { rarity: 'Common', material: 'Silicate', textureColor: '#aabbcc' },
+				kinematics: {},
+				location: { positionKm: { x: 0, y: 0, z: 0 } },
+				distanceKm: 0.5,
+			},
+		];
+
+		scene.seedForInProgress(
+			{ playerName: 'Pioneer', characterId: 'char-1', sessionKey: 'sk' },
+			{ x: 0, y: 0, z: 0 },
+			existing,
+			5,
+		);
+
+		expect(scene.asteroidSamples[0].scanned).toBe(true);
+		const topUp = scene.asteroidSamples.slice(1);
+		expect(topUp.length).toBeGreaterThan(0);
+		expect(topUp.every((s) => !s.scanned && s.scanProgress === 0)).toBe(true);
+	});
+
+	it('should produce at least as many samples as existing bodies when random target is smaller', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		const existing: MockCelestialBodyItem[] = Array.from({ length: 8 }, (_, i) => ({
+			id: `cb-${i}`,
+			composition: { rarity: 'Common', material: 'Rock', textureColor: '#aaa' },
+			kinematics: {},
+			location: { positionKm: { x: 0, y: 0, z: 0 } },
+			distanceKm: i,
+		}));
+
+		scene.seedForInProgress(
+			{ playerName: 'Pioneer', characterId: 'char-1', sessionKey: 'sk' },
+			{ x: 0, y: 0, z: 0 },
+			existing,
+			5, // random target is smaller than existing count
+		);
+
+		// max(8, 5) = 8 — existing bodies always preserved in full
+		expect(scene.asteroidSamples.length).toBe(8);
+		expect(scene.asteroidSamples.filter((s) => s.scanned).length).toBe(8);
+	});
+
+	it('should use the random target count when it exceeds existing body count', () => {
+		const scene = new MockColdBootScanSceneSeeding();
+		const existing: MockCelestialBodyItem[] = [
+			{
+				id: 'cb-1',
+				composition: { rarity: 'Common', material: 'Rock', textureColor: '#aaa' },
+				kinematics: {},
+				location: { positionKm: { x: 0, y: 0, z: 0 } },
+				distanceKm: 1,
+			},
+		];
+
+		scene.seedForInProgress(
+			{ playerName: 'Pioneer', characterId: 'char-1', sessionKey: 'sk' },
+			{ x: 0, y: 0, z: 0 },
+			existing,
+			12, // random target exceeds existing count
+		);
+
+		// max(1, 12) = 12
+		expect(scene.asteroidSamples.length).toBe(12);
+		expect(scene.asteroidSamples.filter((s) => s.scanned).length).toBe(1);
+		expect(scene.asteroidSamples.filter((s) => !s.scanned).length).toBe(11);
 	});
 });

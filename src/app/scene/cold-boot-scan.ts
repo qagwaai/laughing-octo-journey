@@ -21,10 +21,18 @@ import {
 	type CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
 import {
+	CELESTIAL_BODY_LIST_REQUEST_EVENT,
+	CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+	type CelestialBodyListRequest,
+	type CelestialBodyListResponse,
+} from '../model/celestial-body-list';
+import {
+	DEFAULT_CLUSTER_SPREAD_KM,
 	generateRandomAsteroidBeltClusterCenterKm,
 	generateRandomCelestialBodyLocationNear,
 	type CelestialBodyLocation,
 } from '../model/celestial-body-location';
+import { type MissionStatus } from '../model/mission';
 import { PlayerCharacterSummary } from '../model/character-list';
 import {
 	DRONE_LIST_REQUEST_EVENT,
@@ -39,6 +47,7 @@ import { SocketService } from '../services/socket.service';
 interface ColdBootScanNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
+	firstTargetMissionStatus?: MissionStatus;
 }
 
 interface AsteroidScanSample {
@@ -96,6 +105,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	private sceneElapsedSeconds = 0;
 	private sentCelestialBodyUpserts = new Set<string>();
 	private unsubscribeDroneListResponse?: () => void;
+	private unsubscribeCelestialBodyListResponse?: () => void;
 	private navigationState: ColdBootScanNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ColdBootScanNavigationState | undefined) ??
 		(history.state as ColdBootScanNavigationState | undefined) ??
@@ -106,17 +116,17 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	protected activeScanAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([]);
 
-	private static generateAsteroidSamples(clusterCenterKm?: Triple, random: () => number = Math.random): AsteroidScanSample[] {
-		const count = Math.floor(random() * 16) + 5; // 5–20
+	private static generateAsteroidSamples(clusterCenterKm?: Triple, random: () => number = Math.random, count?: number): AsteroidScanSample[] {
+		const resolvedCount = count ?? (Math.floor(random() * 16) + 5); // 5–20
 		const samples: AsteroidScanSample[] = [];
 		// All asteroids in this scan share a cluster center within the main
 		// asteroid belt so their solar-system locations read as "neighbours".
 		const resolvedClusterCenterKm = clusterCenterKm ?? generateRandomAsteroidBeltClusterCenterKm(random);
 
-		for (let i = 0; i < count; i++) {
+		for (let i = 0; i < resolvedCount; i++) {
 			// Spread asteroids evenly around a circle with jitter, avoiding crowding
-			const baseAngle = (i / count) * Math.PI * 2;
-			const angleJitter = (random() - 0.5) * (Math.PI / count);
+			const baseAngle = (i / resolvedCount) * Math.PI * 2;
+			const angleJitter = (random() - 0.5) * (Math.PI / resolvedCount);
 			const angle = baseAngle + angleJitter;
 
 			const distance = 6 + random() * 14; // 6–20 units from centre
@@ -213,7 +223,11 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 
 	ngOnInit(): void {
 		this.socketService.connect(this.socketService.serverUrl);
-		this.seedAsteroidsAroundStarterDrone();
+		if (this.navigationState.firstTargetMissionStatus === 'started') {
+			this.seedAsteroidsForInProgressMission();
+		} else {
+			this.seedAsteroidsAroundStarterDrone();
+		}
 		this.scanIntervalId = window.setInterval(() => {
 			this.tickScene();
 		}, ColdBootScanScene.SCAN_TICK_MS);
@@ -221,10 +235,92 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 
 	ngOnDestroy(): void {
 		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeCelestialBodyListResponse?.();
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
 			this.scanIntervalId = null;
 		}
+	}
+
+	private seedAsteroidsForInProgressMission(): void {
+		const playerName = this.navigationState.playerName?.trim() ?? '';
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+		if (!playerName || !characterId || !sessionKey) {
+			const samples = ColdBootScanScene.generateAsteroidSamples();
+			this.asteroidSamples.set(samples);
+			console.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
+			return;
+		}
+
+		this.unsubscribeDroneListResponse?.();
+		this.unsubscribeDroneListResponse = this.socketService.on(
+			DRONE_LIST_RESPONSE_EVENT,
+			(droneResponse: DroneListResponse) => {
+				this.unsubscribeDroneListResponse?.();
+
+				const firstDrone = droneResponse.success ? droneResponse.drones?.[0] : undefined;
+				const center = firstDrone?.location?.positionKm;
+
+				if (!center) {
+					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
+					this.asteroidSamples.set(fallbackSamples);
+					console.warn('ColdBootScan (in-progress) drone missing location; using fallback random center.');
+					return;
+				}
+
+				this.unsubscribeCelestialBodyListResponse?.();
+				this.unsubscribeCelestialBodyListResponse = this.socketService.on(
+					CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+					(cbResponse: CelestialBodyListResponse) => {
+						this.unsubscribeCelestialBodyListResponse?.();
+
+						const rng = seededRandom(hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`));
+						const existingBodies = cbResponse.success ? (cbResponse.celestialBodies ?? []) : [];
+						const randomTarget = Math.floor(rng() * 16) + 5; // 5–20, same seed sequence as just-started
+						const total = Math.max(existingBodies.length, randomTarget);
+						const allSamples = ColdBootScanScene.generateAsteroidSamples(center, rng, total);
+
+						const seededSamples = allSamples.map((sample, index) => {
+							const existingBody = existingBodies[index];
+							if (!existingBody) {
+								return sample;
+							}
+
+							return {
+								...sample,
+								scanProgress: 100,
+								scanned: true,
+								revealedMaterial: existingBody.composition,
+								revealedKinematics: existingBody.kinematics,
+								capturedKinematics: existingBody.kinematics,
+								solarSystemLocation: existingBody.location,
+							};
+						});
+
+						this.asteroidSamples.set(seededSamples);
+						console.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
+							existing: existingBodies.length,
+							total: seededSamples.length,
+							centerKm: center,
+						});
+					},
+				);
+
+				const cbRequest: CelestialBodyListRequest = {
+					playerName,
+					sessionKey,
+					solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+					positionKm: center,
+					distanceKm: DEFAULT_CLUSTER_SPREAD_KM * 2,
+				};
+				this.socketService.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, cbRequest);
+			},
+		);
+
+		const droneRequest: DroneListRequest = { playerName, characterId, sessionKey };
+		this.socketService.emit(DRONE_LIST_REQUEST_EVENT, droneRequest);
 	}
 
 	private seedAsteroidsAroundStarterDrone(): void {

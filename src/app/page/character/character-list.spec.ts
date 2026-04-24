@@ -17,6 +17,8 @@ import {
 } from '../../model/game-join';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
+const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+
 function createSignal<T>(initial: T) {
 	let value = initial;
 	const sig = () => value;
@@ -322,6 +324,10 @@ class MockCharacterListPage {
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
 		const firstTargetStatus = this.getFirstTargetStatus(character);
+		if (firstTargetStatus === 'started') {
+			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+		}
+
 		const outlets =
 			firstTargetStatus === 'started'
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
@@ -332,6 +338,7 @@ class MockCharacterListPage {
 			state: {
 				playerName,
 				joinCharacter: character,
+				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});
 	}
@@ -560,6 +567,7 @@ describe('CharacterListPage', () => {
 		});
 
 		it('should navigate directly to game-main and cold-boot-scan when first-target is already started', () => {
+			const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
 			const character = {
 				id: '1',
 				characterName: 'Nova',
@@ -568,6 +576,10 @@ describe('CharacterListPage', () => {
 			};
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
+
+			expect(dispatchSpy).toHaveBeenCalled();
+			const dispatchedEvent = dispatchSpy.calls.mostRecent().args[0] as Event;
+			expect(dispatchedEvent.type).toBe(START_SCANNING_UI_EVENT);
 
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
 				event: GAME_JOIN_REQUEST_EVENT,
@@ -585,6 +597,7 @@ describe('CharacterListPage', () => {
 					state: {
 						playerName: 'Pioneer',
 						joinCharacter: character,
+						firstTargetMissionStatus: 'started',
 					},
 				},
 			);
