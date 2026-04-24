@@ -14,6 +14,8 @@ import {
 	CharacterListResponse,
 	PlayerCharacterSummary,
 } from '../../model/character-list';
+import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
@@ -114,6 +116,7 @@ export default class CharacterListPage implements OnDestroy {
 				character?: { name?: unknown };
 				level?: unknown;
 				createdAt?: unknown;
+				missions?: unknown;
 			};
 
 			const nameFromObject =
@@ -124,6 +127,7 @@ export default class CharacterListPage implements OnDestroy {
 					: typeof item.name === 'string'
 						? item.name
 						: nameFromObject;
+			const missions = this.normalizeMissionProgress(item.missions);
 
 			return {
 				id:
@@ -135,8 +139,37 @@ export default class CharacterListPage implements OnDestroy {
 				characterName: (resolvedCharacterName ?? '').trim(),
 				level: typeof item.level === 'number' ? item.level : undefined,
 				createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
+				...(missions ? { missions } : {}),
 			};
 		});
+	}
+
+	private normalizeMissionProgress(missions: unknown): CharacterMissionProgress[] | undefined {
+		if (!Array.isArray(missions)) {
+			return undefined;
+		}
+
+		const normalizedMissions = missions.flatMap((rawMission) => {
+			const mission = (rawMission ?? {}) as { missionId?: unknown; status?: unknown };
+			if (typeof mission.missionId !== 'string' || typeof mission.status !== 'string') {
+				return [];
+			}
+
+			return [{ missionId: mission.missionId, status: mission.status as MissionStatus }];
+		});
+
+		return normalizedMissions.length > 0 ? normalizedMissions : undefined;
+	}
+
+	private getFirstTargetStatus(character: PlayerCharacterSummary): MissionStatus | null {
+		const firstTargetMission = character.missions?.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID);
+		return firstTargetMission?.status ?? null;
+	}
+
+	protected getJoinGameLabel(character: PlayerCharacterSummary): string {
+		return this.getFirstTargetStatus(character) === 'started'
+			? this.t.character.list.joinInProgressLabel
+			: this.t.character.list.joinLabel;
 	}
 
 	requestDeleteCharacter(character: PlayerCharacterSummary): void {
@@ -227,7 +260,13 @@ export default class CharacterListPage implements OnDestroy {
 		};
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
-		this.router.navigate([{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }], {
+		const firstTargetStatus = this.getFirstTargetStatus(character);
+		const outlets =
+			firstTargetStatus === 'started'
+				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
+				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+
+		this.router.navigate([{ outlets }], {
 			preserveFragment: true,
 			state: {
 				playerName,

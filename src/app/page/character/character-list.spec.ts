@@ -10,6 +10,7 @@ import {
 	CharacterListRequest,
 	CharacterListResponse,
 } from '../../model/character-list';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
@@ -176,6 +177,7 @@ class MockCharacterListPage {
 				character?: { name?: unknown };
 				level?: unknown;
 				createdAt?: unknown;
+				missions?: unknown;
 			};
 
 			const nameFromObject =
@@ -186,6 +188,7 @@ class MockCharacterListPage {
 					: typeof item.name === 'string'
 						? item.name
 						: nameFromObject;
+			const missions = this.normalizeMissionProgress(item.missions);
 
 			return {
 				id:
@@ -197,8 +200,37 @@ class MockCharacterListPage {
 				characterName: (resolvedCharacterName ?? '').trim(),
 				level: typeof item.level === 'number' ? item.level : undefined,
 				createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
+				...(missions ? { missions } : {}),
 			};
 		});
+	}
+
+	private normalizeMissionProgress(missions: unknown): any[] | undefined {
+		if (!Array.isArray(missions)) {
+			return undefined;
+		}
+
+		const normalizedMissions = missions.flatMap((rawMission) => {
+			const mission = (rawMission ?? {}) as { missionId?: unknown; status?: unknown };
+			if (typeof mission.missionId !== 'string' || typeof mission.status !== 'string') {
+				return [];
+			}
+
+			return [{ missionId: mission.missionId, status: mission.status }];
+		});
+
+		return normalizedMissions.length > 0 ? normalizedMissions : undefined;
+	}
+
+	private getFirstTargetStatus(character: any): string | null {
+		const firstTargetMission = character.missions?.find((mission: any) => mission.missionId === FIRST_TARGET_MISSION_ID);
+		return firstTargetMission?.status ?? null;
+	}
+
+	getJoinGameLabel(character: any): string {
+		return this.getFirstTargetStatus(character) === 'started'
+			? 'Join Game in Progress'
+			: 'Join Game';
 	}
 
 	requestDeleteCharacter(character: any): void {
@@ -289,7 +321,13 @@ class MockCharacterListPage {
 		};
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
-		this.router.navigate([{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }], {
+		const firstTargetStatus = this.getFirstTargetStatus(character);
+		const outlets =
+			firstTargetStatus === 'started'
+				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
+				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+
+		this.router.navigate([{ outlets }], {
 			preserveFragment: true,
 			state: {
 				playerName,
@@ -410,6 +448,32 @@ describe('CharacterListPage', () => {
 			]);
 		});
 
+		it('should preserve mission progress from the character list response', () => {
+			component.loadCharacters();
+			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characters: [
+					{
+						id: '1',
+						characterName: 'Nova',
+						missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+					},
+				],
+			} as any);
+
+			expect(component.characters()).toEqual([
+				{
+					id: '1',
+					characterName: 'Nova',
+					level: undefined,
+					createdAt: undefined,
+					missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+				},
+			]);
+		});
+
 		it('should set error and clear list on failure response', () => {
 			component.loadCharacters();
 			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
@@ -455,7 +519,12 @@ describe('CharacterListPage', () => {
 		});
 
 		it('should navigate to opening-cold-boot in primary and left outlets with selected character state', () => {
-			const character = { id: '1', characterName: 'Nova', level: 5 };
+			const character = {
+				id: '1',
+				characterName: 'Nova',
+				level: 5,
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'available' }],
+			};
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
 
@@ -470,6 +539,47 @@ describe('CharacterListPage', () => {
 
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }],
+				{
+					preserveFragment: true,
+					state: {
+						playerName: 'Pioneer',
+						joinCharacter: character,
+					},
+				},
+			);
+		});
+
+		it('should show the in-progress join label when first-target is started', () => {
+			const character = {
+				id: '1',
+				characterName: 'Nova',
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+			};
+
+			expect(component.getJoinGameLabel(character)).toBe('Join Game in Progress');
+		});
+
+		it('should navigate directly to game-main and cold-boot-scan when first-target is already started', () => {
+			const character = {
+				id: '1',
+				characterName: 'Nova',
+				level: 5,
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+			};
+			component.playerName.set('Pioneer');
+			component.navigateToGameJoin(character);
+
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
+				event: GAME_JOIN_REQUEST_EVENT,
+				data: {
+					playerName: 'Pioneer',
+					characterId: '1',
+					sessionKey: 'test-session-key',
+				},
+			});
+
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
 				{
 					preserveFragment: true,
 					state: {

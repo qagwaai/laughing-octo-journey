@@ -119,6 +119,7 @@ export const locale = {
 			setupLabel: 'Create / Edit Character',
 			emptyState: 'No characters loaded yet.',
 			joinLabel: 'Join Game',
+			joinInProgressLabel: 'Join Game in Progress',
 			editLabel: 'Edit',
 			deleteLabel: 'Delete',
 			dialog: {

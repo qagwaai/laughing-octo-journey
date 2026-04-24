@@ -28,7 +28,7 @@
 						<div class="character-row">
 							<div class="character-name">{{ character.characterName }}</div>
 							<div class="character-actions">
-								<button class="join-link" type="button" (click)="navigateToGameJoin(character)">{{ t.character.list.joinLabel }}</button>
+								<button class="join-link" type="button" (click)="navigateToGameJoin(character)">{{ getJoinGameLabel(character) }}</button>
 								<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">{{ t.character.list.editLabel }}</button>
 								<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">{{ t.character.list.deleteLabel }}</button>
 							</div>
