@@ -166,8 +166,10 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).toBe(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT);
-      expect(emittedEvent).toBe(CELESTIAL_BODY_UPSERT_REQUEST_EVENT);
+      expect(onceEvent).not.toBeNull();
+      expect(onceEvent!).toBe(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT);
+      expect(emittedEvent).not.toBeNull();
+      expect(emittedEvent!).toBe(CELESTIAL_BODY_UPSERT_REQUEST_EVENT);
       expect(emittedPayload).toEqual(request);
 
       const fakeResponse = { success: true, message: 'ok', celestialBody: request.celestialBody };
@@ -225,8 +227,10 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).toBe(DRONE_UPSERT_RESPONSE_EVENT);
-      expect(emittedEvent).toBe(DRONE_UPSERT_REQUEST_EVENT);
+      expect(onceEvent).not.toBeNull();
+      expect(onceEvent!).toBe(DRONE_UPSERT_RESPONSE_EVENT);
+      expect(emittedEvent).not.toBeNull();
+      expect(emittedEvent!).toBe(DRONE_UPSERT_REQUEST_EVENT);
       expect(emittedPayload).toEqual(request);
 
       const fakeResponse = {
