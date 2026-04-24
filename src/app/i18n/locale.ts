@@ -163,6 +163,14 @@ export const locale = {
 			droneKinematicsLabel: 'Kinematics:',
 		},
 
+		main: {
+			title: 'Game Main',
+			subtitle: 'Mission control overview for your current pilot and operation.',
+			sectionTitle: 'Current Operation',
+			sectionDescription:
+				'Scan telemetry is active in the right panel. Use the operations menu to open profile, hangar, and market modules while keeping the scan feed live.',
+		},
+
 		logout: {
 			title: 'Logout',
 			subtitle: 'Exit your current authenticated session.',

@@ -1,9 +1,31 @@
-<nav class="ops-menu">
-	<button type="button" (click)="navigateLeft('stellar-initiation')">Stellar Initiation</button>
-	<button type="button" (click)="navigateLeft('character-profile')">Character Profile</button>
-	<button type="button" (click)="navigateLeft('drone-hangar')">Drone Hangar</button>
-	<button type="button" (click)="navigateLeft('repair-retrofit')">Repair &amp; Retrofit</button>
-	<button type="button" (click)="navigateLeft('market-hub')">Market Hub</button>
-	<button type="button" (click)="navigateLeft('fabrication-lab')">Fabrication Lab</button>
-	<button type="button" class="logout" (click)="navigateLeft('logout')">Logout</button>
+<nav
+	class="ops-menu"
+	[class.is-expanded]="isExpanded()"
+	[class.is-pinned]="isPinned()"
+	(mouseenter)="onMouseEnter()"
+	(mouseleave)="onMouseLeave()"
+>
+	<button
+		type="button"
+		class="pin-toggle"
+		(click)="togglePinned()"
+		[attr.aria-pressed]="isPinned()"
+		[attr.aria-label]="isPinned() ? 'Unpin operations menu' : 'Pin operations menu'"
+	>
+		<span class="menu-icon" aria-hidden="true">{{ isPinned() ? '◧' : '◨' }}</span>
+		<span class="menu-label">{{ isPinned() ? 'Unpin Menu' : 'Pin Menu' }}</span>
+	</button>
+
+	@for (item of menuItems; track item.route) {
+		<button
+			type="button"
+			(click)="navigateLeft(item.route)"
+			[class.logout]="item.logout"
+			[attr.aria-label]="item.label"
+			[attr.title]="isExpanded() ? null : item.label"
+		>
+			<span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
+			<span class="menu-label">{{ item.label }}</span>
+		</button>
+	}
 </nav>

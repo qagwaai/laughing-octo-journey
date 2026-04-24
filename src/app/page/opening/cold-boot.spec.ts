@@ -96,7 +96,7 @@ class MockColdBootOpeningPage {
 			return;
 		}
 
-		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }], {
+		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {
 			preserveFragment: true,
 			state: this.navigationState,
 		});
@@ -205,7 +205,7 @@ describe('ColdBootOpeningPage', () => {
 			status: 'started',
 		});
 		expect(router.navigate).toHaveBeenCalledWith(
-			[{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }],
+			[{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
 			{
 				preserveFragment: true,
 				state: {

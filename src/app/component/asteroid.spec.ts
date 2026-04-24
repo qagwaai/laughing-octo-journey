@@ -1,9 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA } from '@angular/core';
 import * as THREE from 'three';
 import {
 	Asteroid,
 	ASTEROID_BEFORE_RENDER_FN,
+	ASTEROID_INJECT_STORE_FN,
 	generateRandomAsteroidRevealProfile,
 	resolveAsteroidBeamOpacity,
 	resolveAsteroidMaterialColor,
@@ -16,6 +17,7 @@ describe('Asteroid', () => {
 	let fixture: ComponentFixture<Asteroid>;
 	let beforeRenderSpy: jasmine.Spy;
 	let beforeRenderCallbacks: Array<(state: any) => void>;
+	let injectStoreSpy: jasmine.Spy;
 
 	beforeEach(async () => {
 		beforeRenderCallbacks = [];
@@ -23,12 +25,29 @@ describe('Asteroid', () => {
 			beforeRenderCallbacks.push(callback);
 			return () => {};
 		});
+		injectStoreSpy = jasmine.createSpy('injectStore').and.returnValue({
+			snapshot: {
+				camera: {
+					position: new THREE.Vector3(0, 0, 6),
+				},
+			},
+		});
 
 		await TestBed.configureTestingModule({
 			imports: [Asteroid],
-			providers: [{ provide: ASTEROID_BEFORE_RENDER_FN, useValue: beforeRenderSpy }],
-			schemas: [CUSTOM_ELEMENTS_SCHEMA],
-		}).compileComponents();
+			providers: [
+				{ provide: ASTEROID_BEFORE_RENDER_FN, useValue: beforeRenderSpy },
+				{ provide: ASTEROID_INJECT_STORE_FN, useValue: injectStoreSpy },
+			],
+			schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA],
+		})
+			.overrideComponent(Asteroid, {
+				set: {
+					template: '',
+					imports: [],
+				},
+			})
+			.compileComponents();
 
 		fixture = TestBed.createComponent(Asteroid);
 		component = fixture.componentInstance;

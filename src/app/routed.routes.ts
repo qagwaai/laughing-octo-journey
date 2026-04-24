@@ -6,6 +6,7 @@ import CharacterProfilePage from './page/game/character-profile';
 import DroneViewSpecsPage from './page/game/drone-view-specs';
 import DroneHangarPage from './page/game/drone-hangar';
 import FabricationLabPage from './page/game/fabrication-lab';
+import GameMainPage from './page/game/game-main';
 import GameJoinPage from './page/game/game-join';
 import LogoutPage from './page/game/logout';
 import MarketHubPage from './page/game/market-hub';
@@ -149,6 +150,12 @@ const routes: Routes = [
 		path: 'fabrication-lab',
 		outlet: 'left',
 		component: FabricationLabPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'game-main',
+		outlet: 'left',
+		component: GameMainPage,
 		canActivate: [authGuard],
 	},
 	{

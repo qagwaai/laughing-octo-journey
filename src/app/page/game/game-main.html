@@ -1,0 +1,20 @@
+<div class="ops-page-container">
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+	<div class="page-main">
+		<h1>{{ t.game.main.title }}</h1>
+		<p class="subtitle">{{ t.game.main.subtitle }}</p>
+
+		@if (playerName()) {
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
+		}
+
+		@if (joinCharacter()) {
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
+		}
+
+		<section class="ops-card">
+			<h2>{{ t.game.main.sectionTitle }}</h2>
+			<p>{{ t.game.main.sectionDescription }}</p>
+		</section>
+	</div>
+</div>

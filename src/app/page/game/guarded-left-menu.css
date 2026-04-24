@@ -4,9 +4,32 @@
 	gap: 0.5rem;
 	position: sticky;
 	top: 1rem;
+	width: 4.25rem;
+	padding: 0.4rem;
+	border-radius: 14px;
+	background: rgba(10, 18, 31, 0.72);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(140, 190, 255, 0.18);
+	overflow: hidden;
+	transition:
+		width 220ms cubic-bezier(0.22, 1, 0.36, 1),
+		background-color 220ms ease,
+		border-color 220ms ease,
+		box-shadow 220ms ease;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+}
+
+.ops-menu.is-expanded {
+	width: 14rem;
+	background: rgba(10, 18, 31, 0.9);
+	border-color: rgba(140, 190, 255, 0.32);
+	box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
 }
 
 .ops-menu button {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
 	padding: 0.45rem 0.55rem;
 	border-radius: 8px;
 	border: 1px solid rgba(140, 190, 255, 0.35);
@@ -14,10 +37,17 @@
 	color: #e8f2ff;
 	font-size: 0.82rem;
 	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	transition:
+		background-color 180ms ease,
+		border-color 180ms ease,
+		transform 180ms ease;
 }
 
 .ops-menu button:hover {
 	background: rgba(35, 57, 95, 0.95);
+	transform: translateX(2px);
 }
 
 .ops-menu button.logout {
@@ -25,8 +55,59 @@
 	background: rgba(80, 24, 24, 0.9);
 }
 
+.pin-toggle {
+	margin-bottom: 0.25rem;
+	background: rgba(25, 43, 74, 0.92);
+	border-color: rgba(169, 214, 255, 0.45);
+}
+
+.menu-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.25rem;
+	height: 2.25rem;
+	border-radius: 0.7rem;
+	background: rgba(255, 255, 255, 0.08);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+}
+
+.menu-label {
+	opacity: 0;
+	transform: translateX(-0.2rem);
+	transition:
+		opacity 140ms ease,
+		transform 180ms ease;
+	pointer-events: none;
+}
+
+.ops-menu.is-expanded .menu-label {
+	opacity: 1;
+	transform: translateX(0);
+	pointer-events: auto;
+}
+
 @media (max-width: 900px) {
 	.ops-menu {
 		position: static;
+		width: 100%;
+	}
+
+	.ops-menu,
+	.ops-menu.is-expanded {
+		width: 100%;
+	}
+
+	.pin-toggle {
+		display: none;
+	}
+
+	.menu-label {
+		opacity: 1;
+		transform: translateX(0);
+		pointer-events: auto;
 	}
 }

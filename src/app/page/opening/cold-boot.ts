@@ -11,6 +11,8 @@ interface ColdBootNavigationState {
 	joinCharacter?: PlayerCharacterSummary;
 }
 
+const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+
 @Component({
 	selector: 'app-cold-boot-opening-page',
 	templateUrl: './cold-boot.html',
@@ -133,6 +135,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 
 		this.scanActionPending.set(true);
 		this.scanActionError.set('');
+		window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
 
 		const result = await this.missionService.upsertMissionStatus(missionRequest);
 		if (result !== 'updated') {
@@ -141,7 +144,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 			return;
 		}
 
-		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['opening-cold-boot'] } }], {
+		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {
 			preserveFragment: true,
 			state: {
 				...this.navigationState,

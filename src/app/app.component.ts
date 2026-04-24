@@ -8,6 +8,8 @@ import { NgtCanvas } from 'angular-three/dom';
 import { RoutedScene } from './routed-scene';
 import { OpeningAudioService } from './services';
 
+const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -38,6 +40,9 @@ import { OpeningAudioService } from './services';
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
   private static readonly LOOK_HINT_HIDE_DELAY_MS = 2000;
+  private static readonly START_SCANNING_LEFT_WIDTH = 33;
+  private static readonly PANEL_SPLIT_DURATION_MS = 700;
+  private static readonly PANEL_SPLIT_TRANSITION = `width ${AppComponent.PANEL_SPLIT_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   protected host = inject(ElementRef);
   protected ngZone = inject(NgZone);
   protected cdr = inject(ChangeDetectorRef);
@@ -85,7 +90,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   private startX = 0;
   private lookHintTimerId: number | null = null;
+  private splitTransitionTimerId: number | null = null;
   private navigationSubscription: Subscription;
+  private readonly onStartScanningListener = () => this.animateSplitToStartScanningLayout();
 
   protected rightOutletActive = toSignal(
     this.router.events.pipe(
@@ -145,6 +152,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       rightPanel.style.flex = 'none';
     }
 
+    window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
+
     // Hide stats by default - run outside Angular zone then back inside for DOM manipulation
     this.ngZone.runOutsideAngular(() => {
       setTimeout(() => {
@@ -191,6 +200,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.host.nativeElement.classList.remove('resizing');
     
     this.leftPanelWidth.set(50);
+    this.clearSplitTransitionTimer();
     const leftPanel = this.leftPanelRef().nativeElement;
     const rightPanel = this.rightPanelRef().nativeElement;
     
@@ -253,8 +263,50 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     // Clean up event listeners
     document.removeEventListener('mousemove', this.onMouseMoveListener);
     document.removeEventListener('mouseup', this.onMouseUpListener);
+    window.removeEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
+    this.clearSplitTransitionTimer();
     this.clearLookHintTimer();
     this.navigationSubscription.unsubscribe();
+  }
+
+  private animateSplitToStartScanningLayout(): void {
+    if (this.isResizing()) {
+      return;
+    }
+
+    const leftPanel = this.leftPanelRef().nativeElement;
+    const rightPanel = this.rightPanelRef().nativeElement;
+    if (!leftPanel || !rightPanel) {
+      return;
+    }
+
+    this.clearSplitTransitionTimer();
+    leftPanel.style.transition = AppComponent.PANEL_SPLIT_TRANSITION;
+    rightPanel.style.transition = AppComponent.PANEL_SPLIT_TRANSITION;
+    this.applyPanelSplit(AppComponent.START_SCANNING_LEFT_WIDTH, leftPanel, rightPanel);
+
+    this.splitTransitionTimerId = window.setTimeout(() => {
+      leftPanel.style.transition = '';
+      rightPanel.style.transition = '';
+      this.splitTransitionTimerId = null;
+    }, AppComponent.PANEL_SPLIT_DURATION_MS + 40);
+  }
+
+  private applyPanelSplit(leftWidth: number, leftPanel: HTMLElement, rightPanel: HTMLElement): void {
+    const rightWidth = 100 - leftWidth;
+    this.leftPanelWidth.set(leftWidth);
+    leftPanel.style.width = `${leftWidth}%`;
+    leftPanel.style.flex = 'none';
+    rightPanel.style.width = `${rightWidth}%`;
+    rightPanel.style.flex = 'none';
+  }
+
+  private clearSplitTransitionTimer(): void {
+    if (this.splitTransitionTimerId === null) {
+      return;
+    }
+    clearTimeout(this.splitTransitionTimerId);
+    this.splitTransitionTimerId = null;
   }
 
   private configureColdBootLookHint(isActive: boolean): void {

@@ -40,6 +40,11 @@ export const ASTEROID_BEFORE_RENDER_FN = new InjectionToken<typeof _beforeRender
 	{ providedIn: 'root', factory: () => _beforeRender },
 );
 
+export const ASTEROID_INJECT_STORE_FN = new InjectionToken<typeof injectStore>(
+	'ASTEROID_INJECT_STORE_FN',
+	{ providedIn: 'root', factory: () => injectStore },
+);
+
 export function resolveAsteroidMaterialColor(
 	scanProgress: number,
 	hovered: boolean,
@@ -243,7 +248,8 @@ export class Asteroid {
 
 	constructor() {
 		const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);
-		const store = injectStore();
+		const injectStoreFn = inject(ASTEROID_INJECT_STORE_FN);
+		const store = injectStoreFn();
 		const _pos = new THREE.Vector3();
 
 		effect(() => {
