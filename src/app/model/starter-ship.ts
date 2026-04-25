@@ -1,5 +1,5 @@
 import { CelestialBodyLocation, generateRandomAsteroidBeltClusterCenterKm } from './celestial-body-location';
-import { ShipKinematics } from './ship-list';
+import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER, ShipKinematics } from './ship-list';
 import { ShipUpsertPayload } from './ship-upsert';
 
 function hashToSeed(input: string): number {
@@ -57,6 +57,8 @@ export function generateDeterministicStarterShipUpdate(
 
 	return {
 		id: shipId,
+		model: DEFAULT_SHIP_MODEL,
+		tier: DEFAULT_SHIP_TIER,
 		location,
 		kinematics,
 	} satisfies ShipUpsertPayload;

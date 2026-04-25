@@ -15,6 +15,36 @@
 		<section class="ops-card">
 			<h2>{{ t.game.shipHangar.sectionTitle }}</h2>
 			<p>{{ t.game.shipHangar.sectionDescription }}</p>
+
+			@if (isLoadingShips()) {
+				<p>{{ t.game.shipHangar.shipLoadingStatus }}</p>
+			} @else if (shipListError()) {
+				<p role="alert">{{ shipListError() }}</p>
+			} @else if (ships().length === 0) {
+				<p>{{ t.game.shipHangar.shipEmptyStatus }}</p>
+			} @else {
+				<ul class="ship-list" aria-label="Ship list">
+					@for (ship of ships(); track ship.id) {
+						<li class="ship-item">
+							<p>
+								<strong>{{ t.game.shipHangar.shipNameLabel }}</strong>
+								{{ getShipDisplayName(ship) }}
+							</p>
+							<p>
+								<strong>{{ t.game.shipHangar.shipModelLabel }}</strong>
+								{{ getShipModelLabel(ship) }}
+								<span> // </span>
+								<strong>{{ t.game.shipHangar.shipTierLabel }}</strong>
+								{{ getShipTierLabel(ship) }}
+							</p>
+							<p>
+								<strong>{{ t.game.shipHangar.shipLocationLabel }}</strong>
+								{{ getShipLocationSummary(ship) }}
+							</p>
+						</li>
+					}
+				</ul>
+			}
 		</section>
 	</div>
 </div>

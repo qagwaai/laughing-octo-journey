@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import { ShipSummary } from '../../model/ship-list';
+import { coerceShipModel, coerceShipTier, ShipSummary } from '../../model/ship-list';
 import { summarizeShipMotion } from '../../model/kinematics';
 
 interface ShipViewSpecsNavigationState {
@@ -34,4 +34,6 @@ export default class ShipViewSpecsPage {
 
 		return summarizeShipMotion(kinematics);
 	});
+	protected shipModel = computed(() => coerceShipModel(this.joinShip()?.model));
+	protected shipTier = computed(() => coerceShipTier(this.joinShip()?.tier));
 }

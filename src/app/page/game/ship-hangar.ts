@@ -1,8 +1,19 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import {
+	SHIP_LIST_REQUEST_EVENT,
+	SHIP_LIST_RESPONSE_EVENT,
+	coerceShipModel,
+	coerceShipTier,
+	type ShipListRequest,
+	type ShipListResponse,
+	type ShipSummary,
+} from '../../model/ship-list';
 import { GuardedLeftMenu } from './guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
 
 interface ShipHangarNavigationState {
 	playerName?: string;
@@ -19,6 +30,9 @@ interface ShipHangarNavigationState {
 export default class ShipHangarPage {
 	protected readonly t = locale;
 	private router = inject(Router);
+	private socketService = inject(SocketService);
+	private sessionService = inject(SessionService);
+	private unsubscribeShipListResponse?: () => void;
 	private navigationState: ShipHangarNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
 		(history.state as ShipHangarNavigationState | undefined) ??
@@ -26,4 +40,93 @@ export default class ShipHangarPage {
 
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
+	protected ships = signal<ShipSummary[]>([]);
+	protected isLoadingShips = signal(false);
+	protected shipListError = signal<string | null>(null);
+
+	constructor() {
+		this.socketService.connect(this.socketService.serverUrl);
+
+		if (this.socketService.getIsConnected()) {
+			this.loadShipsForCharacter();
+		} else {
+			this.socketService.once('connect', () => this.loadShipsForCharacter());
+		}
+	}
+
+	loadShipsForCharacter(): void {
+		const playerName = this.playerName().trim();
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+		if (!playerName) {
+			this.shipListError.set('Player name is required to load ships.');
+			this.ships.set([]);
+			return;
+		}
+
+		if (!characterId) {
+			this.shipListError.set('Character id is required to load ships.');
+			this.ships.set([]);
+			return;
+		}
+
+		if (!sessionKey) {
+			this.shipListError.set('Session key is required to load ships.');
+			this.ships.set([]);
+			return;
+		}
+
+		this.isLoadingShips.set(true);
+		this.shipListError.set(null);
+		this.unsubscribeShipListResponse?.();
+
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: ShipListResponse) => {
+				this.isLoadingShips.set(false);
+				if (response.success) {
+					this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+					this.shipListError.set(null);
+				} else {
+					this.ships.set([]);
+					this.shipListError.set(response.message);
+				}
+				this.unsubscribeShipListResponse?.();
+			},
+		);
+
+		const request: ShipListRequest = { playerName, characterId, sessionKey };
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+	}
+
+	private normalizeShipSummary(ship: ShipSummary): ShipSummary {
+		const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
+		return {
+			...ship,
+			model: coerceShipModel(rawShip.model ?? rawShip.modelName),
+			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
+		};
+	}
+
+	protected getShipDisplayName(ship: ShipSummary): string {
+		return ship.name?.trim() || ship.id;
+	}
+
+	protected getShipModelLabel(ship: ShipSummary): string {
+		return coerceShipModel(ship.model);
+	}
+
+	protected getShipTierLabel(ship: ShipSummary): string {
+		return `T${coerceShipTier(ship.tier)}`;
+	}
+
+	protected getShipLocationSummary(ship: ShipSummary): string {
+		const position = ship.location?.positionKm ?? ship.kinematics?.position;
+		if (!position) {
+			return this.t.game.shipHangar.locationUnavailable;
+		}
+
+		return `(${position.x}, ${position.y}, ${position.z}) km`;
+	}
 }

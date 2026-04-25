@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
@@ -6,7 +6,7 @@ import { textureResource } from "angular-three-soba/loaders";
 import { CurrentRoute } from '../component/current';
 import { ExpendableDartShip } from "../component/expendable-dart-drone";
 import { PlayerCharacterSummary } from '../model/character-list';
-import { ShipSummary } from '../model/ship-list';
+import { coerceShipModel, coerceShipTier, ShipSummary } from '../model/ship-list';
 
 interface ShipViewSpecsNavigationState {
 	playerName?: string;
@@ -31,6 +31,16 @@ export default class ShipViewSpecs {
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
+	protected routeLabel = computed(() => {
+		const ship = this.joinShip();
+		if (!ship) {
+			return '/ship-view-specs';
+		}
+
+		const model = coerceShipModel(ship.model);
+		const tier = coerceShipTier(ship.tier);
+		return `/ship-view-specs // ${model} // T${tier}`;
+	});
 
 	protected textures = textureResource(() => ({
 		specsheet: "images/Expendable_Dart_Drone_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"

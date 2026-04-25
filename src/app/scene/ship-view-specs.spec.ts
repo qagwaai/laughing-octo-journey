@@ -12,7 +12,7 @@ function createSignal<T>(initial: T) {
 interface ShipViewSpecsState {
 	playerName?: string;
 	joinCharacter?: { id: string; characterName: string };
-	joinShip?: { id: string; name: string; model?: string; status?: string };
+	joinShip?: { id: string; name: string; model?: string; tier?: number; status?: string };
 }
 
 class MockShipViewSpecsScene {
@@ -33,12 +33,12 @@ describe('ShipViewSpecs Scene', () => {
 		const component = new MockShipViewSpecsScene({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			joinShip: { id: 'd-2', name: 'Guardian', model: 'G-Class', status: 'ACTIVE' },
+			joinShip: { id: 'd-2', name: 'Guardian', model: 'G-Class', tier: 2, status: 'ACTIVE' },
 		});
 
 		expect(component.playerName()).toBe('Pioneer');
 		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova' });
-		expect(component.joinShip()).toEqual({ id: 'd-2', name: 'Guardian', model: 'G-Class', status: 'ACTIVE' });
+		expect(component.joinShip()).toEqual({ id: 'd-2', name: 'Guardian', model: 'G-Class', tier: 2, status: 'ACTIVE' });
 	});
 
 	it('should handle missing ship context safely', () => {

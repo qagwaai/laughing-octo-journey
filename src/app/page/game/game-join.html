@@ -38,14 +38,16 @@
 								</div>
 								<button class="ship-spec-link" type="button" (click)="navigateToShipSpecs(ship)">{{ t.game.join.shipViewSpecsLabel }}</button>
 							</div>
-							@if (ship.model || ship.status) {
-								<div class="ship-meta">
-									{{ ship.model ?? t.game.join.shipUnknownModel }}
-									@if (ship.status) {
-										<span> - {{ ship.status }}</span>
-									}
-								</div>
-							}
+							<div class="ship-meta">
+								<strong>{{ t.game.join.shipModelLabel }}</strong>
+								{{ getShipModelLabel(ship) }}
+								<span> // </span>
+								<strong>{{ t.game.join.shipTierLabel }}</strong>
+								{{ getShipTierLabel(ship) }}
+								@if (ship.status) {
+									<span> - {{ ship.status }}</span>
+								}
+							</div>
 							<div class="ship-kinematics"><strong>{{ t.game.join.shipKinematicsLabel }}</strong> {{ getShipKinematicsSummary(ship) }}</div>
 						</li>
 					}

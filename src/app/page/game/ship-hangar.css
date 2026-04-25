@@ -37,3 +37,22 @@
 	background: rgba(30, 49, 84, 0.55);
 	border: 1px solid rgba(140, 190, 255, 0.25);
 }
+
+.ship-list {
+	list-style: none;
+	padding: 0;
+	margin: 0.75rem 0 0;
+	display: grid;
+	gap: 0.6rem;
+}
+
+.ship-item {
+	padding: 0.7rem;
+	border-radius: 8px;
+	background: rgba(12, 22, 40, 0.55);
+	border: 1px solid rgba(140, 190, 255, 0.2);
+}
+
+.ship-item p {
+	margin: 0.15rem 0;
+}

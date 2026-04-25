@@ -6,13 +6,17 @@ export const SHIP_UPSERT_RESPONSE_EVENT = 'ship-upsert-response';
 
 export interface ShipUpsertPayload {
 	id: string;
+	model: string;
+	tier: number;
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }
 
 export interface ShipUpsertResponsePayload {
 	id: string;
-	shipName?: string;
+	shipName: string;
+	model: string;
+	tier: number;
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }

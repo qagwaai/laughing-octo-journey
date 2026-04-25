@@ -5,6 +5,8 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
+	coerceShipModel,
+	coerceShipTier,
 	ShipListRequest,
 	ShipKinematics,
 	ShipListResponse,
@@ -117,6 +119,8 @@ export default class GameJoinPage {
 		const rawShip = ship as ShipSummary & {
 			shipName?: string;
 			displayName?: string;
+			modelName?: string;
+			tierLevel?: number;
 			position?: Triple;
 			location?: Triple;
 			bodyLocation?: CelestialBodyLocation;
@@ -134,10 +138,14 @@ export default class GameJoinPage {
 
 		const normalizedName = rawShip.name?.trim() || rawShip.shipName?.trim() || rawShip.displayName?.trim() || rawShip.id;
 		const normalizedKinematics = this.normalizeShipKinematics(rawShip);
+		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
+		const normalizedTier = coerceShipTier(rawShip.tier ?? rawShip.tierLevel);
 
 		return {
 			...ship,
 			name: normalizedName,
+			model: normalizedModel,
+			tier: normalizedTier,
 			kinematics: normalizedKinematics,
 		};
 	}
@@ -222,6 +230,14 @@ export default class GameJoinPage {
 
 	protected getShipDisplayName(ship: ShipSummary): string {
 		return ship.name.trim() || 'Unnamed Ship';
+	}
+
+	protected getShipModelLabel(ship: ShipSummary): string {
+		return coerceShipModel(ship.model);
+	}
+
+	protected getShipTierLabel(ship: ShipSummary): string {
+		return `T${coerceShipTier(ship.tier)}`;
 	}
 
 	protected getShipKinematicsSummary(ship: ShipSummary): string {

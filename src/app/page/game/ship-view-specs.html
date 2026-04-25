@@ -14,7 +14,8 @@
 		<div class="spec-card">
 			<p><strong>Name:</strong> {{ joinShip()!.name }}</p>
 			<p><strong>ID:</strong> {{ joinShip()!.id }}</p>
-			<p><strong>Model:</strong> {{ joinShip()!.model ?? 'Unknown Model' }}</p>
+			<p><strong>Model:</strong> {{ shipModel() }}</p>
+			<p><strong>Tier:</strong> {{ shipTier() }}</p>
 			<p><strong>Status:</strong> {{ joinShip()!.status ?? 'Unknown Status' }}</p>
 
 			@if (joinShip()!.kinematics) {

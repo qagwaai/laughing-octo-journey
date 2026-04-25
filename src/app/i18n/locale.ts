@@ -159,7 +159,9 @@ export const locale = {
 			shipEmptyStatus: 'No ships found for this character.',
 			shipNameLabel: 'Name:',
 			shipIdLabel: 'ID:',
-			shipUnknownModel: 'Unknown Model',
+			shipModelLabel: 'Model:',
+			shipTierLabel: 'Tier:',
+			shipDefaultModel: 'Scavenger Pod',
 			shipViewSpecsLabel: 'View Specs',
 			shipKinematicsLabel: 'Kinematics:',
 		},
@@ -209,6 +211,13 @@ export const locale = {
 			sectionTitle: 'Hangar Board',
 			sectionDescription:
 				'Sample module: list docked ships, sortie status, and launch bay reservations.',
+			shipLoadingStatus: 'Loading ships...',
+			shipEmptyStatus: 'No ships found for this character.',
+			shipNameLabel: 'Name:',
+			shipModelLabel: 'Model:',
+			shipTierLabel: 'Tier:',
+			shipLocationLabel: 'Location:',
+			locationUnavailable: 'Location unavailable',
 		},
 
 		fabricationLab: {

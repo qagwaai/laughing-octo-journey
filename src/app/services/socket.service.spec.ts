@@ -207,6 +207,8 @@ describe('SocketService', () => {
         sessionKey: 'session-123',
         ship: {
           id: 'starter-char-1',
+          model: 'Scavenger Pod',
+          tier: 1,
           location: { positionKm: { x: 1, y: 2, z: 3 } },
           kinematics: {
             position: { x: 1, y: 2, z: 3 },
