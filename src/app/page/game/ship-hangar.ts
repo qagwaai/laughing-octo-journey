@@ -5,7 +5,7 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
-	coerceShipInventoryWithBackfill,
+	coerceShipInventory,
 	coerceShipTier,
 	type ShipListRequest,
 	type ShipListResponse,
@@ -108,7 +108,7 @@ export default class ShipHangarPage {
 			...ship,
 			model: normalizedModel,
 			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
-			inventory: coerceShipInventoryWithBackfill(rawShip.inventory, normalizedModel),
+			inventory: coerceShipInventory(rawShip.inventory),
 		};
 	}
 
@@ -131,5 +131,16 @@ export default class ShipHangarPage {
 		}
 
 		return `(${position.x}, ${position.y}, ${position.z}) km`;
+	}
+
+	navigateToShipInventory(ship: ShipSummary): void {
+		this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+				joinShip: ship,
+			},
+		});
 	}
 }

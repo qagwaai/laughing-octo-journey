@@ -2,7 +2,6 @@ import { CelestialBodyLocation, generateRandomAsteroidBeltClusterCenterKm } from
 import {
 	DEFAULT_SHIP_MODEL,
 	DEFAULT_SHIP_TIER,
-	getDefaultInventoryForShipModel,
 	ShipKinematics,
 } from './ship-list';
 import { ShipUpsertPayload } from './ship-upsert';
@@ -64,7 +63,6 @@ export function generateDeterministicStarterShipUpdate(
 		id: shipId,
 		model: DEFAULT_SHIP_MODEL,
 		tier: DEFAULT_SHIP_TIER,
-		inventory: getDefaultInventoryForShipModel(DEFAULT_SHIP_MODEL),
 		location,
 		kinematics,
 	} satisfies ShipUpsertPayload;

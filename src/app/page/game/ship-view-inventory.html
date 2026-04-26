@@ -1,0 +1,54 @@
+<div class="ops-page-container">
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+
+	<div class="page-main">
+		<h1>{{ t.game.shipViewInventory.title }}</h1>
+		<p class="subtitle">{{ t.game.shipViewInventory.subtitle }}</p>
+
+		@if (playerName()) {
+			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
+		}
+
+		@if (joinCharacter()) {
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
+		}
+
+		<section class="ops-card">
+			<h2>{{ t.game.shipViewInventory.sectionTitle }}</h2>
+
+			@if (joinShip()) {
+				<p class="ship-context">
+					<strong>{{ t.game.shipViewInventory.shipNameLabel }}</strong>
+					{{ getShipDisplayName() }}
+				</p>
+			}
+
+			@if (inventoryGroups().length === 0) {
+				<p class="empty-state">{{ t.game.shipViewInventory.inventoryEmptyStatus }}</p>
+			} @else {
+				<table class="inventory-table" aria-label="Ship inventory">
+					<thead>
+						<tr>
+							<th>{{ t.game.shipViewInventory.itemNameLabel }}</th>
+							<th class="qty-col">{{ t.game.shipViewInventory.quantityLabel }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (group of inventoryGroups(); track group.name) {
+							<tr>
+								<td>{{ group.name }}</td>
+								<td class="qty-col">{{ group.quantity }}</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</section>
+
+		<div class="back-nav">
+			<button type="button" (click)="navigateBackToHangar()">
+				{{ t.game.shipViewInventory.backLabel }}
+			</button>
+		</div>
+	</div>
+</div>

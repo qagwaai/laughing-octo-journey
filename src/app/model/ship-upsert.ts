@@ -1,5 +1,6 @@
 import { CelestialBodyLocation } from './celestial-body-location';
-import { ShipInventoryItem, ShipKinematics } from './ship-list';
+import { ShipKinematics } from './ship-list';
+import { ShipItem } from './ship-item';
 
 export const SHIP_UPSERT_REQUEST_EVENT = 'ship-upsert-request';
 export const SHIP_UPSERT_RESPONSE_EVENT = 'ship-upsert-response';
@@ -8,7 +9,6 @@ export interface ShipUpsertPayload {
 	id: string;
 	model?: string;
 	tier?: number;
-	inventory?: ShipInventoryItem[];
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }
@@ -18,7 +18,7 @@ export interface ShipUpsertResponsePayload {
 	shipName: string;
 	model: string;
 	tier: number;
-	inventory?: ShipInventoryItem[];
+	inventory?: ShipItem[];
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }

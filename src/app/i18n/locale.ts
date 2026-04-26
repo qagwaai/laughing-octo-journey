@@ -218,6 +218,18 @@ export const locale = {
 			shipTierLabel: 'Tier:',
 			shipLocationLabel: 'Location:',
 			locationUnavailable: 'Location unavailable',
+			shipViewInventoryLabel: 'View Inventory',
+		},
+
+		shipViewInventory: {
+			title: 'Ship Inventory',
+			subtitle: 'Cargo manifest and equipped items for your selected ship.',
+			sectionTitle: 'Cargo Manifest',
+			shipNameLabel: 'Ship:',
+			inventoryEmptyStatus: 'No inventory items found.',
+			itemNameLabel: 'Item',
+			quantityLabel: 'Qty',
+			backLabel: 'Back to Ship Hangar',
 		},
 
 		fabricationLab: {

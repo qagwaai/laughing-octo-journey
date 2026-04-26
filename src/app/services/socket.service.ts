@@ -18,6 +18,12 @@ import {
   ShipUpsertRequest,
   ShipUpsertResponse,
 } from '../model/ship-upsert';
+import {
+  ITEM_UPSERT_REQUEST_EVENT,
+  ITEM_UPSERT_RESPONSE_EVENT,
+  ItemUpsertRequest,
+  ItemUpsertResponse,
+} from '../model/item-upsert';
 
 /**
  * Socket.IO Service
@@ -136,6 +142,20 @@ export class SocketService {
     }
 
     this.emit(SHIP_UPSERT_REQUEST_EVENT, request);
+  }
+
+  /**
+   * Emit an item upsert request and optionally handle a one-time response.
+   */
+  upsertItem(
+    request: ItemUpsertRequest,
+    onResponse?: (response: ItemUpsertResponse) => void,
+  ): void {
+    if (onResponse) {
+      this.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
+    }
+
+    this.emit(ITEM_UPSERT_REQUEST_EVENT, request);
   }
 
   /**

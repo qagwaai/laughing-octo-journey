@@ -9,6 +9,11 @@ import {
   SHIP_UPSERT_RESPONSE_EVENT,
   type ShipUpsertRequest,
 } from '../model/ship-upsert';
+import {
+  ITEM_UPSERT_REQUEST_EVENT,
+  ITEM_UPSERT_RESPONSE_EVENT,
+  type ItemUpsertRequest,
+} from '../model/item-upsert';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -209,7 +214,6 @@ describe('SocketService', () => {
           id: 'starter-char-1',
           model: 'Scavenger Pod',
           tier: 1,
-          inventory: ['Expendable Dart Drone'],
           location: { positionKm: { x: 1, y: 2, z: 3 } },
           kinematics: {
             position: { x: 1, y: 2, z: 3 },
@@ -242,6 +246,64 @@ describe('SocketService', () => {
         playerName: 'Pioneer',
         characterId: 'char-1',
         ship: { ...request.ship, shipName: 'Starter Ship' },
+      };
+      responseCallback?.(fakeResponse);
+      expect(callbackResponse).toEqual(fakeResponse);
+    });
+  });
+
+  describe('upsertItem', () => {
+    it('should register a once listener for item-upsert-response and emit item-upsert-request', () => {
+      let emittedEvent: string | null = null;
+      let emittedPayload: unknown;
+      let onceEvent: string | null = null;
+      let responseCallback: ((data: unknown) => void) | undefined;
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvent = event;
+          emittedPayload = data;
+        },
+        once: (event: string, callback: (data: unknown) => void) => {
+          onceEvent = event;
+          responseCallback = callback;
+        },
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {}
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: ItemUpsertRequest = {
+        playerName: 'Pioneer',
+        sessionKey: 'session-123',
+        item: {
+          itemType: 'expendable-dart-drone',
+          displayName: 'Expendable Dart Drone',
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: 'ship-1' },
+          owningCharacterId: 'char-1',
+        },
+      };
+
+      let callbackResponse: unknown;
+      service.upsertItem(request, (response) => {
+        callbackResponse = response;
+      });
+
+      expect(onceEvent).not.toBeNull();
+      expect(onceEvent!).toBe(ITEM_UPSERT_RESPONSE_EVENT);
+      expect(emittedEvent).not.toBeNull();
+      expect(emittedEvent!).toBe(ITEM_UPSERT_REQUEST_EVENT);
+      expect(emittedPayload).toEqual(request);
+
+      const fakeResponse = {
+        success: true,
+        message: 'Item created.',
+        playerName: 'Pioneer',
+        item: { ...request.item, id: 'item-1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       };
       responseCallback?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);

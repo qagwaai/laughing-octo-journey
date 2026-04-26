@@ -38,37 +38,53 @@
 	border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
-.ship-list {
-	list-style: none;
-	padding: 0;
-	margin: 0.75rem 0 0;
-	display: grid;
-	gap: 0.6rem;
+.ship-context {
+	margin: 0.5rem 0 0.75rem;
 }
 
-.ship-item {
-	padding: 0.7rem;
-	border-radius: 8px;
-	background: rgba(12, 22, 40, 0.55);
-	border: 1px solid rgba(140, 190, 255, 0.2);
+.empty-state {
+	margin-top: 0.5rem;
+	color: #c8ddff;
 }
 
-.ship-item p {
-	margin: 0.15rem 0;
+.inventory-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 0.75rem;
 }
 
-.inventory-link {
-	margin-top: 0.4rem;
+.inventory-table th,
+.inventory-table td {
+	text-align: left;
+	padding: 0.4rem 0.6rem;
+	border-bottom: 1px solid rgba(140, 190, 255, 0.15);
+}
+
+.inventory-table th {
+	color: #b4cfff;
+	font-weight: 600;
+}
+
+.qty-col {
+	text-align: center;
+	width: 4rem;
+}
+
+.back-nav {
+	margin-top: 1.25rem;
+}
+
+.back-nav button {
 	background: transparent;
-	border: 1px solid rgba(140, 190, 255, 0.35);
+	border: 1px solid rgba(140, 190, 255, 0.4);
 	color: #8ec5ff;
-	padding: 0.25rem 0.7rem;
-	border-radius: 5px;
+	padding: 0.4rem 0.9rem;
+	border-radius: 6px;
 	cursor: pointer;
-	font-size: 0.85rem;
+	font-size: 0.9rem;
 }
 
-.inventory-link:hover {
+.back-nav button:hover {
 	background: rgba(140, 190, 255, 0.1);
-	border-color: rgba(140, 190, 255, 0.65);
+	border-color: rgba(140, 190, 255, 0.7);
 }

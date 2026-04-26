@@ -20,8 +20,13 @@ interface NavigationState {
 interface ShipSummary {
 	id: string;
 	name: string;
+	inventory?: { id: string; itemType: string; displayName: string; state: string; damageStatus: string }[];
 	location?: { positionKm: { x: number; y: number; z: number } };
 	kinematics?: { position: { x: number; y: number; z: number } };
+}
+
+interface MockRouter {
+	navigate: jasmine.Spy;
 }
 
 interface MockSocketService {
@@ -89,6 +94,7 @@ function createMockSessionService(initialKey: string | null = null): MockSession
 class MockShipHangarPage {
 	private socketService: MockSocketService;
 	private sessionService: MockSessionService;
+	private mockRouter: MockRouter;
 	private unsubscribeShipListResponse?: () => void;
 
 	t = {
@@ -105,9 +111,15 @@ class MockShipHangarPage {
 	isLoadingShips = createSignal(false);
 	shipListError = createSignal<string | null>(null);
 
-	constructor(socketService: MockSocketService, sessionService: MockSessionService, state?: NavigationState) {
+	constructor(
+		socketService: MockSocketService,
+		sessionService: MockSessionService,
+		state?: NavigationState,
+		mockRouter?: MockRouter,
+	) {
 		this.socketService = socketService;
 		this.sessionService = sessionService;
+		this.mockRouter = mockRouter ?? { navigate: jasmine.createSpy('navigate') };
 		this.playerName.set(state?.playerName ?? '');
 		this.joinCharacter.set(state?.joinCharacter ?? null);
 
@@ -181,6 +193,17 @@ class MockShipHangarPage {
 			return this.t.game.shipHangar.locationUnavailable;
 		}
 		return `(${position.x}, ${position.y}, ${position.z}) km`;
+	}
+
+	navigateToShipInventory(ship: ShipSummary): void {
+		this.mockRouter.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+				joinShip: ship,
+			},
+		});
 	}
 
 	ngOnDestroy(): void {
@@ -352,5 +375,36 @@ describe('ShipHangarPage', () => {
 		const component = new MockShipHangarPage(socketService, sessionService);
 
 		expect(component.getShipLocationSummary({ id: 's-1', name: 'Courier' })).toBe('Location unavailable');
+	});
+
+	it('should navigate to ship-view-inventory with ship state', () => {
+		socketService.connected = false;
+		const mockRouter: MockRouter = { navigate: jasmine.createSpy('navigate') };
+		const character = { id: 'c-1', characterName: 'Nova' };
+		const component = new MockShipHangarPage(
+			socketService,
+			sessionService,
+			{ playerName: 'Pioneer', joinCharacter: character },
+			mockRouter,
+		);
+		const ship: ShipSummary = {
+			id: 's-1',
+			name: 'Dart Runner',
+			inventory: [{ id: 'drone-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone', state: 'contained', damageStatus: 'intact' }],
+		};
+
+		component.navigateToShipInventory(ship);
+
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
+			[{ outlets: { left: ['ship-view-inventory'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: character,
+					joinShip: ship,
+				},
+			},
+		);
 	});
 });

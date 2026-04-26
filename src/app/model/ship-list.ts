@@ -1,5 +1,8 @@
 import { Triple } from './triple';
 import { CelestialBodyLocation } from './celestial-body-location';
+import { ShipItem, coerceShipItem } from './ship-item';
+
+export { ShipItem } from './ship-item';
 
 export const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
 export const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
@@ -7,10 +10,6 @@ export const DEFAULT_SHIP_MODEL = 'Scavenger Pod';
 export const DEFAULT_SHIP_TIER = 1;
 export const MIN_SHIP_TIER = 1;
 export const MAX_SHIP_TIER = 10;
-export const EXPENDABLE_DART_DRONE_INVENTORY_ITEM = 'Expendable Dart Drone';
-
-// Kept as string for now to match the current server contract.
-export type ShipInventoryItem = string;
 
 export interface ShipListRequest {
 	playerName: string;
@@ -24,7 +23,7 @@ export interface ShipSummary {
 	status?: string;
 	model: string;
 	tier: number;
-	inventory?: ShipInventoryItem[];
+	inventory?: ShipItem[];
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }
@@ -50,32 +49,14 @@ export function coerceShipTier(tier: unknown): number {
 	return tier;
 }
 
-export function coerceShipInventory(inventory: unknown): ShipInventoryItem[] {
+export function coerceShipInventory(inventory: unknown): ShipItem[] {
 	if (!Array.isArray(inventory)) {
 		return [];
 	}
 
 	return inventory
-		.filter((item): item is string => typeof item === 'string')
-		.map((item) => item.trim())
-		.filter((item) => item.length > 0);
-}
-
-export function getDefaultInventoryForShipModel(model: unknown): ShipInventoryItem[] {
-	if (coerceShipModel(model) === DEFAULT_SHIP_MODEL) {
-		return [EXPENDABLE_DART_DRONE_INVENTORY_ITEM];
-	}
-
-	return [];
-}
-
-export function coerceShipInventoryWithBackfill(inventory: unknown, model: unknown): ShipInventoryItem[] {
-	const normalizedInventory = coerceShipInventory(inventory);
-	if (normalizedInventory.length > 0 || inventory !== undefined) {
-		return normalizedInventory;
-	}
-
-	return getDefaultInventoryForShipModel(model);
+		.map((item) => coerceShipItem(item))
+		.filter((item): item is ShipItem => item !== null);
 }
 
 export type SpatialReferenceKind = 'barycentric' | 'body-centered';

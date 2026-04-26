@@ -21,6 +21,8 @@ import {
 	type ShipListResponse,
 } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
+import { type ItemUpsertResponse } from '../../model/item-upsert';
+import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/expendable-dart-drone';
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { GuardedLeftMenu } from '../game/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -210,7 +212,29 @@ export default class CharacterSetupPage implements OnDestroy {
 							return;
 						}
 
-						this.warningMessage.set(null);
+						this.socketService.upsertItem(
+							{
+								playerName,
+								sessionKey,
+								item: {
+									itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
+									displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+									state: 'contained',
+									damageStatus: 'intact',
+									container: { containerType: 'ship', containerId: starterShipId },
+									owningCharacterId: resolvedCharacterId,
+								},
+							},
+							(itemResponse: ItemUpsertResponse) => {
+								if (!itemResponse.success) {
+									console.warn('Starter drone creation failed:', itemResponse.message);
+									this.warningMessage.set('Ship updated, but starter drone could not be created.');
+									return;
+								}
+
+								this.warningMessage.set(null);
+							},
+						);
 					},
 				);
 			},
