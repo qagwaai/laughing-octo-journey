@@ -5,6 +5,7 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
+	coerceShipInventoryWithBackfill,
 	coerceShipTier,
 	type ShipListRequest,
 	type ShipListResponse,
@@ -102,10 +103,12 @@ export default class ShipHangarPage {
 
 	private normalizeShipSummary(ship: ShipSummary): ShipSummary {
 		const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
+		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
 		return {
 			...ship,
-			model: coerceShipModel(rawShip.model ?? rawShip.modelName),
+			model: normalizedModel,
 			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
+			inventory: coerceShipInventoryWithBackfill(rawShip.inventory, normalizedModel),
 		};
 	}
 

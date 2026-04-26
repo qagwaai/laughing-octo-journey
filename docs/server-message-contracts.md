@@ -34,6 +34,10 @@ This document describes the socket message contracts currently used by the appli
 | `character-delete-response` | server -> client | Return character delete result |
 | `game-join` | client -> server | Validate and begin game join for selected character |
 | `game-join-response` | server -> client | Return game join validation/result |
+| `ship-list-request` | client -> server | Fetch ship list for selected character |
+| `ship-list-response` | server -> client | Return ship list for selected character |
+| `ship-upsert-request` | client -> server | Patch/update an existing ship owned by player+character |
+| `ship-upsert-response` | server -> client | Return ship patch/update result |
 | `drone-list-request` | client -> server | Fetch drone list for selected character |
 | `drone-list-response` | server -> client | Return drone list for selected character |
 | `drone-upsert-request` | client -> server | Upsert a drone record owned by player+character |
@@ -383,6 +387,166 @@ Edge cases:
 - If `characterId` does not belong to `playerName`, return `success: false` with a non-sensitive message.
 - If character record exists but is not currently joinable (for example locked/inactive), return `success: false` with a clear reason.
 - If client sends stale character IDs from older list state, return deterministic not-found/not-joinable error.
+
+---
+
+## Ship List
+
+### `ship-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string"
+}
+```
+
+Client-side behavior:
+
+- Emitted from game-join and ship-hangar contexts for the currently selected character.
+- Client requires non-empty `playerName`, `characterId`, and `sessionKey` before emitting.
+
+Server requirements:
+
+- Validate `sessionKey` and ensure `characterId` belongs to `playerName`.
+- Return `ship-list-response` for every `ship-list-request`.
+- Emit `invalid-session` for expired/revoked/invalid sessions.
+
+### `ship-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "ships": [
+    {
+      "id": "string",
+      "name": "string",
+      "status": "string (optional)",
+      "model": "string",
+      "tier": 1,
+      "inventory": ["Expendable Dart Drone"],
+      "location": {
+        "positionKm": { "x": 0, "y": 0, "z": 0 }
+      },
+      "kinematics": {
+        "position": { "x": 0, "y": 0, "z": 0 },
+        "velocity": { "x": 0, "y": 0, "z": 0 },
+        "reference": {
+          "solarSystemId": "string",
+          "referenceKind": "barycentric | body-centered",
+          "referenceBodyId": "string (optional)",
+          "distanceUnit": "km",
+          "velocityUnit": "km/s",
+          "epochMs": 0
+        }
+      }
+    }
+  ]
+}
+```
+
+Edge cases:
+
+- If `inventory` is missing on legacy `Scavenger Pod` records, server should backfill with `["Expendable Dart Drone"]` in response payloads.
+- For non-starter ship models, default `inventory` should be `[]` when not set.
+- Returned `ships` should always be an array.
+
+---
+
+## Ship Upsert
+
+### `ship-upsert-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string",
+  "ship": {
+    "id": "string",
+    "model": "string (optional patch field)",
+    "tier": "number 1..10 (optional patch field)",
+    "inventory": ["string", "... (optional patch field)"],
+    "location": {
+      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    },
+    "kinematics": {
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "velocity": { "x": 0, "y": 0, "z": 0 },
+      "reference": {
+        "solarSystemId": "string",
+        "referenceKind": "barycentric | body-centered",
+        "referenceBodyId": "string (optional)",
+        "distanceUnit": "km",
+        "velocityUnit": "km/s",
+        "epochMs": 0
+      }
+    }
+  }
+}
+```
+
+Client-side behavior:
+
+- Upsert is patch-style: only provided fields mutate server state.
+- Omitting `inventory` preserves existing inventory.
+
+Server requirements:
+
+- Validate `sessionKey` and ownership (`playerName` + `characterId` + existing `ship.id`).
+- Treat `model`, `tier`, `inventory`, `location`, and `kinematics` as optional patch fields.
+- Return `ship-upsert-response` for every request.
+
+### `ship-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "ship": {
+    "id": "string",
+    "shipName": "string",
+    "model": "string",
+    "tier": 1,
+    "inventory": ["Expendable Dart Drone"],
+    "location": {
+      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    },
+    "kinematics": {
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "velocity": { "x": 0, "y": 0, "z": 0 },
+      "reference": {
+        "solarSystemId": "string",
+        "referenceKind": "barycentric | body-centered",
+        "referenceBodyId": "string (optional)",
+        "distanceUnit": "km",
+        "velocityUnit": "km/s",
+        "epochMs": 0
+      }
+    }
+  }
+}
+```
+
+Edge cases:
+
+- If `inventory` is omitted in request, response should include persisted inventory unchanged.
+- If ship is a `Scavenger Pod` with missing inventory in storage, response should include backfilled `["Expendable Dart Drone"]`.
+- Invalid session emits `invalid-session`.
 
 ---
 

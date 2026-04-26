@@ -6,6 +6,7 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
+	coerceShipInventoryWithBackfill,
 	coerceShipTier,
 	ShipListRequest,
 	ShipKinematics,
@@ -140,12 +141,14 @@ export default class GameJoinPage {
 		const normalizedKinematics = this.normalizeShipKinematics(rawShip);
 		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
 		const normalizedTier = coerceShipTier(rawShip.tier ?? rawShip.tierLevel);
+		const normalizedInventory = coerceShipInventoryWithBackfill(rawShip.inventory, normalizedModel);
 
 		return {
 			...ship,
 			name: normalizedName,
 			model: normalizedModel,
 			tier: normalizedTier,
+			inventory: normalizedInventory,
 			kinematics: normalizedKinematics,
 		};
 	}
