@@ -2,6 +2,39 @@
 
 @source "../src/**/*.{html,ts}";
 
+/* ── Character avatar icon (upper-right of page headers) ── */
+.page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.5rem;
+}
+
+.character-avatar {
+	flex-shrink: 0;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 50%;
+	background: #3d6bbd;
+	color: #fff;
+	font-size: 1.1rem;
+	font-weight: 700;
+	border: 2px solid rgba(140, 190, 255, 0.5);
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	line-height: 1;
+	transition: background 0.2s, border-color 0.2s;
+}
+
+.character-avatar:hover {
+	background: #5280d9;
+	border-color: rgba(140, 190, 255, 0.9);
+}
+
 /* html,
 body {
     height: 100%;

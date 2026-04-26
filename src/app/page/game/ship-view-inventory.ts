@@ -58,4 +58,14 @@ export default class ShipViewInventoryPage {
 			},
 		});
 	}
+
+	navigateToCharacterProfile(): void {
+		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
 }

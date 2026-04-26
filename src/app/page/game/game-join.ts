@@ -265,4 +265,14 @@ export default class GameJoinPage {
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
+
+	navigateToCharacterProfile(): void {
+		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
 }

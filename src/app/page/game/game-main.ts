@@ -26,4 +26,14 @@ export default class GameMainPage {
 
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
+
+	navigateToCharacterProfile(): void {
+		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
 }

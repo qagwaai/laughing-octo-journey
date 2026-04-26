@@ -1,12 +1,17 @@
 <div class="ops-page-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>{{ t.game.stellarInitiation.title }}</h1>
-		<p class="subtitle">{{ t.game.stellarInitiation.subtitle }}</p>
-
-		@if (playerName()) {
-			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
-		}
+		<div class="page-header">
+			<div>
+				<h1>{{ t.game.stellarInitiation.title }}</h1>
+				<p class="subtitle">{{ t.game.stellarInitiation.subtitle }}</p>
+			</div>
+			@if (joinCharacter()) {
+				<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
+					{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
+				</button>
+			}
+		</div>
 
 		@if (joinCharacter()) {
 			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>

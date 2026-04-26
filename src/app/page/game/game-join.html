@@ -1,12 +1,17 @@
 <div class="game-join-container">
 	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
 	<div class="page-main">
-		<h1>{{ t.game.join.title }}</h1>
-		<p class="subtitle">{{ t.game.join.subtitle }}</p>
-
-		@if (playerName()) {
-			<p class="player-name">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
-		}
+		<div class="page-header">
+			<div>
+				<h1>{{ t.game.join.title }}</h1>
+				<p class="subtitle">{{ t.game.join.subtitle }}</p>
+			</div>
+			@if (joinCharacter()) {
+				<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
+					{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
+				</button>
+			}
+		</div>
 
 		<p class="character-display">
 			{{ t.common.characterPrefix }} <strong>{{ characterName() }}</strong>

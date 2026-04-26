@@ -36,4 +36,14 @@ export default class ShipViewSpecsPage {
 	});
 	protected shipModel = computed(() => coerceShipModel(this.joinShip()?.model));
 	protected shipTier = computed(() => coerceShipTier(this.joinShip()?.tier));
+
+	navigateToCharacterProfile(): void {
+		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
 }
