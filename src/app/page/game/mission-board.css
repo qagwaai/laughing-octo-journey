@@ -1,0 +1,79 @@
+.ops-page-container {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: 1rem;
+	margin: 1rem;
+	padding: 1.25rem;
+	border-radius: 12px;
+	background: rgba(20, 33, 56, 0.9);
+	border: 1px solid rgba(140, 190, 255, 0.35);
+	color: #e8f2ff;
+}
+
+.page-main {
+	min-width: 0;
+}
+
+@media (max-width: 900px) {
+	.ops-page-container {
+		grid-template-columns: 1fr;
+	}
+}
+
+.subtitle {
+	margin: 0 0 1rem 0;
+	color: #b4cfff;
+}
+
+.context {
+	margin: 0.35rem 0;
+}
+
+.ops-card {
+	margin-top: 1rem;
+	padding: 0.9rem;
+	border-radius: 8px;
+	background: rgba(30, 49, 84, 0.55);
+	border: 1px solid rgba(140, 190, 255, 0.25);
+}
+
+.mission-list {
+	list-style: none;
+	padding: 0;
+	margin: 0.75rem 0 0;
+	display: grid;
+	gap: 0.6rem;
+}
+
+.mission-item {
+	padding: 0.7rem;
+	border-radius: 8px;
+	background: rgba(12, 22, 40, 0.55);
+	border: 1px solid rgba(140, 190, 255, 0.2);
+}
+
+.mission-item p {
+	margin: 0.15rem 0;
+}
+
+.mission-status {
+	text-transform: capitalize;
+}
+
+.mission-status[data-status="completed"] {
+	color: #6fdc8c;
+}
+
+.mission-status[data-status="failed"] {
+	color: #ff6b6b;
+}
+
+.mission-status[data-status="in-progress"],
+.mission-status[data-status="started"] {
+	color: #f4c842;
+}
+
+.mission-status[data-status="turned-in"] {
+	color: #a8d5ff;
+}

@@ -247,6 +247,20 @@ export const locale = {
 			sectionDescription:
 				'Sample module: display rank history, specialization badges, and current assignment.',
 		},
+
+		missionBoard: {
+			title: 'Mission Board',
+			subtitle: 'Active and completed mission assignments for this character.',
+			sectionTitle: 'Mission Log',
+			sectionDescription: 'All mission progress entries recorded for this character.',
+			missionLoadingStatus: 'Loading missions...',
+			missionEmptyStatus: 'No missions found for this character.',
+			missionIdLabel: 'Mission:',
+			statusLabel: 'Status:',
+			startedAtLabel: 'Started:',
+			updatedAtLabel: 'Updated:',
+			statusDetailLabel: 'Detail:',
+		},
 	},
 
 	opening: {

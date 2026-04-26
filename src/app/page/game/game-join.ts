@@ -20,7 +20,7 @@ import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { Triple } from '../../model/triple';
-import { GuardedLeftMenu } from './guarded-left-menu';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 
 interface GameJoinNavigationState {
 	playerName?: string;

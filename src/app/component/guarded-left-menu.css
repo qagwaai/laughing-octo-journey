@@ -55,6 +55,13 @@
 	background: rgba(80, 24, 24, 0.9);
 }
 
+.ops-menu button.is-disabled,
+.ops-menu button[disabled]:not(.logout) {
+	opacity: 0.35;
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
 .pin-toggle {
 	margin-bottom: 0.25rem;
 	background: rgba(25, 43, 74, 0.92);

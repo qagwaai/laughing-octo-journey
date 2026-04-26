@@ -1,5 +1,5 @@
 <div class="character-list-container">
-	<app-guarded-left-menu [playerName]="playerName()"></app-guarded-left-menu>
+	<app-guarded-left-menu [playerName]="playerName()" [disableNonLogout]="true"></app-guarded-left-menu>
 	<div class="page-main">
 		<h1>{{ t.character.list.title }}</h1>
 		<p class="subtitle">{{ t.character.list.subtitle }}</p>

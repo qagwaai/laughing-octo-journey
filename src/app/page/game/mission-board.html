@@ -1,0 +1,66 @@
+<div class="ops-page-container">
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+	<div class="page-main">
+		<div class="page-header">
+			<div>
+				<h1>{{ t.game.missionBoard.title }}</h1>
+				<p class="subtitle">{{ t.game.missionBoard.subtitle }}</p>
+			</div>
+			@if (joinCharacter()) {
+				<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
+					{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
+				</button>
+			}
+		</div>
+
+		@if (joinCharacter()) {
+			<p class="context">{{ t.common.characterPrefix }} <strong>{{ joinCharacter()!.characterName }}</strong></p>
+		}
+
+		<section class="ops-card">
+			<h2>{{ t.game.missionBoard.sectionTitle }}</h2>
+			<p>{{ t.game.missionBoard.sectionDescription }}</p>
+
+			@if (isLoadingMissions()) {
+				<p>{{ t.game.missionBoard.missionLoadingStatus }}</p>
+			} @else if (missionListError()) {
+				<p role="alert">{{ missionListError() }}</p>
+			} @else if (missions().length === 0) {
+				<p>{{ t.game.missionBoard.missionEmptyStatus }}</p>
+			} @else {
+				<ul class="mission-list" aria-label="Mission list">
+					@for (mission of missions(); track mission.missionId) {
+						<li class="mission-item">
+							<p>
+								<strong>{{ t.game.missionBoard.missionIdLabel }}</strong>
+								{{ mission.missionId }}
+							</p>
+							<p>
+								<strong>{{ t.game.missionBoard.statusLabel }}</strong>
+								<span class="mission-status" [attr.data-status]="mission.status">{{ mission.status }}</span>
+							</p>
+							@if (mission.startedAt) {
+								<p>
+									<strong>{{ t.game.missionBoard.startedAtLabel }}</strong>
+									{{ formatDate(mission.startedAt) }}
+								</p>
+							}
+							@if (mission.updatedAt) {
+								<p>
+									<strong>{{ t.game.missionBoard.updatedAtLabel }}</strong>
+									{{ formatDate(mission.updatedAt) }}
+								</p>
+							}
+							@if (mission.statusDetail) {
+								<p>
+									<strong>{{ t.game.missionBoard.statusDetailLabel }}</strong>
+									{{ mission.statusDetail }}
+								</p>
+							}
+						</li>
+					}
+				</ul>
+			}
+		</section>
+	</div>
+</div>

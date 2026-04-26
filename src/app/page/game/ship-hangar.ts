@@ -11,7 +11,7 @@ import {
 	type ShipListResponse,
 	type ShipSummary,
 } from '../../model/ship-list';
-import { GuardedLeftMenu } from './guarded-left-menu';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';

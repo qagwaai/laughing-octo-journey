@@ -24,7 +24,7 @@ import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/expendable-dart-drone';
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
-import { GuardedLeftMenu } from '../game/guarded-left-menu';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';

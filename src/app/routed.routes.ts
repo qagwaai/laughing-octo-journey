@@ -3,6 +3,7 @@ import { authGuard } from './guards/auth.guard';
 import CharacterListPage from './page/character/character-list';
 import CharacterSetupPage from './page/character/character-setup';
 import CharacterProfilePage from './page/game/character-profile';
+import MissionBoardPage from './page/game/mission-board';
 import ShipViewSpecsPage from './page/game/ship-view-specs';
 import ShipHangarPage from './page/game/ship-hangar';
 import ShipViewInventoryPage from './page/game/ship-view-inventory';
@@ -127,6 +128,12 @@ const routes: Routes = [
 		path: 'character-profile',
 		outlet: 'left',
 		component: CharacterProfilePage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'mission-board',
+		outlet: 'left',
+		component: MissionBoardPage,
 		canActivate: [authGuard],
 	},
 	{

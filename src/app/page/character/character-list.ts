@@ -20,7 +20,7 @@ import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
 } from '../../model/game-join';
-import { GuardedLeftMenu } from '../game/guarded-left-menu';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';

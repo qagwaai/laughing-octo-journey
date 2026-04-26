@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { ShipSummary } from '../../model/ship-list';
-import { GuardedLeftMenu } from './guarded-left-menu';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 
 interface ShipViewInventoryNavigationState {

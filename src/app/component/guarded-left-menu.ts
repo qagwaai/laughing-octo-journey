@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PlayerCharacterSummary } from '../../model/character-list';
+import { PlayerCharacterSummary } from '../model/character-list';
 
 const MENU_PIN_STORAGE_KEY = 'guarded-left-menu:pinned';
 
@@ -22,9 +22,11 @@ export class GuardedLeftMenu {
 
 	@Input() playerName = '';
 	@Input() joinCharacter: PlayerCharacterSummary | null = null;
+	@Input() disableNonLogout = false;
 
 	protected readonly menuItems: GuardedMenuItem[] = [
 		{ route: 'stellar-initiation', label: 'Stellar Initiation', icon: 'SI' },
+		{ route: 'mission-board', label: 'Mission Board', icon: 'MB' },
 		{ route: 'character-profile', label: 'Character Profile', icon: 'CP' },
 		{ route: 'ship-hangar', label: 'Ship Hangar', icon: 'SH' },
 		{ route: 'repair-retrofit', label: 'Repair & Retrofit', icon: 'RR' },

@@ -21,6 +21,8 @@
 			type="button"
 			(click)="navigateLeft(item.route)"
 			[class.logout]="item.logout"
+			[class.is-disabled]="disableNonLogout && !item.logout"
+			[disabled]="disableNonLogout && !item.logout"
 			[attr.aria-label]="item.label"
 			[attr.title]="isExpanded() ? null : item.label"
 		>

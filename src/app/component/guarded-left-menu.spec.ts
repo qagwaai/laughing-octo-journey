@@ -78,4 +78,13 @@ describe('GuardedLeftMenu', () => {
 			},
 		});
 	});
+
+	it('should default disableNonLogout to false', () => {
+		expect(component.disableNonLogout).toBeFalse();
+	});
+
+	it('should accept disableNonLogout as true', () => {
+		component.disableNonLogout = true;
+		expect(component.disableNonLogout).toBeTrue();
+	});
 });
