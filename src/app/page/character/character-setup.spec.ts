@@ -29,7 +29,11 @@ import {
 	ITEM_UPSERT_REQUEST_EVENT,
 	ITEM_UPSERT_RESPONSE_EVENT,
 } from '../../model/item-upsert';
-import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/expendable-dart-drone';
+import {
+	EXPENDABLE_DART_DRONE_ITEM_TYPE,
+	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+	createExpendableDartDrone,
+} from '../../model/expendable-dart-drone';
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
@@ -274,6 +278,11 @@ class MockCharacterSetupPage {
 					return;
 				}
 
+				const starterShipHasDrone =
+					response.ships?.[0]?.inventory?.some(
+						(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
+					) ?? false;
+
 				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
 				this.socketService.upsertShip(
 					{
@@ -288,6 +297,16 @@ class MockCharacterSetupPage {
 							return;
 						}
 
+						const upsertedShipHasDrone =
+							upsertResponse.ship?.inventory?.some(
+								(item: any) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
+							) ?? false;
+
+						if (starterShipHasDrone || upsertedShipHasDrone) {
+							this.warningMessage.set(null);
+							return;
+						}
+
 						this.socketService.upsertItem(
 							{
 								playerName,
@@ -298,6 +317,7 @@ class MockCharacterSetupPage {
 									state: 'contained',
 									damageStatus: 'intact',
 									container: { containerType: 'ship', containerId: starterShipId },
+									owningPlayerId: playerName,
 									owningCharacterId: resolvedCharacterId,
 								},
 							},
@@ -712,9 +732,37 @@ describe('CharacterSetupPage', () => {
 					state: 'contained',
 					damageStatus: 'intact',
 					container: { containerType: 'ship', containerId: 'ship-1' },
+					owningPlayerId: 'Pioneer',
 					owningCharacterId: 'c-1',
 				},
 			});
+		});
+
+		it('should skip item-upsert when starter ship already has a drone in inventory', () => {
+			const existingDrone = createExpendableDartDrone();
+			existingDrone.container = { containerType: 'ship', containerId: 'ship-1' };
+			existingDrone.owningPlayerId = 'Pioneer';
+			existingDrone.owningCharacterId = 'c-1';
+
+			triggerSuccessfulCharacterAdd('c-1');
+
+			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone] }],
+			} satisfies ShipListResponse);
+
+			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+			});
+
+			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			expect(itemEmit).toBeUndefined();
+			expect(component.warningMessage()).toBeNull();
 		});
 
 		it('should set warningMessage when item-upsert-response fails', () => {

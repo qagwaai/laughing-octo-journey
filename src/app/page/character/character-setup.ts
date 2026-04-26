@@ -197,6 +197,11 @@ export default class CharacterSetupPage implements OnDestroy {
 					return;
 				}
 
+				const starterShipHasDrone =
+					response.ships?.[0]?.inventory?.some(
+						(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
+					) ?? false;
+
 				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
 				this.socketService.upsertShip(
 					{
@@ -212,6 +217,16 @@ export default class CharacterSetupPage implements OnDestroy {
 							return;
 						}
 
+						const upsertedShipHasDrone =
+							upsertResponse.ship?.inventory?.some(
+								(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
+							) ?? false;
+
+						if (starterShipHasDrone || upsertedShipHasDrone) {
+							this.warningMessage.set(null);
+							return;
+						}
+
 						this.socketService.upsertItem(
 							{
 								playerName,
@@ -222,6 +237,7 @@ export default class CharacterSetupPage implements OnDestroy {
 									state: 'contained',
 									damageStatus: 'intact',
 									container: { containerType: 'ship', containerId: starterShipId },
+									owningPlayerId: playerName,
 									owningCharacterId: resolvedCharacterId,
 								},
 							},
