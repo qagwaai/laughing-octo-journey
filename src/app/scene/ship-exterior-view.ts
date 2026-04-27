@@ -85,16 +85,16 @@ function seededRandom(seed: number): () => number {
 }
 
 @Component({
-	selector: 'app-cold-boot-scan-scene',
-	templateUrl: './cold-boot-scan.html',
+	selector: 'app-ship-exterior-view-scene',
+	templateUrl: './ship-exterior-view.html',
 	imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class ColdBootScanScene implements OnInit, OnDestroy {
+export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly SCAN_TICK_MS = 100;
 	private static readonly SCAN_TOTAL_MS = 10000;
-	private static readonly SCAN_STEP = 100 / (ColdBootScanScene.SCAN_TOTAL_MS / ColdBootScanScene.SCAN_TICK_MS);
+	private static readonly SCAN_STEP = 100 / (ShipExteriorViewScene.SCAN_TOTAL_MS / ShipExteriorViewScene.SCAN_TICK_MS);
 	private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 
@@ -175,11 +175,11 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			? (() => {
 				const progress01 = Math.max(0, Math.min(1, sample.scanProgress / 100));
 				const eased = 1 - Math.pow(progress01, 1.35);
-				const min = ColdBootScanScene.ACTIVE_SCAN_MIN_MOTION_DAMPING;
+				const min = ShipExteriorViewScene.ACTIVE_SCAN_MIN_MOTION_DAMPING;
 				return min + (1 - min) * eased;
 			})()
 			: sample.scanned
-				? ColdBootScanScene.SCANNED_MOTION_DAMPING
+				? ShipExteriorViewScene.SCANNED_MOTION_DAMPING
 				: 1;
 
 		const phase = sample.motionPhase;
@@ -230,7 +230,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		}
 		this.scanIntervalId = window.setInterval(() => {
 			this.tickScene();
-		}, ColdBootScanScene.SCAN_TICK_MS);
+		}, ShipExteriorViewScene.SCAN_TICK_MS);
 	}
 
 	ngOnDestroy(): void {
@@ -248,7 +248,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName || !characterId || !sessionKey) {
-			const samples = ColdBootScanScene.generateAsteroidSamples();
+			const samples = ShipExteriorViewScene.generateAsteroidSamples();
 			this.asteroidSamples.set(samples);
 			console.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
 			return;
@@ -264,7 +264,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 				const center = firstShip?.location?.positionKm;
 
 				if (!center) {
-					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
+					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
 					return;
@@ -280,7 +280,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 						const existingBodies = cbResponse.success ? (cbResponse.celestialBodies ?? []) : [];
 						const randomTarget = Math.floor(rng() * 16) + 5; // 5–20, same seed sequence as just-started
 						const total = Math.max(existingBodies.length, randomTarget);
-						const allSamples = ColdBootScanScene.generateAsteroidSamples(center, rng, total);
+						const allSamples = ShipExteriorViewScene.generateAsteroidSamples(center, rng, total);
 
 						const seededSamples = allSamples.map((sample, index) => {
 							const existingBody = existingBodies[index];
@@ -329,7 +329,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName || !characterId || !sessionKey) {
-			const samples = ColdBootScanScene.generateAsteroidSamples();
+			const samples = ShipExteriorViewScene.generateAsteroidSamples();
 			this.asteroidSamples.set(samples);
 			console.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
 			return;
@@ -341,7 +341,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 			(response: ShipListResponse) => {
 				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
-					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
+					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
 					return;
@@ -350,14 +350,14 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 				const firstShip = response.ships?.[0];
 				const center = firstShip?.location?.positionKm;
 				if (!center) {
-					const fallbackSamples = ColdBootScanScene.generateAsteroidSamples();
+					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan ship list missing required location.positionKm; using fallback random center.');
 					return;
 				}
 
 				const rng = seededRandom(hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`));
-				const samples = ColdBootScanScene.generateAsteroidSamples(center, rng);
+				const samples = ShipExteriorViewScene.generateAsteroidSamples(center, rng);
 				this.asteroidSamples.set(samples);
 				console.info('ColdBootScan seeded asteroids around starter ship center.', {
 					count: samples.length,
@@ -388,7 +388,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 	}
 
 	private tickScene(): void {
-		this.sceneElapsedSeconds += ColdBootScanScene.SCAN_TICK_MS / 1000;
+		this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
 		const activeId = this.activeScanAsteroidId();
 		this.asteroidSamples.update((samples) =>
 			samples.map((sample) => {
@@ -408,7 +408,7 @@ export default class ColdBootScanScene implements OnInit, OnDestroy {
 					};
 				}
 
-				const nextProgress = Math.min(100, sample.scanProgress + ColdBootScanScene.SCAN_STEP);
+				const nextProgress = Math.min(100, sample.scanProgress + ShipExteriorViewScene.SCAN_STEP);
 				const completedNow = nextProgress >= 100;
 				const revealedMaterial = completedNow
 					? sample.revealedMaterial ?? pickWeightedAsteroidMaterial()

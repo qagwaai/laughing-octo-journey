@@ -16,7 +16,7 @@ import MarketHubPage from './page/game/market-hub';
 import ColdBootScanPage from './page/opening/cold-boot-scan';
 import RepairRetrofitPage from './page/game/repair-retrofit';
 import StellarInitiationPage from './page/game/stellar-initiation';
-import ColdBootScanScene from './scene/cold-boot-scan';
+import ShipExteriorViewScene from './scene/ship-exterior-view';
 import ShipViewSpecs from './scene/ship-view-specs';
 import ColdBootOpeningPage from './page/opening/cold-boot';
 import ColdBootHudScene from './scene/hud/cold-boot-hud-scene';

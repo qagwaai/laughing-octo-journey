@@ -20,7 +20,7 @@ interface ColdBootScanNavigationState {
 }
 
 class MockColdBootScanScene {
-	currentRouteLabel = '/opening-cold-boot-scan';
+	currentRouteLabel = '/ship-exterior-view';
 	playerName = 'Unknown Pilot';
 	characterName = 'Unbound';
 	activeScanAsteroidId: string | null = null;
@@ -104,13 +104,13 @@ class MockColdBootScanScene {
 	}
 }
 
-describe('ColdBootScanScene', () => {
+describe('ShipExteriorViewScene', () => {
 	it('should default to fallback labels when navigation state is empty', () => {
 		const component = new MockColdBootScanScene();
 
 		expect(component.playerName).toBe('Unknown Pilot');
 		expect(component.characterName).toBe('Unbound');
-		expect(component.currentRouteLabel).toBe('/opening-cold-boot-scan');
+		expect(component.currentRouteLabel).toBe('/ship-exterior-view');
 	});
 
 	it('should initialize player and character from navigation state', () => {

@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
-import ColdBootScanScene from '../../scene/cold-boot-scan';
+import ShipExteriorViewScene from '../../scene/ship-exterior-view';
 
 @Component({
 	selector: 'app-cold-boot-scan-page',
 	templateUrl: './cold-boot-scan.html',
 	styleUrls: ['./cold-boot-scan.css'],
-	imports: [NgtCanvas, ColdBootScanScene],
+	imports: [NgtCanvas, ShipExteriorViewScene],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ColdBootScanPage {}
