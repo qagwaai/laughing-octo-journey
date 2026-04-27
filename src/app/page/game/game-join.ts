@@ -221,12 +221,13 @@ export default class GameJoinPage {
 		const playerName = this.playerName();
 		const joinCharacter = this.joinCharacter();
 
-		this.router.navigate([{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }], {
+		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName,
 				joinCharacter,
-				joinShip: ship,
+				itemType: coerceShipModel(ship.model),
+				item: ship,
 			},
 		});
 	}

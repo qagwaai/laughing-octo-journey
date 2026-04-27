@@ -1,0 +1,94 @@
+.item-specs-container {
+	margin: 1rem;
+	padding: 1.25rem;
+	border-radius: 12px;
+	background: rgba(20, 33, 56, 0.9);
+	border: 1px solid rgba(140, 190, 255, 0.35);
+	color: #e8f2ff;
+}
+
+.page-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+}
+
+h1 {
+	margin: 0 0 0.4rem 0;
+}
+
+.subtitle {
+	margin: 0 0 1rem 0;
+	color: #b4cfff;
+}
+
+.context {
+	margin: 0.35rem 0;
+}
+
+.character-avatar {
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 50%;
+	background: rgba(140, 190, 255, 0.25);
+	border: 1px solid rgba(140, 190, 255, 0.5);
+	color: #e8f2ff;
+	font-weight: bold;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.spec-card {
+	margin-top: 1rem;
+	padding: 0.9rem;
+	border-radius: 8px;
+	background: rgba(30, 49, 84, 0.55);
+	border: 1px solid rgba(140, 190, 255, 0.25);
+}
+
+.spec-group {
+	margin-bottom: 1rem;
+}
+
+.spec-group:last-of-type {
+	margin-bottom: 0;
+}
+
+.spec-group-label {
+	margin: 0 0 0.5rem 0;
+	font-size: 0.85rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #8cb4ff;
+	border-bottom: 1px solid rgba(140, 190, 255, 0.2);
+	padding-bottom: 0.25rem;
+}
+
+.spec-card p {
+	margin: 0.4rem 0;
+}
+
+.empty-state {
+	margin-top: 0.9rem;
+	color: #c8ddff;
+}
+
+.item-image-block {
+	margin-top: 1.25rem;
+	text-align: center;
+}
+
+.item-specs-image {
+	max-width: 100%;
+	border-radius: 8px;
+	border: 1px solid rgba(140, 190, 255, 0.25);
+}
+
+.image-not-found {
+	color: #ff9966;
+	font-style: italic;
+	font-size: 0.85rem;
+}

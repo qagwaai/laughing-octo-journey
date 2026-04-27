@@ -102,12 +102,14 @@ class MockGameJoinPage {
 	}
 
 	navigateToShipSpecs(ship: { id: string; name: string; status?: string; model?: string }): void {
-		this.router.navigate([{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }], {
+		const model = typeof ship.model === 'string' && ship.model.trim() ? ship.model.trim() : 'Scavenger Pod';
+		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
-				joinShip: ship,
+				itemType: model,
+				item: ship,
 			},
 		});
 	}
@@ -416,7 +418,7 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should navigate to ship-view-specs by changing primary outlet and preserving left game-join', () => {
+	it('should navigate to item-view-specs by changing right outlet and preserving left game-join', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
@@ -427,13 +429,14 @@ describe('GameJoinPage', () => {
 		component.navigateToShipSpecs(ship);
 
 		expect(router.navigate).toHaveBeenCalledWith(
-			[{ outlets: { right: ['ship-view-specs'], left: ['game-join'] } }],
+			[{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }],
 			{
 				preserveFragment: true,
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-					joinShip: ship,
+					itemType: 'Scavenger Pod',
+					item: ship,
 				},
 			},
 		);

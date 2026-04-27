@@ -1,0 +1,45 @@
+<div class="item-specs-container">
+	<div class="page-header">
+		<div>
+			<h1>{{ config()?.title ?? itemType() }} Specs</h1>
+			<p class="subtitle">Operational details for the selected item.</p>
+		</div>
+		@if (joinCharacter()) {
+			<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
+				{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
+			</button>
+		}
+	</div>
+
+	@if (joinCharacter()) {
+		<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
+	}
+
+	@if (item()) {
+		<div class="spec-card">
+			@for (group of resolvedGroups(); track group.label) {
+				<div class="spec-group">
+					<h3 class="spec-group-label">{{ group.label }}</h3>
+					@for (field of group.fields; track field.label) {
+						<p><strong>{{ field.label }}:</strong> {{ field.displayValue }}</p>
+					}
+				</div>
+			}
+
+			<div class="item-image-block">
+				@if (imageNotFound()) {
+					<p class="image-not-found">Image not found: {{ specImagePath() }}</p>
+				} @else {
+					<img
+						[src]="specImagePath()"
+						[alt]="(config()?.title ?? itemType()) + ' spec image'"
+						class="item-specs-image"
+						(error)="onImageError()"
+					/>
+				}
+			</div>
+		</div>
+	} @else {
+		<p class="empty-state">No item selected.</p>
+	}
+</div>

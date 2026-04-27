@@ -5,6 +5,7 @@ import CharacterSetupPage from './page/character/character-setup';
 import CharacterProfilePage from './page/game/character-profile';
 import MissionBoardPage from './page/game/mission-board';
 import ShipViewSpecsPage from './page/game/ship-view-specs';
+import ItemViewSpecsPage from './page/game/item-view-specs';
 import ShipHangarPage from './page/game/ship-hangar';
 import ShipViewInventoryPage from './page/game/ship-view-inventory';
 import FabricationLabPage from './page/game/fabrication-lab';
@@ -184,6 +185,12 @@ const routes: Routes = [
 		path: 'ship-view-specs',
 		outlet: 'right',
 		component: ShipViewSpecsPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'item-view-specs',
+		outlet: 'right',
+		component: ItemViewSpecsPage,
 		canActivate: [authGuard],
 	},
 	{
