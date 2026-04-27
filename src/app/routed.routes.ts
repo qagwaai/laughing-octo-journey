@@ -199,6 +199,12 @@ const routes: Routes = [
 		component: ColdBootScanPage,
 		canActivate: [authGuard],
 	},
+	{
+		path: 'ship-exterior-view',
+		outlet: 'right',
+		component: ColdBootScanPage,
+		canActivate: [authGuard],
+	},
 ];
 
 export default routes;

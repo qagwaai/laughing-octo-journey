@@ -144,6 +144,16 @@ export default class ShipHangarPage {
 		});
 	}
 
+	navigateToExteriorView(ship: ShipSummary): void {
+		this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
+
 	navigateToShipSpecs(ship: ShipSummary): void {
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,

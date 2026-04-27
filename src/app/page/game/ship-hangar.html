@@ -42,7 +42,10 @@
 								<strong>{{ t.game.shipHangar.shipLocationLabel }}</strong>
 								{{ getShipLocationSummary(ship) }}
 							</p>
-							<button type="button" class="inventory-link" (click)="navigateToShipSpecs(ship)">
+							<button type="button" class="inventory-link" (click)="navigateToExteriorView(ship)">
+							{{ t.game.shipHangar.shipExteriorViewLabel }}
+						</button>
+						<button type="button" class="inventory-link" (click)="navigateToShipSpecs(ship)">
 								{{ t.game.join.shipViewSpecsLabel }}
 							</button>
 							<button type="button" class="inventory-link" (click)="navigateToShipInventory(ship)">

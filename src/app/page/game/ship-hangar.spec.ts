@@ -206,6 +206,16 @@ class MockShipHangarPage {
 		});
 	}
 
+	navigateToExteriorView(ship: ShipSummary): void {
+		this.mockRouter.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
+
 	navigateToShipSpecs(ship: ShipSummary): void {
 		this.mockRouter.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,
@@ -415,6 +425,32 @@ describe('ShipHangarPage', () => {
 					playerName: 'Pioneer',
 					joinCharacter: character,
 					joinShip: ship,
+				},
+			},
+		);
+	});
+
+	it('should navigate to ship-exterior-view with player and character state', () => {
+		socketService.connected = false;
+		const mockRouter: MockRouter = { navigate: jasmine.createSpy('navigate') };
+		const character = { id: 'c-1', characterName: 'Nova' };
+		const component = new MockShipHangarPage(
+			socketService,
+			sessionService,
+			{ playerName: 'Pioneer', joinCharacter: character },
+			mockRouter,
+		);
+		const ship: ShipSummary = { id: 's-1', name: 'Dart Runner' };
+
+		component.navigateToExteriorView(ship);
+
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
+			[{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: character,
 				},
 			},
 		);

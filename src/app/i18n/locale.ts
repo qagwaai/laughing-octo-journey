@@ -219,6 +219,7 @@ export const locale = {
 			shipLocationLabel: 'Location:',
 			locationUnavailable: 'Location unavailable',
 			shipViewInventoryLabel: 'View Inventory',
+			shipExteriorViewLabel: 'View Exterior',
 		},
 
 		shipViewInventory: {
