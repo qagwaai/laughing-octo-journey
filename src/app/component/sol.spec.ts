@@ -65,6 +65,11 @@ describe("Sol", () => {
         it("should have default position [0, 0, 0]", () => {
             expect(component.position()).toEqual([0, 0, 0]);
         });
+
+        it("should have default sunColor and radius", () => {
+            expect(component.sunColor()).toBe('#f5ff6b');
+            expect(component.radius()).toBe(1);
+        });
     });
 
     describe("Protected signals", () => {

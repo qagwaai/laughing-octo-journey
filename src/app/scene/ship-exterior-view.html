@@ -1,12 +1,17 @@
 <ngt-color *args="['#041118']" attach="background" />
 
 <ngt-ambient-light [intensity]="0.5" />
-<ngt-directional-light [position]="[2, 3, 4]" [intensity]="1.1" />
+<ngt-directional-light
+	[position]="sunScenePosition()"
+	[intensity]="solarDirectionalLightIntensity()"
+	[color]="sunConfig().color"
+/> 
 <ngt-point-light [position]="[-2.5, 0.5, 1.5]" [intensity]="1.9" [color]="'#5ad9ff'" />
 
 <ngts-orbit-controls [options]="{ minDistance: 3, maxDistance: 14, enablePan: false }" />
 
 <app-background-stars [count]="512" [seed]="70411" [radiusMin]="18" [radiusMax]="44"></app-background-stars>
+<app-sol [position]="sunScenePosition()" [sunColor]="sunConfig().color" [radius]="sunConfig().radius" />
 
 <ngt-group [position]="[0, 0, -1.5]">
 

@@ -21,6 +21,14 @@ interface ShipSummary {
 	id: string;
 	model?: string;
 	inventory?: ShipItem[];
+	location?: {
+		positionKm: { x: number; y: number; z: number };
+	};
+	kinematics?: {
+		reference?: {
+			solarSystemId?: string;
+		};
+	};
 }
 
 interface ShipExteriorViewNavigationState {
@@ -42,6 +50,8 @@ interface LaunchRequestForTest {
 
 class MockColdBootScanScene {
 	currentRouteLabel = '/ship-exterior-view';
+	solarSystemId = 'sol';
+	shipLocationKm: { x: number; y: number; z: number } | null = null;
 	playerName = 'Unknown Pilot';
 	characterName = 'Unbound';
 	activeScanAsteroidId: string | null = null;
@@ -65,6 +75,8 @@ class MockColdBootScanScene {
 		this.shipModel = state.joinShip?.model?.trim() || 'Scavenger Pod';
 		this.hasExpendableDartDrone =
 			state.joinShip?.inventory?.some((item) => item.itemType === 'expendable-dart-drone') ?? false;
+		this.shipLocationKm = state.joinShip?.location?.positionKm ?? null;
+		this.solarSystemId = state.joinShip?.kinematics?.reference?.solarSystemId?.trim() || 'sol';
 		this.launchableInventory = (state.joinShip?.inventory ?? [])
 			.filter((item) => item.launchable !== false)
 			.slice()
@@ -137,6 +149,44 @@ class MockColdBootScanScene {
 
 		this.targetedAsteroidId = this.rightHoldCandidateId;
 		this.rightHoldCandidateId = null;
+	}
+
+	getSunConfig(): { color: string; radius: number } {
+		if (this.solarSystemId.toLowerCase() === 'sol') {
+			return { color: '#f5ff6b', radius: 1 };
+		}
+
+		return { color: '#f5ff6b', radius: 1 };
+	}
+
+	getSunScenePosition(): [number, number, number] {
+		const fallback = { x: -0.94, y: 0.12, z: -0.31 };
+		const vector = this.shipLocationKm
+			? { x: -this.shipLocationKm.x, y: -this.shipLocationKm.y, z: -this.shipLocationKm.z }
+			: fallback;
+		const magnitude = Math.hypot(vector.x, vector.y, vector.z) || 1;
+		const direction = {
+			x: vector.x / magnitude,
+			y: vector.y / magnitude,
+			z: vector.z / magnitude,
+		};
+
+		const shipDistanceKm = this.shipLocationKm
+			? Math.hypot(this.shipLocationKm.x, this.shipLocationKm.y, this.shipLocationKm.z)
+			: 395000000;
+		const scaledDistance = shipDistanceKm / 5500000;
+		const clampedDistance = Math.max(56, Math.min(120, scaledDistance));
+
+		return [direction.x * clampedDistance, direction.y * clampedDistance, direction.z * clampedDistance];
+	}
+
+	getSunLightIntensity(): number {
+		const shipDistanceKm = this.shipLocationKm
+			? Math.hypot(this.shipLocationKm.x, this.shipLocationKm.y, this.shipLocationKm.z)
+			: 395000000;
+		const distanceAu = shipDistanceKm / 149597870.7;
+		const rawIntensity = 0.7 / (distanceAu * distanceAu);
+		return Math.max(0.02, Math.min(0.16, rawIntensity));
 	}
 
 	getLaunchHotkeySlots(): Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean }> {
@@ -324,6 +374,66 @@ describe('ShipExteriorViewScene', () => {
 		component.completeTargetHoldForTest();
 
 		expect(component.targetedAsteroidId).toBeNull();
+	});
+
+	it('should resolve Sol sun config by default and fallback for unknown solar systems', () => {
+		const solScene = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				kinematics: { reference: { solarSystemId: 'sol' } },
+			},
+		});
+		expect(solScene.getSunConfig()).toEqual({ color: '#f5ff6b', radius: 1 });
+
+		const fallbackScene = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-2',
+				kinematics: { reference: { solarSystemId: 'unknown-system' } },
+			},
+		});
+		expect(fallbackScene.getSunConfig()).toEqual({ color: '#f5ff6b', radius: 1 });
+	});
+
+	it('should place sun very far opposite ship location vector for asteroid belt distances', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				location: {
+					positionKm: {
+						x: 395000000,
+						y: 1500000,
+						z: -12000000,
+					},
+				},
+			},
+		});
+
+		const [sunX, sunY, sunZ] = component.getSunScenePosition();
+		const sunDistance = Math.hypot(sunX, sunY, sunZ);
+		expect(sunDistance).toBeGreaterThan(56);
+		expect(sunDistance).toBeLessThanOrEqual(120);
+		expect(Math.sign(sunX)).toBe(-1);
+		expect(Math.sign(sunZ)).toBe(1);
+	});
+
+	it('should compute a low-intensity directional sun light in asteroid belt range', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				location: {
+					positionKm: {
+						x: 420000000,
+						y: 0,
+						z: 0,
+					},
+				},
+			},
+		});
+
+		const intensity = component.getSunLightIntensity();
+		expect(intensity).toBeGreaterThanOrEqual(0.02);
+		expect(intensity).toBeLessThan(0.16);
+		expect(intensity).toBeGreaterThan(0.05);
 	});
 
 	it('should expose five hotkey slots sorted alphabetically and capped to first five launchables', () => {

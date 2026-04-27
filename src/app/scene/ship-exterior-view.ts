@@ -13,6 +13,7 @@ import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
+import { Sol } from '../component/sol';
 import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/asteroid-kinematics';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
 import {
@@ -85,6 +86,24 @@ interface LaunchHotkeySlot {
 	enabled: boolean;
 	launching: boolean;
 }
+
+interface SolarSystemSunConfig {
+	color: string;
+	radius: number;
+}
+
+const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
+const DEFAULT_SHIP_SUN_DISTANCE_KM = 395_000_000;
+const SOLAR_SYSTEM_SUN_CONFIGS: Record<string, SolarSystemSunConfig> = {
+	sol: {
+		color: '#f5ff6b',
+		radius: 1,
+	},
+};
+const DEFAULT_SUN_CONFIG: SolarSystemSunConfig = {
+	color: '#f5ff6b',
+	radius: 1,
+};
 
 function formatVelocityText(k: AsteroidKinematics | null): string {
 	if (!k) {
@@ -227,7 +246,7 @@ function seededRandom(seed: number): () => number {
 @Component({
 	selector: 'app-ship-exterior-view-scene',
 	templateUrl: './ship-exterior-view.html',
-	imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars],
+	imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 	changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -240,6 +259,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 	private static readonly HOTKEY_SLOT_COUNT = 5;
 	private static readonly HOTKEY_LAUNCH_FLASH_MS = 220;
+	private static readonly SOLAR_DISTANCE_SCENE_SCALE_KM = 5_500_000;
+	private static readonly SUN_DISTANCE_MIN_SCENE_UNITS = 56;
+	private static readonly SUN_DISTANCE_MAX_SCENE_UNITS = 120;
 
 	private router = inject(Router);
 	private socketService = inject(SocketService);
@@ -262,11 +284,46 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
 	protected hasExpendableDartDrone = signal(hasExpendableDartDroneInInventory(this.navigationState.joinShip?.inventory));
 	private activeShipId = signal(this.navigationState.joinShip?.id?.trim() ?? '');
+	private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
+	private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
 	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
 	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
 	protected canTargetAsteroids = computed(() =>
 		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
 	);
+	readonly sunConfig = computed(() => resolveSunConfigForSolarSystem(this.activeSolarSystemId()));
+	readonly shipSunDistanceKm = computed(() => {
+		const shipLocation = this.activeShipLocationKm();
+		if (!shipLocation) {
+			return DEFAULT_SHIP_SUN_DISTANCE_KM;
+		}
+
+		const magnitude = Math.hypot(shipLocation.x, shipLocation.y, shipLocation.z);
+		return magnitude > 0 ? magnitude : DEFAULT_SHIP_SUN_DISTANCE_KM;
+	});
+	readonly sunScenePosition = computed<[number, number, number]>(() => {
+		const shipLocation = this.activeShipLocationKm();
+		const sunDirection = shipLocation
+			? normalizeDirection({ x: -shipLocation.x, y: -shipLocation.y, z: -shipLocation.z }, { x: -0.94, y: 0.12, z: -0.31 })
+			: { x: -0.94, y: 0.12, z: -0.31 };
+
+		const scaledDistance = this.shipSunDistanceKm() / ShipExteriorViewScene.SOLAR_DISTANCE_SCENE_SCALE_KM;
+		const clampedDistance = Math.max(
+			ShipExteriorViewScene.SUN_DISTANCE_MIN_SCENE_UNITS,
+			Math.min(ShipExteriorViewScene.SUN_DISTANCE_MAX_SCENE_UNITS, scaledDistance),
+		);
+
+		return [
+			+(sunDirection.x * clampedDistance).toFixed(3),
+			+(sunDirection.y * clampedDistance).toFixed(3),
+			+(sunDirection.z * clampedDistance).toFixed(3),
+		];
+	});
+	readonly solarDirectionalLightIntensity = computed(() => {
+		const distanceAu = this.shipSunDistanceKm() / ASTRONOMICAL_UNIT_KM;
+		const rawIntensity = 0.7 / (distanceAu * distanceAu);
+		return +Math.max(0.02, Math.min(0.16, rawIntensity)).toFixed(3);
+	});
 	protected Math = Math;
 	private propertiesPanelHidden = signal(false);
 	protected activeScanAsteroidId = signal<string | null>(null);
@@ -483,6 +540,23 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		});
 	}
 
+	private resolveNavigationShipLocationKm(): Triple | null {
+		const location = this.navigationState.joinShip?.location?.positionKm;
+		if (!location) {
+			return null;
+		}
+
+		return {
+			x: location.x,
+			y: location.y,
+			z: location.z,
+		};
+	}
+
+	private resolveNavigationSolarSystemId(): string {
+		return this.navigationState.joinShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeCelestialBodyListResponse?.();
@@ -690,6 +764,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const nextHasDrone = hasExpendableDartDroneInInventory(matchingShip?.inventory);
 		this.hasExpendableDartDrone.set(nextHasDrone);
 		this.activeShipId.set(matchingShip?.id?.trim() ?? '');
+		this.activeShipLocationKm.set(matchingShip?.location?.positionKm ?? null);
+		this.activeSolarSystemId.set(matchingShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
 		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
 	}
 
@@ -929,6 +1005,24 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	revealPropertiesPanel(): void {
 		this.propertiesPanelHidden.set(false);
 	}
+}
+
+function resolveSunConfigForSolarSystem(solarSystemId: string): SolarSystemSunConfig {
+	const normalizedId = solarSystemId.trim().toLowerCase();
+	return SOLAR_SYSTEM_SUN_CONFIGS[normalizedId] ?? DEFAULT_SUN_CONFIG;
+}
+
+function normalizeDirection(vector: Triple, fallback: Triple): Triple {
+	const magnitude = Math.hypot(vector.x, vector.y, vector.z);
+	if (magnitude <= 0) {
+		return normalizeDirection(fallback, { x: -1, y: 0, z: 0 });
+	}
+
+	return {
+		x: vector.x / magnitude,
+		y: vector.y / magnitude,
+		z: vector.z / magnitude,
+	};
 }
 
 function getLaunchableLabel(item: ShipItem): string {

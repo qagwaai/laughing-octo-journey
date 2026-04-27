@@ -18,8 +18,8 @@ export const TEXTURE_RESOURCE_FN = new InjectionToken('TEXTURE_RESOURCE_FN', {
     selector: "app-sol",
     template: `
         <ngt-mesh #sol cursor [position]="position()" name="sol" castShadow receiveShadow>
-            <ngt-sphere-geometry *args="[1, 64, 64]" />
-            <ngt-mesh-basic-material color="#f5ff6b" [metalness]="0.5" [roughness]="0.3" />
+            <ngt-sphere-geometry *args="[radius(), 64, 64]" />
+            <ngt-mesh-basic-material [color]="sunColor()" [metalness]="0.5" [roughness]="0.3" />
         </ngt-mesh>
         <ngtp-effect-composer>
             <ngtp-god-rays
@@ -40,6 +40,8 @@ export const TEXTURE_RESOURCE_FN = new InjectionToken('TEXTURE_RESOURCE_FN', {
 })
 export class Sol {
     position = input<Triplet>([0, 0, 0]);
+    sunColor = input<string>('#f5ff6b');
+    radius = input<number>(1);
     
     protected meshRef = viewChild.required<ElementRef<THREE.Mesh>>('sol');
     protected textures = inject(TEXTURE_RESOURCE_FN)(() => ({
