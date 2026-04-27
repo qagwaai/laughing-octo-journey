@@ -90,8 +90,8 @@ export class SocketService {
    * @param callback - Optional callback function
    */
   emit(eventName: string, data?: any, callback?: (response: any) => void): void {
-    if (!this.socket?.connected) {
-      console.warn('Socket is not connected. Event not sent:', eventName);
+    if (!this.socket) {
+      console.warn('Socket not initialized. Use connect() first');
       return;
     }
 

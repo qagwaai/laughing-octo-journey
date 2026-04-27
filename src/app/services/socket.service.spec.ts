@@ -66,15 +66,12 @@ describe('SocketService', () => {
   });
 
   describe('emit', () => {
-    it('should warn if socket not connected', () => {
+    it('should warn if socket is not initialized', () => {
       const warnSpy = spyOn(console, 'warn');
       
       service.emit('test', { data: 'test' });
       
-      expect(console.warn).toHaveBeenCalledWith(
-        'Socket is not connected. Event not sent:',
-        'test'
-      );
+      expect(warnSpy).toHaveBeenCalledWith('Socket not initialized. Use connect() first');
     });
 
     it('should emit event with callback', () => {
