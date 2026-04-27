@@ -206,6 +206,18 @@ class MockShipHangarPage {
 		});
 	}
 
+	navigateToShipSpecs(ship: ShipSummary): void {
+		this.mockRouter.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+				itemType: ship.model?.trim() || 'Scavenger Pod',
+				item: ship,
+			},
+		});
+	}
+
 	ngOnDestroy(): void {
 		this.unsubscribeShipListResponse?.();
 	}
@@ -403,6 +415,38 @@ describe('ShipHangarPage', () => {
 					playerName: 'Pioneer',
 					joinCharacter: character,
 					joinShip: ship,
+				},
+			},
+		);
+	});
+
+	it('should navigate to item-view-specs with ship model and ship payload', () => {
+		socketService.connected = false;
+		const mockRouter: MockRouter = { navigate: jasmine.createSpy('navigate') };
+		const character = { id: 'c-1', characterName: 'Nova' };
+		const component = new MockShipHangarPage(
+			socketService,
+			sessionService,
+			{ playerName: 'Pioneer', joinCharacter: character },
+			mockRouter,
+		);
+		const ship: ShipSummary = {
+			id: 's-1',
+			name: 'Dart Runner',
+			model: 'Scavenger Pod',
+		};
+
+		component.navigateToShipSpecs(ship);
+
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
+			[{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: character,
+					itemType: 'Scavenger Pod',
+					item: ship,
 				},
 			},
 		);
