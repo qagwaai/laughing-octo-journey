@@ -76,6 +76,86 @@ interface AsteroidScanSample {
 	bobAmplitude: number;
 }
 
+function formatVelocityText(k: AsteroidKinematics | null): string {
+	if (!k) {
+		return 'VEL: ---';
+	}
+
+	const { x, y, z } = k.velocityKmPerSec;
+	const speed = Math.sqrt(x * x + y * y + z * z);
+	return `VEL: ${speed.toFixed(1)} km/s`;
+}
+
+function formatSpinText(k: AsteroidKinematics | null): string {
+	if (!k) {
+		return 'SPIN: ---';
+	}
+
+	const { x, y, z } = k.angularVelocityRadPerSec;
+	const spin = Math.sqrt(x * x + y * y + z * z);
+	return `SPIN: ${spin.toFixed(4)} rad/s`;
+}
+
+function formatMassText(k: AsteroidKinematics | null): string {
+	if (!k) {
+		return 'MASS: ---';
+	}
+
+	const kg = k.estimatedMassKg;
+	if (kg >= 1e12) {
+		return `MASS: ${(kg / 1e12).toFixed(2)}e12 kg`;
+	}
+	if (kg >= 1e9) {
+		return `MASS: ${(kg / 1e9).toFixed(2)}e9 kg`;
+	}
+	return `MASS: ${kg.toFixed(0)} kg`;
+}
+
+function formatDiameterText(k: AsteroidKinematics | null): string {
+	if (!k) {
+		return 'DIAM: ---';
+	}
+
+	return k.estimatedDiameterM >= 1000
+		? `DIAM: ${(k.estimatedDiameterM / 1000).toFixed(2)} km`
+		: `DIAM: ${k.estimatedDiameterM} m`;
+}
+
+function formatLocationText(location: CelestialBodyLocation | null): string {
+	if (!location) {
+		return 'LOC(Mkm): ---';
+	}
+
+	const { x, y, z } = location.positionKm;
+	const xM = (x / 1e6).toFixed(3);
+	const yM = (y / 1e6).toFixed(3);
+	const zM = (z / 1e6).toFixed(3);
+	return `LOC(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
+}
+
+function formatClusterText(center: Triple | null): string {
+	if (!center) {
+		return 'CLUSTER(Mkm): ---';
+	}
+
+	const xM = (center.x / 1e6).toFixed(3);
+	const yM = (center.y / 1e6).toFixed(3);
+	const zM = (center.z / 1e6).toFixed(3);
+	return `CLUSTER(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
+}
+
+function formatOffsetText(location: CelestialBodyLocation | null, center: Triple | null): string {
+	if (!location || !center) {
+		return 'OFFSET(km): ---';
+	}
+
+	const dx = location.positionKm.x - center.x;
+	const dy = location.positionKm.y - center.y;
+	const dz = location.positionKm.z - center.z;
+	const distance = Math.hypot(dx, dy, dz);
+	return `OFFSET(km): dX ${dx.toFixed(0)} dY ${dy.toFixed(0)} dZ ${dz.toFixed(0)} | R ${distance.toFixed(0)}`;
+}
+
 function normalizeInventoryToken(value: unknown): string {
 	if (typeof value !== 'string') {
 		return '';
@@ -172,9 +252,51 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
 	);
 	protected Math = Math;
+	private propertiesPanelHidden = signal(false);
 	protected activeScanAsteroidId = signal<string | null>(null);
 	protected targetedAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([]);
+	readonly hoveredScannedAsteroid = computed<AsteroidScanSample | null>(() => {
+		const hoveredId = this.activeScanAsteroidId();
+		if (!hoveredId) {
+			return null;
+		}
+
+		const sample = this.asteroidSamples().find((candidate) => candidate.id === hoveredId);
+		if (!sample?.scanned || !sample.revealedMaterial) {
+			return null;
+		}
+
+		return sample;
+	});
+	readonly showPropertiesPanel = computed(() => !!this.hoveredScannedAsteroid() && !this.propertiesPanelHidden());
+	readonly showPropertiesPanelReveal = computed(() => !!this.hoveredScannedAsteroid() && this.propertiesPanelHidden());
+	readonly propertiesPanelTitle = computed(() => {
+		const sample = this.hoveredScannedAsteroid();
+		return sample ? `ASTEROID ${sample.id.toUpperCase()} // PROPERTIES` : 'ASTEROID // PROPERTIES';
+	});
+	readonly propertiesMaterialText = computed(
+		() => `MATERIAL: ${this.hoveredScannedAsteroid()?.revealedMaterial?.material ?? 'UNKNOWN'}`,
+	);
+	readonly propertiesRarityText = computed(
+		() => `RARITY: ${this.hoveredScannedAsteroid()?.revealedMaterial?.rarity ?? 'UNKNOWN'}`,
+	);
+	readonly propertiesVelocityText = computed(() => formatVelocityText(this.hoveredScannedAsteroid()?.revealedKinematics ?? null));
+	readonly propertiesSpinText = computed(() => formatSpinText(this.hoveredScannedAsteroid()?.revealedKinematics ?? null));
+	readonly propertiesMassText = computed(() => formatMassText(this.hoveredScannedAsteroid()?.revealedKinematics ?? null));
+	readonly propertiesDiameterText = computed(() => formatDiameterText(this.hoveredScannedAsteroid()?.revealedKinematics ?? null));
+	readonly propertiesLocationText = computed(() =>
+		formatLocationText(this.hoveredScannedAsteroid()?.solarSystemLocation ?? null)
+	);
+	readonly propertiesClusterText = computed(() =>
+		formatClusterText(this.hoveredScannedAsteroid()?.clusterCenterKm ?? null)
+	);
+	readonly propertiesOffsetText = computed(() =>
+		formatOffsetText(
+			this.hoveredScannedAsteroid()?.solarSystemLocation ?? null,
+			this.hoveredScannedAsteroid()?.clusterCenterKm ?? null,
+		)
+	);
 	protected targetedAsteroidPosition = computed<[number, number, number] | null>(() => {
 		const targetedId = this.targetedAsteroidId();
 		if (!targetedId) {
@@ -674,5 +796,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				};
 			}),
 		);
+	}
+
+	hidePropertiesPanel(): void {
+		this.propertiesPanelHidden.set(true);
+	}
+
+	revealPropertiesPanel(): void {
+		this.propertiesPanelHidden.set(false);
 	}
 }

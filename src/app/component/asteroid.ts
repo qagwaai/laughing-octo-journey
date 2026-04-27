@@ -13,7 +13,6 @@ import {
 	computed,
 } from '@angular/core';
 import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
-import { NgtsBillboard, NgtsText } from 'angular-three-soba/abstractions';
 import { AsteroidKinematics } from '../model/asteroid-kinematics';
 import { CelestialBodyLocation } from '../model/celestial-body-location';
 import { AsteroidMaterialProfile } from '../model/asteroid-materials';
@@ -104,7 +103,7 @@ export function generateRandomAsteroidRevealProfile(random: () => number = Math.
 @Component({
 	selector: 'app-asteroid',
 	templateUrl: './asteroid.html',
-	imports: [NgtArgs, NgtsBillboard, NgtsText],
+	imports: [NgtArgs],
 	schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class Asteroid {

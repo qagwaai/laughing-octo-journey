@@ -2,4 +2,33 @@
 	<ngt-canvas shadows [camera]="{ position: [0, 1.8, 6.6], fov: 52 }" [lookAt]="[0, 0, 0]">
 		<app-ship-exterior-view-scene *canvasContent />
 	</ngt-canvas>
+
+	@if (showPropertiesPanel()) {
+		<section class="ship-exterior-properties-panel" aria-live="polite">
+			<header class="ship-exterior-properties-panel__header">
+				<h3>{{ propertiesPanelTitle() }}</h3>
+				<button type="button" class="ship-exterior-properties-panel__toggle" (click)="hidePropertiesPanel()">HIDE</button>
+			</header>
+
+			<div class="ship-exterior-properties-panel__body">
+				<p>{{ propertiesMaterialText() }}</p>
+				<p>{{ propertiesRarityText() }}</p>
+				<p>{{ propertiesVelocityText() }}</p>
+				<p>{{ propertiesSpinText() }}</p>
+				<p>{{ propertiesMassText() }}</p>
+				<p>{{ propertiesDiameterText() }}</p>
+				<p>{{ propertiesLocationText() }}</p>
+				<p>{{ propertiesClusterText() }}</p>
+				<p>{{ propertiesOffsetText() }}</p>
+			</div>
+		</section>
+	} @else if (showPropertiesPanelReveal()) {
+		<button
+			type="button"
+			class="ship-exterior-properties-reveal"
+			(click)="revealPropertiesPanel()"
+		>
+			SHOW PROPERTIES
+		</button>
+	}
 </div>
