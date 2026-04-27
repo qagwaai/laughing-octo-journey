@@ -15,6 +15,7 @@ function createComputed<T>(fn: () => T) {
 
 interface ItemStub {
 	id: string;
+	itemType: string;
 	displayName: string;
 }
 
@@ -25,21 +26,35 @@ interface NavigationState {
 }
 
 interface InventoryGroup {
+	itemType: string;
 	name: string;
 	quantity: number;
+	item: ItemStub;
 }
 
 function groupInventory(inventory: ItemStub[]): InventoryGroup[] {
-	const counts = new Map<string, number>();
+	const counts = new Map<string, InventoryGroup>();
 	for (const item of inventory) {
-		counts.set(item.displayName, (counts.get(item.displayName) ?? 0) + 1);
+		const existing = counts.get(item.itemType);
+		if (existing) {
+			existing.quantity += 1;
+			continue;
+		}
+
+		counts.set(item.itemType, {
+			itemType: item.itemType,
+			name: item.displayName,
+			quantity: 1,
+			item,
+		});
 	}
-	return Array.from(counts.entries()).map(([name, quantity]) => ({ name, quantity }));
+	return Array.from(counts.values());
 }
 
 function makeItem(overrides?: Partial<ItemStub>): ItemStub {
 	return {
 		id: overrides?.id ?? 'item-1',
+		itemType: overrides?.itemType ?? 'expendable-dart-drone',
 		displayName: overrides?.displayName ?? 'Expendable Dart Drone',
 	};
 }
@@ -79,6 +94,21 @@ class MockShipViewInventoryPage {
 			},
 		);
 	}
+
+	navigateToItemSpecs(group: InventoryGroup): void {
+		this.mockRouter.navigate(
+			[{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: this.playerName(),
+					joinCharacter: this.joinCharacter(),
+					itemType: group.itemType,
+					item: group.item,
+				},
+			},
+		);
+	}
 }
 
 describe('ShipViewInventoryPage', () => {
@@ -100,23 +130,56 @@ describe('ShipViewInventoryPage', () => {
 		expect(component.joinShip()?.id).toBe('s-1');
 	});
 
-	it('should group inventory items by name with quantity counts', () => {
+	it('should group inventory items by item type with quantity counts', () => {
 		const component = new MockShipViewInventoryPage(mockRouter, {
 			joinShip: {
 				id: 's-1',
 				name: 'Scavenger I',
 				inventory: [
-					makeItem({ id: 'item-1' }),
-					makeItem({ id: 'item-2' }),
+					makeItem({ id: 'item-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' }),
+					makeItem({ id: 'item-2', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone Mk II' }),
+					makeItem({ id: 'item-3', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' }),
 				],
 			},
 		});
 
 		const groups = component.inventoryGroups();
 
-		expect(groups.length).toBe(1);
+		expect(groups.length).toBe(2);
+		expect(groups[0].itemType).toBe('expendable-dart-drone');
 		expect(groups[0].name).toBe('Expendable Dart Drone');
 		expect(groups[0].quantity).toBe(2);
+		expect(groups[1].itemType).toBe('basic-mining-laser');
+		expect(groups[1].quantity).toBe(1);
+	});
+
+	it('should navigate to item-view-specs with grouped item context', () => {
+		const character = { id: 'c-1', characterName: 'Nova' };
+		const groupedItem = makeItem({ id: 'item-1', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' });
+		const component = new MockShipViewInventoryPage(mockRouter, {
+			playerName: 'Pioneer',
+			joinCharacter: character,
+		});
+
+		component.navigateToItemSpecs({
+			itemType: groupedItem.itemType,
+			name: groupedItem.displayName,
+			quantity: 3,
+			item: groupedItem,
+		});
+
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
+			[{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: character,
+					itemType: 'basic-mining-laser',
+					item: groupedItem,
+				},
+			},
+		);
 	});
 
 	it('should return empty inventory groups when ship inventory is empty', () => {

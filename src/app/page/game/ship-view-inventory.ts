@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { ShipSummary } from '../../model/ship-list';
+import { ShipItem } from '../../model/ship-item';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 
@@ -12,8 +13,10 @@ interface ShipViewInventoryNavigationState {
 }
 
 export interface InventoryGroup {
+	itemType: string;
 	name: string;
 	quantity: number;
+	item: ShipItem;
 }
 
 @Component({
@@ -37,11 +40,22 @@ export default class ShipViewInventoryPage {
 
 	protected inventoryGroups = computed<InventoryGroup[]>(() => {
 		const inventory = this.joinShip()?.inventory ?? [];
-		const counts = new Map<string, number>();
+		const counts = new Map<string, InventoryGroup>();
 		for (const item of inventory) {
-			counts.set(item.displayName, (counts.get(item.displayName) ?? 0) + 1);
+			const existing = counts.get(item.itemType);
+			if (existing) {
+				existing.quantity += 1;
+				continue;
+			}
+
+			counts.set(item.itemType, {
+				itemType: item.itemType,
+				name: item.displayName,
+				quantity: 1,
+				item,
+			});
 		}
-		return Array.from(counts.entries()).map(([name, quantity]) => ({ name, quantity }));
+		return Array.from(counts.values());
 	});
 
 	protected getShipDisplayName(): string {
@@ -65,6 +79,18 @@ export default class ShipViewInventoryPage {
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
+			},
+		});
+	}
+
+	navigateToItemSpecs(group: InventoryGroup): void {
+		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }], {
+			preserveFragment: true,
+			state: {
+				playerName: this.playerName(),
+				joinCharacter: this.joinCharacter(),
+				itemType: group.itemType,
+				item: group.item,
 			},
 		});
 	}

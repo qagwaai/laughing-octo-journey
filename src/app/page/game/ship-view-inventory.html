@@ -32,13 +32,19 @@
 						<tr>
 							<th>{{ t.game.shipViewInventory.itemNameLabel }}</th>
 							<th class="qty-col">{{ t.game.shipViewInventory.quantityLabel }}</th>
+							<th class="actions-col">{{ t.game.shipViewInventory.actionsLabel }}</th>
 						</tr>
 					</thead>
 					<tbody>
-						@for (group of inventoryGroups(); track group.name) {
+						@for (group of inventoryGroups(); track group.itemType) {
 							<tr>
 								<td>{{ group.name }}</td>
 								<td class="qty-col">{{ group.quantity }}</td>
+								<td class="actions-col">
+									<button type="button" class="spec-link" (click)="navigateToItemSpecs(group)">
+										{{ t.game.shipViewInventory.viewSpecsLabel }}
+									</button>
+								</td>
 							</tr>
 						}
 					</tbody>

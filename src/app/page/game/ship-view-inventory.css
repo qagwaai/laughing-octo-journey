@@ -70,6 +70,25 @@
 	width: 4rem;
 }
 
+.actions-col {
+	text-align: right;
+	width: 8rem;
+}
+
+.spec-link {
+	background: transparent;
+	border: none;
+	color: #8ec5ff;
+	text-decoration: underline;
+	cursor: pointer;
+	font-size: 0.9rem;
+	padding: 0;
+}
+
+.spec-link:hover {
+	color: #c8ddff;
+}
+
 .back-nav {
 	margin-top: 1.25rem;
 }

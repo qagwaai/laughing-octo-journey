@@ -229,6 +229,8 @@ export const locale = {
 			inventoryEmptyStatus: 'No inventory items found.',
 			itemNameLabel: 'Item',
 			quantityLabel: 'Qty',
+			actionsLabel: 'Actions',
+			viewSpecsLabel: 'View Specs',
 			backLabel: 'Back to Ship Hangar',
 		},
 
