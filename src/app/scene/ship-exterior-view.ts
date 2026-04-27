@@ -83,6 +83,7 @@ interface LaunchHotkeySlot {
 	item: ShipItem | null;
 	label: string;
 	enabled: boolean;
+	launching: boolean;
 }
 
 function formatVelocityText(k: AsteroidKinematics | null): string {
@@ -238,12 +239,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 	private static readonly HOTKEY_SLOT_COUNT = 5;
+	private static readonly HOTKEY_LAUNCH_FLASH_MS = 220;
 
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private scanIntervalId: number | null = null;
 	private targetHoldTimeoutId: number | null = null;
+	private hotkeyLaunchFlashTimeoutIds = new Map<1 | 2 | 3 | 4 | 5, number>();
 	protected targetHoldCandidateId = signal<string | null>(null);
 	private sceneElapsedSeconds = 0;
 	private sentCelestialBodyUpserts = new Set<string>();
@@ -260,6 +263,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	protected hasExpendableDartDrone = signal(hasExpendableDartDroneInInventory(this.navigationState.joinShip?.inventory));
 	private activeShipId = signal(this.navigationState.joinShip?.id?.trim() ?? '');
 	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
+	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
 	protected canTargetAsteroids = computed(() =>
 		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
 	);
@@ -272,6 +276,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	readonly launchHotkeySlots = computed<LaunchHotkeySlot[]>(() => {
 		const launchables = this.launchableInventory().slice(0, ShipExteriorViewScene.HOTKEY_SLOT_COUNT);
 		const enabled = this.launchHotkeysEnabled();
+		const launchingHotkeys = this.launchingHotkeys();
 
 		return Array.from({ length: ShipExteriorViewScene.HOTKEY_SLOT_COUNT }, (_, index) => {
 			const hotkey = (index + 1) as 1 | 2 | 3 | 4 | 5;
@@ -281,6 +286,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				item,
 				label: item ? getLaunchableLabel(item) : 'empty',
 				enabled: enabled && !!item,
+				launching: launchingHotkeys.has(hotkey),
 			};
 		});
 	});
@@ -485,6 +491,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		window.removeEventListener('pointerup', this.onWindowPointerUp);
 		window.removeEventListener('contextmenu', this.onWindowContextMenu);
 		window.removeEventListener('keydown', this.onWindowKeyDown);
+		this.hotkeyLaunchFlashTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
+		this.hotkeyLaunchFlashTimeoutIds.clear();
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
 			this.scanIntervalId = null;
@@ -728,6 +736,31 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		};
 
 		this.socketService.launchItem(request);
+		this.triggerHotkeyLaunchFlash(hotkey);
+	}
+
+	private triggerHotkeyLaunchFlash(hotkey: 1 | 2 | 3 | 4 | 5): void {
+		this.launchingHotkeys.update((current) => {
+			const next = new Set(current);
+			next.add(hotkey);
+			return next;
+		});
+
+		const existingTimeout = this.hotkeyLaunchFlashTimeoutIds.get(hotkey);
+		if (existingTimeout !== undefined) {
+			clearTimeout(existingTimeout);
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			this.launchingHotkeys.update((current) => {
+				const next = new Set(current);
+				next.delete(hotkey);
+				return next;
+			});
+			this.hotkeyLaunchFlashTimeoutIds.delete(hotkey);
+		}, ShipExteriorViewScene.HOTKEY_LAUNCH_FLASH_MS);
+
+		this.hotkeyLaunchFlashTimeoutIds.set(hotkey, timeoutId);
 	}
 
 	protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {

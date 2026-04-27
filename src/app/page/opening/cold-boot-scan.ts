@@ -7,12 +7,13 @@ const DEFAULT_HOTKEY_SLOTS: ReadonlyArray<{
 	item: null;
 	label: string;
 	enabled: boolean;
+	launching: boolean;
 }> = [
-	{ hotkey: 1, item: null, label: 'empty', enabled: false },
-	{ hotkey: 2, item: null, label: 'empty', enabled: false },
-	{ hotkey: 3, item: null, label: 'empty', enabled: false },
-	{ hotkey: 4, item: null, label: 'empty', enabled: false },
-	{ hotkey: 5, item: null, label: 'empty', enabled: false },
+	{ hotkey: 1, item: null, label: 'empty', enabled: false, launching: false },
+	{ hotkey: 2, item: null, label: 'empty', enabled: false, launching: false },
+	{ hotkey: 3, item: null, label: 'empty', enabled: false, launching: false },
+	{ hotkey: 4, item: null, label: 'empty', enabled: false, launching: false },
+	{ hotkey: 5, item: null, label: 'empty', enabled: false, launching: false },
 ];
 
 @Component({

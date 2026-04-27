@@ -9,6 +9,7 @@
 				type="button"
 				class="ship-exterior-hotkey-tile"
 				[class.ship-exterior-hotkey-tile--enabled]="slot.enabled"
+				[class.ship-exterior-hotkey-tile--launching]="slot.launching"
 				[disabled]="!slot.enabled"
 				(click)="launchFromHotkeySlot(slot.hotkey)"
 			>

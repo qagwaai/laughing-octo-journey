@@ -76,6 +76,26 @@
 	transform: translateY(-1px);
 }
 
+.ship-exterior-hotkey-tile--launching {
+	border-color: rgba(255, 160, 160, 0.88);
+	background: linear-gradient(170deg, rgba(172, 22, 22, 0.96), rgba(108, 11, 11, 0.96));
+	color: #ffe7e7;
+	box-shadow:
+		0 0 18px rgba(255, 59, 59, 0.48),
+		inset 0 0 0 1px rgba(255, 229, 229, 0.28);
+	animation: ship-hotkey-launch-flash 220ms ease-out;
+	transform: translateY(0);
+}
+
+@keyframes ship-hotkey-launch-flash {
+	0% {
+		filter: saturate(1.4) brightness(1.2);
+	}
+	100% {
+		filter: saturate(1) brightness(1);
+	}
+}
+
 .ship-exterior-hotkey-tile:disabled {
 	opacity: 1;
 }
