@@ -1,7 +1,11 @@
 {
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=827846
   "recommendations": [
-    "angular.ng-template",
-    "lucono.karma-test-explorer"
+    "angular.ng-template"
+  ],
+  "unwantedRecommendations": [
+    "hbenl.vscode-jasmine-test-adapter",
+    "hbenl.vscode-test-explorer",
+    "ms-vscode.test-adapter-converter"
   ]
 }

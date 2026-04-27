@@ -107,6 +107,7 @@
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.karma.json",
+            "watch": false,
             "assets": [
               {
                 "glob": "**/*",
