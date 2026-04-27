@@ -11,10 +11,6 @@
 		}
 	</div>
 
-	@if (joinCharacter()) {
-		<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
-	}
-
 	@if (item()) {
 		<div class="spec-card">
 			@for (group of resolvedGroups(); track group.label) {

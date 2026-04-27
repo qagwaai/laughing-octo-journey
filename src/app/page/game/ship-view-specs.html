@@ -11,10 +11,6 @@
 		}
 	</div>
 
-	@if (joinCharacter()) {
-		<p class="context">Character: <strong>{{ joinCharacter()!.characterName }}</strong></p>
-	}
-
 	@if (joinShip()) {
 		<div class="spec-card">
 			<p><strong>Name:</strong> {{ joinShip()!.name }}</p>
