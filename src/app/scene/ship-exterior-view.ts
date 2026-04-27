@@ -43,6 +43,10 @@ import {
 	type ShipListResponse,
 	type ShipSummary,
 } from '../model/ship-list';
+import {
+	resolveShipExteriorViewSeedPolicy,
+	type ShipExteriorViewMissionContext,
+} from '../model/ship-exterior-view-context';
 import { Triple } from '../model/triple';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
@@ -52,6 +56,7 @@ interface ShipExteriorViewNavigationState {
 	joinCharacter?: PlayerCharacterSummary;
 	joinShip?: ShipSummary;
 	firstTargetMissionStatus?: MissionStatus;
+	missionContext?: ShipExteriorViewMissionContext;
 }
 
 interface AsteroidScanSample {
@@ -297,7 +302,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	ngOnInit(): void {
 		this.socketService.connect(this.socketService.serverUrl);
-		if (this.navigationState.firstTargetMissionStatus === 'started') {
+		const seedPolicy = this.resolveSeedPolicy();
+		if (seedPolicy === 'resume') {
 			this.seedAsteroidsForInProgressMission();
 		} else {
 			this.seedAsteroidsAroundStarterShip();
@@ -308,6 +314,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		window.addEventListener('pointerdown', this.onWindowPointerDown);
 		window.addEventListener('pointerup', this.onWindowPointerUp);
 		window.addEventListener('contextmenu', this.onWindowContextMenu);
+	}
+
+	private resolveSeedPolicy(): 'new' | 'resume' {
+		const missionStatusHint =
+			this.navigationState.missionContext?.missionStatusHint ?? this.navigationState.firstTargetMissionStatus;
+
+		return resolveShipExteriorViewSeedPolicy({
+			seedPolicy: this.navigationState.missionContext?.seedPolicy,
+			missionStatusHint,
+		});
 	}
 
 	ngOnDestroy(): void {

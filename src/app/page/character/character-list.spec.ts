@@ -332,12 +332,20 @@ class MockCharacterListPage {
 			firstTargetStatus === 'started'
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
 				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+		const missionContext = firstTargetStatus === 'started'
+			? {
+				missionId: FIRST_TARGET_MISSION_ID,
+				missionStatusHint: firstTargetStatus,
+				seedPolicy: 'auto',
+			}
+			: undefined;
 
 		this.router.navigate([{ outlets }], {
 			preserveFragment: true,
 			state: {
 				playerName,
 				joinCharacter: character,
+				...(missionContext ? { missionContext } : {}),
 				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});
@@ -597,6 +605,11 @@ describe('CharacterListPage', () => {
 					state: {
 						playerName: 'Pioneer',
 						joinCharacter: character,
+						missionContext: {
+							missionId: FIRST_TARGET_MISSION_ID,
+							missionStatusHint: 'started',
+							seedPolicy: 'auto',
+						},
 						firstTargetMissionStatus: 'started',
 					},
 				},

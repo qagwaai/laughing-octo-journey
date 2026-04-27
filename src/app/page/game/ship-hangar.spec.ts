@@ -11,15 +11,23 @@ function createSignal<T>(initial: T) {
 
 const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
 const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
+const FIRST_TARGET_MISSION_ID = 'first-target';
 
 interface NavigationState {
 	playerName?: string;
-	joinCharacter?: { id: string; characterName: string };
+	joinCharacter?: {
+		id: string;
+		characterName: string;
+		missions?: Array<{ missionId: string; status: string }>;
+	};
 }
 
 interface ShipSummary {
 	id: string;
 	name: string;
+	model?: string;
+	tier?: number;
+	status?: string;
 	inventory?: { id: string; itemType: string; displayName: string; state: string; damageStatus: string }[];
 	location?: { positionKm: { x: number; y: number; z: number } };
 	kinematics?: { position: { x: number; y: number; z: number } };
@@ -195,6 +203,15 @@ class MockShipHangarPage {
 		return `(${position.x}, ${position.y}, ${position.z}) km`;
 	}
 
+	private getFirstTargetMissionStatus(): string | undefined {
+		const missions = this.joinCharacter()?.missions;
+		if (!Array.isArray(missions)) {
+			return undefined;
+		}
+
+		return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
+	}
+
 	navigateToShipInventory(ship: ShipSummary): void {
 		this.mockRouter.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
 			preserveFragment: true,
@@ -207,12 +224,21 @@ class MockShipHangarPage {
 	}
 
 	navigateToExteriorView(ship: ShipSummary): void {
+		const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
+		const missionContext = {
+			missionId: FIRST_TARGET_MISSION_ID,
+			seedPolicy: 'auto',
+			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+		};
+
 		this.mockRouter.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
 				joinShip: ship,
+				missionContext,
+				...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
 			},
 		});
 	}
@@ -460,6 +486,10 @@ describe('ShipHangarPage', () => {
 					playerName: 'Pioneer',
 					joinCharacter: character,
 					joinShip: ship,
+					missionContext: {
+						missionId: FIRST_TARGET_MISSION_ID,
+						seedPolicy: 'auto',
+					},
 				},
 			},
 		);

@@ -45,10 +45,18 @@ describe('ship-list inventory helpers', () => {
 		const result = coerceShipInventory([
 			{ id: '', itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE, displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME },
 			{ id: 'x', itemType: '', displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME },
-			{ id: 'y', itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE, displayName: '' },
 		] as unknown);
 
 		expect(result.length).toBe(0);
+	});
+
+	it('falls back to itemType when displayName is empty', () => {
+		const result = coerceShipInventory([
+			{ id: 'y', itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE, displayName: '' },
+		] as unknown);
+
+		expect(result.length).toBe(1);
+		expect(result[0].displayName).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 	});
 });
 

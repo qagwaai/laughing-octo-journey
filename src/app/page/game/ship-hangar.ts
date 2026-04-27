@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
@@ -11,6 +12,8 @@ import {
 	type ShipListResponse,
 	type ShipSummary,
 } from '../../model/ship-list';
+import { type MissionStatus } from '../../model/mission';
+import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
@@ -133,6 +136,15 @@ export default class ShipHangarPage {
 		return `(${position.x}, ${position.y}, ${position.z}) km`;
 	}
 
+	private getFirstTargetMissionStatus(): MissionStatus | undefined {
+		const missions = this.joinCharacter()?.missions;
+		if (!Array.isArray(missions)) {
+			return undefined;
+		}
+
+		return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
+	}
+
 	navigateToShipInventory(ship: ShipSummary): void {
 		this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
 			preserveFragment: true,
@@ -145,12 +157,21 @@ export default class ShipHangarPage {
 	}
 
 	navigateToExteriorView(ship: ShipSummary): void {
+		const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
+		const missionContext: ShipExteriorViewMissionContext = {
+			missionId: FIRST_TARGET_MISSION_ID,
+			seedPolicy: 'auto',
+			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+		};
+
 		this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
 				joinShip: ship,
+				missionContext,
+				...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
 			},
 		});
 	}

@@ -16,6 +16,7 @@ import {
 } from '../../model/character-list';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
@@ -271,12 +272,20 @@ export default class CharacterListPage implements OnDestroy {
 			firstTargetStatus === 'started'
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
 				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+		const missionContext = firstTargetStatus === 'started'
+			? {
+				missionId: FIRST_TARGET_MISSION_ID,
+				missionStatusHint: firstTargetStatus,
+				seedPolicy: 'auto',
+			} satisfies ShipExteriorViewMissionContext
+			: undefined;
 
 		this.router.navigate([{ outlets }], {
 			preserveFragment: true,
 			state: {
 				playerName,
 				joinCharacter: character,
+				...(missionContext ? { missionContext } : {}),
 				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});

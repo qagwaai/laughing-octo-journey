@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
+import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import { MissionService, OpeningAudioService, SessionService } from '../../services';
 import { locale } from '../../i18n/locale';
 
@@ -148,6 +149,11 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 			preserveFragment: true,
 			state: {
 				...this.navigationState,
+				missionContext: {
+					missionId: FIRST_TARGET_MISSION_ID,
+					missionStatusHint: 'started',
+					seedPolicy: 'new',
+				} satisfies ShipExteriorViewMissionContext,
 			},
 		});
 		this.scanActionPending.set(false);

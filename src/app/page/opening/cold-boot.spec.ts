@@ -98,7 +98,14 @@ class MockColdBootOpeningPage {
 
 		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {
 			preserveFragment: true,
-			state: this.navigationState,
+			state: {
+				...this.navigationState,
+				missionContext: {
+					missionId: FIRST_TARGET_MISSION_ID,
+					missionStatusHint: 'started',
+					seedPolicy: 'new',
+				},
+			},
 		});
 		this.scanActionPending = false;
 	}
@@ -211,6 +218,11 @@ describe('ColdBootOpeningPage', () => {
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: { id: 'char-1', characterName: 'Nova' },
+					missionContext: {
+						missionId: FIRST_TARGET_MISSION_ID,
+						missionStatusHint: 'started',
+						seedPolicy: 'new',
+					},
 				},
 			},
 		);
