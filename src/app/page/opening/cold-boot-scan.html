@@ -3,6 +3,21 @@
 		<app-ship-exterior-view-scene *canvasContent />
 	</ngt-canvas>
 
+	<section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
+		@for (slot of launchHotkeySlots(); track slot.hotkey) {
+			<button
+				type="button"
+				class="ship-exterior-hotkey-tile"
+				[class.ship-exterior-hotkey-tile--enabled]="slot.enabled"
+				[disabled]="!slot.enabled"
+				(click)="launchFromHotkeySlot(slot.hotkey)"
+			>
+				<span class="ship-exterior-hotkey-tile__key">{{ slot.hotkey }}</span>
+				<span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
+			</button>
+		}
+	</section>
+
 	@if (showPropertiesPanel()) {
 		<section class="ship-exterior-properties-panel" aria-live="polite">
 			<header class="ship-exterior-properties-panel__header">

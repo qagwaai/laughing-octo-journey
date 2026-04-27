@@ -23,6 +23,7 @@ export interface ShipSummary {
 	status?: string;
 	model: string;
 	tier: number;
+	launchable?: boolean;
 	inventory?: ShipItem[];
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;

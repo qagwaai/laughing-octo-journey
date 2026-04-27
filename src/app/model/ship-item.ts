@@ -33,6 +33,7 @@ export interface ShipItem {
 	id: string;
 	itemType: string;
 	displayName: string;
+	launchable: boolean;
 	state: ItemState;
 	damageStatus: ItemDamageStatus;
 	container: ItemContainer | null;
@@ -82,11 +83,13 @@ export function coerceShipItem(raw: unknown): ShipItem | null {
 	const rawDisplayName = typeof obj['displayName'] === 'string' ? obj['displayName'].trim() : '';
 	const legacyName = typeof obj['name'] === 'string' ? obj['name'].trim() : '';
 	const displayName = rawDisplayName || legacyName || itemType;
+	const launchable = typeof obj['launchable'] === 'boolean' ? obj['launchable'] : true;
 	const now = new Date().toISOString();
 	return {
 		id,
 		itemType,
 		displayName,
+		launchable,
 		state: coerceItemState(obj['state']),
 		damageStatus: coerceItemDamageStatus(obj['damageStatus']),
 		container: coerceItemContainer(obj['container']),

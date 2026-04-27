@@ -13,6 +13,7 @@ describe('expendable-dart-drone model', () => {
 
 			expect(drone.itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 			expect(drone.displayName).toBe(EXPENDABLE_DART_DRONE_DISPLAY_NAME);
+			expect(drone.launchable).toBe(true);
 			expect(typeof drone.id).toBe('string');
 			expect(drone.id.length).toBeGreaterThan(0);
 		});
@@ -105,6 +106,7 @@ describe('expendable-dart-drone model', () => {
 				id: 'drone-abc',
 				itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
 				displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+				launchable: true,
 				state: 'contained',
 				damageStatus: 'intact',
 				container: null,
@@ -123,6 +125,7 @@ describe('expendable-dart-drone model', () => {
 			expect(drone!.id).toBe('drone-abc');
 			expect(drone!.itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 			expect(drone!.displayName).toBe(EXPENDABLE_DART_DRONE_DISPLAY_NAME);
+			expect(drone!.launchable).toBe(true);
 			expect(drone!.state).toBe('contained');
 			expect(drone!.damageStatus).toBe('intact');
 		});

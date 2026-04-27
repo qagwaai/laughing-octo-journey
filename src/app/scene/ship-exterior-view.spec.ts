@@ -13,6 +13,8 @@ interface AsteroidSample {
 interface ShipItem {
 	id: string;
 	itemType: string;
+	displayName?: string;
+	launchable?: boolean;
 }
 
 interface ShipSummary {
@@ -31,6 +33,13 @@ interface ShipExteriorViewNavigationState {
 	firstTargetMissionStatus?: string;
 }
 
+interface LaunchRequestForTest {
+	hotkey: 1 | 2 | 3 | 4 | 5;
+	itemId: string;
+	itemType: string;
+	targetCelestialBodyId: string;
+}
+
 class MockColdBootScanScene {
 	currentRouteLabel = '/ship-exterior-view';
 	playerName = 'Unknown Pilot';
@@ -40,6 +49,8 @@ class MockColdBootScanScene {
 	rightHoldCandidateId: string | null = null;
 	shipModel = 'Scavenger Pod';
 	hasExpendableDartDrone = false;
+	launchableInventory: ShipItem[] = [];
+	launchRequests: LaunchRequestForTest[] = [];
 	asteroidSamples: AsteroidSample[] = [
 		{ id: 'sample-a1', scanProgress: 0, scanned: false },
 		{ id: 'sample-a2', scanProgress: 0, scanned: false },
@@ -54,6 +65,14 @@ class MockColdBootScanScene {
 		this.shipModel = state.joinShip?.model?.trim() || 'Scavenger Pod';
 		this.hasExpendableDartDrone =
 			state.joinShip?.inventory?.some((item) => item.itemType === 'expendable-dart-drone') ?? false;
+		this.launchableInventory = (state.joinShip?.inventory ?? [])
+			.filter((item) => item.launchable !== false)
+			.slice()
+			.sort((left, right) => {
+				const leftName = (left.displayName || left.itemType).toLowerCase();
+				const rightName = (right.displayName || right.itemType).toLowerCase();
+				return leftName.localeCompare(rightName);
+			});
 	}
 
 	canTargetAsteroids(): boolean {
@@ -118,6 +137,70 @@ class MockColdBootScanScene {
 
 		this.targetedAsteroidId = this.rightHoldCandidateId;
 		this.rightHoldCandidateId = null;
+	}
+
+	getLaunchHotkeySlots(): Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean }> {
+		const selected = this.launchableInventory.slice(0, 5);
+		return Array.from({ length: 5 }, (_, index) => {
+			const hotkey = (index + 1) as 1 | 2 | 3 | 4 | 5;
+			const item = selected[index];
+			const name = item ? (item.displayName || item.itemType) : 'empty';
+			const label = name.length <= 12 ? name : `${name.slice(0, 9)}...`;
+			return {
+				hotkey,
+				label,
+				enabled: !!this.targetedAsteroidId && !!item,
+			};
+		});
+	}
+
+	launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
+		if (!this.targetedAsteroidId) {
+			return;
+		}
+
+		const item = this.launchableInventory[hotkey - 1];
+		if (!item) {
+			return;
+		}
+
+		this.launchRequests.push({
+			hotkey,
+			itemId: item.id,
+			itemType: item.itemType,
+			targetCelestialBodyId: this.targetedAsteroidId,
+		});
+	}
+
+	onWindowKeyDownForTest(event: { key: string; code?: string }): void {
+		let hotkey: 1 | 2 | 3 | 4 | 5 | null = null;
+		if (event.key >= '1' && event.key <= '5') {
+			hotkey = Number(event.key) as 1 | 2 | 3 | 4 | 5;
+		} else {
+			switch (event.code) {
+				case 'Numpad1':
+					hotkey = 1;
+					break;
+				case 'Numpad2':
+					hotkey = 2;
+					break;
+				case 'Numpad3':
+					hotkey = 3;
+					break;
+				case 'Numpad4':
+					hotkey = 4;
+					break;
+				case 'Numpad5':
+					hotkey = 5;
+					break;
+				default:
+					hotkey = null;
+			}
+		}
+
+		if (hotkey) {
+			this.launchFromHotkeySlot(hotkey);
+		}
 	}
 
 	scanStatusLine(): string {
@@ -241,6 +324,103 @@ describe('ShipExteriorViewScene', () => {
 		component.completeTargetHoldForTest();
 
 		expect(component.targetedAsteroidId).toBeNull();
+	});
+
+	it('should expose five hotkey slots sorted alphabetically and capped to first five launchables', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [
+					{ id: 'i6', itemType: 'zeta-tool', displayName: 'Zeta Tool', launchable: true },
+					{ id: 'i1', itemType: 'alpha-tool', displayName: 'Alpha Tool', launchable: true },
+					{ id: 'i4', itemType: 'delta-tool', displayName: 'Delta Tool', launchable: true },
+					{ id: 'i3', itemType: 'gamma-tool', displayName: 'Gamma Tool', launchable: true },
+					{ id: 'i2', itemType: 'beta-tool', displayName: 'Beta Tool', launchable: true },
+					{ id: 'i5', itemType: 'epsilon-tool', displayName: 'Epsilon Tool', launchable: true },
+					{ id: 'ix', itemType: 'locked-tool', displayName: 'Locked Tool', launchable: false },
+				],
+			},
+		});
+
+		component.targetedAsteroidId = 'sample-a2';
+
+		const slots = component.getLaunchHotkeySlots();
+		expect(slots.map((slot) => slot.label)).toEqual([
+			'Alpha Tool',
+			'Beta Tool',
+			'Delta Tool',
+			'Epsilon Tool',
+			'Gamma Tool',
+		]);
+		expect(slots.every((slot) => slot.enabled)).toBe(true);
+	});
+
+	it('should show empty slots when fewer than five launchables exist', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [
+					{ id: 'i1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone', launchable: true },
+					{ id: 'i2', itemType: 'survey-probe', displayName: 'Survey Probe', launchable: true },
+				],
+			},
+		});
+
+		const slots = component.getLaunchHotkeySlots();
+		expect(slots.map((slot) => slot.label)).toEqual([
+			'Expendabl...',
+			'Survey Probe',
+			'empty',
+			'empty',
+			'empty',
+		]);
+		expect(slots.every((slot) => !slot.enabled)).toBe(true);
+	});
+
+	it('should ignore hotkeys until an asteroid target exists', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone', launchable: true }],
+			},
+		});
+
+		component.onWindowKeyDownForTest({ key: '1' });
+		expect(component.launchRequests.length).toBe(0);
+
+		component.targetedAsteroidId = 'sample-a4';
+		component.onWindowKeyDownForTest({ key: '1' });
+		expect(component.launchRequests.length).toBe(1);
+		expect(component.launchRequests[0]).toEqual({
+			hotkey: 1,
+			itemId: 'i-1',
+			itemType: 'expendable-dart-drone',
+			targetCelestialBodyId: 'sample-a4',
+		});
+	});
+
+	it('should support both top-row and numpad hotkeys', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [
+					{ id: 'i-1', itemType: 'alpha-drone', displayName: 'Alpha Drone', launchable: true },
+					{ id: 'i-2', itemType: 'beta-drone', displayName: 'Beta Drone', launchable: true },
+				],
+			},
+		});
+
+		component.targetedAsteroidId = 'sample-a5';
+		component.onWindowKeyDownForTest({ key: '2' });
+		component.onWindowKeyDownForTest({ key: '', code: 'Numpad1' });
+
+		expect(component.launchRequests.length).toBe(2);
+		expect(component.launchRequests[0].hotkey).toBe(2);
+		expect(component.launchRequests[1].hotkey).toBe(1);
 	});
 
 	it('should trim character name and fallback when blank', () => {

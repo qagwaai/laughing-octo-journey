@@ -29,6 +29,7 @@ describe('ship-list inventory helpers', () => {
 		expect(result[0].id).toBe('item-1');
 		expect(result[0].itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 		expect(result[0].displayName).toBe(EXPENDABLE_DART_DRONE_DISPLAY_NAME);
+		expect(result[0].launchable).toBe(true);
 	});
 
 	it('returns an empty array for non-array input', () => {
@@ -57,6 +58,17 @@ describe('ship-list inventory helpers', () => {
 
 		expect(result.length).toBe(1);
 		expect(result[0].displayName).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
+	});
+
+	it('respects explicit launchable false and defaults missing launchable to true', () => {
+		const result = coerceShipInventory([
+			{ id: 'a', itemType: 'probe', displayName: 'Probe', launchable: false },
+			{ id: 'b', itemType: 'drone', displayName: 'Drone' },
+		] as unknown);
+
+		expect(result.length).toBe(2);
+		expect(result[0].launchable).toBe(false);
+		expect(result[1].launchable).toBe(true);
 	});
 });
 

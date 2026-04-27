@@ -2,6 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, viewChild } from '@angula
 import { NgtCanvas } from 'angular-three/dom';
 import ShipExteriorViewScene from '../../scene/ship-exterior-view';
 
+const DEFAULT_HOTKEY_SLOTS: ReadonlyArray<{
+	hotkey: 1 | 2 | 3 | 4 | 5;
+	item: null;
+	label: string;
+	enabled: boolean;
+}> = [
+	{ hotkey: 1, item: null, label: 'empty', enabled: false },
+	{ hotkey: 2, item: null, label: 'empty', enabled: false },
+	{ hotkey: 3, item: null, label: 'empty', enabled: false },
+	{ hotkey: 4, item: null, label: 'empty', enabled: false },
+	{ hotkey: 5, item: null, label: 'empty', enabled: false },
+];
+
 @Component({
 	selector: 'app-cold-boot-scan-page',
 	templateUrl: './cold-boot-scan.html',
@@ -24,6 +37,7 @@ export default class ColdBootScanPage {
 	protected propertiesLocationText = computed(() => this.shipExteriorView()?.propertiesLocationText() ?? 'LOC(Mkm): ---');
 	protected propertiesClusterText = computed(() => this.shipExteriorView()?.propertiesClusterText() ?? 'CLUSTER(Mkm): ---');
 	protected propertiesOffsetText = computed(() => this.shipExteriorView()?.propertiesOffsetText() ?? 'OFFSET(km): ---');
+	protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
 
 	protected hidePropertiesPanel(): void {
 		this.shipExteriorView()?.hidePropertiesPanel();
@@ -31,5 +45,9 @@ export default class ColdBootScanPage {
 
 	protected revealPropertiesPanel(): void {
 		this.shipExteriorView()?.revealPropertiesPanel();
+	}
+
+	protected launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
+		this.shipExteriorView()?.launchFromHotkeySlot(hotkey);
 	}
 }

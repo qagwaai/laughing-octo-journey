@@ -9,6 +9,7 @@ export interface ShipUpsertPayload {
 	id: string;
 	model?: string;
 	tier?: number;
+	launchable?: boolean;
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;
 }
@@ -18,6 +19,7 @@ export interface ShipUpsertResponsePayload {
 	shipName: string;
 	model: string;
 	tier: number;
+	launchable?: boolean;
 	inventory?: ShipItem[];
 	location?: CelestialBodyLocation;
 	kinematics?: ShipKinematics;

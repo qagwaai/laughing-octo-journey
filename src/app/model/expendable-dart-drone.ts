@@ -19,6 +19,7 @@ export function createExpendableDartDrone(): ExpendableDartDrone {
 		id: crypto.randomUUID(),
 		itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
 		displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+		launchable: true,
 		state: 'contained',
 		damageStatus: 'intact',
 		container: null,

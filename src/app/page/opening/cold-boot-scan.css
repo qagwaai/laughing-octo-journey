@@ -8,9 +8,76 @@
 	position: relative;
 	--ship-properties-offset-x: 16px;
 	--ship-properties-offset-y: 16px;
+	--ship-hotkey-offset-x: 16px;
+	--ship-hotkey-offset-y: 16px;
 	height: 100%;
 	min-height: 100%;
 	background: #030c12;
+}
+
+.ship-exterior-hotkey-row {
+	position: absolute;
+	left: var(--ship-hotkey-offset-x);
+	bottom: var(--ship-hotkey-offset-y);
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	z-index: 18;
+	pointer-events: auto;
+}
+
+.ship-exterior-hotkey-tile {
+	width: 4.85rem;
+	min-height: 2.35rem;
+	padding: 0.22rem 0.35rem;
+	border: 1px solid rgba(111, 165, 187, 0.35);
+	border-radius: 0.5rem;
+	background: rgba(7, 19, 30, 0.84);
+	box-shadow: inset 0 0 0 1px rgba(188, 228, 246, 0.05);
+	color: rgba(150, 181, 196, 0.7);
+	display: grid;
+	grid-template-rows: auto 1fr;
+	gap: 0.12rem;
+	text-align: left;
+	cursor: default;
+	transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+.ship-exterior-hotkey-tile__key {
+	font-size: 0.62rem;
+	letter-spacing: 0.15em;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.ship-exterior-hotkey-tile__name {
+	font-size: 0.61rem;
+	letter-spacing: 0.04em;
+	font-weight: 600;
+	line-height: 1.18;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ship-exterior-hotkey-tile--enabled {
+	border-color: rgba(138, 224, 255, 0.54);
+	background: linear-gradient(165deg, rgba(7, 39, 55, 0.9), rgba(8, 20, 32, 0.93));
+	color: #cfeeff;
+	cursor: pointer;
+	box-shadow:
+		0 7px 18px rgba(0, 7, 15, 0.36),
+		inset 0 0 0 1px rgba(202, 241, 255, 0.14);
+}
+
+.ship-exterior-hotkey-tile--enabled:hover {
+	border-color: rgba(190, 244, 255, 0.76);
+	background: linear-gradient(165deg, rgba(13, 55, 77, 0.95), rgba(9, 26, 38, 0.95));
+	transform: translateY(-1px);
+}
+
+.ship-exterior-hotkey-tile:disabled {
+	opacity: 1;
 }
 
 .ship-exterior-properties-panel {
@@ -108,9 +175,21 @@
 	.cold-boot-scan-host {
 		--ship-properties-offset-x: 8px;
 		--ship-properties-offset-y: 8px;
+		--ship-hotkey-offset-x: 8px;
+		--ship-hotkey-offset-y: 8px;
 	}
 
 	.ship-exterior-properties-panel {
 		width: min(21.5rem, calc(100% - (var(--ship-properties-offset-x) * 2)));
+	}
+
+	.ship-exterior-hotkey-row {
+		gap: 0.28rem;
+	}
+
+	.ship-exterior-hotkey-tile {
+		width: 3.82rem;
+		min-height: 2.12rem;
+		padding: 0.2rem 0.3rem;
 	}
 }

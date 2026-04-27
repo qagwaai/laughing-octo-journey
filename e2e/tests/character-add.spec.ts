@@ -83,6 +83,7 @@ test.describe('Character Add — from character list', () => {
               name: 'Starter Ship',
               model: 'Scavenger Pod',
               tier: 1,
+              launchable: true,
               inventory: [],
             },
           ],
@@ -105,6 +106,7 @@ test.describe('Character Add — from character list', () => {
             shipName: 'Starter Ship',
             model: 'Scavenger Pod',
             tier: 1,
+            launchable: true,
             inventory: [],
           },
         },
@@ -124,6 +126,7 @@ test.describe('Character Add — from character list', () => {
             id: 'drone-item-001',
             itemType: 'expendable-dart-drone',
             displayName: 'Expendable Dart Drone',
+            launchable: true,
           },
         },
       };

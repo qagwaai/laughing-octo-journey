@@ -24,6 +24,12 @@ import {
   ItemUpsertRequest,
   ItemUpsertResponse,
 } from '../model/item-upsert';
+import {
+  LAUNCH_ITEM_REQUEST_EVENT,
+  LAUNCH_ITEM_RESPONSE_EVENT,
+  LaunchItemRequest,
+  LaunchItemResponse,
+} from '../model/launch-item';
 
 /**
  * Socket.IO Service
@@ -156,6 +162,20 @@ export class SocketService {
     }
 
     this.emit(ITEM_UPSERT_REQUEST_EVENT, request);
+  }
+
+  /**
+   * Emit a launch item request and optionally handle a one-time response.
+   */
+  launchItem(
+    request: LaunchItemRequest,
+    onResponse?: (response: LaunchItemResponse) => void,
+  ): void {
+    if (onResponse) {
+      this.once(LAUNCH_ITEM_RESPONSE_EVENT, onResponse);
+    }
+
+    this.emit(LAUNCH_ITEM_REQUEST_EVENT, request);
   }
 
   /**

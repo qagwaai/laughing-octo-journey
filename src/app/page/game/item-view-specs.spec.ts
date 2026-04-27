@@ -76,10 +76,12 @@ class MockItemViewSpecsPage {
 
 function makeDroneItem(overrides?: Partial<ShipItem>): ShipItem {
 	const now = '2026-01-01T00:00:00.000Z';
+	const { launchable = true, ...restOverrides } = overrides ?? {};
 	return {
 		id: 'item-1',
 		itemType: 'expendable-dart-drone',
 		displayName: 'Expendable Dart Drone',
+		launchable,
 		state: 'contained',
 		damageStatus: 'intact',
 		container: null,
@@ -92,7 +94,7 @@ function makeDroneItem(overrides?: Partial<ShipItem>): ShipItem {
 		discoveredByCharacterId: null,
 		createdAt: now,
 		updatedAt: now,
-		...overrides,
+		...restOverrides,
 	};
 }
 

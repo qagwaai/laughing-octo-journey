@@ -14,6 +14,11 @@ import {
   ITEM_UPSERT_RESPONSE_EVENT,
   type ItemUpsertRequest,
 } from '../model/item-upsert';
+import {
+  LAUNCH_ITEM_REQUEST_EVENT,
+  LAUNCH_ITEM_RESPONSE_EVENT,
+  type LaunchItemRequest,
+} from '../model/launch-item';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -301,6 +306,61 @@ describe('SocketService', () => {
         message: 'Item created.',
         playerName: 'Pioneer',
         item: { ...request.item, id: 'item-1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
+      };
+      responseCallback?.(fakeResponse);
+      expect(callbackResponse).toEqual(fakeResponse);
+    });
+  });
+
+  describe('launchItem', () => {
+    it('should register a once listener for launch-item-response and emit launch-item-request', () => {
+      let emittedEvent: string | null = null;
+      let emittedPayload: unknown;
+      let onceEvent: string | null = null;
+      let responseCallback: ((data: unknown) => void) | undefined;
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvent = event;
+          emittedPayload = data;
+        },
+        once: (event: string, callback: (data: unknown) => void) => {
+          onceEvent = event;
+          responseCallback = callback;
+        },
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {}
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: LaunchItemRequest = {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        shipId: 'ship-1',
+        sessionKey: 'session-123',
+        targetCelestialBodyId: 'sample-a3',
+        hotkey: 3,
+        itemId: 'item-3',
+        itemType: 'expendable-dart-drone',
+      };
+
+      let callbackResponse: unknown;
+      service.launchItem(request, (response) => {
+        callbackResponse = response;
+      });
+
+      expect(onceEvent).not.toBeNull();
+      expect(onceEvent!).toBe(LAUNCH_ITEM_RESPONSE_EVENT);
+      expect(emittedEvent).not.toBeNull();
+      expect(emittedEvent!).toBe(LAUNCH_ITEM_REQUEST_EVENT);
+      expect(emittedPayload).toEqual(request);
+
+      const fakeResponse = {
+        success: true,
+        message: 'Launch queued.',
+        ...request,
       };
       responseCallback?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);

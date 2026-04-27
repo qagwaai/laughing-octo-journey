@@ -43,11 +43,13 @@ import {
 	type ShipListResponse,
 	type ShipSummary,
 } from '../model/ship-list';
+import type { ShipItem } from '../model/ship-item';
 import {
 	resolveShipExteriorViewSeedPolicy,
 	type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
 import { Triple } from '../model/triple';
+import { type LaunchItemRequest } from '../model/launch-item';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
@@ -74,6 +76,13 @@ interface AsteroidScanSample {
 	motionRate: number;
 	motionRadius: number;
 	bobAmplitude: number;
+}
+
+interface LaunchHotkeySlot {
+	hotkey: 1 | 2 | 3 | 4 | 5;
+	item: ShipItem | null;
+	label: string;
+	enabled: boolean;
 }
 
 function formatVelocityText(k: AsteroidKinematics | null): string {
@@ -228,6 +237,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly TARGET_HOLD_MS = 250;
 	private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
+	private static readonly HOTKEY_SLOT_COUNT = 5;
 
 	private router = inject(Router);
 	private socketService = inject(SocketService);
@@ -248,6 +258,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
 	protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
 	protected hasExpendableDartDrone = signal(hasExpendableDartDroneInInventory(this.navigationState.joinShip?.inventory));
+	private activeShipId = signal(this.navigationState.joinShip?.id?.trim() ?? '');
+	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
 	protected canTargetAsteroids = computed(() =>
 		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
 	);
@@ -256,6 +268,22 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	protected activeScanAsteroidId = signal<string | null>(null);
 	protected targetedAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([]);
+	readonly launchHotkeysEnabled = computed(() => !!this.targetedAsteroidId());
+	readonly launchHotkeySlots = computed<LaunchHotkeySlot[]>(() => {
+		const launchables = this.launchableInventory().slice(0, ShipExteriorViewScene.HOTKEY_SLOT_COUNT);
+		const enabled = this.launchHotkeysEnabled();
+
+		return Array.from({ length: ShipExteriorViewScene.HOTKEY_SLOT_COUNT }, (_, index) => {
+			const hotkey = (index + 1) as 1 | 2 | 3 | 4 | 5;
+			const item = launchables[index] ?? null;
+			return {
+				hotkey,
+				item,
+				label: item ? getLaunchableLabel(item) : 'empty',
+				enabled: enabled && !!item,
+			};
+		});
+	});
 	readonly hoveredScannedAsteroid = computed<AsteroidScanSample | null>(() => {
 		const hoveredId = this.activeScanAsteroidId();
 		if (!hoveredId) {
@@ -436,6 +464,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		window.addEventListener('pointerdown', this.onWindowPointerDown);
 		window.addEventListener('pointerup', this.onWindowPointerUp);
 		window.addEventListener('contextmenu', this.onWindowContextMenu);
+		window.addEventListener('keydown', this.onWindowKeyDown);
 	}
 
 	private resolveSeedPolicy(): 'new' | 'resume' {
@@ -455,6 +484,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		window.removeEventListener('pointerdown', this.onWindowPointerDown);
 		window.removeEventListener('pointerup', this.onWindowPointerUp);
 		window.removeEventListener('contextmenu', this.onWindowContextMenu);
+		window.removeEventListener('keydown', this.onWindowKeyDown);
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
 			this.scanIntervalId = null;
@@ -493,6 +523,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}
 
 		event.preventDefault();
+	};
+
+	private onWindowKeyDown = (event: KeyboardEvent): void => {
+		const hotkey = resolveHotkeyNumber(event);
+		if (!hotkey) {
+			return;
+		}
+
+		if (!this.targetedAsteroidId()) {
+			return;
+		}
+
+		event.preventDefault();
+		this.launchFromHotkeySlot(hotkey);
 	};
 
 	private seedAsteroidsForInProgressMission(): void {
@@ -637,6 +681,53 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
 		const nextHasDrone = hasExpendableDartDroneInInventory(matchingShip?.inventory);
 		this.hasExpendableDartDrone.set(nextHasDrone);
+		this.activeShipId.set(matchingShip?.id?.trim() ?? '');
+		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
+	}
+
+	private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {
+		const inventory = coerceShipInventory(rawInventory);
+		return inventory
+			.filter((item) => item.launchable)
+			.sort((a, b) => {
+				const left = (a.displayName || a.itemType).toLowerCase();
+				const right = (b.displayName || b.itemType).toLowerCase();
+				return left.localeCompare(right);
+			});
+	}
+
+	launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
+		if (!this.targetedAsteroidId()) {
+			return;
+		}
+
+		const slot = this.launchHotkeySlots().find((candidate) => candidate.hotkey === hotkey);
+		if (!slot?.item || !slot.enabled) {
+			return;
+		}
+
+		const sessionKey = this.sessionService.getSessionKey()?.trim();
+		const characterId = this.navigationState.joinCharacter?.id?.trim();
+		const shipId = this.activeShipId();
+		const targetCelestialBodyId = this.targetedAsteroidId();
+		const playerName = this.playerName().trim();
+
+		if (!sessionKey || !characterId || !shipId || !targetCelestialBodyId || !playerName) {
+			return;
+		}
+
+		const request: LaunchItemRequest = {
+			playerName,
+			characterId,
+			shipId,
+			sessionKey,
+			targetCelestialBodyId,
+			hotkey,
+			itemId: slot.item.id,
+			itemType: slot.item.itemType,
+		};
+
+		this.socketService.launchItem(request);
 	}
 
 	protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {
@@ -804,5 +895,35 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	revealPropertiesPanel(): void {
 		this.propertiesPanelHidden.set(false);
+	}
+}
+
+function getLaunchableLabel(item: ShipItem): string {
+	const preferred = item.displayName?.trim() || item.itemType?.trim() || 'Unknown';
+	if (preferred.length <= 12) {
+		return preferred;
+	}
+
+	return `${preferred.slice(0, 9)}...`;
+}
+
+function resolveHotkeyNumber(event: KeyboardEvent): 1 | 2 | 3 | 4 | 5 | null {
+	if (event.key >= '1' && event.key <= '5') {
+		return Number(event.key) as 1 | 2 | 3 | 4 | 5;
+	}
+
+	switch (event.code) {
+		case 'Numpad1':
+			return 1;
+		case 'Numpad2':
+			return 2;
+		case 'Numpad3':
+			return 3;
+		case 'Numpad4':
+			return 4;
+		case 'Numpad5':
+			return 5;
+		default:
+			return null;
 	}
 }
