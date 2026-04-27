@@ -10,12 +10,24 @@ interface AsteroidSample {
 	scanned: boolean;
 }
 
-interface ColdBootScanNavigationState {
+interface ShipItem {
+	id: string;
+	itemType: string;
+}
+
+interface ShipSummary {
+	id: string;
+	model?: string;
+	inventory?: ShipItem[];
+}
+
+interface ShipExteriorViewNavigationState {
 	playerName?: string;
 	joinCharacter?: {
 		id: string;
 		characterName?: string;
 	};
+	joinShip?: ShipSummary;
 	firstTargetMissionStatus?: string;
 }
 
@@ -24,6 +36,10 @@ class MockColdBootScanScene {
 	playerName = 'Unknown Pilot';
 	characterName = 'Unbound';
 	activeScanAsteroidId: string | null = null;
+	targetedAsteroidId: string | null = null;
+	rightHoldCandidateId: string | null = null;
+	shipModel = 'Scavenger Pod';
+	hasExpendableDartDrone = false;
 	asteroidSamples: AsteroidSample[] = [
 		{ id: 'sample-a1', scanProgress: 0, scanned: false },
 		{ id: 'sample-a2', scanProgress: 0, scanned: false },
@@ -32,9 +48,16 @@ class MockColdBootScanScene {
 		{ id: 'sample-a5', scanProgress: 0, scanned: false },
 	];
 
-	constructor(state: ColdBootScanNavigationState = {}) {
+	constructor(state: ShipExteriorViewNavigationState = {}) {
 		this.playerName = state.playerName ?? 'Unknown Pilot';
 		this.characterName = resolveCharacterName(state.joinCharacter?.characterName);
+		this.shipModel = state.joinShip?.model?.trim() || 'Scavenger Pod';
+		this.hasExpendableDartDrone =
+			state.joinShip?.inventory?.some((item) => item.itemType === 'expendable-dart-drone') ?? false;
+	}
+
+	canTargetAsteroids(): boolean {
+		return this.shipModel === 'Scavenger Pod' && this.hasExpendableDartDrone;
 	}
 
 	onAsteroidHoverChange(event: { id: string; hovering: boolean }): void {
@@ -70,6 +93,31 @@ class MockColdBootScanScene {
 				scanned: nextProgress >= 100,
 			};
 		});
+	}
+
+	onAsteroidRightPointerDown(event: { id: string; button: number }): void {
+		if (event.button !== 2 || !this.canTargetAsteroids()) {
+			return;
+		}
+
+		this.rightHoldCandidateId = event.id;
+	}
+
+	onAsteroidRightPointerUp(event: { id: string; button: number }): void {
+		if (event.button !== 2) {
+			return;
+		}
+
+		this.rightHoldCandidateId = null;
+	}
+
+	completeTargetHoldForTest(): void {
+		if (!this.rightHoldCandidateId) {
+			return;
+		}
+
+		this.targetedAsteroidId = this.rightHoldCandidateId;
+		this.rightHoldCandidateId = null;
 	}
 
 	scanStatusLine(): string {
@@ -132,6 +180,67 @@ describe('ShipExteriorViewScene', () => {
 
 		expect(component.playerName).toBe('Pioneer');
 		expect(component.characterName).toBe('Nova Prime');
+	});
+
+	it('should enable targeting only for Scavenger Pod with expendable-dart-drone inventory', () => {
+		const enabled = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
+			},
+		});
+		const wrongModel = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-2',
+				model: 'Expendable Dart Ship',
+				inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
+			},
+		});
+		const noDrone = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-3',
+				model: 'Scavenger Pod',
+				inventory: [{ id: 'i-2', itemType: 'basic-mining-laser' }],
+			},
+		});
+
+		expect(enabled.canTargetAsteroids()).toBe(true);
+		expect(wrongModel.canTargetAsteroids()).toBe(false);
+		expect(noDrone.canTargetAsteroids()).toBe(false);
+	});
+
+	it('should lock a single target after right-click hold when targeting is enabled', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
+			},
+		});
+
+		component.onAsteroidRightPointerDown({ id: 'sample-a2', button: 2 });
+		component.completeTargetHoldForTest();
+		expect(component.targetedAsteroidId).toBe('sample-a2');
+
+		component.onAsteroidRightPointerDown({ id: 'sample-a4', button: 2 });
+		component.completeTargetHoldForTest();
+		expect(component.targetedAsteroidId).toBe('sample-a4');
+	});
+
+	it('should not lock target when gating is disabled', () => {
+		const component = new MockColdBootScanScene({
+			joinShip: {
+				id: 's-1',
+				model: 'Scavenger Pod',
+				inventory: [{ id: 'i-1', itemType: 'basic-mining-laser' }],
+			},
+		});
+
+		component.onAsteroidRightPointerDown({ id: 'sample-a3', button: 2 });
+		component.completeTargetHoldForTest();
+
+		expect(component.targetedAsteroidId).toBeNull();
 	});
 
 	it('should trim character name and fallback when blank', () => {

@@ -37,16 +37,20 @@ import { PlayerCharacterSummary } from '../model/character-list';
 import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
+	coerceShipInventory,
+	coerceShipModel,
 	type ShipListRequest,
 	type ShipListResponse,
+	type ShipSummary,
 } from '../model/ship-list';
 import { Triple } from '../model/triple';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
-interface ColdBootScanNavigationState {
+interface ShipExteriorViewNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
+	joinShip?: ShipSummary;
 	firstTargetMissionStatus?: MissionStatus;
 }
 
@@ -65,6 +69,47 @@ interface AsteroidScanSample {
 	motionRate: number;
 	motionRadius: number;
 	bobAmplitude: number;
+}
+
+function normalizeInventoryToken(value: unknown): string {
+	if (typeof value !== 'string') {
+		return '';
+	}
+
+	return value
+		.trim()
+		.toLowerCase()
+		.replace(/[_\s]+/g, '-')
+		.replace(/[^a-z0-9-]/g, '');
+}
+
+function hasExpendableDartDroneInInventory(rawInventory: unknown): boolean {
+	const normalizedTarget = 'expendable-dart-drone';
+	const normalizedDisplayTarget = 'expendable-dart-drone';
+
+	const coercedInventory = coerceShipInventory(rawInventory);
+	if (coercedInventory.some((item) => normalizeInventoryToken(item.itemType) === normalizedTarget)) {
+		return true;
+	}
+
+	if (!Array.isArray(rawInventory)) {
+		return false;
+	}
+
+	return rawInventory.some((rawItem) => {
+		if (!rawItem || typeof rawItem !== 'object') {
+			return false;
+		}
+
+		const item = rawItem as Record<string, unknown>;
+		const itemType = normalizeInventoryToken(item['itemType']);
+		if (itemType === normalizedTarget) {
+			return true;
+		}
+
+		const displayName = normalizeInventoryToken(item['displayName']);
+		return displayName === normalizedDisplayTarget;
+	});
 }
 
 function hashToSeed(input: string): number {
@@ -95,6 +140,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly SCAN_TICK_MS = 100;
 	private static readonly SCAN_TOTAL_MS = 10000;
 	private static readonly SCAN_STEP = 100 / (ShipExteriorViewScene.SCAN_TOTAL_MS / ShipExteriorViewScene.SCAN_TICK_MS);
+	private static readonly TARGET_HOLD_MS = 250;
 	private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 
@@ -102,19 +148,37 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private scanIntervalId: number | null = null;
+	private targetHoldTimeoutId: number | null = null;
+	protected targetHoldCandidateId = signal<string | null>(null);
 	private sceneElapsedSeconds = 0;
 	private sentCelestialBodyUpserts = new Set<string>();
 	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeCelestialBodyListResponse?: () => void;
-	private navigationState: ColdBootScanNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as ColdBootScanNavigationState | undefined) ??
-		(history.state as ColdBootScanNavigationState | undefined) ??
+	private navigationState: ShipExteriorViewNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
+		(history.state as ShipExteriorViewNavigationState | undefined) ??
 		{};
 
 	protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
 	protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
+	protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
+	protected hasExpendableDartDrone = signal(hasExpendableDartDroneInInventory(this.navigationState.joinShip?.inventory));
+	protected canTargetAsteroids = computed(() =>
+		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
+	);
+	protected Math = Math;
 	protected activeScanAsteroidId = signal<string | null>(null);
+	protected targetedAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([]);
+	protected targetedAsteroidPosition = computed<[number, number, number] | null>(() => {
+		const targetedId = this.targetedAsteroidId();
+		if (!targetedId) {
+			return null;
+		}
+
+		const target = this.asteroidSamples().find((sample) => sample.id === targetedId);
+		return target?.position ?? null;
+	});
 
 	private static generateAsteroidSamples(clusterCenterKm?: Triple, random: () => number = Math.random, count?: number): AsteroidScanSample[] {
 		const resolvedCount = count ?? (Math.floor(random() * 16) + 5); // 5–20
@@ -199,6 +263,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const asteroids = this.asteroidSamples();
 		const total = asteroids.length;
 		const completedCount = asteroids.filter((sample) => sample.scanned).length;
+		const holdCandidateId = this.targetHoldCandidateId();
+		const targetedId = this.targetedAsteroidId();
+
+		if (holdCandidateId) {
+			return `TARGETING // HOLD // ${holdCandidateId.toUpperCase()}`;
+		}
+
+		if (targetedId) {
+			return `TARGET LOCKED // ${targetedId.toUpperCase()}`;
+		}
 
 		if (completedCount === total) {
 			return `SCAN COMPLETE // ALL ${total} SAMPLES CATALOGUED`;
@@ -231,16 +305,57 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.scanIntervalId = window.setInterval(() => {
 			this.tickScene();
 		}, ShipExteriorViewScene.SCAN_TICK_MS);
+		window.addEventListener('pointerdown', this.onWindowPointerDown);
+		window.addEventListener('pointerup', this.onWindowPointerUp);
+		window.addEventListener('contextmenu', this.onWindowContextMenu);
 	}
 
 	ngOnDestroy(): void {
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeCelestialBodyListResponse?.();
+		this.clearTargetHoldTimer();
+		window.removeEventListener('pointerdown', this.onWindowPointerDown);
+		window.removeEventListener('pointerup', this.onWindowPointerUp);
+		window.removeEventListener('contextmenu', this.onWindowContextMenu);
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
 			this.scanIntervalId = null;
 		}
 	}
+
+	private onWindowPointerDown = (event: PointerEvent): void => {
+		if (event.button !== 2) {
+			return;
+		}
+
+		const hoveredAsteroidId = this.activeScanAsteroidId();
+
+		if (!this.canTargetAsteroids()) {
+			return;
+		}
+
+		if (!hoveredAsteroidId) {
+			return;
+		}
+
+		this.beginTargetHold(hoveredAsteroidId);
+	};
+
+	private onWindowPointerUp = (event: PointerEvent): void => {
+		if (event.button !== 2) {
+			return;
+		}
+
+		this.clearTargetHoldTimer();
+	};
+
+	private onWindowContextMenu = (event: MouseEvent): void => {
+		if (!this.canTargetAsteroids()) {
+			return;
+		}
+
+		event.preventDefault();
+	};
 
 	private seedAsteroidsForInProgressMission(): void {
 		const playerName = this.navigationState.playerName?.trim() ?? '';
@@ -259,6 +374,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			SHIP_LIST_RESPONSE_EVENT,
 			(shipResponse: ShipListResponse) => {
 				this.unsubscribeShipListResponse?.();
+				if (shipResponse.success) {
+					this.updateTargetingCapabilityFromShipList(shipResponse.ships);
+				}
 
 				const firstShip = shipResponse.success ? shipResponse.ships?.[0] : undefined;
 				const center = firstShip?.location?.positionKm;
@@ -347,6 +465,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					return;
 				}
 
+				this.updateTargetingCapabilityFromShipList(response.ships);
+
 				const firstShip = response.ships?.[0];
 				const center = firstShip?.location?.positionKm;
 				if (!center) {
@@ -370,6 +490,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
+	private updateTargetingCapabilityFromShipList(ships: ShipSummary[] | undefined): void {
+		if (!Array.isArray(ships) || ships.length === 0) {
+			return;
+		}
+
+		const navShipId = this.navigationState.joinShip?.id;
+		const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
+		const nextHasDrone = hasExpendableDartDroneInInventory(matchingShip?.inventory);
+		this.hasExpendableDartDrone.set(nextHasDrone);
+	}
+
 	protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {
 		if (event.hovering) {
 			const previousActiveId = this.activeScanAsteroidId();
@@ -385,6 +516,41 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		if (this.activeScanAsteroidId() === event.id) {
 			this.activeScanAsteroidId.set(null);
 		}
+	}
+
+	protected onAsteroidRightPointerDown(event: { id: string; button: number }): void {
+		if (event.button !== 2 || !this.canTargetAsteroids()) {
+			return;
+		}
+
+		this.beginTargetHold(event.id);
+	}
+
+	protected onAsteroidRightPointerUp(event: { id: string; button: number }): void {
+		if (event.button !== 2) {
+			return;
+		}
+
+		this.clearTargetHoldTimer();
+	}
+
+	private beginTargetHold(asteroidId: string): void {
+		this.clearTargetHoldTimer();
+		this.targetHoldCandidateId.set(asteroidId);
+		this.targetHoldTimeoutId = window.setTimeout(() => {
+			if (this.targetHoldCandidateId() === asteroidId) {
+				this.targetedAsteroidId.set(asteroidId);
+			}
+			this.clearTargetHoldTimer();
+		}, ShipExteriorViewScene.TARGET_HOLD_MS);
+	}
+
+	private clearTargetHoldTimer(): void {
+		if (this.targetHoldTimeoutId !== null) {
+			clearTimeout(this.targetHoldTimeoutId);
+			this.targetHoldTimeoutId = null;
+		}
+		this.targetHoldCandidateId.set(null);
 	}
 
 	private tickScene(): void {

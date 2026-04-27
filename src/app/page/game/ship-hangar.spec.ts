@@ -212,6 +212,7 @@ class MockShipHangarPage {
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
+				joinShip: ship,
 			},
 		});
 	}
@@ -430,7 +431,7 @@ describe('ShipHangarPage', () => {
 		);
 	});
 
-	it('should navigate to ship-exterior-view with player and character state', () => {
+	it('should navigate to ship-exterior-view with full ship payload', () => {
 		socketService.connected = false;
 		const mockRouter: MockRouter = { navigate: jasmine.createSpy('navigate') };
 		const character = { id: 'c-1', characterName: 'Nova' };
@@ -440,7 +441,14 @@ describe('ShipHangarPage', () => {
 			{ playerName: 'Pioneer', joinCharacter: character },
 			mockRouter,
 		);
-		const ship: ShipSummary = { id: 's-1', name: 'Dart Runner' };
+		const ship: ShipSummary = {
+			id: 's-1',
+			name: 'Dart Runner',
+			model: 'Scavenger Pod',
+			inventory: [
+				{ id: 'drone-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone', state: 'contained', damageStatus: 'intact' },
+			],
+		};
 
 		component.navigateToExteriorView(ship);
 
@@ -451,6 +459,7 @@ describe('ShipHangarPage', () => {
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: character,
+					joinShip: ship,
 				},
 			},
 		);

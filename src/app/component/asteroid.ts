@@ -25,6 +25,11 @@ export interface AsteroidHoverEvent {
 	hovering: boolean;
 }
 
+export interface AsteroidPointerButtonEvent {
+	id: string;
+	button: number;
+}
+
 export type AsteroidGeometryKind = 'dodecahedron' | 'icosahedron' | 'octahedron';
 
 export interface AsteroidRevealProfile {
@@ -105,6 +110,8 @@ export function generateRandomAsteroidRevealProfile(random: () => number = Math.
 export class Asteroid {
 	asteroidId = input('sample-1');
 	position = input<[number, number, number]>([0, 0, 0]);
+	targetingHold = input(false);
+	targeted = input(false);
 	scanProgress = input(0);
 	scanned = input(false);
 	revealedMaterial = input<AsteroidMaterialProfile | null>(null);
@@ -113,6 +120,8 @@ export class Asteroid {
 	revealedClusterCenterKm = input<Triple | null>(null);
 
 	@Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
+	@Output() pointerButtonDown = new EventEmitter<AsteroidPointerButtonEvent>();
+	@Output() pointerButtonUp = new EventEmitter<AsteroidPointerButtonEvent>();
 
 	private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('mesh');
 	private revealProfile = signal<AsteroidRevealProfile | null>(null);
@@ -245,6 +254,8 @@ export class Asteroid {
 	protected ringScaleC = computed(() => 1 + Math.sin(this.pulsePhase() + 2.2) * 0.1 + this.morphPulse() * 0.24);
 	protected sweepOffsetY = computed(() => Math.sin(this.pulsePhase() * 2.2) * 0.43);
 	protected sweepOpacity = computed(() => resolveAsteroidSweepOpacity(this.hovered()));
+	protected targetHoldRingOpacity = computed(() => (this.targetingHold() ? 0.95 : 0));
+	protected targetedRingOpacity = computed(() => (this.targeted() ? 0.9 : 0));
 
 	constructor() {
 		const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);
@@ -300,6 +311,32 @@ export class Asteroid {
 		this.hoverChange.emit({
 			id: this.asteroidId(),
 			hovering,
+		});
+	}
+
+	protected onPointerDown(event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number } }): void {
+		const button = event.button ?? event.nativeEvent?.button;
+		const buttons = event.buttons ?? event.nativeEvent?.buttons;
+		const isRightButton = button === 2 || (button === undefined && typeof buttons === 'number' && (buttons & 2) === 2);
+		if (!isRightButton) {
+			return;
+		}
+
+		this.pointerButtonDown.emit({
+			id: this.asteroidId(),
+			button: 2,
+		});
+	}
+
+	protected onPointerUp(event: { button?: number; nativeEvent?: { button?: number } }): void {
+		const button = event.button ?? event.nativeEvent?.button;
+		if (button !== 2) {
+			return;
+		}
+
+		this.pointerButtonUp.emit({
+			id: this.asteroidId(),
+			button,
 		});
 	}
 }

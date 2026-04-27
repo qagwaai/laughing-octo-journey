@@ -150,6 +150,7 @@ export default class ShipHangarPage {
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
+				joinShip: ship,
 			},
 		});
 	}

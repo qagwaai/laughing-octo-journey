@@ -79,8 +79,9 @@ export function coerceShipItem(raw: unknown): ShipItem | null {
 	if (!id) return null;
 	const itemType = typeof obj['itemType'] === 'string' ? obj['itemType'].trim() : '';
 	if (!itemType) return null;
-	const displayName = typeof obj['displayName'] === 'string' ? obj['displayName'].trim() : '';
-	if (!displayName) return null;
+	const rawDisplayName = typeof obj['displayName'] === 'string' ? obj['displayName'].trim() : '';
+	const legacyName = typeof obj['name'] === 'string' ? obj['name'].trim() : '';
+	const displayName = rawDisplayName || legacyName || itemType;
 	const now = new Date().toISOString();
 	return {
 		id,

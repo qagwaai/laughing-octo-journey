@@ -5,6 +5,8 @@
 		[scale]="meshScale()"
 		(pointerover)="emitHover(true)"
 		(pointerout)="emitHover(false)"
+		(pointerdown)="onPointerDown($event)"
+		(pointerup)="onPointerUp($event)"
 		input
 		castShadow
 	>
@@ -135,6 +137,38 @@
 		[color]="'#9defff'"
 		[transparent]="true"
 		[opacity]="ringOpacityC()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh
+	[name]="asteroidId() + '-target-hold-ring'"
+	[visible]="targetingHold()"
+	[position]="position()"
+	[rotation]="[Math.PI / 2, -pulsePhase() * 0.9, 0]"
+	[scale]="1.24"
+>
+	<ngt-torus-geometry *args="[1.2, 0.03, 10, 64]" />
+	<ngt-mesh-basic-material
+		[color]="'#ff4747'"
+		[transparent]="true"
+		[opacity]="targetHoldRingOpacity()"
+		[depthWrite]="false"
+	/>
+</ngt-mesh>
+
+<ngt-mesh
+	[name]="asteroidId() + '-target-ring'"
+	[visible]="targeted()"
+	[position]="position()"
+	[rotation]="[Math.PI / 2, pulsePhase() * 0.45, 0]"
+	[scale]="1.16"
+>
+	<ngt-torus-geometry *args="[1.12, 0.02, 10, 64]" />
+	<ngt-mesh-basic-material
+		[color]="'#ffb347'"
+		[transparent]="true"
+		[opacity]="targetedRingOpacity()"
 		[depthWrite]="false"
 	/>
 </ngt-mesh>

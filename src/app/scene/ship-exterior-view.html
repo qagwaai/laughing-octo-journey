@@ -14,6 +14,8 @@
 		<app-asteroid
 			[asteroidId]="sample.id"
 			[position]="sample.position"
+			[targetingHold]="targetHoldCandidateId() === sample.id"
+			[targeted]="targetedAsteroidId() === sample.id"
 			[scanProgress]="sample.scanProgress"
 			[scanned]="sample.scanned"
 			[revealedMaterial]="sample.revealedMaterial"
@@ -21,7 +23,43 @@
 			[revealedLocation]="sample.scanned ? sample.solarSystemLocation : null"
 			[revealedClusterCenterKm]="sample.scanned ? sample.clusterCenterKm : null"
 			(hoverChange)="onAsteroidHoverChange($event)"
+			(pointerButtonDown)="onAsteroidRightPointerDown($event)"
+			(pointerButtonUp)="onAsteroidRightPointerUp($event)"
 		/>
+	}
+
+	@if (targetedAsteroidPosition(); as targetPosition) {
+		<ngt-group [position]="targetPosition">
+			<ngt-mesh [rotation]="[Math.PI / 2, 0, 0]">
+				<ngt-torus-geometry *args="[1.34, 0.02, 12, 64]" />
+				<ngt-mesh-basic-material
+					[color]="'#ff3535'"
+					[transparent]="true"
+					[opacity]="0.94"
+					[depthWrite]="false"
+				/>
+			</ngt-mesh>
+
+			<ngt-mesh [rotation]="[0, 0, 0]">
+				<ngt-box-geometry *args="[2.8, 0.03, 0.03]" />
+				<ngt-mesh-basic-material
+					[color]="'#ff3535'"
+					[transparent]="true"
+					[opacity]="0.9"
+					[depthWrite]="false"
+				/>
+			</ngt-mesh>
+
+			<ngt-mesh [rotation]="[0, 0, Math.PI / 2]">
+				<ngt-box-geometry *args="[2.8, 0.03, 0.03]" />
+				<ngt-mesh-basic-material
+					[color]="'#ff3535'"
+					[transparent]="true"
+					[opacity]="0.9"
+					[depthWrite]="false"
+				/>
+			</ngt-mesh>
+		</ngt-group>
 	}
 </ngt-group>
 
