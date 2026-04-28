@@ -12,6 +12,59 @@ export interface LaunchItemRequest {
 	itemType: string;
 }
 
+export interface LaunchItemContainer {
+	containerType: 'ship' | 'market';
+	containerId: string;
+}
+
+export interface LaunchItemConsumedState {
+	id: string;
+	state: 'contained' | 'deployed' | 'destroyed';
+	container: LaunchItemContainer | null;
+	launchable: boolean;
+	destroyedAt?: string;
+	destroyedReason?: string;
+	updatedAt?: string;
+}
+
+export interface LaunchItemYieldedMaterial {
+	material: string;
+	rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
+	quantity: number;
+}
+
+export interface LaunchItemYieldedItem {
+	id: string;
+	itemType: string;
+	displayName: string;
+	state: 'contained' | 'deployed' | 'destroyed';
+	container: LaunchItemContainer | null;
+	launchable: boolean;
+}
+
+export interface LaunchItemTargetCelestialBodyResolution {
+	id: string;
+	state: 'active' | 'destroyed';
+	destroyedAt: string | null;
+	destroyedReason: string | null;
+	debrisSeed: number | null;
+	debris: Array<{
+		material: string;
+		rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
+		quantity: number;
+		itemType: string;
+	}>;
+}
+
+export interface LaunchItemResolution {
+	outcome: 'target-destroyed' | 'no-effect';
+	targetDestroyed: boolean;
+	yieldedMaterials: LaunchItemYieldedMaterial[];
+	yieldedItems: LaunchItemYieldedItem[];
+	targetCelestialBody?: LaunchItemTargetCelestialBodyResolution;
+	launchSeed: number;
+}
+
 export interface LaunchItemResponse {
 	success: boolean;
 	message: string;
@@ -22,4 +75,6 @@ export interface LaunchItemResponse {
 	hotkey: 1 | 2 | 3 | 4 | 5;
 	itemId: string;
 	itemType: string;
+	launchedItem?: LaunchItemConsumedState;
+	resolution?: LaunchItemResolution;
 }

@@ -50,7 +50,48 @@ This document describes the socket message contracts currently used by the appli
 | `mission-upsert-response` | server -> client | Return mission upsert result (logical contract; currently received as `add-mission-response`) |
 | `list-missions-request` | client -> server | Fetch missions and statuses for selected character |
 | `list-missions-response` | server -> client | Return mission list/statuses |
+| `launch-item-request` | client -> server | Launch a ship inventory item at a target celestial body |
+| `launch-item-response` | server -> client | Return launch outcome and resolution details |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
+
+---
+
+## Launch Item
+
+### `launch-item-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "characterId": "string",
+  "shipId": "string",
+  "targetCelestialBodyId": "string",
+  "hotkey": 1,
+  "itemId": "string",
+  "itemType": "string"
+}
+```
+
+### `launch-item-response` (response)
+
+Required payload fields on success include request echo fields plus:
+
+- `launchedItem`
+- `resolution.outcome` (`target-destroyed` | `no-effect`)
+- `resolution.targetDestroyed`
+- `resolution.yieldedMaterials`
+- `resolution.yieldedItems`
+- `resolution.launchSeed`
+- `resolution.targetCelestialBody` when outcome is `target-destroyed`
+
+Client behavior decision:
+
+- The client allows rapid launches (no single in-flight lock).
+- Responses are processed from a shared `launch-item-response` listener.
+- After each successful response, the client refetches `ship-list-request` and `celestial-body-list-request` to reconcile authoritative inventory and asteroid state.
 
 ---
 

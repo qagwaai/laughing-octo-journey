@@ -19,6 +19,21 @@
 		}
 	</section>
 
+	@if (activeLaunchToast(); as toast) {
+		<section
+			class="ship-exterior-launch-toast"
+			[class.ship-exterior-launch-toast--success]="toast.tone === 'success'"
+			[class.ship-exterior-launch-toast--error]="toast.tone === 'error'"
+			role="status"
+			aria-live="polite"
+		>
+			<p>{{ toast.message }}</p>
+			@if (toast.seed !== null) {
+				<span class="ship-exterior-launch-toast__seed">seed {{ toast.seed }}</span>
+			}
+		</section>
+	}
+
 	@if (showPropertiesPanel()) {
 		<section class="ship-exterior-properties-panel" aria-live="polite">
 			<header class="ship-exterior-properties-panel__header">

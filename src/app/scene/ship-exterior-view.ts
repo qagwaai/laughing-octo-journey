@@ -50,7 +50,12 @@ import {
 	type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
 import { Triple } from '../model/triple';
-import { type LaunchItemRequest } from '../model/launch-item';
+import {
+	LAUNCH_ITEM_REQUEST_EVENT,
+	LAUNCH_ITEM_RESPONSE_EVENT,
+	type LaunchItemRequest,
+	type LaunchItemResponse,
+} from '../model/launch-item';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
@@ -64,6 +69,7 @@ interface ShipExteriorViewNavigationState {
 
 interface AsteroidScanSample {
 	id: string;
+	serverCelestialBodyId: string | null;
 	position: [number, number, number];
 	basePosition: [number, number, number];
 	scanProgress: number;
@@ -90,6 +96,12 @@ interface LaunchHotkeySlot {
 interface SolarSystemSunConfig {
 	color: string;
 	radius: number;
+}
+
+interface LaunchFeedbackToast {
+	message: string;
+	tone: 'success' | 'error';
+	seed: number | null;
 }
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
@@ -259,6 +271,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private static readonly SCANNED_MOTION_DAMPING = 0.65;
 	private static readonly HOTKEY_SLOT_COUNT = 5;
 	private static readonly HOTKEY_LAUNCH_FLASH_MS = 220;
+	private static readonly POST_LAUNCH_REFRESH_DEBOUNCE_MS = 90;
+	private static readonly LAUNCH_TOAST_MS = 3200;
 	private static readonly SOLAR_DISTANCE_SCENE_SCALE_KM = 5_500_000;
 	private static readonly SUN_DISTANCE_MIN_SCENE_UNITS = 56;
 	private static readonly SUN_DISTANCE_MAX_SCENE_UNITS = 120;
@@ -274,6 +288,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private sentCelestialBodyUpserts = new Set<string>();
 	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeCelestialBodyListResponse?: () => void;
+	private unsubscribeLaunchItemResponse?: () => void;
+	private launchToastTimeoutId: number | null = null;
+	private postLaunchRefreshTimeoutId: number | null = null;
+	private launchSeedHint: number | null = null;
 	private navigationState: ShipExteriorViewNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
 		(history.state as ShipExteriorViewNavigationState | undefined) ??
@@ -288,6 +306,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
 	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
 	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
+	private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
+	readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
 	protected canTargetAsteroids = computed(() =>
 		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
 	);
@@ -424,6 +444,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 			samples.push({
 				id: `sample-a${i + 1}`,
+				serverCelestialBodyId: null,
 				position: basePosition,
 				basePosition,
 				scanProgress: 0,
@@ -515,6 +536,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	ngOnInit(): void {
 		this.socketService.connect(this.socketService.serverUrl);
+		this.unsubscribeLaunchItemResponse = this.socketService.on(
+			LAUNCH_ITEM_RESPONSE_EVENT,
+			(response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
+		);
 		const seedPolicy = this.resolveSeedPolicy();
 		if (seedPolicy === 'resume') {
 			this.seedAsteroidsForInProgressMission();
@@ -560,6 +585,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	ngOnDestroy(): void {
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeCelestialBodyListResponse?.();
+		this.unsubscribeLaunchItemResponse?.();
 		this.clearTargetHoldTimer();
 		window.removeEventListener('pointerdown', this.onWindowPointerDown);
 		window.removeEventListener('pointerup', this.onWindowPointerUp);
@@ -567,6 +593,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		window.removeEventListener('keydown', this.onWindowKeyDown);
 		this.hotkeyLaunchFlashTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
 		this.hotkeyLaunchFlashTimeoutIds.clear();
+		if (this.launchToastTimeoutId !== null) {
+			clearTimeout(this.launchToastTimeoutId);
+			this.launchToastTimeoutId = null;
+		}
+		if (this.postLaunchRefreshTimeoutId !== null) {
+			clearTimeout(this.postLaunchRefreshTimeoutId);
+			this.postLaunchRefreshTimeoutId = null;
+		}
 		if (this.scanIntervalId !== null) {
 			clearInterval(this.scanIntervalId);
 			this.scanIntervalId = null;
@@ -658,20 +692,28 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					(cbResponse: CelestialBodyListResponse) => {
 						this.unsubscribeCelestialBodyListResponse?.();
 
-						const rng = seededRandom(hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`));
-						const existingBodies = cbResponse.success ? (cbResponse.celestialBodies ?? []) : [];
+						const rng = seededRandom(this.resolveAsteroidSeed(playerName, characterId, center));
+						const existingBodies = cbResponse.success
+							? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed')
+							: [];
+						const existingBySourceScanId = new Map(
+							existingBodies
+								.filter((body) => typeof body.sourceScanId === 'string' && body.sourceScanId.trim().length > 0)
+								.map((body) => [body.sourceScanId, body] as const),
+						);
 						const randomTarget = Math.floor(rng() * 16) + 5; // 5–20, same seed sequence as just-started
 						const total = Math.max(existingBodies.length, randomTarget);
 						const allSamples = ShipExteriorViewScene.generateAsteroidSamples(center, rng, total);
 
 						const seededSamples = allSamples.map((sample, index) => {
-							const existingBody = existingBodies[index];
+							const existingBody = existingBySourceScanId.get(sample.id) ?? existingBodies[index];
 							if (!existingBody) {
 								return sample;
 							}
 
 							return {
 								...sample,
+								serverCelestialBodyId: existingBody.id,
 								scanProgress: 100,
 								scanned: true,
 								revealedMaterial: existingBody.composition,
@@ -740,7 +782,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					return;
 				}
 
-				const rng = seededRandom(hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`));
+				const rng = seededRandom(this.resolveAsteroidSeed(playerName, characterId, center));
 				const samples = ShipExteriorViewScene.generateAsteroidSamples(center, rng);
 				this.asteroidSamples.set(samples);
 				console.info('ColdBootScan seeded asteroids around starter ship center.', {
@@ -769,6 +811,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
 	}
 
+	private resolveAsteroidSeed(playerName: string, characterId: string, center: Triple): number {
+		const baseSeed = hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`);
+		const hint = this.launchSeedHint;
+		if (hint === null || !Number.isFinite(hint)) {
+			return baseSeed;
+		}
+
+		return (baseSeed ^ (hint >>> 0)) >>> 0;
+	}
+
 	private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {
 		const inventory = coerceShipInventory(rawInventory);
 		return inventory
@@ -781,22 +833,36 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	}
 
 	launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
-		if (!this.targetedAsteroidId()) {
+		const targetedSampleId = this.targetedAsteroidId();
+		if (!targetedSampleId) {
+			this.setLaunchToast('Lock an asteroid target before launch.', 'error', null);
 			return;
 		}
 
 		const slot = this.launchHotkeySlots().find((candidate) => candidate.hotkey === hotkey);
 		if (!slot?.item || !slot.enabled) {
+			this.setLaunchToast(`Hotkey ${hotkey} has no launchable item.`, 'error', null);
+			return;
+		}
+
+		const targetCelestialBodyId = this.resolveTargetCelestialBodyIdForLaunch(targetedSampleId);
+		if (!targetCelestialBodyId) {
+			this.setLaunchToast('Target is not synchronized yet. Scan and wait for sync before launch.', 'error', null);
 			return;
 		}
 
 		const sessionKey = this.sessionService.getSessionKey()?.trim();
 		const characterId = this.navigationState.joinCharacter?.id?.trim();
 		const shipId = this.activeShipId();
-		const targetCelestialBodyId = this.targetedAsteroidId();
 		const playerName = this.playerName().trim();
 
 		if (!sessionKey || !characterId || !shipId || !targetCelestialBodyId || !playerName) {
+			this.setLaunchToast('Missing launch context. Rejoin the game and try again.', 'error', null);
+			return;
+		}
+
+		if (!this.socketService.getIsConnected()) {
+			this.setLaunchToast('Socket is not connected. Waiting for reconnect before launch.', 'error', null);
 			return;
 		}
 
@@ -811,8 +877,92 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			itemType: slot.item.itemType,
 		};
 
+		// Deliberate decision: rapid launches are allowed. Requests are emitted
+		// immediately, and responses are consumed on one shared listener.
 		this.socketService.launchItem(request);
+		this.setLaunchToast(`Launch request sent for hotkey ${hotkey}.`, 'success', null);
 		this.triggerHotkeyLaunchFlash(hotkey);
+	}
+
+	private resolveTargetCelestialBodyIdForLaunch(targetedSampleId: string): string | null {
+		const targeted = this.asteroidSamples().find((sample) => sample.id === targetedSampleId);
+		const serverId = targeted?.serverCelestialBodyId?.trim() ?? '';
+		return serverId.length > 0 ? serverId : null;
+	}
+
+	private handleLaunchItemResponse(response: LaunchItemResponse): void {
+		if (!response || typeof response !== 'object') {
+			return;
+		}
+
+		const launchSeed = response.resolution?.launchSeed ?? null;
+		this.launchSeedHint = launchSeed;
+
+		if (!response.success) {
+			this.setLaunchToast(response.message || 'Launch failed', 'error', launchSeed);
+			return;
+		}
+
+		if (response.resolution?.outcome === 'target-destroyed') {
+			this.applyLaunchTargetDestroyedState(response.targetCelestialBodyId);
+		}
+
+		this.setLaunchToast(response.message || 'Launch complete', 'success', launchSeed);
+		this.queuePostLaunchRefresh();
+	}
+
+	private applyLaunchTargetDestroyedState(targetCelestialBodyId: string): void {
+		if (!targetCelestialBodyId) {
+			return;
+		}
+
+		const matchingSampleIds = new Set(
+			this.asteroidSamples()
+				.filter(
+					(sample) =>
+						sample.serverCelestialBodyId === targetCelestialBodyId ||
+						sample.id === targetCelestialBodyId,
+				)
+				.map((sample) => sample.id),
+		);
+
+		this.asteroidSamples.update((samples) =>
+			samples.filter(
+				(sample) =>
+					sample.serverCelestialBodyId !== targetCelestialBodyId &&
+					sample.id !== targetCelestialBodyId,
+			),
+		);
+
+		if (matchingSampleIds.has(this.targetedAsteroidId() ?? '')) {
+			this.targetedAsteroidId.set(null);
+		}
+		if (matchingSampleIds.has(this.activeScanAsteroidId() ?? '')) {
+			this.activeScanAsteroidId.set(null);
+		}
+	}
+
+	private queuePostLaunchRefresh(): void {
+		if (this.postLaunchRefreshTimeoutId !== null) {
+			clearTimeout(this.postLaunchRefreshTimeoutId);
+		}
+
+		this.postLaunchRefreshTimeoutId = window.setTimeout(() => {
+			this.postLaunchRefreshTimeoutId = null;
+			this.seedAsteroidsForInProgressMission();
+		}, ShipExteriorViewScene.POST_LAUNCH_REFRESH_DEBOUNCE_MS);
+	}
+
+	private setLaunchToast(message: string, tone: 'success' | 'error', seed: number | null): void {
+		this.launchFeedbackToast.set({ message, tone, seed });
+		if (this.launchToastTimeoutId !== null) {
+			clearTimeout(this.launchToastTimeoutId);
+		}
+
+		this.launchToastTimeoutId = window.setTimeout(() => {
+			this.launchFeedbackToast.set(null);
+			this.launchToastTimeoutId = null;
+		}, ShipExteriorViewScene.LAUNCH_TOAST_MS);
 	}
 
 	private triggerHotkeyLaunchFlash(hotkey: 1 | 2 | 3 | 4 | 5): void {
@@ -977,7 +1127,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.socketService.upsertCelestialBody(request, (response: CelestialBodyUpsertResponse) => {
 			if (!response.success) {
 				console.warn('Celestial body upsert failed:', response.message);
+				return;
 			}
+
+			const persistedId = response.celestialBody?.id?.trim() || request.celestialBody.id;
+			this.asteroidSamples.update((samples) =>
+				samples.map((candidate) =>
+					candidate.id === sample.id
+						? {
+							...candidate,
+							serverCelestialBodyId: persistedId,
+						}
+						: candidate,
+				),
+			);
 		});
 
 		this.sentCelestialBodyUpserts.add(sample.id);

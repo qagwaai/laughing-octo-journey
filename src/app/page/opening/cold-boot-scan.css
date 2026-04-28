@@ -26,6 +26,65 @@
 	pointer-events: auto;
 }
 
+.ship-exterior-launch-toast {
+	position: absolute;
+	left: var(--ship-hotkey-offset-x);
+	bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
+	display: grid;
+	gap: 0.12rem;
+	max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+	padding: 0.45rem 0.62rem;
+	border-radius: 0.5rem;
+	border: 1px solid rgba(138, 224, 255, 0.56);
+	background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
+	color: #d8f4ff;
+	box-shadow:
+		0 10px 24px rgba(0, 7, 15, 0.54),
+		inset 0 0 0 1px rgba(196, 241, 255, 0.1);
+	font-size: 0.67rem;
+	letter-spacing: 0.06em;
+	z-index: 19;
+	pointer-events: none;
+	animation: ship-launch-toast-enter 170ms ease-out;
+}
+
+.ship-exterior-launch-toast p {
+	margin: 0;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.ship-exterior-launch-toast__seed {
+	font-size: 0.54rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: rgba(222, 242, 250, 0.8);
+	line-height: 1;
+}
+
+.ship-exterior-launch-toast--success {
+	border-color: rgba(151, 239, 184, 0.7);
+	background: linear-gradient(165deg, rgba(5, 45, 30, 0.92), rgba(6, 22, 17, 0.95));
+	color: #d9ffe8;
+}
+
+.ship-exterior-launch-toast--error {
+	border-color: rgba(255, 146, 146, 0.8);
+	background: linear-gradient(165deg, rgba(76, 14, 14, 0.93), rgba(37, 9, 9, 0.96));
+	color: #ffe0e0;
+}
+
+@keyframes ship-launch-toast-enter {
+	0% {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .ship-exterior-hotkey-tile {
 	width: 4.85rem;
 	min-height: 2.35rem;
@@ -205,6 +264,10 @@
 
 	.ship-exterior-hotkey-row {
 		gap: 0.28rem;
+	}
+
+	.ship-exterior-launch-toast {
+		bottom: calc(var(--ship-hotkey-offset-y) + 2.7rem);
 	}
 
 	.ship-exterior-hotkey-tile {

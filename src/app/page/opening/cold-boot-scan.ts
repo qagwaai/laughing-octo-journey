@@ -39,6 +39,7 @@ export default class ColdBootScanPage {
 	protected propertiesClusterText = computed(() => this.shipExteriorView()?.propertiesClusterText() ?? 'CLUSTER(Mkm): ---');
 	protected propertiesOffsetText = computed(() => this.shipExteriorView()?.propertiesOffsetText() ?? 'OFFSET(km): ---');
 	protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
+	protected activeLaunchToast = computed(() => this.shipExteriorView()?.activeLaunchToast() ?? null);
 
 	protected hidePropertiesPanel(): void {
 		this.shipExteriorView()?.hidePropertiesPanel();

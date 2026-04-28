@@ -48,6 +48,16 @@ interface LaunchRequestForTest {
 	targetCelestialBodyId: string;
 }
 
+interface LaunchResponseForTest {
+	success: boolean;
+	message: string;
+	targetCelestialBodyId: string;
+	resolution?: {
+		outcome: 'target-destroyed' | 'no-effect';
+		launchSeed: number;
+	};
+}
+
 class MockColdBootScanScene {
 	currentRouteLabel = '/ship-exterior-view';
 	solarSystemId = 'sol';
@@ -61,6 +71,9 @@ class MockColdBootScanScene {
 	hasExpendableDartDrone = false;
 	launchableInventory: ShipItem[] = [];
 	launchRequests: LaunchRequestForTest[] = [];
+	refreshRequests = 0;
+	launchSeedHint: number | null = null;
+	launchToast: { tone: 'success' | 'error'; message: string } | null = null;
 	asteroidSamples: AsteroidSample[] = [
 		{ id: 'sample-a1', scanProgress: 0, scanned: false },
 		{ id: 'sample-a2', scanProgress: 0, scanned: false },
@@ -220,6 +233,28 @@ class MockColdBootScanScene {
 			itemType: item.itemType,
 			targetCelestialBodyId: this.targetedAsteroidId,
 		});
+	}
+
+	onLaunchItemResponseForTest(response: LaunchResponseForTest): void {
+		this.launchSeedHint = response.resolution?.launchSeed ?? null;
+
+		if (!response.success) {
+			this.launchToast = { tone: 'error', message: response.message || 'Launch failed' };
+			return;
+		}
+
+		if (response.resolution?.outcome === 'target-destroyed') {
+			this.asteroidSamples = this.asteroidSamples.filter((sample) => sample.id !== response.targetCelestialBodyId);
+			if (this.targetedAsteroidId === response.targetCelestialBodyId) {
+				this.targetedAsteroidId = null;
+			}
+			if (this.activeScanAsteroidId === response.targetCelestialBodyId) {
+				this.activeScanAsteroidId = null;
+			}
+		}
+
+		this.launchToast = { tone: 'success', message: response.message || 'Launch complete' };
+		this.refreshRequests += 1;
 	}
 
 	onWindowKeyDownForTest(event: { key: string; code?: string }): void {
@@ -531,6 +566,70 @@ describe('ShipExteriorViewScene', () => {
 		expect(component.launchRequests.length).toBe(2);
 		expect(component.launchRequests[0].hotkey).toBe(2);
 		expect(component.launchRequests[1].hotkey).toBe(1);
+	});
+
+	it('should remove destroyed target immediately and request one refresh on target-destroyed launch response', () => {
+		const component = new MockColdBootScanScene();
+		component.targetedAsteroidId = 'sample-a3';
+		component.activeScanAsteroidId = 'sample-a3';
+
+		component.onLaunchItemResponseForTest({
+			success: true,
+			message: 'Launch successful: target destroyed and materials yielded',
+			targetCelestialBodyId: 'sample-a3',
+			resolution: {
+				outcome: 'target-destroyed',
+				launchSeed: 123456789,
+			},
+		});
+
+		expect(component.asteroidSamples.some((sample) => sample.id === 'sample-a3')).toBe(false);
+		expect(component.targetedAsteroidId).toBeNull();
+		expect(component.activeScanAsteroidId).toBeNull();
+		expect(component.refreshRequests).toBe(1);
+		expect(component.launchSeedHint).toBe(123456789);
+		expect(component.launchToast).toEqual({
+			tone: 'success',
+			message: 'Launch successful: target destroyed and materials yielded',
+		});
+	});
+
+	it('should keep target when no-effect and still request refresh', () => {
+		const component = new MockColdBootScanScene();
+		component.targetedAsteroidId = 'sample-a2';
+
+		component.onLaunchItemResponseForTest({
+			success: true,
+			message: 'Launch completed with no effect for itemType: basic-mining-laser',
+			targetCelestialBodyId: 'sample-a2',
+			resolution: {
+				outcome: 'no-effect',
+				launchSeed: 222,
+			},
+		});
+
+		expect(component.asteroidSamples.some((sample) => sample.id === 'sample-a2')).toBe(true);
+		expect(component.targetedAsteroidId).toBe('sample-a2');
+		expect(component.refreshRequests).toBe(1);
+		expect(component.launchSeedHint).toBe(222);
+		expect(component.launchToast?.tone).toBe('success');
+	});
+
+	it('should not request refresh on failed launch response', () => {
+		const component = new MockColdBootScanScene();
+
+		component.onLaunchItemResponseForTest({
+			success: false,
+			message: 'Launch item is not launchable',
+			targetCelestialBodyId: 'sample-a4',
+		});
+
+		expect(component.refreshRequests).toBe(0);
+		expect(component.launchSeedHint).toBeNull();
+		expect(component.launchToast).toEqual({
+			tone: 'error',
+			message: 'Launch item is not launchable',
+		});
 	});
 
 	it('should trim character name and fallback when blank', () => {

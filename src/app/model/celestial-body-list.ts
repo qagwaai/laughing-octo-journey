@@ -26,6 +26,16 @@ export interface CelestialBodyListItem {
 	location: CelestialBodyLocation;
 	kinematics: AsteroidKinematics;
 	composition: AsteroidMaterialProfile;
+	state?: 'active' | 'destroyed';
+	destroyedAt?: string | null;
+	destroyedReason?: string | null;
+	debrisSeed?: number | null;
+	debris?: Array<{
+		material: string;
+		rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
+		quantity: number;
+		itemType: string;
+	}>;
 	/** Computed distance from the search origin, in kilometres. */
 	distanceKm: number;
 }
