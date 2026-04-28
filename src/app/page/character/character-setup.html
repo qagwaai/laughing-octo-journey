@@ -1,5 +1,5 @@
 <div class="character-setup-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="editCharacter()"></app-guarded-left-menu>
+	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="editCharacter()" [disableNonLogout]="true"></app-guarded-left-menu>
 	<div class="page-main">
 		<h1>{{ isEditMode() ? t.character.setup.editTitle : t.character.setup.title }}</h1>
 		<p class="subtitle">{{ isEditMode() ? t.character.setup.editSubtitle : t.character.setup.subtitle }}</p>
