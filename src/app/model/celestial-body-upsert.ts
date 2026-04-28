@@ -9,7 +9,7 @@ export const DEFAULT_SOLAR_SYSTEM_ID = 'sol';
 
 export interface CelestialBodyUpsertEntity {
 	/** Stable unique identifier for this celestial body record. */
-	id: string;
+	id?: string;
 	/** Secondary catalog identifier for indexing/search. */
 	catalogId: string;
 	/** Parent solar system reference, used for filtering. */
@@ -18,13 +18,18 @@ export interface CelestialBodyUpsertEntity {
 	sourceScanId: string;
 	/** Character ID that created/discovered this body. */
 	createdByCharacterId: string;
+	/** Optional mission scope for asteroid fields that belong to a mission. */
+	missionId?: string;
+	/** Optional mission instance identifier for future multi-instance mission support. */
+	missionInstanceId?: string | null;
 	/** ISO-8601 UTC timestamp. */
 	createdAt: string;
 	/** ISO-8601 UTC timestamp. */
 	updatedAt: string;
 	location: CelestialBodyLocation;
 	kinematics: AsteroidKinematics;
-	composition: AsteroidMaterialProfile;
+	composition?: AsteroidMaterialProfile;
+	state?: 'unscanned' | 'active' | 'destroyed';
 }
 
 export interface CelestialBodyUpsertRequest {

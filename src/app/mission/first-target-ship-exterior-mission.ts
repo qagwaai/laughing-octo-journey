@@ -214,15 +214,20 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 				return sample;
 			}
 
+			const shouldTreatAsScanned = existingBody.state !== 'unscanned';
+			const resolvedKinematics = existingBody.kinematics ?? sample.capturedKinematics;
+			const resolvedLocation = existingBody.location ?? sample.solarSystemLocation;
+			const resolvedMaterial = existingBody.composition ?? sample.revealedMaterial;
+
 			return {
 				...sample,
 				serverCelestialBodyId: existingBody.id,
-				scanProgress: 100,
-				scanned: true,
-				revealedMaterial: existingBody.composition,
-				revealedKinematics: existingBody.kinematics,
-				capturedKinematics: existingBody.kinematics,
-				solarSystemLocation: existingBody.location,
+				scanProgress: shouldTreatAsScanned ? 100 : 0,
+				scanned: shouldTreatAsScanned,
+				revealedMaterial: resolvedMaterial,
+				revealedKinematics: shouldTreatAsScanned ? resolvedKinematics : null,
+				capturedKinematics: resolvedKinematics,
+				solarSystemLocation: resolvedLocation,
 			};
 		});
 	},

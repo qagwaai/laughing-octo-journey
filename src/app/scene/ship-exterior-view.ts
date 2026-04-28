@@ -58,6 +58,10 @@ import {
 } from '../model/launch-item';
 import { resolveShipExteriorMission } from '../mission/ship-exterior-mission';
 import { SessionService } from '../services/session.service';
+import {
+	ShipExteriorAsteroidStateService,
+	type ShipExteriorAsteroidStateContext,
+} from '../services/ship-exterior-asteroid-state.service';
 import { SocketService } from '../services/socket.service';
 
 interface ShipExteriorViewNavigationState {
@@ -85,6 +89,13 @@ interface LaunchFeedbackToast {
 	message: string;
 	tone: 'success' | 'error';
 	seed: number | null;
+}
+
+interface CelestialBodyUpsertQueueItem {
+	sampleId: string;
+	state: 'unscanned' | 'active' | 'destroyed';
+	revealedMaterial: AsteroidMaterialProfile | null;
+	revealedKinematics: AsteroidKinematics | null;
 }
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
@@ -205,12 +216,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
+	private asteroidStateService = inject(ShipExteriorAsteroidStateService);
 	private scanIntervalId: number | null = null;
 	private targetHoldTimeoutId: number | null = null;
 	private hotkeyLaunchFlashTimeoutIds = new Map<1 | 2 | 3 | 4 | 5, number>();
 	protected targetHoldCandidateId = signal<string | null>(null);
 	private sceneElapsedSeconds = 0;
 	private sentCelestialBodyUpserts = new Set<string>();
+	private pendingActiveStateUpserts = new Set<string>();
+	private celestialBodyUpsertQueue: CelestialBodyUpsertQueueItem[] = [];
+	private celestialBodyUpsertInFlight = false;
 	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeCelestialBodyListResponse?: () => void;
 	private unsubscribeLaunchItemResponse?: () => void;
@@ -426,8 +441,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			(response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
 		);
 		const seedPolicy = this.resolveSeedPolicy();
+		if (seedPolicy === 'new') {
+			this.clearPersistedAsteroidSamples();
+		}
 		if (seedPolicy === 'resume') {
-			this.seedAsteroidsForInProgressMission();
+			if (!this.restorePersistedAsteroidSamples()) {
+				this.seedAsteroidsForInProgressMission();
+			} else {
+				this.refreshShipStateAfterLaunch();
+			}
 		} else {
 			this.seedAsteroidsAroundStarterShip();
 		}
@@ -465,6 +487,59 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	private resolveNavigationSolarSystemId(): string {
 		return this.navigationState.joinShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+	}
+
+	private resolveAsteroidStateContext(): ShipExteriorAsteroidStateContext | null {
+		const playerName = this.playerName().trim();
+		const characterId = this.navigationState.joinCharacter?.id?.trim();
+		const missionId = this.missionDefinition.missionId?.trim();
+		if (!playerName || !characterId || !missionId) {
+			return null;
+		}
+
+		return {
+			missionId,
+			playerName,
+			characterId,
+		};
+	}
+
+	private persistAsteroidSamples(samples: readonly AsteroidScanSample[] = this.asteroidSamples()): void {
+		const context = this.resolveAsteroidStateContext();
+		if (!context) {
+			return;
+		}
+
+		this.asteroidStateService.saveSamples(context, samples);
+	}
+
+	private clearPersistedAsteroidSamples(): void {
+		const context = this.resolveAsteroidStateContext();
+		if (!context) {
+			return;
+		}
+
+		this.asteroidStateService.clearSamples(context);
+	}
+
+	private restorePersistedAsteroidSamples(): boolean {
+		const context = this.resolveAsteroidStateContext();
+		if (!context) {
+			return false;
+		}
+
+		const samples = this.asteroidStateService.loadSamples(context);
+		if (!samples) {
+			return false;
+		}
+
+		this.asteroidSamples.set(samples);
+		return true;
+	}
+
+	private setAsteroidSamples(samples: AsteroidScanSample[]): void {
+		this.asteroidSamples.set(samples);
+		this.persistAsteroidSamples(samples);
 	}
 
 	ngOnDestroy(): void {
@@ -547,7 +622,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		if (!playerName || !characterId || !sessionKey) {
 			const samples = this.missionDefinition.createFallbackAsteroidSamples();
-			this.asteroidSamples.set(samples);
+			this.setAsteroidSamples(samples);
 			console.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
 			return;
 		}
@@ -566,7 +641,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
-					this.asteroidSamples.set(fallbackSamples);
+					this.setAsteroidSamples(fallbackSamples);
 					console.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
 					return;
 				}
@@ -585,7 +660,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 							existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
 						});
 
-						this.asteroidSamples.set(seededSamples);
+						this.setAsteroidSamples(seededSamples);
+						this.persistSeededAsteroidsAsUnscanned(seededSamples);
 						console.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
 							existing: cbResponse.success ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length : 0,
 							total: seededSamples.length,
@@ -600,6 +676,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
 					positionKm: center,
 					distanceKm: DEFAULT_CLUSTER_SPREAD_KM * 2,
+					states: ['unscanned', 'active'],
+					createdByCharacterId: characterId,
+					missionId: this.missionDefinition.missionId,
 				};
 				this.socketService.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, cbRequest);
 			},
@@ -616,7 +695,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		if (!playerName || !characterId || !sessionKey) {
 			const samples = this.missionDefinition.createFallbackAsteroidSamples();
-			this.asteroidSamples.set(samples);
+			this.setAsteroidSamples(samples);
 			console.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
 			return;
 		}
@@ -628,7 +707,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
-					this.asteroidSamples.set(fallbackSamples);
+					this.setAsteroidSamples(fallbackSamples);
 					console.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
 					return;
 				}
@@ -639,7 +718,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				const center = firstShip?.location?.positionKm;
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
-					this.asteroidSamples.set(fallbackSamples);
+					this.setAsteroidSamples(fallbackSamples);
 					console.warn('ColdBootScan ship list missing required location.positionKm; using fallback random center.');
 					return;
 				}
@@ -650,7 +729,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					center,
 					launchSeedHint: this.launchSeedHint,
 				});
-				this.asteroidSamples.set(samples);
+				this.setAsteroidSamples(samples);
+				this.persistSeededAsteroidsAsUnscanned(samples);
 				console.info('ColdBootScan seeded asteroids around starter ship center.', {
 					count: samples.length,
 					centerKm: center,
@@ -746,6 +826,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		return serverId.length > 0 ? serverId : null;
 	}
 
+	private persistSeededAsteroidsAsUnscanned(samples: readonly AsteroidScanSample[]): void {
+		for (const sample of samples) {
+			if (sample.serverCelestialBodyId) {
+				continue;
+			}
+
+			this.emitCelestialBodyUpsert(sample, 'unscanned', sample.revealedMaterial, sample.capturedKinematics);
+		}
+	}
+
 	private handleLaunchItemResponse(response: LaunchItemResponse): void {
 		if (!response || typeof response !== 'object') {
 			return;
@@ -790,9 +880,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		const matchingSampleIds = new Set(sampleIds);
 
-		this.asteroidSamples.update((samples) =>
-			samples.filter((sample) => !matchingSampleIds.has(sample.id)),
-		);
+		let didChange = false;
+		this.asteroidSamples.update((samples) => {
+			const next = samples.filter((sample) => !matchingSampleIds.has(sample.id));
+			didChange = next.length !== samples.length;
+			return next;
+		});
+		if (didChange) {
+			this.persistAsteroidSamples();
+		}
 
 		if (matchingSampleIds.has(this.targetedAsteroidId() ?? '')) {
 			this.targetedAsteroidId.set(null);
@@ -809,8 +905,34 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		this.postLaunchRefreshTimeoutId = window.setTimeout(() => {
 			this.postLaunchRefreshTimeoutId = null;
-			this.seedAsteroidsForInProgressMission();
+			this.refreshShipStateAfterLaunch();
 		}, ShipExteriorViewScene.POST_LAUNCH_REFRESH_DEBOUNCE_MS);
+	}
+
+	private refreshShipStateAfterLaunch(): void {
+		const playerName = this.navigationState.playerName?.trim() ?? '';
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+		if (!playerName || !characterId || !sessionKey) {
+			return;
+		}
+
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(shipResponse: ShipListResponse) => {
+				this.unsubscribeShipListResponse?.();
+				if (!shipResponse.success) {
+					return;
+				}
+
+				this.updateTargetingCapabilityFromShipList(shipResponse.ships);
+			},
+		);
+
+		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, shipRequest);
 	}
 
 	private setLaunchToast(message: string, tone: 'success' | 'error', seed: number | null): void {
@@ -904,6 +1026,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private tickScene(): void {
 		this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
 		const activeId = this.activeScanAsteroidId();
+		let completedScanThisTick = false;
 		this.asteroidSamples.update((samples) =>
 			samples.map((sample) => {
 				const animatedPosition = this.resolveAsteroidPosition(sample, this.sceneElapsedSeconds, activeId);
@@ -932,7 +1055,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					: sample.revealedKinematics;
 
 				if (completedNow && !sample.scanned) {
-					this.emitCelestialBodyUpsert(sample, revealedMaterial, revealedKinematics);
+					completedScanThisTick = true;
+					if (sample.serverCelestialBodyId) {
+						this.emitCelestialBodyUpsert(sample, 'active', revealedMaterial, revealedKinematics);
+					} else {
+						// Seeded unscanned record has not returned an id yet; queue active update.
+						this.pendingActiveStateUpserts.add(sample.id);
+					}
 				}
 
 				return {
@@ -945,52 +1074,98 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				};
 			}),
 		);
+		if (completedScanThisTick) {
+			this.persistAsteroidSamples();
+		}
 	}
 
 	private emitCelestialBodyUpsert(
 		sample: AsteroidScanSample,
+		state: 'unscanned' | 'active' | 'destroyed',
 		revealedMaterial: AsteroidMaterialProfile | null,
 		revealedKinematics: AsteroidKinematics | null,
 	): void {
-		if (this.sentCelestialBodyUpserts.has(sample.id)) {
+		if (
+			this.celestialBodyUpsertQueue.some(
+				(item) => item.sampleId === sample.id && item.state === state,
+			)
+		) {
+			return;
+		}
+
+		this.celestialBodyUpsertQueue.push({
+			sampleId: sample.id,
+			state,
+			revealedMaterial,
+			revealedKinematics,
+		});
+		this.processNextCelestialBodyUpsert();
+	}
+
+	private processNextCelestialBodyUpsert(): void {
+		if (this.celestialBodyUpsertInFlight) {
+			return;
+		}
+
+		const item = this.celestialBodyUpsertQueue.shift();
+		if (!item) {
+			return;
+		}
+
+		const sample = this.asteroidSamples().find((candidate) => candidate.id === item.sampleId);
+		if (!sample) {
+			this.processNextCelestialBodyUpsert();
 			return;
 		}
 
 		const sessionKey = this.sessionService.getSessionKey();
 		const playerName = this.playerName().trim();
 		const createdByCharacterId = this.navigationState.joinCharacter?.id;
-		if (!sessionKey || !playerName || !createdByCharacterId || !revealedMaterial || !revealedKinematics) {
+		if (!sessionKey || !playerName || !createdByCharacterId) {
 			console.warn('Skipping celestial body upsert due to missing actor/session context.');
+			this.processNextCelestialBodyUpsert();
 			return;
 		}
 
 		const nowIso = new Date().toISOString();
-		const uniqueSuffix = Math.random().toString(16).slice(2, 10);
+		const deterministicId = `cb-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
+		const deterministicCatalogId = `sol-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
+		const requestedCelestialBodyId = sample.serverCelestialBodyId ?? deterministicId;
+		const resolvedKinematics = item.revealedKinematics ?? sample.capturedKinematics;
 		const request: CelestialBodyUpsertRequest = {
 			sessionKey,
 			playerName,
 			createdByCharacterId,
 			celestialBody: {
-				id: `cb-${sample.id}-${uniqueSuffix}`,
-				catalogId: `sol-${sample.id}-${uniqueSuffix}`,
+				id: requestedCelestialBodyId,
+				catalogId: deterministicCatalogId,
 				solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
 				sourceScanId: sample.id,
 				createdByCharacterId,
+				missionId: this.missionDefinition.missionId,
 				createdAt: nowIso,
 				updatedAt: nowIso,
 				location: sample.solarSystemLocation,
-				kinematics: revealedKinematics,
-				composition: revealedMaterial,
+				kinematics: resolvedKinematics,
+				composition: item.revealedMaterial ?? sample.revealedMaterial ?? undefined,
+				state: item.state,
 			},
 		};
 
+		this.celestialBodyUpsertInFlight = true;
 		this.socketService.upsertCelestialBody(request, (response: CelestialBodyUpsertResponse) => {
+			this.celestialBodyUpsertInFlight = false;
+
 			if (!response.success) {
 				console.warn('Celestial body upsert failed:', response.message);
+				this.processNextCelestialBodyUpsert();
 				return;
 			}
 
-			const persistedId = response.celestialBody?.id?.trim() || request.celestialBody.id;
+			const responseCelestialBodyId = response.celestialBody?.id?.trim();
+			const persistedId = responseCelestialBodyId && responseCelestialBodyId.length > 0
+				? responseCelestialBodyId
+				: requestedCelestialBodyId;
 			this.asteroidSamples.update((samples) =>
 				samples.map((candidate) =>
 					candidate.id === sample.id
@@ -1001,9 +1176,22 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 						: candidate,
 				),
 			);
-		});
 
-		this.sentCelestialBodyUpserts.add(sample.id);
+			if (item.state === 'unscanned' && this.pendingActiveStateUpserts.has(sample.id)) {
+				const latest = this.asteroidSamples().find((candidate) => candidate.id === sample.id);
+				if (latest) {
+					this.pendingActiveStateUpserts.delete(sample.id);
+					this.emitCelestialBodyUpsert(
+						latest,
+						'active',
+						latest.revealedMaterial,
+						latest.revealedKinematics ?? latest.capturedKinematics,
+					);
+				}
+			}
+			this.persistAsteroidSamples();
+			this.processNextCelestialBodyUpsert();
+		});
 	}
 
 	private resetPartialScanProgress(sampleId: string): void {

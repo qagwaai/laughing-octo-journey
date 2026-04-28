@@ -13,6 +13,9 @@ export interface CelestialBodyListRequest {
 	positionKm: Triple;
 	distanceKm: number;
 	limit?: number;
+	states?: Array<'unscanned' | 'active' | 'destroyed'>;
+	createdByCharacterId?: string;
+	missionId?: string;
 }
 
 export interface CelestialBodyListItem {
@@ -21,12 +24,14 @@ export interface CelestialBodyListItem {
 	solarSystemId: string;
 	sourceScanId: string;
 	createdByCharacterId: string;
+	missionId?: string;
+	missionInstanceId?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	location: CelestialBodyLocation;
 	kinematics: AsteroidKinematics;
-	composition: AsteroidMaterialProfile;
-	state?: 'active' | 'destroyed';
+	composition?: AsteroidMaterialProfile;
+	state?: 'unscanned' | 'active' | 'destroyed';
 	destroyedAt?: string | null;
 	destroyedReason?: string | null;
 	debrisSeed?: number | null;
