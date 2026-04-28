@@ -56,12 +56,27 @@ import {
 	type LaunchItemRequest,
 	type LaunchItemResponse,
 } from '../model/launch-item';
-import { resolveShipExteriorMission } from '../mission/ship-exterior-mission';
+import {
+	clearMissionGatePendingRetry,
+	createInitialMissionGateState,
+	evaluateMissionGateOnScan,
+	hasMissionGatePendingRetry,
+	markMissionGateStepPendingRetry,
+	parseMissionGateState,
+	resolveShipExteriorMission,
+	serializeMissionGateState,
+	type ShipExteriorMissionGateState,
+} from '../mission/ship-exterior-mission';
+import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import {
 	ShipExteriorAsteroidStateService,
 	type ShipExteriorAsteroidStateContext,
 } from '../services/ship-exterior-asteroid-state.service';
+import {
+	ShipExteriorMissionStateService,
+	type ShipExteriorMissionStateContext,
+} from '../services/ship-exterior-mission-state.service';
 import { SocketService } from '../services/socket.service';
 
 interface ShipExteriorViewNavigationState {
@@ -96,6 +111,12 @@ interface CelestialBodyUpsertQueueItem {
 	state: 'unscanned' | 'active' | 'destroyed';
 	revealedMaterial: AsteroidMaterialProfile | null;
 	revealedKinematics: AsteroidKinematics | null;
+}
+
+interface MissionProgressUpsertQueueItem {
+	gateState: ShipExteriorMissionGateState;
+	completedStepKey: string | null;
+	toastMessage: string | null;
 }
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
@@ -216,7 +237,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
+	private missionService = inject(MissionService);
 	private asteroidStateService = inject(ShipExteriorAsteroidStateService);
+	private missionStateService = inject(ShipExteriorMissionStateService);
 	private scanIntervalId: number | null = null;
 	private targetHoldTimeoutId: number | null = null;
 	private hotkeyLaunchFlashTimeoutIds = new Map<1 | 2 | 3 | 4 | 5, number>();
@@ -226,6 +249,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private pendingActiveStateUpserts = new Set<string>();
 	private celestialBodyUpsertQueue: CelestialBodyUpsertQueueItem[] = [];
 	private celestialBodyUpsertInFlight = false;
+	private missionProgressUpsertQueue: MissionProgressUpsertQueueItem[] = [];
+	private missionProgressUpsertInFlight = false;
 	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeCelestialBodyListResponse?: () => void;
 	private unsubscribeLaunchItemResponse?: () => void;
@@ -250,7 +275,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
 	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
 	private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
+	private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
 	readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
+	readonly missionObjectiveText = computed(() => {
+		const gateState = this.missionGateState();
+		if (gateState) {
+			return gateState.activeObjectiveText;
+		}
+
+		return this.missionDefinition.getGateStepDefinitions()[0]?.objectiveText ?? 'Objective unavailable.';
+	});
 	protected canTargetAsteroids = computed(() =>
 		this.missionDefinition.canTargetAsteroids({
 			shipModel: this.shipModel(),
@@ -436,6 +470,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	ngOnInit(): void {
 		this.socketService.connect(this.socketService.serverUrl);
+		this.initializeMissionGateState();
+		this.refreshMissionGateStateFromBackend();
 		this.unsubscribeLaunchItemResponse = this.socketService.on(
 			LAUNCH_ITEM_RESPONSE_EVENT,
 			(response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
@@ -443,6 +479,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const seedPolicy = this.resolveSeedPolicy();
 		if (seedPolicy === 'new') {
 			this.clearPersistedAsteroidSamples();
+			this.clearPersistedMissionGateState();
+			this.initializeMissionGateState();
 		}
 		if (seedPolicy === 'resume') {
 			if (!this.restorePersistedAsteroidSamples()) {
@@ -504,6 +542,21 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		};
 	}
 
+	private resolveMissionStateContext(): ShipExteriorMissionStateContext | null {
+		const playerName = this.playerName().trim();
+		const characterId = this.navigationState.joinCharacter?.id?.trim();
+		const missionId = this.missionDefinition.missionId?.trim();
+		if (!playerName || !characterId || !missionId) {
+			return null;
+		}
+
+		return {
+			missionId,
+			playerName,
+			characterId,
+		};
+	}
+
 	private persistAsteroidSamples(samples: readonly AsteroidScanSample[] = this.asteroidSamples()): void {
 		const context = this.resolveAsteroidStateContext();
 		if (!context) {
@@ -520,6 +573,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}
 
 		this.asteroidStateService.clearSamples(context);
+	}
+
+	private clearPersistedMissionGateState(): void {
+		const context = this.resolveMissionStateContext();
+		if (!context) {
+			return;
+		}
+
+		this.missionStateService.clearState(context);
 	}
 
 	private restorePersistedAsteroidSamples(): boolean {
@@ -540,6 +602,62 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private setAsteroidSamples(samples: AsteroidScanSample[]): void {
 		this.asteroidSamples.set(samples);
 		this.persistAsteroidSamples(samples);
+	}
+
+	private initializeMissionGateState(): void {
+		const context = this.resolveMissionStateContext();
+		if (!context) {
+			return;
+		}
+
+		const cached = this.missionStateService.loadState(context);
+		if (cached) {
+			this.missionGateState.set(cached);
+			return;
+		}
+
+		this.missionGateState.set(
+			createInitialMissionGateState({
+				missionId: this.missionDefinition.missionId,
+				characterId: context.characterId,
+				steps: this.missionDefinition.getGateStepDefinitions(),
+			}),
+		);
+	}
+
+	private async refreshMissionGateStateFromBackend(): Promise<void> {
+		const context = this.resolveMissionStateContext();
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+		if (!context || !sessionKey) {
+			return;
+		}
+
+		const result = await this.missionService.listMissions({
+			playerName: context.playerName,
+			characterId: context.characterId,
+			sessionKey,
+		});
+		if (result.status !== 'loaded') {
+			return;
+		}
+
+		const mission = result.missions.find((candidate) => candidate.missionId === this.missionDefinition.missionId);
+		if (!mission?.statusDetail) {
+			return;
+		}
+
+		const parsed = parseMissionGateState({
+			rawStatusDetail: mission.statusDetail,
+			missionId: this.missionDefinition.missionId,
+			characterId: context.characterId,
+			steps: this.missionDefinition.getGateStepDefinitions(),
+		});
+		if (!parsed) {
+			return;
+		}
+
+		this.missionGateState.set(parsed);
+		this.persistMissionGateState(parsed);
 	}
 
 	ngOnDestroy(): void {
@@ -947,6 +1065,133 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}, ShipExteriorViewScene.LAUNCH_TOAST_MS);
 	}
 
+	private persistMissionGateState(gateState: ShipExteriorMissionGateState): void {
+		const context = this.resolveMissionStateContext();
+		if (!context) {
+			return;
+		}
+
+		this.missionStateService.saveState(context, gateState);
+	}
+
+	private evaluateMissionGateForCompletedSamples(sampleIds: readonly string[]): void {
+		if (sampleIds.length === 0) {
+			return;
+		}
+
+		const currentGateState = this.missionGateState();
+		if (!currentGateState) {
+			return;
+		}
+
+		let gateState = currentGateState;
+		for (const sampleId of sampleIds) {
+			const sample = this.asteroidSamples().find((candidate) => candidate.id === sampleId);
+			if (!sample || !sample.scanned) {
+				continue;
+			}
+
+			const evaluation = evaluateMissionGateOnScan({
+				mission: this.missionDefinition,
+				gateState,
+				sample,
+			});
+			if (!evaluation.changed) {
+				continue;
+			}
+
+			gateState = evaluation.gateState;
+			this.missionGateState.set(gateState);
+			this.persistMissionGateState(gateState);
+			this.enqueueMissionProgressUpsert({
+				gateState,
+				completedStepKey: evaluation.completedStepKey,
+				toastMessage: evaluation.completionToastMessage,
+			});
+		}
+	}
+
+	private retryPendingMissionProgressSync(): void {
+		const gateState = this.missionGateState();
+		if (!gateState || !hasMissionGatePendingRetry(gateState)) {
+			return;
+		}
+
+		if (this.missionProgressUpsertQueue.length > 0 || this.missionProgressUpsertInFlight) {
+			return;
+		}
+
+		this.enqueueMissionProgressUpsert({
+			gateState,
+			completedStepKey: null,
+			toastMessage: null,
+		});
+	}
+
+	private enqueueMissionProgressUpsert(item: MissionProgressUpsertQueueItem): void {
+		const statusDetail = serializeMissionGateState(item.gateState);
+		if (
+			this.missionProgressUpsertQueue.some((queued) =>
+				serializeMissionGateState(queued.gateState) === statusDetail,
+			)
+		) {
+			return;
+		}
+
+		this.missionProgressUpsertQueue.push(item);
+		this.processNextMissionProgressUpsert();
+	}
+
+	private async processNextMissionProgressUpsert(): Promise<void> {
+		if (this.missionProgressUpsertInFlight) {
+			return;
+		}
+
+		const item = this.missionProgressUpsertQueue.shift();
+		if (!item) {
+			return;
+		}
+
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+		const playerName = this.playerName().trim();
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		if (!sessionKey || !playerName || !characterId) {
+			this.processNextMissionProgressUpsert();
+			return;
+		}
+
+		this.missionProgressUpsertInFlight = true;
+		const result = await this.missionService.upsertMissionStatus({
+			playerName,
+			characterId,
+			sessionKey,
+			missionId: this.missionDefinition.missionId,
+			status: this.missionDefinition.resolveMissionStatusFromGateState(item.gateState),
+			statusDetail: serializeMissionGateState(item.gateState),
+		});
+		this.missionProgressUpsertInFlight = false;
+
+		if (result !== 'updated') {
+			if (item.completedStepKey) {
+				const nextState = markMissionGateStepPendingRetry(item.gateState, item.completedStepKey);
+				this.missionGateState.set(nextState);
+				this.persistMissionGateState(nextState);
+				this.setLaunchToast('Mission progress sync pending; retrying on next scan event.', 'error', null);
+			}
+			this.processNextMissionProgressUpsert();
+			return;
+		}
+
+		const syncedState = clearMissionGatePendingRetry(item.gateState);
+		this.missionGateState.set(syncedState);
+		this.persistMissionGateState(syncedState);
+		if (item.toastMessage) {
+			this.setLaunchToast(item.toastMessage, 'success', null);
+		}
+
+		this.processNextMissionProgressUpsert();
+	}
+
 	private triggerHotkeyLaunchFlash(hotkey: 1 | 2 | 3 | 4 | 5): void {
 		this.launchingHotkeys.update((current) => {
 			const next = new Set(current);
@@ -1027,6 +1272,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
 		const activeId = this.activeScanAsteroidId();
 		let completedScanThisTick = false;
+		const completedSampleIds: string[] = [];
 		this.asteroidSamples.update((samples) =>
 			samples.map((sample) => {
 				const animatedPosition = this.resolveAsteroidPosition(sample, this.sceneElapsedSeconds, activeId);
@@ -1056,6 +1302,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 				if (completedNow && !sample.scanned) {
 					completedScanThisTick = true;
+					completedSampleIds.push(sample.id);
 					if (sample.serverCelestialBodyId) {
 						this.emitCelestialBodyUpsert(sample, 'active', revealedMaterial, revealedKinematics);
 					} else {
@@ -1076,6 +1323,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		);
 		if (completedScanThisTick) {
 			this.persistAsteroidSamples();
+			this.retryPendingMissionProgressSync();
+			this.evaluateMissionGateForCompletedSamples(completedSampleIds);
 		}
 	}
 

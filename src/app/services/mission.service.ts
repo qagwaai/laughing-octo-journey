@@ -39,6 +39,12 @@ export type UpsertMissionStatusResult =
 	| 'update-failed'
 	| 'timeout';
 
+export interface ListMissionsResult {
+	status: 'loaded' | 'invalid-request' | 'not-connected' | 'list-failed' | 'timeout';
+	missions: MissionListResponse['missions'];
+	message?: string;
+}
+
 @Injectable({
 	providedIn: 'root',
 })
@@ -130,6 +136,70 @@ export class MissionService {
 		});
 	}
 
+	async listMissions(request: MissionListRequest): Promise<ListMissionsResult> {
+		const playerName = request.playerName.trim();
+		const characterId = request.characterId.trim();
+		const sessionKey = request.sessionKey.trim();
+
+		if (!playerName || !characterId || !sessionKey) {
+			return { status: 'invalid-request', missions: [] };
+		}
+
+		const isConnected = await this.ensureConnected();
+		if (!isConnected) {
+			return { status: 'not-connected', missions: [] };
+		}
+
+		return new Promise<ListMissionsResult>((resolve) => {
+			let settled = false;
+			let unsubscribeList: (() => void) | undefined;
+
+			const settle = (result: ListMissionsResult) => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				clearTimeout(timeoutId);
+				unsubscribeList?.();
+				resolve(result);
+			};
+
+			const timeoutId = window.setTimeout(() => {
+				settle({ status: 'timeout', missions: [] });
+			}, MissionService.RESPONSE_TIMEOUT_MS);
+
+			unsubscribeList = this.socketService.on(
+				MISSION_LIST_RESPONSE_EVENT,
+				(response: MissionListResponse) => {
+					if (response.playerName !== playerName || response.characterId !== characterId) {
+						return;
+					}
+
+					if (!response.success) {
+						settle({
+							status: 'list-failed',
+							missions: [],
+							message: response.message,
+						});
+						return;
+					}
+
+					settle({
+						status: 'loaded',
+						missions: response.missions ?? [],
+					});
+				},
+			);
+
+			this.socketService.emit(MISSION_LIST_REQUEST_EVENT, {
+				playerName,
+				characterId,
+				sessionKey,
+				...(Array.isArray(request.statuses) ? { statuses: request.statuses } : {}),
+			});
+		});
+	}
+
 	async upsertMissionStatus(request: MissionUpsertRequest): Promise<UpsertMissionStatusResult> {
 		const playerName = request.playerName.trim();
 		const characterId = request.characterId.trim();
@@ -181,6 +251,7 @@ export class MissionService {
 				missionId,
 				sessionKey,
 				status,
+				...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
 			});
 		});
 	}

@@ -15,6 +15,31 @@
 	background: #030c12;
 }
 
+.ship-exterior-objective {
+	position: absolute;
+	left: var(--ship-hotkey-offset-x);
+	top: var(--ship-hotkey-offset-y);
+	max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+	padding: 0.45rem 0.62rem;
+	border-radius: 0.5rem;
+	border: 1px solid rgba(138, 224, 255, 0.56);
+	background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
+	color: #d8f4ff;
+	box-shadow:
+		0 10px 24px rgba(0, 7, 15, 0.54),
+		inset 0 0 0 1px rgba(196, 241, 255, 0.1);
+	font-size: 0.67rem;
+	letter-spacing: 0.06em;
+	z-index: 19;
+	pointer-events: none;
+}
+
+.ship-exterior-objective p {
+	margin: 0;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
 .ship-exterior-hotkey-row {
 	position: absolute;
 	left: var(--ship-hotkey-offset-x);

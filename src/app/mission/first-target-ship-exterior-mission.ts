@@ -14,8 +14,14 @@ import { coerceShipInventory } from '../model/ship-list';
 import type { LaunchItemResponse } from '../model/launch-item';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import type { MissionStatus } from '../model/mission';
 import type { Triple } from '../model/triple';
-import type { ShipExteriorMissionDefinition } from './ship-exterior-mission';
+import {
+	createInitialMissionGateState,
+	type ShipExteriorMissionDefinition,
+	type ShipExteriorMissionGateState,
+	type ShipExteriorMissionGateStepDefinition,
+} from './ship-exterior-mission';
 
 function normalizeInventoryToken(value: unknown): string {
 	if (typeof value !== 'string') {
@@ -59,6 +65,20 @@ function hasExpendableDartDroneInInventory(rawInventory: unknown): boolean {
 }
 
 const IRON_MATERIAL = ASTEROID_MATERIALS.find((m) => m.material === 'Iron')!;
+
+const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] = [
+	{
+		key: 'identify_iron_asteroid',
+		objectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+		completionToastMessage: 'Mission update: Iron asteroid identified.',
+	},
+	{
+		key: 'neutralize_identified_asteroid',
+		objectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+		completionToastMessage: 'Mission update: Target neutralized.',
+		prerequisiteStepKeys: ['identify_iron_asteroid'],
+	},
+];
 
 function generateMaterialAssignments(count: number, random: () => number): AsteroidMaterialProfile[] {
 	const materials = Array.from({ length: count }, () => pickWeightedAsteroidMaterial(random));
@@ -231,6 +251,36 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 			};
 		});
 	},
+	getGateStepDefinitions() {
+		return FIRST_TARGET_GATE_STEPS;
+	},
+	doesScanCompleteGateStep(stepKey, sample) {
+		if (stepKey === 'identify_iron_asteroid') {
+			return sample.revealedMaterial?.material === 'Iron';
+		}
+
+		return false;
+	},
+	resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
+		const totalSteps = gateState.steps.length;
+		if (totalSteps > 0 && gateState.steps.every((step) => step.status === 'completed')) {
+			return 'completed';
+		}
+
+		if (gateState.steps.some((step) => step.status === 'completed' || step.status === 'pending-retry')) {
+			return 'in-progress';
+		}
+
+		return 'started';
+	},
 };
+
+export function createFirstTargetMissionInitialGateState(characterId: string): ShipExteriorMissionGateState {
+	return createInitialMissionGateState({
+		missionId: FIRST_TARGET_MISSION_ID,
+		characterId,
+		steps: FIRST_TARGET_GATE_STEPS,
+	});
+}
 
 export { DEFAULT_CLUSTER_SPREAD_KM };

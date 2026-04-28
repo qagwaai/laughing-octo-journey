@@ -170,9 +170,9 @@ export default class CharacterListPage implements OnDestroy {
 	}
 
 	protected getJoinGameLabel(character: PlayerCharacterSummary): string {
-		return this.getFirstTargetStatus(character) === 'started'
-			? this.t.character.list.joinInProgressLabel
-			: this.t.character.list.joinLabel;
+		const firstTargetStatus = this.getFirstTargetStatus(character);
+		const isInProgress = firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
+		return isInProgress ? this.t.character.list.joinInProgressLabel : this.t.character.list.joinLabel;
 	}
 
 	requestDeleteCharacter(character: PlayerCharacterSummary): void {
@@ -264,15 +264,17 @@ export default class CharacterListPage implements OnDestroy {
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
 		const firstTargetStatus = this.getFirstTargetStatus(character);
-		if (firstTargetStatus === 'started') {
+		const isFirstTargetInProgress =
+			firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
+		if (isFirstTargetInProgress) {
 			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
 		}
 
 		const outlets =
-			firstTargetStatus === 'started'
+			isFirstTargetInProgress
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
 				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
-		const missionContext = firstTargetStatus === 'started'
+		const missionContext = isFirstTargetInProgress
 			? {
 				missionId: FIRST_TARGET_MISSION_ID,
 				missionStatusHint: firstTargetStatus,
@@ -286,7 +288,7 @@ export default class CharacterListPage implements OnDestroy {
 				playerName,
 				joinCharacter: character,
 				...(missionContext ? { missionContext } : {}),
-				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
+				...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});
 	}

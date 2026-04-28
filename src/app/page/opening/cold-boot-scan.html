@@ -3,6 +3,10 @@
 		<app-ship-exterior-view-scene *canvasContent />
 	</ngt-canvas>
 
+	<section class="ship-exterior-objective" aria-live="polite">
+		<p>{{ missionObjectiveText() }}</p>
+	</section>
+
 	<section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
 		@for (slot of launchHotkeySlots(); track slot.hotkey) {
 			<button

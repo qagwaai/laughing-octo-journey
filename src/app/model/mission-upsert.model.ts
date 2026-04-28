@@ -9,6 +9,7 @@ export interface MissionUpsertRequest {
 	missionId: string;
 	sessionKey: string;
 	status: MissionStatus;
+	statusDetail?: string;
 }
 
 export interface MissionUpsertResponse {
