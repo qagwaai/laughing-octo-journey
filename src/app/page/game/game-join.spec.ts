@@ -105,6 +105,7 @@ class MockGameJoinPage {
 		const model = typeof ship.model === 'string' && ship.model.trim() ? ship.model.trim() : 'Scavenger Pod';
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
+			queryParams: { specsNav: Date.now() },
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
@@ -432,6 +433,7 @@ describe('GameJoinPage', () => {
 			[{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }],
 			{
 				preserveFragment: true,
+				queryParams: { specsNav: jasmine.any(Number) },
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },

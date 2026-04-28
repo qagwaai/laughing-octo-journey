@@ -100,6 +100,7 @@ class MockShipViewInventoryPage {
 			[{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }],
 			{
 				preserveFragment: true,
+				queryParams: { specsNav: Date.now() },
 				state: {
 					playerName: this.playerName(),
 					joinCharacter: this.joinCharacter(),
@@ -172,6 +173,7 @@ describe('ShipViewInventoryPage', () => {
 			[{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }],
 			{
 				preserveFragment: true,
+				queryParams: { specsNav: jasmine.any(Number) },
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: character,

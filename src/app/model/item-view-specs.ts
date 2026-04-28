@@ -13,6 +13,22 @@ export interface ItemViewSpecsConfig {
 	itemType: string;
 	title: string;
 	groups: FieldGroupConfig[];
+	blueprint?: ItemBlueprintConfig;
+}
+
+export interface ItemBlueprintLabelConfig {
+	label: string;
+	topPercent: number;
+	leftPercent: number;
+}
+
+export interface ItemBlueprintConfig {
+	unitLine?: string;
+	classificationLine?: string;
+	footerTag?: string;
+	backgroundImagePath?: string;
+	blueprintImagePath?: string;
+	labels?: ItemBlueprintLabelConfig[];
 }
 
 export interface ResolvedField {

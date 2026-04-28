@@ -179,6 +179,7 @@ export default class ShipHangarPage {
 	navigateToShipSpecs(ship: ShipSummary): void {
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,
+			queryParams: { specsNav: Date.now() },
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),

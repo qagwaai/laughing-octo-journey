@@ -246,6 +246,7 @@ class MockShipHangarPage {
 	navigateToShipSpecs(ship: ShipSummary): void {
 		this.mockRouter.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
 			preserveFragment: true,
+			queryParams: { specsNav: Date.now() },
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
@@ -517,6 +518,7 @@ describe('ShipHangarPage', () => {
 			[{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }],
 			{
 				preserveFragment: true,
+				queryParams: { specsNav: jasmine.any(Number) },
 				state: {
 					playerName: 'Pioneer',
 					joinCharacter: character,

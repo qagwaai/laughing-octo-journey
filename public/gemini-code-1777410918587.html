@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Stellar | HUD Prototype</title>
+    <style>
+        :root {
+            --stellar-blue: #7df9ff;
+            --hud-bg: rgba(2, 6, 12, 0.85);
+            --glow: 0 0 10px rgba(125, 249, 255, 0.5);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #02060c;
+            overflow: hidden;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+        }
+
+        /* 1. The Starfield Background */
+        .background-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://your-starfield-link.jpg') center/cover no-repeat;
+            z-index: -1;
+        }
+
+        /* 2. Main HUD Container */
+        .hud-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            color: var(--stellar-blue);
+            text-shadow: var(--glow);
+        }
+
+        /* 3. The Blueprint Layer (The lines) */
+        .blueprint-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            height: 90%;
+            background: url('https://your-blueprint-lines.png') center/contain no-repeat;
+            filter: drop-shadow(0 0 5px var(--stellar-blue));
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        /* 4. Stats Block */
+        .stats-block {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            width: 320px;
+            background: var(--hud-bg);
+            border-left: 3px solid var(--stellar-blue);
+            padding: 15px;
+            border-radius: 0 5px 5px 0;
+            backdrop-filter: blur(5px);
+        }
+
+        .stats-block h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(125, 249, 255, 0.3);
+        }
+
+        .stats-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .stats-list li {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        /* 5. Dynamic Labeling (Absolute Positioned Labels) */
+        .label {
+            position: absolute;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 5px;
+            border: 1px solid var(--stellar-blue);
+        }
+
+        /* Example placement for "Overall Length" */
+        .label.length { top: 25%; left: 40%; }
+        .label.width { top: 15%; left: 60%; }
+
+        /* Scanning Animation Effect */
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(125, 249, 255, 0.2);
+            box-shadow: var(--glow);
+            top: -10%;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-layer"></div>
+
+    <div class="hud-container">
+        <div class="scan-line"></div>
+        
+        <header style="padding: 30px;">
+            <h1 style="margin: 0; font-size: 2rem;">UNIT: SCAVENGER POD</h1>
+            <small style="opacity: 0.7;">PROJECT STELLAR // MANUAL OPERATED UTILITY VESSEL</small>
+        </header>
+
+        <div class="blueprint-layer"></div>
+
+        <div class="label length">OVERALL LENGTH: 3.85 M</div>
+        <div class="label width">POD WIDTH: 2.10 M</div>
+
+        <section class="stats-block">
+            <h2>STATS BLOCK</h2>
+            <ul class="stats-list">
+                <li><span>TYPE:</span> <span>UTILITY VESSEL</span></li>
+                <li><span>DRY MASS:</span> <span>1,980 KG</span></li>
+                <li><span>WET MASS:</span> <span>2,350 KG</span></li>
+                <li><span>MAX VELOCITY:</span> <span>95 M/S</span></li>
+                <li><span>POWER:</span> <span>LI-CAD ARRAY (T3)</span></li>
+            </ul>
+        </section>
+
+        <footer style="position: absolute; bottom: 20px; left: 20px; opacity: 0.5;">
+            [ L-BRACKET_SYSTEM_READY ]
+        </footer>
+    </div>
+
+</body>
+</html>

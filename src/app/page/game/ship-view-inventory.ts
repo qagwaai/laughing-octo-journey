@@ -119,6 +119,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
 	navigateToItemSpecs(group: InventoryGroup): void {
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }], {
 			preserveFragment: true,
+			queryParams: { specsNav: Date.now() },
 			state: {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),

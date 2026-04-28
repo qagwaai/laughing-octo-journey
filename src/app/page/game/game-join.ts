@@ -223,6 +223,7 @@ export default class GameJoinPage {
 
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,
+			queryParams: { specsNav: Date.now() },
 			state: {
 				playerName,
 				joinCharacter,
