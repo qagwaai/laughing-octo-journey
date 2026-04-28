@@ -193,4 +193,57 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 		expect(resolution.removeAsteroidSampleIds).toEqual([]);
 		expect(resolution.shouldRefreshAfterLaunch).toBe(false);
 	});
+
+	it('should pre-assign a revealedMaterial to every generated asteroid sample', () => {
+		const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			center: { x: 0, y: 0, z: 0 },
+			launchSeedHint: null,
+		});
+
+		expect(samples.length).toBeGreaterThan(0);
+		for (const sample of samples) {
+			expect(sample.revealedMaterial).not.toBeNull();
+			expect(typeof sample.revealedMaterial!.material).toBe('string');
+			expect(typeof sample.revealedMaterial!.rarity).toBe('string');
+			expect(typeof sample.revealedMaterial!.textureColor).toBe('string');
+		}
+	});
+
+	it('should guarantee at least one Iron asteroid among generated samples', () => {
+		const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			center: { x: 0, y: 0, z: 0 },
+			launchSeedHint: null,
+		});
+
+		const hasIron = samples.some((s) => s.revealedMaterial?.material === 'Iron');
+		expect(hasIron).toBe(true);
+	});
+
+	it('should pre-assign materials to non-matched resumed samples', () => {
+		const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createResumedAsteroidSamples({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			center: { x: 10_000, y: 0, z: -10_000 },
+			existingBodies: [],
+			launchSeedHint: null,
+		});
+
+		expect(samples.length).toBeGreaterThan(0);
+		for (const sample of samples) {
+			expect(sample.revealedMaterial).not.toBeNull();
+		}
+	});
+
+	it('should pre-assign materials to fallback asteroid samples', () => {
+		const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createFallbackAsteroidSamples();
+
+		expect(samples.length).toBeGreaterThan(0);
+		for (const sample of samples) {
+			expect(sample.revealedMaterial).not.toBeNull();
+		}
+	});
 });

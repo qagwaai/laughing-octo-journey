@@ -5,6 +5,11 @@ import {
 } from '../model/celestial-body-location';
 import type { CelestialBodyListItem } from '../model/celestial-body-list';
 import { generateRandomAsteroidKinematics } from '../model/asteroid-kinematics';
+import {
+	ASTEROID_MATERIALS,
+	pickWeightedAsteroidMaterial,
+	type AsteroidMaterialProfile,
+} from '../model/asteroid-materials';
 import { coerceShipInventory } from '../model/ship-list';
 import type { LaunchItemResponse } from '../model/launch-item';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
@@ -53,6 +58,17 @@ function hasExpendableDartDroneInInventory(rawInventory: unknown): boolean {
 	});
 }
 
+const IRON_MATERIAL = ASTEROID_MATERIALS.find((m) => m.material === 'Iron')!;
+
+function generateMaterialAssignments(count: number, random: () => number): AsteroidMaterialProfile[] {
+	const materials = Array.from({ length: count }, () => pickWeightedAsteroidMaterial(random));
+	if (count > 0 && !materials.some((m) => m.material === 'Iron')) {
+		const replaceIndex = Math.floor(random() * count);
+		materials[replaceIndex] = IRON_MATERIAL;
+	}
+	return materials;
+}
+
 function hashToSeed(input: string): number {
 	let hash = 2166136261;
 	for (let i = 0; i < input.length; i++) {
@@ -88,6 +104,7 @@ function generateAsteroidSamples(
 	clusterCenterKm?: Triple,
 	random: () => number = Math.random,
 	count?: number,
+	preAssignedMaterials?: AsteroidMaterialProfile[],
 ): AsteroidScanSample[] {
 	const resolvedCount = count ?? (Math.floor(random() * 16) + 5);
 	const samples: AsteroidScanSample[] = [];
@@ -116,7 +133,7 @@ function generateAsteroidSamples(
 			basePosition,
 			scanProgress: 0,
 			scanned: false,
-			revealedMaterial: null,
+			revealedMaterial: preAssignedMaterials?.[i] ?? null,
 			revealedKinematics: null,
 			solarSystemLocation,
 			clusterCenterKm: resolvedClusterCenterKm,
@@ -168,11 +185,15 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 		};
 	},
 	createFallbackAsteroidSamples() {
-		return generateAsteroidSamples();
+		const count = Math.floor(Math.random() * 16) + 5;
+		const materials = generateMaterialAssignments(count, Math.random);
+		return generateAsteroidSamples(undefined, Math.random, count, materials);
 	},
 	createNewAsteroidSamplesAroundShip({ playerName, characterId, center, launchSeedHint }) {
 		const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
-		return generateAsteroidSamples(center, rng);
+		const count = Math.floor(rng() * 16) + 5;
+		const materials = generateMaterialAssignments(count, rng);
+		return generateAsteroidSamples(center, rng, count, materials);
 	},
 	createResumedAsteroidSamples({ playerName, characterId, center, existingBodies, launchSeedHint }) {
 		const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
@@ -184,7 +205,8 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 		);
 		const randomTarget = Math.floor(rng() * 16) + 5;
 		const total = Math.max(activeBodies.length, randomTarget);
-		const allSamples = generateAsteroidSamples(center, rng, total);
+		const materials = generateMaterialAssignments(total, rng);
+		const allSamples = generateAsteroidSamples(center, rng, total, materials);
 
 		return allSamples.map((sample, index) => {
 			const existingBody = existingBySourceScanId.get(sample.id) ?? activeBodies[index];

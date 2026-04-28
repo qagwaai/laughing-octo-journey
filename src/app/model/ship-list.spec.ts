@@ -5,7 +5,7 @@ import {
 import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from './expendable-dart-drone';
 
 describe('ship-list inventory helpers', () => {
-	it('coerces valid ShipItem objects in the inventory array', () => {
+	it('coerces valid ShipItem objects and supported display-name strings in inventory', () => {
 		const validItem = {
 			id: 'item-1',
 			itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
@@ -23,13 +23,21 @@ describe('ship-list inventory helpers', () => {
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
 		};
-		const result = coerceShipInventory([validItem, null, 'invalid', 42] as unknown);
+		const result = coerceShipInventory([
+			validItem,
+			null,
+			EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+			42,
+		] as unknown);
 
-		expect(result.length).toBe(1);
+		expect(result.length).toBe(2);
 		expect(result[0].id).toBe('item-1');
 		expect(result[0].itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 		expect(result[0].displayName).toBe(EXPENDABLE_DART_DRONE_DISPLAY_NAME);
 		expect(result[0].launchable).toBe(true);
+		expect(result[1].itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
+		expect(result[1].displayName).toBe(EXPENDABLE_DART_DRONE_DISPLAY_NAME);
+		expect(result[1].launchable).toBe(true);
 	});
 
 	it('returns an empty array for non-array input', () => {
