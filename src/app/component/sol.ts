@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, inject, InjectionToken, input, viewChild } from "@angular/core";
+import { Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, inject, InjectionToken, input, signal, viewChild } from "@angular/core";
 import { beforeRender as _beforeRender, NgtArgs } from "angular-three";
 import { textureResource as _textureResource } from "angular-three-soba/loaders";
 import * as THREE from "three";
@@ -29,8 +29,15 @@ export class Sol {
     radius = input<number>(1);
 
     private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('sol');
+    protected hovered = signal(false);
+    protected clicked = signal(false);
     protected textures = inject(TEXTURE_RESOURCE_FN)(() => ({
         sunTexture: "images/sol_surface.png",
+        sunColorLookupTexture: "images/sol_colorshift.png",
+        solarflareTexture: "images/solarflare.png",
+        sunHaloTexture: "images/sun_halo.png",
+        sunHaloColorTexture: "images/sol_halo_colorshift.png",
+        sunCoronaTexture: "images/sol_corona.png",
     }));
 
     constructor() {

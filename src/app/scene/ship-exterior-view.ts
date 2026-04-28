@@ -16,6 +16,8 @@ import { BackgroundStars } from '../component/background-stars';
 import { Sol } from '../component/sol';
 import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/asteroid-kinematics';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
 	DEFAULT_SOLAR_SYSTEM_ID,
 	type CelestialBodyUpsertRequest,
@@ -29,8 +31,6 @@ import {
 } from '../model/celestial-body-list';
 import {
 	DEFAULT_CLUSTER_SPREAD_KM,
-	generateRandomAsteroidBeltClusterCenterKm,
-	generateRandomCelestialBodyLocationNear,
 	type CelestialBodyLocation,
 } from '../model/celestial-body-location';
 import { type MissionStatus } from '../model/mission';
@@ -56,6 +56,7 @@ import {
 	type LaunchItemRequest,
 	type LaunchItemResponse,
 } from '../model/launch-item';
+import { resolveShipExteriorMission } from '../mission/ship-exterior-mission';
 import { SessionService } from '../services/session.service';
 import { SocketService } from '../services/socket.service';
 
@@ -65,24 +66,6 @@ interface ShipExteriorViewNavigationState {
 	joinShip?: ShipSummary;
 	firstTargetMissionStatus?: MissionStatus;
 	missionContext?: ShipExteriorViewMissionContext;
-}
-
-interface AsteroidScanSample {
-	id: string;
-	serverCelestialBodyId: string | null;
-	position: [number, number, number];
-	basePosition: [number, number, number];
-	scanProgress: number;
-	scanned: boolean;
-	revealedMaterial: AsteroidMaterialProfile | null;
-	revealedKinematics: AsteroidKinematics | null;
-	capturedKinematics: AsteroidKinematics;
-	solarSystemLocation: CelestialBodyLocation;
-	clusterCenterKm: Triple;
-	motionPhase: number;
-	motionRate: number;
-	motionRadius: number;
-	bobAmplitude: number;
 }
 
 interface LaunchHotkeySlot {
@@ -197,64 +180,6 @@ function formatOffsetText(location: CelestialBodyLocation | null, center: Triple
 	return `OFFSET(km): dX ${dx.toFixed(0)} dY ${dy.toFixed(0)} dZ ${dz.toFixed(0)} | R ${distance.toFixed(0)}`;
 }
 
-function normalizeInventoryToken(value: unknown): string {
-	if (typeof value !== 'string') {
-		return '';
-	}
-
-	return value
-		.trim()
-		.toLowerCase()
-		.replace(/[_\s]+/g, '-')
-		.replace(/[^a-z0-9-]/g, '');
-}
-
-function hasExpendableDartDroneInInventory(rawInventory: unknown): boolean {
-	const normalizedTarget = 'expendable-dart-drone';
-	const normalizedDisplayTarget = 'expendable-dart-drone';
-
-	const coercedInventory = coerceShipInventory(rawInventory);
-	if (coercedInventory.some((item) => normalizeInventoryToken(item.itemType) === normalizedTarget)) {
-		return true;
-	}
-
-	if (!Array.isArray(rawInventory)) {
-		return false;
-	}
-
-	return rawInventory.some((rawItem) => {
-		if (!rawItem || typeof rawItem !== 'object') {
-			return false;
-		}
-
-		const item = rawItem as Record<string, unknown>;
-		const itemType = normalizeInventoryToken(item['itemType']);
-		if (itemType === normalizedTarget) {
-			return true;
-		}
-
-		const displayName = normalizeInventoryToken(item['displayName']);
-		return displayName === normalizedDisplayTarget;
-	});
-}
-
-function hashToSeed(input: string): number {
-	let hash = 2166136261;
-	for (let i = 0; i < input.length; i++) {
-		hash ^= input.charCodeAt(i);
-		hash = Math.imul(hash, 16777619);
-	}
-	return hash >>> 0;
-}
-
-function seededRandom(seed: number): () => number {
-	let state = seed >>> 0;
-	return () => {
-		state = (Math.imul(1664525, state) + 1013904223) >>> 0;
-		return state / 0x100000000;
-	};
-}
-
 @Component({
 	selector: 'app-ship-exterior-view-scene',
 	templateUrl: './ship-exterior-view.html',
@@ -296,11 +221,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		(this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
 		(history.state as ShipExteriorViewNavigationState | undefined) ??
 		{};
+	private readonly missionDefinition = resolveShipExteriorMission(
+		this.navigationState.missionContext?.missionId ?? FIRST_TARGET_MISSION_ID,
+	);
 
 	protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
 	protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
 	protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
-	protected hasExpendableDartDrone = signal(hasExpendableDartDroneInInventory(this.navigationState.joinShip?.inventory));
+	protected hasExpendableDartDrone = signal(this.missionDefinition.resolveTargetingCapabilityFromInventory(this.navigationState.joinShip?.inventory));
 	private activeShipId = signal(this.navigationState.joinShip?.id?.trim() ?? '');
 	private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
 	private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
@@ -309,7 +237,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
 	readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
 	protected canTargetAsteroids = computed(() =>
-		this.shipModel() === 'Scavenger Pod' && this.hasExpendableDartDrone(),
+		this.missionDefinition.canTargetAsteroids({
+			shipModel: this.shipModel(),
+			hasExpendableDartDrone: this.hasExpendableDartDrone(),
+		}),
 	);
 	readonly sunConfig = computed(() => resolveSunConfigForSolarSystem(this.activeSolarSystemId()));
 	readonly shipSunDistanceKm = computed(() => {
@@ -417,52 +348,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const target = this.asteroidSamples().find((sample) => sample.id === targetedId);
 		return target?.position ?? null;
 	});
-
-	private static generateAsteroidSamples(clusterCenterKm?: Triple, random: () => number = Math.random, count?: number): AsteroidScanSample[] {
-		const resolvedCount = count ?? (Math.floor(random() * 16) + 5); // 5–20
-		const samples: AsteroidScanSample[] = [];
-		// All asteroids in this scan share a cluster center within the main
-		// asteroid belt so their solar-system locations read as "neighbours".
-		const resolvedClusterCenterKm = clusterCenterKm ?? generateRandomAsteroidBeltClusterCenterKm(random);
-
-		for (let i = 0; i < resolvedCount; i++) {
-			// Spread asteroids evenly around a circle with jitter, avoiding crowding
-			const baseAngle = (i / resolvedCount) * Math.PI * 2;
-			const angleJitter = (random() - 0.5) * (Math.PI / resolvedCount);
-			const angle = baseAngle + angleJitter;
-
-			const distance = 6 + random() * 14; // 6–20 units from centre
-			const x = Math.cos(angle) * distance;
-			const z = Math.sin(angle) * distance;
-			const solarSystemLocation = generateRandomCelestialBodyLocationNear(resolvedClusterCenterKm, undefined, random);
-			const y = (random() - 0.5) * 8; // -4 to +4 vertical spread
-			const basePosition: [number, number, number] = [+x.toFixed(2), +y.toFixed(2), +z.toFixed(2)];
-			const capturedKinematics = generateRandomAsteroidKinematics(random);
-			const velocity = capturedKinematics.velocityKmPerSec;
-			const speedKmPerSec = Math.hypot(velocity.x, velocity.y, velocity.z);
-			const speedFactor = Math.min(1, speedKmPerSec / 32);
-
-			samples.push({
-				id: `sample-a${i + 1}`,
-				serverCelestialBodyId: null,
-				position: basePosition,
-				basePosition,
-				scanProgress: 0,
-				scanned: false,
-				revealedMaterial: null,
-				revealedKinematics: null,
-				solarSystemLocation,
-				clusterCenterKm: resolvedClusterCenterKm,
-				capturedKinematics,
-				motionPhase: random() * Math.PI * 2,
-				motionRate: 0.2 + speedFactor * 0.55,
-				motionRadius: 0.2 + speedFactor * 0.95,
-				bobAmplitude: 0.06 + random() * 0.4,
-			});
-		}
-
-		return samples;
-	}
 
 	private resolveAsteroidPosition(
 		sample: AsteroidScanSample,
@@ -661,7 +546,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName || !characterId || !sessionKey) {
-			const samples = ShipExteriorViewScene.generateAsteroidSamples();
+			const samples = this.missionDefinition.createFallbackAsteroidSamples();
 			this.asteroidSamples.set(samples);
 			console.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
 			return;
@@ -680,7 +565,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				const center = firstShip?.location?.positionKm;
 
 				if (!center) {
-					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
+					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
 					return;
@@ -692,40 +577,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					(cbResponse: CelestialBodyListResponse) => {
 						this.unsubscribeCelestialBodyListResponse?.();
 
-						const rng = seededRandom(this.resolveAsteroidSeed(playerName, characterId, center));
-						const existingBodies = cbResponse.success
-							? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed')
-							: [];
-						const existingBySourceScanId = new Map(
-							existingBodies
-								.filter((body) => typeof body.sourceScanId === 'string' && body.sourceScanId.trim().length > 0)
-								.map((body) => [body.sourceScanId, body] as const),
-						);
-						const randomTarget = Math.floor(rng() * 16) + 5; // 5–20, same seed sequence as just-started
-						const total = Math.max(existingBodies.length, randomTarget);
-						const allSamples = ShipExteriorViewScene.generateAsteroidSamples(center, rng, total);
-
-						const seededSamples = allSamples.map((sample, index) => {
-							const existingBody = existingBySourceScanId.get(sample.id) ?? existingBodies[index];
-							if (!existingBody) {
-								return sample;
-							}
-
-							return {
-								...sample,
-								serverCelestialBodyId: existingBody.id,
-								scanProgress: 100,
-								scanned: true,
-								revealedMaterial: existingBody.composition,
-								revealedKinematics: existingBody.kinematics,
-								capturedKinematics: existingBody.kinematics,
-								solarSystemLocation: existingBody.location,
-							};
+						const seededSamples = this.missionDefinition.createResumedAsteroidSamples({
+							playerName,
+							characterId,
+							center,
+							launchSeedHint: this.launchSeedHint,
+							existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
 						});
 
 						this.asteroidSamples.set(seededSamples);
 						console.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
-							existing: existingBodies.length,
+							existing: cbResponse.success ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length : 0,
 							total: seededSamples.length,
 							centerKm: center,
 						});
@@ -753,7 +615,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName || !characterId || !sessionKey) {
-			const samples = ShipExteriorViewScene.generateAsteroidSamples();
+			const samples = this.missionDefinition.createFallbackAsteroidSamples();
 			this.asteroidSamples.set(samples);
 			console.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
 			return;
@@ -765,7 +627,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			(response: ShipListResponse) => {
 				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
-					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
+					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
 					return;
@@ -776,14 +638,18 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				const firstShip = response.ships?.[0];
 				const center = firstShip?.location?.positionKm;
 				if (!center) {
-					const fallbackSamples = ShipExteriorViewScene.generateAsteroidSamples();
+					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.asteroidSamples.set(fallbackSamples);
 					console.warn('ColdBootScan ship list missing required location.positionKm; using fallback random center.');
 					return;
 				}
 
-				const rng = seededRandom(this.resolveAsteroidSeed(playerName, characterId, center));
-				const samples = ShipExteriorViewScene.generateAsteroidSamples(center, rng);
+				const samples = this.missionDefinition.createNewAsteroidSamplesAroundShip({
+					playerName,
+					characterId,
+					center,
+					launchSeedHint: this.launchSeedHint,
+				});
 				this.asteroidSamples.set(samples);
 				console.info('ColdBootScan seeded asteroids around starter ship center.', {
 					count: samples.length,
@@ -803,22 +669,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		const navShipId = this.navigationState.joinShip?.id;
 		const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
-		const nextHasDrone = hasExpendableDartDroneInInventory(matchingShip?.inventory);
+		const nextHasDrone = this.missionDefinition.resolveTargetingCapabilityFromInventory(matchingShip?.inventory);
 		this.hasExpendableDartDrone.set(nextHasDrone);
 		this.activeShipId.set(matchingShip?.id?.trim() ?? '');
 		this.activeShipLocationKm.set(matchingShip?.location?.positionKm ?? null);
 		this.activeSolarSystemId.set(matchingShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
 		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
-	}
-
-	private resolveAsteroidSeed(playerName: string, characterId: string, center: Triple): number {
-		const baseSeed = hashToSeed(`${playerName}::${characterId}::${center.x}:${center.y}:${center.z}`);
-		const hint = this.launchSeedHint;
-		if (hint === null || !Number.isFinite(hint)) {
-			return baseSeed;
-		}
-
-		return (baseSeed ^ (hint >>> 0)) >>> 0;
 	}
 
 	private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {
@@ -897,41 +753,35 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		const launchSeed = response.resolution?.launchSeed ?? null;
 		this.launchSeedHint = launchSeed;
+		const missionResolution = this.missionDefinition.resolveLaunchItemResponse({
+			response,
+			asteroidSamples: this.asteroidSamples(),
+		});
 
 		if (!response.success) {
 			this.setLaunchToast(response.message || 'Launch failed', 'error', launchSeed);
 			return;
 		}
 
-		if (response.resolution?.outcome === 'target-destroyed') {
-			this.applyLaunchTargetDestroyedState(response.targetCelestialBodyId);
+		if (missionResolution.removeAsteroidSampleIds.length > 0) {
+			this.removeAsteroidSamples(missionResolution.removeAsteroidSampleIds);
 		}
 
 		this.setLaunchToast(response.message || 'Launch complete', 'success', launchSeed);
-		this.queuePostLaunchRefresh();
+		if (missionResolution.shouldRefreshAfterLaunch) {
+			this.queuePostLaunchRefresh();
+		}
 	}
 
-	private applyLaunchTargetDestroyedState(targetCelestialBodyId: string): void {
-		if (!targetCelestialBodyId) {
+	private removeAsteroidSamples(sampleIds: readonly string[]): void {
+		if (sampleIds.length === 0) {
 			return;
 		}
 
-		const matchingSampleIds = new Set(
-			this.asteroidSamples()
-				.filter(
-					(sample) =>
-						sample.serverCelestialBodyId === targetCelestialBodyId ||
-						sample.id === targetCelestialBodyId,
-				)
-				.map((sample) => sample.id),
-		);
+		const matchingSampleIds = new Set(sampleIds);
 
 		this.asteroidSamples.update((samples) =>
-			samples.filter(
-				(sample) =>
-					sample.serverCelestialBodyId !== targetCelestialBodyId &&
-					sample.id !== targetCelestialBodyId,
-			),
+			samples.filter((sample) => !matchingSampleIds.has(sample.id)),
 		);
 
 		if (matchingSampleIds.has(this.targetedAsteroidId() ?? '')) {
