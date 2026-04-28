@@ -34,8 +34,38 @@ import {
 	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
 	createExpendableDartDrone,
 } from '../../model/expendable-dart-drone';
+import {
+	THREE_D_PRINTER_ITEM_TYPE,
+	THREE_D_PRINTER_DISPLAY_NAME,
+	THREE_D_PRINTER_TIER,
+	create3DPrinter,
+} from '../../model/3d-printer';
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { INVALID_SESSION_EVENT } from '../../model/session';
+
+interface StarterShipInventoryItemDefinition {
+	itemType: string;
+	displayName: string;
+	tier?: number;
+	launchable: boolean;
+	failureMessage: string;
+}
+
+const STARTER_SHIP_INVENTORY_ITEMS: readonly StarterShipInventoryItemDefinition[] = [
+	{
+		itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
+		displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+		launchable: true,
+		failureMessage: 'Ship updated, but starter drone could not be created.',
+	},
+	{
+		itemType: THREE_D_PRINTER_ITEM_TYPE,
+		displayName: THREE_D_PRINTER_DISPLAY_NAME,
+		tier: THREE_D_PRINTER_TIER,
+		launchable: false,
+		failureMessage: 'Ship updated, but starter 3D printer could not be created.',
+	},
+];
 
 function createSignal<T>(initial: T) {
 	let value = initial;
@@ -278,10 +308,7 @@ class MockCharacterSetupPage {
 					return;
 				}
 
-				const starterShipHasDrone =
-					response.ships?.[0]?.inventory?.some(
-						(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
-					) ?? false;
+				const existingInventory = response.ships?.[0]?.inventory ?? [];
 
 				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
 				this.socketService.upsertShip(
@@ -297,38 +324,24 @@ class MockCharacterSetupPage {
 							return;
 						}
 
-						const upsertedShipHasDrone =
-							upsertResponse.ship?.inventory?.some(
-								(item: any) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
-							) ?? false;
+						const upsertedInventory = upsertResponse.ship?.inventory ?? [];
+						const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
+							(definition) =>
+								!this.hasStarterShipInventoryItem(existingInventory, definition) &&
+								!this.hasStarterShipInventoryItem(upsertedInventory, definition),
+						);
 
-						if (starterShipHasDrone || upsertedShipHasDrone) {
+						if (missingStarterItems.length === 0) {
 							this.warningMessage.set(null);
 							return;
 						}
 
-						this.socketService.upsertItem(
-							{
-								playerName,
-								sessionKey,
-								item: {
-									itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-									displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-									state: 'contained',
-									damageStatus: 'intact',
-									container: { containerType: 'ship', containerId: starterShipId },
-									owningPlayerId: playerName,
-									owningCharacterId: resolvedCharacterId,
-								},
-							},
-							(itemResponse: any) => {
-								if (!itemResponse.success) {
-									this.warningMessage.set('Ship updated, but starter drone could not be created.');
-									return;
-								}
-
-								this.warningMessage.set(null);
-							},
+						this.upsertStarterShipInventoryItems(
+							missingStarterItems,
+							playerName,
+							sessionKey,
+							resolvedCharacterId,
+							starterShipId,
 						);
 					},
 				);
@@ -340,6 +353,60 @@ class MockCharacterSetupPage {
 			characterId: resolvedCharacterId,
 			sessionKey,
 		});
+	}
+
+	private hasStarterShipInventoryItem(
+		inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
+		definition: StarterShipInventoryItemDefinition,
+	): boolean {
+		return (
+			inventory?.some(
+				(item) =>
+					item.itemType === definition.itemType &&
+					(definition.tier === undefined || item.tier === definition.tier),
+			) ?? false
+		);
+	}
+
+	private upsertStarterShipInventoryItems(
+		items: readonly StarterShipInventoryItemDefinition[],
+		playerName: string,
+		sessionKey: string,
+		characterId: string,
+		shipId: string,
+		index = 0,
+	): void {
+		const itemDefinition = items[index];
+		if (!itemDefinition) {
+			this.warningMessage.set(null);
+			return;
+		}
+
+		this.socketService.upsertItem(
+			{
+				playerName,
+				sessionKey,
+				item: {
+					itemType: itemDefinition.itemType,
+					displayName: itemDefinition.displayName,
+					...(itemDefinition.tier === undefined ? {} : { tier: itemDefinition.tier }),
+					launchable: itemDefinition.launchable,
+					state: 'contained',
+					damageStatus: 'intact',
+					container: { containerType: 'ship', containerId: shipId },
+					owningPlayerId: playerName,
+					owningCharacterId: characterId,
+				},
+			},
+			(itemResponse: any) => {
+				if (!itemResponse.success) {
+					this.warningMessage.set(itemDefinition.failureMessage);
+					return;
+				}
+
+				this.upsertStarterShipInventoryItems(items, playerName, sessionKey, characterId, shipId, index + 1);
+			},
+		);
 	}
 
 	navigateToCharacterList(): void {
@@ -729,6 +796,7 @@ describe('CharacterSetupPage', () => {
 				item: {
 					itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
 					displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+					launchable: true,
 					state: 'contained',
 					damageStatus: 'intact',
 					container: { containerType: 'ship', containerId: 'ship-1' },
@@ -738,11 +806,53 @@ describe('CharacterSetupPage', () => {
 			});
 		});
 
-		it('should skip item-upsert when starter ship already has a drone in inventory', () => {
-			const existingDrone = createExpendableDartDrone();
-			existingDrone.container = { containerType: 'ship', containerId: 'ship-1' };
-			existingDrone.owningPlayerId = 'Pioneer';
-			existingDrone.owningCharacterId = 'c-1';
+		it('should emit second item-upsert-request with 3D printer payload after drone creation succeeds', () => {
+			triggerSuccessfulCharacterAdd('c-1');
+
+			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+			} satisfies ShipListResponse);
+
+			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+			});
+
+			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'Drone created.',
+				playerName: 'Pioneer',
+			});
+
+			const itemEmits = socketService.emittedEvents.filter(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			expect(itemEmits.length).toBe(2);
+			expect(itemEmits[1].data).toEqual({
+				playerName: 'Pioneer',
+				sessionKey: 'test-session-key',
+				item: {
+					itemType: THREE_D_PRINTER_ITEM_TYPE,
+					displayName: THREE_D_PRINTER_DISPLAY_NAME,
+					tier: THREE_D_PRINTER_TIER,
+					launchable: false,
+					state: 'contained',
+					damageStatus: 'intact',
+					container: { containerType: 'ship', containerId: 'ship-1' },
+					owningPlayerId: 'Pioneer',
+					owningCharacterId: 'c-1',
+				},
+			});
+		});
+
+		it('should skip 3D printer provisioning when the starter ship already has one in inventory', () => {
+			const existingPrinter = create3DPrinter();
+			existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
+			existingPrinter.owningPlayerId = 'Pioneer';
+			existingPrinter.owningCharacterId = 'c-1';
 
 			triggerSuccessfulCharacterAdd('c-1');
 
@@ -751,7 +861,38 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone] }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingPrinter] }],
+			} satisfies ShipListResponse);
+
+			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+			});
+
+			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			expect(itemEmit).toBeDefined();
+			expect(itemEmit!.data.item.itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
+		});
+
+		it('should skip item-upsert when starter ship already has both default items in inventory', () => {
+			const existingDrone = createExpendableDartDrone();
+			existingDrone.container = { containerType: 'ship', containerId: 'ship-1' };
+			existingDrone.owningPlayerId = 'Pioneer';
+			existingDrone.owningCharacterId = 'c-1';
+			const existingPrinter = create3DPrinter();
+			existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
+			existingPrinter.owningPlayerId = 'Pioneer';
+			existingPrinter.owningCharacterId = 'c-1';
+
+			triggerSuccessfulCharacterAdd('c-1');
+
+			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone, existingPrinter] }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -765,7 +906,7 @@ describe('CharacterSetupPage', () => {
 			expect(component.warningMessage()).toBeNull();
 		});
 
-		it('should set warningMessage when item-upsert-response fails', () => {
+		it('should set warningMessage when drone item-upsert-response fails', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
 			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
@@ -791,6 +932,38 @@ describe('CharacterSetupPage', () => {
 			expect(component.warningMessage()).toBe('Ship updated, but starter drone could not be created.');
 		});
 
+		it('should set warningMessage when 3D printer item-upsert-response fails', () => {
+			triggerSuccessfulCharacterAdd('c-1');
+
+			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+			} satisfies ShipListResponse);
+
+			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+			});
+
+			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: 'Drone created.',
+				playerName: 'Pioneer',
+			});
+
+			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
+				success: false,
+				message: 'Printer creation failed.',
+				playerName: 'Pioneer',
+			});
+
+			expect(component.warningMessage()).toBe('Ship updated, but starter 3D printer could not be created.');
+		});
+
 		it('should clear warningMessage after full successful provisioning flow', () => {
 			component.warningMessage.set('Previous warning');
 			triggerSuccessfulCharacterAdd('c-1');
@@ -812,6 +985,12 @@ describe('CharacterSetupPage', () => {
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'Drone created.',
+				playerName: 'Pioneer',
+			});
+
+			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
+				success: true,
+				message: '3D printer created.',
 				playerName: 'Pioneer',
 			});
 

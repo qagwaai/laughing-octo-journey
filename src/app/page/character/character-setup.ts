@@ -23,12 +23,41 @@ import {
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/expendable-dart-drone';
+import {
+	THREE_D_PRINTER_ITEM_TYPE,
+	THREE_D_PRINTER_DISPLAY_NAME,
+	THREE_D_PRINTER_TIER,
+} from '../../model/3d-printer';
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+
+interface StarterShipInventoryItemDefinition {
+	itemType: string;
+	displayName: string;
+	tier?: number;
+	launchable: boolean;
+	failureMessage: string;
+}
+
+const STARTER_SHIP_INVENTORY_ITEMS: readonly StarterShipInventoryItemDefinition[] = [
+	{
+		itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
+		displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+		launchable: true,
+		failureMessage: 'Ship updated, but starter drone could not be created.',
+	},
+	{
+		itemType: THREE_D_PRINTER_ITEM_TYPE,
+		displayName: THREE_D_PRINTER_DISPLAY_NAME,
+		tier: THREE_D_PRINTER_TIER,
+		launchable: false,
+		failureMessage: 'Ship updated, but starter 3D printer could not be created.',
+	},
+];
 
 interface CharacterSetupNavigationState {
 	playerName?: string;
@@ -197,10 +226,7 @@ export default class CharacterSetupPage implements OnDestroy {
 					return;
 				}
 
-				const starterShipHasDrone =
-					response.ships?.[0]?.inventory?.some(
-						(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
-					) ?? false;
+				const existingInventory = response.ships?.[0]?.inventory ?? [];
 
 				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
 				this.socketService.upsertShip(
@@ -217,39 +243,24 @@ export default class CharacterSetupPage implements OnDestroy {
 							return;
 						}
 
-						const upsertedShipHasDrone =
-							upsertResponse.ship?.inventory?.some(
-								(item) => item.itemType === EXPENDABLE_DART_DRONE_ITEM_TYPE,
-							) ?? false;
+						const upsertedInventory = upsertResponse.ship?.inventory ?? [];
+						const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
+							(definition) =>
+								!this.hasStarterShipInventoryItem(existingInventory, definition) &&
+								!this.hasStarterShipInventoryItem(upsertedInventory, definition),
+						);
 
-						if (starterShipHasDrone || upsertedShipHasDrone) {
+						if (missingStarterItems.length === 0) {
 							this.warningMessage.set(null);
 							return;
 						}
 
-						this.socketService.upsertItem(
-							{
-								playerName,
-								sessionKey,
-								item: {
-									itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-									displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-									state: 'contained',
-									damageStatus: 'intact',
-									container: { containerType: 'ship', containerId: starterShipId },
-									owningPlayerId: playerName,
-									owningCharacterId: resolvedCharacterId,
-								},
-							},
-							(itemResponse: ItemUpsertResponse) => {
-								if (!itemResponse.success) {
-									console.warn('Starter drone creation failed:', itemResponse.message);
-									this.warningMessage.set('Ship updated, but starter drone could not be created.');
-									return;
-								}
-
-								this.warningMessage.set(null);
-							},
+						this.upsertStarterShipInventoryItems(
+							missingStarterItems,
+							playerName,
+							sessionKey,
+							resolvedCharacterId,
+							starterShipId,
 						);
 					},
 				);
@@ -262,6 +273,61 @@ export default class CharacterSetupPage implements OnDestroy {
 			sessionKey,
 		};
 		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, followupRequest);
+	}
+
+	private hasStarterShipInventoryItem(
+		inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
+		definition: StarterShipInventoryItemDefinition,
+	): boolean {
+		return (
+			inventory?.some(
+				(item) =>
+					item.itemType === definition.itemType &&
+					(definition.tier === undefined || item.tier === definition.tier),
+			) ?? false
+		);
+	}
+
+	private upsertStarterShipInventoryItems(
+		items: readonly StarterShipInventoryItemDefinition[],
+		playerName: string,
+		sessionKey: string,
+		characterId: string,
+		shipId: string,
+		index = 0,
+	): void {
+		const itemDefinition = items[index];
+		if (!itemDefinition) {
+			this.warningMessage.set(null);
+			return;
+		}
+
+		this.socketService.upsertItem(
+			{
+				playerName,
+				sessionKey,
+				item: {
+					itemType: itemDefinition.itemType,
+					displayName: itemDefinition.displayName,
+					...(itemDefinition.tier === undefined ? {} : { tier: itemDefinition.tier }),
+					launchable: itemDefinition.launchable,
+					state: 'contained',
+					damageStatus: 'intact',
+					container: { containerType: 'ship', containerId: shipId },
+					owningPlayerId: playerName,
+					owningCharacterId: characterId,
+				},
+			},
+			(itemResponse: ItemUpsertResponse) => {
+				if (!itemResponse.success) {
+					console.warn(`Starter item creation failed for ${itemDefinition.itemType}:`, itemResponse.message);
+					this.warningMessage.set(itemDefinition.failureMessage);
+					return;
+				}
+
+				this.upsertStarterShipInventoryItems(items, playerName, sessionKey, characterId, shipId, index + 1);
+			},
+		);
 	}
 
 	navigateToCharacterList(): void {

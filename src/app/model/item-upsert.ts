@@ -7,6 +7,7 @@ export interface ItemUpsertPayload {
 	id?: string;
 	itemType?: string;
 	displayName?: string;
+	tier?: number;
 	launchable?: boolean;
 	state?: ItemState;
 	damageStatus?: ItemDamageStatus;
