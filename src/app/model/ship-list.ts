@@ -50,13 +50,42 @@ export function coerceShipTier(tier: unknown): number {
 	return tier;
 }
 
+function coerceShipItemFromDisplayName(displayName: string): ShipItem {
+	const trimmed = displayName.trim();
+	const itemType = trimmed.toLowerCase().replace(/[\s_]+/g, '-').replace(/[^a-z0-9-]/g, '');
+	const now = new Date().toISOString();
+	return {
+		id: crypto.randomUUID(),
+		itemType: itemType || 'unknown',
+		displayName: trimmed || 'Unknown',
+		launchable: true,
+		state: 'contained',
+		damageStatus: 'intact',
+		container: null,
+		owningPlayerId: null,
+		owningCharacterId: null,
+		kinematics: null,
+		destroyedAt: null,
+		destroyedReason: null,
+		discoveredAt: null,
+		discoveredByCharacterId: null,
+		createdAt: now,
+		updatedAt: now,
+	};
+}
+
 export function coerceShipInventory(inventory: unknown): ShipItem[] {
 	if (!Array.isArray(inventory)) {
 		return [];
 	}
 
 	return inventory
-		.map((item) => coerceShipItem(item))
+		.map((item) => {
+			if (typeof item === 'string') {
+				return item.trim() ? coerceShipItemFromDisplayName(item) : null;
+			}
+			return coerceShipItem(item);
+		})
 		.filter((item): item is ShipItem => item !== null);
 }
 
