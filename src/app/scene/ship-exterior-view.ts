@@ -767,7 +767,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			this.removeAsteroidSamples(missionResolution.removeAsteroidSampleIds);
 		}
 
-		this.setLaunchToast(response.message || 'Launch complete', 'success', launchSeed);
+		// Build toast message, optionally including yielded items
+		let toastMessage = response.message || 'Launch complete';
+		const yieldedItems = response.resolution?.yieldedItems ?? [];
+		if (yieldedItems.length > 0) {
+			const itemsList = yieldedItems
+				.map((item) => `${item.displayName} ×${item.quantity}`)
+				.join(', ');
+			toastMessage = `${toastMessage} — ${itemsList}`;
+		}
+
+		this.setLaunchToast(toastMessage, 'success', launchSeed);
 		if (missionResolution.shouldRefreshAfterLaunch) {
 			this.queuePostLaunchRefresh();
 		}

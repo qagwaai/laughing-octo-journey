@@ -37,6 +37,7 @@ export interface LaunchItemYieldedItem {
 	id: string;
 	itemType: string;
 	displayName: string;
+	quantity: number;
 	state: 'contained' | 'deployed' | 'destroyed';
 	container: LaunchItemContainer | null;
 	launchable: boolean;
