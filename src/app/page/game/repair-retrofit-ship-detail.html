@@ -1,0 +1,28 @@
+<div class="ops-page-container">
+	<div class="page-main">
+		<div class="page-header">
+			<div>
+				<h1>Ship Repair Detail</h1>
+				<p class="subtitle">Full repair operation for the selected ship.</p>
+			</div>
+		</div>
+
+		<section class="ops-card">
+			<p><strong>Ship:</strong> {{ getShipName() }}</p>
+			<p><strong>Current Status:</strong> {{ damageProfile()?.overallStatus || 'unknown' }}</p>
+			<p><strong>Summary:</strong> {{ damageProfile()?.summary || 'No profile available.' }}</p>
+
+			@if (persistError()) {
+				<p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
+			}
+			@if (persistSuccess()) {
+				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
+			}
+
+			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairShip()">
+				Fully Repair Ship
+			</button>
+		</section>
+
+	</div>
+</div>

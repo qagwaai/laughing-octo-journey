@@ -1,0 +1,28 @@
+<div class="ops-page-container">
+	<div class="page-main">
+		<div class="page-header">
+			<div>
+				<h1>Inventory Repair Detail</h1>
+				<p class="subtitle">Full repair operation for a damaged inventory item.</p>
+			</div>
+		</div>
+
+		<section class="ops-card">
+			<p><strong>Item:</strong> {{ selectedAsset()?.label || 'Unknown Item' }}</p>
+			<p><strong>Severity:</strong> {{ selectedAsset()?.severity || 'unknown' }}</p>
+			<p><strong>Summary:</strong> {{ selectedAsset()?.summary || 'No summary available.' }}</p>
+
+			@if (persistError()) {
+				<p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
+			}
+			@if (persistSuccess()) {
+				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
+			}
+
+			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairItem()">
+				Fully Repair Item
+			</button>
+		</section>
+
+	</div>
+</div>

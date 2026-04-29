@@ -15,6 +15,9 @@ import LogoutPage from './page/game/logout';
 import MarketHubPage from './page/game/market-hub';
 import ColdBootScanPage from './page/opening/cold-boot-scan';
 import RepairRetrofitPage from './page/game/repair-retrofit';
+import RepairRetrofitShipDetailPage from './page/game/repair-retrofit-ship-detail';
+import RepairRetrofitSystemDetailPage from './page/game/repair-retrofit-system-detail';
+import RepairRetrofitItemDetailPage from './page/game/repair-retrofit-item-detail';
 import StellarInitiationPage from './page/game/stellar-initiation';
 import ShipExteriorViewScene from './scene/ship-exterior-view';
 import ShipViewSpecs from './scene/ship-view-specs';
@@ -203,6 +206,24 @@ const routes: Routes = [
 		path: 'ship-exterior-view',
 		outlet: 'right',
 		component: ColdBootScanPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'repair-retrofit-ship-detail',
+		outlet: 'right',
+		component: RepairRetrofitShipDetailPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'repair-retrofit-system-detail',
+		outlet: 'right',
+		component: RepairRetrofitSystemDetailPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'repair-retrofit-item-detail',
+		outlet: 'right',
+		component: RepairRetrofitItemDetailPage,
 		canActivate: [authGuard],
 	},
 ];

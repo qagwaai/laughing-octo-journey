@@ -6,6 +6,7 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	DEFAULT_SHIP_MODEL,
+	coerceShipInventory,
 	type ShipListRequest,
 	type ShipListResponse,
 	type ShipSummary,
@@ -14,29 +15,29 @@ import {
 	coerceShipDamageProfile,
 	createColdBootStarterShipDamageProfile,
 	type ShipDamageProfile,
-	type ShipDamageSeverity,
-	type ShipSubsystemDamage,
 } from '../../model/ship-damage';
-import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SessionService, SocketService } from '../../services';
+import {
+	type RepairAssetEntry,
+	type RepairAssetKind,
+	type RepairAssetGrouping,
+	type RepairAssetFilter,
+	type RepairDetailNavigationState,
+} from './repair-retrofit-state';
 
 interface RepairRetrofitNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
 	joinShip?: ShipSummary;
+	selectedFilter?: RepairAssetFilter;
+	selectedGrouping?: RepairAssetGrouping;
 }
 
-type DamagedAssetKind = 'ship' | 'ship-system' | 'inventory-item';
-
-interface DamagedAssetEntry {
-	key: string;
-	kind: DamagedAssetKind;
-	label: string;
-	severity: string;
-	summary: string;
-	repairPriority?: number;
+interface RepairAssetGroup {
+	group: string;
+	entries: RepairAssetEntry[];
 }
 
 @Component({
@@ -62,50 +63,36 @@ export default class RepairRetrofitPage {
 	protected activeShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 	protected isLoadingShip = signal(false);
 	protected shipLoadError = signal<string | null>(null);
-	protected isPersistingRepair = signal(false);
-	protected repairPersistError = signal<string | null>(null);
-	protected repairPersistSuccess = signal<string | null>(null);
 	protected damageProfile = signal<ShipDamageProfile | null>(this.resolveInitialDamageProfile());
+	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
+	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
 
 	protected overallStatusLabel = computed(
 		() => this.damageProfile()?.overallStatus.toUpperCase() ?? 'UNKNOWN',
 	);
 
-	protected subsystemDamages = computed(() => {
-		const systems = this.damageProfile()?.systems ?? [];
-		return systems.slice().sort((left, right) => left.repairPriority - right.repairPriority);
-	});
-
-	protected hasDamage = computed(() => {
-		const profile = this.damageProfile();
-		if (!profile) {
-			return false;
-		}
-
-		return profile.overallStatus !== 'intact' || profile.systems.length > 0;
-	});
-
 	protected activeShipDisplayName = computed(
 		() => this.activeShip()?.name?.trim() || this.activeShip()?.model?.trim() || DEFAULT_SHIP_MODEL,
 	);
 
-	protected damagedAssets = computed<DamagedAssetEntry[]>(() => {
-		const entries: DamagedAssetEntry[] = [];
+	protected allAssets = computed<RepairAssetEntry[]>(() => {
+		const entries: RepairAssetEntry[] = [];
 		const ship = this.activeShip();
 		const shipProfile = this.damageProfile();
+		const shipName = ship?.name?.trim() || ship?.model?.trim() || DEFAULT_SHIP_MODEL;
+		const shipId = ship?.id?.trim() || 'active';
 
-		if (shipProfile && shipProfile.overallStatus !== 'intact') {
-			entries.push({
-				key: `ship:${ship?.id ?? 'active'}`,
-				kind: 'ship',
-				label: ship?.name?.trim() || ship?.model?.trim() || DEFAULT_SHIP_MODEL,
-				severity: shipProfile.overallStatus,
-				summary: shipProfile.summary,
-				repairPriority: 0,
-			});
-		}
+		entries.push({
+			key: `ship:${shipId}`,
+			kind: 'ship',
+			label: shipName,
+			severity: shipProfile?.overallStatus ?? 'intact',
+			summary: shipProfile?.summary ?? 'No active damage profile found.',
+			repairPriority: 0,
+			shipId,
+		});
 
-		for (const system of this.subsystemDamages()) {
+		for (const system of (shipProfile?.systems ?? []).slice().sort((left, right) => left.repairPriority - right.repairPriority)) {
 			entries.push({
 				key: `ship-system:${system.code}`,
 				kind: 'ship-system',
@@ -113,14 +100,12 @@ export default class RepairRetrofitPage {
 				severity: system.severity,
 				summary: system.summary,
 				repairPriority: system.repairPriority,
+				shipId,
+				systemCode: system.code,
 			});
 		}
 
 		for (const item of ship?.inventory ?? []) {
-			if (item.damageStatus === 'intact') {
-				continue;
-			}
-
 			entries.push({
 				key: `inventory-item:${item.id}`,
 				kind: 'inventory-item',
@@ -128,10 +113,48 @@ export default class RepairRetrofitPage {
 				severity: item.damageStatus,
 				summary: `Ship inventory item is ${item.damageStatus} while ${item.state}.`,
 				repairPriority: 100,
+				shipId,
+				itemId: item.id,
 			});
 		}
 
 		return entries.sort((left, right) => (left.repairPriority ?? 1000) - (right.repairPriority ?? 1000));
+	});
+
+	protected filteredAssets = computed(() => {
+		const filter = this.selectedFilter();
+		if (filter === 'all') {
+			return this.allAssets();
+		}
+
+		if (filter === 'needs-repair') {
+			return this.allAssets().filter((asset) => asset.severity !== 'intact');
+		}
+
+		if (filter === 'critical-only') {
+			return this.allAssets().filter((asset) => this.isCriticalSeverity(asset.severity));
+		}
+
+		return this.allAssets().filter((asset) => asset.severity === 'intact');
+	});
+
+	protected groupedAssets = computed<RepairAssetGroup[]>(() => {
+		const grouping = this.selectedGrouping();
+		const groups = new Map<string, RepairAssetEntry[]>();
+
+		for (const asset of this.filteredAssets()) {
+			const group = this.resolveGroupName(asset, grouping);
+			const current = groups.get(group) ?? [];
+			current.push(asset);
+			groups.set(group, current);
+		}
+
+		return Array.from(groups.entries())
+			.map(([group, entries]) => ({
+				group,
+				entries: entries.slice().sort((left, right) => (left.repairPriority ?? 1000) - (right.repairPriority ?? 1000)),
+			}))
+			.sort((left, right) => left.group.localeCompare(right.group));
 	});
 
 	constructor() {
@@ -195,7 +218,6 @@ export default class RepairRetrofitPage {
 
 		this.isLoadingShip.set(true);
 		this.shipLoadError.set(null);
-		this.repairPersistError.set(null);
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeShipListResponse = this.socketService.on(
 			SHIP_LIST_RESPONSE_EVENT,
@@ -209,7 +231,14 @@ export default class RepairRetrofitPage {
 				}
 
 				const nextShip = response.ships?.[0] ?? null;
-				this.activeShip.set(nextShip);
+				this.activeShip.set(
+					nextShip
+						? {
+							...nextShip,
+							inventory: coerceShipInventory(nextShip.inventory),
+						}
+						: null,
+				);
 				this.damageProfile.set(this.resolveDamageProfileForShip(nextShip));
 			},
 		);
@@ -222,178 +251,87 @@ export default class RepairRetrofitPage {
 		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
-	private downgradeSeverity(severity: ShipDamageSeverity): ShipDamageSeverity | null {
-		if (severity === 'critical') {
-			return 'major';
-		}
-
-		if (severity === 'major') {
-			return 'minor';
-		}
-
-		return null;
+	private isCriticalSeverity(severity: string): boolean {
+		return severity === 'critical' || severity === 'disabled' || severity === 'destroyed';
 	}
 
-	private describeSummaryForSystems(systems: readonly ShipSubsystemDamage[]): string {
-		if (systems.length === 0) {
-			return 'All critical ship systems stabilized and nominal.';
+	private resolveGroupName(asset: RepairAssetEntry, grouping: RepairAssetGrouping): string {
+		if (grouping === 'severity') {
+			return asset.severity.toUpperCase();
 		}
 
-		const criticalCount = systems.filter((system) => system.severity === 'critical').length;
-		if (criticalCount > 0) {
-			return `Critical damage remains in ${criticalCount} subsystem${criticalCount > 1 ? 's' : ''}.`;
+		if (grouping === 'priority-band') {
+			const priority = asset.repairPriority ?? 1000;
+			if (priority <= 1) {
+				return 'Priority 1';
+			}
+			if (priority <= 3) {
+				return 'Priority 2-3';
+			}
+			return 'Priority 4+';
 		}
 
-		const majorCount = systems.filter((system) => system.severity === 'major').length;
-		if (majorCount > 0) {
-			return `Major damage remains in ${majorCount} subsystem${majorCount > 1 ? 's' : ''}.`;
+		if (asset.kind === 'ship') {
+			return 'Ships';
 		}
 
-		return 'Minor damage remains. Full restoration pending final calibration.';
+		if (asset.kind === 'ship-system') {
+			return 'Ship Systems';
+		}
+
+		return 'Inventory Items';
 	}
 
-	private resolveOverallStatusFromSystems(systems: readonly ShipSubsystemDamage[]): ShipDamageProfile['overallStatus'] {
-		if (systems.length === 0) {
-			return 'intact';
-		}
-
-		if (systems.some((system) => system.severity === 'critical')) {
-			return 'disabled';
-		}
-
-		return 'damaged';
+	protected setFilter(filter: RepairAssetFilter): void {
+		this.selectedFilter.set(filter);
 	}
 
-	private createNextDamageProfile(current: ShipDamageProfile, code: string): ShipDamageProfile | null {
-		let changed = false;
-		const nextSystems = current.systems
-			.map((system) => {
-				if (system.code !== code) {
-					return system;
-				}
+	protected setGrouping(grouping: RepairAssetGrouping): void {
+		this.selectedGrouping.set(grouping);
+	}
 
-				const downgraded = this.downgradeSeverity(system.severity);
-				if (!downgraded) {
-					changed = true;
-					return null;
-				}
-
-				changed = true;
-				return {
-					...system,
-					severity: downgraded,
-				};
-			})
-			.filter((system): system is ShipSubsystemDamage => system !== null);
-
-		if (!changed) {
-			return null;
+	protected getGroupingLabel(): string {
+		const grouping = this.selectedGrouping();
+		if (grouping === 'severity') {
+			return 'Severity';
 		}
 
-		return {
-			...current,
-			overallStatus: this.resolveOverallStatusFromSystems(nextSystems),
-			summary: this.describeSummaryForSystems(nextSystems),
-			systems: nextSystems,
-			updatedAt: new Date().toISOString(),
+		if (grouping === 'priority-band') {
+			return 'Priority';
+		}
+
+		return 'Asset Type';
+	}
+
+	protected navigateToRepairDetail(asset: RepairAssetEntry): void {
+		const targetRoute = this.resolveDetailRoute(asset.kind);
+		const state: RepairDetailNavigationState = {
+			playerName: this.playerName(),
+			joinCharacter: this.joinCharacter(),
+			joinShip: this.activeShip(),
+			damageProfile: this.damageProfile(),
+			asset,
+			selectedFilter: this.selectedFilter(),
+			selectedGrouping: this.selectedGrouping(),
 		};
+
+		this.router.navigate([{ outlets: { right: [targetRoute], left: ['repair-retrofit'] } }], {
+			preserveFragment: true,
+			queryParams: { repairNav: Date.now() },
+			state,
+		});
 	}
 
-	private mapOverallStatusToShipStatus(overallStatus: ShipDamageProfile['overallStatus']): string {
-		if (overallStatus === 'intact') {
-			return 'Operational';
+	private resolveDetailRoute(kind: RepairAssetKind): string {
+		if (kind === 'ship-system') {
+			return 'repair-retrofit-system-detail';
 		}
 
-		if (overallStatus === 'disabled' || overallStatus === 'destroyed') {
-			return 'Disabled';
+		if (kind === 'inventory-item') {
+			return 'repair-retrofit-item-detail';
 		}
 
-		return 'Damaged';
-	}
-
-	private applyShipUpsertResponse(response: ShipUpsertResponse, fallbackProfile: ShipDamageProfile): void {
-		const upsertedShip = response.ship;
-		if (!upsertedShip) {
-			this.damageProfile.set(fallbackProfile);
-			return;
-		}
-
-		const nextProfile = coerceShipDamageProfile(upsertedShip.damageProfile) ?? fallbackProfile;
-		this.damageProfile.set(nextProfile);
-		this.activeShip.update((current) => ({
-			id: upsertedShip.id,
-			name: upsertedShip.shipName || current?.name || upsertedShip.id,
-			status: upsertedShip.status ?? this.mapOverallStatusToShipStatus(nextProfile.overallStatus),
-			model: upsertedShip.model,
-			tier: upsertedShip.tier,
-			launchable: upsertedShip.launchable,
-			inventory: upsertedShip.inventory ?? current?.inventory,
-			damageProfile: nextProfile,
-			location: upsertedShip.location,
-			kinematics: upsertedShip.kinematics,
-		}));
-	}
-
-	private persistDamageProfile(nextProfile: ShipDamageProfile): void {
-		const playerName = this.playerName().trim();
-		const characterId = this.joinCharacter()?.id?.trim() ?? '';
-		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-		const shipId = this.activeShip()?.id?.trim() ?? '';
-
-		if (!playerName || !characterId || !sessionKey || !shipId) {
-			this.repairPersistError.set('Unable to persist repair state. Missing ship or session context.');
-			return;
-		}
-
-		this.isPersistingRepair.set(true);
-		this.repairPersistError.set(null);
-		this.repairPersistSuccess.set(null);
-
-		this.socketService.upsertShip(
-			{
-				playerName,
-				characterId,
-				sessionKey,
-				ship: {
-					id: shipId,
-					status: this.mapOverallStatusToShipStatus(nextProfile.overallStatus),
-					damageProfile: nextProfile,
-				},
-			},
-			(response: ShipUpsertResponse) => {
-				this.isPersistingRepair.set(false);
-				if (!response.success) {
-					this.repairPersistError.set(response.message || 'Ship repair update failed to persist.');
-					return;
-				}
-
-				this.applyShipUpsertResponse(response, nextProfile);
-				this.repairPersistSuccess.set('Repair state synchronized.');
-			},
-		);
-	}
-
-	repairSubsystem(code: string): void {
-		const profile = this.damageProfile();
-		if (!profile || this.isPersistingRepair()) {
-			return;
-		}
-
-		const nextProfile = this.createNextDamageProfile(profile, code);
-		if (!nextProfile) {
-			return;
-		}
-
-		this.persistDamageProfile(nextProfile);
-	}
-
-	repairTopPrioritySubsystem(): void {
-		const next = this.subsystemDamages()[0];
-		if (!next) {
-			return;
-		}
-
-		this.repairSubsystem(next.code);
+		return 'repair-retrofit-ship-detail';
 	}
 
 	navigateToCharacterProfile(): void {

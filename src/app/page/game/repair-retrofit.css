@@ -52,12 +52,26 @@
 	margin: 0;
 }
 
-.damage-list {
-	list-style: none;
-	padding: 0;
-	margin: 0.8rem 0 0;
+.repair-controls {
 	display: grid;
-	gap: 0.55rem;
+	grid-template-columns: repeat(4, max-content);
+	align-items: center;
+	gap: 0.5rem 0.7rem;
+	margin: 0.8rem 0;
+}
+
+.repair-controls select {
+	background: rgba(16, 28, 46, 0.92);
+	color: #e8f2ff;
+	border: 1px solid rgba(171, 198, 255, 0.32);
+	border-radius: 6px;
+	padding: 0.3rem 0.45rem;
+}
+
+.repair-group-heading {
+	margin: 0.9rem 0 0.4rem;
+	color: #d2e8ff;
+	letter-spacing: 0.03em;
 }
 
 .damaged-assets-list {
@@ -69,6 +83,10 @@
 }
 
 .damaged-assets-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 0.8rem;
 	padding: 0.7rem;
 	border-radius: 8px;
 	background: rgba(16, 28, 46, 0.8);
@@ -87,24 +105,7 @@
 	font-size: 0.78rem;
 }
 
-.damage-item {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 0.8rem;
-	padding: 0.7rem;
-	border-radius: 8px;
-	background: rgba(16, 28, 46, 0.8);
-	border: 1px solid rgba(255, 157, 157, 0.24);
-}
 
-.damage-item__meta {
-	min-width: 0;
-}
-
-.damage-item__meta p {
-	margin: 0.1rem 0;
-}
 
 .damage-item__severity {
 	text-transform: uppercase;
@@ -157,7 +158,11 @@
 }
 
 @media (max-width: 700px) {
-	.damage-item {
+	.repair-controls {
+		grid-template-columns: 1fr;
+	}
+
+	.damaged-assets-item {
 		flex-direction: column;
 	}
 
