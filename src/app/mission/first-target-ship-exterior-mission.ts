@@ -78,6 +78,12 @@ const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] 
 		completionToastMessage: 'Mission update: Target neutralized.',
 		prerequisiteStepKeys: ['identify_iron_asteroid'],
 	},
+	{
+		key: 'repair_scavenger_pod',
+		objectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+		completionToastMessage: 'Mission update: Scavenger Pod repaired.',
+		prerequisiteStepKeys: ['neutralize_identified_asteroid'],
+	},
 ];
 
 function generateMaterialAssignments(count: number, random: () => number): AsteroidMaterialProfile[] {
@@ -260,6 +266,13 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 		}
 
 		return false;
+	},
+	doesLaunchCompleteGateStep(stepKey, response) {
+		return (
+			stepKey === 'neutralize_identified_asteroid' &&
+			response.success === true &&
+			response.resolution?.outcome === 'target-destroyed'
+		);
 	},
 	resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
 		const totalSteps = gateState.steps.length;

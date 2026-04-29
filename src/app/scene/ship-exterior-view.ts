@@ -64,6 +64,7 @@ import {
 import {
 	clearMissionGatePendingRetry,
 	createInitialMissionGateState,
+	evaluateMissionGateOnLaunch,
 	evaluateMissionGateOnScan,
 	hasMissionGatePendingRetry,
 	markMissionGateStepPendingRetry,
@@ -1011,6 +1012,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				.map((item) => `${item.displayName} ×${item.quantity}`)
 				.join(', ');
 			toastMessage = `${toastMessage} — ${itemsList}`;
+		}
+
+		const gateState = this.missionGateState();
+		if (gateState) {
+			const launchEvaluation = evaluateMissionGateOnLaunch({
+				mission: this.missionDefinition,
+				gateState,
+				response,
+			});
+			if (launchEvaluation.changed) {
+				this.missionGateState.set(launchEvaluation.gateState);
+				this.persistMissionGateState(launchEvaluation.gateState);
+				this.enqueueMissionProgressUpsert({
+					gateState: launchEvaluation.gateState,
+					completedStepKey: launchEvaluation.completedStepKey,
+					toastMessage: launchEvaluation.completionToastMessage,
+				});
+				if (launchEvaluation.completionToastMessage) {
+					toastMessage = `${toastMessage} ${launchEvaluation.completionToastMessage}`;
+				}
+			}
 		}
 
 		this.setLaunchToast(toastMessage, 'success', launchSeed);
