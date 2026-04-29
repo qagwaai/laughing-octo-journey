@@ -47,10 +47,14 @@
 									{{ formatDate(mission.updatedAt) }}
 								</p>
 							}
-							@if (mission.statusDetail) {
+							@if (getMissionStageInfo(mission); as stageInfo) {
 								<p>
-									<strong>{{ t.game.missionBoard.statusDetailLabel }}</strong>
-									{{ mission.statusDetail }}
+									<strong>{{ t.game.missionBoard.stageLabel }}</strong>
+									{{ stageInfo.stage }}
+								</p>
+								<p>
+									<strong>{{ t.game.missionBoard.nextStepLabel }}</strong>
+									{{ stageInfo.nextStep }}
 								</p>
 							}
 						</li>

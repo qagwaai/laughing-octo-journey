@@ -1,4 +1,5 @@
-export {};
+import { resolveShipExteriorMission, parseMissionGateState } from '../../mission/ship-exterior-mission';
+import { serializeMissionGateState } from '../../mission/ship-exterior-mission';
 
 function createSignal<T>(initial: T) {
 	let value = initial;
@@ -174,6 +175,28 @@ class MockMissionBoardPage {
 			characterId,
 			sessionKey,
 		});
+	}
+
+	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } | null {
+		if (!mission.statusDetail) return null;
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const missionDef = resolveShipExteriorMission(mission.missionId);
+		const gateState = parseMissionGateState({
+			rawStatusDetail: mission.statusDetail,
+			missionId: mission.missionId,
+			characterId,
+			steps: missionDef.getGateStepDefinitions(),
+		});
+		if (!gateState) return null;
+		const totalSteps = gateState.steps.length;
+		const completedCount = gateState.steps.filter((s) => s.status === 'completed').length;
+		const activeStepIndex = gateState.steps.findIndex((s) => s.status === 'active' || s.status === 'pending-retry');
+		const stageNumber = activeStepIndex >= 0 ? activeStepIndex + 1 : completedCount;
+		const stage =
+			completedCount >= totalSteps && totalSteps > 0
+				? `Stage ${totalSteps} of ${totalSteps} — Complete`
+				: `Stage ${stageNumber} of ${totalSteps}`;
+		return { stage, nextStep: gateState.activeObjectiveText };
 	}
 
 	formatDate(isoString?: string): string {
@@ -405,5 +428,99 @@ describe('MissionBoardPage', () => {
 		component.ngOnDestroy();
 
 		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(false);
+	});
+
+	describe('getMissionStageInfo', () => {
+		let component: MockMissionBoardPage;
+
+		beforeEach(() => {
+			socketService.connected = false;
+			component = new MockMissionBoardPage(socketService, sessionService, {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova' },
+			});
+		});
+
+		it('should return null when statusDetail is absent', () => {
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'started',
+			});
+			expect(result).toBeNull();
+		});
+
+		it('should return null when statusDetail is not parseable gate state', () => {
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'in-progress',
+				statusDetail: 'not-json',
+			});
+			expect(result).toBeNull();
+		});
+
+		it('should return Stage 1 of 2 when first step is active', () => {
+			const gateState = {
+				missionId: 'first-target',
+				characterId: 'c-1',
+				activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+				updatedAt: '2026-04-01T10:00:00Z',
+				steps: [
+					{ key: 'identify_iron_asteroid', status: 'active' as const },
+					{ key: 'neutralize_identified_asteroid', status: 'locked' as const },
+				],
+			};
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'started',
+				statusDetail: serializeMissionGateState(gateState),
+			});
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 1 of 2');
+			expect(result!.nextStep).toBe('Objective: Identify an Iron asteroid via full scan.');
+		});
+
+		it('should return Stage 2 of 2 when second step is active', () => {
+			const gateState = {
+				missionId: 'first-target',
+				characterId: 'c-1',
+				activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+				updatedAt: '2026-04-02T10:00:00Z',
+				steps: [
+					{ key: 'identify_iron_asteroid', status: 'completed' as const },
+					{ key: 'neutralize_identified_asteroid', status: 'active' as const },
+				],
+			};
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'in-progress',
+				statusDetail: serializeMissionGateState(gateState),
+			});
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 2 of 2');
+			expect(result!.nextStep).toBe(
+				'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+			);
+		});
+
+		it('should return Stage 2 of 2 — Complete when all steps are complete', () => {
+			const gateState = {
+				missionId: 'first-target',
+				characterId: 'c-1',
+				activeObjectiveText: 'Mission objectives complete. Await further directives.',
+				updatedAt: '2026-04-03T10:00:00Z',
+				steps: [
+					{ key: 'identify_iron_asteroid', status: 'completed' as const },
+					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
+				],
+			};
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'completed',
+				statusDetail: serializeMissionGateState(gateState),
+			});
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 2 of 2 — Complete');
+			expect(result!.nextStep).toBe('Mission objectives complete. Await further directives.');
+		});
 	});
 });

@@ -12,6 +12,7 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { resolveShipExteriorMission, parseMissionGateState } from '../../mission/ship-exterior-mission';
 
 interface MissionBoardNavigationState {
 	playerName?: string;
@@ -98,8 +99,29 @@ export default class MissionBoardPage {
 		this.socketService.emit(MISSION_LIST_REQUEST_EVENT, request);
 	}
 
-	protected formatDate(isoString?: string): string {
-		if (!isoString) {
+	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } | null {
+		if (!mission.statusDetail) return null;
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const missionDef = resolveShipExteriorMission(mission.missionId);
+		const gateState = parseMissionGateState({
+			rawStatusDetail: mission.statusDetail,
+			missionId: mission.missionId,
+			characterId,
+			steps: missionDef.getGateStepDefinitions(),
+		});
+		if (!gateState) return null;
+		const totalSteps = gateState.steps.length;
+		const completedCount = gateState.steps.filter((s) => s.status === 'completed').length;
+		const activeStepIndex = gateState.steps.findIndex((s) => s.status === 'active' || s.status === 'pending-retry');
+		const stageNumber = activeStepIndex >= 0 ? activeStepIndex + 1 : completedCount;
+		const stage =
+			completedCount >= totalSteps && totalSteps > 0
+				? `Stage ${totalSteps} of ${totalSteps} — Complete`
+				: `Stage ${stageNumber} of ${totalSteps}`;
+		return { stage, nextStep: gateState.activeObjectiveText };
+	}
+
+	protected formatDate(isoString?: string): string {		if (!isoString) {
 			return '—';
 		}
 		return isoString.slice(0, 10);

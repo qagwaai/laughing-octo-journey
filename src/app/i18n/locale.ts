@@ -262,7 +262,8 @@ export const locale = {
 			statusLabel: 'Status:',
 			startedAtLabel: 'Started:',
 			updatedAtLabel: 'Updated:',
-			statusDetailLabel: 'Detail:',
+			stageLabel: 'Stage:',
+			nextStepLabel: 'Next step:',
 		},
 	},
 
