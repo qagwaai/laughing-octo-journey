@@ -1,6 +1,7 @@
 import { Triple } from './triple';
 import { CelestialBodyLocation } from './celestial-body-location';
 import { ShipItem, coerceShipItem } from './ship-item';
+import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 
 export { ShipItem } from './ship-item';
 
@@ -20,7 +21,8 @@ export interface ShipListRequest {
 export interface ShipSummary {
 	id: string;
 	name: string;
-	status?: string;
+	status?: string | null;
+	damageProfile?: ShipDamageProfile | null;
 	model: string;
 	tier: number;
 	launchable?: boolean;
@@ -48,6 +50,23 @@ export function coerceShipTier(tier: unknown): number {
 	}
 
 	return tier;
+}
+
+export function coerceShipStatus(status: unknown): string | null {
+	if (status === null) {
+		return null;
+	}
+
+	if (typeof status !== 'string') {
+		return null;
+	}
+
+	const trimmed = status.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+export function coerceShipDamageProfileOrNull(raw: unknown): ShipDamageProfile | null {
+	return coerceShipDamageProfile(raw);
 }
 
 function coerceShipItemFromDisplayName(displayName: string): ShipItem {

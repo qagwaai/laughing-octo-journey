@@ -16,6 +16,71 @@
 		<section class="ops-card">
 			<h2>{{ t.game.repairRetrofit.sectionTitle }}</h2>
 			<p>{{ t.game.repairRetrofit.sectionDescription }}</p>
+
+			@if (isLoadingShip()) {
+				<p>Synchronizing ship diagnostics...</p>
+			} @else if (shipLoadError()) {
+				<p role="alert">{{ shipLoadError() }}</p>
+			} @else {
+				@if (repairPersistError()) {
+					<p class="status-line status-line--error" role="alert">{{ repairPersistError() }}</p>
+				}
+				@if (repairPersistSuccess()) {
+					<p class="status-line status-line--success">{{ repairPersistSuccess() }}</p>
+				}
+				<div class="damage-overview">
+					<p><strong>Ship:</strong> {{ activeShipDisplayName() }}</p>
+					<p><strong>Status:</strong> {{ overallStatusLabel() }}</p>
+					<p><strong>Summary:</strong> {{ damageProfile()?.summary || 'No active damage profile found.' }}</p>
+					<p><strong>Origin:</strong> {{ damageProfile()?.origin || 'unknown' }}</p>
+				</div>
+
+				@if (damagedAssets().length > 0) {
+					<h3>Damaged Items</h3>
+					<ul class="damaged-assets-list" aria-label="Damaged items including ships">
+						@for (asset of damagedAssets(); track asset.key) {
+							<li class="damaged-assets-item">
+								<div class="damaged-assets-item__meta">
+									<p>
+										<strong>{{ asset.label }}</strong>
+										<span class="damage-kind">({{ asset.kind }})</span>
+									</p>
+									<p class="damage-item__severity">Severity: {{ asset.severity }}</p>
+									<p>{{ asset.summary }}</p>
+								</div>
+							</li>
+						}
+					</ul>
+				} @else {
+					<p>No damaged items found for this ship.</p>
+				}
+
+				@if (hasDamage()) {
+					<button type="button" class="repair-action" [disabled]="isPersistingRepair()" (click)="repairTopPrioritySubsystem()">
+						Stabilize Highest Priority Subsystem
+					</button>
+
+					<ul class="damage-list" aria-label="Damaged subsystems">
+						@for (system of subsystemDamages(); track system.code) {
+							<li class="damage-item">
+								<div class="damage-item__meta">
+									<p><strong>{{ system.label }}</strong> <span>(P{{ system.repairPriority }})</span></p>
+									<p class="damage-item__severity">Severity: {{ system.severity }}</p>
+									<p>{{ system.summary }}</p>
+								</div>
+								<button type="button" class="repair-action" [disabled]="isPersistingRepair()" (click)="repairSubsystem(system.code)">
+									Stabilize
+								</button>
+							</li>
+						}
+					</ul>
+					@if (isPersistingRepair()) {
+						<p class="status-line">Committing repair state to ship registry...</p>
+					}
+				} @else {
+					<p>All subsystem damage has been stabilized. Ship ready for deployment checks.</p>
+				}
+			}
 		</section>
 	</div>
 </div>

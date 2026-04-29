@@ -46,6 +46,11 @@ import {
 } from '../model/ship-list';
 import type { ShipItem } from '../model/ship-item';
 import {
+	coerceShipDamageProfile,
+	resolveShipDamageProfileFromPreset,
+	type ShipDamageProfile,
+} from '../model/ship-damage';
+import {
 	resolveShipExteriorViewSeedPolicy,
 	type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
@@ -273,9 +278,18 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
 	private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
 	private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
+	private activeShipDamageProfile = signal<ShipDamageProfile | null>(this.resolveInitialShipDamageProfile());
 	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
 	private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
 	private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
+	readonly shipConditionLine = computed(() => {
+		const profile = this.activeShipDamageProfile();
+		if (!profile) {
+			return 'SHIP CONDITION // UNKNOWN';
+		}
+
+		return `SHIP CONDITION // ${profile.overallStatus.toUpperCase()} // ${profile.summary.toUpperCase()}`;
+	});
 	readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
 	readonly missionObjectiveText = computed(() => {
 		const gateState = this.missionGateState();
@@ -525,6 +539,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	private resolveNavigationSolarSystemId(): string {
 		return this.navigationState.joinShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+	}
+
+	private resolveInitialShipDamageProfile(): ShipDamageProfile | null {
+		const rawProfile = this.navigationState.joinShip?.damageProfile;
+		const explicit = coerceShipDamageProfile(rawProfile);
+		if (explicit) {
+			return explicit;
+		}
+
+		return resolveShipDamageProfileFromPreset(this.navigationState.missionContext?.shipDamagePreset);
 	}
 
 	private resolveAsteroidStateContext(): ShipExteriorAsteroidStateContext | null {
@@ -873,6 +897,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.activeShipLocationKm.set(matchingShip?.location?.positionKm ?? null);
 		this.activeSolarSystemId.set(matchingShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
 		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
+		this.activeShipDamageProfile.set(
+			coerceShipDamageProfile(matchingShip?.damageProfile) ??
+			resolveShipDamageProfileFromPreset(this.navigationState.missionContext?.shipDamagePreset),
+		);
 	}
 
 	private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {

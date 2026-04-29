@@ -104,6 +104,7 @@ class MockColdBootOpeningPage {
 					missionId: FIRST_TARGET_MISSION_ID,
 					missionStatusHint: 'started',
 					seedPolicy: 'new',
+					shipDamagePreset: 'cold-boot-starter-damaged',
 				},
 			},
 		});
@@ -222,6 +223,7 @@ describe('ColdBootOpeningPage', () => {
 						missionId: FIRST_TARGET_MISSION_ID,
 						missionStatusHint: 'started',
 						seedPolicy: 'new',
+						shipDamagePreset: 'cold-boot-starter-damaged',
 					},
 				},
 			},

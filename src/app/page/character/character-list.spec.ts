@@ -337,6 +337,7 @@ class MockCharacterListPage {
 				missionId: FIRST_TARGET_MISSION_ID,
 				missionStatusHint: firstTargetStatus,
 				seedPolicy: 'auto',
+				shipDamagePreset: 'cold-boot-starter-damaged',
 			}
 			: undefined;
 
@@ -609,6 +610,7 @@ describe('CharacterListPage', () => {
 							missionId: FIRST_TARGET_MISSION_ID,
 							missionStatusHint: 'started',
 							seedPolicy: 'auto',
+							shipDamagePreset: 'cold-boot-starter-damaged',
 						},
 						firstTargetMissionStatus: 'started',
 					},

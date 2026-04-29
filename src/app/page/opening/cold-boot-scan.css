@@ -40,6 +40,11 @@
 	line-height: 1.2;
 }
 
+.ship-exterior-objective p:first-child {
+	color: #ffb3b3;
+	margin-bottom: 0.18rem;
+}
+
 .ship-exterior-hotkey-row {
 	position: absolute;
 	left: var(--ship-hotkey-offset-x);

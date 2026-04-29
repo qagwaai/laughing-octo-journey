@@ -1,4 +1,5 @@
 import type { MissionStatus } from './mission';
+import type { ShipDamagePreset } from './ship-damage';
 
 export type ShipExteriorViewSeedPolicy = 'auto' | 'new' | 'resume';
 
@@ -6,6 +7,7 @@ export interface ShipExteriorViewMissionContext {
 	missionId: string;
 	missionStatusHint?: MissionStatus;
 	seedPolicy?: ShipExteriorViewSeedPolicy;
+	shipDamagePreset?: ShipDamagePreset;
 }
 
 export function resolveShipExteriorViewSeedPolicy(params: {

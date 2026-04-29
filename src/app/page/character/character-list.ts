@@ -279,6 +279,7 @@ export default class CharacterListPage implements OnDestroy {
 				missionId: FIRST_TARGET_MISSION_ID,
 				missionStatusHint: firstTargetStatus,
 				seedPolicy: 'auto',
+				shipDamagePreset: 'cold-boot-starter-damaged',
 			} satisfies ShipExteriorViewMissionContext
 			: undefined;
 

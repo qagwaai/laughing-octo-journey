@@ -6,6 +6,8 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
+	coerceShipStatus,
+	coerceShipDamageProfileOrNull,
 	coerceShipInventory,
 	coerceShipTier,
 	ShipListRequest,
@@ -146,6 +148,8 @@ export default class GameJoinPage {
 		return {
 			...ship,
 			name: normalizedName,
+			status: coerceShipStatus(rawShip.status),
+			damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
 			model: normalizedModel,
 			tier: normalizedTier,
 			inventory: normalizedInventory,

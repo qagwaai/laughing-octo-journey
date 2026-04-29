@@ -9,6 +9,8 @@ import {
 	ShipSummary,
 	coerceShipInventory,
 	coerceShipModel,
+	coerceShipStatus,
+	coerceShipDamageProfileOrNull,
 	coerceShipTier,
 } from '../../model/ship-list';
 import { ShipItem } from '../../model/ship-item';
@@ -199,6 +201,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
 		const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
 		return {
 			...ship,
+			status: coerceShipStatus(rawShip.status),
+			damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
 			model: coerceShipModel(rawShip.model ?? rawShip.modelName),
 			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
 			inventory: coerceShipInventory(rawShip.inventory),

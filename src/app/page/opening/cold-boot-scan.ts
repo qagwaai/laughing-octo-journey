@@ -43,6 +43,9 @@ export default class ColdBootScanPage {
 	protected missionObjectiveText = computed(
 		() => this.shipExteriorView()?.missionObjectiveText() ?? 'Objective unavailable.',
 	);
+	protected shipConditionLine = computed(
+		() => this.shipExteriorView()?.shipConditionLine() ?? 'SHIP CONDITION // UNKNOWN',
+	);
 
 	protected hidePropertiesPanel(): void {
 		this.shipExteriorView()?.hidePropertiesPanel();

@@ -153,6 +153,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 					missionId: FIRST_TARGET_MISSION_ID,
 					missionStatusHint: 'started',
 					seedPolicy: 'new',
+					shipDamagePreset: 'cold-boot-starter-damaged',
 				} satisfies ShipExteriorViewMissionContext,
 			},
 		});

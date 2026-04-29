@@ -6,6 +6,8 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
+	coerceShipStatus,
+	coerceShipDamageProfileOrNull,
 	coerceShipInventory,
 	coerceShipTier,
 	type ShipListRequest,
@@ -109,6 +111,8 @@ export default class ShipHangarPage {
 		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
 		return {
 			...ship,
+			status: coerceShipStatus(rawShip.status),
+			damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
 			model: normalizedModel,
 			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
 			inventory: coerceShipInventory(rawShip.inventory),
