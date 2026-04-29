@@ -149,6 +149,15 @@ export default class ShipHangarPage {
 		return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
 	}
 
+	private isFirstTargetInProgress(status: MissionStatus | undefined): boolean {
+		if (!status) {
+			return false;
+		}
+
+		const normalized = status.toLowerCase();
+		return normalized === 'started' || normalized === 'in-progress' || normalized === 'paused';
+	}
+
 	navigateToShipInventory(ship: ShipSummary): void {
 		this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
 			preserveFragment: true,
@@ -162,10 +171,12 @@ export default class ShipHangarPage {
 
 	navigateToExteriorView(ship: ShipSummary): void {
 		const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
+		const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
 		const missionContext: ShipExteriorViewMissionContext = {
 			missionId: FIRST_TARGET_MISSION_ID,
 			seedPolicy: 'auto',
 			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+			...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' as const } : {}),
 		};
 
 		this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {

@@ -212,6 +212,15 @@ class MockShipHangarPage {
 		return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
 	}
 
+	private isFirstTargetInProgress(status: string | undefined): boolean {
+		if (!status) {
+			return false;
+		}
+
+		const normalized = status.toLowerCase();
+		return normalized === 'started' || normalized === 'in-progress' || normalized === 'paused';
+	}
+
 	navigateToShipInventory(ship: ShipSummary): void {
 		this.mockRouter.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
 			preserveFragment: true,
@@ -225,10 +234,12 @@ class MockShipHangarPage {
 
 	navigateToExteriorView(ship: ShipSummary): void {
 		const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
+		const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
 		const missionContext = {
 			missionId: FIRST_TARGET_MISSION_ID,
 			seedPolicy: 'auto',
 			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+			...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' } : {}),
 		};
 
 		this.mockRouter.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
@@ -491,6 +502,48 @@ describe('ShipHangarPage', () => {
 						missionId: FIRST_TARGET_MISSION_ID,
 						seedPolicy: 'auto',
 					},
+				},
+			},
+		);
+	});
+
+	it('should include cold-boot ship damage preset for in-progress first-target mission', () => {
+		socketService.connected = false;
+		const mockRouter: MockRouter = { navigate: jasmine.createSpy('navigate') };
+		const character = {
+			id: 'c-1',
+			characterName: 'Nova',
+			missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+		};
+		const component = new MockShipHangarPage(
+			socketService,
+			sessionService,
+			{ playerName: 'Pioneer', joinCharacter: character },
+			mockRouter,
+		);
+		const ship: ShipSummary = {
+			id: 's-1',
+			name: 'Dart Runner',
+			model: 'Scavenger Pod',
+		};
+
+		component.navigateToExteriorView(ship);
+
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
+			[{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+			{
+				preserveFragment: true,
+				state: {
+					playerName: 'Pioneer',
+					joinCharacter: character,
+					joinShip: ship,
+					missionContext: {
+						missionId: FIRST_TARGET_MISSION_ID,
+						seedPolicy: 'auto',
+						missionStatusHint: 'started',
+						shipDamagePreset: 'cold-boot-starter-damaged',
+					},
+					firstTargetMissionStatus: 'started',
 				},
 			},
 		);
