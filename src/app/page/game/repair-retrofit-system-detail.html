@@ -12,6 +12,10 @@
 			<p><strong>Severity:</strong> {{ selectedAsset()?.severity || 'unknown' }}</p>
 			<p><strong>Summary:</strong> {{ selectedAsset()?.summary || 'No summary available.' }}</p>
 
+			<button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
+				Back to Repair Items
+			</button>
+
 			@if (persistError()) {
 				<p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
 			}

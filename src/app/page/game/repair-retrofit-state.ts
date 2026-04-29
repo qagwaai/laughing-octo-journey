@@ -26,6 +26,7 @@ export interface RepairDetailNavigationState {
 	asset?: RepairAssetEntry;
 	selectedFilter?: RepairAssetFilter;
 	selectedGrouping?: RepairAssetGrouping;
+	searchQuery?: string;
 }
 
 export function mapOverallStatusToShipStatus(overallStatus: ShipDamageProfile['overallStatus']): string {

@@ -5,7 +5,11 @@ import { type ShipSummary } from '../../model/ship-list';
 import { type ShipItem } from '../../model/ship-item';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { SessionService, SocketService } from '../../services';
-import { type RepairDetailNavigationState } from './repair-retrofit-state';
+import {
+	type RepairAssetFilter,
+	type RepairAssetGrouping,
+	type RepairDetailNavigationState,
+} from './repair-retrofit-state';
 
 @Component({
 	selector: 'app-repair-retrofit-item-detail-page',
@@ -27,6 +31,9 @@ export default class RepairRetrofitItemDetailPage {
 	protected joinCharacter = signal(this.navigationState.joinCharacter ?? null);
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 	protected selectedAsset = signal(this.navigationState.asset ?? null);
+	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
+	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
+	protected searchQuery = signal<string>(this.navigationState.searchQuery ?? '');
 	protected isPersisting = signal(false);
 	protected persistError = signal<string | null>(null);
 	protected persistSuccess = signal<string | null>(null);
@@ -44,6 +51,23 @@ export default class RepairRetrofitItemDetailPage {
 
 	constructor() {
 		this.socketService.connect(this.socketService.serverUrl);
+	}
+
+	protected navigateBackToRepairItems(): void {
+		const state: RepairDetailNavigationState = {
+			playerName: this.playerName(),
+			joinCharacter: this.joinCharacter(),
+			joinShip: this.joinShip(),
+			selectedFilter: this.selectedFilter(),
+			selectedGrouping: this.selectedGrouping(),
+			searchQuery: this.searchQuery(),
+		};
+
+		this.router.navigate([{ outlets: { right: ['repair-retrofit-items'], left: ['repair-retrofit'] } }], {
+			preserveFragment: true,
+			queryParams: { repairNav: Date.now() },
+			state,
+		});
 	}
 
 	protected fullyRepairItem(): void {

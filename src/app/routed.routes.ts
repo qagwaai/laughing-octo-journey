@@ -15,6 +15,7 @@ import LogoutPage from './page/game/logout';
 import MarketHubPage from './page/game/market-hub';
 import ColdBootScanPage from './page/opening/cold-boot-scan';
 import RepairRetrofitPage from './page/game/repair-retrofit';
+import RepairRetrofitItemsPage from './page/game/repair-retrofit-items';
 import RepairRetrofitShipDetailPage from './page/game/repair-retrofit-ship-detail';
 import RepairRetrofitSystemDetailPage from './page/game/repair-retrofit-system-detail';
 import RepairRetrofitItemDetailPage from './page/game/repair-retrofit-item-detail';
@@ -206,6 +207,12 @@ const routes: Routes = [
 		path: 'ship-exterior-view',
 		outlet: 'right',
 		component: ColdBootScanPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'repair-retrofit-items',
+		outlet: 'right',
+		component: RepairRetrofitItemsPage,
 		canActivate: [authGuard],
 	},
 	{

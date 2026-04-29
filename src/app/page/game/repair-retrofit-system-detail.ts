@@ -9,6 +9,8 @@ import {
 	describeSummaryForSystems,
 	mapOverallStatusToShipStatus,
 	resolveOverallStatusFromSystems,
+	type RepairAssetFilter,
+	type RepairAssetGrouping,
 	type RepairDetailNavigationState,
 } from './repair-retrofit-state';
 
@@ -33,6 +35,9 @@ export default class RepairRetrofitSystemDetailPage {
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 	protected damageProfile = signal<ShipDamageProfile | null>(coerceShipDamageProfile(this.navigationState.damageProfile));
 	protected selectedAsset = signal(this.navigationState.asset ?? null);
+	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
+	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
+	protected searchQuery = signal<string>(this.navigationState.searchQuery ?? '');
 	protected isPersisting = signal(false);
 	protected persistError = signal<string | null>(null);
 	protected persistSuccess = signal<string | null>(null);
@@ -51,6 +56,24 @@ export default class RepairRetrofitSystemDetailPage {
 
 	constructor() {
 		this.socketService.connect(this.socketService.serverUrl);
+	}
+
+	protected navigateBackToRepairItems(): void {
+		const state: RepairDetailNavigationState = {
+			playerName: this.playerName(),
+			joinCharacter: this.joinCharacter(),
+			joinShip: this.joinShip(),
+			damageProfile: this.damageProfile(),
+			selectedFilter: this.selectedFilter(),
+			selectedGrouping: this.selectedGrouping(),
+			searchQuery: this.searchQuery(),
+		};
+
+		this.router.navigate([{ outlets: { right: ['repair-retrofit-items'], left: ['repair-retrofit'] } }], {
+			preserveFragment: true,
+			queryParams: { repairNav: Date.now() },
+			state,
+		});
 	}
 
 	protected fullyRepairSystem(): void {
