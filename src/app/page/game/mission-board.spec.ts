@@ -1,4 +1,4 @@
-import { resolveShipExteriorMission, parseMissionGateState } from '../../mission/ship-exterior-mission';
+import { createInitialMissionGateState, resolveShipExteriorMission, parseMissionGateState } from '../../mission/ship-exterior-mission';
 import { serializeMissionGateState } from '../../mission/ship-exterior-mission';
 
 function createSignal<T>(initial: T) {
@@ -166,7 +166,6 @@ class MockMissionBoardPage {
 					this.missions.set([]);
 					this.missionListError.set(response.message);
 				}
-				this.unsubscribeMissionListResponse?.();
 			},
 		);
 
@@ -178,16 +177,29 @@ class MockMissionBoardPage {
 	}
 
 	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } | null {
-		if (!mission.statusDetail) return null;
 		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		if (!characterId) {
+			return null;
+		}
+
 		const missionDef = resolveShipExteriorMission(mission.missionId);
-		const gateState = parseMissionGateState({
-			rawStatusDetail: mission.statusDetail,
-			missionId: mission.missionId,
-			characterId,
-			steps: missionDef.getGateStepDefinitions(),
-		});
-		if (!gateState) return null;
+		const stepDefinitions = missionDef.getGateStepDefinitions();
+		const parsedGateState = mission.statusDetail
+			? parseMissionGateState({
+				rawStatusDetail: mission.statusDetail,
+				missionId: mission.missionId,
+				characterId,
+				steps: stepDefinitions,
+			})
+			: null;
+		const gateState =
+			parsedGateState ??
+			createInitialMissionGateState({
+				missionId: mission.missionId,
+				characterId,
+				steps: stepDefinitions,
+			});
+
 		const totalSteps = gateState.steps.length;
 		const completedCount = gateState.steps.filter((s) => s.status === 'completed').length;
 		const activeStepIndex = gateState.steps.findIndex((s) => s.status === 'active' || s.status === 'pending-retry');
@@ -345,7 +357,7 @@ describe('MissionBoardPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should unsubscribe after receiving a response', () => {
+	it('should keep listener subscribed after receiving a response', () => {
 		socketService.connected = true;
 		const component = new MockMissionBoardPage(socketService, sessionService, {
 			playerName: 'Pioneer',
@@ -358,7 +370,7 @@ describe('MissionBoardPage', () => {
 			missions: [],
 		});
 
-		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(false);
+		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(true);
 
 		component.ngOnDestroy();
 	});
@@ -441,21 +453,23 @@ describe('MissionBoardPage', () => {
 			});
 		});
 
-		it('should return null when statusDetail is absent', () => {
+		it('should return initial stage when statusDetail is absent', () => {
 			const result = component.getMissionStageInfo({
 				missionId: 'first-target',
 				status: 'started',
 			});
-			expect(result).toBeNull();
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 1 of 4');
 		});
 
-		it('should return null when statusDetail is not parseable gate state', () => {
+		it('should return initial stage when statusDetail is not parseable gate state', () => {
 			const result = component.getMissionStageInfo({
 				missionId: 'first-target',
 				status: 'in-progress',
 				statusDetail: 'not-json',
 			});
-			expect(result).toBeNull();
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 1 of 4');
 		});
 
 		it('should return Stage 1 of 4 when first step is active', () => {

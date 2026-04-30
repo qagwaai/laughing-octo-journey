@@ -3,6 +3,7 @@ import {
 	Component,
 	computed,
 	CUSTOM_ELEMENTS_SCHEMA,
+	effect,
 	inject,
 	OnDestroy,
 	OnInit,
@@ -283,6 +284,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
 	private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
 	private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
+	private readonly missionGateStateSync = effect(() => {
+		const updated = this.missionStateService.lastSaved();
+		if (!updated) {
+			return;
+		}
+
+		const current = this.missionGateState();
+		if (current && this.getMissionGateProgressRank(updated) < this.getMissionGateProgressRank(current)) {
+			return;
+		}
+
+		this.missionGateState.set(updated);
+	});
 	readonly shipConditionLine = computed(() => {
 		const profile = this.activeShipDamageProfile();
 		if (!profile) {
@@ -681,8 +695,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			return;
 		}
 
+		const current = this.missionGateState();
+		if (current && this.getMissionGateProgressRank(parsed) < this.getMissionGateProgressRank(current)) {
+			return;
+		}
+
 		this.missionGateState.set(parsed);
 		this.persistMissionGateState(parsed);
+	}
+
+	private getMissionGateProgressRank(gateState: ShipExteriorMissionGateState): number {
+		return gateState.steps.filter((step) => step.completedAt).length;
 	}
 
 	ngOnDestroy(): void {

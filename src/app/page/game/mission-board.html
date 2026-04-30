@@ -33,7 +33,7 @@
 							</p>
 							<p>
 								<strong>{{ t.game.missionBoard.statusLabel }}</strong>
-								<span class="mission-status" [attr.data-status]="mission.status">{{ mission.status }}</span>
+								<span class="mission-status" [attr.data-status]="getMissionDisplayStatus(mission)">{{ getMissionDisplayStatus(mission) }}</span>
 							</p>
 							@if (mission.startedAt) {
 								<p>

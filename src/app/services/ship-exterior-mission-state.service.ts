@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 
 export interface ShipExteriorMissionStateContext {
@@ -12,6 +12,9 @@ export interface ShipExteriorMissionStateContext {
 })
 export class ShipExteriorMissionStateService {
 	private static readonly STORAGE_PREFIX = 'ship-exterior-mission-state';
+
+	private readonly _lastSaved = signal<ShipExteriorMissionGateState | null>(null);
+	readonly lastSaved = this._lastSaved.asReadonly();
 
 	loadState(context: ShipExteriorMissionStateContext): ShipExteriorMissionGateState | null {
 		const key = this.buildStorageKey(context);
@@ -51,6 +54,7 @@ export class ShipExteriorMissionStateService {
 		}
 
 		window.localStorage.setItem(key, JSON.stringify(state));
+		this._lastSaved.set(state);
 	}
 
 	clearState(context: ShipExteriorMissionStateContext): void {
