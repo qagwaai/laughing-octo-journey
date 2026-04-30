@@ -48,6 +48,10 @@ export class SocketService {
   // Signal to track connection state
   protected isConnected = signal(false);
   protected connectionError = signal<string | null>(null);
+
+  constructor() {
+    this.connect(this.serverUrl);
+  }
   
   /**
    * Connect to a Socket.IO server

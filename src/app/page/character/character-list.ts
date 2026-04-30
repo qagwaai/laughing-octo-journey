@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import {
@@ -56,10 +56,6 @@ export default class CharacterListPage implements OnDestroy {
 	protected isDeleting = signal(false);
 
 	constructor() {
-		effect(() => {
-			this.socketService.connect(this.socketService.serverUrl);
-		});
-
 		this.unsubscribeInvalidSession = this.socketService.on(
 			INVALID_SESSION_EVENT,
 			() => {

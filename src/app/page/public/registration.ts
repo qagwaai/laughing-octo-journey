@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
@@ -43,11 +43,7 @@ export default class RegistrationPage implements OnDestroy {
 	protected successMessage = signal<string | null>(null);
 	protected errorMessage = signal<string | null>(null);
 
-    constructor() { 
-        effect(() => {
-            this.socketService.connect(this.socketService.serverUrl);
-        });
-    }
+
 
 	submit(): void {
 		if (this.registrationForm.invalid) {
