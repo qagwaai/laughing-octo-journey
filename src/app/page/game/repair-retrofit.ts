@@ -20,6 +20,7 @@ import {
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SessionService, SocketService, ShipExteriorMissionStateService, PrinterStateService } from '../../services';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import {
 	PRINTABLE_ITEMS,
@@ -36,6 +37,7 @@ import {
 	evaluateMissionGateOnManufacture,
 	parseMissionGateState,
 	resolveShipExteriorMission,
+	type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
 import {
 	type RepairAssetGrouping,
@@ -63,6 +65,7 @@ export default class RepairRetrofitPage {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
+	private missionProgressSyncService = inject(MissionProgressSyncService);
 	private missionStateService = inject(ShipExteriorMissionStateService);
 	private printerService = inject(PrinterStateService);
 	private destroyRef = inject(DestroyRef);
@@ -410,7 +413,17 @@ export default class RepairRetrofitPage {
 		const evaluation = evaluateMissionGateOnManufacture({ mission, gateState, manufacturedItemType });
 		if (evaluation.changed) {
 			this.missionStateService.saveState(context, evaluation.gateState);
+			void this.syncMissionProgressToBackend(evaluation.gateState);
 		}
+	}
+
+	private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
+		await this.missionProgressSyncService.syncGateState({
+			playerName: this.playerName(),
+			characterId: this.joinCharacter()?.id ?? '',
+			sessionKey: this.sessionService.getSessionKey() ?? '',
+			gateState,
+		});
 	}
 
 	private consumePrintableMaterials(

@@ -324,4 +324,5 @@ test.describe('Character List — navigation', () => {
 
     await expect(page).toHaveURL(/left:character-setup/);
   });
+
 });

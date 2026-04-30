@@ -62,4 +62,15 @@ describe('ShipExteriorMissionStateService', () => {
 
 		expect(service.loadState(context)).toBeNull();
 	});
+
+	it('should load fallback state when player name differs for same mission and character', () => {
+		service.saveState(context, state);
+
+		expect(
+			service.loadState({
+				...context,
+				playerName: 'Pioneer  ',
+			}),
+		).toEqual(state);
+	});
 });

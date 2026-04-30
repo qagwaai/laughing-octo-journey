@@ -7,6 +7,7 @@ import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { coerceShipDamageProfile, type ShipDamageProfile } from '../../model/ship-damage';
 import { SessionService, SocketService } from '../../services';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import {
 	describePrintableMaterials,
@@ -22,6 +23,7 @@ import {
 import {
 	evaluateMissionGateOnRepair,
 	resolveShipExteriorMission,
+	type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import {
@@ -51,6 +53,7 @@ export default class RepairRetrofitItemsPage {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
+	private missionProgressSyncService = inject(MissionProgressSyncService);
 	private missionStateService = inject(ShipExteriorMissionStateService);
 	private printerService = inject(PrinterStateService);
 	private navigationState: RepairDetailNavigationState =
@@ -553,7 +556,17 @@ export default class RepairRetrofitItemsPage {
 
 		if (evaluation.changed) {
 			this.missionStateService.saveState(context, evaluation.gateState);
+			void this.syncMissionProgressToBackend(evaluation.gateState);
 		}
+	}
+
+	private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
+		await this.missionProgressSyncService.syncGateState({
+			playerName: this.playerName(),
+			characterId: this.joinCharacter()?.id ?? '',
+			sessionKey: this.sessionService.getSessionKey() ?? '',
+			gateState,
+		});
 	}
 
 	private consumePrintableMaterials(

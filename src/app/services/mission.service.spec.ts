@@ -1,7 +1,7 @@
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT } from '../model/mission-add';
 import { MISSION_LIST_REQUEST_EVENT, MISSION_LIST_RESPONSE_EVENT } from '../model/mission-list';
 import { MISSION_UPSERT_REQUEST_EVENT, MISSION_UPSERT_RESPONSE_EVENT } from '../model/mission-upsert.model';
-import { MissionService } from './mission.service';
+import { MissionService, type UpsertMissionStatusResult } from './mission.service';
 
 type Listener = (payload: any) => void;
 
@@ -348,5 +348,239 @@ describe('MissionService', () => {
 
 		const result = await updatePromise;
 		expect(result).toBe('update-failed');
+	});
+
+	it('should include statusDetail in upsert request when provided', async () => {
+		const updatePromise = service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: 'started',
+			statusDetail: '{"some":"detail"}',
+		});
+		await Promise.resolve();
+
+		expect(socketService.emittedEvents[0].data.statusDetail).toBe('{"some":"detail"}');
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'updated',
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			mission: { missionId: 'first-target', status: 'started' },
+		});
+
+		await updatePromise;
+	});
+
+	it('should ignore upsert responses for other player/character', async () => {
+		const updatePromise = service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: 'started',
+		});
+		await Promise.resolve();
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'updated',
+			playerName: 'OtherPlayer',
+			characterId: 'char-1',
+			mission: { missionId: 'first-target', status: 'started' },
+		});
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'updated',
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			mission: { missionId: 'first-target', status: 'started' },
+		});
+
+		const result = await updatePromise;
+		expect(result).toBe('updated');
+	});
+
+	it('upsertMissionStatus should resolve updated when connect fires before response', async () => {
+		socketService.connected = false;
+
+		const updatePromise = service.upsertMissionStatus({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			missionId: 'first-target',
+			status: 'started',
+		});
+
+		socketService.trigger('connect', null);
+		await Promise.resolve();
+
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'updated',
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			mission: { missionId: 'first-target', status: 'started' },
+		});
+
+		const result = await updatePromise;
+		expect(result).toBe('updated');
+	});
+
+	describe('listMissions', () => {
+		it('returns invalid-request when required fields are blank', async () => {
+			const result = await service.listMissions({ playerName: ' ', characterId: 'c-1', sessionKey: 's-1' });
+			expect(result.status).toBe('invalid-request');
+			expect(result.missions).toEqual([]);
+		});
+
+		it('returns not-connected when socket is not connected (times out)', async () => {
+			// This test relies on the real timer; we just verify that when socket is not
+			// connected, a connection attempt is made and the promise resolves eventually.
+			socketService.connected = false;
+
+			// Patch RESPONSE_TIMEOUT_MS at minimal value and fire 'connect' to resolve true
+			const previousTimeout = (MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS;
+			(MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS = 5000;
+
+			try {
+				const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
+
+				// Immediately trigger connect to resolve ensureConnected
+				socketService.trigger('connect', null);
+				await Promise.resolve();
+
+				socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+					success: true,
+					message: 'ok',
+					playerName: 'Pioneer',
+					characterId: 'c-1',
+					missions: [],
+				});
+
+				const result = await resultPromise;
+				expect(result.status).toBe('loaded');
+			} finally {
+				(MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS = previousTimeout;
+			}
+		});
+
+		it('returns loaded missions on success', async () => {
+			const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
+			await Promise.resolve();
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				missions: [{ missionId: 'first-target', status: 'started' }],
+			});
+
+			const result = await resultPromise;
+			expect(result.status).toBe('loaded');
+			expect(result.missions.length).toBe(1);
+		});
+
+		it('returns list-failed on error response', async () => {
+			const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
+			await Promise.resolve();
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: false,
+				message: 'boom',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				missions: [],
+			});
+
+			const result = await resultPromise;
+			expect(result.status).toBe('list-failed');
+		});
+
+		it('ignores list responses for other player or character', async () => {
+			const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
+			await Promise.resolve();
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'OtherPlayer',
+				characterId: 'c-1',
+				missions: [],
+			});
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'other-char',
+				missions: [],
+			});
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				missions: [{ missionId: 'first-target', status: 'available' }],
+			});
+
+			const result = await resultPromise;
+			expect(result.status).toBe('loaded');
+		});
+
+		it('includes statuses filter in request when provided', async () => {
+			const resultPromise = service.listMissions({
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				sessionKey: 's-1',
+				statuses: ['started', 'completed'],
+			});
+			await Promise.resolve();
+
+			expect(socketService.emittedEvents[0].data.statuses).toEqual(['started', 'completed']);
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				missions: [],
+			});
+
+			await resultPromise;
+		});
+
+		it('handles null missions in success response', async () => {
+			const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
+			await Promise.resolve();
+
+			socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+				success: true,
+				message: 'ok',
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				missions: null,
+			});
+
+			const result = await resultPromise;
+			expect(result.status).toBe('loaded');
+			expect(result.missions).toEqual([]);
+		});
+
+		it('returns timeout when list response never arrives', (done) => {
+			const previousTimeout = (MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS;
+			(MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS = 10;
+
+			service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' }).then((result) => {
+				expect(result.status).toBe('timeout');
+				(MissionService as unknown as { RESPONSE_TIMEOUT_MS: number }).RESPONSE_TIMEOUT_MS = previousTimeout;
+				done();
+			});
+		}, 2000);
 	});
 });

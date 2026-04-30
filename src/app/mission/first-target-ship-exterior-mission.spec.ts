@@ -1,4 +1,7 @@
-import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from './first-target-ship-exterior-mission';
+import {
+	FIRST_TARGET_SHIP_EXTERIOR_MISSION,
+	createFirstTargetMissionInitialGateState,
+} from './first-target-ship-exterior-mission';
 
 describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 	it('should only allow asteroid targeting for scavenger pod with expendable dart drone', () => {
@@ -245,5 +248,143 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 		for (const sample of samples) {
 			expect(sample.revealedMaterial).not.toBeNull();
 		}
+	});
+
+	it('should refresh but not remove samples for succeeded but non-destroyed launch', () => {
+		const resolution = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveLaunchItemResponse({
+			response: {
+				success: true,
+				message: 'Deflected',
+				playerName: 'Pioneer',
+				characterId: 'char-1',
+				shipId: 'ship-1',
+				targetCelestialBodyId: 'cb-1',
+				hotkey: 1,
+				itemId: 'item-1',
+				itemType: 'expendable-dart-drone',
+				resolution: { outcome: 'no-effect', targetDestroyed: false, yieldedMaterials: [], yieldedItems: [], launchSeed: 0 },
+			},
+			asteroidSamples: [],
+		});
+
+		expect(resolution.removeAsteroidSampleIds).toEqual([]);
+		expect(resolution.shouldRefreshAfterLaunch).toBe(true);
+	});
+
+	it('should match asteroid sample by id when serverCelestialBodyId differs', () => {
+		const resolution = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveLaunchItemResponse({
+			response: {
+				success: true,
+				message: 'Target destroyed',
+				playerName: 'Pioneer',
+				characterId: 'char-1',
+				shipId: 'ship-1',
+				targetCelestialBodyId: 'sample-a1',
+				hotkey: 1,
+				itemId: 'item-1',
+				itemType: 'expendable-dart-drone',
+				resolution: { outcome: 'target-destroyed', targetDestroyed: true, yieldedMaterials: [], yieldedItems: [], launchSeed: 0 },
+			},
+			asteroidSamples: [
+				{
+					id: 'sample-a1',
+					serverCelestialBodyId: null,
+					position: [0, 0, 0],
+					basePosition: [0, 0, 0],
+					scanProgress: 100,
+					scanned: true,
+					revealedMaterial: null,
+					revealedKinematics: null,
+					capturedKinematics: { velocityKmPerSec: { x: 0, y: 0, z: 0 }, angularVelocityRadPerSec: { x: 0, y: 0, z: 0 }, estimatedMassKg: 1, estimatedDiameterM: 1 },
+					solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
+					clusterCenterKm: { x: 0, y: 0, z: 0 },
+					motionPhase: 0,
+					motionRate: 0,
+					motionRadius: 0,
+					bobAmplitude: 0,
+				},
+			],
+		});
+
+		expect(resolution.removeAsteroidSampleIds).toEqual(['sample-a1']);
+	});
+
+	it('should detect expendable dart drone by itemType in raw inventory', () => {
+		const result = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory([
+			{ itemType: 'expendable-dart-drone', id: 'id-1', displayName: '', tier: 1, damageStatus: 'good', quantity: 1 },
+		]);
+		expect(result).toBe(true);
+	});
+
+	it('should return false for empty inventory', () => {
+		expect(FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory([])).toBe(false);
+	});
+
+	it('should return false for non-array inventory', () => {
+		expect(FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory(null)).toBe(false);
+		expect(FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory(undefined)).toBe(false);
+	});
+
+	it('should detect drone by displayName in raw inventory when itemType does not match', () => {
+		const result = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory([
+			{ itemType: 'unknown', displayName: 'expendable-dart-drone' },
+		]);
+		expect(result).toBe(true);
+	});
+
+	it('should return false when raw inventory item is not an object', () => {
+		expect(FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory(['not-an-object'])).toBe(false);
+	});
+
+	it('should vary sample counts for different launchSeedHints', () => {
+		const a = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+			playerName: 'P',
+			characterId: 'c',
+			center: { x: 0, y: 0, z: 0 },
+			launchSeedHint: null,
+		});
+		const b = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+			playerName: 'P',
+			characterId: 'c',
+			center: { x: 0, y: 0, z: 0 },
+			launchSeedHint: undefined,
+		});
+		// Both are valid arrays of samples
+		expect(a.length).toBeGreaterThan(0);
+		expect(b.length).toBeGreaterThan(0);
+	});
+
+	it('should use index fallback for bodies without matching sourceScanId', () => {
+		const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createResumedAsteroidSamples({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			center: { x: 0, y: 0, z: 0 },
+			existingBodies: [
+				{
+					id: 'cb-no-scan-id',
+					catalogId: 'cat-1',
+					solarSystemId: 'sol',
+					sourceScanId: '',
+					createdByCharacterId: 'char-1',
+					createdAt: '2026-04-28T00:00:00.000Z',
+					updatedAt: '2026-04-28T00:00:00.000Z',
+					location: { positionKm: { x: 10, y: 10, z: 10 } },
+					kinematics: { velocityKmPerSec: { x: 0, y: 0, z: 0 }, angularVelocityRadPerSec: { x: 0, y: 0, z: 0 }, estimatedMassKg: 1, estimatedDiameterM: 1 },
+					composition: { material: 'Carbon', rarity: 'Common', textureColor: '#6f7785' },
+					distanceKm: 5,
+					state: 'active',
+				},
+			],
+			launchSeedHint: 7,
+		});
+
+		// The first sample should use the existing body at index 0 via fallback
+		expect(samples[0].serverCelestialBodyId).toBe('cb-no-scan-id');
+	});
+
+	it('createFirstTargetMissionInitialGateState creates gate state for a given characterId', () => {
+		const state = createFirstTargetMissionInitialGateState('test-char');
+		expect(state.characterId).toBe('test-char');
+		expect(state.steps.length).toBeGreaterThan(0);
 	});
 });

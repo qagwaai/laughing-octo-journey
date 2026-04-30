@@ -705,7 +705,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	}
 
 	private getMissionGateProgressRank(gateState: ShipExteriorMissionGateState): number {
-		return gateState.steps.filter((step) => step.completedAt).length;
+		return gateState.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').length;
 	}
 
 	ngOnDestroy(): void {

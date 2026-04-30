@@ -125,12 +125,8 @@ export default class MissionBoardPage {
 		this.socketService.emit(MISSION_LIST_REQUEST_EVENT, request);
 	}
 
-	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } | null {
+	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } {
 		const gateState = this.resolveEffectiveMissionGateState(mission);
-		if (!gateState) {
-			return null;
-		}
-
 		const totalSteps = gateState.steps.length;
 		const completedCount = gateState.steps.filter((s) => s.status === 'completed' || s.status === 'pending-retry').length;
 		const activeStepIndex = gateState.steps.findIndex((s) => s.status === 'active' || s.status === 'pending-retry');
@@ -144,20 +140,13 @@ export default class MissionBoardPage {
 
 	getMissionDisplayStatus(mission: CharacterMissionProgress): string {
 		const gateState = this.resolveEffectiveMissionGateState(mission);
-		if (!gateState) {
-			return mission.status;
-		}
-
 		const missionDef = resolveShipExteriorMission(mission.missionId);
 		return missionDef.resolveMissionStatusFromGateState(gateState);
 	}
 
-	private resolveEffectiveMissionGateState(mission: CharacterMissionProgress): ShipExteriorMissionGateState | null {
-		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+	private resolveEffectiveMissionGateState(mission: CharacterMissionProgress): ShipExteriorMissionGateState {
+		const characterId = this.resolveCharacterIdForMission(mission);
 		const playerName = this.playerName().trim();
-		if (!characterId) {
-			return null;
-		}
 
 		const missionDef = resolveShipExteriorMission(mission.missionId);
 		const stepDefinitions = missionDef.getGateStepDefinitions();
@@ -166,11 +155,13 @@ export default class MissionBoardPage {
 			characterId,
 			steps: stepDefinitions,
 		});
-		const persistedGateState = this.missionStateService.loadState({
-			missionId: mission.missionId,
-			playerName,
-			characterId,
-		});
+		const persistedGateState = playerName
+			? this.missionStateService.loadState({
+				missionId: mission.missionId,
+				playerName,
+				characterId,
+			})
+			: null;
 		const parsedGateState = mission.statusDetail
 			? parseMissionGateState({
 				rawStatusDetail: mission.statusDetail,
@@ -186,6 +177,26 @@ export default class MissionBoardPage {
 		);
 
 		return gateState;
+	}
+
+	private resolveCharacterIdForMission(mission: CharacterMissionProgress): string {
+		const navigationCharacterId = this.joinCharacter()?.id?.trim();
+		if (navigationCharacterId) {
+			return navigationCharacterId;
+		}
+
+		if (mission.statusDetail) {
+			try {
+				const parsed = JSON.parse(mission.statusDetail) as { characterId?: unknown };
+				if (typeof parsed.characterId === 'string' && parsed.characterId.trim().length > 0) {
+					return parsed.characterId.trim();
+				}
+			} catch {
+				// Ignore malformed statusDetail and fall back to placeholder id.
+			}
+		}
+
+		return 'unknown-character';
 	}
 
 	private resolvePreferredMissionGateState(

@@ -8,5 +8,5 @@
   },
   "files": ["src/main.ts"],
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["src/**/*.spec.ts", "src/test.ts", "src/jasmine-jest-compat.ts"]
+  "exclude": ["src/**/*.spec.ts", "src/test.ts"]
 }

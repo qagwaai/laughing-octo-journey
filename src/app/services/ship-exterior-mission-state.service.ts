@@ -23,9 +23,56 @@ export class ShipExteriorMissionStateService {
 		}
 
 		const raw = window.localStorage.getItem(key);
-		if (!raw) {
+		if (raw) {
+			const parsed = this.parseStoredState(raw, context);
+			if (parsed) {
+				return parsed;
+			}
+		}
+
+		return this.loadFallbackStateByMissionAndCharacter(context);
+	}
+
+	private loadFallbackStateByMissionAndCharacter(context: ShipExteriorMissionStateContext): ShipExteriorMissionGateState | null {
+		const missionId = context.missionId?.trim();
+		const characterId = context.characterId?.trim();
+		if (!missionId || !characterId) {
 			return null;
 		}
+
+		for (let index = 0; index < window.localStorage.length; index += 1) {
+			const key = window.localStorage.key(index);
+			if (!key || !key.startsWith(`${ShipExteriorMissionStateService.STORAGE_PREFIX}::`)) {
+				continue;
+			}
+
+			const [prefix, storedMissionId, _storedPlayerName, storedCharacterId] = key.split('::');
+			if (
+				prefix !== ShipExteriorMissionStateService.STORAGE_PREFIX
+				|| storedMissionId !== missionId
+				|| storedCharacterId !== characterId
+			) {
+				continue;
+			}
+
+			const raw = window.localStorage.getItem(key);
+			if (!raw) {
+				continue;
+			}
+
+			const parsed = this.parseStoredState(raw, context);
+			if (parsed) {
+				return parsed;
+			}
+		}
+
+		return null;
+	}
+
+	private parseStoredState(
+		raw: string,
+		context: ShipExteriorMissionStateContext,
+	): ShipExteriorMissionGateState | null {
 
 		try {
 			const parsed = JSON.parse(raw) as ShipExteriorMissionGateState;
