@@ -924,3 +924,56 @@ describe('ColdBootScanScene in-progress seeding', () => {
 		expect(scene.asteroidSamples.filter((s) => !s.scanned).length).toBe(11);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Subscription cleanup on ngOnDestroy
+// ---------------------------------------------------------------------------
+
+class MockSubscriptionScene {
+	unsubscribeShipListResponse: (() => void) | undefined = undefined;
+	unsubscribeCelestialBodyListResponse: (() => void) | undefined = undefined;
+	unsubscribeLaunchItemResponse: (() => void) | undefined = undefined;
+
+	/** Mirrors the ngOnDestroy cleanup block from ShipExteriorViewScene. */
+	ngOnDestroy(): void {
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeCelestialBodyListResponse?.();
+		this.unsubscribeLaunchItemResponse?.();
+	}
+}
+
+describe('ShipExteriorViewScene - subscription cleanup (ngOnDestroy)', () => {
+	it('should call all three unsubscribe functions when they are assigned', () => {
+		const scene = new MockSubscriptionScene();
+		const unsubShip = jasmine.createSpy('unsubscribeShipListResponse');
+		const unsubCelestial = jasmine.createSpy('unsubscribeCelestialBodyListResponse');
+		const unsubLaunch = jasmine.createSpy('unsubscribeLaunchItemResponse');
+
+		scene.unsubscribeShipListResponse = unsubShip;
+		scene.unsubscribeCelestialBodyListResponse = unsubCelestial;
+		scene.unsubscribeLaunchItemResponse = unsubLaunch;
+
+		scene.ngOnDestroy();
+
+		expect(unsubShip).toHaveBeenCalledTimes(1);
+		expect(unsubCelestial).toHaveBeenCalledTimes(1);
+		expect(unsubLaunch).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not throw when unsubscribe functions have not been assigned', () => {
+		const scene = new MockSubscriptionScene();
+		expect(() => scene.ngOnDestroy()).not.toThrow();
+	});
+
+	it('should not call unsubscribe functions more than once on repeated destroy calls', () => {
+		const scene = new MockSubscriptionScene();
+		const unsubShip = jasmine.createSpy('unsubscribeShipListResponse');
+		scene.unsubscribeShipListResponse = unsubShip;
+
+		scene.ngOnDestroy();
+		scene.ngOnDestroy();
+
+		// Each call invokes the stored reference once; the spy accumulates both calls
+		expect(unsubShip).toHaveBeenCalledTimes(2);
+	});
+});

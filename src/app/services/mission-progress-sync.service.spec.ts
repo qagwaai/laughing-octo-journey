@@ -127,4 +127,96 @@ describe('MissionProgressSyncService', () => {
 			);
 		}
 	});
+
+	it('should derive "started" when steps array is empty', async () => {
+		const missionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
+		} as unknown as MissionService;
+		const service = new MissionProgressSyncService(missionService);
+
+		const emptyStepsGateState: ShipExteriorMissionGateState = {
+			missionId: 'first-target',
+			characterId: 'char-1',
+			activeObjectiveText: 'Beginning mission.',
+			updatedAt: '2026-04-30T00:00:00.000Z',
+			steps: [],
+		};
+
+		await service.syncGateState({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			gateState: emptyStepsGateState,
+		});
+
+		expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(
+			jasmine.objectContaining({ status: 'started' }),
+		);
+	});
+
+	it('should derive "in-progress" when all steps are pending-retry (not "completed")', async () => {
+		const missionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
+		} as unknown as MissionService;
+		const service = new MissionProgressSyncService(missionService);
+
+		await service.syncGateState({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			gateState: createGateStateWithStatuses(['pending-retry', 'pending-retry', 'pending-retry', 'pending-retry']),
+		});
+
+		expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(
+			jasmine.objectContaining({ status: 'in-progress' }),
+		);
+	});
+
+	it('should skip sync when missionId is empty', async () => {
+		const missionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus'),
+		} as unknown as MissionService;
+		const service = new MissionProgressSyncService(missionService);
+
+		const noMissionIdGateState: ShipExteriorMissionGateState = {
+			missionId: '',
+			characterId: 'char-1',
+			activeObjectiveText: 'Objective.',
+			updatedAt: '2026-04-30T00:00:00.000Z',
+			steps: [],
+		};
+
+		const result = await service.syncGateState({
+			playerName: 'Pioneer',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			gateState: noMissionIdGateState,
+		});
+
+		expect(result).toBe('skipped');
+		expect(missionService.upsertMissionStatus).not.toHaveBeenCalled();
+	});
+
+	it('should skip sync when playerName is empty', async () => {
+		const missionService = {
+			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus'),
+		} as unknown as MissionService;
+		const service = new MissionProgressSyncService(missionService);
+
+		const result = await service.syncGateState({
+			playerName: '',
+			characterId: 'char-1',
+			sessionKey: 'session-1',
+			gateState: {
+				missionId: 'first-target',
+				characterId: 'char-1',
+				activeObjectiveText: 'Objective.',
+				updatedAt: '2026-04-30T00:00:00.000Z',
+				steps: [],
+			},
+		});
+
+		expect(result).toBe('skipped');
+		expect(missionService.upsertMissionStatus).not.toHaveBeenCalled();
+	});
 });

@@ -42,8 +42,8 @@ describe('SocketService', () => {
     expect(service.getConnectionError()).toBeNull();
   });
 
-  it('should have a null socket initially', () => {
-    expect(service.getSocket()).toBeNull();
+  it('should initialize with a socket instance due to auto-connect in constructor', () => {
+    expect(service.getSocket()).not.toBeNull();
   });
 
   describe('connect', () => {
@@ -73,7 +73,7 @@ describe('SocketService', () => {
   describe('emit', () => {
     it('should warn if socket is not initialized', () => {
       const warnSpy = spyOn(console, 'warn');
-      
+      service['socket'] = null;
       service.emit('test', { data: 'test' });
       
       expect(warnSpy).toHaveBeenCalledWith('Socket not initialized. Use connect() first');
@@ -370,7 +370,7 @@ describe('SocketService', () => {
   describe('on', () => {
     it('should warn if socket not initialized', () => {
       const warnSpy = spyOn(console, 'warn');
-      
+      service['socket'] = null;
       const unsubscribe = service.on('test', () => {});
       
       expect(warnSpy).toHaveBeenCalledWith(
@@ -409,7 +409,7 @@ describe('SocketService', () => {
   describe('once', () => {
     it('should warn if socket not initialized', () => {
       const warnSpy = spyOn(console, 'warn');
-      
+      service['socket'] = null;
       service.once('test', () => {});
       
       expect(warnSpy).toHaveBeenCalledWith(
