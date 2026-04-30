@@ -69,6 +69,22 @@ export interface ShipExteriorMissionGateLaunchEvaluation {
 	unlockedStepKeys: string[];
 }
 
+export interface ShipExteriorMissionGateManufactureEvaluation {
+	gateState: ShipExteriorMissionGateState;
+	changed: boolean;
+	completedStepKey: string | null;
+	completionToastMessage: string | null;
+	unlockedStepKeys: string[];
+}
+
+export interface ShipExteriorMissionGateRepairEvaluation {
+	gateState: ShipExteriorMissionGateState;
+	changed: boolean;
+	completedStepKey: string | null;
+	completionToastMessage: string | null;
+	unlockedStepKeys: string[];
+}
+
 export interface ShipExteriorMissionDefinition {
 	readonly missionId: string;
 	canTargetAsteroids(params: ShipExteriorMissionTargetingParams): boolean;
@@ -94,6 +110,8 @@ export interface ShipExteriorMissionDefinition {
 	getGateStepDefinitions(): readonly ShipExteriorMissionGateStepDefinition[];
 	doesScanCompleteGateStep(stepKey: string, sample: AsteroidScanSample): boolean;
 	doesLaunchCompleteGateStep(stepKey: string, response: LaunchItemResponse): boolean;
+	doesManufactureCompleteGateStep?(stepKey: string, manufacturedItemType: string): boolean;
+	doesRepairCompleteGateStep?(stepKey: string, repairKind: string): boolean;
 	resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus;
 }
 
@@ -250,6 +268,190 @@ export function evaluateMissionGateOnLaunch(params: {
 		stepState.evidence = {
 			sourceScanId: `launch:${params.response.targetCelestialBodyId ?? 'unknown'}:${completedAt}`,
 			celestialBodyId: params.response.targetCelestialBodyId ?? null,
+			material: null,
+			completedAt,
+			characterId: params.gateState.characterId,
+			missionId: params.gateState.missionId,
+		};
+		completedStepKey = step.key;
+		completionToastMessage = step.completionToastMessage;
+		changed = true;
+		break;
+	}
+
+	const unlockedStepKeys: string[] = [];
+	if (changed) {
+		const completedStepKeys = new Set(
+			nextStates
+				.filter((step) => step.status === 'completed' || step.status === 'pending-retry')
+				.map((step) => step.key),
+		);
+
+		for (const step of steps) {
+			const stepState = stepStateByKey.get(step.key);
+			if (!stepState || stepState.status !== 'locked') {
+				continue;
+			}
+
+			if (!shouldUnlockStep(step, completedStepKeys)) {
+				continue;
+			}
+
+			stepState.status = 'active';
+			unlockedStepKeys.push(step.key);
+		}
+	}
+
+	const nextGateState: ShipExteriorMissionGateState = {
+		...params.gateState,
+		steps: nextStates,
+		activeObjectiveText: resolveActiveObjectiveText(nextStates, steps),
+		updatedAt: changed ? completedAt : params.gateState.updatedAt,
+	};
+
+	if (changed && completedStepKey) {
+		const completedStep = stepByKey.get(completedStepKey);
+		const unlockedSummary = unlockedStepKeys
+			.map((key) => stepByKey.get(key)?.objectiveText)
+			.filter((value): value is string => typeof value === 'string' && value.length > 0)
+			.join(' ');
+		completionToastMessage = unlockedSummary
+			? `${completedStep?.completionToastMessage ?? 'Mission objective updated.'} ${unlockedSummary}`
+			: (completedStep?.completionToastMessage ?? 'Mission objective updated.');
+	}
+
+	return {
+		gateState: nextGateState,
+		changed,
+		completedStepKey,
+		completionToastMessage,
+		unlockedStepKeys,
+	};
+}
+
+export function evaluateMissionGateOnManufacture(params: {
+	mission: ShipExteriorMissionDefinition;
+	gateState: ShipExteriorMissionGateState;
+	manufacturedItemType: string;
+	completedAt?: string;
+}): ShipExteriorMissionGateManufactureEvaluation {
+	const steps = params.mission.getGateStepDefinitions();
+	const completedAt = params.completedAt ?? new Date().toISOString();
+	const stepByKey = new Map(steps.map((step) => [step.key, step] as const));
+	const nextStates = params.gateState.steps.map((step) => ({ ...step }));
+	const stepStateByKey = new Map(nextStates.map((step) => [step.key, step] as const));
+
+	let completedStepKey: string | null = null;
+	let completionToastMessage: string | null = null;
+	let changed = false;
+
+	for (const step of steps) {
+		const stepState = stepStateByKey.get(step.key);
+		if (!stepState || stepState.status !== 'active') {
+			continue;
+		}
+
+		if (!params.mission.doesManufactureCompleteGateStep?.(step.key, params.manufacturedItemType)) {
+			continue;
+		}
+
+		stepState.status = 'completed';
+		stepState.completedAt = completedAt;
+		stepState.evidence = {
+			sourceScanId: `manufacture:${params.manufacturedItemType}:${completedAt}`,
+			celestialBodyId: null,
+			material: null,
+			completedAt,
+			characterId: params.gateState.characterId,
+			missionId: params.gateState.missionId,
+		};
+		completedStepKey = step.key;
+		completionToastMessage = step.completionToastMessage;
+		changed = true;
+		break;
+	}
+
+	const unlockedStepKeys: string[] = [];
+	if (changed) {
+		const completedStepKeys = new Set(
+			nextStates
+				.filter((step) => step.status === 'completed' || step.status === 'pending-retry')
+				.map((step) => step.key),
+		);
+
+		for (const step of steps) {
+			const stepState = stepStateByKey.get(step.key);
+			if (!stepState || stepState.status !== 'locked') {
+				continue;
+			}
+
+			if (!shouldUnlockStep(step, completedStepKeys)) {
+				continue;
+			}
+
+			stepState.status = 'active';
+			unlockedStepKeys.push(step.key);
+		}
+	}
+
+	const nextGateState: ShipExteriorMissionGateState = {
+		...params.gateState,
+		steps: nextStates,
+		activeObjectiveText: resolveActiveObjectiveText(nextStates, steps),
+		updatedAt: changed ? completedAt : params.gateState.updatedAt,
+	};
+
+	if (changed && completedStepKey) {
+		const completedStep = stepByKey.get(completedStepKey);
+		const unlockedSummary = unlockedStepKeys
+			.map((key) => stepByKey.get(key)?.objectiveText)
+			.filter((value): value is string => typeof value === 'string' && value.length > 0)
+			.join(' ');
+		completionToastMessage = unlockedSummary
+			? `${completedStep?.completionToastMessage ?? 'Mission objective updated.'} ${unlockedSummary}`
+			: (completedStep?.completionToastMessage ?? 'Mission objective updated.');
+	}
+
+	return {
+		gateState: nextGateState,
+		changed,
+		completedStepKey,
+		completionToastMessage,
+		unlockedStepKeys,
+	};
+}
+
+export function evaluateMissionGateOnRepair(params: {
+	mission: ShipExteriorMissionDefinition;
+	gateState: ShipExteriorMissionGateState;
+	repairKind: string;
+	completedAt?: string;
+}): ShipExteriorMissionGateRepairEvaluation {
+	const steps = params.mission.getGateStepDefinitions();
+	const completedAt = params.completedAt ?? new Date().toISOString();
+	const stepByKey = new Map(steps.map((step) => [step.key, step] as const));
+	const nextStates = params.gateState.steps.map((step) => ({ ...step }));
+	const stepStateByKey = new Map(nextStates.map((step) => [step.key, step] as const));
+
+	let completedStepKey: string | null = null;
+	let completionToastMessage: string | null = null;
+	let changed = false;
+
+	for (const step of steps) {
+		const stepState = stepStateByKey.get(step.key);
+		if (!stepState || stepState.status !== 'active') {
+			continue;
+		}
+
+		if (!params.mission.doesRepairCompleteGateStep?.(step.key, params.repairKind)) {
+			continue;
+		}
+
+		stepState.status = 'completed';
+		stepState.completedAt = completedAt;
+		stepState.evidence = {
+			sourceScanId: `repair:${params.repairKind}:${completedAt}`,
+			celestialBodyId: null,
 			material: null,
 			completedAt,
 			characterId: params.gateState.characterId,

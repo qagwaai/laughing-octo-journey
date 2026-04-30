@@ -15,6 +15,23 @@
 				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
 			}
 
+			@if (!hasHullPatchKit()) {
+				<div class="fabrication-cta">
+					<p><strong>Missing:</strong> Hull Patch Kit &mdash; required for Scavenger Pod repair.</p>
+					<p><strong>Required Materials:</strong> {{ getHullPatchKitMaterialLabels() }}</p>
+					<p><strong>Fabrication Time:</strong> {{ getHullPatchKitDurationLabel() }}</p>
+					@if (isHullPatchKitQueued()) {
+						<p class="status-line status-line--info">Hull Patch Kit is printing on the 3D Fabricator.</p>
+					} @else if (!canQueueHullPatchKit()) {
+						<p class="status-line status-line--error">{{ getHullPatchKitRequirementMessage() }}</p>
+					} @else {
+						<button type="button" class="repair-action" (click)="queueForPrinting()">
+							Send to 3D Printer
+						</button>
+					}
+				</div>
+			}
+
 			<div class="repair-controls">
 				<label for="repair-filter">Filter</label>
 				<select id="repair-filter" [value]="selectedFilter()" (change)="setFilter($any($event.target).value)">

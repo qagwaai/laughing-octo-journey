@@ -27,5 +27,95 @@
 				</button>
 			}
 		</section>
+
+		@if (joinCharacter()) {
+			<section class="ops-card printer-section">
+				<h2>Onboard 3D Fabricator</h2>
+
+				<div class="printer-status-bar">
+					<span class="printer-status-label">Status</span>
+					<span
+						class="printer-status-value"
+						[class.printer-status--printing]="printerStatus() === 'printing'"
+						[class.printer-status--idle]="printerStatus() === 'idle'"
+					>
+						{{ printerStatus() === 'printing' ? 'Printing' : 'Idle' }}
+					</span>
+				</div>
+
+				@if (printerError()) {
+					<p class="status-line status-line--error" role="alert">{{ printerError() }}</p>
+				}
+				@if (printerSuccess()) {
+					<p class="status-line status-line--success">{{ printerSuccess() }}</p>
+				}
+
+				@if (printerQueueWithStatus().length > 0) {
+					<div class="printer-queue">
+						<h3>Active Print Jobs</h3>
+						@for (job of printerQueueWithStatus(); track job.id) {
+							<div class="print-job-card">
+								<div class="print-job-info">
+									<strong class="print-job-label">{{ job.label }}</strong>
+									@if (job.remainingMs > 0) {
+										<span class="print-job-timer">{{ formatRemainingTime(job.remainingMs) }} remaining</span>
+									} @else {
+										<span class="print-job-complete">Collecting from printer...</span>
+									}
+								</div>
+								@if (job.remainingMs > 0) {
+									<button
+										type="button"
+										class="repair-action repair-action--cancel"
+										(click)="cancelPrintJob(job)"
+									>
+										Cancel
+									</button>
+								}
+							</div>
+						}
+					</div>
+				}
+
+				<div class="printer-recipes">
+					<h3>Available Recipes</h3>
+
+					@for (printableItem of printableItems(); track printableItem.itemType) {
+						<div class="recipe-card">
+							<div class="recipe-header">
+								<strong>{{ printableItem.displayName }}</strong>
+								<span class="recipe-tier">Tier {{ printableItem.tier }} &middot; {{ getPrintableItemDurationLabel(printableItem) }}</span>
+							</div>
+							<p class="recipe-description">
+								{{ printableItem.description }}
+							</p>
+							<div class="recipe-ingredients">
+								@for (material of getPrintableItemMaterialLabels(printableItem); track material) {
+									<span class="ingredient">{{ material }}</span>
+								}
+							</div>
+							<div class="recipe-status">
+								@if (hasPrintableItem(printableItem)) {
+									<p class="status-line status-line--success">{{ printableItem.displayName }} already in inventory.</p>
+								} @else if (isPrintableItemPrinting(printableItem)) {
+									<p class="status-line status-line--info">Currently printing &mdash; check Active Print Jobs above.</p>
+								} @else if (!canQueuePrintableItem(printableItem)) {
+									<p class="status-line status-line--error">{{ getPrintableItemRequirementMessage(printableItem) }}</p>
+								} @else {
+									<button
+										type="button"
+										class="repair-action"
+										[disabled]="!canQueuePrintableItem(printableItem)"
+										(click)="queuePrintableItem(printableItem)"
+									>
+										Print {{ printableItem.displayName }}
+									</button>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			</section>
+		}
 	</div>
 </div>

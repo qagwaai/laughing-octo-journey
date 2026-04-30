@@ -7,6 +7,23 @@ import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { coerceShipDamageProfile, type ShipDamageProfile } from '../../model/ship-damage';
 import { SessionService, SocketService } from '../../services';
+import { PrinterStateService } from '../../services/printer-state.service';
+import {
+	describePrintableMaterials,
+	findConsumableMaterialsForPrintableItem,
+	formatPrintableDuration,
+	getMissingPrintableMaterials,
+	hasPrintableItemInInventory,
+	isPrintableItemQueued,
+	type PrintableConsumedMaterial,
+	resolvePrintableItemDefinition,
+	type PrintableItemDefinition,
+} from '../../model/printable-item';
+import {
+	evaluateMissionGateOnRepair,
+	resolveShipExteriorMission,
+} from '../../mission/ship-exterior-mission';
+import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import {
 	describeSummaryForSystems,
 	mapOverallStatusToShipStatus,
@@ -34,6 +51,8 @@ export default class RepairRetrofitItemsPage {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
+	private missionStateService = inject(ShipExteriorMissionStateService);
+	private printerService = inject(PrinterStateService);
 	private navigationState: RepairDetailNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as RepairDetailNavigationState | undefined) ??
 		(history.state as RepairDetailNavigationState | undefined) ??
@@ -46,16 +65,37 @@ export default class RepairRetrofitItemsPage {
 	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
 	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
 	protected searchQuery = signal<string>(this.navigationState.searchQuery ?? '');
+	protected missionId = signal<string>(this.navigationState.missionId ?? '');
 	protected activeRepairKey = signal<string | null>(null);
 	protected persistError = signal<string | null>(null);
 	protected persistSuccess = signal<string | null>(null);
+	private hullPatchKitPrintableItem: PrintableItemDefinition = resolvePrintableItemDefinition('hull-patch-kit')!;
 
 	protected shipName = computed(
 		() => this.joinShip()?.name?.trim() || this.joinShip()?.model?.trim() || DEFAULT_SHIP_MODEL,
 	);
 
+	protected hasHullPatchKit = computed(
+		() => hasPrintableItemInInventory(this.joinShip()?.inventory, this.hullPatchKitPrintableItem),
+	);
+
+	protected isHullPatchKitQueued = computed(() =>
+		isPrintableItemQueued(this.printerService.queue(), this.hullPatchKitPrintableItem),
+	);
+
+	protected canQueueHullPatchKit = computed(
+		() => !this.hasHullPatchKit()
+			&& !this.isHullPatchKitQueued()
+			&& !!findConsumableMaterialsForPrintableItem(this.joinShip()?.inventory, this.hullPatchKitPrintableItem),
+	);
+
 	constructor() {
 		this.socketService.connect(this.socketService.serverUrl);
+		const playerName = this.playerName().trim();
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		if (playerName && characterId) {
+			this.printerService.loadQueue(playerName, characterId);
+		}
 	}
 
 	protected allAssets = computed<RepairAssetEntry[]>(() => {
@@ -288,6 +328,45 @@ export default class RepairRetrofitItemsPage {
 		this.repairShipAsset(asset);
 	}
 
+	protected queueForPrinting(): void {
+		const playerName = this.playerName().trim();
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+		const ship = this.joinShip();
+		const consumedMaterials = findConsumableMaterialsForPrintableItem(ship?.inventory, this.hullPatchKitPrintableItem);
+		if (!playerName || !characterId || !sessionKey || !ship?.id || !consumedMaterials) {
+			this.persistError.set(this.getHullPatchKitRequirementMessage());
+			return;
+		}
+
+		this.persistError.set(null);
+		this.persistSuccess.set(null);
+
+		this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, 0, () => {
+			this.joinShip.update((current) => {
+				if (!current) {
+					return current;
+				}
+
+				const consumedMaterialIds = new Set(consumedMaterials.map((material) => material.id));
+				return {
+					...current,
+					inventory: (current.inventory ?? []).filter((item) => !consumedMaterialIds.has(item.id)),
+				};
+			});
+
+			this.printerService.addToQueue(playerName, characterId, {
+				itemType: this.hullPatchKitPrintableItem.itemType,
+				label: this.hullPatchKitPrintableItem.displayName,
+				durationMs: this.hullPatchKitPrintableItem.durationMs,
+				consumedMaterials,
+			});
+			this.persistSuccess.set(
+				`${this.hullPatchKitPrintableItem.displayName} sent to the 3D Fabricator. Estimated time: ${formatPrintableDuration(this.hullPatchKitPrintableItem.durationMs)}. Check the printer on the main page.`,
+			);
+		});
+	}
+
 	protected navigateToRepairDetail(asset: RepairAssetEntry): void {
 		const targetRoute = this.resolveDetailRoute(asset.kind);
 		const state: RepairDetailNavigationState = {
@@ -299,6 +378,7 @@ export default class RepairRetrofitItemsPage {
 			selectedFilter: this.selectedFilter(),
 			selectedGrouping: this.selectedGrouping(),
 			searchQuery: this.searchQuery(),
+			missionId: this.missionId(),
 		};
 
 		this.router.navigate([{ outlets: { right: [targetRoute], left: ['repair-retrofit'] } }], {
@@ -354,6 +434,7 @@ export default class RepairRetrofitItemsPage {
 				this.damageProfile.set(nextProfile);
 				this.joinShip.update((current) => (current ? { ...current, damageProfile: nextProfile } : current));
 				this.persistSuccess.set(`${asset.label} fully repaired and synchronized.`);
+				this.advanceMissionGateOnRepair(characterId, 'ship');
 			},
 		);
 	}
@@ -448,6 +529,83 @@ export default class RepairRetrofitItemsPage {
 				this.persistSuccess.set(`${asset.label} fully repaired and synchronized.`);
 			},
 		);
+	}
+
+	private advanceMissionGateOnRepair(characterId: string, repairKind: string): void {
+		const missionId = this.missionId().trim();
+		const playerName = this.playerName().trim();
+		if (!missionId || !playerName || !characterId) {
+			return;
+		}
+
+		const mission = resolveShipExteriorMission(missionId);
+		const context = { missionId, playerName, characterId };
+		const stored = this.missionStateService.loadState(context);
+		if (!stored) {
+			return;
+		}
+
+		const evaluation = evaluateMissionGateOnRepair({
+			mission,
+			gateState: stored,
+			repairKind,
+		});
+
+		if (evaluation.changed) {
+			this.missionStateService.saveState(context, evaluation.gateState);
+		}
+	}
+
+	private consumePrintableMaterials(
+		playerName: string,
+		sessionKey: string,
+		consumedMaterials: readonly PrintableConsumedMaterial[],
+		index: number,
+		onComplete: () => void,
+	): void {
+		const nextMaterial = consumedMaterials[index];
+		if (!nextMaterial) {
+			onComplete();
+			return;
+		}
+
+		this.socketService.upsertItem(
+			{
+				playerName,
+				sessionKey,
+				item: {
+					id: nextMaterial.id,
+					state: 'destroyed',
+					damageStatus: 'destroyed',
+					container: null,
+					destroyedAt: new Date().toISOString(),
+					destroyedReason: `Consumed by 3D printer job: ${this.hullPatchKitPrintableItem.itemType}`,
+				},
+			},
+			(response) => {
+				if (!response.success) {
+					this.persistError.set(response.message || `Unable to consume ${nextMaterial.label} for print job.`);
+					return;
+				}
+
+				this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, index + 1, onComplete);
+			},
+		);
+	}
+
+	protected getHullPatchKitRequirementMessage(): string {
+		const missingMaterials = getMissingPrintableMaterials(this.hullPatchKitPrintableItem, this.joinShip()?.inventory);
+		return missingMaterials.length > 0
+			? `${missingMaterials.join(', ')} required in ship inventory to start this print job.`
+			: `${describePrintableMaterials(this.hullPatchKitPrintableItem).join(', ')} required in ship inventory to start this print job.`;
+	}
+
+	protected getHullPatchKitMaterialLabels(): string {
+		return describePrintableMaterials(this.hullPatchKitPrintableItem).join(', ');
+	}
+
+	protected getHullPatchKitDurationLabel(): string {
+		return formatPrintableDuration(this.hullPatchKitPrintableItem.durationMs);
 	}
 
 	private startPersistForAsset(assetKey: string): void {

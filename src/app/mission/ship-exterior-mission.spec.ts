@@ -99,7 +99,7 @@ describe('parseMissionGateState', () => {
 });
 
 describe('evaluateMissionGateOnLaunch', () => {
-	it('should complete neutralize step and unlock repair step on target-destroyed launch', () => {
+	it('should complete neutralize step and unlock manufacture step on target-destroyed launch', () => {
 		const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
 		const gateState = {
 			missionId: FIRST_TARGET_MISSION_ID,
@@ -109,6 +109,7 @@ describe('evaluateMissionGateOnLaunch', () => {
 			steps: [
 				{ key: 'identify_iron_asteroid', status: 'completed' as const },
 				{ key: 'neutralize_identified_asteroid', status: 'active' as const },
+				{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
 				{ key: 'repair_scavenger_pod', status: 'locked' as const },
 			],
 		};
@@ -139,12 +140,13 @@ describe('evaluateMissionGateOnLaunch', () => {
 		expect(evaluation.changed).toBe(true);
 		expect(evaluation.completedStepKey).toBe('neutralize_identified_asteroid');
 		expect(evaluation.gateState.activeObjectiveText).toBe(
-			'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+			'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
 		);
 		expect(evaluation.gateState.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status).toBe(
 			'completed',
 		);
-		expect(evaluation.gateState.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('active');
+		expect(evaluation.gateState.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe('active');
+		expect(evaluation.gateState.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
 	});
 
 	it('should not change gate state when launch outcome is not target-destroyed', () => {
@@ -157,6 +159,7 @@ describe('evaluateMissionGateOnLaunch', () => {
 			steps: [
 				{ key: 'identify_iron_asteroid', status: 'completed' as const },
 				{ key: 'neutralize_identified_asteroid', status: 'active' as const },
+				{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
 				{ key: 'repair_scavenger_pod', status: 'locked' as const },
 			],
 		};

@@ -143,6 +143,30 @@
 	color: #ddffee;
 }
 
+.status-line--info {
+	background: rgba(27, 60, 98, 0.48);
+	border-color: rgba(140, 190, 255, 0.35);
+	color: #c8dfff;
+}
+
+.fabrication-cta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.65rem 0.8rem;
+	margin: 0.5rem 0;
+	border-radius: 7px;
+	background: rgba(56, 40, 10, 0.45);
+	border: 1px solid rgba(255, 200, 100, 0.3);
+}
+
+.fabrication-cta p {
+	margin: 0;
+	color: #ffe4a0;
+	font-size: 0.875rem;
+}
+
 @media (max-width: 900px) {
 	.repair-controls {
 		grid-template-columns: 1fr;

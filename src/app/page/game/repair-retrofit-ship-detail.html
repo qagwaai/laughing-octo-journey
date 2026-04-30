@@ -23,6 +23,10 @@
 				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
 			}
 
+			@if (!hasHullPatchKit()) {
+				<p class="status-line status-line--error">Hull Patch Kit required in ship inventory to perform a full repair.</p>
+			}
+
 			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairShip()">
 				Fully Repair Ship
 			</button>

@@ -458,7 +458,7 @@ describe('MissionBoardPage', () => {
 			expect(result).toBeNull();
 		});
 
-		it('should return Stage 1 of 3 when first step is active', () => {
+		it('should return Stage 1 of 4 when first step is active', () => {
 			const gateState = {
 				missionId: 'first-target',
 				characterId: 'c-1',
@@ -467,6 +467,7 @@ describe('MissionBoardPage', () => {
 				steps: [
 					{ key: 'identify_iron_asteroid', status: 'active' as const },
 					{ key: 'neutralize_identified_asteroid', status: 'locked' as const },
+					{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
 					{ key: 'repair_scavenger_pod', status: 'locked' as const },
 				],
 			};
@@ -476,11 +477,11 @@ describe('MissionBoardPage', () => {
 				statusDetail: serializeMissionGateState(gateState),
 			});
 			expect(result).not.toBeNull();
-			expect(result!.stage).toBe('Stage 1 of 3');
+			expect(result!.stage).toBe('Stage 1 of 4');
 			expect(result!.nextStep).toBe('Objective: Identify an Iron asteroid via full scan.');
 		});
 
-		it('should return Stage 2 of 3 when second step is active', () => {
+		it('should return Stage 2 of 4 when second step is active', () => {
 			const gateState = {
 				missionId: 'first-target',
 				characterId: 'c-1',
@@ -489,6 +490,7 @@ describe('MissionBoardPage', () => {
 				steps: [
 					{ key: 'identify_iron_asteroid', status: 'completed' as const },
 					{ key: 'neutralize_identified_asteroid', status: 'active' as const },
+					{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
 					{ key: 'repair_scavenger_pod', status: 'locked' as const },
 				],
 			};
@@ -498,21 +500,47 @@ describe('MissionBoardPage', () => {
 				statusDetail: serializeMissionGateState(gateState),
 			});
 			expect(result).not.toBeNull();
-			expect(result!.stage).toBe('Stage 2 of 3');
+			expect(result!.stage).toBe('Stage 2 of 4');
 			expect(result!.nextStep).toBe(
 				'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
 			);
 		});
 
-		it('should return Stage 3 of 3 when third step is active', () => {
+		it('should return Stage 3 of 4 when third step is active', () => {
 			const gateState = {
 				missionId: 'first-target',
 				characterId: 'c-1',
-				activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+				activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
 				updatedAt: '2026-04-03T10:00:00Z',
 				steps: [
 					{ key: 'identify_iron_asteroid', status: 'completed' as const },
 					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
+					{ key: 'manufacture_hull_patch_kit', status: 'active' as const },
+					{ key: 'repair_scavenger_pod', status: 'locked' as const },
+				],
+			};
+			const result = component.getMissionStageInfo({
+				missionId: 'first-target',
+				status: 'in-progress',
+				statusDetail: serializeMissionGateState(gateState),
+			});
+			expect(result).not.toBeNull();
+			expect(result!.stage).toBe('Stage 3 of 4');
+			expect(result!.nextStep).toBe(
+				'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
+			);
+		});
+
+		it('should return Stage 4 of 4 when fourth step is active', () => {
+			const gateState = {
+				missionId: 'first-target',
+				characterId: 'c-1',
+				activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+				updatedAt: '2026-04-04T10:00:00Z',
+				steps: [
+					{ key: 'identify_iron_asteroid', status: 'completed' as const },
+					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
+					{ key: 'manufacture_hull_patch_kit', status: 'completed' as const },
 					{ key: 'repair_scavenger_pod', status: 'active' as const },
 				],
 			};
@@ -522,20 +550,22 @@ describe('MissionBoardPage', () => {
 				statusDetail: serializeMissionGateState(gateState),
 			});
 			expect(result).not.toBeNull();
-			expect(result!.stage).toBe('Stage 3 of 3');
+			expect(result!.stage).toBe('Stage 4 of 4');
 			expect(result!.nextStep).toBe(
 				'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
 			);
 		});
 
-		it('should return Stage 3 of 3 — Complete when all steps are complete', () => {			const gateState = {
+		it('should return Stage 4 of 4 — Complete when all steps are complete', () => {
+			const gateState = {
 				missionId: 'first-target',
 				characterId: 'c-1',
 				activeObjectiveText: 'Mission objectives complete. Await further directives.',
-				updatedAt: '2026-04-03T10:00:00Z',
+				updatedAt: '2026-04-05T10:00:00Z',
 				steps: [
 					{ key: 'identify_iron_asteroid', status: 'completed' as const },
 					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
+					{ key: 'manufacture_hull_patch_kit', status: 'completed' as const },
 					{ key: 'repair_scavenger_pod', status: 'completed' as const },
 				],
 			};
@@ -545,7 +575,7 @@ describe('MissionBoardPage', () => {
 				statusDetail: serializeMissionGateState(gateState),
 			});
 			expect(result).not.toBeNull();
-			expect(result!.stage).toBe('Stage 3 of 3 — Complete');
+			expect(result!.stage).toBe('Stage 4 of 4 — Complete');
 			expect(result!.nextStep).toBe('Mission objectives complete. Await further directives.');
 		});
 	});

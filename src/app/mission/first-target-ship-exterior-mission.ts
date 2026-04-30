@@ -79,10 +79,16 @@ const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] 
 		prerequisiteStepKeys: ['identify_iron_asteroid'],
 	},
 	{
+		key: 'manufacture_hull_patch_kit',
+		objectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
+		completionToastMessage: 'Mission update: Hull Patch Kit manufactured.',
+		prerequisiteStepKeys: ['neutralize_identified_asteroid'],
+	},
+	{
 		key: 'repair_scavenger_pod',
 		objectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
 		completionToastMessage: 'Mission update: Scavenger Pod repaired.',
-		prerequisiteStepKeys: ['neutralize_identified_asteroid'],
+		prerequisiteStepKeys: ['manufacture_hull_patch_kit'],
 	},
 ];
 
@@ -273,6 +279,12 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 			response.success === true &&
 			response.resolution?.outcome === 'target-destroyed'
 		);
+	},
+	doesManufactureCompleteGateStep(stepKey, manufacturedItemType) {
+		return stepKey === 'manufacture_hull_patch_kit' && manufacturedItemType === 'hull-patch-kit';
+	},
+	doesRepairCompleteGateStep(stepKey, repairKind) {
+		return stepKey === 'repair_scavenger_pod' && repairKind === 'ship';
 	},
 	resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
 		const totalSteps = gateState.steps.length;
