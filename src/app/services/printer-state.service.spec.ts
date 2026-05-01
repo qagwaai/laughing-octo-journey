@@ -138,4 +138,34 @@ describe('PrinterStateService', () => {
       expect(service.queue().length).toBe(1);
     });
   });
+
+  describe('cross-character lifecycle', () => {
+    it('isolates char-B queue from char-A items when loadQueue is called before switching context', () => {
+      // Char-A builds up a queue during their session
+      service.addToQueue('player1', 'char-1', { itemType: 'hull-patch-kit', label: 'Hull Patch Kit', durationMs: 60000 });
+      service.addToQueue('player1', 'char-1', { itemType: 'iron-plate', label: 'Iron Plate', durationMs: 30000 });
+      expect(service.queue().length).toBe(2);
+
+      // Player switches active character — caller loads char-B's context first
+      service.loadQueue('player1', 'char-2');
+      expect(service.queue().length).toBe(0);
+
+      // Char-B starts printing
+      service.addToQueue('player1', 'char-2', { itemType: 'repair-foam', label: 'Repair Foam', durationMs: 45000 });
+
+      // Char-B's queue has only their own item
+      expect(service.queue().length).toBe(1);
+      expect(service.queue()[0].itemType).toBe('repair-foam');
+
+      // Char-A's persisted queue is unmodified — their 2 items are still in localStorage
+      const char1Raw = localStorage.getItem('printer-queue:player1:char-1');
+      const char1Queue = JSON.parse(char1Raw!) as unknown[];
+      expect(char1Queue.length).toBe(2);
+
+      // Switching back to char-A restores their queue from storage
+      service.loadQueue('player1', 'char-1');
+      expect(service.queue().length).toBe(2);
+      expect(service.queue().map((i) => i.itemType)).toEqual(['hull-patch-kit', 'iron-plate']);
+    });
+  });
 });
