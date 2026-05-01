@@ -23,6 +23,7 @@ import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { Triple } from '../../model/triple';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 
 interface GameJoinNavigationState {
 	playerName?: string;
@@ -34,7 +35,7 @@ interface GameJoinNavigationState {
 	templateUrl: './game-join.html',
 	styleUrls: ['./game-join.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class GameJoinPage {
 	protected readonly t = locale;
@@ -220,6 +221,8 @@ export default class GameJoinPage {
 	navigateToShipSpecs(ship: ShipSummary): void {
 		const playerName = this.playerName();
 		const joinCharacter = this.joinCharacter();
+
+		this.sessionService.setActiveShip(ship);
 
 		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
 			preserveFragment: true,

@@ -17,6 +17,7 @@ import {
 import { type MissionStatus } from '../../model/mission';
 import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -31,7 +32,7 @@ interface ShipHangarNavigationState {
 	templateUrl: './ship-hangar.html',
 	styleUrls: ['./ship-hangar.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class ShipHangarPage {
 	protected readonly t = locale;
@@ -202,6 +203,10 @@ export default class ShipHangarPage {
 				item: ship,
 			},
 		});
+	}
+
+	setActiveShip(ship: ShipSummary): void {
+		this.sessionService.setActiveShip(ship);
 	}
 
 	navigateToCharacterProfile(): void {

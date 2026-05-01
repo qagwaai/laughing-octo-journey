@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 
 interface GameMainNavigationState {
@@ -14,7 +15,7 @@ interface GameMainNavigationState {
 	templateUrl: './game-main.html',
 	styleUrls: ['./game-main.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class GameMainPage {
 	protected readonly t = locale;

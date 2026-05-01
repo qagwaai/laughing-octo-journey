@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { coerceShipModel, coerceShipTier, ShipSummary } from '../../model/ship-list';
 import { summarizeShipMotion } from '../../model/kinematics';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 
 interface ShipViewSpecsNavigationState {
 	playerName?: string;
@@ -15,6 +16,7 @@ interface ShipViewSpecsNavigationState {
 	templateUrl: './ship-view-specs.html',
 	styleUrls: ['./ship-view-specs.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
+	imports: [CharacterShipBadge],
 })
 export default class ShipViewSpecsPage {
 	private router = inject(Router);

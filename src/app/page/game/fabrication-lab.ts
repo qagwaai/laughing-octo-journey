@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 
 interface FabricationLabNavigationState {
@@ -14,7 +15,7 @@ interface FabricationLabNavigationState {
 	templateUrl: './fabrication-lab.html',
 	styleUrls: ['./fabrication-lab.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class FabricationLabPage {
 	protected readonly t = locale;

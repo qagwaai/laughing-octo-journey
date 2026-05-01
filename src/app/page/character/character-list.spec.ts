@@ -47,10 +47,12 @@ interface MockRouter {
 
 interface MockSessionService {
 	storedKey: string | null;
+	activeShip: any | null;
 	setSessionKey(key: string): void;
 	getSessionKey(): string | null;
 	clearSession(): void;
 	hasSession(): boolean;
+	setActiveShip(ship: any): void;
 }
 
 function createMockSocketService(): MockSocketService {
@@ -90,13 +92,15 @@ function createMockSocketService(): MockSocketService {
 }
 
 function createMockSessionService(initialKey: string | null = null): MockSessionService {
-	const state = { key: initialKey };
+	const state = { key: initialKey, activeShip: null as any | null };
 	return {
 		get storedKey() { return state.key; },
+		get activeShip() { return state.activeShip; },
 		setSessionKey(key: string) { state.key = key; },
 		getSessionKey() { return state.key; },
-		clearSession() { state.key = null; },
+		clearSession() { state.key = null; state.activeShip = null; },
 		hasSession() { return state.key !== null; },
+		setActiveShip(ship: any) { state.activeShip = ship; },
 	};
 }
 
@@ -324,15 +328,24 @@ class MockCharacterListPage {
 		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
 
 		const firstTargetStatus = this.getFirstTargetStatus(character);
-		if (firstTargetStatus === 'started') {
+			const isFirstTargetInProgress =
+				firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
+			if (isFirstTargetInProgress) {
+				this.sessionService.setActiveShip({
+					id: `starter-pod-${character.id}`,
+					name: 'Scavenger Pod',
+					model: 'Scavenger Pod',
+					tier: 1,
+					status: 'ACTIVE',
+				});
 			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
 		}
 
 		const outlets =
-			firstTargetStatus === 'started'
+				isFirstTargetInProgress
 				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
 				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
-		const missionContext = firstTargetStatus === 'started'
+			const missionContext = isFirstTargetInProgress
 			? {
 				missionId: FIRST_TARGET_MISSION_ID,
 				missionStatusHint: firstTargetStatus,
@@ -347,7 +360,7 @@ class MockCharacterListPage {
 				playerName,
 				joinCharacter: character,
 				...(missionContext ? { missionContext } : {}),
-				...(firstTargetStatus === 'started' ? { firstTargetMissionStatus: firstTargetStatus } : {}),
+					...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
 			},
 		});
 	}
@@ -585,6 +598,14 @@ describe('CharacterListPage', () => {
 			};
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
+
+			expect(sessionService.activeShip).toEqual({
+				id: 'starter-pod-1',
+				name: 'Scavenger Pod',
+				model: 'Scavenger Pod',
+				tier: 1,
+				status: 'ACTIVE',
+			});
 
 			expect(dispatchSpy).toHaveBeenCalled();
 			const dispatchedEvent = dispatchSpy.calls.mostRecent().args[0] as Event;

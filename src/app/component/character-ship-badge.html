@@ -1,0 +1,23 @@
+<div class="character-ship-badge">
+	@if (joinCharacter) {
+		<button
+			class="character-avatar"
+			type="button"
+			(click)="navigateToCharacterProfile()"
+			[title]="joinCharacter.characterName"
+		>
+			{{ joinCharacter.characterName.charAt(0).toUpperCase() }}
+		</button>
+	}
+
+	<button
+		class="ship-badge"
+		type="button"
+		(click)="navigateToShipHangar()"
+		[title]="t.navigateToShipHangar"
+		[class.no-ship]="!activeShip()"
+	>
+		<span class="ship-badge-label">{{ t.activeShipLabel }}</span>
+		<span class="ship-badge-name">{{ activeShipDisplayName() }}</span>
+	</button>
+</div>

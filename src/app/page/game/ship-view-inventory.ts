@@ -18,6 +18,7 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { SocketService } from '../../services/socket.service';
 import { SessionService } from '../../services/session.service';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import {
 	EXPENDABLE_DART_DRONE_ITEM_TYPE,
 	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
@@ -42,7 +43,7 @@ export interface InventoryGroup {
 	templateUrl: './ship-view-inventory.html',
 	styleUrls: ['./ship-view-inventory.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class ShipViewInventoryPage implements OnDestroy {
 	protected readonly t = locale;

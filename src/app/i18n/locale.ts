@@ -17,6 +17,11 @@ export const locale = {
 		levelPrefix: 'Level',
 		loggedInAsPrefix: 'Logged in as:',
 		loading: 'Loading...',
+		characterShipBadge: {
+			noShipSelected: 'No ship selected',
+			navigateToShipHangar: 'Go to Ship Hangar',
+			activeShipLabel: 'Active ship:',
+		},
 	},
 
 	public: {
@@ -220,6 +225,7 @@ export const locale = {
 			locationUnavailable: 'Location unavailable',
 			shipViewInventoryLabel: 'View Inventory',
 			shipExteriorViewLabel: 'View Exterior',
+			shipSetActiveLabel: 'Set as Active Ship',
 		},
 
 		shipViewInventory: {

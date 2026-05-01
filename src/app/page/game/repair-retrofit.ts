@@ -18,6 +18,7 @@ import {
 	type ShipDamageProfile,
 } from '../../model/ship-damage';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import { SessionService, SocketService, ShipExteriorMissionStateService, PrinterStateService } from '../../services';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
@@ -58,7 +59,7 @@ interface RepairRetrofitNavigationState {
 	templateUrl: './repair-retrofit.html',
 	styleUrls: ['./repair-retrofit.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class RepairRetrofitPage {
 	protected readonly t = locale;

@@ -4,11 +4,7 @@
 			<h1>Ship Specs</h1>
 			<p class="subtitle">Operational details for your selected ship.</p>
 		</div>
-		@if (joinCharacter()) {
-			<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
-				{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
-			</button>
-		}
+		<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
 	</div>
 
 	@if (joinShip()) {

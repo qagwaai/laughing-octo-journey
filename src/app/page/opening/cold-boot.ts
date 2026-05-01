@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
+import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
 import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import { MissionService, OpeningAudioService, SessionService } from '../../services';
 import { locale } from '../../i18n/locale';
@@ -143,6 +144,17 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 			this.scanActionPending.set(false);
 			this.scanActionError.set(this.t.opening.coldBoot.startScanningErrorLabel);
 			return;
+		}
+
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		if (characterId) {
+			this.sessionService.setActiveShip({
+				id: `starter-pod-${characterId}`,
+				name: DEFAULT_SHIP_MODEL,
+				model: DEFAULT_SHIP_MODEL,
+				tier: DEFAULT_SHIP_TIER,
+				status: 'ACTIVE',
+			});
 		}
 
 		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {

@@ -9,6 +9,7 @@ import {
 } from '../../model/mission-list';
 import type { CharacterMissionProgress } from '../../model/mission';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -31,7 +32,7 @@ interface MissionBoardNavigationState {
 	templateUrl: './mission-board.html',
 	styleUrls: ['./mission-board.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu],
+	imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class MissionBoardPage {
 	protected readonly t = locale;

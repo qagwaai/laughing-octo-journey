@@ -7,11 +7,7 @@
 			<p class="unit-line">{{ unitLine() }}</p>
 			<p class="classification-line">{{ classificationLine() }}</p>
 		</div>
-		@if (joinCharacter()) {
-			<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
-				{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
-			</button>
-		}
+		<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
 	</header>
 
 	@if (item()) {

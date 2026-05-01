@@ -6,11 +6,7 @@
 				<h1>{{ t.game.fabricationLab.title }}</h1>
 				<p class="subtitle">{{ t.game.fabricationLab.subtitle }}</p>
 			</div>
-			@if (joinCharacter()) {
-				<button class="character-avatar" type="button" (click)="navigateToCharacterProfile()" [title]="joinCharacter()!.characterName">
-					{{ joinCharacter()!.characterName.charAt(0).toUpperCase() }}
-				</button>
-			}
+			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
 		</div>
 
 		<section class="ops-card">

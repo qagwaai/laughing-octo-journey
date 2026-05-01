@@ -8,6 +8,7 @@ interface MockMissionService {
 
 interface MockSessionService {
 	getSessionKey: () => string | null;
+	setActiveShip: jasmine.Spy;
 }
 
 interface MockRouter {
@@ -50,7 +51,10 @@ class MockColdBootOpeningPage {
 
 	constructor(
 		private missionService: MockMissionService = { upsertMissionStatus: jasmine.createSpy('upsertMissionStatus') },
-		private sessionService: MockSessionService = { getSessionKey: () => 'session-key' },
+		private sessionService: MockSessionService = {
+			getSessionKey: () => 'session-key',
+			setActiveShip: jasmine.createSpy('setActiveShip'),
+		},
 		private router: MockRouter = { navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)) },
 		private navigationState: ColdBootNavigationState = {
 			playerName: 'Pioneer',
@@ -175,7 +179,10 @@ describe('ColdBootOpeningPage', () => {
 		const missionService: MockMissionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
-		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
+		const sessionService: MockSessionService = {
+			getSessionKey: () => 'session-key',
+			setActiveShip: jasmine.createSpy('setActiveShip'),
+		};
 		const router: MockRouter = {
 			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
 		};
@@ -194,7 +201,10 @@ describe('ColdBootOpeningPage', () => {
 		const missionService: MockMissionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
-		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
+		const sessionService: MockSessionService = {
+			getSessionKey: () => 'session-key',
+			setActiveShip: jasmine.createSpy('setActiveShip'),
+		};
 		const router: MockRouter = {
 			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
 		};
@@ -211,6 +221,13 @@ describe('ColdBootOpeningPage', () => {
 			sessionKey: 'session-key',
 			missionId: FIRST_TARGET_MISSION_ID,
 			status: 'started',
+		});
+		expect(sessionService.setActiveShip).toHaveBeenCalledWith({
+			id: 'starter-pod-char-1',
+			name: 'Scavenger Pod',
+			model: 'Scavenger Pod',
+			tier: 1,
+			status: 'ACTIVE',
 		});
 		expect(router.navigate).toHaveBeenCalledWith(
 			[{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
@@ -236,12 +253,16 @@ describe('ColdBootOpeningPage', () => {
 		const missionService: MockMissionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		};
-		const sessionService: MockSessionService = { getSessionKey: () => null };
+		const sessionService: MockSessionService = {
+			getSessionKey: () => null,
+			setActiveShip: jasmine.createSpy('setActiveShip'),
+		};
 		const component = new MockColdBootOpeningPage(missionService, sessionService);
 
 		await component.startScanning();
 
 		expect(missionService.upsertMissionStatus).not.toHaveBeenCalled();
+		expect(sessionService.setActiveShip).not.toHaveBeenCalled();
 		expect(component.scanActionError).toBe('Scanning handoff failed. Retry after comms stabilize.');
 	});
 
@@ -249,7 +270,10 @@ describe('ColdBootOpeningPage', () => {
 		const missionService: MockMissionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('update-failed')),
 		};
-		const sessionService: MockSessionService = { getSessionKey: () => 'session-key' };
+		const sessionService: MockSessionService = {
+			getSessionKey: () => 'session-key',
+			setActiveShip: jasmine.createSpy('setActiveShip'),
+		};
 		const router: MockRouter = {
 			navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
 		};
@@ -260,6 +284,7 @@ describe('ColdBootOpeningPage', () => {
 
 		await component.startScanning();
 
+		expect(sessionService.setActiveShip).not.toHaveBeenCalled();
 		expect(router.navigate).not.toHaveBeenCalled();
 		expect(component.scanActionError).toBe('Scanning handoff failed. Retry after comms stabilize.');
 		expect(component.scanActionPending).toBe(false);

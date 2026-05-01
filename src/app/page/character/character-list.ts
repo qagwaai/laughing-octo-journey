@@ -21,6 +21,7 @@ import {
 	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
 } from '../../model/game-join';
+import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SessionService } from '../../services/session.service';
@@ -263,6 +264,13 @@ export default class CharacterListPage implements OnDestroy {
 		const isFirstTargetInProgress =
 			firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
 		if (isFirstTargetInProgress) {
+			this.sessionService.setActiveShip({
+				id: `starter-pod-${character.id}`,
+				name: DEFAULT_SHIP_MODEL,
+				model: DEFAULT_SHIP_MODEL,
+				tier: DEFAULT_SHIP_TIER,
+				status: 'ACTIVE',
+			});
 			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
 		}
 

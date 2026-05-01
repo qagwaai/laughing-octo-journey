@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { getSpecsImagePath, ItemViewSpecsConfig, ResolvedGroup, resolveGroups } from '../../model/item-view-specs';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/item-view-specs-configs';
+import { CharacterShipBadge } from '../../component/character-ship-badge';
 
 interface ItemViewSpecsNavigationState {
 	playerName?: string;
@@ -18,6 +19,7 @@ interface ItemViewSpecsNavigationState {
 	templateUrl: './item-view-specs.html',
 	styleUrls: ['./item-view-specs.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
+	imports: [CharacterShipBadge],
 })
 export default class ItemViewSpecsPage {
 	private router = inject(Router);
