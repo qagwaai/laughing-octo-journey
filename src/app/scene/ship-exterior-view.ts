@@ -65,6 +65,8 @@ import {
 import {
 	clearMissionGatePendingRetry,
 	createInitialMissionGateState,
+	evaluateMissionGateOnManufacture,
+	evaluateMissionGateOnRepair,
 	evaluateMissionGateOnLaunch,
 	evaluateMissionGateOnScan,
 	hasMissionGatePendingRetry,
@@ -73,6 +75,7 @@ import {
 	resolveShipExteriorMission,
 	serializeMissionGateState,
 	type ShipExteriorMissionGateState,
+	type ShipExteriorMissionGateStepStatus,
 } from '../mission/ship-exterior-mission';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
@@ -85,6 +88,7 @@ import {
 	type ShipExteriorMissionStateContext,
 } from '../services/ship-exterior-mission-state.service';
 import { SocketService } from '../services/socket.service';
+import { environment } from '../../environments/environment';
 
 interface ShipExteriorViewNavigationState {
 	playerName?: string;
@@ -124,6 +128,28 @@ interface MissionProgressUpsertQueueItem {
 	gateState: ShipExteriorMissionGateState;
 	completedStepKey: string | null;
 	toastMessage: string | null;
+}
+
+interface ShipExteriorViewTestApi {
+	getMissionGateState(): ShipExteriorMissionGateState | null;
+	getMissionObjectiveText(): string;
+	getAsteroidSamples(): AsteroidScanSample[];
+	getTargetedAsteroidId(): string | null;
+	hoverAsteroid(sampleId: string): boolean;
+	unhoverAsteroid(sampleId: string): boolean;
+	forceTargetAsteroid(sampleId: string): boolean;
+	tickScanTicks(ticks?: number): AsteroidScanSample[];
+	forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null;
+	simulateManufacture(itemType: string): ShipExteriorMissionGateState | null;
+	simulateRepair(repairKind: string): ShipExteriorMissionGateState | null;
+	launchFromHotkey(hotkey: 1 | 2 | 3 | 4 | 5): void;
+	clearToast(): void;
+}
+
+declare global {
+	interface Window {
+		__shipExteriorTestUtils?: ShipExteriorViewTestApi;
+	}
 }
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
@@ -501,6 +527,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.socketService.connect(this.socketService.serverUrl);
 		this.initializeMissionGateState();
 		this.refreshMissionGateStateFromBackend();
+		this.registerTestUtils();
 		this.unsubscribeLaunchItemResponse = this.socketService.on(
 			LAUNCH_ITEM_RESPONSE_EVENT,
 			(response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
@@ -681,7 +708,25 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}
 
 		const mission = result.missions.find((candidate) => candidate.missionId === this.missionDefinition.missionId);
-		if (!mission?.statusDetail) {
+		if (!mission) {
+			return;
+		}
+
+		if (!mission.statusDetail) {
+			const normalizedStatus = mission.status?.trim().toLowerCase();
+			if (normalizedStatus === 'started') {
+				const resetGateState = this.createInitialMissionGateStateForCharacter(context.characterId);
+				this.missionGateState.set(resetGateState);
+				this.persistMissionGateState(resetGateState);
+			}
+
+			if (normalizedStatus === 'in-progress' || normalizedStatus === 'paused') {
+				const reconciled = this.reconcileInProgressGateStateWithoutStatusDetail(this.missionGateState());
+				if (reconciled) {
+					this.missionGateState.set(reconciled);
+					this.persistMissionGateState(reconciled);
+				}
+			}
 			return;
 		}
 
@@ -704,11 +749,90 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.persistMissionGateState(parsed);
 	}
 
+	private createInitialMissionGateStateForCharacter(characterId: string): ShipExteriorMissionGateState {
+		return createInitialMissionGateState({
+			missionId: this.missionDefinition.missionId,
+			characterId,
+			steps: this.missionDefinition.getGateStepDefinitions(),
+		});
+	}
+
+	private reconcileInProgressGateStateWithoutStatusDetail(
+		gateState: ShipExteriorMissionGateState | null,
+	): ShipExteriorMissionGateState | null {
+		if (!gateState) {
+			return null;
+		}
+
+		const stepDefinitions = this.missionDefinition.getGateStepDefinitions();
+		const totalSteps = gateState.steps.length;
+		if (totalSteps === 0) {
+			return null;
+		}
+
+		const completedCount = gateState.steps.filter(
+			(step) => step.status === 'completed' || step.status === 'pending-retry',
+		).length;
+		if (completedCount < totalSteps) {
+			return null;
+		}
+
+		for (let index = stepDefinitions.length - 1; index >= 0; index -= 1) {
+			const targetKey = stepDefinitions[index].key;
+			const targetStep = gateState.steps.find((step) => step.key === targetKey);
+			if (!targetStep || (targetStep.status !== 'completed' && targetStep.status !== 'pending-retry')) {
+				continue;
+			}
+
+			const nextSteps = gateState.steps.map((step) => {
+				if (step.key !== targetKey) {
+					return step;
+				}
+
+				return {
+					key: step.key,
+					status: 'active' as const,
+				};
+			});
+
+			return {
+				...gateState,
+				steps: nextSteps,
+				activeObjectiveText: this.resolveObjectiveTextForGateSteps(nextSteps),
+				updatedAt: new Date().toISOString(),
+			};
+		}
+
+		return null;
+	}
+
+	private resolveObjectiveTextForGateSteps(
+		stepStates: readonly { key: string; status: ShipExteriorMissionGateStepStatus }[],
+	): string {
+		const definitions = this.missionDefinition.getGateStepDefinitions();
+		const active = definitions.find((definition) =>
+			stepStates.some((step) => step.key === definition.key && step.status === 'active'),
+		);
+		if (active) {
+			return active.objectiveText;
+		}
+
+		const pendingRetry = definitions.find((definition) =>
+			stepStates.some((step) => step.key === definition.key && step.status === 'pending-retry'),
+		);
+		if (pendingRetry) {
+			return `${pendingRetry.objectiveText} (sync pending)`;
+		}
+
+		return 'Mission objectives complete. Await further directives.';
+	}
+
 	private getMissionGateProgressRank(gateState: ShipExteriorMissionGateState): number {
 		return gateState.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').length;
 	}
 
 	ngOnDestroy(): void {
+		this.unregisterTestUtils();
 		this.unsubscribeShipListResponse?.();
 		this.unsubscribeCelestialBodyListResponse?.();
 		this.unsubscribeLaunchItemResponse?.();
@@ -1136,6 +1260,143 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			this.launchFeedbackToast.set(null);
 			this.launchToastTimeoutId = null;
 		}, ShipExteriorViewScene.LAUNCH_TOAST_MS);
+	}
+
+	private cloneForTest<T>(value: T): T {
+		return JSON.parse(JSON.stringify(value)) as T;
+	}
+
+	private registerTestUtils(): void {
+		if (environment.production || typeof window === 'undefined') {
+			return;
+		}
+
+		window.__shipExteriorTestUtils = {
+			getMissionGateState: () => {
+				const gateState = this.missionGateState();
+				return gateState ? this.cloneForTest(gateState) : null;
+			},
+			getMissionObjectiveText: () => this.missionObjectiveText(),
+			getAsteroidSamples: () => this.cloneForTest(this.asteroidSamples()),
+			getTargetedAsteroidId: () => this.targetedAsteroidId(),
+			hoverAsteroid: (sampleId: string) => {
+				const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+				if (!exists) {
+					return false;
+				}
+				this.onAsteroidHoverChange({ id: sampleId, hovering: true });
+				return true;
+			},
+			unhoverAsteroid: (sampleId: string) => {
+				const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+				if (!exists) {
+					return false;
+				}
+				this.onAsteroidHoverChange({ id: sampleId, hovering: false });
+				return true;
+			},
+			forceTargetAsteroid: (sampleId: string) => {
+				const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+				if (!exists || !this.canTargetAsteroids()) {
+					return false;
+				}
+				this.targetedAsteroidId.set(sampleId);
+				return true;
+			},
+			tickScanTicks: (ticks: number = 1) => {
+				const safeTicks = Math.max(1, Math.min(500, Math.floor(ticks)));
+				for (let index = 0; index < safeTicks; index += 1) {
+					this.tickScene();
+				}
+				return this.cloneForTest(this.asteroidSamples());
+			},
+			forceCompleteIronScan: (sampleId?: string) => {
+				const targetId = sampleId ?? this.asteroidSamples()[0]?.id;
+				if (!targetId) {
+					return null;
+				}
+
+				let updated = false;
+				this.asteroidSamples.update((samples) =>
+					samples.map((sample) => {
+						if (sample.id !== targetId) {
+							return sample;
+						}
+						updated = true;
+						return {
+							...sample,
+							scanProgress: 100,
+							scanned: true,
+							revealedMaterial: {
+								rarity: 'Common',
+								material: 'Iron',
+								textureColor: '#8f8f8f',
+							},
+							revealedKinematics: sample.revealedKinematics ?? sample.capturedKinematics,
+						};
+					}),
+				);
+
+				if (!updated) {
+					return this.missionGateState();
+				}
+
+				this.persistAsteroidSamples();
+				this.evaluateMissionGateForCompletedSamples([targetId]);
+				const gateState = this.missionGateState();
+				return gateState ? this.cloneForTest(gateState) : null;
+			},
+			simulateManufacture: (itemType: string) => {
+				const gateState = this.missionGateState();
+				if (!gateState) {
+					return null;
+				}
+
+				const evaluation = evaluateMissionGateOnManufacture({
+					mission: this.missionDefinition,
+					gateState,
+					manufacturedItemType: itemType,
+				});
+				if (evaluation.changed) {
+					this.missionGateState.set(evaluation.gateState);
+					this.persistMissionGateState(evaluation.gateState);
+				}
+				return this.cloneForTest(this.missionGateState());
+			},
+			simulateRepair: (repairKind: string) => {
+				const gateState = this.missionGateState();
+				if (!gateState) {
+					return null;
+				}
+
+				const evaluation = evaluateMissionGateOnRepair({
+					mission: this.missionDefinition,
+					gateState,
+					repairKind,
+				});
+				if (evaluation.changed) {
+					this.missionGateState.set(evaluation.gateState);
+					this.persistMissionGateState(evaluation.gateState);
+				}
+				return this.cloneForTest(this.missionGateState());
+			},
+			launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => {
+				this.launchFromHotkeySlot(hotkey);
+			},
+			clearToast: () => {
+				this.launchFeedbackToast.set(null);
+			},
+		};
+	}
+
+	private unregisterTestUtils(): void {
+		if (environment.production || typeof window === 'undefined') {
+			return;
+		}
+
+		if (window.__shipExteriorTestUtils) {
+			delete window.__shipExteriorTestUtils;
+		}
 	}
 
 	private persistMissionGateState(gateState: ShipExteriorMissionGateState): void {
