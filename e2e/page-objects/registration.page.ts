@@ -11,6 +11,10 @@ export class RegistrationPage {
     return this.page.locator('#playerName');
   }
 
+  get localeSelect() {
+    return this.page.locator('#locale');
+  }
+
   get emailInput() {
     return this.page.locator('#email');
   }
@@ -35,7 +39,8 @@ export class RegistrationPage {
     return this.page.locator('.success-message');
   }
 
-  async register(playerName: string, email: string, password: string) {
+  async register(playerName: string, email: string, password: string, locale = 'en') {
+    await this.localeSelect.selectOption(locale);
     await this.playerNameInput.fill(playerName);
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);

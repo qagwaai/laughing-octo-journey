@@ -6,6 +6,7 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import { getSpecsImagePath, ItemViewSpecsConfig, ResolvedGroup, resolveGroups } from '../../model/item-view-specs';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/item-view-specs-configs';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { locale } from '../../i18n/locale';
 
 interface ItemViewSpecsNavigationState {
 	playerName?: string;
@@ -22,6 +23,7 @@ interface ItemViewSpecsNavigationState {
 	imports: [CharacterShipBadge],
 })
 export default class ItemViewSpecsPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 
 	protected playerName = signal<string>('');
@@ -75,15 +77,15 @@ export default class ItemViewSpecsPage {
 		return resolveGroups(cfg, data);
 	});
 
-	protected displayTitle = computed(() => (this.config()?.title ?? this.itemType()) || 'Unknown Item');
+	protected displayTitle = computed(() => (this.config()?.title ?? this.itemType()) || this.t.game.itemViewSpecs.unknownItemTitle);
 	protected unitLine = computed(
-		() => this.config()?.blueprint?.unitLine ?? 'PROJECT STELLAR // FIELD OPERATIONS BLUEPRINT',
+		() => this.config()?.blueprint?.unitLine ?? this.t.game.itemViewSpecs.defaultUnitLine,
 	);
 	protected classificationLine = computed(
-		() => this.config()?.blueprint?.classificationLine ?? 'UNIVERSAL ITEM TELEMETRY PROFILE',
+		() => this.config()?.blueprint?.classificationLine ?? this.t.game.itemViewSpecs.defaultClassificationLine,
 	);
 	protected footerTag = computed(
-		() => this.config()?.blueprint?.footerTag ?? '[ L-BRACKET_SYSTEM_READY ]',
+		() => this.config()?.blueprint?.footerTag ?? this.t.game.itemViewSpecs.defaultFooterTag,
 	);
 	protected blueprintImagePath = computed(
 		() => this.config()?.blueprint?.blueprintImagePath ?? getSpecsImagePath(this.itemType()),

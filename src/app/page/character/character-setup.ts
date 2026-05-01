@@ -128,7 +128,7 @@ export default class CharacterSetupPage implements OnDestroy {
 		const characterName = this.characterForm.value.characterName!;
 
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to save a character.');
+			this.errorMessage.set(this.t.character.setup.messages.saveRequiresPlayer);
 			this.isSaved.set(false);
 			return;
 		}
@@ -145,7 +145,7 @@ export default class CharacterSetupPage implements OnDestroy {
 			const editCharacter = this.editCharacter();
 			if (!editCharacter?.id) {
 				this.isSubmitting.set(false);
-				this.errorMessage.set('Character id is required to edit a character.');
+				this.errorMessage.set(this.t.character.setup.messages.editRequiresCharacterId);
 				return;
 			}
 		}
@@ -200,7 +200,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
 		if (!playerName || !sessionKey || !resolvedCharacterId) {
 			console.warn('Skipping starter ship upsert due to missing character context.');
-			this.warningMessage.set('Character created, but starter ship initialization is pending.');
+			this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
 			return;
 		}
 
@@ -211,14 +211,14 @@ export default class CharacterSetupPage implements OnDestroy {
 				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					console.warn('Unable to resolve starter ship from ship-list:', response.message);
-					this.warningMessage.set('Character created, but starter ship could not be resolved yet.');
+					this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
 					return;
 				}
 
 				const starterShipId = response.ships?.[0]?.id?.trim();
 				if (!starterShipId) {
 					console.warn('Starter ship id was not returned by ship-list response.');
-					this.warningMessage.set('Character created, but no starter ship record was returned.');
+					this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
 					return;
 				}
 
@@ -235,7 +235,7 @@ export default class CharacterSetupPage implements OnDestroy {
 					(upsertResponse: ShipUpsertResponse) => {
 						if (!upsertResponse.success) {
 							console.warn('Starter ship upsert failed:', upsertResponse.message);
-							this.warningMessage.set('Character created, but starter ship position update failed.');
+							this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
 							return;
 						}
 

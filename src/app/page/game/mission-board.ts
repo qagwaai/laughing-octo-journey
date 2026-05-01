@@ -87,19 +87,19 @@ export default class MissionBoardPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName) {
-			this.missionListError.set('Player name is required to load missions.');
+			this.missionListError.set(this.t.game.missionBoard.errors.loadMissionsRequiresPlayer);
 			this.missions.set([]);
 			return;
 		}
 
 		if (!characterId) {
-			this.missionListError.set('Character id is required to load missions.');
+			this.missionListError.set(this.t.game.missionBoard.errors.loadMissionsRequiresCharacterId);
 			this.missions.set([]);
 			return;
 		}
 
 		if (!sessionKey) {
-			this.missionListError.set('Session key is required to load missions.');
+			this.missionListError.set(this.t.game.missionBoard.errors.loadMissionsRequiresSessionKey);
 			this.missions.set([]);
 			return;
 		}

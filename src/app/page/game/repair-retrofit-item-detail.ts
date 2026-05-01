@@ -76,7 +76,7 @@ export default class RepairRetrofitItemDetailPage {
 		const playerName = this.playerName().trim();
 
 		if (!item || !sessionKey || !playerName) {
-			this.persistError.set('Missing item or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitItemDetail.missingContextError);
 			return;
 		}
 
@@ -96,7 +96,7 @@ export default class RepairRetrofitItemDetailPage {
 			(response: ItemUpsertResponse) => {
 				this.isPersisting.set(false);
 				if (!response.success || !response.item) {
-					this.persistError.set(response.message || 'Item repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitItemDetail.persistFailedLabel);
 					return;
 				}
 
@@ -110,7 +110,7 @@ export default class RepairRetrofitItemDetailPage {
 						inventory: (current.inventory ?? []).map((entry) => (entry.id === response.item!.id ? response.item! : entry)),
 					};
 				});
-				this.persistSuccess.set('Inventory item fully repaired and synchronized.');
+				this.persistSuccess.set(this.t.game.repairRetrofitItemDetail.successLabel);
 			},
 		);
 	}

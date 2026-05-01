@@ -75,7 +75,7 @@ export default class CharacterListPage implements OnDestroy {
 	loadCharacters(): void {
 		const playerName = this.playerName().trim();
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to load characters.');
+			this.errorMessage.set(this.t.character.list.errors.loadCharactersRequiresPlayer);
 			this.characters.set([]);
 			return;
 		}
@@ -191,7 +191,7 @@ export default class CharacterListPage implements OnDestroy {
 			return;
 		}
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to delete a character.');
+			this.errorMessage.set(this.t.character.list.errors.deleteRequiresPlayer);
 			return;
 		}
 
@@ -245,11 +245,11 @@ export default class CharacterListPage implements OnDestroy {
 	navigateToGameJoin(character: PlayerCharacterSummary): void {
 		const playerName = this.playerName().trim();
 		if (!playerName) {
-			this.errorMessage.set('Player name is required to join a game.');
+			this.errorMessage.set(this.t.character.list.errors.joinRequiresPlayer);
 			return;
 		}
 		if (!character.id) {
-			this.errorMessage.set('Character id is required to join a game.');
+			this.errorMessage.set(this.t.character.list.errors.joinRequiresCharacterId);
 			return;
 		}
 

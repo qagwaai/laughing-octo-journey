@@ -4,6 +4,16 @@
 
 	<form [formGroup]="loginForm" (ngSubmit)="submit()" class="login-form">
 		<div class="form-group">
+			<label for="locale">{{ t.public.login.localeLabel }}</label>
+			<select id="locale" formControlName="locale">
+				@for (code of supportedLocaleCodes; track code) {
+					<option [value]="code">{{ t.common.localeNames[code] }}</option>
+				}
+			</select>
+			<small>{{ t.public.login.localeHint }}</small>
+		</div>
+
+		<div class="form-group">
 			<label for="playerName">{{ t.public.login.playerNameLabel }}</label>
 			<input id="playerName" type="text" formControlName="playerName" [placeholder]="t.public.login.playerNamePlaceholder" />
 			@if (loginForm.get('playerName')?.invalid && loginForm.get('playerName')?.touched) {

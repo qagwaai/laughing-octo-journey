@@ -76,6 +76,7 @@ class MockLoginPage {
 	loginForm = {
 		playerName: '',
 		password: '',
+		locale: 'en',
 		invalid: false,
 		touched: false,
 		markAllAsTouched() {
@@ -85,6 +86,7 @@ class MockLoginPage {
 			return {
 				playerName: this.playerName,
 				password: this.password,
+				locale: this.locale,
 			};
 		},
 	};
@@ -120,6 +122,7 @@ class MockLoginPage {
 		const request: LoginRequest = {
 			playerName: normalizedPlayerName,
 			password: normalizedPassword,
+			locale: this.loginForm.locale,
 		};
 
 		this.isSubmitting.set(true);
@@ -163,7 +166,12 @@ class MockLoginPage {
 	}
 
 	navigateToRegistration(): void {
-		this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
+		this.router.navigate([{ outlets: { left: ['registration'] } }], {
+			preserveFragment: true,
+			state: {
+				preferredLocale: this.loginForm.locale,
+			},
+		});
 	}
 
 	ngOnDestroy(): void {
@@ -213,6 +221,7 @@ describe('LoginPage', () => {
 			component.loginForm.invalid = false;
 			component.loginForm.playerName = '  Pioneer  ';
 			component.loginForm.password = 'password123';
+			component.loginForm.locale = 'it';
 			component.submit();
 
 			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
@@ -220,6 +229,7 @@ describe('LoginPage', () => {
 			expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				password: 'password123',
+				locale: 'it',
 			});
 		});
 
@@ -378,11 +388,12 @@ describe('LoginPage', () => {
 
 	describe('navigation', () => {
 		it('should navigate to registration in left outlet', () => {
+			component.loginForm.locale = 'it';
 			component.navigateToRegistration();
 
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['registration'] } }],
-				{ preserveFragment: true },
+				{ preserveFragment: true, state: { preferredLocale: 'it' } },
 			);
 		});
 	});

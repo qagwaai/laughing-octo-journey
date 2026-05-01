@@ -84,6 +84,7 @@ class MockRegistrationPage {
 	private unsubscribeResponse?: () => void;
 
 	registrationForm = {
+		locale: 'en',
 		playerName: '',
 		email: '',
 		password: '',
@@ -92,6 +93,7 @@ class MockRegistrationPage {
 		touched: false,
 		markAllAsTouched() { this.touched = true; },
 		reset() {
+			this.locale = 'en';
 			this.playerName = '';
 			this.email = '';
 			this.password = '';
@@ -99,6 +101,7 @@ class MockRegistrationPage {
 		},
 		get value() {
 			return {
+				locale: this.locale,
 				playerName: this.playerName,
 				email: this.email,
 				password: this.password,
@@ -123,7 +126,7 @@ class MockRegistrationPage {
 			return;
 		}
 
-		const { playerName, email, password } = this.registrationForm.value;
+		const { playerName, email, password, locale } = this.registrationForm.value;
 		const normalizedPlayerName = playerName?.trim() ?? '';
 		const normalizedEmail = email?.trim() ?? '';
 		const normalizedPassword = password ?? '';
@@ -138,6 +141,7 @@ class MockRegistrationPage {
 			playerName: normalizedPlayerName,
 			email: normalizedEmail,
 			password: normalizedPassword,
+			locale,
 		};
 
 		this.isSubmitting.set(true);
@@ -168,9 +172,14 @@ class MockRegistrationPage {
 		this.socketService.emit(REGISTER_EVENT, request);
 	}
 
-		navigateToLogin(): void {
-			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-		}
+	navigateToLogin(): void {
+		this.router.navigate([{ outlets: { left: ['login'] } }], {
+			preserveFragment: true,
+			state: {
+				preferredLocale: this.registrationForm.locale,
+			},
+		});
+	}
 
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();
@@ -225,6 +234,7 @@ describe('RegistrationPage', () => {
 
 		it(`should emit '${REGISTER_EVENT}' with correct payload`, () => {
 			component.registrationForm.invalid = false;
+			component.registrationForm.locale = 'it';
 			component.registrationForm.playerName = '  Pioneer  ';
 			component.registrationForm.email = '  pioneer@stellar.com  ';
 			component.registrationForm.password = 'password123';
@@ -233,6 +243,7 @@ describe('RegistrationPage', () => {
 			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
 			expect(socketService.emittedEvents[0].event).toBe(REGISTER_EVENT);
 			expect(socketService.emittedEvents[0].data).toEqual({
+				locale: 'it',
 				playerName: 'Pioneer',
 				email: 'pioneer@stellar.com',
 				password: 'password123',
@@ -374,11 +385,12 @@ describe('RegistrationPage', () => {
 		});
 
 		it('should navigate to login in left outlet', () => {
+			component.registrationForm.locale = 'it';
 			component.navigateToLogin();
 
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['login'] } }],
-				{ preserveFragment: true },
+				{ preserveFragment: true, state: { preferredLocale: 'it' } },
 			);
 		});
 	});

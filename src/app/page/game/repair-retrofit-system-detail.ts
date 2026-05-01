@@ -85,7 +85,7 @@ export default class RepairRetrofitSystemDetailPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!profile || !ship?.id || !code || !characterId || !playerName || !sessionKey) {
-			this.persistError.set('Missing system or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitSystemDetail.missingContextError);
 			return;
 		}
 
@@ -116,12 +116,12 @@ export default class RepairRetrofitSystemDetailPage {
 			(response: ShipUpsertResponse) => {
 				this.isPersisting.set(false);
 				if (!response.success) {
-					this.persistError.set(response.message || 'Subsystem repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitSystemDetail.persistFailedLabel);
 					return;
 				}
 
 				this.damageProfile.set(nextProfile);
-				this.persistSuccess.set('Subsystem fully repaired and synchronized.');
+				this.persistSuccess.set(this.t.game.repairRetrofitSystemDetail.successLabel);
 			},
 		);
 	}

@@ -6,6 +6,7 @@ export type LoginFailureReason = 'PLAYER_NOT_REGISTERED' | 'PASSWORD_MISMATCH' |
 export interface LoginRequest {
 	playerName: string;
 	password: string;
+	locale?: string;
 }
 
 export interface LoginResponse {

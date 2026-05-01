@@ -10,6 +10,7 @@ test.describe('Registration', () => {
   });
 
   test('renders registration form', async ({ page }) => {
+    await expect(registrationPage.localeSelect).toBeVisible();
     await expect(registrationPage.playerNameInput).toBeVisible();
     await expect(registrationPage.emailInput).toBeVisible();
     await expect(registrationPage.passwordInput).toBeVisible();

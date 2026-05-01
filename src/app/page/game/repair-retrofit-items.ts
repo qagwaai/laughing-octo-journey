@@ -113,7 +113,7 @@ export default class RepairRetrofitItemsPage {
 			kind: 'ship',
 			label: shipName,
 			severity: shipProfile?.overallStatus ?? 'intact',
-			summary: shipProfile?.summary ?? 'No active damage profile found.',
+			summary: shipProfile?.summary ?? this.t.game.repairRetrofitItems.noActiveDamageProfileLabel,
 			repairPriority: 0,
 			shipId,
 		});
@@ -137,7 +137,7 @@ export default class RepairRetrofitItemsPage {
 				kind: 'inventory-item',
 				label: item.displayName || item.itemType,
 				severity: item.damageStatus,
-				summary: `Ship inventory item is ${item.damageStatus} while ${item.state}.`,
+				summary: `${this.t.game.repairRetrofitItems.inventoryItemSummaryPrefix} ${item.damageStatus} ${this.t.game.repairRetrofitItems.inventoryItemSummaryInfix} ${item.state}.`,
 				repairPriority: 100,
 				shipId,
 				itemId: item.id,
@@ -211,30 +211,30 @@ export default class RepairRetrofitItemsPage {
 	protected getGroupingLabel(): string {
 		const grouping = this.selectedGrouping();
 		if (grouping === 'severity') {
-			return 'Severity';
+			return this.t.game.repairRetrofitItems.groupSeverityLabel;
 		}
 
 		if (grouping === 'priority-band') {
-			return 'Priority';
+			return this.t.game.repairRetrofitItems.groupPriorityLabel;
 		}
 
-		return 'Asset Type';
+		return this.t.game.repairRetrofitItems.groupAssetTypeLabel;
 	}
 
 	protected getRequiredMaterials(asset: RepairAssetEntry): string {
 		if (asset.severity === 'intact') {
-			return 'No materials required';
+			return this.t.game.repairRetrofitItems.noMaterialsRequired;
 		}
 
 		if (asset.kind === 'ship') {
-			return 'Hull patch kit, conduit seals, coolant cells';
+			return this.t.game.repairRetrofitItems.shipRepairMaterials;
 		}
 
 		if (asset.kind === 'ship-system') {
-			return 'Subsystem relay, fiber coupling, calibration gel';
+			return this.t.game.repairRetrofitItems.systemRepairMaterials;
 		}
 
-		return 'Spare casing, micro-fuse, alignment screws';
+		return this.t.game.repairRetrofitItems.itemRepairMaterials;
 	}
 
 	protected getEstimatedWindow(asset: RepairAssetEntry): string {
@@ -271,22 +271,22 @@ export default class RepairRetrofitItemsPage {
 
 	protected getBlockedReason(asset: RepairAssetEntry): string {
 		if (asset.severity === 'intact') {
-			return 'No repair action required';
+			return this.t.game.repairRetrofitItems.blockedReasonNoAction;
 		}
 
 		if (asset.kind === 'ship' && (asset.severity === 'critical' || asset.severity === 'disabled' || asset.severity === 'destroyed')) {
-			return 'Dock lock and bay supervisor authorization required';
+			return this.t.game.repairRetrofitItems.blockedReasonDockLock;
 		}
 
-		return 'None';
+		return this.t.game.repairRetrofitItems.blockedReasonNone;
 	}
 
 	protected getActionAvailability(asset: RepairAssetEntry): string {
 		if (asset.severity === 'intact') {
-			return 'No action needed';
+			return this.t.game.repairRetrofitItems.actionAvailabilityNoAction;
 		}
 
-		return 'Ready';
+		return this.t.game.repairRetrofitItems.actionAvailabilityReady;
 	}
 
 	protected canOpenDetail(asset: RepairAssetEntry): boolean {
@@ -303,14 +303,14 @@ export default class RepairRetrofitItemsPage {
 
 	protected getRepairLabel(asset: RepairAssetEntry): string {
 		if (asset.kind === 'ship-system') {
-			return 'Fully Repair System';
+			return this.t.game.repairRetrofitItems.repairSystemLabel;
 		}
 
 		if (asset.kind === 'inventory-item') {
-			return 'Fully Repair Item';
+			return this.t.game.repairRetrofitItems.repairItemLabel;
 		}
 
-		return 'Fully Repair Ship';
+		return this.t.game.repairRetrofitItems.repairShipLabel;
 	}
 
 	protected repairAsset(asset: RepairAssetEntry): void {
@@ -365,7 +365,7 @@ export default class RepairRetrofitItemsPage {
 				consumedMaterials,
 			});
 			this.persistSuccess.set(
-				`${this.hullPatchKitPrintableItem.displayName} sent to the 3D Fabricator. Estimated time: ${formatPrintableDuration(this.hullPatchKitPrintableItem.durationMs)}. Check the printer on the main page.`,
+				`${this.hullPatchKitPrintableItem.displayName} ${this.t.game.repairRetrofitItems.printQueuedPrefix} ${formatPrintableDuration(this.hullPatchKitPrintableItem.durationMs)}. ${this.t.game.repairRetrofitItems.printQueuedSuffix}`,
 			);
 		});
 	}
@@ -403,7 +403,7 @@ export default class RepairRetrofitItemsPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!profile || !ship?.id || !characterId || !playerName || !sessionKey) {
-			this.persistError.set('Missing ship or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitItems.missingShipContextError);
 			return;
 		}
 
@@ -430,13 +430,13 @@ export default class RepairRetrofitItemsPage {
 			(response: ShipUpsertResponse) => {
 				this.finishPersist();
 				if (!response.success) {
-					this.persistError.set(response.message || 'Ship repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitItems.shipRepairPersistFailed);
 					return;
 				}
 
 				this.damageProfile.set(nextProfile);
 				this.joinShip.update((current) => (current ? { ...current, damageProfile: nextProfile } : current));
-				this.persistSuccess.set(`${asset.label} fully repaired and synchronized.`);
+				this.persistSuccess.set(`${asset.label} ${this.t.game.repairRetrofitItems.shipRepairedSuffix}`);
 				this.advanceMissionGateOnRepair(characterId, 'ship');
 			},
 		);
@@ -451,7 +451,7 @@ export default class RepairRetrofitItemsPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!profile || !ship?.id || !code || !characterId || !playerName || !sessionKey) {
-			this.persistError.set('Missing system or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitItems.missingSystemContextError);
 			return;
 		}
 
@@ -479,13 +479,13 @@ export default class RepairRetrofitItemsPage {
 			(response: ShipUpsertResponse) => {
 				this.finishPersist();
 				if (!response.success) {
-					this.persistError.set(response.message || 'Subsystem repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitItems.systemRepairPersistFailed);
 					return;
 				}
 
 				this.damageProfile.set(nextProfile);
 				this.joinShip.update((current) => (current ? { ...current, damageProfile: nextProfile } : current));
-				this.persistSuccess.set(`${asset.label} fully repaired and synchronized.`);
+				this.persistSuccess.set(`${asset.label} ${this.t.game.repairRetrofitItems.systemRepairedSuffix}`);
 			},
 		);
 	}
@@ -498,7 +498,7 @@ export default class RepairRetrofitItemsPage {
 		const item = (ship?.inventory ?? []).find((entry) => entry.id === itemId) as ShipItem | undefined;
 
 		if (!item || !playerName || !sessionKey) {
-			this.persistError.set('Missing item or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitItems.missingItemContextError);
 			return;
 		}
 
@@ -515,7 +515,7 @@ export default class RepairRetrofitItemsPage {
 			(response: ItemUpsertResponse) => {
 				this.finishPersist();
 				if (!response.success || !response.item) {
-					this.persistError.set(response.message || 'Item repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitItems.itemRepairPersistFailed);
 					return;
 				}
 
@@ -529,7 +529,7 @@ export default class RepairRetrofitItemsPage {
 						inventory: (current.inventory ?? []).map((entry) => (entry.id === response.item!.id ? response.item! : entry)),
 					};
 				});
-				this.persistSuccess.set(`${asset.label} fully repaired and synchronized.`);
+				this.persistSuccess.set(`${asset.label} ${this.t.game.repairRetrofitItems.itemRepairedSuffix}`);
 			},
 		);
 	}
@@ -597,7 +597,10 @@ export default class RepairRetrofitItemsPage {
 			},
 			(response) => {
 				if (!response.success) {
-					this.persistError.set(response.message || `Unable to consume ${nextMaterial.label} for print job.`);
+					this.persistError.set(
+						response.message ||
+						`${this.t.game.repairRetrofitItems.consumeMaterialFailedPrefix} ${nextMaterial.label} ${this.t.game.repairRetrofitItems.consumeMaterialFailedSuffix}`,
+					);
 					return;
 				}
 
@@ -609,8 +612,8 @@ export default class RepairRetrofitItemsPage {
 	protected getHullPatchKitRequirementMessage(): string {
 		const missingMaterials = getMissingPrintableMaterials(this.hullPatchKitPrintableItem, this.joinShip()?.inventory);
 		return missingMaterials.length > 0
-			? `${missingMaterials.join(', ')} required in ship inventory to start this print job.`
-			: `${describePrintableMaterials(this.hullPatchKitPrintableItem).join(', ')} required in ship inventory to start this print job.`;
+			? `${missingMaterials.join(', ')} ${this.t.game.repairRetrofitItems.missingMaterialsRequiredSuffix}`
+			: `${describePrintableMaterials(this.hullPatchKitPrintableItem).join(', ')} ${this.t.game.repairRetrofitItems.missingMaterialsRequiredSuffix}`;
 	}
 
 	protected getHullPatchKitMaterialLabels(): string {
@@ -639,23 +642,23 @@ export default class RepairRetrofitItemsPage {
 		if (grouping === 'priority-band') {
 			const priority = asset.repairPriority ?? 1000;
 			if (priority <= 1) {
-				return 'Priority 1';
+				return this.t.game.repairRetrofitItems.priority1;
 			}
 			if (priority <= 3) {
-				return 'Priority 2-3';
+				return this.t.game.repairRetrofitItems.priority2to3;
 			}
-			return 'Priority 4+';
+			return this.t.game.repairRetrofitItems.priority4plus;
 		}
 
 		if (asset.kind === 'ship') {
-			return 'Ships';
+			return this.t.game.repairRetrofitItems.shipsGroupLabel;
 		}
 
 		if (asset.kind === 'ship-system') {
-			return 'Ship Systems';
+			return this.t.game.repairRetrofitItems.shipSystemsGroupLabel;
 		}
 
-		return 'Inventory Items';
+		return this.t.game.repairRetrofitItems.inventoryItemsGroupLabel;
 	}
 
 	private resolveDetailRoute(kind: RepairAssetKind): string {

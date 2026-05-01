@@ -2,18 +2,18 @@
 	<div class="page-main">
 		<div class="page-header">
 			<div>
-				<h1>Ship Repair Detail</h1>
-				<p class="subtitle">Full repair operation for the selected ship.</p>
+				<h1>{{ t.game.repairRetrofitShipDetail.title }}</h1>
+				<p class="subtitle">{{ t.game.repairRetrofitShipDetail.subtitle }}</p>
 			</div>
 		</div>
 
 		<section class="ops-card">
-			<p><strong>Ship:</strong> {{ getShipName() }}</p>
-			<p><strong>Current Status:</strong> {{ damageProfile()?.overallStatus || 'unknown' }}</p>
-			<p><strong>Summary:</strong> {{ damageProfile()?.summary || 'No profile available.' }}</p>
+			<p><strong>{{ t.game.repairRetrofitShipDetail.shipLabel }}</strong> {{ getShipName() }}</p>
+			<p><strong>{{ t.game.repairRetrofitShipDetail.currentStatusLabel }}</strong> {{ damageProfile()?.overallStatus || t.game.repairRetrofitShipDetail.unknownStatusLabel }}</p>
+			<p><strong>{{ t.game.repairRetrofitShipDetail.summaryLabel }}</strong> {{ damageProfile()?.summary || t.game.repairRetrofitShipDetail.noProfileLabel }}</p>
 
 			<button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
-				Back to Repair Items
+				{{ t.game.repairRetrofitShipDetail.backLabel }}
 			</button>
 
 			@if (persistError()) {
@@ -24,11 +24,11 @@
 			}
 
 			@if (!hasHullPatchKit()) {
-				<p class="status-line status-line--error">Hull Patch Kit required in ship inventory to perform a full repair.</p>
+				<p class="status-line status-line--error">{{ t.game.repairRetrofitShipDetail.hullPatchKitRequiredLabel }}</p>
 			}
 
 			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairShip()">
-				Fully Repair Ship
+				{{ t.game.repairRetrofitShipDetail.repairLabel }}
 			</button>
 		</section>
 

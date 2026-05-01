@@ -1,10 +1,21 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { locale } from '../../i18n/locale';
+import {
+	currentLocaleCode,
+	isSupportedLocaleCode,
+	locale,
+	setActiveLocaleCode,
+	supportedLocaleCodes,
+	type SupportedLocaleCode,
+} from '../../i18n/locale';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../../model/register';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+
+interface RegistrationNavigationState {
+	preferredLocale?: string;
+}
 
 export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
 	const password = group.get('password')?.value;
@@ -23,14 +34,24 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
 })
 export default class RegistrationPage implements OnDestroy {
 	protected readonly t = locale;
+	protected readonly supportedLocaleCodes = supportedLocaleCodes;
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
+	private navigationState: RegistrationNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as RegistrationNavigationState | undefined) ??
+		(history.state as RegistrationNavigationState | undefined) ??
+		{};
+	private defaultLocale: SupportedLocaleCode =
+		typeof this.navigationState.preferredLocale === 'string' && isSupportedLocaleCode(this.navigationState.preferredLocale)
+			? this.navigationState.preferredLocale
+			: currentLocaleCode;
 
 	protected registrationForm = this.fb.group(
 		{
+			locale: [this.defaultLocale, [Validators.required]],
 			playerName: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
 			email: ['', [Validators.required, Validators.email]],
 			password: ['', [Validators.required, Validators.minLength(8)]],
@@ -51,14 +72,17 @@ export default class RegistrationPage implements OnDestroy {
 			return;
 		}
 
-		const { playerName, email, password } = this.registrationForm.value;
+		const { playerName, email, password, locale: selectedLocale } = this.registrationForm.value;
 		const normalizedPlayerName = playerName?.trim() ?? '';
 		const normalizedEmail = email?.trim() ?? '';
 		const normalizedPassword = password ?? '';
+		const normalizedLocale = typeof selectedLocale === 'string' && isSupportedLocaleCode(selectedLocale)
+			? selectedLocale
+			: currentLocaleCode;
 
 		if (!normalizedPlayerName || !normalizedEmail || !normalizedPassword) {
 			this.registrationForm.markAllAsTouched();
-			this.errorMessage.set('Player name, email, and password are required.');
+			this.errorMessage.set(this.t.public.registration.messages.requiredFields);
 			return;
 		}
 
@@ -66,7 +90,9 @@ export default class RegistrationPage implements OnDestroy {
 			playerName: normalizedPlayerName,
 			email: normalizedEmail,
 			password: normalizedPassword,
+			locale: normalizedLocale,
 		};
+		setActiveLocaleCode(request.locale ?? currentLocaleCode);
 
 		this.isSubmitting.set(true);
 		this.successMessage.set(null);
@@ -96,9 +122,17 @@ export default class RegistrationPage implements OnDestroy {
 		this.socketService.emit(REGISTER_EVENT, request);
 	}
 
-		navigateToLogin(): void {
-			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-		}
+	navigateToLogin(): void {
+		const selectedLocale = this.registrationForm.value.locale;
+		this.router.navigate([{ outlets: { left: ['login'] } }], {
+			preserveFragment: true,
+			state: {
+				preferredLocale: typeof selectedLocale === 'string' && isSupportedLocaleCode(selectedLocale)
+					? selectedLocale
+					: currentLocaleCode,
+			},
+		});
+	}
 
 	ngOnDestroy(): void {
 		this.unsubscribeResponse?.();

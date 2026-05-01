@@ -1,3 +1,5 @@
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { CharacterShipBadge } from './character-ship-badge';
 import { SessionService } from '../services/session.service';
 import type { ShipSummary } from '../model/ship-list';
@@ -28,9 +30,14 @@ function createBadge(
 	sessionService: MockSessionService,
 	router: MockRouter,
 ): CharacterShipBadge {
-	const badge = new CharacterShipBadge();
-	(badge as any).router = router;
-	(badge as any).sessionService = sessionService;
+	TestBed.configureTestingModule({
+		providers: [
+			{ provide: SessionService, useValue: sessionService },
+			{ provide: Router, useValue: router },
+		],
+	});
+
+	const badge = TestBed.runInInjectionContext(() => new CharacterShipBadge());
 	badge.playerName = playerName;
 	badge.joinCharacter = character as never;
 	return badge;

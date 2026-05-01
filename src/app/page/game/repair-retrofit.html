@@ -14,28 +14,28 @@
 			<p>{{ t.game.repairRetrofit.sectionDescription }}</p>
 
 			@if (isLoadingShip()) {
-				<p>Synchronizing ship diagnostics...</p>
+				<p>{{ t.game.repairRetrofit.loadingShipLabel }}</p>
 			} @else if (shipLoadError()) {
 				<p role="alert">{{ shipLoadError() }}</p>
 			} @else {
 				<button type="button" class="repair-action" [disabled]="!canOpenRepairItems()" (click)="openRepairItemsView()">
-					View details
+					{{ t.game.repairRetrofit.viewDetailsLabel }}
 				</button>
 			}
 		</section>
 
 		@if (joinCharacter()) {
 			<section class="ops-card printer-section">
-				<h2>Onboard 3D Fabricator</h2>
+				<h2>{{ t.game.repairRetrofit.printerSectionTitle }}</h2>
 
 				<div class="printer-status-bar">
-					<span class="printer-status-label">Status</span>
+					<span class="printer-status-label">{{ t.game.repairRetrofit.printerStatusLabel }}</span>
 					<span
 						class="printer-status-value"
 						[class.printer-status--printing]="printerStatus() === 'printing'"
 						[class.printer-status--idle]="printerStatus() === 'idle'"
 					>
-						{{ printerStatus() === 'printing' ? 'Printing' : 'Idle' }}
+						{{ printerStatus() === 'printing' ? t.game.repairRetrofit.printerPrintingLabel : t.game.repairRetrofit.printerIdleLabel }}
 					</span>
 				</div>
 
@@ -48,7 +48,7 @@
 
 				@if (printerQueueWithStatus().length > 0) {
 					<div class="printer-queue">
-						<h3>Active Print Jobs</h3>
+						<h3>{{ t.game.repairRetrofit.activePrintJobsTitle }}</h3>
 						@for (job of printerQueueWithStatus(); track job.id) {
 							<div class="print-job-card">
 								<div class="print-job-info">
@@ -56,7 +56,7 @@
 									@if (job.remainingMs > 0) {
 										<span class="print-job-timer">{{ formatRemainingTime(job.remainingMs) }} remaining</span>
 									} @else {
-										<span class="print-job-complete">Collecting from printer...</span>
+										<span class="print-job-complete">{{ t.game.repairRetrofit.collectingFromPrinterLabel }}</span>
 									}
 								</div>
 								@if (job.remainingMs > 0) {
@@ -65,7 +65,7 @@
 										class="repair-action repair-action--cancel"
 										(click)="cancelPrintJob(job)"
 									>
-										Cancel
+										{{ t.game.repairRetrofit.cancelPrintJobLabel }}
 									</button>
 								}
 							</div>
@@ -74,13 +74,13 @@
 				}
 
 				<div class="printer-recipes">
-					<h3>Available Recipes</h3>
+					<h3>{{ t.game.repairRetrofit.availableRecipesTitle }}</h3>
 
 					@for (printableItem of printableItems(); track printableItem.itemType) {
 						<div class="recipe-card">
 							<div class="recipe-header">
 								<strong>{{ printableItem.displayName }}</strong>
-								<span class="recipe-tier">Tier {{ printableItem.tier }} &middot; {{ getPrintableItemDurationLabel(printableItem) }}</span>
+								<span class="recipe-tier">{{ t.game.repairRetrofit.tierLabel }} {{ printableItem.tier }} &middot; {{ getPrintableItemDurationLabel(printableItem) }}</span>
 							</div>
 							<p class="recipe-description">
 								{{ printableItem.description }}
@@ -92,9 +92,9 @@
 							</div>
 							<div class="recipe-status">
 								@if (hasPrintableItem(printableItem)) {
-									<p class="status-line status-line--success">{{ printableItem.displayName }} already in inventory.</p>
+									<p class="status-line status-line--success">{{ printableItem.displayName }} {{ t.game.repairRetrofit.alreadyInInventorySuffix }}</p>
 								} @else if (isPrintableItemPrinting(printableItem)) {
-									<p class="status-line status-line--info">Currently printing &mdash; check Active Print Jobs above.</p>
+									<p class="status-line status-line--info">{{ t.game.repairRetrofit.currentlyPrintingLabel }}</p>
 								} @else if (!canQueuePrintableItem(printableItem)) {
 									<p class="status-line status-line--error">{{ getPrintableItemRequirementMessage(printableItem) }}</p>
 								} @else {
@@ -104,7 +104,7 @@
 										[disabled]="!canQueuePrintableItem(printableItem)"
 										(click)="queuePrintableItem(printableItem)"
 									>
-										Print {{ printableItem.displayName }}
+										{{ t.game.repairRetrofit.printLabelPrefix }} {{ printableItem.displayName }}
 									</button>
 								}
 							</div>

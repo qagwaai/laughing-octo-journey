@@ -10,9 +10,14 @@ test.describe('Login', () => {
   });
 
   test('renders login form', async ({ page }) => {
+    await expect(loginPage.localeSelect).toBeVisible();
     await expect(loginPage.playerNameInput).toBeVisible();
     await expect(loginPage.passwordInput).toBeVisible();
     await expect(loginPage.submitButton).toBeVisible();
+  });
+
+  test('locale selector defaults to current app locale', async ({ page }) => {
+    await expect(loginPage.localeSelect).toHaveValue('en');
   });
 
   test('submit button is disabled when form is empty', async ({ page }) => {

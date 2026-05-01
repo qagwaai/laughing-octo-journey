@@ -11,6 +11,10 @@ export class LoginPage {
     return this.page.locator('#playerName');
   }
 
+  get localeSelect() {
+    return this.page.locator('#locale');
+  }
+
   get passwordInput() {
     return this.page.locator('#password');
   }
@@ -27,7 +31,8 @@ export class LoginPage {
     return this.page.locator('.register-link-text').last();
   }
 
-  async login(playerName: string, password: string) {
+  async login(playerName: string, password: string, locale = 'en') {
+    await this.localeSelect.selectOption(locale);
     await this.playerNameInput.fill(playerName);
     await this.passwordInput.fill(password);
     await this.submitButton.click();

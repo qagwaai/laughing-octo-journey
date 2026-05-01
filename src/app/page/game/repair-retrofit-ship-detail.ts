@@ -72,7 +72,7 @@ export default class RepairRetrofitShipDetailPage {
 
 	protected getShipName(): string {
 		const ship = this.joinShip();
-		return ship?.name?.trim() || ship?.model?.trim() || ship?.id || 'Ship';
+		return ship?.name?.trim() || ship?.model?.trim() || ship?.id || this.t.game.repairRetrofitShipDetail.fallbackShipName;
 	}
 
 	protected navigateBackToRepairItems(): void {
@@ -102,7 +102,7 @@ export default class RepairRetrofitShipDetailPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!profile || !ship?.id || !characterId || !playerName || !sessionKey) {
-			this.persistError.set('Missing ship or session context for repair operation.');
+			this.persistError.set(this.t.game.repairRetrofitShipDetail.missingContextError);
 			return;
 		}
 
@@ -134,7 +134,7 @@ export default class RepairRetrofitShipDetailPage {
 			(response: ShipUpsertResponse) => {
 				if (!response.success) {
 					this.isPersisting.set(false);
-					this.persistError.set(response.message || 'Ship repair update failed to persist.');
+					this.persistError.set(response.message || this.t.game.repairRetrofitShipDetail.persistFailedLabel);
 					return;
 				}
 
@@ -142,7 +142,7 @@ export default class RepairRetrofitShipDetailPage {
 
 				if (!kitItem) {
 					this.isPersisting.set(false);
-					this.persistSuccess.set('Ship fully repaired and synchronized.');
+					this.persistSuccess.set(this.t.game.repairRetrofitShipDetail.successLabel);
 					this.advanceMissionGateOnRepair(characterId);
 					return;
 				}
@@ -157,13 +157,13 @@ export default class RepairRetrofitShipDetailPage {
 							damageStatus: 'destroyed',
 							container: null,
 							destroyedAt: new Date().toISOString(),
-							destroyedReason: 'Consumed during ship repair operation.',
+							destroyedReason: this.t.game.repairRetrofitShipDetail.kitDestroyedReason,
 						},
 					},
 					(itemResponse: ItemUpsertResponse) => {
 						this.isPersisting.set(false);
 						if (!itemResponse.success) {
-							this.persistError.set(itemResponse.message || 'Ship repaired but Hull Patch Kit could not be removed from inventory.');
+							this.persistError.set(itemResponse.message || this.t.game.repairRetrofitShipDetail.kitRemovalFailedLabel);
 							return;
 						}
 
@@ -177,7 +177,7 @@ export default class RepairRetrofitShipDetailPage {
 								inventory: (current.inventory ?? []).filter((item) => item.id !== kitItem.id),
 							};
 						});
-						this.persistSuccess.set('Ship fully repaired. Hull Patch Kit consumed.');
+						this.persistSuccess.set(this.t.game.repairRetrofitShipDetail.kitConsumedLabel);
 						this.advanceMissionGateOnRepair(characterId);
 					},
 				);

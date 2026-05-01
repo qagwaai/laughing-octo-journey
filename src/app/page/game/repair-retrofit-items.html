@@ -2,8 +2,8 @@
 	<div class="page-main">
 		<div class="page-header">
 			<div>
-				<h1>Repair Items</h1>
-				<p class="subtitle">Detailed review of all repairable assets for {{ shipName() }}.</p>
+				<h1>{{ t.game.repairRetrofitItems.title }}</h1>
+				<p class="subtitle">{{ t.game.repairRetrofitItems.subtitlePrefix }} {{ shipName() }}.</p>
 			</div>
 		</div>
 
@@ -17,49 +17,49 @@
 
 			@if (!hasHullPatchKit()) {
 				<div class="fabrication-cta">
-					<p><strong>Missing:</strong> Hull Patch Kit &mdash; required for Scavenger Pod repair.</p>
-					<p><strong>Required Materials:</strong> {{ getHullPatchKitMaterialLabels() }}</p>
-					<p><strong>Fabrication Time:</strong> {{ getHullPatchKitDurationLabel() }}</p>
+					<p><strong>{{ t.game.repairRetrofitItems.missingLabel }}</strong> {{ t.game.repairRetrofitItems.hullPatchKitRequiredLabel }}</p>
+					<p><strong>{{ t.game.repairRetrofitItems.requiredMaterialsLabel }}</strong> {{ getHullPatchKitMaterialLabels() }}</p>
+					<p><strong>{{ t.game.repairRetrofitItems.fabricationTimeLabel }}</strong> {{ getHullPatchKitDurationLabel() }}</p>
 					@if (isHullPatchKitQueued()) {
-						<p class="status-line status-line--info">Hull Patch Kit is printing on the 3D Fabricator.</p>
+						<p class="status-line status-line--info">{{ t.game.repairRetrofitItems.hullPatchKitPrintingLabel }}</p>
 					} @else if (!canQueueHullPatchKit()) {
 						<p class="status-line status-line--error">{{ getHullPatchKitRequirementMessage() }}</p>
 					} @else {
 						<button type="button" class="repair-action" (click)="queueForPrinting()">
-							Send to 3D Printer
+							{{ t.game.repairRetrofitItems.sendToPrinterLabel }}
 						</button>
 					}
 				</div>
 			}
 
 			<div class="repair-controls">
-				<label for="repair-filter">Filter</label>
+				<label for="repair-filter">{{ t.game.repairRetrofitItems.filterLabel }}</label>
 				<select id="repair-filter" [value]="selectedFilter()" (change)="setFilter($any($event.target).value)">
-					<option value="all">All Entries</option>
-					<option value="needs-repair">Needs Repair</option>
-					<option value="critical-only">Critical Only</option>
-					<option value="intact-only">Intact Only</option>
+					<option value="all">{{ t.game.repairRetrofitItems.filterAllEntries }}</option>
+					<option value="needs-repair">{{ t.game.repairRetrofitItems.filterNeedsRepair }}</option>
+					<option value="critical-only">{{ t.game.repairRetrofitItems.filterCriticalOnly }}</option>
+					<option value="intact-only">{{ t.game.repairRetrofitItems.filterIntactOnly }}</option>
 				</select>
 
-				<label for="repair-group">Group By</label>
+				<label for="repair-group">{{ t.game.repairRetrofitItems.groupByLabel }}</label>
 				<select id="repair-group" [value]="selectedGrouping()" (change)="setGrouping($any($event.target).value)">
-					<option value="asset-type">Asset Type</option>
-					<option value="severity">Severity</option>
-					<option value="priority-band">Priority Band</option>
+					<option value="asset-type">{{ t.game.repairRetrofitItems.groupAssetType }}</option>
+					<option value="severity">{{ t.game.repairRetrofitItems.groupSeverity }}</option>
+					<option value="priority-band">{{ t.game.repairRetrofitItems.groupPriorityBand }}</option>
 				</select>
 
-				<label for="repair-search">Search</label>
+				<label for="repair-search">{{ t.game.repairRetrofitItems.searchLabel }}</label>
 				<input
 					id="repair-search"
 					type="search"
 					[value]="searchQuery()"
 					(input)="setSearchQuery($any($event.target).value)"
-					placeholder="Find systems, ship, or items"
+					[placeholder]="t.game.repairRetrofitItems.searchPlaceholder"
 				/>
 			</div>
 
 			@if (groupedAssets().length > 0) {
-				<h3>Repair Assets (Grouped by {{ getGroupingLabel() }})</h3>
+				<h3>{{ t.game.repairRetrofitItems.repairAssetsHeadingPrefix }} {{ getGroupingLabel() }}{{ t.game.repairRetrofitItems.repairAssetsHeadingSuffix }}</h3>
 				@for (group of groupedAssets(); track group.group) {
 					<h4 class="repair-group-heading">{{ group.group }}</h4>
 					<ul class="damaged-assets-list" aria-label="Repair asset list">
@@ -70,13 +70,13 @@
 										<strong>{{ asset.label }}</strong>
 										<span class="damage-kind">({{ asset.kind }})</span>
 									</p>
-									<p class="damage-item__severity">Severity: {{ asset.severity }}</p>
+										<p class="damage-item__severity">{{ t.game.repairRetrofitItems.severityLabel }} {{ asset.severity }}</p>
 									<p>{{ asset.summary }}</p>
-									<p><strong>Required Materials:</strong> {{ getRequiredMaterials(asset) }}</p>
-									<p><strong>Estimated Time:</strong> {{ getEstimatedWindow(asset) }}</p>
-									<p><strong>Estimated Cost:</strong> {{ getEstimatedCost(asset) }}</p>
-									<p><strong>Blocked Reason:</strong> {{ getBlockedReason(asset) }}</p>
-									<p><strong>Action Availability:</strong> {{ getActionAvailability(asset) }}</p>
+										<p><strong>{{ t.game.repairRetrofitItems.requiredMaterialsLabel }}</strong> {{ getRequiredMaterials(asset) }}</p>
+										<p><strong>{{ t.game.repairRetrofitItems.estimatedTimeLabel }}</strong> {{ getEstimatedWindow(asset) }}</p>
+										<p><strong>{{ t.game.repairRetrofitItems.estimatedCostLabel }}</strong> {{ getEstimatedCost(asset) }}</p>
+										<p><strong>{{ t.game.repairRetrofitItems.blockedReasonLabel }}</strong> {{ getBlockedReason(asset) }}</p>
+										<p><strong>{{ t.game.repairRetrofitItems.actionAvailabilityLabel }}</strong> {{ getActionAvailability(asset) }}</p>
 								</div>
 								<div class="row-actions">
 									<button
@@ -85,7 +85,7 @@
 										[disabled]="!canOpenDetail(asset)"
 										(click)="navigateToRepairDetail(asset)"
 									>
-										Open Detail
+											{{ t.game.repairRetrofitItems.openDetailLabel }}
 									</button>
 									@if (canRepairAsset(asset)) {
 										<button
@@ -103,7 +103,7 @@
 					</ul>
 				}
 			} @else {
-				<p>No entries matched this filter.</p>
+				<p>{{ t.game.repairRetrofitItems.noEntriesMatchedLabel }}</p>
 			}
 		</section>
 	</div>

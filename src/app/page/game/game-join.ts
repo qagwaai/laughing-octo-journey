@@ -77,13 +77,13 @@ export default class GameJoinPage {
 		const character = this.joinCharacter();
 
 		if (!playerName) {
-			this.shipListError.set('Player name is required to load ships.');
+			this.shipListError.set(this.t.game.join.errors.loadShipsRequiresPlayer);
 			this.ships.set([]);
 			return;
 		}
 
 		if (!character?.id) {
-			this.shipListError.set('Character id is required to load ships.');
+			this.shipListError.set(this.t.game.join.errors.loadShipsRequiresCharacterId);
 			this.ships.set([]);
 			return;
 		}

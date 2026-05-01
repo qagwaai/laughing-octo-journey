@@ -2,18 +2,18 @@
 	<div class="page-main">
 		<div class="page-header">
 			<div>
-				<h1>Ship System Repair Detail</h1>
-				<p class="subtitle">Full repair operation for one damaged ship subsystem.</p>
+				<h1>{{ t.game.repairRetrofitSystemDetail.title }}</h1>
+				<p class="subtitle">{{ t.game.repairRetrofitSystemDetail.subtitle }}</p>
 			</div>
 		</div>
 
 		<section class="ops-card">
-			<p><strong>System:</strong> {{ selectedAsset()?.label || 'Unknown System' }}</p>
-			<p><strong>Severity:</strong> {{ selectedAsset()?.severity || 'unknown' }}</p>
-			<p><strong>Summary:</strong> {{ selectedAsset()?.summary || 'No summary available.' }}</p>
+			<p><strong>{{ t.game.repairRetrofitSystemDetail.systemLabel }}</strong> {{ selectedAsset()?.label || t.game.repairRetrofitSystemDetail.unknownSystemLabel }}</p>
+			<p><strong>{{ t.game.repairRetrofitSystemDetail.severityLabel }}</strong> {{ selectedAsset()?.severity || t.game.repairRetrofitSystemDetail.unknownSeverityLabel }}</p>
+			<p><strong>{{ t.game.repairRetrofitSystemDetail.summaryLabel }}</strong> {{ selectedAsset()?.summary || t.game.repairRetrofitSystemDetail.noSummaryLabel }}</p>
 
 			<button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
-				Back to Repair Items
+				{{ t.game.repairRetrofitSystemDetail.backLabel }}
 			</button>
 
 			@if (persistError()) {
@@ -24,7 +24,7 @@
 			}
 
 			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairSystem()">
-				Fully Repair System
+				{{ t.game.repairRetrofitSystemDetail.repairLabel }}
 			</button>
 		</section>
 

@@ -4,6 +4,7 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import { coerceShipModel, coerceShipTier, ShipSummary } from '../../model/ship-list';
 import { summarizeShipMotion } from '../../model/kinematics';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { locale } from '../../i18n/locale';
 
 interface ShipViewSpecsNavigationState {
 	playerName?: string;
@@ -19,6 +20,7 @@ interface ShipViewSpecsNavigationState {
 	imports: [CharacterShipBadge],
 })
 export default class ShipViewSpecsPage {
+	protected readonly t = locale;
 	private router = inject(Router);
 	private navigationState: ShipViewSpecsNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ShipViewSpecsNavigationState | undefined) ??

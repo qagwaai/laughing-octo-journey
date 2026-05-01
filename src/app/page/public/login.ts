@@ -1,7 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { locale } from '../../i18n/locale';
+import {
+	currentLocaleCode,
+	isSupportedLocaleCode,
+	locale,
+	setActiveLocaleCode,
+	supportedLocaleCodes,
+	type SupportedLocaleCode,
+} from '../../i18n/locale';
 import {
 	LOGIN_EVENT,
 	LOGIN_RESPONSE_EVENT,
@@ -10,6 +17,10 @@ import {
 } from '../../model/login';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+
+interface LoginNavigationState {
+	preferredLocale?: string;
+}
 
 @Component({
 	selector: 'app-login-page',
@@ -20,15 +31,25 @@ import { SocketService } from '../../services/socket.service';
 })
 export default class LoginPage implements OnDestroy {
 	protected readonly t = locale;
+	protected readonly supportedLocaleCodes = supportedLocaleCodes;
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
 	private unsubscribeResponse?: () => void;
+	private navigationState: LoginNavigationState =
+		(this.router.getCurrentNavigation()?.extras.state as LoginNavigationState | undefined) ??
+		(history.state as LoginNavigationState | undefined) ??
+		{};
+	private defaultLocale: SupportedLocaleCode =
+		typeof this.navigationState.preferredLocale === 'string' && isSupportedLocaleCode(this.navigationState.preferredLocale)
+			? this.navigationState.preferredLocale
+			: currentLocaleCode;
 
 	protected loginForm = this.fb.group({
 		playerName: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
 		password: ['', [Validators.required, Validators.minLength(8)]],
+		locale: [this.defaultLocale, [Validators.required]],
 	});
 
 	protected isSubmitting = signal(false);
@@ -47,10 +68,13 @@ export default class LoginPage implements OnDestroy {
 		const { playerName, password } = this.loginForm.value;
 		const normalizedPlayerName = playerName?.trim() ?? '';
 		const normalizedPassword = password ?? '';
+		const normalizedLocale = typeof this.loginForm.value.locale === 'string' && isSupportedLocaleCode(this.loginForm.value.locale)
+			? this.loginForm.value.locale
+			: currentLocaleCode;
 
 		if (!normalizedPlayerName || !normalizedPassword) {
 			this.loginForm.markAllAsTouched();
-			this.errorMessage.set('Player name and password are required.');
+			this.errorMessage.set(this.t.public.login.messages.requiredFields);
 			this.canNavigateToRegister.set(false);
 			return;
 		}
@@ -58,7 +82,9 @@ export default class LoginPage implements OnDestroy {
 		const request: LoginRequest = {
 			playerName: normalizedPlayerName,
 			password: normalizedPassword,
+			locale: normalizedLocale,
 		};
+		setActiveLocaleCode(request.locale ?? currentLocaleCode);
 
 		this.isSubmitting.set(true);
 		this.successMessage.set(null);
@@ -84,10 +110,10 @@ export default class LoginPage implements OnDestroy {
 				}
 
 				if (response.reason === 'PLAYER_NOT_REGISTERED') {
-					this.errorMessage.set('Player name is not registered. Please register first.');
+					this.errorMessage.set(this.t.public.login.messages.playerNotRegistered);
 					this.canNavigateToRegister.set(true);
 				} else if (response.reason === 'PASSWORD_MISMATCH') {
-					this.errorMessage.set('Password does not match the player name.');
+					this.errorMessage.set(this.t.public.login.messages.passwordMismatch);
 					this.canNavigateToRegister.set(false);
 				} else {
 					this.errorMessage.set(response.message);
@@ -102,7 +128,15 @@ export default class LoginPage implements OnDestroy {
 	}
 
 	navigateToRegistration(): void {
-		this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
+		const preferredLocale = this.loginForm.value.locale;
+		this.router.navigate([{ outlets: { left: ['registration'] } }], {
+			preserveFragment: true,
+			state: {
+				preferredLocale: typeof preferredLocale === 'string' && isSupportedLocaleCode(preferredLocale)
+					? preferredLocale
+					: currentLocaleCode,
+			},
+		});
 	}
 
 	ngOnDestroy(): void {

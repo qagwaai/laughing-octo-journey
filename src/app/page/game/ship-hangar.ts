@@ -67,19 +67,19 @@ export default class ShipHangarPage {
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
 		if (!playerName) {
-			this.shipListError.set('Player name is required to load ships.');
+			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresPlayer);
 			this.ships.set([]);
 			return;
 		}
 
 		if (!characterId) {
-			this.shipListError.set('Character id is required to load ships.');
+			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresCharacterId);
 			this.ships.set([]);
 			return;
 		}
 
 		if (!sessionKey) {
-			this.shipListError.set('Session key is required to load ships.');
+			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresSessionKey);
 			this.ships.set([]);
 			return;
 		}

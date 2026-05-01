@@ -65,6 +65,28 @@ input:focus {
 	background: rgba(255, 255, 255, 0.15);
 }
 
+select {
+	padding: 0.6rem 0.8rem;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.1);
+	color: white;
+	font-size: 1rem;
+	transition: border-color 0.2s, background 0.2s;
+}
+
+select:focus {
+	outline: none;
+	border-color: rgba(255, 255, 255, 0.7);
+	background: rgba(255, 255, 255, 0.15);
+}
+
+/* Ensure opened dropdown options remain readable on Windows/browser native menus. */
+select option {
+	color: #111827;
+	background: #ffffff;
+}
+
 .field-error {
 	font-size: 0.8rem;
 	color: #ff7c7c;

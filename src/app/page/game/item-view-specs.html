@@ -3,7 +3,7 @@
 
 	<header class="blueprint-header">
 		<div class="header-text">
-			<h1>UNIT: {{ displayTitle() }}</h1>
+			<h1>{{ t.game.itemViewSpecs.unitPrefix }} {{ displayTitle() }}</h1>
 			<p class="unit-line">{{ unitLine() }}</p>
 			<p class="classification-line">{{ classificationLine() }}</p>
 		</div>
@@ -14,11 +14,11 @@
 		<section class="blueprint-body">
 			<div class="blueprint-stage">
 				@if (imageNotFound()) {
-					<p class="image-not-found">Image not found: {{ blueprintImagePath() }}</p>
+					<p class="image-not-found">{{ t.game.itemViewSpecs.imageNotFoundPrefix }} {{ blueprintImagePath() }}</p>
 				} @else {
 					<img
 						[src]="blueprintImagePath()"
-						[alt]="displayTitle() + ' blueprint profile image'"
+						[alt]="displayTitle() + ' ' + t.game.itemViewSpecs.blueprintImageAltSuffix"
 						class="blueprint-image"
 						(error)="onImageError()"
 					/>
@@ -36,7 +36,7 @@
 			</div>
 
 			<aside class="stats-block">
-				<h2>STATS BLOCK</h2>
+				<h2>{{ t.game.itemViewSpecs.statsBlockTitle }}</h2>
 				@for (group of resolvedGroups(); track group.label) {
 					<section class="stats-group">
 						<h3>{{ group.label }}</h3>
@@ -55,6 +55,6 @@
 
 		<footer class="blueprint-footer">{{ footerTag() }}</footer>
 	} @else {
-		<p class="empty-state">No item selected.</p>
+		<p class="empty-state">{{ t.game.itemViewSpecs.emptyState }}</p>
 	}
 </div>

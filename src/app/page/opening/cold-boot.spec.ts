@@ -1,6 +1,8 @@
 export {};
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
+const DEFAULT_SHIP_MODEL = 'Scavenger Pod';
+const DEFAULT_SHIP_TIER = 1;
 
 interface MockMissionService {
 	upsertMissionStatus: jasmine.Spy;
@@ -98,6 +100,17 @@ class MockColdBootOpeningPage {
 			this.scanActionPending = false;
 			this.scanActionError = this.t.opening.coldBoot.startScanningErrorLabel;
 			return;
+		}
+
+		const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+		if (characterId) {
+			this.sessionService.setActiveShip({
+				id: `starter-pod-${characterId}`,
+				name: DEFAULT_SHIP_MODEL,
+				model: DEFAULT_SHIP_MODEL,
+				tier: DEFAULT_SHIP_TIER,
+				status: 'ACTIVE',
+			});
 		}
 
 		await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {

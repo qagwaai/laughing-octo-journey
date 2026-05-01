@@ -5,6 +5,7 @@ export interface RegisterRequest {
 	playerName: string;
 	email: string;
 	password: string;
+	locale?: string;
 }
 
 export interface RegisterResponse {
