@@ -18,4 +18,12 @@ describe('mission locale content', () => {
 		const mission = resolveMissionLocaleContent(FIRST_TARGET_MISSION_ID, 'fr-FR');
 		expect(mission.title).toBe('The First Mission: Your First Target');
 	});
+
+	it('should return the first target mission in Italian', () => {
+		const mission = resolveMissionLocaleContent(FIRST_TARGET_MISSION_ID, 'it-IT');
+
+		expect(mission.title).toBe('La prima missione: il tuo primo bersaglio');
+		expect(mission.gameplayLoopTitle).toBe('Il ciclo di gioco del tutorial');
+		expect(mission.gameplayLoopSteps[0]).toContain('Scansione:');
+	});
 });

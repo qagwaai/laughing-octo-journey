@@ -23,6 +23,13 @@ describe('opening-sequence model', () => {
 		expect(content.phaseOneTitle).toContain('Blackout');
 	});
 
+	it('should resolve Italian cold-boot content', () => {
+		const content = resolveOpeningSequenceContent('it-IT', 'cold-boot');
+		expect(content.sequenceTitle).toBe('Sequenza iniziale: Cold Boot');
+		expect(content.phaseOneTitle).toContain('blackout');
+		expect(content.systemChecks[0]).toContain('CONTROLLO BIOS');
+	});
+
 	it('should expose increasing stage timing values', () => {
 		expect(OPENING_STAGE_TIMINGS_MS.blackoutReveal).toBeLessThan(OPENING_STAGE_TIMINGS_MS.firstViewReveal);
 		expect(OPENING_STAGE_TIMINGS_MS.firstViewReveal).toBeLessThan(OPENING_STAGE_TIMINGS_MS.aiReveal);

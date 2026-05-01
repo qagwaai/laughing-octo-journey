@@ -30,6 +30,24 @@ export const MISSION_LIBRARY: Record<string, MissionLocaleBundle> = {
 			},
 		},
 	},
+	it: {
+		missions: {
+			[FIRST_TARGET_MISSION_ID]: {
+				title: 'La prima missione: il tuo primo bersaglio',
+				briefing: [
+					"Si, il giocatore inizia prendendo di mira un asteroide, ma con una variante: la manovra Dart.",
+					'Invece di un laser minerario, ti viene assegnata una singola nave Expendable "Dart". Poiche non possiedi ancora navi "permanenti", devi usare manualmente l\'HUD della tua nave per agganciare un vicino asteroide silicatico di livello 1.',
+				],
+				gameplayLoopTitle: 'Il ciclo di gioco del tutorial',
+				gameplayLoopSteps: [
+					'Scansione: sposti il mirino sopra un gruppo di rocce. L\'HUD identifica una "traccia ad alto contenuto di ferro".',
+					'Lancio: premi l\'accensione. La Dart Expendable, come quella vista nell\'hangar, schizza fuori dal tubo di lancio.',
+					'L\'impatto: la Dart non estrae, colpisce. Si schianta contro l\'asteroide, frantumandolo in tre blocchi gestibili.',
+					'Recupero manuale: senza una Tug Ship, devi pilotare manualmente lo Scavenger Pod per "catturare" i detriti fluttuanti nel tuo raccoglitore gravitazionale.',
+				],
+			},
+		},
+	},
 };
 
 function resolveMissionLocaleBundle(localeId?: string): MissionLocaleBundle {

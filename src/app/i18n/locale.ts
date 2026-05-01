@@ -74,6 +74,16 @@ function readPersistedLocaleCode(): SupportedLocaleCode | null {
 let activeLocaleCode: SupportedLocaleCode = resolveLocaleCode();
 export let currentLocaleCode: SupportedLocaleCode = activeLocaleCode;
 
+export function getActiveLocaleCode(): SupportedLocaleCode {
+	const resolved = resolveLocaleCode();
+	if (resolved !== activeLocaleCode) {
+		activeLocaleCode = resolved;
+		currentLocaleCode = resolved;
+	}
+
+	return activeLocaleCode;
+}
+
 export function setActiveLocaleCode(code: string): SupportedLocaleCode {
 	const normalized = code.trim().toLowerCase().split('-')[0];
 	const resolved: SupportedLocaleCode = isSupportedLocaleCode(normalized) ? normalized : 'en';
@@ -96,7 +106,7 @@ export function setActiveLocaleCode(code: string): SupportedLocaleCode {
 }
 
 function resolveLocale(): AppLocale {
-	const localeCode = activeLocaleCode;
+	const localeCode = getActiveLocaleCode();
 	if (localeCode === 'en') {
 		return en;
 	}

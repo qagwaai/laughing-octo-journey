@@ -54,8 +54,22 @@ export const it: DeepPartial<EnLocale> = {
 	character: {
 		list: {
 			title: 'Lista Personaggi',
+			subtitle: 'Rivedi i personaggi creati per il tuo profilo giocatore.',
+			loadLabel: 'Carica personaggi',
+			loadingLabel: 'Caricamento...',
+			setupLabel: 'Crea / Modifica personaggio',
+			emptyState: 'Nessun personaggio ancora caricato.',
 			joinLabel: 'Entra nel gioco',
 			joinInProgressLabel: 'Continua partita',
+			editLabel: 'Modifica',
+			deleteLabel: 'Elimina',
+			dialog: {
+				title: 'Elimina personaggio',
+				confirmQuestion: 'Sei sicuro di voler eliminare',
+				confirmLabel: 'Conferma eliminazione',
+				confirmingLabel: 'Eliminazione in corso...',
+				cancelLabel: 'Annulla',
+			},
 			errors: {
 				loadCharactersRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare i personaggi.',
 				deleteRequiresPlayer: 'Il nome giocatore e obbligatorio per eliminare un personaggio.',
@@ -64,6 +78,21 @@ export const it: DeepPartial<EnLocale> = {
 			},
 		},
 		setup: {
+			title: 'Creazione personaggio',
+			editTitle: 'Modifica personaggio',
+			subtitle: 'Completa il profilo del pilota prima del lancio.',
+			editSubtitle: 'Aggiorna il profilo del pilota.',
+			characterNameLabel: 'Nome personaggio',
+			characterNamePlaceholder: 'Inserisci il nome del personaggio',
+			submitLabel: 'Salva personaggio',
+			editSubmitLabel: 'Salva modifiche personaggio',
+			submittingLabel: 'Salvataggio personaggio...',
+			listLabel: 'Vedi lista personaggi',
+			errors: {
+				characterNameRequired: 'Il nome del personaggio e obbligatorio.',
+				characterNameMinLength: 'Deve contenere almeno 2 caratteri.',
+				characterNameMaxLength: 'Deve contenere al massimo 24 caratteri.',
+			},
 			messages: {
 				saveRequiresPlayer: 'Il nome giocatore e obbligatorio per salvare un personaggio.',
 				editRequiresCharacterId: 'L\'id del personaggio e obbligatorio per modificare un personaggio.',
@@ -76,12 +105,50 @@ export const it: DeepPartial<EnLocale> = {
 	},
 	game: {
 		join: {
+			title: 'Ingresso gioco',
+			subtitle: 'Preparazione all\'ingresso con il personaggio selezionato.',
+			shipsTitle: 'Navi',
+			shipLoadingStatus: 'Caricamento navi...',
+			shipEmptyStatus: 'Nessuna nave trovata per questo personaggio.',
+			shipNameLabel: 'Nome:',
+			shipIdLabel: 'ID:',
+			shipModelLabel: 'Modello:',
+			shipTierLabel: 'Livello:',
+			shipDefaultModel: 'Scavenger Pod',
+			shipViewSpecsLabel: 'Vedi specifiche',
+			shipKinematicsLabel: 'Cinematica:',
 			errors: {
 				loadShipsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare le navi.',
 				loadShipsRequiresCharacterId: 'L\'id del personaggio e obbligatorio per caricare le navi.',
 			},
 		},
+		main: {
+			title: 'Principale gioco',
+			subtitle: 'Panoramica del controllo missione per il pilota e l\'operazione attuale.',
+			sectionTitle: 'Operazione corrente',
+			sectionDescription:
+				'La telemetria di scansione e attiva nel pannello di destra. Usa il menu operazioni per aprire i moduli profilo, hangar e mercato mantenendo attivo il flusso di scansione.',
+		},
+		logout: {
+			title: 'Disconnessione',
+			subtitle: 'Esci dalla sessione autenticata corrente.',
+			sectionTitle: 'Esci',
+			sectionDescription: 'Usa questa azione per cancellare la sessione e tornare al login.',
+			confirmLabel: 'Conferma uscita',
+		},
+		stellarInitiation: {
+			title: 'Iniziazione stellare',
+			subtitle: 'Onboarding missione, controlli di volo e preparazione al lancio.',
+			sectionTitle: 'Checklist',
+			sectionDescription:
+				'Modulo di esempio: esegui la diagnostica, valida le credenziali e conferma l\'assegnazione del corridoio di lancio.',
+		},
 		repairRetrofit: {
+			title: 'Riparazione e retrofit',
+			subtitle: 'Ordini di lavoro del vano manutenzione e pianificazione degli aggiornamenti hardware.',
+			sectionTitle: 'Coda interventi',
+			sectionDescription:
+				'Modulo di esempio: esamina componenti danneggiati, finestre di riparazione stimate e opzioni di retrofit.',
 			loadingShipLabel: 'Sincronizzazione diagnostica nave...',
 			viewDetailsLabel: 'Vedi dettagli',
 			printerSectionTitle: 'Fabbricatore 3D di bordo',
@@ -100,6 +167,9 @@ export const it: DeepPartial<EnLocale> = {
 		repairRetrofitItems: {
 			title: 'Elementi di Riparazione',
 			subtitlePrefix: 'Revisione dettagliata di tutte le risorse riparabili per',
+			noActiveDamageProfileLabel: 'Nessun profilo danni attivo trovato.',
+			inventoryItemSummaryPrefix: "L'oggetto nell'inventario nave e",
+			inventoryItemSummaryInfix: 'mentre e',
 			missingLabel: 'Mancante:',
 			hullPatchKitRequiredLabel: 'Hull Patch Kit - richiesto per la riparazione dello Scavenger Pod.',
 			requiredMaterialsLabel: 'Materiali richiesti:',
@@ -212,8 +282,27 @@ export const it: DeepPartial<EnLocale> = {
 			persistFailedLabel: 'Aggiornamento riparazione sottosistema non persistito.',
 			successLabel: 'Sottosistema completamente riparato e sincronizzato.',
 		},
+		marketHub: {
+			title: 'Hub mercato',
+			subtitle: 'Terminale di scambio per offerte di equipaggiamento, contratti e commercio risorse.',
+			sectionTitle: 'Bacheca scambi',
+			sectionDescription: 'Modulo di esempio: consulta annunci, valuta prezzi e prepara ordini di acquisto.',
+		},
 		shipHangar: {
 			title: 'Hangar Navi',
+			subtitle: 'Registro flotta, prontezza al dispiegamento e coda di assegnazione navi.',
+			sectionTitle: 'Bacheca hangar',
+			sectionDescription:
+				'Modulo di esempio: elenca navi attraccate, stato sortita e prenotazioni delle baie di lancio.',
+			shipLoadingStatus: 'Caricamento navi...',
+			shipEmptyStatus: 'Nessuna nave trovata per questo personaggio.',
+			shipNameLabel: 'Nome:',
+			shipModelLabel: 'Modello:',
+			shipTierLabel: 'Livello:',
+			shipLocationLabel: 'Posizione:',
+			locationUnavailable: 'Posizione non disponibile',
+			shipViewInventoryLabel: 'Vedi inventario',
+			shipExteriorViewLabel: 'Vista esterna',
 			shipSetActiveLabel: 'Imposta come nave attiva',
 			errors: {
 				loadShipsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare le navi.',
@@ -221,7 +310,31 @@ export const it: DeepPartial<EnLocale> = {
 				loadShipsRequiresSessionKey: 'La chiave sessione e obbligatoria per caricare le navi.',
 			},
 		},
+		shipViewInventory: {
+			title: 'Inventario nave',
+			subtitle: 'Manifesto cargo e oggetti equipaggiati per la nave selezionata.',
+			sectionTitle: 'Manifesto cargo',
+			shipNameLabel: 'Nave:',
+			inventoryEmptyStatus: 'Nessun oggetto trovato nell\'inventario.',
+			itemNameLabel: 'Oggetto',
+			quantityLabel: 'Qta',
+			actionsLabel: 'Azioni',
+			viewSpecsLabel: 'Vedi specifiche',
+			backLabel: 'Torna all\'hangar navi',
+		},
 		missionBoard: {
+			title: 'Bacheca missioni',
+			subtitle: 'Missioni attive e completate per questo personaggio.',
+			sectionTitle: 'Registro missioni',
+			sectionDescription: 'Tutti i progressi missione registrati per questo personaggio.',
+			missionLoadingStatus: 'Caricamento missioni...',
+			missionEmptyStatus: 'Nessuna missione trovata per questo personaggio.',
+			missionIdLabel: 'Missione:',
+			statusLabel: 'Stato:',
+			startedAtLabel: 'Avviata:',
+			updatedAtLabel: 'Aggiornata:',
+			stageLabel: 'Fase:',
+			nextStepLabel: 'Prossimo passo:',
 			errors: {
 				loadMissionsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare le missioni.',
 				loadMissionsRequiresCharacterId: 'L\'id del personaggio e obbligatorio per caricare le missioni.',
@@ -260,11 +373,51 @@ export const it: DeepPartial<EnLocale> = {
 			defaultFooterTag: '[ L-BRACKET_SISTEMA_PRONTO ]',
 			blueprintImageAltSuffix: 'immagine profilo blueprint',
 		},
+		fabricationLab: {
+			title: 'Laboratorio di fabbricazione',
+			subtitle: 'Gestione blueprint e pipeline di produzione componenti.',
+			sectionTitle: 'Coda produzione',
+			sectionDescription:
+				'Modulo di esempio: pianifica cicli di produzione e controlla la qualita del risultato di fabbricazione.',
+		},
+		characterProfile: {
+			title: 'Profilo personaggio',
+			subtitle: 'Scheda identita, traguardi di progressione e reputazione missione.',
+			sectionTitle: 'Panoramica profilo',
+			sectionDescription:
+				'Modulo di esempio: mostra cronologia grado, distintivi di specializzazione e assegnazione corrente.',
+		},
 	},
 	opening: {
 		coldBoot: {
+			bootStageLabel: 'Fase di avvio',
+			startScanningDescription:
+				'Avviare la scansione della regione vicina per raccogliere materie prime da usare nella stampa di un\'unita di fabbricazione?',
 			startScanningLabel: 'Avvia scansione?',
 			startScanningPendingLabel: 'Avvio scansione...',
+			startScanningErrorLabel: 'Trasferimento scansione fallito. Riprova quando le comunicazioni si stabilizzano.',
+			enableAudioHooksLabel: 'Abilita hook audio',
+			disableAudioHooksLabel: 'Disabilita hook audio',
+			audioStatusTitle: 'Stato audio',
+			armedLabel: 'Armato',
+			bedLabel: 'Letto sonoro',
+			speechLabel: 'Voce',
+			yesLabel: 'Si',
+			noLabel: 'No',
+			runningLabel: 'Attivo',
+			stoppedLabel: 'Fermo',
+			availableLabel: 'Disponibile',
+			unavailableLabel: 'Non disponibile',
+			armedTooltipOn: 'L\'audio e armato e puo riprodurre i livelli cinematografici.',
+			armedTooltipOff:
+				"L'audio e disabilitato. Fai clic su Abilita hook audio, oppure esegui il primo gesto di puntatore/tastiera, per sbloccare la riproduzione.",
+			bedTooltipDisarmed: 'Il letto sonoro e fermo perche l\'audio non e ancora armato.',
+			bedTooltipStopped:
+				'Il letto sonoro e fermo. Rientra in questa sequenza o riattiva l\'audio per riavviare il loop.',
+			bedTooltipRunning: 'Il loop del letto sonoro e attualmente in esecuzione.',
+			speechTooltipAvailable: 'La sintesi vocale e disponibile per le trasmissioni dell\'IA.',
+			speechTooltipUnavailable:
+				'La sintesi vocale non e disponibile in questo browser o nell\'ambiente corrente.',
 		},
 	},
 } as const;

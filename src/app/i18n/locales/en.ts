@@ -253,6 +253,9 @@ export const en = {
 		repairRetrofitItems: {
 			title: 'Repair Items',
 			subtitlePrefix: 'Detailed review of all repairable assets for',
+			noActiveDamageProfileLabel: 'No active damage profile found.',
+			inventoryItemSummaryPrefix: 'Ship inventory item is',
+			inventoryItemSummaryInfix: 'while',
 			missingLabel: 'Missing:',
 			hullPatchKitRequiredLabel: 'Hull Patch Kit - required for Scavenger Pod repair.',
 			requiredMaterialsLabel: 'Required Materials:',

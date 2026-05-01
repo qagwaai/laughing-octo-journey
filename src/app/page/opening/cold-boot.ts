@@ -1,4 +1,4 @@
-import { LOCALE_ID, ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -6,7 +6,7 @@ import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../m
 import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
 import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import { MissionService, OpeningAudioService, SessionService } from '../../services';
-import { locale } from '../../i18n/locale';
+import { getActiveLocaleCode, locale } from '../../i18n/locale';
 
 interface ColdBootNavigationState {
 	playerName?: string;
@@ -24,7 +24,6 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	private route = inject(ActivatedRoute);
 	private router = inject(Router);
-	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private openingAudio = inject(OpeningAudioService);
 	private missionService = inject(MissionService);
 	private sessionService = inject(SessionService);
@@ -43,7 +42,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 	protected scanActionError = signal('');
 
 	protected content = signal(
-		resolveOpeningSequenceContent(this.locale, this.route.snapshot.queryParamMap.get('variant') ?? undefined),
+		resolveOpeningSequenceContent(getActiveLocaleCode(), this.route.snapshot.queryParamMap.get('variant') ?? undefined),
 	);
 
 	protected visibleSystemChecks = computed(() => {

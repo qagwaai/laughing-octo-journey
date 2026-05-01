@@ -61,4 +61,48 @@ export const OPENING_SEQUENCE_LIBRARY: Record<string, OpeningSequenceLocaleBundl
 			},
 		},
 	},
+	it: {
+		variants: {
+			'cold-boot': {
+				sequenceTitle: 'Sequenza iniziale: Cold Boot',
+				eyebrow: 'Bootstrap missione',
+				phaseOneTitle: '1. La fase del blackout',
+				phaseOneDescription:
+					'Lo schermo e completamente nero. Le pompe del supporto vitale pulsano con un ritmo rigido mentre un respiro pesante attraversa il rumore della cabina.',
+				phaseTwoTitle: '2. La prima visuale',
+				phaseTwoDescription:
+					"L'HUD si riaccende a fatica. Attraverso la cappottina incrinata di uno Scavenger Pod di livello 1 scorre il Cimitero: scafi frammentati, travi spezzate e relitti gelidi davanti alla sagoma di un sole blu morente.",
+				phaseThreeTitle: '3. Il risveglio dell\'IA',
+				systemChecks: [
+					'CONTROLLO BIOS... OK',
+					'LIVELLI OSSIGENO... 18% (CRITICO)',
+					'COLLEGAMENTO NEURALE... STABILITO',
+				],
+				aiTransmission:
+					"Pilota, la nave reattore e andata perduta. Stiamo derivando con la batteria residua. Per sopravvivere dobbiamo mettere al sicuro materia ad alta densita per l'unita di fabbricazione. Autorizzato il dispiegamento dell'ultima unita Expendable.",
+				hudTitle: 'COLD BOOT // SCAVENGER POD LIVELLO 1',
+				aiLabel: 'COLLEGAMENTO IA // CANALE DEGRADATO',
+			},
+			'cold-boot-distress': {
+				sequenceTitle: 'Sequenza iniziale: Cold Boot',
+				eyebrow: 'Bootstrap di emergenza',
+				phaseOneTitle: '1. La fase del blackout',
+				phaseOneDescription:
+					'Il cockpit resta al buio. Le ventole di sfiato pulsano con una cadenza in avaria mentre il tuo respiro viene amplificato attraverso un filtro danneggiato.',
+				phaseTwoTitle: '2. La prima visuale',
+				phaseTwoDescription:
+					"L'HUD si avvia tra scariche statiche. Il Cimitero resta oltre la cappottina incrinata mentre un sole blu pallido staglia carcasse di navi alla deriva.",
+				phaseThreeTitle: '3. Il risveglio dell\'IA',
+				systemChecks: [
+					'CONTROLLO BIOS... MODALITA DEGRADATA',
+					'LIVELLI OSSIGENO... 14% (CRITICO)',
+					'COLLEGAMENTO NEURALE... STABILITO',
+				],
+				aiTransmission:
+					"Pilota, la telemetria conferma la distruzione della nave reattore. La batteria residua sta collassando. Dai priorita all'acquisizione di materia ad alta densita per garantire continuita all'unita di fabbricazione. Autorizzazione finale Expendable concessa.",
+				hudTitle: 'COLD BOOT // PROFILO EMERGENZA',
+				aiLabel: 'COLLEGAMENTO IA // CANALE DI EMERGENZA',
+			},
+		},
+	},
 };

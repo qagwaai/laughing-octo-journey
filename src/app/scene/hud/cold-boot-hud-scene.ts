@@ -1,5 +1,4 @@
 import {
-	LOCALE_ID,
 	ChangeDetectionStrategy,
 	Component,
 	CUSTOM_ELEMENTS_SCHEMA,
@@ -14,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 import { injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
+import { getActiveLocaleCode } from '../../i18n/locale';
 import { CrackedCockpitWindow } from './cracked-cockpit-window';
 
 @Component({
@@ -28,7 +28,6 @@ export default class ColdBootHudScene implements OnInit, OnDestroy {
 	private static readonly ALERT_STROBE_CYCLE_MS = 1800;
 
 	private route = inject(ActivatedRoute);
-	private locale = inject(LOCALE_ID, { optional: true }) ?? 'en';
 	private store = injectStore();
 	private timers: number[] = [];
 	private cameraInitialized = false;
@@ -49,7 +48,7 @@ export default class ColdBootHudScene implements OnInit, OnDestroy {
 	protected alertPulse = signal(0.35);
 
 	protected content = signal(
-		resolveOpeningSequenceContent(this.locale, this.route.snapshot.queryParamMap.get('variant') ?? undefined),
+		resolveOpeningSequenceContent(getActiveLocaleCode(), this.route.snapshot.queryParamMap.get('variant') ?? undefined),
 	);
 	protected alertLightIntensity = computed(() => 1.2 + this.alertPulse() * 6.8);
 	protected alertEmitterIntensity = computed(() => 0.9 + this.alertPulse() * 5.1);
