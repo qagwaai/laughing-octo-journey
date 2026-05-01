@@ -226,6 +226,314 @@ test.describe('Ship Exterior Test Utilities', () => {
 		expect(manufactureWithoutLaunch.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
 	});
 
+	test('completes deterministic mission flow and emits completed mission status', async ({ page }) => {
+		const mock = new SocketIOMock(page);
+		await mock.setup();
+		const missionUpsertRequests: Array<{ status?: string }> = [];
+
+		mock.on('character-list-request', () => ({
+			event: 'character-list-response',
+			data: {
+				success: true,
+				message: '',
+				playerName: TEST_PLAYER,
+				characters: [
+					{
+						id: TEST_CHARACTER_ID,
+						characterName: 'Scout Alpha',
+						level: 2,
+						missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+					},
+				],
+			},
+		}));
+
+		mock.on('game-join-request', () => null);
+
+		mock.on('list-missions-request', () => ({
+			event: 'list-missions-response',
+			data: {
+				success: true,
+				message: '',
+				playerName: TEST_PLAYER,
+				characterId: TEST_CHARACTER_ID,
+				missions: [
+					{
+						missionId: FIRST_TARGET_MISSION_ID,
+						status: 'started',
+					},
+				],
+			},
+		}));
+
+		mock.on('ship-list-request', () => ({
+			event: 'ship-list-response',
+			data: {
+				success: true,
+				message: '',
+				playerName: TEST_PLAYER,
+				characterId: TEST_CHARACTER_ID,
+				ships: [
+					{
+						id: 'ship-1',
+						name: 'Starter Pod',
+						model: 'Scavenger Pod',
+						status: 'Damaged',
+						inventory: [
+							{
+								id: 'item-drone-1',
+								itemType: 'expendable-dart-drone',
+								displayName: 'Expendable Dart Drone',
+								launchable: true,
+								state: 'contained',
+								damageStatus: 'intact',
+								container: { containerType: 'ship', containerId: 'ship-1' },
+								owningPlayerId: TEST_PLAYER,
+								owningCharacterId: TEST_CHARACTER_ID,
+								kinematics: null,
+								destroyedAt: null,
+								destroyedReason: null,
+								discoveredAt: null,
+								discoveredByCharacterId: null,
+								createdAt: '2026-05-01T00:00:00.000Z',
+								updatedAt: '2026-05-01T00:00:00.000Z',
+							},
+						],
+						location: {
+							positionKm: { x: 1_000_000, y: 0, z: 0 },
+						},
+						kinematics: {
+							position: { x: 1_000_000, y: 0, z: 0 },
+							velocity: { x: 0, y: 0, z: 0 },
+							reference: {
+								solarSystemId: 'sol',
+								referenceKind: 'system',
+								referenceBodyId: null,
+								distanceUnit: 'km',
+								velocityUnit: 'km/s',
+								epochMs: Date.now(),
+							},
+						},
+					},
+				],
+			},
+		}));
+
+		mock.on('celestial-body-list-request', () => ({
+			event: 'celestial-body-list-response',
+			data: {
+				success: true,
+				message: '',
+				playerName: TEST_PLAYER,
+				solarSystemId: 'sol',
+				positionKm: { x: 1_000_000, y: 0, z: 0 },
+				distanceKm: 900_000,
+				celestialBodies: [],
+			},
+		}));
+
+		mock.on('celestial-body-upsert-request', (request) => {
+			const payload = request as {
+				celestialBody?: {
+					id?: string;
+					sourceScanId?: string;
+					catalogId?: string;
+					solarSystemId?: string;
+					createdByCharacterId?: string;
+					createdAt?: string;
+					updatedAt?: string;
+					location?: unknown;
+					kinematics?: unknown;
+					composition?: unknown;
+					state?: 'unscanned' | 'active' | 'destroyed';
+				};
+			};
+			const celestialBody = payload.celestialBody ?? {};
+			return {
+				event: 'celestial-body-upsert-response',
+				data: {
+					success: true,
+					message: '',
+					celestialBody: {
+						id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
+						sourceScanId: celestialBody.sourceScanId ?? 'generated',
+						catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
+						solarSystemId: celestialBody.solarSystemId ?? 'sol',
+						createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
+						createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
+						updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
+						location: celestialBody.location,
+						kinematics: celestialBody.kinematics,
+						composition: celestialBody.composition,
+						state: celestialBody.state ?? 'unscanned',
+					},
+				},
+			};
+		});
+
+		mock.on('launch-item-request', (request) => {
+			const payload = request as {
+				shipId?: string;
+				targetCelestialBodyId?: string;
+				hotkey?: 1 | 2 | 3 | 4 | 5;
+				itemId?: string;
+				itemType?: string;
+			};
+			return {
+				event: 'launch-item-response',
+				data: {
+					success: true,
+					message: 'Target destroyed',
+					playerName: TEST_PLAYER,
+					characterId: TEST_CHARACTER_ID,
+					shipId: payload.shipId ?? 'ship-1',
+					targetCelestialBodyId: payload.targetCelestialBodyId ?? 'cb-generated',
+					hotkey: payload.hotkey ?? 1,
+					itemId: payload.itemId ?? 'item-drone-1',
+					itemType: payload.itemType ?? 'expendable-dart-drone',
+					resolution: {
+						outcome: 'target-destroyed',
+						targetDestroyed: true,
+						yieldedMaterials: [],
+						yieldedItems: [],
+						launchSeed: 42,
+					},
+				},
+			};
+		});
+
+		mock.on('add-mission-request', (request) => {
+			missionUpsertRequests.push(request as { status?: string });
+			return {
+				event: 'add-mission-response',
+				data: {
+					success: true,
+					message: '',
+					playerName: TEST_PLAYER,
+					characterId: TEST_CHARACTER_ID,
+				},
+			};
+		});
+
+		await loginViaUI(page, mock);
+		await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+		await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const api = (window as Window & {
+						__shipExteriorTestUtils?: { getMissionGateState?: () => unknown; getAsteroidSamples?: () => unknown[] };
+					}).__shipExteriorTestUtils;
+					return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
+				}),
+			)
+			.toBe(true);
+
+		const firstSampleId = await page.evaluate(() => {
+			const api = (window as Window & {
+				__shipExteriorTestUtils?: { getAsteroidSamples: () => Array<{ id: string }> };
+			}).__shipExteriorTestUtils;
+			return api!.getAsteroidSamples()[0]?.id ?? null;
+		});
+
+		expect(firstSampleId).not.toBeNull();
+
+		await page.evaluate((sampleId) => {
+			const api = (window as Window & {
+				__shipExteriorTestUtils?: { forceCompleteIronScan: (id?: string) => unknown };
+			}).__shipExteriorTestUtils;
+			api!.forceCompleteIronScan(sampleId ?? undefined);
+		}, firstSampleId);
+
+		await expect
+			.poll(async () =>
+				page.evaluate((sampleId) => {
+					const api = (window as Window & {
+						__shipExteriorTestUtils?: {
+							getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
+							getAsteroidSamples: () => Array<{ id: string; serverCelestialBodyId: string | null }>;
+						};
+					}).__shipExteriorTestUtils;
+					const gate = api!.getMissionGateState();
+					const neutralizeStatus = gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status;
+					const sample = api!.getAsteroidSamples().find((entry) => entry.id === sampleId);
+					return {
+						neutralizeStatus,
+						hasServerId: Boolean(sample?.serverCelestialBodyId),
+					};
+				}, firstSampleId),
+			)
+			.toEqual({ neutralizeStatus: 'active', hasServerId: true });
+
+		await page.evaluate((sampleId) => {
+			const api = (window as Window & {
+				__shipExteriorTestUtils?: {
+					forceTargetAsteroid: (id: string) => boolean;
+					launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+				};
+			}).__shipExteriorTestUtils;
+			if (sampleId && api?.forceTargetAsteroid(sampleId)) {
+				api.launchFromHotkey(1);
+			}
+		}, firstSampleId);
+
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const api = (window as Window & {
+						__shipExteriorTestUtils?: { getMissionGateState: () => { steps: Array<{ key: string; status: string }> } };
+					}).__shipExteriorTestUtils;
+					const gate = api!.getMissionGateState();
+					return {
+						neutralize: gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status,
+						manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
+					};
+				}),
+			)
+			.toEqual({ neutralize: 'completed', manufacture: 'active' });
+
+		await page.evaluate(() => {
+			const api = (window as Window & {
+				__shipExteriorTestUtils?: { simulateManufacture: (itemType: string) => unknown };
+			}).__shipExteriorTestUtils;
+			api!.simulateManufacture('hull-patch-kit');
+		});
+
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const api = (window as Window & {
+						__shipExteriorTestUtils?: { getMissionGateState: () => { steps: Array<{ key: string; status: string }> } };
+					}).__shipExteriorTestUtils;
+					const gate = api!.getMissionGateState();
+					return {
+						manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
+						repair: gate.steps.find((step) => step.key === 'repair_scavenger_pod')?.status,
+					};
+				}),
+			)
+			.toEqual({ manufacture: 'completed', repair: 'active' });
+
+		const finalGate = await page.evaluate(() => {
+			const api = (window as Window & {
+				__shipExteriorTestUtils?: {
+					simulateRepair: (repairKind: string) => {
+						steps: Array<{ key: string; status: string }>;
+						activeObjectiveText: string;
+					} | null;
+				};
+			}).__shipExteriorTestUtils;
+			return api!.simulateRepair('ship');
+		});
+
+		expect(finalGate).not.toBeNull();
+		expect(finalGate!.steps.every((step) => step.status === 'completed')).toBe(true);
+		expect(finalGate!.activeObjectiveText).toContain('Mission objectives complete');
+
+		await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'in-progress')).toBe(true);
+	});
+
 	test('resets stale local completed gate state when backend reports started without statusDetail', async ({ page }) => {
 		const mock = new SocketIOMock(page);
 		await mock.setup();
