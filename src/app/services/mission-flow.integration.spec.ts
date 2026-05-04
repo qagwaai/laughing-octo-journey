@@ -170,10 +170,7 @@ describe('Mission integration proof of concept', () => {
 	beforeEach(() => {
 		socketService = new MockSocketService();
 		missionService = new MissionService(socketService as never);
-		syncService = new MissionProgressSyncService(missionService, {
-			assignFollowOnMissions: () => Promise.resolve({ assignedMissionIds: [], skippedMissionIds: [] }),
-			assignPostFirstTargetMissions: () => Promise.resolve({ assignedMissionIds: [], skippedMissionIds: [] }),
-		} as never);
+		syncService = new MissionProgressSyncService(missionService);
 	});
 
 	async function syncGateStateAndAcknowledge(gateState: GateState): Promise<MissionUpsertRequest> {
