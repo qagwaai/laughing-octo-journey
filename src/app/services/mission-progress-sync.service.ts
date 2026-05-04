@@ -1,19 +1,26 @@
 import { Injectable } from '@angular/core';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 import { MissionService, type UpsertMissionStatusResult } from './mission.service';
+import { MissionAssignmentService } from './mission-assignment.service';
+import type { CharacterMissionProgress } from '../model/mission';
 
 export interface MissionProgressSyncRequest {
 	playerName: string;
 	characterId: string;
 	sessionKey: string;
 	gateState: ShipExteriorMissionGateState;
+	/** Current mission list used to determine what follow-on missions to assign. */
+	currentMissions?: CharacterMissionProgress[];
 }
 
 @Injectable({
 	providedIn: 'root',
 })
 export class MissionProgressSyncService {
-	constructor(private missionService: MissionService) {}
+	constructor(
+		private missionService: MissionService,
+		private missionAssignmentService: MissionAssignmentService,
+	) {}
 
 	async syncGateState(request: MissionProgressSyncRequest): Promise<UpsertMissionStatusResult | 'skipped'> {
 		const playerName = request.playerName.trim();
@@ -25,7 +32,7 @@ export class MissionProgressSyncService {
 		}
 
 		const status = this.resolveStatusFromGateState(request.gateState);
-		return this.missionService.upsertMissionStatus({
+		const upsertResult = await this.missionService.upsertMissionStatus({
 			playerName,
 			characterId,
 			sessionKey,
@@ -33,6 +40,17 @@ export class MissionProgressSyncService {
 			status,
 			statusDetail: JSON.stringify(request.gateState),
 		});
+
+		// When a mission completes, auto-assign unlocked follow-on missions client-side.
+		if (status === 'completed') {
+			await this.missionAssignmentService.assignFollowOnMissions(missionId, {
+				playerName,
+				characterId,
+				currentMissions: request.currentMissions ?? [],
+			});
+		}
+
+		return upsertResult;
 	}
 
 	private resolveStatusFromGateState(gateState: ShipExteriorMissionGateState): string {

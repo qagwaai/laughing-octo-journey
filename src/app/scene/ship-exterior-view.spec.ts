@@ -977,3 +977,113 @@ describe('ShipExteriorViewScene - subscription cleanup (ngOnDestroy)', () => {
 		expect(unsubShip).toHaveBeenCalledTimes(2);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Backend mission status reconciliation guard
+// ---------------------------------------------------------------------------
+
+interface MockGateStepState {
+	key: string;
+	status: 'locked' | 'active' | 'completed' | 'pending-retry';
+}
+
+interface MockMissionGateState {
+	steps: MockGateStepState[];
+}
+
+class MockMissionStatusReconcileScene {
+	missionGateState: MockMissionGateState;
+	persistCalls = 0;
+
+	constructor(initialState: MockMissionGateState) {
+		this.missionGateState = initialState;
+	}
+
+	applyBackendStatusWithoutDetail(status: string | null | undefined): void {
+		const normalizedStatus = status?.trim().toLowerCase();
+		if (normalizedStatus === 'started') {
+			const currentRank = this.getMissionGateProgressRank(this.missionGateState);
+			const maxRank = this.missionGateState.steps.length;
+			const hasPartialProgress = currentRank > 0 && currentRank < maxRank;
+			if (!hasPartialProgress) {
+				const resetGateState = this.createInitialMissionGateState();
+				this.missionGateState = resetGateState;
+				this.persistMissionGateState(resetGateState);
+			}
+		}
+	}
+
+	private createInitialMissionGateState(): MockMissionGateState {
+		return {
+			steps: [
+				{ key: 'identify_iron_asteroid', status: 'active' },
+				{ key: 'neutralize_identified_asteroid', status: 'locked' },
+				{ key: 'manufacture_hull_patch_kit', status: 'locked' },
+				{ key: 'repair_scavenger_pod', status: 'locked' },
+			],
+		};
+	}
+
+	private persistMissionGateState(_state: MockMissionGateState): void {
+		this.persistCalls += 1;
+	}
+
+	private getMissionGateProgressRank(gateState: MockMissionGateState): number {
+		return gateState.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').length;
+	}
+}
+
+describe('ShipExteriorViewScene - backend started status guard', () => {
+	it('should not reset local gate progress when backend returns stale started status and partial progress exists', () => {
+		const partialProgressState: MockMissionGateState = {
+			steps: [
+				{ key: 'identify_iron_asteroid', status: 'completed' },
+				{ key: 'neutralize_identified_asteroid', status: 'completed' },
+				{ key: 'manufacture_hull_patch_kit', status: 'active' },
+				{ key: 'repair_scavenger_pod', status: 'locked' },
+			],
+		};
+		const scene = new MockMissionStatusReconcileScene(partialProgressState);
+
+		scene.applyBackendStatusWithoutDetail('started');
+
+		expect(scene.missionGateState).toEqual(partialProgressState);
+		expect(scene.persistCalls).toBe(0);
+	});
+
+	it('should reset to initial gate state when started status arrives and there is no local progress yet', () => {
+		const freshState: MockMissionGateState = {
+			steps: [
+				{ key: 'identify_iron_asteroid', status: 'active' },
+				{ key: 'neutralize_identified_asteroid', status: 'locked' },
+				{ key: 'manufacture_hull_patch_kit', status: 'locked' },
+				{ key: 'repair_scavenger_pod', status: 'locked' },
+			],
+		};
+		const scene = new MockMissionStatusReconcileScene(freshState);
+
+		scene.applyBackendStatusWithoutDetail('started');
+
+		expect(scene.persistCalls).toBe(1);
+		expect(scene.missionGateState.steps[0].status).toBe('active');
+		expect(scene.missionGateState.steps[1].status).toBe('locked');
+	});
+
+	it('should reset stale fully-completed gate state when backend reports started without statusDetail', () => {
+		const allCompletedState: MockMissionGateState = {
+			steps: [
+				{ key: 'identify_iron_asteroid', status: 'completed' },
+				{ key: 'neutralize_identified_asteroid', status: 'completed' },
+				{ key: 'manufacture_hull_patch_kit', status: 'completed' },
+				{ key: 'repair_scavenger_pod', status: 'completed' },
+			],
+		};
+		const scene = new MockMissionStatusReconcileScene(allCompletedState);
+
+		scene.applyBackendStatusWithoutDetail('started');
+
+		expect(scene.persistCalls).toBe(1);
+		expect(scene.missionGateState.steps[0].status).toBe('active');
+		expect(scene.missionGateState.steps[1].status).toBe('locked');
+	});
+});

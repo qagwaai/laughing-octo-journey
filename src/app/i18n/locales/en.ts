@@ -377,6 +377,9 @@ export const en = {
 			subtitle: 'Exchange terminal for equipment bids, contracts, and resource trading.',
 			sectionTitle: 'Trade Board',
 			sectionDescription: 'Sample module: browse listings, evaluate prices, and prepare purchase orders.',
+			activeMissionSectionTitle: 'Active Mission',
+			activeMissionLabel: 'Current Objective:',
+			noActiveMissionLabel: 'No active market mission.',
 		},
 
 		shipHangar: {
@@ -478,6 +481,16 @@ export const en = {
 			updatedAtLabel: 'Updated:',
 			stageLabel: 'Stage:',
 			nextStepLabel: 'Next step:',
+			typeLabel: 'Type:',
+			typeLabelMain: 'Main',
+			typeLabelSide: 'Side Quest',
+			rewardCreditsLabel: 'Reward:',
+			rewardCreditsSuffix: 'Credits',
+			objectivesLabel: 'Objectives:',
+			availableSectionTitle: 'Available Missions',
+			lockedSectionTitle: 'Locked Missions',
+			lockedStatusLabel: 'Locked — complete prerequisites first.',
+			availableStatusLabel: 'Available',
 			errors: {
 				loadMissionsRequiresPlayer: 'Player name is required to load missions.',
 				loadMissionsRequiresCharacterId: 'Character id is required to load missions.',

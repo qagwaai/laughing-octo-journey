@@ -1,6 +1,14 @@
 import { MissionProgressSyncService } from './mission-progress-sync.service';
 import { MissionService } from './mission.service';
+import { MissionAssignmentService } from './mission-assignment.service';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
+
+function stubAssignmentService(): MissionAssignmentService {
+	return {
+		assignFollowOnMissions: jasmine.createSpy('assignFollowOnMissions').and.returnValue(Promise.resolve({ assignedMissionIds: [], skippedMissionIds: [] })),
+		assignPostFirstTargetMissions: jasmine.createSpy('assignPostFirstTargetMissions').and.returnValue(Promise.resolve({ assignedMissionIds: [], skippedMissionIds: [] })),
+	} as unknown as MissionAssignmentService;
+}
 
 describe('MissionProgressSyncService', () => {
 	const gateState: ShipExteriorMissionGateState = {
@@ -35,7 +43,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus'),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const result = await service.syncGateState({
 			playerName: 'Pioneer',
@@ -52,7 +60,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const result = await service.syncGateState({
 			playerName: 'Pioneer',
@@ -78,7 +86,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const matrix: Array<{
 			label: string;
@@ -132,7 +140,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const emptyStepsGateState: ShipExteriorMissionGateState = {
 			missionId: 'first-target',
@@ -158,7 +166,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		await service.syncGateState({
 			playerName: 'Pioneer',
@@ -176,7 +184,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus'),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const noMissionIdGateState: ShipExteriorMissionGateState = {
 			missionId: '',
@@ -201,7 +209,7 @@ describe('MissionProgressSyncService', () => {
 		const missionService = {
 			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus'),
 		} as unknown as MissionService;
-		const service = new MissionProgressSyncService(missionService);
+		const service = new MissionProgressSyncService(missionService, stubAssignmentService());
 
 		const result = await service.syncGateState({
 			playerName: '',

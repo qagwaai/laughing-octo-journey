@@ -9,6 +9,20 @@
 			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
 		</div>
 
+		@if (activeM01Mission() && m01Definition) {
+			<section class="ops-card">
+				<h2>{{ t.game.marketHub.activeMissionSectionTitle }}</h2>
+				<p><strong>{{ m01Definition.title }}</strong></p>
+				<p>{{ m01Definition.briefing }}</p>
+				<p><strong>{{ t.game.marketHub.activeMissionLabel }}</strong></p>
+				<ul>
+					@for (objective of m01Definition.objectives; track objective) {
+						<li>{{ objective }}</li>
+					}
+				</ul>
+			</section>
+		}
+
 		<section class="ops-card">
 			<h2>{{ t.game.marketHub.sectionTitle }}</h2>
 			<p>{{ t.game.marketHub.sectionDescription }}</p>

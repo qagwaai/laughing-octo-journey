@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
@@ -21,6 +21,12 @@ import {
 	serializeMissionGateState,
 	type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
+import {
+	MISSION_CATALOG,
+	isMissionCompleted,
+	resolveMissionById,
+	type MissionDefinition,
+} from '../../model/mission-catalog';
 
 interface MissionBoardNavigationState {
 	playerName?: string;
@@ -51,6 +57,49 @@ export default class MissionBoardPage {
 	protected missions = signal<CharacterMissionProgress[]>([]);
 	protected isLoadingMissions = signal(false);
 	protected missionListError = signal<string | null>(null);
+
+	/**
+	 * The set of mission IDs already tracked by the backend (assigned).
+	 * Used to decide which catalog missions are "new" vs already in the list.
+	 */
+	private readonly assignedMissionIds = computed(() =>
+		new Set(this.missions().map((m) => m.missionId)),
+	);
+
+	/** IDs of missions with completed/turned-in status — drives which missions are visible. */
+	private readonly completedMissionIds = computed(() =>
+		new Set(this.missions().filter((m) => isMissionCompleted(m.status)).map((m) => m.missionId)),
+	);
+
+	/**
+	 * Catalog missions that are NOT yet assigned to the character but whose
+	 * prerequisites are all satisfied — shown as "Available" entries.
+	 */
+	protected readonly availableCatalogMissions = computed<MissionDefinition[]>(() => {
+		const completed = this.completedMissionIds();
+		const assigned = this.assignedMissionIds();
+		return MISSION_CATALOG.filter(
+			(m) =>
+				!assigned.has(m.id) &&
+				m.prerequisites.length > 0 &&
+				m.prerequisites.every((prereqId) => completed.has(prereqId)),
+		);
+	});
+
+	/**
+	 * Catalog missions that are still locked (prerequisites not yet met and not assigned).
+	 * Only shown as a preview — not actionable.
+	 */
+	protected readonly lockedCatalogMissions = computed<MissionDefinition[]>(() => {
+		const completed = this.completedMissionIds();
+		const assigned = this.assignedMissionIds();
+		return MISSION_CATALOG.filter(
+			(m) =>
+				!assigned.has(m.id) &&
+				m.prerequisites.length > 0 &&
+				!m.prerequisites.every((prereqId) => completed.has(prereqId)),
+		);
+	});
 	private readonly missionGateStageSync = effect(() => {
 		const savedGateState = this.missionStateService.lastSaved();
 		const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -140,9 +189,22 @@ export default class MissionBoardPage {
 	}
 
 	getMissionDisplayStatus(mission: CharacterMissionProgress): string {
+		// Non-ship-exterior missions don't have gate steps; return status directly.
+		const catalogEntry = resolveMissionById(mission.missionId);
+		if (catalogEntry && mission.missionId !== 'first-target') {
+			return mission.status ?? 'unknown';
+		}
 		const gateState = this.resolveEffectiveMissionGateState(mission);
 		const missionDef = resolveShipExteriorMission(mission.missionId);
 		return missionDef.resolveMissionStatusFromGateState(gateState);
+	}
+
+	getMissionTitle(missionId: string): string {
+		return resolveMissionById(missionId)?.title ?? missionId;
+	}
+
+	getMissionTypeLabel(type: MissionDefinition['type']): string {
+		return type === 'side' ? this.t.game.missionBoard.typeLabelSide : this.t.game.missionBoard.typeLabelMain;
 	}
 
 	private resolveEffectiveMissionGateState(mission: CharacterMissionProgress): ShipExteriorMissionGateState {

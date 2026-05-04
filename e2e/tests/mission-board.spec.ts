@@ -84,7 +84,7 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(page).toHaveURL(/left:mission-board/);
 
     const missionItem = page.locator('.mission-item').first();
-    await expect(missionItem).toContainText('first-target');
+    await expect(missionItem).toContainText('Your First Target');
     await expect(missionItem.locator('.mission-status')).toHaveText('completed');
     await expect(missionItem.locator('.mission-status')).toHaveAttribute('data-status', 'completed');
     await expect(missionItem).toContainText('Stage 4 of 4 — Complete');

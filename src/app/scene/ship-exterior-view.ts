@@ -721,9 +721,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		if (!mission.statusDetail) {
 			const normalizedStatus = mission.status?.trim().toLowerCase();
 			if (normalizedStatus === 'started') {
-				const resetGateState = this.createInitialMissionGateStateForCharacter(context.characterId);
-				this.missionGateState.set(resetGateState);
-				this.persistMissionGateState(resetGateState);
+				const current = this.missionGateState();
+				const currentRank = current ? this.getMissionGateProgressRank(current) : 0;
+				const maxRank = current ? current.steps.length : 0;
+				const hasPartialProgress = currentRank > 0 && currentRank < maxRank;
+				if (!hasPartialProgress) {
+					const resetGateState = this.createInitialMissionGateStateForCharacter(context.characterId);
+					this.missionGateState.set(resetGateState);
+					this.persistMissionGateState(resetGateState);
+				}
 			}
 
 			if (normalizedStatus === 'in-progress' || normalizedStatus === 'paused') {
