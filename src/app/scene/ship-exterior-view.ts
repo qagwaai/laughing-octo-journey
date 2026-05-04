@@ -678,7 +678,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		const cached = this.missionStateService.loadState(context);
 		if (cached) {
-			this.missionGateState.set(cached);
+			const normalizedCached = parseMissionGateState({
+				rawStatusDetail: JSON.stringify(cached),
+				missionId: this.missionDefinition.missionId,
+				characterId: context.characterId,
+				steps: this.missionDefinition.getGateStepDefinitions(),
+			});
+			this.missionGateState.set(normalizedCached ?? cached);
 			return;
 		}
 

@@ -157,11 +157,23 @@ export default class MissionBoardPage {
 			steps: stepDefinitions,
 		});
 		const persistedGateState = playerName
-			? this.missionStateService.loadState({
-				missionId: mission.missionId,
-				playerName,
-				characterId,
-			})
+			? (() => {
+				const stored = this.missionStateService.loadState({
+					missionId: mission.missionId,
+					playerName,
+					characterId,
+				});
+				if (!stored) {
+					return null;
+				}
+
+				return parseMissionGateState({
+					rawStatusDetail: JSON.stringify(stored),
+					missionId: mission.missionId,
+					characterId,
+					steps: stepDefinitions,
+				}) ?? stored;
+			})()
 			: null;
 		const parsedGateState = mission.statusDetail
 			? parseMissionGateState({

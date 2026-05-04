@@ -405,8 +405,15 @@ export default class RepairRetrofitPage {
 		const context = { missionId, playerName, characterId };
 		const stored = this.missionStateService.loadState(context);
 		const steps = mission.getGateStepDefinitions();
-		const gateState =
-			stored ?? parseMissionGateState({ rawStatusDetail: '{}', missionId, characterId, steps });
+		const normalizedStored = stored
+			? parseMissionGateState({
+				rawStatusDetail: JSON.stringify(stored),
+				missionId,
+				characterId,
+				steps,
+			})
+			: null;
+		const gateState = normalizedStored ?? stored;
 		if (!gateState) {
 			return;
 		}

@@ -95,3 +95,44 @@ Related unit tests were updated to assert mission context propagation and policy
 - Remove legacy `firstTargetMissionStatus` fallback after all callers use `missionContext`.
 - Introduce mission strategy mapping by `missionId` if mission-specific seeding rules diverge.
 - Consider extending `auto` policy to fetch live mission status when hints are absent or stale.
+
+## 2026-05-04 Addendum: Mission Gate Normalization and Repair Fallbacks
+
+### Additional context
+
+During first-target mission regression triage, mission completion could still appear after hull patch manufacture in some user sessions, even though manufacture should only unlock repair.
+
+Two state-shape issues were identified:
+
+- Legacy persisted mission gate states could be stored with fewer steps than current mission definitions (for example: missing `repair_scavenger_pod`).
+- Repair detail flows could receive ship status indicating damage while `damageProfile` payload was absent in navigation state.
+
+### Addendum decision
+
+Normalize persisted mission gate state on read and evaluation paths against current mission step definitions, and apply mission-aware damage-profile fallback in repair detail pages.
+
+### Addendum implementation points
+
+- Mission gate normalization on read/evaluation:
+  - `src/app/scene/ship-exterior-view.ts`
+  - `src/app/page/game/mission-board.ts`
+  - `src/app/page/game/repair-retrofit.ts`
+  - `src/app/page/game/repair-retrofit-items.ts`
+  - `src/app/page/game/repair-retrofit-ship-detail.ts`
+
+- Repair damage fallback (when profile missing but mission/status implies damage):
+  - `src/app/page/game/repair-retrofit-items.ts`
+  - `src/app/page/game/repair-retrofit-ship-detail.ts`
+  - `src/app/page/game/repair-retrofit-system-detail.ts`
+
+### Addendum rationale
+
+- Prevents false mission completion from truncated legacy gate state.
+- Keeps mission progression deterministic: scan -> launch -> manufacture -> repair.
+- Ensures repair UX reflects expected cold-boot damage context when profile payloads are omitted.
+
+### Addendum verification
+
+- Dedicated full-flow Playwright coverage added and passing:
+  - `e2e/tests/first-target-full-mission-flow.spec.ts`
+- Full Playwright Chromium suite passing after fixes.

@@ -1,7 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
-import { coerceShipDamageProfile, type ShipDamageProfile } from '../../model/ship-damage';
+import {
+	coerceShipDamageProfile,
+	createColdBootStarterShipDamageProfile,
+	type ShipDamageProfile,
+} from '../../model/ship-damage';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { type ShipSummary } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
@@ -33,7 +38,8 @@ export default class RepairRetrofitSystemDetailPage {
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal(this.navigationState.joinCharacter ?? null);
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
-	protected damageProfile = signal<ShipDamageProfile | null>(coerceShipDamageProfile(this.navigationState.damageProfile));
+	protected missionId = signal<string>(this.navigationState.missionId ?? FIRST_TARGET_MISSION_ID);
+	protected damageProfile = signal<ShipDamageProfile | null>(this.resolveInitialDamageProfile());
 	protected selectedAsset = signal(this.navigationState.asset ?? null);
 	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
 	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
@@ -58,6 +64,39 @@ export default class RepairRetrofitSystemDetailPage {
 		this.socketService.connect(this.socketService.serverUrl);
 	}
 
+	private isFirstTargetMissionContext(): boolean {
+		const missionId = this.navigationState.missionId?.trim().toLowerCase() ?? '';
+		if (missionId === FIRST_TARGET_MISSION_ID) {
+			return true;
+		}
+
+		const missions = this.navigationState.joinCharacter?.missions;
+		if (!Array.isArray(missions)) {
+			return false;
+		}
+
+		const status = missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status?.toLowerCase();
+		return status === 'started' || status === 'in-progress' || status === 'paused';
+	}
+
+	private hasShipDamageStatusWithoutProfile(): boolean {
+		const status = this.navigationState.joinShip?.status?.trim().toLowerCase() ?? '';
+		return status === 'damaged' || status === 'disabled';
+	}
+
+	private resolveInitialDamageProfile(): ShipDamageProfile | null {
+		const directProfile = coerceShipDamageProfile(this.navigationState.damageProfile ?? this.navigationState.joinShip?.damageProfile);
+		if (directProfile) {
+			return directProfile;
+		}
+
+		if (this.isFirstTargetMissionContext() || this.hasShipDamageStatusWithoutProfile()) {
+			return createColdBootStarterShipDamageProfile();
+		}
+
+		return null;
+	}
+
 	protected navigateBackToRepairItems(): void {
 		const state: RepairDetailNavigationState = {
 			playerName: this.playerName(),
@@ -67,6 +106,7 @@ export default class RepairRetrofitSystemDetailPage {
 			selectedFilter: this.selectedFilter(),
 			selectedGrouping: this.selectedGrouping(),
 			searchQuery: this.searchQuery(),
+			missionId: this.missionId(),
 		};
 
 		this.router.navigate([{ outlets: { right: ['repair-retrofit-items'], left: ['repair-retrofit'] } }], {

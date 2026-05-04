@@ -5,7 +5,12 @@ import { DEFAULT_SHIP_MODEL, type ShipSummary } from '../../model/ship-list';
 import { type ShipItem } from '../../model/ship-item';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
-import { coerceShipDamageProfile, type ShipDamageProfile } from '../../model/ship-damage';
+import {
+	coerceShipDamageProfile,
+	createColdBootStarterShipDamageProfile,
+	type ShipDamageProfile,
+} from '../../model/ship-damage';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { SessionService, SocketService } from '../../services';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
@@ -22,6 +27,7 @@ import {
 } from '../../model/printable-item';
 import {
 	evaluateMissionGateOnRepair,
+	parseMissionGateState,
 	resolveShipExteriorMission,
 	type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
@@ -64,7 +70,7 @@ export default class RepairRetrofitItemsPage {
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal(this.navigationState.joinCharacter ?? null);
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
-	protected damageProfile = signal<ShipDamageProfile | null>(coerceShipDamageProfile(this.navigationState.damageProfile));
+	protected damageProfile = signal<ShipDamageProfile | null>(this.resolveInitialDamageProfile());
 	protected selectedFilter = signal<RepairAssetFilter>(this.navigationState.selectedFilter ?? 'all');
 	protected selectedGrouping = signal<RepairAssetGrouping>(this.navigationState.selectedGrouping ?? 'asset-type');
 	protected searchQuery = signal<string>(this.navigationState.searchQuery ?? '');
@@ -99,6 +105,39 @@ export default class RepairRetrofitItemsPage {
 		if (playerName && characterId) {
 			this.printerService.loadQueue(playerName, characterId);
 		}
+	}
+
+	private isFirstTargetMissionContext(): boolean {
+		const missionId = this.navigationState.missionId?.trim().toLowerCase() ?? '';
+		if (missionId === FIRST_TARGET_MISSION_ID) {
+			return true;
+		}
+
+		const missions = this.navigationState.joinCharacter?.missions;
+		if (!Array.isArray(missions)) {
+			return false;
+		}
+
+		const status = missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status?.toLowerCase();
+		return status === 'started' || status === 'in-progress' || status === 'paused';
+	}
+
+	private hasShipDamageStatusWithoutProfile(): boolean {
+		const status = this.navigationState.joinShip?.status?.trim().toLowerCase() ?? '';
+		return status === 'damaged' || status === 'disabled';
+	}
+
+	private resolveInitialDamageProfile(): ShipDamageProfile | null {
+		const directProfile = coerceShipDamageProfile(this.navigationState.damageProfile ?? this.navigationState.joinShip?.damageProfile);
+		if (directProfile) {
+			return directProfile;
+		}
+
+		if (this.isFirstTargetMissionContext() || this.hasShipDamageStatusWithoutProfile()) {
+			return createColdBootStarterShipDamageProfile();
+		}
+
+		return null;
 	}
 
 	protected allAssets = computed<RepairAssetEntry[]>(() => {
@@ -544,13 +583,22 @@ export default class RepairRetrofitItemsPage {
 		const mission = resolveShipExteriorMission(missionId);
 		const context = { missionId, playerName, characterId };
 		const stored = this.missionStateService.loadState(context);
-		if (!stored) {
+		const steps = mission.getGateStepDefinitions();
+		const gateState = stored
+			? (parseMissionGateState({
+				rawStatusDetail: JSON.stringify(stored),
+				missionId,
+				characterId,
+				steps,
+			}) ?? stored)
+			: null;
+		if (!gateState) {
 			return;
 		}
 
 		const evaluation = evaluateMissionGateOnRepair({
 			mission,
-			gateState: stored,
+			gateState,
 			repairKind,
 		});
 
