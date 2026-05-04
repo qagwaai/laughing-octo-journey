@@ -175,7 +175,7 @@ export default class ShipHangarPage {
 		const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
 		const missionContext: ShipExteriorViewMissionContext = {
 			missionId: FIRST_TARGET_MISSION_ID,
-			seedPolicy: 'auto',
+			seedPolicy: 'resume',
 			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
 			...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' as const } : {}),
 		};

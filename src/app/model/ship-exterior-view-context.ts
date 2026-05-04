@@ -20,7 +20,9 @@ export function resolveShipExteriorViewSeedPolicy(params: {
 
 	const status = params.missionStatusHint?.trim().toLowerCase();
 	if (!status) {
-		return 'new';
+		// Default to resume so exterior view can rehydrate persisted or backend state
+		// even when the caller does not provide a mission status hint.
+		return 'resume';
 	}
 
 	if (status === 'started' || status === 'in-progress' || status === 'paused') {

@@ -237,7 +237,7 @@ class MockShipHangarPage {
 		const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
 		const missionContext = {
 			missionId: FIRST_TARGET_MISSION_ID,
-			seedPolicy: 'auto',
+			seedPolicy: 'resume',
 			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
 			...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' } : {}),
 		};
@@ -500,7 +500,7 @@ describe('ShipHangarPage', () => {
 					joinShip: ship,
 					missionContext: {
 						missionId: FIRST_TARGET_MISSION_ID,
-						seedPolicy: 'auto',
+						seedPolicy: 'resume',
 					},
 				},
 			},
@@ -539,7 +539,7 @@ describe('ShipHangarPage', () => {
 					joinShip: ship,
 					missionContext: {
 						missionId: FIRST_TARGET_MISSION_ID,
-						seedPolicy: 'auto',
+						seedPolicy: 'resume',
 						missionStatusHint: 'started',
 						shipDamagePreset: 'cold-boot-starter-damaged',
 					},

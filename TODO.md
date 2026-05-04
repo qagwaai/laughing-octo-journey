@@ -3,7 +3,7 @@
 ## UX / Navigation
 
 - [ ] Character creation automatically goes back to character list
-- [ ] Fix view external (ship exterior scene) not loading correctly after first-target mission completes
+- [X] Fix view external (ship exterior scene) not loading correctly after first-target mission completes
 - [ ] Migrate 3D print queue from left pane to right pane
 - [ ] Start new main mission on Mission Board
 
@@ -20,3 +20,4 @@
 - [ ] Normalize `playerName` comparison in `MissionService` response filters to be case-insensitive — backend returns canonical casing which may differ from what the client sent
 - [ ] Add `requestId` correlation to mission socket requests/responses to eliminate cross-response matching ambiguity and reduce timeout flakes
 - [ ] Update `docs/server-message-contracts.md` to match the new backend `MESSAGE_CONTRACT.md` (mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, asteroid seeding edge case)
+- [ ] Normalize the list of in game parts with those that are part of first-target, and need fixing
