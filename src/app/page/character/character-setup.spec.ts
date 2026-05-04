@@ -164,7 +164,6 @@ class MockCharacterSetupPage {
 	private socketService: MockSocketService;
 	private sessionService: MockSessionService;
 	private unsubscribeAddResponse?: () => void;
-	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 	private editCharacterId: string | null = null;
 
@@ -256,10 +255,13 @@ class MockCharacterSetupPage {
 				if (response.success) {
 					this.isSaved.set(true);
 					this.successMessage.set(response.message);
-					this.errorMessage.set(null);				if (!isEditMode) {
+					this.errorMessage.set(null);
+					if (!isEditMode) {
 					const addResponse = response as CharacterAddResponse;
 					this.createStarterShipForCharacter(addResponse.characterId);
-				}				} else {
+					}
+					this.navigateToCharacterList();
+				} else {
 					this.isSaved.set(false);
 					this.successMessage.set(null);
 					this.errorMessage.set(response.message);
@@ -292,11 +294,9 @@ class MockCharacterSetupPage {
 			return;
 		}
 
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
+		this.socketService.once(
 			SHIP_LIST_RESPONSE_EVENT,
 			(response: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					this.warningMessage.set('Character created, but starter ship could not be resolved yet.');
 					return;
@@ -419,7 +419,6 @@ class MockCharacterSetupPage {
 
 	ngOnDestroy(): void {
 		this.unsubscribeAddResponse?.();
-		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 }
@@ -554,6 +553,10 @@ describe('CharacterSetupPage', () => {
 			expect(editModeComponent.isSaved()).toBe(true);
 			expect(editModeComponent.successMessage()).toBe("Character 'Nova-Prime' updated.");
 			expect(editModeComponent.errorMessage()).toBeNull();
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-list'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
 
 			editModeComponent.ngOnDestroy();
 		});
@@ -590,6 +593,10 @@ describe('CharacterSetupPage', () => {
 			expect(component.isSaved()).toBe(true);
 			expect(component.successMessage()).toBe("Character 'Nova-Prime' created.");
 			expect(component.errorMessage()).toBeNull();
+			expect(router.navigate).toHaveBeenCalledWith(
+				[{ outlets: { left: ['character-list'] } }],
+				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
+			);
 		});
 
 		it('should handle failed character-add response', () => {
@@ -607,6 +614,7 @@ describe('CharacterSetupPage', () => {
 			expect(component.isSaved()).toBe(false);
 			expect(component.successMessage()).toBeNull();
 			expect(component.errorMessage()).toBe('Character name already exists.');
+			expect(router.navigate).not.toHaveBeenCalled();
 		});
 
 		it('should clear previous messages before a new request', () => {
@@ -706,7 +714,7 @@ describe('CharacterSetupPage', () => {
 		it('should set warningMessage when ship-list-response fails', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: false,
 				message: 'No ships found.',
 				playerName: 'Pioneer',
@@ -720,7 +728,7 @@ describe('CharacterSetupPage', () => {
 		it('should set warningMessage when ship-list-response has no ships', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -734,7 +742,7 @@ describe('CharacterSetupPage', () => {
 		it('should emit ship-upsert-request when ship-list-response succeeds with a ship', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -752,7 +760,7 @@ describe('CharacterSetupPage', () => {
 		it('should set warningMessage when ship-upsert-response fails', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -774,7 +782,7 @@ describe('CharacterSetupPage', () => {
 		it('should emit item-upsert-request with drone payload after successful ship upsert', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -809,7 +817,7 @@ describe('CharacterSetupPage', () => {
 		it('should emit second item-upsert-request with 3D printer payload after drone creation succeeds', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -856,7 +864,7 @@ describe('CharacterSetupPage', () => {
 
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -887,7 +895,7 @@ describe('CharacterSetupPage', () => {
 
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -909,7 +917,7 @@ describe('CharacterSetupPage', () => {
 		it('should set warningMessage when drone item-upsert-response fails', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -935,7 +943,7 @@ describe('CharacterSetupPage', () => {
 		it('should set warningMessage when 3D printer item-upsert-response fails', () => {
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
@@ -968,7 +976,7 @@ describe('CharacterSetupPage', () => {
 			component.warningMessage.set('Previous warning');
 			triggerSuccessfulCharacterAdd('c-1');
 
-			socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',

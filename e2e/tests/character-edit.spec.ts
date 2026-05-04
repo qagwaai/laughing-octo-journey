@@ -1,0 +1,89 @@
+import { test, expect, type Page } from '@playwright/test';
+import { SocketIOMock } from '../fixtures/socket-mock';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { CharacterListPage } from '../page-objects/character-list.page';
+import { CharacterSetupPage } from '../page-objects/character-setup.page';
+
+function characterListResponse(characters: object[]) {
+  return {
+    success: true,
+    message: '',
+    playerName: TEST_PLAYER,
+    characters,
+  };
+}
+
+async function setupCharacterEditTest(page: Page) {
+  const mock = new SocketIOMock(page);
+  await mock.setup();
+
+  let currentCharacterName = 'Zara Voss';
+
+  mock.on('character-list-request', () => ({
+    event: 'character-list-response',
+    data: characterListResponse([
+      { id: 'char-edit-001', characterName: currentCharacterName, level: 5 },
+    ]),
+  }));
+
+  await loginViaUI(page, mock);
+
+  return {
+    mock,
+    characterListPage: new CharacterListPage(page),
+    characterSetupPage: new CharacterSetupPage(page),
+    updateCharacterName: (name: string) => {
+      currentCharacterName = name;
+    },
+  };
+}
+
+test.describe('Character Edit — setup save redirect', () => {
+  test('redirects to character list and shows updated character after successful edit save', async ({ page }) => {
+    const { mock, characterListPage, characterSetupPage, updateCharacterName } = await setupCharacterEditTest(page);
+
+    let receivedEditRequest: Record<string, unknown> | null = null;
+    let shipListRequestCount = 0;
+
+    mock.on('character-edit', (request) => {
+      receivedEditRequest = request as Record<string, unknown>;
+      updateCharacterName('Zara Prime');
+      return {
+        event: 'character-edit-response',
+        data: {
+          success: true,
+          message: 'Character updated.',
+          playerName: TEST_PLAYER,
+          characterId: 'char-edit-001',
+          characterName: 'Zara Prime',
+        },
+      };
+    });
+
+    mock.on('ship-list-request', () => {
+      shipListRequestCount += 1;
+      return null;
+    });
+
+    await expect(characterListPage.characterItems).toHaveCount(1);
+    await expect(characterListPage.characterName(0)).toHaveText('Zara Voss');
+
+    await characterListPage.editButton(0).click();
+    await expect(page).toHaveURL(/left:character-setup/);
+
+    await characterSetupPage.fillCharacterName('Zara Prime');
+    await characterSetupPage.clickSubmit();
+
+    await expect(page).toHaveURL(/left:character-list/);
+    await expect(characterListPage.characterItems).toHaveCount(1);
+    await expect(characterListPage.characterName(0)).toHaveText('Zara Prime');
+
+    expect(receivedEditRequest).toEqual({
+      characterId: 'char-edit-001',
+      playerName: TEST_PLAYER,
+      characterName: 'Zara Prime',
+      sessionKey: 'test-session-key-abc123',
+    });
+    expect(shipListRequestCount).toBe(0);
+  });
+});

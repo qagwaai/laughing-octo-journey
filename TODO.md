@@ -2,7 +2,7 @@
 
 ## UX / Navigation
 
-- [ ] Character creation automatically goes back to character list
+- [X] Character creation automatically goes back to character list
 - [X] Fix view external (ship exterior scene) not loading correctly after first-target mission completes
 - [ ] Migrate 3D print queue from left pane to right pane
 - [ ] Start new main mission on Mission Board
@@ -13,6 +13,8 @@
 - [ ] Character credits backend integration — source balance from session/join response; keep in sync via a `credits-update` socket event (see `character-economy.ts`)
 - [ ] Mission reward credits — wire credit payout to client economy model on mission completion
 - [ ] Italian locale (`it.ts`) — add missing keys for mission board, market hub, and all new mission locale content added in M-01–M-05 / SQ-01–SQ-04
+- [ ] Add to the logout page a link to go to the character list page.
+- [ ] Add non-asteroid based debris to initial first-target mission
 
 ## Technical Debt / Cleanup
 

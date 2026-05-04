@@ -79,7 +79,6 @@ export default class CharacterSetupPage implements OnDestroy {
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private unsubscribeAddResponse?: () => void;
-	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 	private setupState: CharacterSetupNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
@@ -164,6 +163,7 @@ export default class CharacterSetupPage implements OnDestroy {
 						const addResponse = response as CharacterAddResponse;
 						this.createStarterShipForCharacter(addResponse.characterId);
 					}
+					this.navigateToCharacterList();
 				} else {
 					this.isSaved.set(false);
 					this.successMessage.set(null);
@@ -204,11 +204,9 @@ export default class CharacterSetupPage implements OnDestroy {
 			return;
 		}
 
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
+		this.socketService.once(
 			SHIP_LIST_RESPONSE_EVENT,
 			(response: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					console.warn('Unable to resolve starter ship from ship-list:', response.message);
 					this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
@@ -336,7 +334,6 @@ export default class CharacterSetupPage implements OnDestroy {
 
 	ngOnDestroy(): void {
 		this.unsubscribeAddResponse?.();
-		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 }

@@ -137,9 +137,11 @@ test.describe('Character Add — from character list', () => {
 
     await characterSetupPage.fillCharacterName('Nova Prime');
     await characterSetupPage.clickSubmit();
+    await expect(page).toHaveURL(/left:character-list/);
 
-    await expect(characterSetupPage.successMessage).toContainText('Character created.');
-    await expect(characterSetupPage.errorMessage).not.toBeVisible();
+    await expect.poll(() => !!receivedAddRequest).toBe(true);
+    await expect.poll(() => !!receivedShipListRequest).toBe(true);
+    await expect.poll(() => !!receivedShipUpsertRequest).toBe(true);
 
     expect(receivedAddRequest).toEqual({
       playerName: TEST_PLAYER,
@@ -172,9 +174,6 @@ test.describe('Character Add — from character list', () => {
       expect(receivedItemUpsertRequest?.['sessionKey']).toBe('test-session-key-abc123');
       expect((receivedItemUpsertRequest?.['item'] as Record<string, unknown>)?.['owningCharacterId']).toBe('char-new-001');
     }
-
-    await characterSetupPage.clickViewCharacterList();
-    await expect(page).toHaveURL(/left:character-list/);
 
     await expect(characterListPage.characterItems).toHaveCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('Nova Prime');

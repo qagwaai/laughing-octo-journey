@@ -16,6 +16,15 @@ This is a template to get started with Angular Three.
 - Tailwind CSS
 - Prettier
 
+## Character Setup UX
+
+When saving from `left:character-setup`, a successful backend response now automatically navigates to
+`left:character-list`.
+
+- Applies to both create and edit save flows.
+- Starter-ship provisioning still runs for newly created characters.
+- Regression coverage: `e2e/tests/character-add.spec.ts`, `e2e/tests/character-edit.spec.ts`
+
 ## Scene Route Label Ownership
 
 Route labels rendered with `app-current` are owned by individual scene components, not by the routed scene shell.
