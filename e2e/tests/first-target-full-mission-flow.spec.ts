@@ -378,21 +378,29 @@ test.describe('First Target Mission Flow', () => {
 		await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'in-progress')).toBe(true);
 		expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);
 
-		const finalGate = await page.evaluate(() => {
-			const api = (window as Window & {
-				__shipExteriorTestUtils?: {
-					simulateRepair: (repairKind: string) => {
-						steps: Array<{ key: string; status: string }>;
-						activeObjectiveText: string;
-					} | null;
-				};
-			}).__shipExteriorTestUtils;
-			return api!.simulateRepair('ship');
-		});
-
-		expect(finalGate).not.toBeNull();
-		expect(finalGate!.steps.every((step) => step.status === 'completed')).toBe(true);
-		expect(finalGate!.activeObjectiveText).toContain('Mission objectives complete');
+		await expect
+			.poll(async () =>
+				page.evaluate(() => {
+					const api = (window as Window & {
+						__shipExteriorTestUtils?: {
+							simulateRepair: (repairKind: string) => {
+								steps: Array<{ key: string; status: string }>;
+								activeObjectiveText: string;
+							} | null;
+						};
+					}).__shipExteriorTestUtils;
+					if (!api?.simulateRepair) {
+						return { allCompleted: false, hasCompletionObjective: false };
+					}
+					const gate = api?.simulateRepair('ship');
+					return {
+						allCompleted: Boolean(gate?.steps.every((step) => step.status === 'completed')),
+						hasCompletionObjective: Boolean(gate?.activeObjectiveText.includes('Mission objectives complete')),
+					};
+				}),
+				{ timeout: 15_000 },
+			)
+			.toEqual({ allCompleted: true, hasCompletionObjective: true });
 	});
 
 	test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {

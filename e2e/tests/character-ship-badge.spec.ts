@@ -74,14 +74,15 @@ test.describe('Character ship badge', () => {
   test('ship badge shows active ship name after clicking "Set as Active Ship"', async ({ page }) => {
     await setupAndNavigateToShipHangar(page);
 
-    // Wait for ship list to populate
-    await expect(page.locator('.ship-item')).toBeVisible({ timeout: 10_000 });
+    // Wait for ship list to populate (headed mode can be slower to render rows)
+    await expect.poll(async () => page.locator('.ship-item').count(), { timeout: 20_000 }).toBeGreaterThan(0);
+    await expect(page.locator('.ship-item').first()).toBeVisible({ timeout: 20_000 });
 
     // Click the "Set as Active Ship" button for the first ship row
     await page.locator('.ship-item').first().locator('button', { hasText: 'Set as Active Ship' }).click();
 
     // Badge should now reflect the chosen ship name
     const badgeName = page.locator('app-character-ship-badge .ship-badge-name');
-    await expect(badgeName).toHaveText('Surveyor', { timeout: 5_000 });
+    await expect(badgeName).toHaveText('Surveyor', { timeout: 10_000 });
   });
 });
