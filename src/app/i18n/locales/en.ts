@@ -241,14 +241,25 @@ export const en = {
 			printerStatusLabel: 'Status',
 			printerPrintingLabel: 'Printing',
 			printerIdleLabel: 'Idle',
-			activePrintJobsTitle: 'Active Print Jobs',
+			printerActiveJobCountLabel: 'Active jobs:',
+			viewPrintQueueLabel: 'View Print Queue',
+		},
+
+		printQueue: {
+			title: 'Onboard 3D Fabricator',
+			subtitle: 'Print queue management and available recipes for your active ship.',
+			statusLabel: 'Status',
+			printingLabel: 'Printing',
+			idleLabel: 'Idle',
+			activeJobsTitle: 'Active Print Jobs',
 			collectingFromPrinterLabel: 'Collecting from printer...',
 			cancelPrintJobLabel: 'Cancel',
 			availableRecipesTitle: 'Available Recipes',
 			tierLabel: 'Tier',
 			alreadyInInventorySuffix: 'already in inventory.',
-			currentlyPrintingLabel: 'Currently printing - check Active Print Jobs above.',
+			currentlyPrintingLabel: 'Currently printing — check Active Print Jobs above.',
 			printLabelPrefix: 'Print',
+			backLabel: 'Back to Repair & Retrofit',
 		},
 
 		repairRetrofitItems: {
@@ -319,6 +330,7 @@ export const en = {
 			consumeMaterialFailedSuffix: 'for print job.',
 			printQueuedPrefix: 'sent to the 3D Fabricator. Estimated time:',
 			printQueuedSuffix: 'Check the printer on the main page.',
+			viewPrintQueueLabel: 'View Print Queue',
 		},
 
 		repairRetrofitItemDetail: {

@@ -22,6 +22,9 @@
 					<p><strong>{{ t.game.repairRetrofitItems.fabricationTimeLabel }}</strong> {{ getHullPatchKitDurationLabel() }}</p>
 					@if (isHullPatchKitQueued()) {
 						<p class="status-line status-line--info">{{ t.game.repairRetrofitItems.hullPatchKitPrintingLabel }}</p>
+						<button type="button" class="repair-action" (click)="navigateToPrintQueue()">
+							{{ t.game.repairRetrofitItems.viewPrintQueueLabel }}
+						</button>
 					} @else if (!canQueueHullPatchKit()) {
 						<p class="status-line status-line--error">{{ getHullPatchKitRequirementMessage() }}</p>
 					} @else {

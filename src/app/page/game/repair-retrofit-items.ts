@@ -41,6 +41,7 @@ import {
 	type RepairAssetGrouping,
 	type RepairAssetFilter,
 	type RepairDetailNavigationState,
+	type PrintQueueNavigationState,
 } from './repair-retrofit-state';
 
 interface RepairAssetGroup {
@@ -719,5 +720,18 @@ export default class RepairRetrofitItemsPage {
 		}
 
 		return 'repair-retrofit-ship-detail';
+	}
+
+	protected navigateToPrintQueue(): void {
+		const state: PrintQueueNavigationState = {
+			playerName: this.playerName(),
+			joinCharacter: this.joinCharacter(),
+			joinShip: this.joinShip(),
+		};
+
+		this.router.navigate([{ outlets: { right: ['print-queue'], left: ['repair-retrofit'] } }], {
+			preserveFragment: true,
+			state,
+		});
 	}
 }

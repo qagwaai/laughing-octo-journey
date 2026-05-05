@@ -4,7 +4,7 @@
 
 - [X] Character creation automatically goes back to character list
 - [X] Fix view external (ship exterior scene) not loading correctly after first-target mission completes
-- [ ] Migrate 3D print queue from left pane to right pane
+- [X] Migrate 3D print queue from left pane to right pane
 - [ ] Start new main mission on Mission Board
 
 ## Features

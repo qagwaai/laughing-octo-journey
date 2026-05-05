@@ -30,6 +30,12 @@ export interface RepairDetailNavigationState {
 	missionId?: string;
 }
 
+export interface PrintQueueNavigationState {
+	playerName?: string;
+	joinCharacter?: PlayerCharacterSummary | null;
+	joinShip?: ShipSummary | null;
+}
+
 export function mapOverallStatusToShipStatus(overallStatus: ShipDamageProfile['overallStatus']): string {
 	if (overallStatus === 'intact') {
 		return 'Operational';

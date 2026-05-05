@@ -19,6 +19,7 @@ import RepairRetrofitItemsPage from './page/game/repair-retrofit-items';
 import RepairRetrofitShipDetailPage from './page/game/repair-retrofit-ship-detail';
 import RepairRetrofitSystemDetailPage from './page/game/repair-retrofit-system-detail';
 import RepairRetrofitItemDetailPage from './page/game/repair-retrofit-item-detail';
+import PrintQueuePage from './page/game/print-queue';
 import StellarInitiationPage from './page/game/stellar-initiation';
 import ShipExteriorViewScene from './scene/ship-exterior-view';
 import ShipViewSpecs from './scene/ship-view-specs';
@@ -231,6 +232,12 @@ const routes: Routes = [
 		path: 'repair-retrofit-item-detail',
 		outlet: 'right',
 		component: RepairRetrofitItemDetailPage,
+		canActivate: [authGuard],
+	},
+	{
+		path: 'print-queue',
+		outlet: 'right',
+		component: PrintQueuePage,
 		canActivate: [authGuard],
 	},
 ];
