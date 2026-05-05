@@ -50,6 +50,8 @@ This document describes the socket message contracts currently used by the appli
 | `mission-upsert-response` | server -> client | Return mission upsert result (logical contract; currently received as `add-mission-response`) |
 | `list-missions-request` | client -> server | Fetch missions and statuses for selected character |
 | `list-missions-response` | server -> client | Return mission list/statuses |
+| `market-list-request` | client -> server | Fetch markets for current or requested solar system |
+| `market-list-response` | server -> client | Return market list and metadata |
 | `launch-item-request` | client -> server | Launch a ship inventory item at a target celestial body |
 | `launch-item-response` | server -> client | Return launch outcome and resolution details |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
@@ -251,6 +253,62 @@ Edge cases:
 - `credits` is a server-computed value: `sum(put.amount) - sum(take.amount)` across `creditLedger`.
 - `creditLedger` defaults to `[]` when a character has no transactions.
 - Client treats missing `credits` as `0` and missing `creditLedger` as `[]`.
+
+---
+
+## Market Listing
+
+### `market-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string (optional)"
+}
+```
+
+Client-side behavior:
+
+- `playerName` is trimmed before sending.
+- `sessionKey` is required.
+- The market hub scopes requests to the active ship solar system when available.
+- The contract does not currently expose a `market-list-by-location-request`; local-area filtering is performed client-side from `market-list-response` plus known market anchors.
+
+### `market-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Market list retrieved successfully",
+  "playerName": "string",
+  "solarSystemId": "sol",
+  "markets": [
+    {
+      "marketId": "sol-ceres-exchange",
+      "solarSystemId": "sol",
+      "marketName": "Ceres Exchange",
+      "locationType": "station",
+      "locationName": "Ceres Belt Trade Ring",
+      "priceMultiplier": 1,
+      "driftPercentPerHour": 6,
+      "restockIntervalMinutes": 60
+    }
+  ]
+}
+```
+
+Edge cases:
+
+- Invalid session emits `invalid-session` instead of `market-list-response`.
+- If `solarSystemId` is omitted, server may return markets across all solar systems.
+- Client local-area view applies a user-selected radius using active ship position when available.
+- If a market has no resolvable local anchor, client keeps it visible with `Unknown distance`.
+- Market browsing is always allowed, but transact actions are disabled unless the active ship is `docked`.
 
 ---
 

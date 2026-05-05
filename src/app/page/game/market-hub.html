@@ -27,5 +27,76 @@
 			<h2>{{ t.game.marketHub.sectionTitle }}</h2>
 			<p>{{ t.game.marketHub.sectionDescription }}</p>
 		</section>
+
+		<section class="ops-card market-search-card">
+			<h2>{{ t.game.marketHub.localMarketsSectionTitle }}</h2>
+			<p class="search-context">
+				{{ t.game.marketHub.searchSolarSystemLabel }}
+				<strong>{{ activeShipSolarSystemId() }}</strong>
+			</p>
+
+			@if (activeShip()) {
+				<p class="search-context">
+					{{ t.game.marketHub.activeShipStatusLabel }}
+					<strong>{{ activeShip()!.status ?? t.game.marketHub.shipStatusUnknownLabel }}</strong>
+				</p>
+			}
+
+			<form [formGroup]="marketFilterForm" (ngSubmit)="applyRadiusSelection()" class="market-filter-form">
+				<label for="radiusKm">{{ t.game.marketHub.radiusLabel }}</label>
+				<select id="radiusKm" formControlName="radiusKm" (change)="applyRadiusSelection()">
+					@for (option of marketRadiusOptionsKm; track option) {
+						<option [value]="option">{{ option }} km</option>
+					}
+				</select>
+				<button type="submit" class="apply-btn">{{ t.game.marketHub.applyRadiusLabel }}</button>
+				<button type="button" class="reload-btn" (click)="loadNearbyMarkets()" [disabled]="isLoadingMarkets()">
+					{{ isLoadingMarkets() ? t.game.marketHub.loadingMarketsLabel : t.game.marketHub.reloadMarketsLabel }}
+				</button>
+			</form>
+
+			@if (!activeShipPositionKm()) {
+				<p class="status-message warning-message">{{ t.game.marketHub.activeShipPositionMissingLabel }}</p>
+			}
+
+			@if (!isDocked()) {
+				<p class="status-message warning-message">{{ t.game.marketHub.dockRequiredHintLabel }}</p>
+			}
+
+			@if (marketListError()) {
+				<p class="status-message error-message">{{ marketListError() }}</p>
+			}
+
+			@if (!marketListError() && !isLoadingMarkets() && localMarkets().length === 0) {
+				<p class="empty-state">{{ t.game.marketHub.noLocalMarketsLabel }}</p>
+			}
+
+			@if (localMarkets().length > 0) {
+				<ul class="market-list">
+					@for (market of localMarkets(); track market.marketId) {
+						<li class="market-item">
+							<div class="market-item-header">
+								<h3>{{ market.marketName }}</h3>
+								@if (!isDocked()) {
+									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
+								}
+							</div>
+							<p>
+								<strong>{{ t.game.marketHub.marketIdLabel }}</strong> {{ market.marketId }}
+							</p>
+							<p>
+								<strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
+								{{ market.locationName }} ({{ market.locationType }})
+							</p>
+							<p>
+								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
+								{{ formatMarketDistance(market.distanceKm) }}
+							</p>
+							<button type="button" class="transact-btn" [disabled]="!isDocked()">{{ t.game.marketHub.transactLabel }}</button>
+						</li>
+					}
+				</ul>
+			}
+		</section>
 	</div>
 </div>
