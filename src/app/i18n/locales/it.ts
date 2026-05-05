@@ -398,6 +398,18 @@ export const it: DeepPartial<EnLocale> = {
 			sectionTitle: 'Panoramica profilo',
 			sectionDescription:
 				'Modulo di esempio: mostra cronologia grado, distintivi di specializzazione e assegnazione corrente.',
+			credits: {
+				sectionTitle: 'Crediti',
+				balanceLabel: 'Saldo',
+				ledgerTitle: 'Registro crediti',
+				ledgerEmpty: 'Nessuna voce nel registro.',
+				columnType: 'Tipo',
+				columnAmount: 'Importo',
+				columnDescription: 'Descrizione',
+				columnTimestamp: 'Data',
+				typePut: 'Entrata',
+				typeTake: 'Uscita',
+			},
 		},
 	},
 	opening: {

@@ -227,7 +227,17 @@ Payload:
       "id": "string",
       "characterName": "string",
       "level": "number (optional)",
-      "createdAt": "string (optional)"
+      "createdAt": "string (optional)",
+      "credits": "number",
+      "creditLedger": [
+        {
+          "type": "put | take",
+          "amount": "number",
+          "description": "string",
+          "timestamp": "string (ISO 8601)",
+          "referenceId": "string | null"
+        }
+      ]
     }
   ]
 }
@@ -238,6 +248,9 @@ Edge cases:
 - `characters` should always be an array; client falls back to `[]` if undefined.
 - Keep `id` stable and unique; it is used for edit/delete targeting.
 - If `success` is `false`, include a user-safe `message`.
+- `credits` is a server-computed value: `sum(put.amount) - sum(take.amount)` across `creditLedger`.
+- `creditLedger` defaults to `[]` when a character has no transactions.
+- Client treats missing `credits` as `0` and missing `creditLedger` as `[]`.
 
 ---
 
@@ -1053,6 +1066,53 @@ Server recommendations:
 
 - Emit when session key is missing, expired, revoked, malformed, or mismatched to player context.
 - Keep `message` safe for end users (avoid leaking internals).
+
+---
+
+## Credit Ledger
+
+### Overview
+
+Each character carries a `creditLedger` array and a computed `credits` summary field. Both are returned as part of `character-list-response`.
+
+### `CreditLedgerEntry` shape
+
+```json
+{
+  "type": "put | take",
+  "amount": "number (positive)",
+  "description": "string",
+  "timestamp": "string (ISO 8601)",
+  "referenceId": "string | null"
+}
+```
+
+Field semantics:
+
+- `type`: `"put"` = credits earned/deposited; `"take"` = credits spent/withdrawn.
+- `amount`: always a positive number regardless of direction.
+- `description`: human-readable reason for the transaction (for example `"Starting credits"`, `"Mission reward"`).
+- `timestamp`: ISO 8601 timestamp of when the transaction occurred.
+- `referenceId`: optional link to a source event (mission id, market item, etc.); `null` when not applicable.
+
+### `credits` field
+
+- Computed by the server as `sum(put.amount) - sum(take.amount)` across the character's full `creditLedger`.
+- Never stored independently; recalculated on every `normalizeCharacter` call.
+- Characters with no ledger entries have `credits: 0` and `creditLedger: []`.
+- The client never mutates this value locally; it is always authoritative from the server response.
+
+### Client display behavior
+
+- The character profile page renders `credits` as the current balance.
+- Each `creditLedger` entry is shown in a table with columns: Type, Amount, Description, Date.
+- `put` entries are styled green; `take` entries are styled red.
+- If `creditLedger` is absent or empty, a "No ledger entries" placeholder is shown.
+- All strings are i18n-keyed under `game.characterProfile.credits`.
+
+### New character initialization
+
+- On `character-add-request` success, the server seeds a starting balance of 425 credits recorded as a single `put` ledger entry with description `"Starting credits"`.
 
 ---
 

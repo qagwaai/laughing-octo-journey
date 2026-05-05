@@ -17,5 +17,39 @@
 			<h2>{{ t.game.characterProfile.sectionTitle }}</h2>
 			<p>{{ t.game.characterProfile.sectionDescription }}</p>
 		</section>
+
+		<section class="ops-card credits-section">
+			<h2>{{ t.game.characterProfile.credits.sectionTitle }}</h2>
+			<p class="credits-balance">
+				{{ t.game.characterProfile.credits.balanceLabel }}:
+				<strong>{{ joinCharacter()?.credits ?? 0 }}</strong>
+			</p>
+
+			<h3>{{ t.game.characterProfile.credits.ledgerTitle }}</h3>
+			@if ((joinCharacter()?.creditLedger ?? []).length === 0) {
+				<p class="ledger-empty">{{ t.game.characterProfile.credits.ledgerEmpty }}</p>
+			} @else {
+				<table class="ledger-table">
+					<thead>
+						<tr>
+							<th>{{ t.game.characterProfile.credits.columnType }}</th>
+							<th>{{ t.game.characterProfile.credits.columnAmount }}</th>
+							<th>{{ t.game.characterProfile.credits.columnDescription }}</th>
+							<th>{{ t.game.characterProfile.credits.columnTimestamp }}</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (entry of joinCharacter()!.creditLedger ?? []; track entry.timestamp) {
+							<tr [class.ledger-put]="entry.type === 'put'" [class.ledger-take]="entry.type === 'take'">
+								<td>{{ entry.type === 'put' ? t.game.characterProfile.credits.typePut : t.game.characterProfile.credits.typeTake }}</td>
+								<td class="ledger-amount">{{ entry.amount }}</td>
+								<td>{{ entry.description }}</td>
+								<td class="ledger-timestamp">{{ entry.timestamp | date:'short' }}</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</section>
 	</div>
 </div>

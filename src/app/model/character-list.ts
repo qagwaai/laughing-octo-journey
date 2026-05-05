@@ -2,6 +2,7 @@ export const CHARACTER_LIST_REQUEST_EVENT = 'character-list-request';
 export const CHARACTER_LIST_RESPONSE_EVENT = 'character-list-response';
 
 import type { CharacterMissionProgress } from './mission';
+import type { CreditLedgerEntry } from './character-economy';
 
 export interface CharacterListRequest {
 	playerName: string;
@@ -14,6 +15,8 @@ export interface PlayerCharacterSummary {
 	level?: number;
 	createdAt?: string;
 	missions?: CharacterMissionProgress[];
+	credits?: number;
+	creditLedger?: CreditLedgerEntry[];
 }
 
 export interface CharacterListResponse {

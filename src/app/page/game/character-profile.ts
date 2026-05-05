@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
@@ -15,7 +16,7 @@ interface CharacterProfileNavigationState {
 	templateUrl: './character-profile.html',
 	styleUrls: ['./character-profile.css'],
 	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu, CharacterShipBadge],
+	imports: [GuardedLeftMenu, CharacterShipBadge, DatePipe],
 })
 export default class CharacterProfilePage {
 	protected readonly t = locale;

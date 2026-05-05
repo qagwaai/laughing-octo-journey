@@ -479,6 +479,18 @@ export const en = {
 			sectionTitle: 'Profile Snapshot',
 			sectionDescription:
 				'Sample module: display rank history, specialization badges, and current assignment.',
+			credits: {
+				sectionTitle: 'Credits',
+				balanceLabel: 'Balance',
+				ledgerTitle: 'Credit Ledger',
+				ledgerEmpty: 'No ledger entries.',
+				columnType: 'Type',
+				columnAmount: 'Amount',
+				columnDescription: 'Description',
+				columnTimestamp: 'Date',
+				typePut: 'Put',
+				typeTake: 'Take',
+			},
 		},
 
 		missionBoard: {
