@@ -52,6 +52,8 @@ This document describes the socket message contracts currently used by the appli
 | `list-missions-response` | server -> client | Return mission list/statuses |
 | `market-list-request` | client -> server | Fetch markets for current or requested solar system |
 | `market-list-response` | server -> client | Return market list and metadata |
+| `market-list-by-location-request` | client -> server | Fetch nearby markets by position and radius |
+| `market-list-by-location-response` | server -> client | Return nearby markets with authoritative distance and docking state |
 | `launch-item-request` | client -> server | Launch a ship inventory item at a target celestial body |
 | `launch-item-response` | server -> client | Return launch outcome and resolution details |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
@@ -275,7 +277,65 @@ Client-side behavior:
 - `playerName` is trimmed before sending.
 - `sessionKey` is required.
 - The market hub scopes requests to the active ship solar system when available.
-- The contract does not currently expose a `market-list-by-location-request`; local-area filtering is performed client-side from `market-list-response` plus known market anchors.
+
+### `market-list-by-location-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100000,
+  "limit": 50,
+  "locationTypes": ["station"],
+  "characterId": "string (optional)",
+  "shipId": "string (optional)"
+}
+```
+
+Client-side behavior:
+
+- Used by Market Hub for local-area browsing.
+- `positionKm` comes from active ship kinematics/location.
+- `distanceKm` comes from user-selected radius.
+- `characterId` and `shipId` are included when available so server can compute docking state.
+
+### `market-list-by-location-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Local market list retrieved successfully",
+  "playerName": "string",
+  "solarSystemId": "sol",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100000,
+  "locationTypes": ["station"],
+  "isDocked": false,
+  "dockedMarketId": null,
+  "markets": [
+    {
+      "marketId": "sol-ceres-exchange",
+      "solarSystemId": "sol",
+      "marketName": "Ceres Exchange",
+      "locationType": "station",
+      "locationName": "Ceres Belt Trade Ring",
+      "isStarterMarket": true,
+      "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+      "distanceKm": 4821.8,
+      "isDocked": false,
+      "priceMultiplier": 1,
+      "driftPercentPerHour": 6,
+      "restockIntervalMinutes": 60
+    }
+  ]
+}
+```
 
 ### `market-list-response` (response)
 
@@ -306,9 +366,10 @@ Edge cases:
 
 - Invalid session emits `invalid-session` instead of `market-list-response`.
 - If `solarSystemId` is omitted, server may return markets across all solar systems.
-- Client local-area view applies a user-selected radius using active ship position when available.
-- If a market has no resolvable local anchor, client keeps it visible with `Unknown distance`.
-- Market browsing is always allowed, but transact actions are disabled unless the active ship is `docked`.
+- Invalid session emits `invalid-session` instead of `market-list-by-location-response`.
+- Distances in `markets[].distanceKm` are server-authoritative and nearest-first.
+- Docking state is server-authoritative via top-level `isDocked` / `dockedMarketId` and per-market `isDocked`.
+- Market browsing is always allowed, but transact actions are disabled unless ship is docked at the specific market.
 
 ---
 

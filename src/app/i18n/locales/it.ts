@@ -322,6 +322,7 @@ export const it: DeepPartial<EnLocale> = {
 			errors: {
 				loadMarketsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare i mercati.',
 				loadMarketsRequiresSessionKey: 'La chiave sessione e obbligatoria per caricare i mercati.',
+				loadMarketsRequiresPosition: 'La posizione della nave attiva e obbligatoria per caricare i mercati locali.',
 			},
 		},
 		shipHangar: {

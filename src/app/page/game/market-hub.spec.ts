@@ -1,6 +1,6 @@
 export {};
 
-import { computeDistanceKm, type MarketSummary } from '../../model/market-list';
+import type { MarketSummary } from '../../model/market-list';
 import type { Triple } from '../../model/triple';
 
 function createSignal<T>(initial: T) {
@@ -35,6 +35,7 @@ interface MockSocketService {
 interface MockSessionService {
 	getSessionKey(): string | null;
 	activeShip: WritableSignalLike<{
+		id?: string;
 		status?: string | null;
 		kinematics?: { position: Triple; reference?: { solarSystemId?: string } };
 		location?: { positionKm: Triple };
@@ -79,6 +80,7 @@ function createMockSocketService(): MockSocketService {
 
 function createMockSessionService(initialKey: string | null = null): MockSessionService {
 	const activeShip = createSignal<{
+		id?: string;
 		status?: string | null;
 		kinematics?: { position: Triple; reference?: { solarSystemId?: string } };
 		location?: { positionKm: Triple };
@@ -92,11 +94,10 @@ function createMockSessionService(initialKey: string | null = null): MockSession
 	};
 }
 
-const MARKET_LIST_REQUEST_EVENT = 'market-list-request';
-const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';
-const KNOWN_MARKET_POSITIONS_KM: Record<string, Triple> = {
-	'sol-ceres-exchange': { x: 413_700_000, y: 0, z: 0 },
-};
+const MARKET_LIST_BY_LOCATION_REQUEST_EVENT = 'market-list-by-location-request';
+const MARKET_LIST_BY_LOCATION_RESPONSE_EVENT = 'market-list-by-location-response';
+const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
+const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 
 class MockMarketHubPage {
 	private socketService: MockSocketService;
@@ -107,6 +108,8 @@ class MockMarketHubPage {
  	markets = createSignal<MarketSummary[]>([]);
  	marketListError = createSignal<string | null>(null);
  	selectedRadiusKm = createSignal<number>(100);
+	isDockedAtAnyMarket = createSignal(false);
+	dockedMarketId = createSignal<string | null>(null);
 
 	constructor(socketService: MockSocketService, sessionService: MockSessionService, state?: NavigationState) {
 		this.socketService = socketService;
@@ -115,10 +118,68 @@ class MockMarketHubPage {
 		this.joinCharacter.set(state?.joinCharacter ?? null);
 
 		if (this.socketService.getIsConnected()) {
+			this.ensureActiveShipPosition();
 			this.loadNearbyMarkets();
 		} else {
-			this.socketService.once('connect', () => this.loadNearbyMarkets());
+			this.socketService.once('connect', () => {
+				this.ensureActiveShipPosition();
+				this.loadNearbyMarkets();
+			});
 		}
+	}
+
+	private ensureActiveShipPosition(): void {
+		const existing = this.sessionService.activeShip();
+		if (existing?.kinematics?.position || existing?.location?.positionKm) {
+			return;
+		}
+
+		const playerName = this.playerName().trim();
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+		if (!playerName || !characterId || !sessionKey) {
+			return;
+		}
+
+		this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: {
+				success: boolean;
+				message: string;
+				ships: Array<{
+					id: string;
+					name: string;
+					model: string;
+					tier: number;
+					status?: string;
+					kinematics?: { position: Triple };
+					location?: { positionKm: Triple };
+				}>;
+			}) => {
+				if (!response.success) {
+					return;
+				}
+
+				const ships = response.ships ?? [];
+				if (ships.length === 0) {
+					return;
+				}
+
+				const current = this.sessionService.activeShip();
+				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
+				const shipWithPosition = ships.find((ship) => ship.kinematics?.position || ship.location?.positionKm);
+				const resolved = sameShip ?? shipWithPosition ?? ships[0];
+
+				this.sessionService.activeShip.set(resolved);
+			},
+		);
+
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, {
+			playerName,
+			characterId,
+			sessionKey,
+		});
 	}
 
 	private getSolarSystemId(): string {
@@ -128,6 +189,10 @@ class MockMarketHubPage {
 	loadNearbyMarkets(): void {
 		const playerName = this.playerName().trim();
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+		const positionKm = this.sessionService.activeShip()?.kinematics?.position ?? this.sessionService.activeShip()?.location?.positionKm ?? null;
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+		const solarSystemId = this.getSolarSystemId();
 
 		if (!playerName) {
 			this.marketListError.set('Player name is required to load markets.');
@@ -141,20 +206,44 @@ class MockMarketHubPage {
 			return;
 		}
 
-		this.socketService.on(MARKET_LIST_RESPONSE_EVENT, (response: { success: boolean; message: string; markets: MarketSummary[] }) => {
+		if (!positionKm) {
+			this.marketListError.set('Active ship position is required to load local markets.');
+			this.markets.set([]);
+			this.isDockedAtAnyMarket.set(false);
+			this.dockedMarketId.set(null);
+			return;
+		}
+
+		this.socketService.on(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, (response: {
+			success: boolean;
+			message: string;
+			markets: MarketSummary[];
+			isDocked?: boolean;
+			dockedMarketId?: string | null;
+		}) => {
 			if (response.success) {
 				this.markets.set(response.markets ?? []);
+				this.isDockedAtAnyMarket.set(Boolean(response.isDocked));
+				this.dockedMarketId.set(response.dockedMarketId ?? null);
 				this.marketListError.set(null);
 			} else {
 				this.markets.set([]);
+				this.isDockedAtAnyMarket.set(false);
+				this.dockedMarketId.set(null);
 				this.marketListError.set(response.message);
 			}
 		});
 
-		this.socketService.emit(MARKET_LIST_REQUEST_EVENT, {
+		this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, {
 			playerName,
 			sessionKey,
-			solarSystemId: this.getSolarSystemId(),
+			solarSystemId,
+			positionKm,
+			distanceKm: this.selectedRadiusKm(),
+			limit: 50,
+			locationTypes: ['station'],
+			...(characterId ? { characterId } : {}),
+			...(shipId ? { shipId } : {}),
 		});
 	}
 
@@ -170,22 +259,28 @@ class MockMarketHubPage {
 		return this.isDocked();
 	}
 
-	localMarkets(): Array<MarketSummary & { distanceKm: number | null }> {
-		const radiusKm = this.selectedRadiusKm();
-		const shipPosition = this.sessionService.activeShip()?.kinematics?.position ?? this.sessionService.activeShip()?.location?.positionKm ?? null;
-		const solarSystemId = this.getSolarSystemId();
+	canTransactAtMarket(market: MarketSummary): boolean {
+		if (market.isDocked === true) {
+			return true;
+		}
+		return this.isDockedAtAnyMarket() && this.dockedMarketId() === market.marketId;
+	}
 
+	localMarkets(): MarketSummary[] {
 		return this.markets()
-			.filter((market) => market.solarSystemId === solarSystemId)
+			.filter((market) => market.solarSystemId === this.getSolarSystemId())
 			.map((market) => {
-				const marketPosition = KNOWN_MARKET_POSITIONS_KM[market.marketId];
-				const distanceKm = shipPosition && marketPosition ? computeDistanceKm(shipPosition, marketPosition) : null;
+				const distanceKm = typeof market.distanceKm === 'number' ? market.distanceKm : undefined;
 				return {
 					...market,
 					distanceKm,
 				};
 			})
-			.filter((market) => market.distanceKm === null || market.distanceKm <= radiusKm);
+			.sort((a, b) => {
+				const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
+				const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+				return aDistance - bDistance;
+			});
 	}
 }
 
@@ -229,14 +324,57 @@ describe('MarketHubPage', () => {
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 		});
 
-		expect(socketService.emittedEvents[0]).toEqual({
-			event: MARKET_LIST_REQUEST_EVENT,
+		expect(socketService.emittedEvents.find((event) => event.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)).toEqual({
+			event: MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
 			data: {
 				playerName: 'Pioneer',
 				sessionKey: 'session-key',
 				solarSystemId: 'sol',
+				positionKm: { x: 413_700_000, y: 0, z: 0 },
+				distanceKm: 100,
+				limit: 50,
+				locationTypes: ['station'],
+				characterId: 'c-1',
 			},
 		});
+	});
+
+	it('should request ship-list and hydrate active ship when active ship has no position', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({ id: 'starter-pod-c-1', status: 'ACTIVE' } as any);
+
+		new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		expect(socketService.emittedEvents[0]).toEqual({
+			event: SHIP_LIST_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				sessionKey: 'session-key',
+			},
+		});
+
+		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			ships: [
+				{
+					id: 'starter-pod-c-1',
+					name: 'Scavenger Pod',
+					model: 'Scavenger Pod',
+					tier: 1,
+					status: 'docked',
+					location: { positionKm: { x: 100, y: 200, z: 300 } },
+				},
+			],
+		});
+
+		expect(sessionService.activeShip()?.location?.positionKm).toEqual({ x: 100, y: 200, z: 300 });
 	});
 
 	it('should set an error when session key is missing', () => {
@@ -256,14 +394,24 @@ describe('MarketHubPage', () => {
 		const socketService = createMockSocketService();
 		socketService.connected = true;
 		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			id: 'starter-pod-c-1',
+			status: 'docked',
+			kinematics: {
+				position: { x: 413_700_000, y: 0, z: 0 },
+				reference: { solarSystemId: 'sol' },
+			},
+		});
 		const component = new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 		});
 
-		socketService.triggerEvent(MARKET_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
 			success: true,
 			message: 'ok',
+			isDocked: false,
+			dockedMarketId: null,
 			markets: [
 				{
 					marketId: 'sol-ceres-exchange',
@@ -271,6 +419,8 @@ describe('MarketHubPage', () => {
 					marketName: 'Ceres Exchange',
 					locationType: 'station',
 					locationName: 'Ceres Belt Trade Ring',
+					distanceKm: 4821.8,
+					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
 					restockIntervalMinutes: 60,
@@ -283,7 +433,7 @@ describe('MarketHubPage', () => {
 		expect(component.markets()[0].marketId).toBe('sol-ceres-exchange');
 	});
 
-	it('should filter markets by selected radius for known market positions', () => {
+	it('should sort markets by authoritative distance from response', () => {
 		const socketService = createMockSocketService();
 		socketService.connected = true;
 		const sessionService = createMockSessionService('session-key');
@@ -299,16 +449,32 @@ describe('MarketHubPage', () => {
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 		});
 
-		socketService.triggerEvent(MARKET_LIST_RESPONSE_EVENT, {
+		socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
 			success: true,
 			message: 'ok',
+			isDocked: false,
+			dockedMarketId: null,
 			markets: [
+				{
+					marketId: 'sol-far-exchange',
+					solarSystemId: 'sol',
+					marketName: 'Far Exchange',
+					locationType: 'station',
+					locationName: 'Far Ring',
+					distanceKm: 9500,
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+				},
 				{
 					marketId: 'sol-ceres-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Ceres Exchange',
 					locationType: 'station',
 					locationName: 'Ceres Belt Trade Ring',
+					distanceKm: 4821.8,
+					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
 					restockIntervalMinutes: 60,
@@ -316,12 +482,63 @@ describe('MarketHubPage', () => {
 			],
 		});
 
-		component.setRadius(10);
-		expect(component.localMarkets().length).toBe(0);
+		expect(component.localMarkets().length).toBe(2);
+		expect(component.localMarkets()[0].marketId).toBe('sol-ceres-exchange');
+		expect(component.localMarkets()[1].marketId).toBe('sol-far-exchange');
+	});
 
-		component.setRadius(30);
-		expect(component.localMarkets().length).toBe(1);
-		expect(component.localMarkets()[0].distanceKm).not.toBeNull();
+	it('should use response docking state to enable transact only at docked market', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			id: 'starter-pod-c-1',
+			status: 'in-flight',
+			kinematics: {
+				position: { x: 413_700_020, y: 0, z: 0 },
+				reference: { solarSystemId: 'sol' },
+			},
+		});
+		const component = new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			isDocked: true,
+			dockedMarketId: 'sol-ceres-exchange',
+			markets: [
+				{
+					marketId: 'sol-ceres-exchange',
+					solarSystemId: 'sol',
+					marketName: 'Ceres Exchange',
+					locationType: 'station',
+					locationName: 'Ceres Belt Trade Ring',
+					distanceKm: 2,
+					isDocked: true,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+				},
+				{
+					marketId: 'sol-far-exchange',
+					solarSystemId: 'sol',
+					marketName: 'Far Exchange',
+					locationType: 'station',
+					locationName: 'Far Ring',
+					distanceKm: 200,
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+				},
+			],
+		});
+
+		expect(component.canTransactAtMarket(component.localMarkets()[0])).toBeTrue();
+		expect(component.canTransactAtMarket(component.localMarkets()[1])).toBeFalse();
 	});
 
 	it('should require docking for transact actions', () => {

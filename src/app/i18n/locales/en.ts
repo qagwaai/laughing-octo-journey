@@ -413,6 +413,7 @@ export const en = {
 			errors: {
 				loadMarketsRequiresPlayer: 'Player name is required to load markets.',
 				loadMarketsRequiresSessionKey: 'Session key is required to load markets.',
+				loadMarketsRequiresPosition: 'Active ship position is required to load local markets.',
 			},
 		},
 

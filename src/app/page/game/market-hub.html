@@ -77,7 +77,7 @@
 						<li class="market-item">
 							<div class="market-item-header">
 								<h3>{{ market.marketName }}</h3>
-								@if (!isDocked()) {
+								@if (!canTransactAtMarket(market)) {
 									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
 								}
 							</div>
@@ -90,9 +90,9 @@
 							</p>
 							<p>
 								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
-								{{ formatMarketDistance(market.distanceKm) }}
+								{{ formatMarketDistance(market.distanceKm ?? null) }}
 							</p>
-							<button type="button" class="transact-btn" [disabled]="!isDocked()">{{ t.game.marketHub.transactLabel }}</button>
+							<button type="button" class="transact-btn" [disabled]="!canTransactAtMarket(market)">{{ t.game.marketHub.transactLabel }}</button>
 						</li>
 					}
 				</ul>

@@ -2,6 +2,10 @@
 
 This is a template to get started with Angular Three.
 
+## AI Guide
+
+- For AI assistant context, commands, and project conventions, see [AGENTS.md](AGENTS.md).
+
 ## Getting Started
 
 - Clone this repository and run `npm install` to install the dependencies.
