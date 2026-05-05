@@ -71,11 +71,11 @@ export default class MarketHubPage {
 	});
 
 	protected readonly activeShipSolarSystemId = computed(
-		() => this.activeShip()?.kinematics?.reference?.solarSystemId?.trim() || 'sol',
+		() => this.activeShip()?.spatial.solarSystemId?.trim() || 'sol',
 	);
 
 	protected readonly activeShipPositionKm = computed<Triple | null>(
-		() => this.activeShip()?.kinematics?.position ?? this.activeShip()?.location?.positionKm ?? null,
+		() => this.activeShip()?.spatial.positionKm ?? null,
 	);
 
 	protected readonly isDocked = computed(() => this.isDockedAtAnyMarket());
@@ -119,7 +119,7 @@ export default class MarketHubPage {
 
 	private ensureActiveShipPosition(): void {
 		const existing = this.activeShip();
-		if (existing?.kinematics?.position || existing?.location?.positionKm) {
+		if (existing?.spatial?.positionKm) {
 			return;
 		}
 
@@ -148,7 +148,7 @@ export default class MarketHubPage {
 
 				const current = this.activeShip();
 				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-				const shipWithPosition = ships.find((ship) => ship.kinematics?.position || ship.location?.positionKm);
+				const shipWithPosition = ships.find((ship) => Boolean(ship.spatial?.positionKm));
 				const fallbackShip = ships[0];
 
 				const resolvedShip: ShipSummary | undefined =

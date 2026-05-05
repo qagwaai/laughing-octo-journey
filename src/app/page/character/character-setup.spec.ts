@@ -747,7 +747,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			const shipUpsertEmit = socketService.emittedEvents.find(e => e.event === SHIP_UPSERT_REQUEST_EVENT);
@@ -765,7 +765,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -787,7 +787,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -822,7 +822,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -869,7 +869,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingPrinter] }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingPrinter], spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -900,7 +900,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone, existingPrinter] }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone, existingPrinter], spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -922,7 +922,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -948,7 +948,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
@@ -981,7 +981,7 @@ describe('CharacterSetupPage', () => {
 				message: 'ok',
 				playerName: 'Pioneer',
 				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship" }],
+				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
 			} satisfies ShipListResponse);
 
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {

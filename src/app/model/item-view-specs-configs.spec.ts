@@ -30,21 +30,18 @@ function makeShipItem(overrides: object = {}) {
   };
 }
 
-const validKinematics = {
-  position: { x: 100, y: 200, z: 300 },
-  velocity: { x: 1, y: 2, z: 2 },
-  reference: {
-    referenceKind: 'barycentric',
-    epochMs: 1_000_000,
-    distanceUnit: 'km',
-    velocityUnit: 'km/s',
-  },
+const validSpatial = {
+  frame: 'barycentric',
+  positionKm: { x: 100, y: 200, z: 300 },
+  epochMs: 1_000_000,
 };
 
-const zeroVelocityKinematics = {
-  position: { x: 0, y: 0, z: 0 },
-  velocity: { x: 0, y: 0, z: 0 },
-  reference: { referenceKind: 'body-centered', epochMs: 0 },
+const validMotion = {
+  velocityKmPerSec: { x: 1, y: 2, z: 2 },
+};
+
+const zeroVelocityMotion = {
+  velocityKmPerSec: { x: 0, y: 0, z: 0 },
 };
 
 // ── Shared helper to resolve all group fields as a flat map ───────────────────
@@ -84,8 +81,8 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Scavenger Pod (ShipSummary)', () => {
     expect(fields.get('Status')).toBe('Unknown Status');
   });
 
-  it('resolves kinematics fields when kinematics is present', () => {
-    const fields = fieldMap(config, makeShipSummary({ kinematics: validKinematics }));
+  it('resolves spatial and motion fields when present', () => {
+    const fields = fieldMap(config, makeShipSummary({ spatial: validSpatial, motion: validMotion }));
     expect(fields.get('Position')).toMatch(/100\.000.*200\.000.*300\.000/);
     expect(fields.get('Velocity')).toMatch(/1\.000.*2\.000.*2\.000/);
     expect(fields.get('Speed')).toMatch(/3\.000 km\/s/);
@@ -94,32 +91,30 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Scavenger Pod (ShipSummary)', () => {
     expect(fields.get('Epoch')).toMatch(/1970/);
   });
 
-  it('omits kinematics fields when kinematics is absent', () => {
-    const fields = fieldMap(config, makeShipSummary({ kinematics: null }));
+  it('omits spatial and motion fields when absent', () => {
+    const fields = fieldMap(config, makeShipSummary({ spatial: null, motion: null }));
     expect(fields.has('Position')).toBeFalse();
     expect(fields.has('Speed')).toBeFalse();
     expect(fields.has('Heading')).toBeFalse();
   });
 
   it('shows "Stationary" heading when velocity is zero', () => {
-    const fields = fieldMap(config, makeShipSummary({ kinematics: zeroVelocityKinematics }));
+    const fields = fieldMap(config, makeShipSummary({ spatial: validSpatial, motion: zeroVelocityMotion }));
     expect(fields.get('Heading')).toContain('Stationary');
   });
 
-  it('uses default units when distanceUnit/velocityUnit are absent', () => {
-    const kinematicsWithoutUnits = {
-      position: { x: 1, y: 2, z: 3 },
-      velocity: { x: 0, y: 0, z: 1 },
-      reference: { referenceKind: 'barycentric', epochMs: 0 },
-    };
-    const fields = fieldMap(config, makeShipSummary({ kinematics: kinematicsWithoutUnits }));
+  it('uses default units for canonical spatial and motion fields', () => {
+    const fields = fieldMap(config, makeShipSummary({
+      spatial: { frame: 'barycentric', positionKm: { x: 1, y: 2, z: 3 }, epochMs: 0 },
+      motion: { velocityKmPerSec: { x: 0, y: 0, z: 1 } },
+    }));
     expect(fields.get('Position')).toContain('km');
     expect(fields.get('Velocity')).toContain('km/s');
   });
 
   it('omits Epoch when epochMs is not a number', () => {
-    const noEpoch = { ...validKinematics, reference: { referenceKind: 'barycentric' } };
-    const fields = fieldMap(config, makeShipSummary({ kinematics: noEpoch }));
+    const noEpoch = { frame: 'barycentric', positionKm: validSpatial.positionKm };
+    const fields = fieldMap(config, makeShipSummary({ spatial: noEpoch, motion: validMotion }));
     expect(fields.has('Epoch')).toBeFalse();
   });
 });
@@ -167,8 +162,8 @@ describe('ITEM_VIEW_SPECS_CONFIGS — 3D Printer (ShipItem)', () => {
     expect(fields.has('Discovered')).toBeFalse();
   });
 
-  it('resolves kinematics fields for an item with kinematics', () => {
-    const fields = fieldMap(config, makeShipItem({ kinematics: validKinematics }));
+  it('resolves spatial and motion fields for an item with movement state', () => {
+    const fields = fieldMap(config, makeShipItem({ spatial: validSpatial, motion: validMotion }));
     expect(fields.get('Speed')).toMatch(/3\.000 km\/s/);
   });
 });
@@ -192,24 +187,24 @@ describe('ITEM_VIEW_SPECS_CONFIGS — basic-mining-laser (ShipItem)', () => {
   });
 });
 
-describe('ITEM_VIEW_SPECS_CONFIGS — kinematics edge cases', () => {
+describe('ITEM_VIEW_SPECS_CONFIGS — spatial/motion edge cases', () => {
   const config = ITEM_VIEW_SPECS_CONFIGS.get('Scavenger Pod')!;
 
-  it('omits kinematics fields when kinematics object lacks position', () => {
-    const bad = { ...validKinematics, position: null };
-    const fields = fieldMap(config, makeShipSummary({ kinematics: bad }));
+  it('omits position fields when spatial object lacks positionKm', () => {
+    const bad = { ...validSpatial, positionKm: null };
+    const fields = fieldMap(config, makeShipSummary({ spatial: bad, motion: validMotion }));
     expect(fields.has('Position')).toBeFalse();
+  });
+
+  it('omits velocity fields when motion lacks velocityKmPerSec', () => {
+    const noVelocity = { velocityKmPerSec: null };
+    const fields = fieldMap(config, makeShipSummary({ spatial: validSpatial, motion: noVelocity }));
+    expect(fields.has('Velocity')).toBeFalse();
     expect(fields.has('Speed')).toBeFalse();
   });
 
-  it('omits kinematics fields when kinematics has no reference', () => {
-    const noRef = { position: validKinematics.position, velocity: validKinematics.velocity, reference: null };
-    const fields = fieldMap(config, makeShipSummary({ kinematics: noRef }));
-    expect(fields.has('Position')).toBeFalse();
-  });
-
-  it('omits kinematics fields when item.kinematics is a primitive', () => {
-    const fields = fieldMap(config, makeShipSummary({ kinematics: 'not-an-object' }));
+  it('omits spatial fields when item.spatial is a primitive', () => {
+    const fields = fieldMap(config, makeShipSummary({ spatial: 'not-an-object', motion: validMotion }));
     expect(fields.has('Position')).toBeFalse();
   });
 });

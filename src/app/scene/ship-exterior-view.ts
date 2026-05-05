@@ -567,7 +567,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	}
 
 	private resolveNavigationShipLocationKm(): Triple | null {
-		const location = this.navigationState.joinShip?.location?.positionKm;
+		const location = this.navigationState.joinShip?.spatial?.positionKm;
 		if (!location) {
 			return null;
 		}
@@ -580,7 +580,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	}
 
 	private resolveNavigationSolarSystemId(): string {
-		return this.navigationState.joinShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+		return this.navigationState.joinShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
 	}
 
 	private resolveInitialShipDamageProfile(): ShipDamageProfile | null {
@@ -939,7 +939,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				}
 
 				const firstShip = shipResponse.success ? shipResponse.ships?.[0] : undefined;
-				const center = firstShip?.location?.positionKm;
+				const center = firstShip?.spatial?.positionKm;
 
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
@@ -1017,11 +1017,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				this.updateTargetingCapabilityFromShipList(response.ships);
 
 				const firstShip = response.ships?.[0];
-				const center = firstShip?.location?.positionKm;
+				const center = firstShip?.spatial?.positionKm;
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.setAsteroidSamples(fallbackSamples);
-					console.warn('ColdBootScan ship list missing required location.positionKm; using fallback random center.');
+					console.warn('ColdBootScan ship list missing required spatial.positionKm; using fallback random center.');
 					return;
 				}
 
@@ -1054,8 +1054,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const nextHasDrone = this.missionDefinition.resolveTargetingCapabilityFromInventory(matchingShip?.inventory);
 		this.hasExpendableDartDrone.set(nextHasDrone);
 		this.activeShipId.set(matchingShip?.id?.trim() ?? '');
-		this.activeShipLocationKm.set(matchingShip?.location?.positionKm ?? null);
-		this.activeSolarSystemId.set(matchingShip?.kinematics?.reference?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
+		this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
+		this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
 		this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
 		this.activeShipDamageProfile.set(
 			coerceShipDamageProfile(matchingShip?.damageProfile) ??

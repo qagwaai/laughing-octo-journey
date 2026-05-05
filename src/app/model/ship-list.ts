@@ -1,5 +1,5 @@
 import { Triple } from './triple';
-import { CelestialBodyLocation } from './celestial-body-location';
+import { ObservabilityState, SpatialState } from './spatial';
 import { ShipItem, coerceShipItem } from './ship-item';
 import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 
@@ -27,8 +27,9 @@ export interface ShipSummary {
 	tier: number;
 	launchable?: boolean;
 	inventory?: ShipItem[];
-	location?: CelestialBodyLocation;
-	kinematics?: ShipKinematics;
+	spatial: SpatialState;
+	motion?: ShipMotion;
+	observability?: ObservabilityState;
 }
 
 export function coerceShipModel(model: unknown): string {
@@ -108,21 +109,9 @@ export function coerceShipInventory(inventory: unknown): ShipItem[] {
 		.filter((item): item is ShipItem => item !== null);
 }
 
-export type SpatialReferenceKind = 'barycentric' | 'body-centered';
-
-export interface SpatialReference {
-	solarSystemId: string;
-	referenceKind: SpatialReferenceKind;
-	referenceBodyId?: string;
-	distanceUnit: 'km';
-	velocityUnit: 'km/s';
-	epochMs: number;
-}
-
-export interface ShipKinematics {
-	position: Triple;
-	velocity: Triple;
-	reference: SpatialReference;
+export interface ShipMotion {
+	velocityKmPerSec: Triple;
+	angularVelocityRadPerSec?: Triple;
 }
 
 export interface ShipListResponse {

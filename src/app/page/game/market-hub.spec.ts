@@ -37,8 +37,7 @@ interface MockSessionService {
 	activeShip: WritableSignalLike<{
 		id?: string;
 		status?: string | null;
-		kinematics?: { position: Triple; reference?: { solarSystemId?: string } };
-		location?: { positionKm: Triple };
+		spatial?: { solarSystemId?: string; positionKm: Triple };
 	} | null>;
 }
 
@@ -82,8 +81,7 @@ function createMockSessionService(initialKey: string | null = null): MockSession
 	const activeShip = createSignal<{
 		id?: string;
 		status?: string | null;
-		kinematics?: { position: Triple; reference?: { solarSystemId?: string } };
-		location?: { positionKm: Triple };
+		spatial?: { solarSystemId?: string; positionKm: Triple };
 	} | null>(null);
 
 	return {
@@ -130,7 +128,7 @@ class MockMarketHubPage {
 
 	private ensureActiveShipPosition(): void {
 		const existing = this.sessionService.activeShip();
-		if (existing?.kinematics?.position || existing?.location?.positionKm) {
+		if (existing?.spatial?.positionKm) {
 			return;
 		}
 
@@ -153,8 +151,7 @@ class MockMarketHubPage {
 					model: string;
 					tier: number;
 					status?: string;
-					kinematics?: { position: Triple };
-					location?: { positionKm: Triple };
+					spatial?: { solarSystemId?: string; positionKm: Triple };
 				}>;
 			}) => {
 				if (!response.success) {
@@ -168,7 +165,7 @@ class MockMarketHubPage {
 
 				const current = this.sessionService.activeShip();
 				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-				const shipWithPosition = ships.find((ship) => ship.kinematics?.position || ship.location?.positionKm);
+				const shipWithPosition = ships.find((ship) => ship.spatial?.positionKm);
 				const resolved = sameShip ?? shipWithPosition ?? ships[0];
 
 				this.sessionService.activeShip.set(resolved);
@@ -183,13 +180,13 @@ class MockMarketHubPage {
 	}
 
 	private getSolarSystemId(): string {
-		return this.sessionService.activeShip()?.kinematics?.reference?.solarSystemId?.trim() || 'sol';
+		return this.sessionService.activeShip()?.spatial?.solarSystemId?.trim() || 'sol';
 	}
 
 	loadNearbyMarkets(): void {
 		const playerName = this.playerName().trim();
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-		const positionKm = this.sessionService.activeShip()?.kinematics?.position ?? this.sessionService.activeShip()?.location?.positionKm ?? null;
+		const positionKm = this.sessionService.activeShip()?.spatial?.positionKm ?? null;
 		const characterId = this.joinCharacter()?.id?.trim() ?? '';
 		const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
 		const solarSystemId = this.getSolarSystemId();
@@ -313,9 +310,9 @@ describe('MarketHubPage', () => {
 		const sessionService = createMockSessionService('session-key');
 		sessionService.activeShip.set({
 			status: 'docked',
-			kinematics: {
-				position: { x: 413_700_000, y: 0, z: 0 },
-				reference: { solarSystemId: 'sol' },
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_000, y: 0, z: 0 },
 			},
 		});
 
@@ -369,12 +366,12 @@ describe('MarketHubPage', () => {
 					model: 'Scavenger Pod',
 					tier: 1,
 					status: 'docked',
-					location: { positionKm: { x: 100, y: 200, z: 300 } },
+					spatial: { solarSystemId: 'sol', positionKm: { x: 100, y: 200, z: 300 } },
 				},
 			],
 		});
 
-		expect(sessionService.activeShip()?.location?.positionKm).toEqual({ x: 100, y: 200, z: 300 });
+		expect(sessionService.activeShip()?.spatial?.positionKm).toEqual({ x: 100, y: 200, z: 300 });
 	});
 
 	it('should set an error when session key is missing', () => {
@@ -397,9 +394,9 @@ describe('MarketHubPage', () => {
 		sessionService.activeShip.set({
 			id: 'starter-pod-c-1',
 			status: 'docked',
-			kinematics: {
-				position: { x: 413_700_000, y: 0, z: 0 },
-				reference: { solarSystemId: 'sol' },
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_000, y: 0, z: 0 },
 			},
 		});
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -417,8 +414,9 @@ describe('MarketHubPage', () => {
 					marketId: 'sol-ceres-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Ceres Exchange',
-					locationType: 'station',
-					locationName: 'Ceres Belt Trade Ring',
+					siteType: 'station',
+					siteName: 'Ceres Belt Trade Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_704_822, y: 0, z: 0 }, epochMs: 1 },
 					distanceKm: 4821.8,
 					isDocked: false,
 					priceMultiplier: 1,
@@ -439,9 +437,9 @@ describe('MarketHubPage', () => {
 		const sessionService = createMockSessionService('session-key');
 		sessionService.activeShip.set({
 			status: 'docked',
-			kinematics: {
-				position: { x: 413_700_020, y: 0, z: 0 },
-				reference: { solarSystemId: 'sol' },
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
 			},
 		});
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -459,8 +457,9 @@ describe('MarketHubPage', () => {
 					marketId: 'sol-far-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Far Exchange',
-					locationType: 'station',
-					locationName: 'Far Ring',
+					siteType: 'station',
+					siteName: 'Far Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_709_520, y: 0, z: 0 }, epochMs: 1 },
 					distanceKm: 9500,
 					isDocked: false,
 					priceMultiplier: 1,
@@ -471,8 +470,9 @@ describe('MarketHubPage', () => {
 					marketId: 'sol-ceres-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Ceres Exchange',
-					locationType: 'station',
-					locationName: 'Ceres Belt Trade Ring',
+					siteType: 'station',
+					siteName: 'Ceres Belt Trade Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_704_842, y: 0, z: 0 }, epochMs: 1 },
 					distanceKm: 4821.8,
 					isDocked: false,
 					priceMultiplier: 1,
@@ -494,9 +494,9 @@ describe('MarketHubPage', () => {
 		sessionService.activeShip.set({
 			id: 'starter-pod-c-1',
 			status: 'in-flight',
-			kinematics: {
-				position: { x: 413_700_020, y: 0, z: 0 },
-				reference: { solarSystemId: 'sol' },
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
 			},
 		});
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -514,8 +514,9 @@ describe('MarketHubPage', () => {
 					marketId: 'sol-ceres-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Ceres Exchange',
-					locationType: 'station',
-					locationName: 'Ceres Belt Trade Ring',
+					siteType: 'station',
+					siteName: 'Ceres Belt Trade Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_700_022, y: 0, z: 0 }, epochMs: 1 },
 					distanceKm: 2,
 					isDocked: true,
 					priceMultiplier: 1,
@@ -526,8 +527,9 @@ describe('MarketHubPage', () => {
 					marketId: 'sol-far-exchange',
 					solarSystemId: 'sol',
 					marketName: 'Far Exchange',
-					locationType: 'station',
-					locationName: 'Far Ring',
+					siteType: 'station',
+					siteName: 'Far Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_700_220, y: 0, z: 0 }, epochMs: 1 },
 					distanceKm: 200,
 					isDocked: false,
 					priceMultiplier: 1,

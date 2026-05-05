@@ -31,12 +31,12 @@ export default class ShipViewSpecsPage {
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 	protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 	protected shipMotion = computed(() => {
-		const kinematics = this.joinShip()?.kinematics;
-		if (!kinematics) {
+		const motion = this.joinShip()?.motion;
+		if (!motion) {
 			return null;
 		}
 
-		return summarizeShipMotion(kinematics);
+		return summarizeShipMotion(motion);
 	});
 	protected shipModel = computed(() => coerceShipModel(this.joinShip()?.model));
 	protected shipTier = computed(() => coerceShipTier(this.joinShip()?.tier));

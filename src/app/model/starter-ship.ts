@@ -1,9 +1,10 @@
-import { CelestialBodyLocation, generateRandomAsteroidBeltClusterCenterKm } from './celestial-body-location';
+import { generateRandomAsteroidBeltClusterCenterKm } from './celestial-body-location';
 import {
 	DEFAULT_SHIP_MODEL,
 	DEFAULT_SHIP_TIER,
-	ShipKinematics,
+	ShipMotion,
 } from './ship-list';
+import { SpatialState } from './spatial';
 import { ShipUpsertPayload } from './ship-upsert';
 
 function hashToSeed(input: string): number {
@@ -23,8 +24,8 @@ function seededRandom(seed: number): () => number {
 	};
 }
 
-function buildStarterShipKinematics(location: CelestialBodyLocation, random: () => number): ShipKinematics {
-	const { x, y, z } = location.positionKm;
+function buildStarterShipMotion(spatial: SpatialState, random: () => number): ShipMotion {
+	const { x, y, z } = spatial.positionKm;
 	const planar = Math.hypot(x, z);
 	const tangentX = planar > 0 ? -z / planar : 0;
 	const tangentZ = planar > 0 ? x / planar : 1;
@@ -33,18 +34,10 @@ function buildStarterShipKinematics(location: CelestialBodyLocation, random: () 
 	const speedKmPerSec = 15 + random() * 5;
 
 	return {
-		position: { x, y, z },
-		velocity: {
+		velocityKmPerSec: {
 			x: +(tangentX * speedKmPerSec).toFixed(4),
 			y: +((random() - 0.5) * 0.08).toFixed(4),
 			z: +(tangentZ * speedKmPerSec).toFixed(4),
-		},
-		reference: {
-			solarSystemId: 'sol',
-			referenceKind: 'barycentric',
-			distanceUnit: 'km',
-			velocityUnit: 'km/s',
-			epochMs: Date.now(),
 		},
 	};
 }
@@ -56,14 +49,19 @@ export function generateDeterministicStarterShipUpdate(
 ): ShipUpsertPayload {
 	const random = seededRandom(hashToSeed(`${playerName}::${characterId}`));
 	const center = generateRandomAsteroidBeltClusterCenterKm(random);
-	const location: CelestialBodyLocation = { positionKm: center };
-	const kinematics = buildStarterShipKinematics(location, random);
+	const spatial: SpatialState = {
+		solarSystemId: 'sol',
+		frame: 'barycentric',
+		positionKm: center,
+		epochMs: Date.now(),
+	};
+	const motion = buildStarterShipMotion(spatial, random);
 
 	return {
 		id: shipId,
 		model: DEFAULT_SHIP_MODEL,
 		tier: DEFAULT_SHIP_TIER,
-		location,
-		kinematics,
+		spatial,
+		motion,
 	} satisfies ShipUpsertPayload;
 }

@@ -29,8 +29,7 @@ interface ShipSummary {
 	tier?: number;
 	status?: string;
 	inventory?: { id: string; itemType: string; displayName: string; state: string; damageStatus: string }[];
-	location?: { positionKm: { x: number; y: number; z: number } };
-	kinematics?: { position: { x: number; y: number; z: number } };
+	spatial?: { positionKm: { x: number; y: number; z: number } };
 }
 
 interface MockRouter {
@@ -196,7 +195,7 @@ class MockShipHangarPage {
 	}
 
 	getShipLocationSummary(ship: ShipSummary): string {
-		const position = ship.location?.positionKm ?? ship.kinematics?.position;
+		const position = ship.spatial?.positionKm;
 		if (!position) {
 			return this.t.game.shipHangar.locationUnavailable;
 		}
@@ -364,7 +363,7 @@ describe('ShipHangarPage', () => {
 			success: true,
 			message: 'ok',
 			ships: [
-				{ id: 's-1', name: 'Courier', location: { positionKm: { x: 1, y: 2, z: 3 } } },
+				{ id: 's-1', name: 'Courier', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
 				{ id: 's-2', name: 'Ranger' },
 			],
 		});
@@ -411,21 +410,20 @@ describe('ShipHangarPage', () => {
 		const summary = component.getShipLocationSummary({
 			id: 's-1',
 			name: 'Courier',
-			location: { positionKm: { x: 10, y: 20, z: 30 } },
-			kinematics: { position: { x: 1, y: 2, z: 3 } },
+			spatial: { positionKm: { x: 10, y: 20, z: 30 } },
 		});
 
 		expect(summary).toBe('(10, 20, 30) km');
 	});
 
-	it('should summarize location from kinematics.position when location is missing', () => {
+	it('should summarize location from spatial.positionKm', () => {
 		socketService.connected = false;
 		const component = new MockShipHangarPage(socketService, sessionService);
 
 		const summary = component.getShipLocationSummary({
 			id: 's-1',
 			name: 'Courier',
-			kinematics: { position: { x: -1, y: 0, z: 4 } },
+			spatial: { positionKm: { x: -1, y: 0, z: 4 } },
 		});
 
 		expect(summary).toBe('(-1, 0, 4) km');

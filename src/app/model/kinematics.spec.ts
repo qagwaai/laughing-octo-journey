@@ -1,5 +1,5 @@
 import { getHeadingUnitVector, getVectorMagnitude, summarizeShipMotion } from './kinematics';
-import { ShipKinematics } from './ship-list';
+import { ShipMotion } from './ship-list';
 
 describe('kinematics helpers', () => {
 	it('computes vector magnitude for velocity', () => {
@@ -17,19 +17,11 @@ describe('kinematics helpers', () => {
 	});
 
 	it('summarizes speed and heading from kinematics', () => {
-		const kinematics: ShipKinematics = {
-			position: { x: 1000, y: 2000, z: 3000 },
-			velocity: { x: 6, y: 8, z: 0 },
-			reference: {
-				solarSystemId: 'sol',
-				referenceKind: 'barycentric',
-				distanceUnit: 'km',
-				velocityUnit: 'km/s',
-				epochMs: 1713523200000,
-			},
+		const motion: ShipMotion = {
+			velocityKmPerSec: { x: 6, y: 8, z: 0 },
 		};
 
-		const summary = summarizeShipMotion(kinematics);
+		const summary = summarizeShipMotion(motion);
 		expect(summary.speedKmPerSec).toBe(10);
 		expect(summary.headingUnitVector).toEqual({ x: 0.6, y: 0.8, z: 0 });
 	});

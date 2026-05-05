@@ -1,5 +1,5 @@
-import { CelestialBodyLocation } from './celestial-body-location';
-import { ShipKinematics } from './ship-list';
+import { SpatialState } from './spatial';
+import { ShipMotion } from './ship-list';
 import { ShipItem } from './ship-item';
 import { ShipDamageProfile } from './ship-damage';
 
@@ -13,8 +13,8 @@ export interface ShipUpsertPayload {
 	tier?: number;
 	launchable?: boolean;
 	damageProfile?: ShipDamageProfile | null;
-	location?: CelestialBodyLocation;
-	kinematics?: ShipKinematics;
+	spatial: SpatialState;
+	motion?: ShipMotion;
 }
 
 export interface ShipUpsertResponsePayload {
@@ -26,8 +26,8 @@ export interface ShipUpsertResponsePayload {
 	launchable?: boolean;
 	inventory?: ShipItem[];
 	damageProfile?: ShipDamageProfile | null;
-	location?: CelestialBodyLocation;
-	kinematics?: ShipKinematics;
+	spatial: SpatialState;
+	motion?: ShipMotion;
 }
 
 export interface ShipUpsertRequest {

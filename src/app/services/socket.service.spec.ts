@@ -216,17 +216,14 @@ describe('SocketService', () => {
           id: 'starter-char-1',
           model: 'Scavenger Pod',
           tier: 1,
-          location: { positionKm: { x: 1, y: 2, z: 3 } },
-          kinematics: {
-            position: { x: 1, y: 2, z: 3 },
-            velocity: { x: 0.1, y: 0, z: 0.2 },
-            reference: {
-              solarSystemId: 'sol',
-              referenceKind: 'barycentric',
-              distanceUnit: 'km',
-              velocityUnit: 'km/s',
-              epochMs: 123,
-            },
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1, y: 2, z: 3 },
+            epochMs: 123,
+          },
+          motion: {
+            velocityKmPerSec: { x: 0.1, y: 0, z: 0.2 },
           },
         },
       };

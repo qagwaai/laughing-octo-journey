@@ -10,18 +10,16 @@ import {
 	coerceShipDamageProfileOrNull,
 	coerceShipInventory,
 	coerceShipTier,
-	ShipListRequest,
-	ShipKinematics,
-	ShipListResponse,
-	ShipSummary,
-	SpatialReference,
+	type ShipListRequest,
+	type ShipListResponse,
+	type ShipMotion,
+	type ShipSummary,
 } from '../../model/ship-list';
-import { CelestialBodyLocation } from '../../model/celestial-body-location';
 import { summarizeShipMotion } from '../../model/kinematics';
 import { INVALID_SESSION_EVENT } from '../../model/session';
+import { type SpatialState } from '../../model/spatial';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
-import { Triple } from '../../model/triple';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 
@@ -121,26 +119,20 @@ export default class GameJoinPage {
 			displayName?: string;
 			modelName?: string;
 			tierLevel?: number;
-			position?: Triple;
-			location?: Triple;
-			bodyLocation?: CelestialBodyLocation;
-			velocity?: Triple;
-			velocityVector?: Triple;
-			directionOfTravel?: Triple;
-			reference?: Partial<SpatialReference>;
-			solarSystemId?: string;
-			referenceKind?: SpatialReference['referenceKind'];
-			referenceBodyId?: string;
-			distanceUnit?: SpatialReference['distanceUnit'];
-			velocityUnit?: SpatialReference['velocityUnit'];
-			epochMs?: number;
+			spatial?: SpatialState;
+			motion?: ShipMotion;
 		};
 
 		const normalizedName = rawShip.name?.trim() || rawShip.shipName?.trim() || rawShip.displayName?.trim() || rawShip.id;
-		const normalizedKinematics = this.normalizeShipKinematics(rawShip);
 		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
 		const normalizedTier = coerceShipTier(rawShip.tier ?? rawShip.tierLevel);
 		const normalizedInventory = coerceShipInventory(rawShip.inventory);
+		const normalizedSpatial = rawShip.spatial ?? {
+			solarSystemId: 'unknown-system',
+			frame: 'barycentric' as const,
+			positionKm: { x: 0, y: 0, z: 0 },
+			epochMs: Date.now(),
+		};
 
 		return {
 			...ship,
@@ -150,71 +142,8 @@ export default class GameJoinPage {
 			model: normalizedModel,
 			tier: normalizedTier,
 			inventory: normalizedInventory,
-			kinematics: normalizedKinematics,
-		};
-	}
-
-	private normalizeShipKinematics(ship: ShipSummary & {
-		position?: Triple;
-		location?: Triple;
-		bodyLocation?: CelestialBodyLocation;
-		velocity?: Triple;
-		velocityVector?: Triple;
-		directionOfTravel?: Triple;
-		reference?: Partial<SpatialReference>;
-		solarSystemId?: string;
-		referenceKind?: SpatialReference['referenceKind'];
-		referenceBodyId?: string;
-		distanceUnit?: SpatialReference['distanceUnit'];
-		velocityUnit?: SpatialReference['velocityUnit'];
-		epochMs?: number;
-	}): ShipKinematics | undefined {
-		if (ship.kinematics) {
-			return ship.kinematics;
-		}
-
-		const positionFromLocation = ship.location?.positionKm ?? ship.bodyLocation?.positionKm;
-		const position =
-			this.normalizeTriple(ship.position) ??
-			this.normalizeTriple(positionFromLocation) ??
-			this.normalizeTriple(ship.location);
-		const velocity =
-			this.normalizeTriple(ship.velocity) ??
-			this.normalizeTriple(ship.velocityVector) ??
-			this.normalizeTriple(ship.directionOfTravel);
-
-		if (!position || !velocity) {
-			return undefined;
-		}
-
-		return {
-			position,
-			velocity,
-			reference: {
-				solarSystemId: ship.reference?.solarSystemId ?? ship.solarSystemId ?? 'unknown-system',
-				referenceKind: ship.reference?.referenceKind ?? ship.referenceKind ?? 'barycentric',
-				referenceBodyId: ship.reference?.referenceBodyId ?? ship.referenceBodyId,
-				distanceUnit: ship.reference?.distanceUnit ?? ship.distanceUnit ?? 'km',
-				velocityUnit: ship.reference?.velocityUnit ?? ship.velocityUnit ?? 'km/s',
-				epochMs: ship.reference?.epochMs ?? ship.epochMs ?? Date.now(),
-			},
-		};
-	}
-
-	private normalizeTriple(value: unknown): Triple | undefined {
-		if (!value || typeof value !== 'object') {
-			return undefined;
-		}
-
-		const candidate = value as Partial<Record<'x' | 'y' | 'z', unknown>>;
-		if (typeof candidate.x !== 'number' || typeof candidate.y !== 'number' || typeof candidate.z !== 'number') {
-			return undefined;
-		}
-
-		return {
-			x: candidate.x,
-			y: candidate.y,
-			z: candidate.z,
+			spatial: normalizedSpatial,
+			motion: rawShip.motion,
 		};
 	}
 
@@ -249,21 +178,22 @@ export default class GameJoinPage {
 	}
 
 	protected getShipKinematicsSummary(ship: ShipSummary): string {
-		const kinematics = ship.kinematics;
-		if (!kinematics) {
+		const spatial = ship.spatial;
+		const motion = ship.motion;
+		if (!spatial || !motion) {
 			return 'Kinematics unavailable';
 		}
 
-		const motion = summarizeShipMotion(kinematics);
-		const speed = `${motion.speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}`;
-		const position = `(${kinematics.position.x}, ${kinematics.position.y}, ${kinematics.position.z}) ${kinematics.reference.distanceUnit}`;
+		const summary = summarizeShipMotion(motion);
+		const speed = `${summary.speedKmPerSec.toFixed(3)} km/s`;
+		const position = `(${spatial.positionKm.x}, ${spatial.positionKm.y}, ${spatial.positionKm.z}) km`;
 
-		if (!motion.headingUnitVector) {
-			return `${kinematics.reference.referenceKind}, position ${position}, stationary at ${speed}`;
+		if (!summary.headingUnitVector) {
+			return `${spatial.frame}, position ${position}, stationary at ${speed}`;
 		}
 
-		const heading = `(${motion.headingUnitVector.x.toFixed(3)}, ${motion.headingUnitVector.y.toFixed(3)}, ${motion.headingUnitVector.z.toFixed(3)})`;
-		return `${kinematics.reference.referenceKind}, position ${position}, speed ${speed}, heading ${heading}`;
+		const heading = `(${summary.headingUnitVector.x.toFixed(3)}, ${summary.headingUnitVector.y.toFixed(3)}, ${summary.headingUnitVector.z.toFixed(3)})`;
+		return `${spatial.frame}, position ${position}, speed ${speed}, heading ${heading}`;
 	}
 
 	ngOnDestroy(): void {

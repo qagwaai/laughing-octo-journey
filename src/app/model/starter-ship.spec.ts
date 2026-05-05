@@ -9,7 +9,6 @@ describe('starter-ship model', () => {
 		expect(starter.model).toBe(DEFAULT_SHIP_MODEL);
 		expect(starter.tier).toBe(DEFAULT_SHIP_TIER);
 		expect((starter as { inventory?: unknown }).inventory).toBeUndefined();
-		expect(starter.location).toBeDefined();
-		expect(starter.kinematics).toBeDefined();
-	});
+			expect(starter.spatial).toBeDefined();
+			expect(starter.motion).toBeDefined();	});
 });

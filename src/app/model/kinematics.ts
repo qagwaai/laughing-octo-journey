@@ -1,5 +1,5 @@
 import { Triple } from './triple';
-import { ShipKinematics } from './ship-list';
+import { ShipMotion } from './ship-list';
 
 const MIN_SPEED_EPSILON_KM_PER_SEC = 1e-9;
 
@@ -25,9 +25,9 @@ export function getHeadingUnitVector(velocity: Triple): Triple | null {
 	};
 }
 
-export function summarizeShipMotion(kinematics: ShipKinematics): ShipMotionSummary {
+export function summarizeShipMotion(motion: ShipMotion): ShipMotionSummary {
 	return {
-		speedKmPerSec: getVectorMagnitude(kinematics.velocity),
-		headingUnitVector: getHeadingUnitVector(kinematics.velocity),
+		speedKmPerSec: getVectorMagnitude(motion.velocityKmPerSec),
+		headingUnitVector: getHeadingUnitVector(motion.velocityKmPerSec),
 	};
 }

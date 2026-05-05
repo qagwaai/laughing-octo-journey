@@ -8,15 +8,14 @@ interface Vector3Like {
 	z: number;
 }
 
-interface KinematicsLike {
-	position: Vector3Like;
-	velocity: Vector3Like;
-	reference: {
-		referenceKind?: string;
-		epochMs?: number;
-		distanceUnit?: string;
-		velocityUnit?: string;
-	};
+interface SpatialLike {
+	frame?: string;
+	positionKm: Vector3Like;
+	epochMs?: number;
+}
+
+interface MotionLike {
+	velocityKmPerSec: Vector3Like;
 }
 
 function isVector3Like(value: unknown): value is Vector3Like {
@@ -32,30 +31,45 @@ function isVector3Like(value: unknown): value is Vector3Like {
 	);
 }
 
-function resolveKinematics(item: unknown): KinematicsLike | null {
+function resolveSpatial(item: unknown): SpatialLike | null {
 	if (!item || typeof item !== 'object') {
 		return null;
 	}
 
-	const candidate = (item as Record<string, unknown>)['kinematics'];
+	const candidate = (item as Record<string, unknown>)['spatial'];
 	if (!candidate || typeof candidate !== 'object') {
 		return null;
 	}
 
-	const kinematics = candidate as Record<string, unknown>;
-	if (!isVector3Like(kinematics['position']) || !isVector3Like(kinematics['velocity'])) {
-		return null;
-	}
-
-	const referenceCandidate = kinematics['reference'];
-	if (!referenceCandidate || typeof referenceCandidate !== 'object') {
+	const spatial = candidate as Record<string, unknown>;
+	if (!isVector3Like(spatial['positionKm'])) {
 		return null;
 	}
 
 	return {
-		position: kinematics['position'] as Vector3Like,
-		velocity: kinematics['velocity'] as Vector3Like,
-		reference: referenceCandidate as KinematicsLike['reference'],
+		frame: typeof spatial['frame'] === 'string' ? spatial['frame'] : undefined,
+		positionKm: spatial['positionKm'] as Vector3Like,
+		epochMs: typeof spatial['epochMs'] === 'number' ? spatial['epochMs'] : undefined,
+	};
+}
+
+function resolveMotion(item: unknown): MotionLike | null {
+	if (!item || typeof item !== 'object') {
+		return null;
+	}
+
+	const candidate = (item as Record<string, unknown>)['motion'];
+	if (!candidate || typeof candidate !== 'object') {
+		return null;
+	}
+
+	const motion = candidate as Record<string, unknown>;
+	if (!isVector3Like(motion['velocityKmPerSec'])) {
+		return null;
+	}
+
+	return {
+		velocityKmPerSec: motion['velocityKmPerSec'] as Vector3Like,
 	};
 }
 
@@ -63,21 +77,21 @@ function formatVector(vector: Vector3Like): string {
 	return `(${vector.x.toFixed(3)}, ${vector.y.toFixed(3)}, ${vector.z.toFixed(3)})`;
 }
 
-function resolveSpeed(kinematics: KinematicsLike): number {
-	const { x, y, z } = kinematics.velocity;
+function resolveSpeed(motion: MotionLike): number {
+	const { x, y, z } = motion.velocityKmPerSec;
 	return Math.hypot(x, y, z);
 }
 
-function resolveHeading(kinematics: KinematicsLike): Vector3Like | null {
-	const speed = resolveSpeed(kinematics);
+function resolveHeading(motion: MotionLike): Vector3Like | null {
+	const speed = resolveSpeed(motion);
 	if (speed <= Number.EPSILON) {
 		return null;
 	}
 
 	return {
-		x: kinematics.velocity.x / speed,
-		y: kinematics.velocity.y / speed,
-		z: kinematics.velocity.z / speed,
+		x: motion.velocityKmPerSec.x / speed,
+		y: motion.velocityKmPerSec.y / speed,
+		z: motion.velocityKmPerSec.z / speed,
 	};
 }
 
@@ -89,42 +103,40 @@ const sharedKinematicsGroup: FieldGroupConfig = {
 		{
 			label: 'Position',
 			getValue: (item) => {
-				const kinematics = resolveKinematics(item);
-				if (!kinematics) return null;
-				const unit = kinematics.reference.distanceUnit ?? 'km';
-				return `${formatVector(kinematics.position)} ${unit}`;
+				const spatial = resolveSpatial(item);
+				if (!spatial) return null;
+				return `${formatVector(spatial.positionKm)} km`;
 			},
 		},
 		{
 			label: 'Velocity',
 			getValue: (item) => {
-				const kinematics = resolveKinematics(item);
-				if (!kinematics) return null;
-				const unit = kinematics.reference.velocityUnit ?? 'km/s';
-				return `${formatVector(kinematics.velocity)} ${unit}`;
+				const motion = resolveMotion(item);
+				if (!motion) return null;
+				return `${formatVector(motion.velocityKmPerSec)} km/s`;
 			},
 		},
 		{
 			label: 'Speed',
 			getValue: (item) => {
-				const kinematics = resolveKinematics(item);
-				if (!kinematics) {
+				const motion = resolveMotion(item);
+				if (!motion) {
 					return null;
 				}
 
-				return resolveSpeed(kinematics);
+				return resolveSpeed(motion);
 			},
 			format: (value) => `${(value as number).toFixed(3)} km/s`,
 		},
 		{
 			label: 'Heading',
 			getValue: (item) => {
-				const kinematics = resolveKinematics(item);
-				if (!kinematics) {
+				const motion = resolveMotion(item);
+				if (!motion) {
 					return null;
 				}
 
-				const heading = resolveHeading(kinematics);
+				const heading = resolveHeading(motion);
 				if (!heading) {
 					return 'Stationary (insufficient velocity)';
 				}
@@ -134,12 +146,12 @@ const sharedKinematicsGroup: FieldGroupConfig = {
 		},
 		{
 			label: 'Reference Frame',
-			getValue: (item) => resolveKinematics(item)?.reference.referenceKind ?? null,
+			getValue: (item) => resolveSpatial(item)?.frame ?? null,
 		},
 		{
 			label: 'Epoch',
 			getValue: (item) => {
-				const epochMs = resolveKinematics(item)?.reference.epochMs;
+				const epochMs = resolveSpatial(item)?.epochMs;
 				if (typeof epochMs !== 'number') {
 					return null;
 				}

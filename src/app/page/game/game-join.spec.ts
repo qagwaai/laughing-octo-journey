@@ -120,33 +120,32 @@ class MockGameJoinPage {
 	}
 
 	getShipKinematicsSummary(ship: {
-		kinematics?: {
-			position: { x: number; y: number; z: number };
-			velocity: { x: number; y: number; z: number };
-			reference: {
-				referenceKind: string;
-				distanceUnit: 'km';
-				velocityUnit: 'km/s';
-			};
+		spatial?: {
+			frame: string;
+			positionKm: { x: number; y: number; z: number };
+		};
+		motion?: {
+			velocityKmPerSec: { x: number; y: number; z: number };
 		};
 	}): string {
-		const kinematics = ship.kinematics;
-		if (!kinematics) {
+		const spatial = ship.spatial;
+		const motion = ship.motion;
+		if (!spatial || !motion) {
 			return 'Kinematics unavailable';
 		}
 
 		const speedKmPerSec = Math.sqrt(
-			kinematics.velocity.x ** 2 +
-			kinematics.velocity.y ** 2 +
-			kinematics.velocity.z ** 2,
+			motion.velocityKmPerSec.x ** 2 +
+			motion.velocityKmPerSec.y ** 2 +
+			motion.velocityKmPerSec.z ** 2,
 		);
-		const position = `(${kinematics.position.x}, ${kinematics.position.y}, ${kinematics.position.z}) ${kinematics.reference.distanceUnit}`;
+		const position = `(${spatial.positionKm.x}, ${spatial.positionKm.y}, ${spatial.positionKm.z}) km`;
 		if (speedKmPerSec <= 1e-9) {
-			return `${kinematics.reference.referenceKind}, position ${position}, stationary at ${speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}`;
+			return `${spatial.frame}, position ${position}, stationary at ${speedKmPerSec.toFixed(3)} km/s`;
 		}
 
-		const heading = `(${(kinematics.velocity.x / speedKmPerSec).toFixed(3)}, ${(kinematics.velocity.y / speedKmPerSec).toFixed(3)}, ${(kinematics.velocity.z / speedKmPerSec).toFixed(3)})`;
-		return `${kinematics.reference.referenceKind}, position ${position}, speed ${speedKmPerSec.toFixed(3)} ${kinematics.reference.velocityUnit}, heading ${heading}`;
+		const heading = `(${(motion.velocityKmPerSec.x / speedKmPerSec).toFixed(3)}, ${(motion.velocityKmPerSec.y / speedKmPerSec).toFixed(3)}, ${(motion.velocityKmPerSec.z / speedKmPerSec).toFixed(3)})`;
+		return `${spatial.frame}, position ${position}, speed ${speedKmPerSec.toFixed(3)} km/s, heading ${heading}`;
 	}
 
 	ngOnDestroy(): void {
@@ -335,7 +334,7 @@ describe('GameJoinPage', () => {
 		component.ngOnDestroy();
 	});
 
-	it('should preserve alternate top-level kinematics payload fields', () => {
+	it('should preserve canonical spatial and motion payload fields', () => {
 		socketService.connected = true;
 		const component = new MockGameJoinPage(socketService, sessionService, router, {
 			playerName: 'Pioneer',
@@ -345,25 +344,21 @@ describe('GameJoinPage', () => {
 		const normalizeShipSummary = (ship: {
 			id: string;
 			name?: string;
-			location?: { x: number; y: number; z: number };
-			velocityVector?: { x: number; y: number; z: number };
+			spatial?: { x: number; y: number; z: number };
+			velocityKmPerSec?: { x: number; y: number; z: number };
+			frame?: 'barycentric';
 			solarSystemId?: string;
-			referenceKind?: 'barycentric' | 'body-centered';
-			distanceUnit?: 'km';
-			velocityUnit?: 'km/s';
 		}) => ({
 			id: ship.id,
 			name: ship.name?.trim() || ship.id,
-			kinematics: ship.location && ship.velocityVector ? {
-				position: ship.location,
-				velocity: ship.velocityVector,
-				reference: {
-					solarSystemId: ship.solarSystemId ?? 'unknown-system',
-					referenceKind: ship.referenceKind ?? 'barycentric',
-					distanceUnit: ship.distanceUnit ?? 'km',
-					velocityUnit: ship.velocityUnit ?? 'km/s',
-					epochMs: jasmine.any(Number),
-				},
+			spatial: ship.spatial ? {
+				frame: ship.frame ?? 'barycentric',
+				solarSystemId: ship.solarSystemId ?? 'unknown-system',
+				positionKm: ship.spatial,
+				epochMs: jasmine.any(Number),
+			} : undefined,
+			motion: ship.velocityKmPerSec ? {
+				velocityKmPerSec: ship.velocityKmPerSec,
 			} : undefined,
 		});
 
@@ -376,21 +371,21 @@ describe('GameJoinPage', () => {
 				normalizeShipSummary({
 					id: 'd-1',
 					name: 'Surveyor',
-					location: { x: 10, y: 20, z: 30 },
-					velocityVector: { x: 3, y: 4, z: 0 },
+					spatial: { x: 10, y: 20, z: 30 },
+					velocityKmPerSec: { x: 3, y: 4, z: 0 },
 					solarSystemId: 'sol',
-					referenceKind: 'barycentric',
-					distanceUnit: 'km',
-					velocityUnit: 'km/s',
+					frame: 'barycentric',
 				}),
 			],
 		});
 
 		expect(component.getShipKinematicsSummary(component.ships()[0] as {
-			kinematics?: {
-				position: { x: number; y: number; z: number };
-				velocity: { x: number; y: number; z: number };
-				reference: { referenceKind: string; distanceUnit: 'km'; velocityUnit: 'km/s' };
+			spatial?: {
+				frame: string;
+				positionKm: { x: number; y: number; z: number };
+			};
+			motion?: {
+				velocityKmPerSec: { x: number; y: number; z: number };
 			};
 		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
 
@@ -466,14 +461,12 @@ describe('GameJoinPage', () => {
 		});
 
 		expect(component.getShipKinematicsSummary({
-			kinematics: {
-				position: { x: 10, y: 20, z: 30 },
-				velocity: { x: 3, y: 4, z: 0 },
-				reference: {
-					referenceKind: 'barycentric',
-					distanceUnit: 'km',
-					velocityUnit: 'km/s',
-				},
+			spatial: {
+				frame: 'barycentric',
+				positionKm: { x: 10, y: 20, z: 30 },
+			},
+			motion: {
+				velocityKmPerSec: { x: 3, y: 4, z: 0 },
 			},
 		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
 

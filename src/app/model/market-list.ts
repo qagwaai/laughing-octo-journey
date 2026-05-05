@@ -1,4 +1,5 @@
 import { Triple } from './triple';
+import { SpatialState } from './spatial';
 
 export const MARKET_LIST_REQUEST_EVENT = 'market-list-request';
 export const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';
@@ -15,21 +16,24 @@ export interface MarketSummary {
 	marketId: string;
 	solarSystemId: string;
 	marketName: string;
-	locationType: string;
-	locationName: string;
+	siteType: string;
+	siteName: string;
 	isStarterMarket?: boolean;
-	orbit?: {
-		anchorBodyId: string;
-		semiMajorAxisKm: number;
-		eccentricity: number;
-		inclinationDeg: number;
-		longitudeOfAscendingNodeDeg: number;
-		argumentOfPeriapsisDeg: number;
-		meanAnomalyAtEpochDeg: number;
-		orbitalPeriodSec: number;
-		epoch: string;
+	spatial: SpatialState;
+	trajectory?: {
+		kind: 'static' | 'orbital-elements';
+		orbit?: {
+			anchorBodyId: string;
+			semiMajorAxisKm: number;
+			eccentricity: number;
+			inclinationDeg: number;
+			longitudeOfAscendingNodeDeg: number;
+			argumentOfPeriapsisDeg: number;
+			meanAnomalyAtEpochDeg: number;
+			orbitalPeriodSec: number;
+			epoch: string;
+		};
 	};
-	positionKm?: Triple;
 	distanceKm?: number;
 	isDocked?: boolean;
 	priceMultiplier: number;

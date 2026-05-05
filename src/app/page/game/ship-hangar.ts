@@ -133,7 +133,7 @@ export default class ShipHangarPage {
 	}
 
 	protected getShipLocationSummary(ship: ShipSummary): string {
-		const position = ship.location?.positionKm ?? ship.kinematics?.position;
+		const position = ship.spatial?.positionKm;
 		if (!position) {
 			return this.t.game.shipHangar.locationUnavailable;
 		}
