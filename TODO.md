@@ -13,7 +13,7 @@
 - [ ] Character credits backend integration — source balance from session/join response; keep in sync via a `credits-update` socket event (see `character-economy.ts`)
 - [ ] Mission reward credits — wire credit payout to client economy model on mission completion
 - [ ] Italian locale (`it.ts`) — add missing keys for mission board, market hub, and all new mission locale content added in M-01–M-05 / SQ-01–SQ-04
-- [ ] Add to the logout page a link to go to the character list page.
+- [X] Add to the logout page a link to go to the character list page.
 - [ ] Add non-asteroid based debris to initial first-target mission
 - [ ] Add scanning progress to external-ship-view
 

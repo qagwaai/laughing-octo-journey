@@ -47,3 +47,19 @@
 	color: #ffffff;
 	cursor: pointer;
 }
+
+.character-list-link {
+	margin-top: 0.5rem;
+	padding: 0.5rem 0.8rem;
+	border-radius: 8px;
+	border: 1px solid rgba(140, 190, 255, 0.35);
+	background: transparent;
+	color: #b4cfff;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.character-list-link:hover {
+	background: rgba(140, 190, 255, 0.1);
+	color: #e8f2ff;
+}

@@ -35,4 +35,11 @@ export default class LogoutPage {
 			preserveFragment: true,
 		});
 	}
+
+	navigateToCharacterList(): void {
+		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+			preserveFragment: true,
+			state: { playerName: this.playerName() },
+		});
+	}
 }
