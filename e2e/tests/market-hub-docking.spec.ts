@@ -15,15 +15,26 @@ const SHIP_WITH_POSITION = {
   model: 'Scavenger Pod',
   tier: 1,
   status: 'ACTIVE',
-  kinematics: {
-    position: { x: 413_700_100, y: 0, z: 0 },
-    velocity: { x: 0, y: 0, z: 0 },
-    reference: {
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 413_700_100, y: 0, z: 0 },
+    epochMs: 1_777_777_888_000,
+  },
+  motion: {
+    velocityKmPerSec: { x: 0, y: 0, z: 0 },
+    angularVelocityRadPerSec: {
+      x: 0,
+      y: 0,
+      z: 0,
+    },
+  },
+  observability: {
+    sensorConfidence: 1,
+    source: {
       solarSystemId: 'sol',
-      referenceKind: 'barycentric',
-      distanceUnit: 'km',
-      velocityUnit: 'km/s',
-      epochMs: 1_777_777_888_000,
+      sourceType: 'server-feed',
+      observedAt: new Date(1_777_777_888_000).toISOString(),
     },
   },
 };
@@ -70,7 +81,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
         message: '',
         playerName: TEST_PLAYER,
         solarSystemId: 'sol',
-        positionKm: SHIP_WITH_POSITION.kinematics.position,
+        positionKm: SHIP_WITH_POSITION.spatial.positionKm,
         distanceKm: request.distanceKm,
         locationTypes: ['station'],
         isDocked: true,

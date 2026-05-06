@@ -75,7 +75,10 @@ export default class MarketHubPage {
 	);
 
 	protected readonly activeShipPositionKm = computed<Triple | null>(
-		() => this.activeShip()?.spatial.positionKm ?? null,
+		() => {
+			const position = this.activeShip()?.spatial.positionKm ?? null;
+			return this.hasUsablePosition(position) ? position : null;
+		},
 	);
 
 	protected readonly isDocked = computed(() => this.isDockedAtAnyMarket());
@@ -119,7 +122,7 @@ export default class MarketHubPage {
 
 	private ensureActiveShipPosition(): void {
 		const existing = this.activeShip();
-		if (existing?.spatial?.positionKm) {
+		if (this.hasUsableShipPosition(existing)) {
 			return;
 		}
 
@@ -148,7 +151,7 @@ export default class MarketHubPage {
 
 				const current = this.activeShip();
 				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-				const shipWithPosition = ships.find((ship) => Boolean(ship.spatial?.positionKm));
+				const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
 				const fallbackShip = ships[0];
 
 				const resolvedShip: ShipSummary | undefined =
@@ -156,6 +159,9 @@ export default class MarketHubPage {
 
 				if (resolvedShip) {
 					this.sessionService.setActiveShip(resolvedShip);
+					if (this.hasUsableShipPosition(resolvedShip)) {
+						this.loadNearbyMarkets();
+					}
 				}
 
 				this.unsubscribeShipListResponse?.();
@@ -168,6 +174,19 @@ export default class MarketHubPage {
 			sessionKey,
 		};
 		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+	}
+
+	private hasUsableShipPosition(ship: ShipSummary | null): boolean {
+		return this.hasUsablePosition(ship?.spatial?.positionKm);
+	}
+
+	private hasUsablePosition(position: Triple | null | undefined): boolean {
+		if (!position) {
+			return false;
+		}
+
+		// Treat origin as placeholder until we hydrate authoritative ship location.
+		return !(position.x === 0 && position.y === 0 && position.z === 0);
 	}
 
 	applyRadiusSelection(): void {

@@ -109,6 +109,18 @@ Run selected Playwright specs:
 npx playwright test e2e/tests/market-hub-by-location.spec.ts e2e/tests/market-hub-docking.spec.ts
 ```
 
+Run a single Playwright spec and exit cleanly (no persistent "Serving HTML report" server):
+
+```bash
+npx playwright test e2e/tests/market-hub-by-location.spec.ts --reporter=line
+```
+
+Alternative (keep HTML reporter configured but disable auto-open for this run):
+
+```bash
+PLAYWRIGHT_HTML_OPEN=never npx playwright test e2e/tests/market-hub-by-location.spec.ts
+```
+
 ## High-Value Code Areas
 
 - App shell and route entry:

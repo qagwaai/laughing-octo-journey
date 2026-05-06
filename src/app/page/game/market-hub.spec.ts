@@ -128,7 +128,7 @@ class MockMarketHubPage {
 
 	private ensureActiveShipPosition(): void {
 		const existing = this.sessionService.activeShip();
-		if (existing?.spatial?.positionKm) {
+		if (this.hasUsableShipPosition(existing)) {
 			return;
 		}
 
@@ -165,10 +165,13 @@ class MockMarketHubPage {
 
 				const current = this.sessionService.activeShip();
 				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-				const shipWithPosition = ships.find((ship) => ship.spatial?.positionKm);
+				const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
 				const resolved = sameShip ?? shipWithPosition ?? ships[0];
 
 				this.sessionService.activeShip.set(resolved);
+				if (this.hasUsableShipPosition(resolved)) {
+					this.loadNearbyMarkets();
+				}
 			},
 		);
 
@@ -179,6 +182,22 @@ class MockMarketHubPage {
 		});
 	}
 
+	private hasUsableShipPosition(ship: {
+		id?: string;
+		status?: string | null;
+		spatial?: { solarSystemId?: string; positionKm: Triple };
+	} | null): boolean {
+		return this.hasUsablePosition(ship?.spatial?.positionKm);
+	}
+
+	private hasUsablePosition(position: Triple | null | undefined): boolean {
+		if (!position) {
+			return false;
+		}
+
+		return !(position.x === 0 && position.y === 0 && position.z === 0);
+	}
+
 	private getSolarSystemId(): string {
 		return this.sessionService.activeShip()?.spatial?.solarSystemId?.trim() || 'sol';
 	}
@@ -186,7 +205,8 @@ class MockMarketHubPage {
 	loadNearbyMarkets(): void {
 		const playerName = this.playerName().trim();
 		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-		const positionKm = this.sessionService.activeShip()?.spatial?.positionKm ?? null;
+		const rawPosition = this.sessionService.activeShip()?.spatial?.positionKm ?? null;
+		const positionKm = this.hasUsablePosition(rawPosition) ? rawPosition : null;
 		const characterId = this.joinCharacter()?.id?.trim() ?? '';
 		const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
 		const solarSystemId = this.getSolarSystemId();
@@ -372,6 +392,34 @@ describe('MarketHubPage', () => {
 		});
 
 		expect(sessionService.activeShip()?.spatial?.positionKm).toEqual({ x: 100, y: 200, z: 300 });
+	});
+
+	it('should request ship-list when active ship has placeholder origin position', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			id: 'starter-pod-c-1',
+			status: 'ACTIVE',
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 0, y: 0, z: 0 },
+			},
+		});
+
+		new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		expect(socketService.emittedEvents[0]).toEqual({
+			event: SHIP_LIST_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				characterId: 'c-1',
+				sessionKey: 'session-key',
+			},
+		});
 	});
 
 	it('should set an error when session key is missing', () => {
