@@ -23,25 +23,5 @@
 				</button>
 			}
 		</section>
-
-		@if (joinCharacter()) {
-			<section class="ops-card printer-section">
-				<h2>{{ t.game.repairRetrofit.printerSectionTitle }}</h2>
-
-				<div class="printer-status-bar">
-					<span class="printer-status-label">{{ t.game.repairRetrofit.printerStatusLabel }}</span>
-					<span
-						class="printer-status-value"
-						[class.printer-status--printing]="printerStatus() === 'printing'"
-						[class.printer-status--idle]="printerStatus() === 'idle'"
-					>
-						{{ printerStatus() === 'printing' ? t.game.repairRetrofit.printerPrintingLabel : t.game.repairRetrofit.printerIdleLabel }}
-					</span>
-				</div>
-
-				<p class="printer-job-count">{{ t.game.repairRetrofit.printerActiveJobCountLabel }} {{ printerActiveJobCount() }}</p>
-				<button type="button" class="repair-action" (click)="openPrintQueueView()">{{ t.game.repairRetrofit.viewPrintQueueLabel }}</button>
-			</section>
-		}
 	</div>
 </div>

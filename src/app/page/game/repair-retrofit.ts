@@ -18,12 +18,11 @@ import {
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
-import { SessionService, SocketService, PrinterStateService } from '../../services';
+import { SessionService, SocketService } from '../../services';
 import {
 	type RepairAssetGrouping,
 	type RepairAssetFilter,
 	type RepairDetailNavigationState,
-	type PrintQueueNavigationState,
 } from './repair-retrofit-state';
 interface RepairRetrofitNavigationState {
 	playerName?: string;
@@ -46,7 +45,6 @@ export default class RepairRetrofitPage {
 	private router = inject(Router);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
-	private printerService = inject(PrinterStateService);
 	private unsubscribeShipListResponse?: () => void;
 	private navigationState: RepairRetrofitNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as RepairRetrofitNavigationState | undefined) ??
@@ -64,19 +62,8 @@ export default class RepairRetrofitPage {
 	protected searchQuery = signal<string>(this.navigationState.searchQuery ?? '');
 	protected canOpenRepairItems = computed(() => !!this.activeShip());
 
-	// Printer summary state
-	protected printerQueue = this.printerService.queue;
-	protected printerStatus = computed(() => (this.printerQueue().length > 0 ? 'printing' : 'idle'));
-	protected printerActiveJobCount = computed(() => this.printerQueue().length);
-
 	constructor() {
 		this.socketService.connect(this.socketService.serverUrl);
-
-		const playerName = this.playerName().trim();
-		const characterId = this.joinCharacter()?.id?.trim() ?? '';
-		if (playerName && characterId) {
-			this.printerService.loadQueue(playerName, characterId);
-		}
 
 		if (this.activeShip()) {
 			return;
@@ -196,19 +183,6 @@ export default class RepairRetrofitPage {
 				playerName: this.playerName(),
 				joinCharacter: this.joinCharacter(),
 			},
-		});
-	}
-
-	protected openPrintQueueView(): void {
-		const state: PrintQueueNavigationState = {
-			playerName: this.playerName(),
-			joinCharacter: this.joinCharacter(),
-			joinShip: this.activeShip(),
-		};
-
-		this.router.navigate([{ outlets: { right: ['print-queue'], left: ['repair-retrofit'] } }], {
-			preserveFragment: true,
-			state,
 		});
 	}
 }

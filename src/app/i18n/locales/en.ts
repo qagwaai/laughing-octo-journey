@@ -237,12 +237,6 @@ export const en = {
 				'Sample module: review damaged components, estimated repair windows, and retrofit options.',
 			loadingShipLabel: 'Synchronizing ship diagnostics...',
 			viewDetailsLabel: 'View details',
-			printerSectionTitle: 'Onboard 3D Fabricator',
-			printerStatusLabel: 'Status',
-			printerPrintingLabel: 'Printing',
-			printerIdleLabel: 'Idle',
-			printerActiveJobCountLabel: 'Active jobs:',
-			viewPrintQueueLabel: 'View Print Queue',
 		},
 
 		printQueue: {
@@ -493,6 +487,12 @@ export const en = {
 			sectionTitle: 'Build Queue',
 			sectionDescription:
 				'Sample module: schedule production runs and inspect fabrication output quality.',
+			printerSectionTitle: 'Onboard 3D Fabricator',
+			printerStatusLabel: 'Status',
+			printerPrintingLabel: 'Printing',
+			printerIdleLabel: 'Idle',
+			printerActiveJobCountLabel: 'Active jobs:',
+			viewPrintQueueLabel: 'View Print Queue',
 		},
 
 		characterProfile: {

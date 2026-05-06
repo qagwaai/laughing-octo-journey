@@ -37,3 +37,73 @@
 	background: rgba(30, 49, 84, 0.55);
 	border: 1px solid rgba(140, 190, 255, 0.25);
 }
+
+.repair-action {
+	align-self: center;
+	padding: 0.45rem 0.7rem;
+	border-radius: 7px;
+	border: 1px solid rgba(255, 182, 182, 0.48);
+	background: linear-gradient(180deg, rgba(112, 38, 38, 0.9), rgba(73, 27, 27, 0.96));
+	color: #ffe9e9;
+	font-weight: 600;
+	cursor: pointer;
+	transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.repair-action:hover {
+	transform: translateY(-1px);
+	border-color: rgba(255, 222, 222, 0.72);
+}
+
+.repair-action:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.printer-section h2 {
+	margin-top: 0;
+}
+
+.printer-status-bar {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin: 0.7rem 0;
+	padding: 0.5rem 0.7rem;
+	border-radius: 7px;
+	background: rgba(16, 28, 46, 0.7);
+	border: 1px solid rgba(140, 190, 255, 0.2);
+}
+
+.printer-status-label {
+	font-size: 0.82rem;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: #7fa8d4;
+}
+
+.printer-status-value {
+	font-weight: 700;
+	font-size: 0.92rem;
+	letter-spacing: 0.04em;
+}
+
+.printer-status--idle {
+	color: #8ab4d8;
+}
+
+.printer-status--printing {
+	color: #a8f0c8;
+	animation: printer-pulse 2s ease-in-out infinite;
+}
+
+@keyframes printer-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+.printer-job-count {
+	margin: 0.5rem 0 0.8rem;
+	color: #d8e9ff;
+}

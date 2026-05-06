@@ -168,12 +168,6 @@ export const it: DeepPartial<EnLocale> = {
 				'Modulo di esempio: esamina componenti danneggiati, finestre di riparazione stimate e opzioni di retrofit.',
 			loadingShipLabel: 'Sincronizzazione diagnostica nave...',
 			viewDetailsLabel: 'Vedi dettagli',
-			printerSectionTitle: 'Fabbricatore 3D di bordo',
-			printerStatusLabel: 'Stato',
-			printerPrintingLabel: 'In stampa',
-			printerIdleLabel: 'Inattivo',
-			printerActiveJobCountLabel: 'Lavori attivi:',
-			viewPrintQueueLabel: 'Vedi coda di stampa',
 		},
 		repairRetrofitItems: {
 			title: 'Elementi di Riparazione',
@@ -416,6 +410,12 @@ export const it: DeepPartial<EnLocale> = {
 			sectionTitle: 'Coda produzione',
 			sectionDescription:
 				'Modulo di esempio: pianifica cicli di produzione e controlla la qualita del risultato di fabbricazione.',
+			printerSectionTitle: 'Fabbricatore 3D di bordo',
+			printerStatusLabel: 'Stato',
+			printerPrintingLabel: 'In stampa',
+			printerIdleLabel: 'Inattivo',
+			printerActiveJobCountLabel: 'Lavori attivi:',
+			viewPrintQueueLabel: 'Vedi coda di stampa',
 		},
 		characterProfile: {
 			title: 'Profilo personaggio',

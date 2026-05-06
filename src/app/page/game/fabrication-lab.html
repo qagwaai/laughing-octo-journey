@@ -13,5 +13,25 @@
 			<h2>{{ t.game.fabricationLab.sectionTitle }}</h2>
 			<p>{{ t.game.fabricationLab.sectionDescription }}</p>
 		</section>
+
+		@if (joinCharacter()) {
+			<section class="ops-card printer-section">
+				<h2>{{ t.game.fabricationLab.printerSectionTitle }}</h2>
+
+				<div class="printer-status-bar">
+					<span class="printer-status-label">{{ t.game.fabricationLab.printerStatusLabel }}</span>
+					<span
+						class="printer-status-value"
+						[class.printer-status--printing]="printerStatus() === 'printing'"
+						[class.printer-status--idle]="printerStatus() === 'idle'"
+					>
+						{{ printerStatus() === 'printing' ? t.game.fabricationLab.printerPrintingLabel : t.game.fabricationLab.printerIdleLabel }}
+					</span>
+				</div>
+
+				<p class="printer-job-count">{{ t.game.fabricationLab.printerActiveJobCountLabel }} {{ printerActiveJobCount() }}</p>
+				<button type="button" class="repair-action" (click)="openPrintQueueView()">{{ t.game.fabricationLab.viewPrintQueueLabel }}</button>
+			</section>
+		}
 	</div>
 </div>
