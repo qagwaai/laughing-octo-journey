@@ -332,6 +332,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		return `SHIP CONDITION // ${profile.overallStatus.toUpperCase()} // ${profile.summary.toUpperCase()}`;
 	});
 	readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
+	readonly showQuickTargetIronControl = computed(
+		() => !environment.production && this.missionDefinition.missionId === FIRST_TARGET_MISSION_ID,
+	);
 	readonly missionObjectiveText = computed(() => {
 		const gateState = this.missionGateState();
 		if (gateState) {
@@ -1133,6 +1136,75 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.socketService.launchItem(request);
 		this.setLaunchToast(`Launch request sent for hotkey ${hotkey}.`, 'success', null);
 		this.triggerHotkeyLaunchFlash(hotkey);
+	}
+
+	selectFirstScannedIronTargetForTest(): void {
+		if (!this.showQuickTargetIronControl()) {
+			return;
+		}
+
+		if (!this.canTargetAsteroids()) {
+			this.setLaunchToast('Targeting unavailable. Ensure the ship has an expendable dart drone.', 'error', null);
+			return;
+		}
+
+		const ironSample = this.asteroidSamples().find(
+			(sample) => sample.scanned && sample.revealedMaterial?.material === 'Iron',
+		);
+		if (ironSample) {
+			this.targetedAsteroidId.set(ironSample.id);
+			this.setLaunchToast(`Test target locked: ${ironSample.id.toUpperCase()}.`, 'success', null);
+			return;
+		}
+
+		const sampleToScan = this.asteroidSamples().find((sample) => !sample.scanned);
+		if (!sampleToScan) {
+			this.setLaunchToast('No asteroid samples available for test scan.', 'error', null);
+			return;
+		}
+
+		this.asteroidSamples.update((samples) =>
+			samples.map((sample) => {
+				if (sample.id !== sampleToScan.id) {
+					return sample;
+				}
+
+				return {
+					...sample,
+					scanProgress: 100,
+					scanned: true,
+					revealedMaterial: {
+						rarity: 'Common',
+						material: 'Iron',
+						textureColor: '#8f8f8f',
+					},
+					revealedKinematics: sample.revealedKinematics ?? sample.capturedKinematics,
+				};
+			}),
+		);
+
+		const scannedIronSample = this.asteroidSamples().find((sample) => sample.id === sampleToScan.id);
+		if (!scannedIronSample) {
+			this.setLaunchToast('Unable to complete Iron scan for target lock.', 'error', null);
+			return;
+		}
+
+		if (scannedIronSample.serverCelestialBodyId) {
+			this.emitCelestialBodyUpsert(
+				scannedIronSample,
+				'active',
+				scannedIronSample.revealedMaterial,
+				scannedIronSample.revealedKinematics ?? scannedIronSample.capturedKinematics,
+			);
+		} else {
+			this.pendingActiveStateUpserts.add(scannedIronSample.id);
+		}
+
+		this.persistAsteroidSamples();
+		this.retryPendingMissionProgressSync();
+		this.evaluateMissionGateForCompletedSamples([scannedIronSample.id]);
+		this.targetedAsteroidId.set(scannedIronSample.id);
+		this.setLaunchToast(`Test scan complete. Target locked: ${scannedIronSample.id.toUpperCase()}.`, 'success', null);
 	}
 
 	private resolveTargetCelestialBodyIdForLaunch(targetedSampleId: string): string | null {

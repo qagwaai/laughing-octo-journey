@@ -39,6 +39,7 @@ export default class ColdBootScanPage {
 	protected propertiesClusterText = computed(() => this.shipExteriorView()?.propertiesClusterText() ?? 'CLUSTER(Mkm): ---');
 	protected propertiesOffsetText = computed(() => this.shipExteriorView()?.propertiesOffsetText() ?? 'OFFSET(km): ---');
 	protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
+	protected showQuickTargetIronControl = computed(() => this.shipExteriorView()?.showQuickTargetIronControl() ?? false);
 	protected activeLaunchToast = computed(() => this.shipExteriorView()?.activeLaunchToast() ?? null);
 	protected missionObjectiveText = computed(
 		() => this.shipExteriorView()?.missionObjectiveText() ?? 'Objective unavailable.',
@@ -57,5 +58,9 @@ export default class ColdBootScanPage {
 
 	protected launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
 		this.shipExteriorView()?.launchFromHotkeySlot(hotkey);
+	}
+
+	protected quickTargetIronAsteroidForTest(): void {
+		this.shipExteriorView()?.selectFirstScannedIronTargetForTest();
 	}
 }

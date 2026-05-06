@@ -22,6 +22,16 @@
 				<span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
 			</button>
 		}
+
+		@if (showQuickTargetIronControl()) {
+			<button
+				type="button"
+				class="ship-exterior-test-target-button"
+				(click)="quickTargetIronAsteroidForTest()"
+			>
+				TARGET IRON
+			</button>
+		}
 	</section>
 
 	@if (activeLaunchToast(); as toast) {
