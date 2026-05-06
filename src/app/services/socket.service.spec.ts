@@ -152,17 +152,27 @@ describe('SocketService', () => {
         celestialBody: {
           id: 'cb-1',
           catalogId: 'sol-cb-1',
-          solarSystemId: 'sol',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          location: { positionKm: { x: 1, y: 2, z: 3 } },
-          kinematics: {
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1, y: 2, z: 3 },
+            epochMs: Date.now(),
+          },
+          motion: {
             velocityKmPerSec: { x: 0, y: 0, z: 0 },
             angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+          },
+          physical: {
             estimatedMassKg: 10,
             estimatedDiameterM: 4,
+          },
+          observability: {
+            visibility: 'visible',
+            scanState: 'scanned',
           },
           composition: { rarity: 'Common', material: 'Carbon', textureColor: '#6f7785' },
         },

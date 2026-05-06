@@ -53,17 +53,27 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 				{
 					id: 'cb-1',
 					catalogId: 'cat-1',
-					solarSystemId: 'sol',
 					sourceScanId: 'sample-a1',
 					createdByCharacterId: 'char-1',
 					createdAt: '2026-04-28T00:00:00.000Z',
 					updatedAt: '2026-04-28T00:00:00.000Z',
-					location: { positionKm: { x: 1, y: 2, z: 3 } },
-					kinematics: {
+					spatial: {
+						solarSystemId: 'sol',
+						frame: 'barycentric',
+						positionKm: { x: 1, y: 2, z: 3 },
+						epochMs: 1,
+					},
+					motion: {
 						velocityKmPerSec: { x: 1, y: 2, z: 3 },
 						angularVelocityRadPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+					},
+					physical: {
 						estimatedMassKg: 10,
 						estimatedDiameterM: 20,
+					},
+					observability: {
+						visibility: 'visible',
+						scanState: 'scanned',
 					},
 					composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
 					distanceKm: 12,
@@ -72,17 +82,27 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 				{
 					id: 'cb-destroyed',
 					catalogId: 'cat-2',
-					solarSystemId: 'sol',
 					sourceScanId: 'sample-a2',
 					createdByCharacterId: 'char-1',
 					createdAt: '2026-04-28T00:00:00.000Z',
 					updatedAt: '2026-04-28T00:00:00.000Z',
-					location: { positionKm: { x: 4, y: 5, z: 6 } },
-					kinematics: {
+					spatial: {
+						solarSystemId: 'sol',
+						frame: 'barycentric',
+						positionKm: { x: 4, y: 5, z: 6 },
+						epochMs: 1,
+					},
+					motion: {
 						velocityKmPerSec: { x: 1, y: 1, z: 1 },
 						angularVelocityRadPerSec: { x: 0.1, y: 0.1, z: 0.1 },
+					},
+					physical: {
 						estimatedMassKg: 30,
 						estimatedDiameterM: 40,
+					},
+					observability: {
+						visibility: 'visible',
+						scanState: 'scanned',
 					},
 					composition: { material: 'Iron', rarity: 'Rare', textureColor: '#8f99a7' },
 					distanceKm: 18,
@@ -363,13 +383,22 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 				{
 					id: 'cb-no-scan-id',
 					catalogId: 'cat-1',
-					solarSystemId: 'sol',
 					sourceScanId: '',
 					createdByCharacterId: 'char-1',
 					createdAt: '2026-04-28T00:00:00.000Z',
 					updatedAt: '2026-04-28T00:00:00.000Z',
-					location: { positionKm: { x: 10, y: 10, z: 10 } },
-					kinematics: { velocityKmPerSec: { x: 0, y: 0, z: 0 }, angularVelocityRadPerSec: { x: 0, y: 0, z: 0 }, estimatedMassKg: 1, estimatedDiameterM: 1 },
+					spatial: {
+						solarSystemId: 'sol',
+						frame: 'barycentric',
+						positionKm: { x: 10, y: 10, z: 10 },
+						epochMs: 1,
+					},
+					motion: { velocityKmPerSec: { x: 0, y: 0, z: 0 }, angularVelocityRadPerSec: { x: 0, y: 0, z: 0 } },
+					physical: { estimatedMassKg: 1, estimatedDiameterM: 1 },
+					observability: {
+						visibility: 'visible',
+						scanState: 'scanned',
+					},
 					composition: { material: 'Carbon', rarity: 'Common', textureColor: '#6f7785' },
 					distanceKm: 5,
 					state: 'active',

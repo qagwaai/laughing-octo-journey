@@ -21,13 +21,9 @@ interface ShipSummary {
 	id: string;
 	model?: string;
 	inventory?: ShipItem[];
-	location?: {
+	spatial?: {
+		solarSystemId?: string;
 		positionKm: { x: number; y: number; z: number };
-	};
-	kinematics?: {
-		reference?: {
-			solarSystemId?: string;
-		};
 	};
 }
 
@@ -415,7 +411,7 @@ describe('ShipExteriorViewScene', () => {
 		const solScene = new MockColdBootScanScene({
 			joinShip: {
 				id: 's-1',
-				kinematics: { reference: { solarSystemId: 'sol' } },
+				spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
 			},
 		});
 		expect(solScene.getSunConfig()).toEqual({ color: '#f5ff6b', radius: 1 });
@@ -423,7 +419,7 @@ describe('ShipExteriorViewScene', () => {
 		const fallbackScene = new MockColdBootScanScene({
 			joinShip: {
 				id: 's-2',
-				kinematics: { reference: { solarSystemId: 'unknown-system' } },
+				spatial: { solarSystemId: 'unknown-system', positionKm: { x: 0, y: 0, z: 0 } },
 			},
 		});
 		expect(fallbackScene.getSunConfig()).toEqual({ color: '#f5ff6b', radius: 1 });
@@ -433,7 +429,8 @@ describe('ShipExteriorViewScene', () => {
 		const component = new MockColdBootScanScene({
 			joinShip: {
 				id: 's-1',
-				location: {
+				spatial: {
+					solarSystemId: 'sol',
 					positionKm: {
 						x: 395000000,
 						y: 1500000,
@@ -455,7 +452,8 @@ describe('ShipExteriorViewScene', () => {
 		const component = new MockColdBootScanScene({
 			joinShip: {
 				id: 's-1',
-				location: {
+				spatial: {
+					solarSystemId: 'sol',
 					positionKm: {
 						x: 420000000,
 						y: 0,

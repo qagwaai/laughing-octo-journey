@@ -301,6 +301,7 @@ Client-side behavior:
 - Used by Market Hub for local-area browsing.
 - `positionKm` comes from active ship spatial state.
 - `distanceKm` comes from user-selected radius.
+- `locationTypes` is a request-time filter list (for example `['station']`).
 - `characterId` and `shipId` are included when available so server can compute docking state.
 
 ### `market-list-by-location-response` (response)
@@ -323,10 +324,15 @@ Payload:
       "marketId": "sol-ceres-exchange",
       "solarSystemId": "sol",
       "marketName": "Ceres Exchange",
-      "locationType": "station",
-      "locationName": "Ceres Belt Trade Ring",
+      "siteType": "station",
+      "siteName": "Ceres Belt Trade Ring",
       "isStarterMarket": true,
-      "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+        "epochMs": 1775000000000
+      },
       "distanceKm": 4821.8,
       "isDocked": false,
       "priceMultiplier": 1,
@@ -352,8 +358,14 @@ Payload:
       "marketId": "sol-ceres-exchange",
       "solarSystemId": "sol",
       "marketName": "Ceres Exchange",
-      "locationType": "station",
-      "locationName": "Ceres Belt Trade Ring",
+      "siteType": "station",
+      "siteName": "Ceres Belt Trade Ring",
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+        "epochMs": 1775000000000
+      },
       "priceMultiplier": 1,
       "driftPercentPerHour": 6,
       "restockIntervalMinutes": 60
@@ -364,12 +376,12 @@ Payload:
 
 Edge cases:
 
-- Invalid session emits `invalid-session` instead of `market-list-response`.
+- Invalid session emits `invalid-session` instead of `market-list-response` or `market-list-by-location-response`.
 - If `solarSystemId` is omitted, server may return markets across all solar systems.
-- Invalid session emits `invalid-session` instead of `market-list-by-location-response`.
 - Distances in `markets[].distanceKm` are server-authoritative and nearest-first.
 - Docking state is server-authoritative via top-level `isDocked` / `dockedMarketId` and per-market `isDocked`.
 - Market browsing is always allowed, but transact actions are disabled unless ship is docked at the specific market.
+- Market payloads should use `siteType` / `siteName` and `spatial` (legacy `locationType` / `locationName` fields are deprecated).
 
 ---
 

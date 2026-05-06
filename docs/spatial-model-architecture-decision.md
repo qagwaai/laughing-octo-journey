@@ -6,11 +6,13 @@
 
 ## Context
 
-Current world entities expose position through more than one field shape.
+Prior to this decision, world entities exposed position through more than one field shape.
 
-- Ships currently split coordinates and motion across `location` and `kinematics`.
-- Celestial bodies currently split coordinates and motion across `location` and `kinematics`.
-- Markets currently mix semantic place labels (`locationType`, `locationName`), optional resolved coordinates (`positionKm`), and optional orbital elements (`orbit`).
+- Ships previously split coordinates and motion across `location` and `kinematics`.
+- Celestial bodies previously split coordinates and motion across `location` and `kinematics`.
+- Markets previously mixed semantic place labels (`locationType`, `locationName`), optional resolved coordinates (`positionKm`), and optional orbital elements (`orbit`).
+
+Current canonical market fields are `siteType`, `siteName`, and required `spatial` position snapshots.
 
 This forces consumers to guess which field is authoritative. The client already contains fallback logic that reads position from multiple places when building scene and market queries.
 
