@@ -288,7 +288,7 @@ Required payload:
   "sessionKey": "string",
   "solarSystemId": "string",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
-  "distanceKm": 100000,
+  "distanceAu": 0.5,
   "limit": 50,
   "locationTypes": ["station"],
   "characterId": "string (optional)",
@@ -300,7 +300,8 @@ Client-side behavior:
 
 - Used by Market Hub for local-area browsing.
 - `positionKm` comes from active ship spatial state.
-- `distanceKm` comes from user-selected radius.
+- `distanceAu` comes from user-selected radius.
+- Client clamps `distanceAu` to the active drive range before emitting the request.
 - `locationTypes` is a request-time filter list (for example `['station']`).
 - `characterId` and `shipId` are included when available so server can compute docking state.
 
@@ -315,7 +316,7 @@ Payload:
   "playerName": "string",
   "solarSystemId": "sol",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
-  "distanceKm": 100000,
+  "distanceAu": 0.5,
   "locationTypes": ["station"],
   "isDocked": false,
   "dockedMarketId": null,
@@ -326,6 +327,10 @@ Payload:
       "marketName": "Ceres Exchange",
       "siteType": "station",
       "siteName": "Ceres Belt Trade Ring",
+      "route": {
+        "kind": "in-system | gate-route | no-route",
+        "hops": 0
+      },
       "isStarterMarket": true,
       "spatial": {
         "solarSystemId": "sol",
@@ -333,7 +338,7 @@ Payload:
         "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
         "epochMs": 1775000000000
       },
-      "distanceKm": 4821.8,
+      "distanceAu": 2.3,
       "isDocked": false,
       "priceMultiplier": 1,
       "driftPercentPerHour": 6,
@@ -378,7 +383,8 @@ Edge cases:
 
 - Invalid session emits `invalid-session` instead of `market-list-response` or `market-list-by-location-response`.
 - If `solarSystemId` is omitted, server may return markets across all solar systems.
-- Distances in `markets[].distanceKm` are server-authoritative and nearest-first.
+- Distances in `markets[].distanceAu` are server-authoritative and nearest-first.
+- Optional `markets[].route` can be supplied by server to hint cross-system routing (`kind` plus optional hop count).
 - Docking state is server-authoritative via top-level `isDocked` / `dockedMarketId` and per-market `isDocked`.
 - Market browsing is always allowed, but transact actions are disabled unless ship is docked at the specific market.
 - Market payloads should use `siteType` / `siteName` and `spatial` (legacy `locationType` / `locationName` fields are deprecated).
@@ -617,6 +623,13 @@ Payload:
       "status": "string (optional)",
       "model": "string",
       "tier": 1,
+      "driveProfile": {
+        "id": "standard-cruise | rapid-transit | quantum-fold",
+        "name": "string",
+        "rangeAu": 0.5,
+        "cruiseSpeedAuPerHour": 0.3,
+        "fuelCostPerAu": 1
+      },
       "inventory": ["Expendable Dart Drone"],
       "spatial": {
         "solarSystemId": "sol",
@@ -642,6 +655,7 @@ Edge cases:
 - If `inventory` is missing on legacy `Scavenger Pod` records, server should backfill with `["Expendable Dart Drone"]` in response payloads.
 - For non-starter ship models, default `inventory` should be `[]` when not set.
 - Returned `ships` should always be an array.
+- `driveProfile` is optional; when omitted, clients may apply local default drive heuristics.
 
 ---
 

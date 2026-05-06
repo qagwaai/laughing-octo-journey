@@ -105,7 +105,7 @@ class MockMarketHubPage {
 	joinCharacter = createSignal<NavigationState['joinCharacter'] | null>(null);
  	markets = createSignal<MarketSummary[]>([]);
  	marketListError = createSignal<string | null>(null);
- 	selectedRadiusKm = createSignal<number>(100);
+	selectedRadiusAu = createSignal<number>(0.5);
 	isDockedAtAnyMarket = createSignal(false);
 	dockedMarketId = createSignal<string | null>(null);
 
@@ -256,7 +256,7 @@ class MockMarketHubPage {
 			sessionKey,
 			solarSystemId,
 			positionKm,
-			distanceKm: this.selectedRadiusKm(),
+			distanceAu: this.selectedRadiusAu(),
 			limit: 50,
 			locationTypes: ['station'],
 			...(characterId ? { characterId } : {}),
@@ -264,8 +264,8 @@ class MockMarketHubPage {
 		});
 	}
 
-	setRadius(radiusKm: number): void {
-		this.selectedRadiusKm.set(radiusKm);
+	setRadius(radiusAu: number): void {
+		this.selectedRadiusAu.set(radiusAu);
 	}
 
 	isDocked(): boolean {
@@ -287,15 +287,15 @@ class MockMarketHubPage {
 		return this.markets()
 			.filter((market) => market.solarSystemId === this.getSolarSystemId())
 			.map((market) => {
-				const distanceKm = typeof market.distanceKm === 'number' ? market.distanceKm : undefined;
+				const distanceAu = typeof market.distanceAu === 'number' ? market.distanceAu : undefined;
 				return {
 					...market,
-					distanceKm,
+					distanceAu,
 				};
 			})
 			.sort((a, b) => {
-				const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
-				const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+				const aDistance = typeof a.distanceAu === 'number' ? a.distanceAu : Number.POSITIVE_INFINITY;
+				const bDistance = typeof b.distanceAu === 'number' ? b.distanceAu : Number.POSITIVE_INFINITY;
 				return aDistance - bDistance;
 			});
 	}
@@ -348,7 +348,7 @@ describe('MarketHubPage', () => {
 				sessionKey: 'session-key',
 				solarSystemId: 'sol',
 				positionKm: { x: 413_700_000, y: 0, z: 0 },
-				distanceKm: 100,
+				distanceAu: 0.5,
 				limit: 50,
 				locationTypes: ['station'],
 				characterId: 'c-1',
@@ -465,7 +465,7 @@ describe('MarketHubPage', () => {
 					siteType: 'station',
 					siteName: 'Ceres Belt Trade Ring',
 					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_704_822, y: 0, z: 0 }, epochMs: 1 },
-					distanceKm: 4821.8,
+					distanceAu: 0.032,
 					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
@@ -508,7 +508,7 @@ describe('MarketHubPage', () => {
 					siteType: 'station',
 					siteName: 'Far Ring',
 					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_709_520, y: 0, z: 0 }, epochMs: 1 },
-					distanceKm: 9500,
+					distanceAu: 0.12,
 					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
@@ -521,7 +521,7 @@ describe('MarketHubPage', () => {
 					siteType: 'station',
 					siteName: 'Ceres Belt Trade Ring',
 					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_704_842, y: 0, z: 0 }, epochMs: 1 },
-					distanceKm: 4821.8,
+					distanceAu: 0.04,
 					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
@@ -565,7 +565,7 @@ describe('MarketHubPage', () => {
 					siteType: 'station',
 					siteName: 'Ceres Belt Trade Ring',
 					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_700_022, y: 0, z: 0 }, epochMs: 1 },
-					distanceKm: 2,
+					distanceAu: 0.01,
 					isDocked: true,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,
@@ -578,7 +578,7 @@ describe('MarketHubPage', () => {
 					siteType: 'station',
 					siteName: 'Far Ring',
 					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_700_220, y: 0, z: 0 }, epochMs: 1 },
-					distanceKm: 200,
+					distanceAu: 0.2,
 					isDocked: false,
 					priceMultiplier: 1,
 					driftPercentPerHour: 6,

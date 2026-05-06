@@ -37,18 +37,33 @@
 
 			@if (activeShip()) {
 				<p class="search-context">
+					{{ t.game.marketHub.driveNameLabel }}
+					<strong>{{ activeDriveProfile().name }}</strong>
+				</p>
+				<p class="search-context">
 					{{ t.game.marketHub.activeShipStatusLabel }}
 					<strong>{{ activeShip()!.status ?? t.game.marketHub.shipStatusUnknownLabel }}</strong>
+				</p>
+				<p class="search-context">
+					{{ t.game.marketHub.driveRangeLabel }}
+					<strong>{{ activeDriveRangeAu().toFixed(3) }} {{ t.game.marketHub.auLabel }}</strong>
 				</p>
 			}
 
 			<form [formGroup]="marketFilterForm" (ngSubmit)="applyRadiusSelection()" class="market-filter-form">
-				<label for="radiusKm">{{ t.game.marketHub.radiusLabel }}</label>
-				<select id="radiusKm" formControlName="radiusKm" (change)="applyRadiusSelection()">
-					@for (option of marketRadiusOptionsKm; track option) {
-						<option [value]="option">{{ option }} km</option>
+				<label for="radiusAu">{{ t.game.marketHub.radiusLabel }}</label>
+				<select id="radiusAu" formControlName="radiusAu" (change)="applyRadiusSelection()">
+					@for (option of marketRadiusOptionsAu; track option) {
+						<option [value]="option">{{ option.toFixed(3) }} {{ t.game.marketHub.auLabel }}</option>
 					}
 				</select>
+				<p class="search-context">
+					{{ t.game.marketHub.effectiveRadiusLabel }}
+					<strong>{{ effectiveSearchRadiusAu().toFixed(3) }} {{ t.game.marketHub.auLabel }}</strong>
+				</p>
+				@if (isSearchRadiusClamped()) {
+					<p class="status-message warning-message">{{ t.game.marketHub.radiusClampedHintLabel }}</p>
+				}
 				<button type="submit" class="apply-btn">{{ t.game.marketHub.applyRadiusLabel }}</button>
 				<button type="button" class="reload-btn" (click)="loadNearbyMarkets()" [disabled]="isLoadingMarkets()">
 					{{ isLoadingMarkets() ? t.game.marketHub.loadingMarketsLabel : t.game.marketHub.reloadMarketsLabel }}
@@ -77,6 +92,10 @@
 						<li class="market-item">
 							<div class="market-item-header">
 								<h3>{{ market.marketName }}</h3>
+								<span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
+								@if (!isMarketWithinDriveRange(market)) {
+									<span class="dock-required-badge">{{ t.game.marketHub.outOfRangeBadgeLabel }}</span>
+								}
 								@if (!canTransactAtMarket(market)) {
 									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
 								}
@@ -90,9 +109,19 @@
 							</p>
 							<p>
 								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
-								{{ formatMarketDistance(market.distanceKm ?? null) }}
+								<span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
+									{{ formatMarketDistanceAu(market.distanceAu ?? null) }}
+								</span>
 							</p>
-							<button type="button" class="transact-btn" [disabled]="!canTransactAtMarket(market)">{{ t.game.marketHub.transactLabel }}</button>
+							<p>{{ formatMarketFlavorText(market) }}</p>
+							@if (!isMarketWithinDriveRange(market)) {
+								<p class="status-message warning-message">
+									{{ t.game.marketHub.requiresDriveUpgradeLabel }}
+									{{ t.game.marketHub.requiredDriveLabel }}
+									<strong>{{ requiredDriveNameForMarket(market) }}</strong>
+								</p>
+							}
+							<button type="button" class="transact-btn" [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market)">{{ t.game.marketHub.transactLabel }}</button>
 						</li>
 					}
 				</ul>

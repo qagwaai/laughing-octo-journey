@@ -21,18 +21,27 @@ import {
 	type ShipListResponse,
 	type ShipSummary,
 } from '../../model/ship-list';
+import {
+	estimateTravelHours,
+	resolveDriveProfileForShip,
+	resolveMinimumDriveProfileForDistance,
+} from '../../model/drive-profile';
+import { resolveJumpGateHops } from '../../model/jump-gate';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import type { Triple } from '../../model/triple';
 
-const DEFAULT_MARKET_RADIUS_KM = 100;
-const MARKET_RADIUS_OPTIONS_KM: readonly number[] = [25, 50, 100, 250, 500, 1000];
+const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
+const DEFAULT_MARKET_RADIUS_AU = 0.5;
+const MARKET_RADIUS_OPTIONS_AU: readonly number[] = [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50];
 
 interface MarketHubNavigationState {
 	playerName?: string;
 	joinCharacter?: PlayerCharacterSummary;
 	missions?: CharacterMissionProgress[];
 }
+
+type MarketRouteStatus = 'in-system' | 'gate-route' | 'no-route';
 
 @Component({
 	selector: 'app-market-hub-page',
@@ -57,8 +66,8 @@ export default class MarketHubPage {
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 	protected missions = signal<CharacterMissionProgress[]>(this.navigationState.missions ?? []);
-	protected marketRadiusOptionsKm = MARKET_RADIUS_OPTIONS_KM;
-	protected selectedRadiusKm = signal<number>(DEFAULT_MARKET_RADIUS_KM);
+	protected marketRadiusOptionsAu = MARKET_RADIUS_OPTIONS_AU;
+	protected selectedRadiusAu = signal<number>(DEFAULT_MARKET_RADIUS_AU);
 	protected markets = signal<MarketSummary[]>([]);
 	protected isLoadingMarkets = signal(false);
 	protected marketListError = signal<string | null>(null);
@@ -67,7 +76,7 @@ export default class MarketHubPage {
 	protected activeShip = this.sessionService.activeShip;
 
 	protected marketFilterForm = this.fb.group({
-		radiusKm: [DEFAULT_MARKET_RADIUS_KM, [Validators.required, Validators.min(1)]],
+		radiusAu: [DEFAULT_MARKET_RADIUS_AU, [Validators.required, Validators.min(0.001)]],
 	});
 
 	protected readonly activeShipSolarSystemId = computed(
@@ -83,10 +92,23 @@ export default class MarketHubPage {
 
 	protected readonly isDocked = computed(() => this.isDockedAtAnyMarket());
 
+	protected readonly activeDriveProfile = computed(() =>
+		resolveDriveProfileForShip(this.activeShip() ?? null),
+	);
+
+	protected readonly activeDriveRangeAu = computed(() => this.activeDriveProfile().rangeAu);
+	protected readonly effectiveSearchRadiusAu = computed(() =>
+		Math.min(this.selectedRadiusAu(), this.activeDriveRangeAu()),
+	);
+
+	protected readonly isSearchRadiusClamped = computed(
+		() => this.selectedRadiusAu() > this.activeDriveRangeAu(),
+	);
+
 	protected readonly localMarkets = computed<MarketSummary[]>(() =>
 		(this.markets() ?? []).slice().sort((a, b) => {
-			const aDistance = typeof a.distanceKm === 'number' ? a.distanceKm : Number.POSITIVE_INFINITY;
-			const bDistance = typeof b.distanceKm === 'number' ? b.distanceKm : Number.POSITIVE_INFINITY;
+			const aDistance = typeof a.distanceAu === 'number' ? a.distanceAu : Number.POSITIVE_INFINITY;
+			const bDistance = typeof b.distanceAu === 'number' ? b.distanceAu : Number.POSITIVE_INFINITY;
 			return aDistance - bDistance;
 		}),
 	);
@@ -195,8 +217,8 @@ export default class MarketHubPage {
 			return;
 		}
 
-		const selectedRadius = Number(this.marketFilterForm.controls.radiusKm.value ?? DEFAULT_MARKET_RADIUS_KM);
-		this.selectedRadiusKm.set(selectedRadius);
+		const selectedRadius = Number(this.marketFilterForm.controls.radiusAu.value ?? DEFAULT_MARKET_RADIUS_AU);
+		this.selectedRadiusAu.set(selectedRadius);
 		this.loadNearbyMarkets();
 	}
 
@@ -256,7 +278,7 @@ export default class MarketHubPage {
 			sessionKey,
 			solarSystemId,
 			positionKm,
-			distanceKm: this.selectedRadiusKm(),
+			distanceAu: this.effectiveSearchRadiusAu(),
 			limit: 50,
 			locationTypes: ['station'],
 			...(characterId ? { characterId } : {}),
@@ -265,12 +287,121 @@ export default class MarketHubPage {
 		this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, request);
 	}
 
-	protected formatMarketDistance(distanceKm: number | null): string {
-		if (distanceKm === null || !Number.isFinite(distanceKm)) {
+	protected formatMarketDistanceAu(distanceAu: number | null): string {
+		if (distanceAu === null || !Number.isFinite(distanceAu)) {
 			return this.t.game.marketHub.unknownDistanceLabel;
 		}
 
-		return `${distanceKm.toFixed(1)} km`;
+		return `${distanceAu.toFixed(3)} ${this.t.game.marketHub.auLabel}`;
+	}
+
+	protected formatMarketDistanceKmTooltip(distanceAu: number | null): string {
+		if (distanceAu === null || !Number.isFinite(distanceAu)) {
+			return this.t.game.marketHub.unknownDistanceLabel;
+		}
+
+		const distanceKm = distanceAu * ASTRONOMICAL_UNIT_KM;
+		let humanized = `${Math.round(distanceKm).toLocaleString()} km`;
+		if (distanceKm >= 1_000_000) {
+			humanized = `${(distanceKm / 1_000_000).toFixed(1)}M km`;
+		} else if (distanceKm >= 1_000) {
+			humanized = `${(distanceKm / 1_000).toFixed(1)}K km`;
+		}
+
+		return `${this.t.game.marketHub.approxDistancePrefix} ${humanized}`;
+	}
+
+	protected formatMarketTravelEstimate(distanceAu: number | null): string {
+		if (distanceAu === null || !Number.isFinite(distanceAu)) {
+			return this.t.game.marketHub.unknownDistanceLabel;
+		}
+
+		const hours = estimateTravelHours(distanceAu, this.activeDriveProfile());
+		if (hours < 1) {
+			return `${this.t.game.marketHub.aboutPrefix} ${this.t.game.marketHub.lessThanOneHourLabel} ${this.t.game.marketHub.standardCruiseSuffix}`;
+		}
+
+		const roundedHours = Math.round(hours);
+		const unitLabel = roundedHours === 1 ? this.t.game.marketHub.hourLabel : this.t.game.marketHub.hoursLabel;
+		return `${this.t.game.marketHub.aboutPrefix} ${roundedHours} ${unitLabel} ${this.t.game.marketHub.standardCruiseSuffix}`;
+	}
+
+	protected formatMarketFlavorText(market: MarketSummary): string {
+		const activeSystem = this.activeShipSolarSystemId();
+		if (market.solarSystemId !== activeSystem) {
+			const hops = this.jumpGateHopsForMarket(market);
+			if (hops !== null) {
+				return `${market.marketName}, ${hops} ${hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel} ${this.t.game.marketHub.awaySuffix}`;
+			}
+
+			return `${market.marketName}, ${this.t.game.marketHub.unreachableRouteLabel}`;
+		}
+
+		const distanceLabel = this.formatMarketDistanceAu(market.distanceAu ?? null);
+		const travelEstimate = this.formatMarketTravelEstimate(market.distanceAu ?? null);
+		return `${market.marketName}, ${distanceLabel} ${this.t.game.marketHub.awaySuffix} - ${travelEstimate}`;
+	}
+
+	protected marketRouteStatus(market: MarketSummary): MarketRouteStatus {
+		if (market.solarSystemId === this.activeShipSolarSystemId()) {
+			return 'in-system';
+		}
+
+		return this.jumpGateHopsForMarket(market) === null ? 'no-route' : 'gate-route';
+	}
+
+	protected marketRouteLabel(market: MarketSummary): string {
+		const routeStatus = this.marketRouteStatus(market);
+		if (routeStatus === 'in-system') {
+			return this.t.game.marketHub.inSystemRouteLabel;
+		}
+
+		if (routeStatus === 'no-route') {
+			return this.t.game.marketHub.noRouteLabel;
+		}
+
+		const hops = this.jumpGateHopsForMarket(market);
+		if (hops === null) {
+			return this.t.game.marketHub.noRouteLabel;
+		}
+
+		const hopLabel = hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel;
+		return `${hops} ${hopLabel}`;
+	}
+
+	protected isMarketWithinDriveRange(market: MarketSummary): boolean {
+		if (market.solarSystemId !== this.activeShipSolarSystemId()) {
+			return this.jumpGateHopsForMarket(market) !== null;
+		}
+
+		const distanceAu = market.distanceAu;
+		if (distanceAu === undefined || !Number.isFinite(distanceAu)) {
+			return false;
+		}
+
+		return distanceAu <= this.activeDriveProfile().rangeAu;
+	}
+
+	protected requiredDriveNameForMarket(market: MarketSummary): string {
+		if (market.solarSystemId !== this.activeShipSolarSystemId()) {
+			const hops = this.jumpGateHopsForMarket(market);
+			if (hops !== null) {
+				return `${hops} ${hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel}`;
+			}
+
+			return this.t.game.marketHub.unreachableRouteLabel;
+		}
+
+		const distanceAu = market.distanceAu;
+		if (distanceAu === undefined || !Number.isFinite(distanceAu)) {
+			return this.t.game.marketHub.unknownDistanceLabel;
+		}
+
+		return resolveMinimumDriveProfileForDistance(distanceAu).name;
+	}
+
+	private jumpGateHopsForMarket(market: MarketSummary): number | null {
+		return resolveJumpGateHops(this.activeShipSolarSystemId(), market.solarSystemId);
 	}
 
 	protected canTransactAtMarket(market: MarketSummary): boolean {

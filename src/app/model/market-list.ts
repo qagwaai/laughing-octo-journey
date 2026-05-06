@@ -18,6 +18,10 @@ export interface MarketSummary {
 	marketName: string;
 	siteType: string;
 	siteName: string;
+	route?: {
+		kind: 'in-system' | 'gate-route' | 'no-route';
+		hops?: number;
+	};
 	isStarterMarket?: boolean;
 	spatial: SpatialState;
 	trajectory?: {
@@ -34,7 +38,7 @@ export interface MarketSummary {
 			epoch: string;
 		};
 	};
-	distanceKm?: number;
+	distanceAu?: number;
 	isDocked?: boolean;
 	priceMultiplier: number;
 	driftPercentPerHour: number;
@@ -54,7 +58,7 @@ export interface MarketListByLocationRequest {
 	sessionKey: string;
 	solarSystemId: string;
 	positionKm: Triple;
-	distanceKm: number;
+	distanceAu: number;
 	limit?: number;
 	locationTypes?: string[];
 	characterId?: string;
@@ -67,16 +71,18 @@ export interface MarketListByLocationResponse {
 	playerName?: string;
 	solarSystemId?: string;
 	positionKm?: Triple;
-	distanceKm?: number;
+	distanceAu?: number;
 	locationTypes?: string[];
 	isDocked?: boolean;
 	dockedMarketId?: string | null;
 	markets: MarketSummary[];
 }
 
-export function computeDistanceKm(a: Triple, b: Triple): number {
+export function computeDistanceAu(a: Triple, b: Triple): number {
+	const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 	const dx = a.x - b.x;
 	const dy = a.y - b.y;
 	const dz = a.z - b.z;
-	return Math.sqrt(dx * dx + dy * dy + dz * dz);
+	const distanceKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
+	return distanceKm / ASTRONOMICAL_UNIT_KM;
 }

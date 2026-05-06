@@ -14,6 +14,13 @@ const SHIP_WITH_POSITION = {
   name: 'Scavenger Pod',
   model: 'Scavenger Pod',
   tier: 1,
+  driveProfile: {
+    id: 'standard-cruise',
+    name: 'Standard Cruise Drive',
+    rangeAu: 0.5,
+    cruiseSpeedAuPerHour: 0.3,
+    fuelCostPerAu: 1,
+  },
   status: 'ACTIVE',
   spatial: {
     solarSystemId: 'sol',
@@ -44,7 +51,7 @@ type MarketByLocationRequest = {
   sessionKey: string;
   solarSystemId: string;
   positionKm: { x: number; y: number; z: number };
-  distanceKm: number;
+  distanceAu: number;
   limit: number;
   locationTypes: string[];
   characterId?: string;
@@ -89,7 +96,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
         playerName: TEST_PLAYER,
         solarSystemId: 'sol',
         positionKm: request.positionKm,
-        distanceKm: request.distanceKm,
+        distanceAu: request.distanceAu,
         locationTypes: ['station'],
         isDocked: false,
         dockedMarketId: null,
@@ -106,7 +113,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_709_800, y: 10, z: -5 },
               epochMs: Date.now(),
             },
-            distanceKm: 9800,
+            distanceAu: 4.2,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -124,7 +131,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_704_821.8, y: 10, z: -5 },
               epochMs: Date.now(),
             },
-            distanceKm: 4821.8,
+            distanceAu: 2.3,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -164,7 +171,7 @@ test.describe('Market Hub by-location contract', () => {
     const firstRequest = requests[0];
     expect(firstRequest.playerName).toBe(TEST_PLAYER);
     expect(firstRequest.solarSystemId).toBe('sol');
-    expect(firstRequest.distanceKm).toBe(100);
+    expect(firstRequest.distanceAu).toBe(0.5);
     expect(firstRequest.limit).toBe(50);
     expect(firstRequest.locationTypes).toEqual(['station']);
     expect(firstRequest.characterId).toBe(CHARACTER.id);
@@ -174,8 +181,11 @@ test.describe('Market Hub by-location contract', () => {
     const marketRows = page.locator('.market-item');
     await expect(marketRows).toHaveCount(2);
     await expect(marketRows.nth(0)).toContainText('Ceres Exchange');
-    await expect(marketRows.nth(0)).toContainText('4821.8 km');
+    await expect(marketRows.nth(0)).toContainText('In-system');
+    await expect(marketRows.nth(0)).toContainText('2.300 AU');
+    await expect(marketRows.nth(0)).toContainText('about 8 hours at standard cruise');
     await expect(marketRows.nth(1)).toContainText('Far Exchange');
-    await expect(marketRows.nth(1)).toContainText('9800.0 km');
+    await expect(marketRows.nth(1)).toContainText('In-system');
+    await expect(marketRows.nth(1)).toContainText('4.200 AU');
   });
 });

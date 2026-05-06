@@ -14,6 +14,13 @@ const SHIP_WITH_POSITION = {
   name: 'Scavenger Pod',
   model: 'Scavenger Pod',
   tier: 1,
+  driveProfile: {
+    id: 'rapid-transit',
+    name: 'Rapid Transit Thruster',
+    rangeAu: 0.8,
+    cruiseSpeedAuPerHour: 0.4,
+    fuelCostPerAu: 4,
+  },
   status: 'ACTIVE',
   spatial: {
     solarSystemId: 'sol',
@@ -40,7 +47,7 @@ const SHIP_WITH_POSITION = {
 };
 
 type MarketByLocationRequest = {
-  distanceKm: number;
+  distanceAu: number;
 };
 
 async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLocationRequest) => void) {
@@ -82,7 +89,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
         playerName: TEST_PLAYER,
         solarSystemId: 'sol',
         positionKm: SHIP_WITH_POSITION.spatial.positionKm,
-        distanceKm: request.distanceKm,
+        distanceAu: request.distanceAu,
         locationTypes: ['station'],
         isDocked: true,
         dockedMarketId: 'sol-ceres-exchange',
@@ -99,7 +106,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_700_102.5, y: 0, z: 0 },
               epochMs: Date.now(),
             },
-            distanceKm: 2.5,
+            distanceAu: 0.02,
             isDocked: true,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -117,7 +124,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_700_440.2, y: 0, z: 0 },
               epochMs: Date.now(),
             },
-            distanceKm: 340.2,
+            distanceAu: 0.9,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -162,15 +169,19 @@ test.describe('Market Hub docking and radius behavior', () => {
 
     await expect(dockedMarket).toContainText('Ceres Exchange');
     await expect(remoteMarket).toContainText('Remote Market');
+    await expect(remoteMarket).toContainText('In-system');
 
     await expect(dockedMarket.locator('.transact-btn')).toBeEnabled();
     await expect(remoteMarket.locator('.transact-btn')).toBeDisabled();
-    await expect(remoteMarket.locator('.dock-required-badge')).toBeVisible();
+    await expect(remoteMarket.locator('.dock-required-badge', { hasText: 'Dock required' })).toBeVisible();
+    await expect(remoteMarket.locator('.dock-required-badge', { hasText: 'Out of range' })).toBeVisible();
+    await expect(remoteMarket).toContainText('Requires drive range upgrade.');
+    await expect(page.getByText('Rapid Transit Thruster').first()).toBeVisible();
 
-    await page.selectOption('#radiusKm', '250');
+    await page.selectOption('#radiusAu', '1');
 
     await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(1);
     const latestRequest = requests[requests.length - 1];
-    expect(latestRequest.distanceKm).toBe(250);
+    expect(latestRequest.distanceAu).toBe(0.8);
   });
 });

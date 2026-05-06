@@ -2,6 +2,7 @@ import { Triple } from './triple';
 import { ObservabilityState, SpatialState } from './spatial';
 import { ShipItem, coerceShipItem } from './ship-item';
 import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
+import type { DriveProfileInput } from './drive-profile';
 
 export { ShipItem } from './ship-item';
 
@@ -25,6 +26,7 @@ export interface ShipSummary {
 	damageProfile?: ShipDamageProfile | null;
 	model: string;
 	tier: number;
+	driveProfile?: DriveProfileInput | null;
 	launchable?: boolean;
 	inventory?: ShipItem[];
 	spatial: SpatialState;
