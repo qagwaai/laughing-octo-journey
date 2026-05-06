@@ -604,10 +604,16 @@ export default class RepairRetrofitItemsPage {
 			gateState,
 			repairKind,
 		});
+		const nextGateState = evaluation.changed ? evaluation.gateState : gateState;
 
 		if (evaluation.changed) {
 			this.missionStateService.saveState(context, evaluation.gateState);
-			void this.syncMissionProgressToBackend(evaluation.gateState);
+		}
+
+		// Ship repair is the mission-completion gate for first-target; always attempt
+		// an idempotent backend upsert so mission-list status cannot silently drift.
+		if (repairKind === 'ship' || evaluation.changed) {
+			void this.syncMissionProgressToBackend(nextGateState);
 		}
 	}
 

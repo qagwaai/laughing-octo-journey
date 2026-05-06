@@ -7,7 +7,15 @@ import { MissionProgressSyncService } from '../../services/mission-progress-sync
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import type { PrintQueueItem } from '../../services/printer-state.service';
-import { type ShipItem, type ShipSummary } from '../../model/ship-list';
+import {
+	SHIP_LIST_REQUEST_EVENT,
+	SHIP_LIST_RESPONSE_EVENT,
+	coerceShipInventory,
+	type ShipItem,
+	type ShipListRequest,
+	type ShipListResponse,
+	type ShipSummary,
+} from '../../model/ship-list';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
 	PRINTABLE_ITEMS,
@@ -44,6 +52,7 @@ export default class PrintQueuePage {
 	private printerService = inject(PrinterStateService);
 	private destroyRef = inject(DestroyRef);
 	private collectingItemIds = new Set<string>();
+	private unsubscribeShipListResponse?: () => void;
 	private navigationState: PrintQueueNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as PrintQueueNavigationState | undefined) ??
 		(history.state as PrintQueueNavigationState | undefined) ??
@@ -51,7 +60,7 @@ export default class PrintQueuePage {
 
 	protected playerName = signal<string>(this.navigationState.playerName ?? '');
 	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
-	protected activeShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
+	protected activeShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? this.sessionService.activeShip() ?? null);
 
 	protected printerQueue = this.printerService.queue;
 	protected currentTime = signal(Date.now());
@@ -78,13 +87,63 @@ export default class PrintQueuePage {
 			this.printerService.loadQueue(playerName, characterId);
 		}
 
+		if (this.socketService.getIsConnected()) {
+			this.loadActiveShip();
+		} else {
+			this.socketService.once('connect', () => this.loadActiveShip());
+		}
+
 		const intervalId = setInterval(() => {
 			this.currentTime.set(Date.now());
 			this.checkPrintCompletion();
 		}, 1000);
-		this.destroyRef.onDestroy(() => clearInterval(intervalId));
+		this.destroyRef.onDestroy(() => {
+			clearInterval(intervalId);
+			this.unsubscribeShipListResponse?.();
+		});
 
 		this.checkPrintCompletion();
+	}
+
+	private loadActiveShip(): void {
+		const playerName = this.playerName().trim();
+		const characterId = this.joinCharacter()?.id?.trim() ?? '';
+		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+		if (!playerName || !characterId || !sessionKey) {
+			return;
+		}
+
+		this.unsubscribeShipListResponse?.();
+		this.unsubscribeShipListResponse = this.socketService.on(
+			SHIP_LIST_RESPONSE_EVENT,
+			(response: ShipListResponse) => {
+				this.unsubscribeShipListResponse?.();
+
+				if (!response.success) {
+					return;
+				}
+
+				const nextShip = response.ships?.[0] ?? null;
+				if (!nextShip) {
+					return;
+				}
+
+				const hydratedShip: ShipSummary = {
+					...nextShip,
+					inventory: coerceShipInventory(nextShip.inventory),
+				};
+
+				this.activeShip.set(hydratedShip);
+			},
+		);
+
+		const request: ShipListRequest = {
+			playerName,
+			characterId,
+			sessionKey,
+		};
+		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
 	protected queuePrintableItem(printableItem: PrintableItemDefinition): void {

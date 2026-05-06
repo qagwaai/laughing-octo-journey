@@ -5,7 +5,53 @@ import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-first-target';
 
-function configureFirstTargetFlowMock(mock: SocketIOMock, missionUpsertRequests: Array<{ status?: string }>): void {
+function configureFirstTargetFlowMock(
+	mock: SocketIOMock,
+	missionUpsertRequests: Array<{ status?: string }>,
+	options?: { includeIronInShipInventory?: boolean },
+): void {
+	const shipInventory = [
+		{
+			id: 'item-drone-1',
+			itemType: 'expendable-dart-drone',
+			displayName: 'Expendable Dart Drone',
+			launchable: true,
+			state: 'contained',
+			damageStatus: 'intact',
+			container: { containerType: 'ship' as const, containerId: 'ship-1' },
+			owningPlayerId: TEST_PLAYER,
+			owningCharacterId: TEST_CHARACTER_ID,
+			kinematics: null,
+			destroyedAt: null,
+			destroyedReason: null,
+			discoveredAt: null,
+			discoveredByCharacterId: null,
+			createdAt: '2026-05-01T00:00:00.000Z',
+			updatedAt: '2026-05-01T00:00:00.000Z',
+		},
+	];
+
+	if (options?.includeIronInShipInventory) {
+		shipInventory.push({
+			id: 'item-iron-1',
+			itemType: 'iron-raw-material',
+			displayName: 'Iron (raw material)',
+			launchable: false,
+			state: 'contained',
+			damageStatus: 'intact',
+			container: { containerType: 'ship' as const, containerId: 'ship-1' },
+			owningPlayerId: TEST_PLAYER,
+			owningCharacterId: TEST_CHARACTER_ID,
+			kinematics: null,
+			destroyedAt: null,
+			destroyedReason: null,
+			discoveredAt: null,
+			discoveredByCharacterId: null,
+			createdAt: '2026-05-01T00:00:00.000Z',
+			updatedAt: '2026-05-01T00:00:00.000Z',
+		});
+	}
+
 	mock.on('character-list-request', () => ({
 		event: 'character-list-response',
 		data: {
@@ -54,26 +100,7 @@ function configureFirstTargetFlowMock(mock: SocketIOMock, missionUpsertRequests:
 					name: 'Starter Pod',
 					model: 'Scavenger Pod',
 					status: 'Damaged',
-					inventory: [
-						{
-							id: 'item-drone-1',
-							itemType: 'expendable-dart-drone',
-							displayName: 'Expendable Dart Drone',
-							launchable: true,
-							state: 'contained',
-							damageStatus: 'intact',
-							container: { containerType: 'ship', containerId: 'ship-1' },
-							owningPlayerId: TEST_PLAYER,
-							owningCharacterId: TEST_CHARACTER_ID,
-							kinematics: null,
-							destroyedAt: null,
-							destroyedReason: null,
-							discoveredAt: null,
-							discoveredByCharacterId: null,
-							createdAt: '2026-05-01T00:00:00.000Z',
-							updatedAt: '2026-05-01T00:00:00.000Z',
-						},
-					],
+					inventory: shipInventory,
 					spatial: {
 						solarSystemId: 'sol',
 						frame: 'barycentric',
@@ -460,4 +487,26 @@ test.describe('First Target Mission Flow', () => {
 
 		expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);
 	});
+
+		test('shows Hull Patch Kit print button from Fabrication Lab print queue when iron exists in inventory', async ({ page }) => {
+			const mock = new SocketIOMock(page);
+			await mock.setup();
+			const missionUpsertRequests: Array<{ status?: string }> = [];
+
+			configureFirstTargetFlowMock(mock, missionUpsertRequests, { includeIronInShipInventory: true });
+
+			await loginViaUI(page, mock);
+			await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+			await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+
+			await page.locator('button[aria-label="Fabrication Lab"]').click();
+			await expect(page).toHaveURL(/left:fabrication-lab/);
+
+			await page.getByRole('button', { name: 'View Print Queue' }).click();
+			await expect(page).toHaveURL(/right:print-queue/);
+
+			const printHullPatchKitButton = page.getByRole('button', { name: /Print Hull Patch Kit/i });
+			await expect(printHullPatchKitButton).toBeVisible();
+			await expect(printHullPatchKitButton).toBeEnabled();
+		});
 });

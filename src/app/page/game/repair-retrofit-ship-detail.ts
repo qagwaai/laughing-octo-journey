@@ -252,11 +252,15 @@ export default class RepairRetrofitShipDetailPage {
 			gateState,
 			repairKind: 'ship',
 		});
+		const nextGateState = evaluation.changed ? evaluation.gateState : gateState;
 
 		if (evaluation.changed) {
 			this.missionStateService.saveState(context, evaluation.gateState);
-			void this.syncMissionProgressToBackend(evaluation.gateState);
 		}
+
+		// Always perform an idempotent sync after ship repair so backend mission
+		// status remains aligned even if local gate state was already advanced.
+		void this.syncMissionProgressToBackend(nextGateState);
 	}
 
 	private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
