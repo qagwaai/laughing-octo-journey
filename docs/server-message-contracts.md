@@ -299,7 +299,7 @@ Required payload:
 Client-side behavior:
 
 - Used by Market Hub for local-area browsing.
-- `positionKm` comes from active ship kinematics/location.
+- `positionKm` comes from active ship spatial state.
 - `distanceKm` comes from user-selected radius.
 - `characterId` and `shipId` are included when available so server can compute docking state.
 
@@ -606,20 +606,19 @@ Payload:
       "model": "string",
       "tier": 1,
       "inventory": ["Expendable Dart Drone"],
-      "location": {
-        "positionKm": { "x": 0, "y": 0, "z": 0 }
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 0, "y": 0, "z": 0 },
+        "epochMs": 0
       },
-      "kinematics": {
-        "position": { "x": 0, "y": 0, "z": 0 },
-        "velocity": { "x": 0, "y": 0, "z": 0 },
-        "reference": {
-          "solarSystemId": "string",
-          "referenceKind": "barycentric | body-centered",
-          "referenceBodyId": "string (optional)",
-          "distanceUnit": "km",
-          "velocityUnit": "km/s",
-          "epochMs": 0
-        }
+      "motion": {
+        "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
+        "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 }
+      },
+      "observability": {
+        "visibility": "visible",
+        "scanState": "scanned"
       }
     }
   ]
@@ -650,20 +649,19 @@ Required payload:
     "model": "string (optional patch field)",
     "tier": "number 1..10 (optional patch field)",
     "inventory": ["string", "... (optional patch field)"],
-    "location": {
-      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    "spatial": {
+      "solarSystemId": "sol",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
     },
-    "kinematics": {
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "velocity": { "x": 0, "y": 0, "z": 0 },
-      "reference": {
-        "solarSystemId": "string",
-        "referenceKind": "barycentric | body-centered",
-        "referenceBodyId": "string (optional)",
-        "distanceUnit": "km",
-        "velocityUnit": "km/s",
-        "epochMs": 0
-      }
+    "motion": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
+      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 }
+    },
+    "observability": {
+      "visibility": "visible",
+      "scanState": "unscanned"
     }
   }
 }
@@ -677,7 +675,7 @@ Client-side behavior:
 Server requirements:
 
 - Validate `sessionKey` and ownership (`playerName` + `characterId` + existing `ship.id`).
-- Treat `model`, `tier`, `inventory`, `location`, and `kinematics` as optional patch fields.
+- Treat `model`, `tier`, `inventory`, `spatial`, `motion`, and `observability` as optional patch fields.
 - Return `ship-upsert-response` for every request.
 
 ### `ship-upsert-response` (response)
@@ -696,20 +694,19 @@ Payload:
     "model": "string",
     "tier": 1,
     "inventory": ["Expendable Dart Drone"],
-    "location": {
-      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    "spatial": {
+      "solarSystemId": "sol",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
     },
-    "kinematics": {
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "velocity": { "x": 0, "y": 0, "z": 0 },
-      "reference": {
-        "solarSystemId": "string",
-        "referenceKind": "barycentric | body-centered",
-        "referenceBodyId": "string (optional)",
-        "distanceUnit": "km",
-        "velocityUnit": "km/s",
-        "epochMs": 0
-      }
+    "motion": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
+      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 }
+    },
+    "observability": {
+      "visibility": "visible",
+      "scanState": "scanned"
     }
   }
 }
@@ -765,20 +762,18 @@ Payload:
       "name": "string",
       "status": "string (optional)",
       "model": "string (optional)",
-      "location": {
-        "positionKm": { "x": 0, "y": 0, "z": 0 }
+      "spatial": {
+        "solarSystemId": "string",
+        "frame": "barycentric",
+        "positionKm": { "x": 0, "y": 0, "z": 0 },
+        "epochMs": 0
       },
-      "kinematics": {
-        "position": { "x": 0, "y": 0, "z": 0 },
-        "velocity": { "x": 0, "y": 0, "z": 0 },
-        "reference": {
-          "solarSystemId": "string",
-          "referenceKind": "barycentric | body-centered",
-          "referenceBodyId": "string (required only for body-centered)",
-          "distanceUnit": "km",
-          "velocityUnit": "km/s",
-          "epochMs": 0
-        }
+      "motion": {
+        "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 }
+      },
+      "observability": {
+        "visibility": "visible",
+        "scanState": "scanned"
       }
     }
   ]
@@ -787,10 +782,8 @@ Payload:
 
 Notes:
 
-- `location.positionKm` and `kinematics` are required by the current client contract.
-- `velocity` is the direction of travel plus speed magnitude.
-- Use `referenceKind: "barycentric"` for multi-star systems (for example, binary stars) so position/velocity remain stable relative to the system barycenter.
-- `distanceUnit` must be `"km"` and `velocityUnit` must be `"km/s"`.
+- `spatial` is required for drone records consumed by the client.
+- `motion.velocityKmPerSec` carries direction plus speed magnitude.
 
 Edge cases:
 
@@ -813,19 +806,18 @@ Required payload:
   "sessionKey": "string",
   "drone": {
     "id": "string",
-    "location": {
-      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    "spatial": {
+      "solarSystemId": "sol",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
     },
-    "kinematics": {
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "velocity": { "x": 0, "y": 0, "z": 0 },
-      "reference": {
-        "solarSystemId": "sol",
-        "referenceKind": "barycentric",
-        "distanceUnit": "km",
-        "velocityUnit": "km/s",
-        "epochMs": 0
-      }
+    "motion": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 }
+    },
+    "observability": {
+      "visibility": "visible",
+      "scanState": "scanned"
     }
   }
 }
@@ -834,7 +826,7 @@ Required payload:
 Client-side behavior:
 
 - Client first requests `drone-list` and then upserts by existing starter drone `id` (contract requires existing drone ownership).
-- Upsert payload mutates location/kinematics for that existing drone.
+- Upsert payload mutates spatial/motion/observability for that existing drone.
 
 Server requirements:
 
@@ -855,19 +847,18 @@ Payload:
   "drone": {
     "id": "string",
     "droneName": "string (optional)",
-    "location": {
-      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    "spatial": {
+      "solarSystemId": "string",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
     },
-    "kinematics": {
-      "position": { "x": 0, "y": 0, "z": 0 },
-      "velocity": { "x": 0, "y": 0, "z": 0 },
-      "reference": {
-        "solarSystemId": "string",
-        "referenceKind": "barycentric | body-centered",
-        "distanceUnit": "km",
-        "velocityUnit": "km/s",
-        "epochMs": 0
-      }
+    "motion": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 }
+    },
+    "observability": {
+      "visibility": "visible",
+      "scanState": "scanned"
     }
   }
 }
@@ -950,20 +941,29 @@ Required payload:
   "celestialBody": {
     "id": "string",
     "catalogId": "string",
-    "solarSystemId": "sol | string",
     "sourceScanId": "string",
     "createdByCharacterId": "string",
     "createdAt": "ISO-8601 string",
     "updatedAt": "ISO-8601 string",
-    "location": {
-      "positionKm": { "x": 0, "y": 0, "z": 0 }
+    "spatial": {
+      "solarSystemId": "sol | string",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
     },
-    "kinematics": {
+    "motion": {
       "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
-      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 },
+      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 }
+    },
+    "physical": {
       "estimatedMassKg": 0,
       "estimatedDiameterM": 0
     },
+    "observability": {
+      "visibility": "visible | not-visible | cloaked",
+      "scanState": "unscanned | scanned"
+    },
+    "state": "active | destroyed",
     "composition": {
       "rarity": "Common | Uncommon | Rare | Exotic",
       "material": "string",
@@ -978,12 +978,12 @@ Client-side behavior:
 - Emitted immediately after a successful asteroid scan completes.
 - Includes `playerName` as request context for audit/logging, but ownership association remains character-scoped.
 - Uses `createdByCharacterId` both at top-level and inside `celestialBody` for compatibility with backend parsers.
-- Current client defaults `solarSystemId` to `sol` for filtering.
 
 Server requirements:
 
 - Validate `sessionKey` and that `createdByCharacterId` belongs to the authenticated session context.
-- Upsert by stable identity (`id` and/or `sourceScanId` + `solarSystemId`) with deterministic behavior.
+- Reject legacy `location`/`kinematics` fields with a clear validation error.
+- Upsert by stable identity (`id` and/or `sourceScanId` + `spatial.solarSystemId`) with deterministic behavior.
 - Preserve `createdAt` for existing records and update `updatedAt` on every accepted mutation.
 - Return `celestial-body-upsert-response` for every request.
 
@@ -998,11 +998,29 @@ Payload:
   "celestialBody": {
     "id": "string",
     "catalogId": "string",
-    "solarSystemId": "string",
     "sourceScanId": "string",
     "createdByCharacterId": "string",
     "createdAt": "ISO-8601 string",
-    "updatedAt": "ISO-8601 string"
+    "updatedAt": "ISO-8601 string",
+    "spatial": {
+      "solarSystemId": "string",
+      "frame": "barycentric",
+      "positionKm": { "x": 0, "y": 0, "z": 0 },
+      "epochMs": 0
+    },
+    "motion": {
+      "velocityKmPerSec": { "x": 0, "y": 0, "z": 0 },
+      "angularVelocityRadPerSec": { "x": 0, "y": 0, "z": 0 },
+    },
+    "physical": {
+      "estimatedMassKg": 0,
+      "estimatedDiameterM": 0
+    },
+    "observability": {
+      "visibility": "visible",
+      "scanState": "scanned"
+    },
+    "state": "active | destroyed"
   }
 }
 ```
@@ -1010,7 +1028,7 @@ Payload:
 Edge cases:
 
 - If the same source scan is sent repeatedly, return deterministic idempotent success with the authoritative stored record.
-- If `solarSystemId` is unknown, return `success: false` with a user-safe message.
+- If `spatial.solarSystemId` is unknown, return `success: false` with a user-safe message.
 - If timestamps are malformed, either normalize server-side or reject with explicit validation guidance.
 
 ---

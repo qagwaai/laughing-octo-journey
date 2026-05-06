@@ -88,8 +88,8 @@ class MockColdBootScanScene {
 		this.shipModel = state.joinShip?.model?.trim() || 'Scavenger Pod';
 		this.hasExpendableDartDrone =
 			state.joinShip?.inventory?.some((item) => item.itemType === 'expendable-dart-drone') ?? false;
-		this.shipLocationKm = state.joinShip?.location?.positionKm ?? null;
-		this.solarSystemId = state.joinShip?.kinematics?.reference?.solarSystemId?.trim() || 'sol';
+		this.shipLocationKm = state.joinShip?.spatial?.positionKm ?? null;
+		this.solarSystemId = state.joinShip?.spatial?.solarSystemId?.trim() || 'sol';
 		this.launchableInventory = (state.joinShip?.inventory ?? [])
 			.filter((item) => item.launchable !== false)
 			.slice()

@@ -1,6 +1,5 @@
-import { AsteroidKinematics } from './asteroid-kinematics';
 import { AsteroidMaterialProfile } from './asteroid-materials';
-import { CelestialBodyLocation } from './celestial-body-location';
+import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
 
 export const CELESTIAL_BODY_UPSERT_REQUEST_EVENT = 'celestial-body-upsert-request';
 export const CELESTIAL_BODY_UPSERT_RESPONSE_EVENT = 'celestial-body-upsert-response';
@@ -12,8 +11,6 @@ export interface CelestialBodyUpsertEntity {
 	id?: string;
 	/** Secondary catalog identifier for indexing/search. */
 	catalogId: string;
-	/** Parent solar system reference, used for filtering. */
-	solarSystemId: string;
 	/** Scan/source identifier used for idempotent upsert behavior. */
 	sourceScanId: string;
 	/** Character ID that created/discovered this body. */
@@ -26,10 +23,12 @@ export interface CelestialBodyUpsertEntity {
 	createdAt: string;
 	/** ISO-8601 UTC timestamp. */
 	updatedAt: string;
-	location: CelestialBodyLocation;
-	kinematics: AsteroidKinematics;
+	spatial: SpatialState;
+	motion?: MotionState;
+	physical?: PhysicalState;
 	composition?: AsteroidMaterialProfile;
-	state?: 'unscanned' | 'active' | 'destroyed';
+	observability: ObservabilityState;
+	state?: 'active' | 'destroyed';
 }
 
 export interface CelestialBodyUpsertRequest {

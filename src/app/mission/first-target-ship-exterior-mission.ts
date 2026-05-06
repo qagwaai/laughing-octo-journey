@@ -246,9 +246,18 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 				return sample;
 			}
 
-			const shouldTreatAsScanned = existingBody.state !== 'unscanned';
-			const resolvedKinematics = existingBody.kinematics ?? sample.capturedKinematics;
-			const resolvedLocation = existingBody.location ?? sample.solarSystemLocation;
+			const shouldTreatAsScanned = existingBody.observability?.scanState === 'scanned' || existingBody.state === 'active';
+			const resolvedKinematics = existingBody.motion
+				? {
+					velocityKmPerSec: existingBody.motion.velocityKmPerSec,
+					angularVelocityRadPerSec: existingBody.motion.angularVelocityRadPerSec ?? sample.capturedKinematics.angularVelocityRadPerSec,
+					estimatedMassKg: existingBody.physical?.estimatedMassKg ?? sample.capturedKinematics.estimatedMassKg,
+					estimatedDiameterM: existingBody.physical?.estimatedDiameterM ?? sample.capturedKinematics.estimatedDiameterM,
+				}
+				: sample.capturedKinematics;
+			const resolvedLocation = existingBody.spatial
+				? { positionKm: existingBody.spatial.positionKm }
+				: sample.solarSystemLocation;
 			const resolvedMaterial = existingBody.composition ?? sample.revealedMaterial;
 
 			return {

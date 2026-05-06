@@ -78,20 +78,18 @@ test.describe('Ship Exterior Test Utilities', () => {
 								updatedAt: '2026-05-01T00:00:00.000Z',
 							},
 						],
-						location: {
+						spatial: {
+							solarSystemId: 'sol',
+							frame: 'barycentric',
 							positionKm: { x: 1_000_000, y: 0, z: 0 },
+							epochMs: Date.now(),
 						},
-						kinematics: {
-							position: { x: 1_000_000, y: 0, z: 0 },
-							velocity: { x: 0, y: 0, z: 0 },
-							reference: {
-								solarSystemId: 'sol',
-								referenceKind: 'system',
-								referenceBodyId: null,
-								distanceUnit: 'km',
-								velocityUnit: 'km/s',
-								epochMs: Date.now(),
-							},
+						motion: {
+							velocityKmPerSec: { x: 0, y: 0, z: 0 },
+						},
+						observability: {
+							visibility: 'visible',
+							scanState: 'scanned',
 						},
 					},
 				],
@@ -117,14 +115,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 					id?: string;
 					sourceScanId?: string;
 					catalogId?: string;
-					solarSystemId?: string;
 					createdByCharacterId?: string;
 					createdAt?: string;
 					updatedAt?: string;
-					location?: unknown;
-					kinematics?: unknown;
+					spatial?: unknown;
+					motion?: unknown;
+					physical?: unknown;
 					composition?: unknown;
-					state?: 'unscanned' | 'active' | 'destroyed';
+					observability?: unknown;
+					state?: 'active' | 'destroyed';
 				};
 			};
 			const celestialBody = payload.celestialBody ?? {};
@@ -137,14 +136,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 						id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
 						sourceScanId: celestialBody.sourceScanId ?? 'generated',
 						catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
-						solarSystemId: celestialBody.solarSystemId ?? 'sol',
 						createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
 						createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
 						updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
-						location: celestialBody.location,
-						kinematics: celestialBody.kinematics,
+						spatial: celestialBody.spatial,
+						motion: celestialBody.motion,
+						physical: celestialBody.physical,
 						composition: celestialBody.composition,
-						state: celestialBody.state ?? 'unscanned',
+						observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
+						state: celestialBody.state ?? 'active',
 					},
 				},
 			};
@@ -299,20 +299,18 @@ test.describe('Ship Exterior Test Utilities', () => {
 								updatedAt: '2026-05-01T00:00:00.000Z',
 							},
 						],
-						location: {
+						spatial: {
+							solarSystemId: 'sol',
+							frame: 'barycentric',
 							positionKm: { x: 1_000_000, y: 0, z: 0 },
+							epochMs: Date.now(),
 						},
-						kinematics: {
-							position: { x: 1_000_000, y: 0, z: 0 },
-							velocity: { x: 0, y: 0, z: 0 },
-							reference: {
-								solarSystemId: 'sol',
-								referenceKind: 'system',
-								referenceBodyId: null,
-								distanceUnit: 'km',
-								velocityUnit: 'km/s',
-								epochMs: Date.now(),
-							},
+						motion: {
+							velocityKmPerSec: { x: 0, y: 0, z: 0 },
+						},
+						observability: {
+							visibility: 'visible',
+							scanState: 'scanned',
 						},
 					},
 				],
@@ -338,14 +336,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 					id?: string;
 					sourceScanId?: string;
 					catalogId?: string;
-					solarSystemId?: string;
 					createdByCharacterId?: string;
 					createdAt?: string;
 					updatedAt?: string;
-					location?: unknown;
-					kinematics?: unknown;
+					spatial?: unknown;
+					motion?: unknown;
+					physical?: unknown;
 					composition?: unknown;
-					state?: 'unscanned' | 'active' | 'destroyed';
+					observability?: unknown;
+					state?: 'active' | 'destroyed';
 				};
 			};
 			const celestialBody = payload.celestialBody ?? {};
@@ -358,14 +357,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 						id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
 						sourceScanId: celestialBody.sourceScanId ?? 'generated',
 						catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
-						solarSystemId: celestialBody.solarSystemId ?? 'sol',
 						createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
 						createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
 						updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
-						location: celestialBody.location,
-						kinematics: celestialBody.kinematics,
+						spatial: celestialBody.spatial,
+						motion: celestialBody.motion,
+						physical: celestialBody.physical,
 						composition: celestialBody.composition,
-						state: celestialBody.state ?? 'unscanned',
+						observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
+						state: celestialBody.state ?? 'active',
 					},
 				},
 			};
@@ -605,20 +605,18 @@ test.describe('Ship Exterior Test Utilities', () => {
 								updatedAt: '2026-05-01T00:00:00.000Z',
 							},
 						],
-						location: {
+						spatial: {
+							solarSystemId: 'sol',
+							frame: 'barycentric',
 							positionKm: { x: 1_000_000, y: 0, z: 0 },
+							epochMs: Date.now(),
 						},
-						kinematics: {
-							position: { x: 1_000_000, y: 0, z: 0 },
-							velocity: { x: 0, y: 0, z: 0 },
-							reference: {
-								solarSystemId: 'sol',
-								referenceKind: 'system',
-								referenceBodyId: null,
-								distanceUnit: 'km',
-								velocityUnit: 'km/s',
-								epochMs: Date.now(),
-							},
+						motion: {
+							velocityKmPerSec: { x: 0, y: 0, z: 0 },
+						},
+						observability: {
+							visibility: 'visible',
+							scanState: 'scanned',
 						},
 					},
 				],
@@ -644,14 +642,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 					id?: string;
 					sourceScanId?: string;
 					catalogId?: string;
-					solarSystemId?: string;
 					createdByCharacterId?: string;
 					createdAt?: string;
 					updatedAt?: string;
-					location?: unknown;
-					kinematics?: unknown;
+					spatial?: unknown;
+					motion?: unknown;
+					physical?: unknown;
 					composition?: unknown;
-					state?: 'unscanned' | 'active' | 'destroyed';
+					observability?: unknown;
+					state?: 'active' | 'destroyed';
 				};
 			};
 			const celestialBody = payload.celestialBody ?? {};
@@ -664,14 +663,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 						id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
 						sourceScanId: celestialBody.sourceScanId ?? 'generated',
 						catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
-						solarSystemId: celestialBody.solarSystemId ?? 'sol',
 						createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
 						createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
 						updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
-						location: celestialBody.location,
-						kinematics: celestialBody.kinematics,
+						spatial: celestialBody.spatial,
+						motion: celestialBody.motion,
+						physical: celestialBody.physical,
 						composition: celestialBody.composition,
-						state: celestialBody.state ?? 'unscanned',
+						observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
+						state: celestialBody.state ?? 'active',
 					},
 				},
 			};
@@ -821,20 +821,18 @@ test.describe('Ship Exterior Test Utilities', () => {
 								updatedAt: '2026-05-01T00:00:00.000Z',
 							},
 						],
-						location: {
+						spatial: {
+							solarSystemId: 'sol',
+							frame: 'barycentric',
 							positionKm: { x: 1_000_000, y: 0, z: 0 },
+							epochMs: Date.now(),
 						},
-						kinematics: {
-							position: { x: 1_000_000, y: 0, z: 0 },
-							velocity: { x: 0, y: 0, z: 0 },
-							reference: {
-								solarSystemId: 'sol',
-								referenceKind: 'system',
-								referenceBodyId: null,
-								distanceUnit: 'km',
-								velocityUnit: 'km/s',
-								epochMs: Date.now(),
-							},
+						motion: {
+							velocityKmPerSec: { x: 0, y: 0, z: 0 },
+						},
+						observability: {
+							visibility: 'visible',
+							scanState: 'scanned',
 						},
 					},
 				],
@@ -860,14 +858,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 					id?: string;
 					sourceScanId?: string;
 					catalogId?: string;
-					solarSystemId?: string;
 					createdByCharacterId?: string;
 					createdAt?: string;
 					updatedAt?: string;
-					location?: unknown;
-					kinematics?: unknown;
+					spatial?: unknown;
+					motion?: unknown;
+					physical?: unknown;
 					composition?: unknown;
-					state?: 'unscanned' | 'active' | 'destroyed';
+					observability?: unknown;
+					state?: 'active' | 'destroyed';
 				};
 			};
 			const celestialBody = payload.celestialBody ?? {};
@@ -880,14 +879,15 @@ test.describe('Ship Exterior Test Utilities', () => {
 						id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
 						sourceScanId: celestialBody.sourceScanId ?? 'generated',
 						catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
-						solarSystemId: celestialBody.solarSystemId ?? 'sol',
 						createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
 						createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
 						updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
-						location: celestialBody.location,
-						kinematics: celestialBody.kinematics,
+						spatial: celestialBody.spatial,
+						motion: celestialBody.motion,
+						physical: celestialBody.physical,
 						composition: celestialBody.composition,
-						state: celestialBody.state ?? 'unscanned',
+						observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
+						state: celestialBody.state ?? 'active',
 					},
 				},
 			};

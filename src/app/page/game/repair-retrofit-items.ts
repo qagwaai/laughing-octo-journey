@@ -465,6 +465,7 @@ export default class RepairRetrofitItemsPage {
 					id: ship.id,
 					status: mapOverallStatusToShipStatus(nextProfile.overallStatus),
 					damageProfile: nextProfile,
+					spatial: ship.spatial,
 				},
 			},
 			(response: ShipUpsertResponse) => {
@@ -514,6 +515,7 @@ export default class RepairRetrofitItemsPage {
 					id: ship.id,
 					status: mapOverallStatusToShipStatus(nextProfile.overallStatus),
 					damageProfile: nextProfile,
+					spatial: ship.spatial,
 				},
 			},
 			(response: ShipUpsertResponse) => {

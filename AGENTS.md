@@ -152,6 +152,21 @@ npx playwright test e2e/tests/market-hub-by-location.spec.ts e2e/tests/market-hu
 - When changing i18n-driven UI text, update both `en.ts` and `it.ts`.
 - Prefer minimal, targeted edits over broad refactors.
 
+## TypeScript vs Angular Template Errors
+
+`npx tsc --noEmit` only checks `.ts` files — it will **not** catch errors in Angular HTML
+templates (e.g. accessing a removed property in a `.html` binding).
+
+To surface template errors without starting the dev server, run:
+
+```bash
+npm run build 2>&1 | grep -E "error TS|Error"
+```
+
+This invokes the Angular compiler (`ngc`) which validates both `.ts` and `.html` template
+bindings. Always use this (not `tsc --noEmit`) after editing templates or changing types
+that are referenced in templates.
+
 ## Validation Checklist for AI
 
 After edits, run at least one of:
@@ -159,6 +174,12 @@ After edits, run at least one of:
 1. Focused impacted tests (fast feedback)
 2. `npm run test:ci` for broader regression confidence
 3. Relevant Playwright specs for user-flow changes
+
+After editing **templates or types used in templates**, also run:
+
+```bash
+npm run build 2>&1 | grep -E "error TS|Error"
+```
 
 If changing socket contracts, validate both:
 

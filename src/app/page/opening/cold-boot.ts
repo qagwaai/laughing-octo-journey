@@ -153,6 +153,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
 				model: DEFAULT_SHIP_MODEL,
 				tier: DEFAULT_SHIP_TIER,
 				status: 'ACTIVE',
+				spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
 			});
 		}
 

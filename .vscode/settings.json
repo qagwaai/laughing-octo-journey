@@ -3,5 +3,6 @@
   "npm.scriptExplorerAction": "run",
   "chat.tools.terminal.autoApprove": {
     "npx playwright": true
-  }
+  },
+  "specstory.cloudSync.enabled": "never"
 }

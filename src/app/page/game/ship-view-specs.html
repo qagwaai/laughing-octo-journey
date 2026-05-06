@@ -15,26 +15,28 @@
 			<p><strong>{{ t.game.shipViewSpecs.tierLabel }}</strong> {{ shipTier() }}</p>
 			<p><strong>{{ t.game.shipViewSpecs.statusLabel }}</strong> {{ joinShip()!.status ?? t.game.shipViewSpecs.unknownStatusLabel }}</p>
 
-			@if (joinShip()!.kinematics) {
+			@if (joinShip()!.spatial) {
 				<p>
 					<strong>{{ t.game.shipViewSpecs.positionLabel }}</strong>
-					({{ joinShip()!.kinematics!.position.x }}, {{ joinShip()!.kinematics!.position.y }}, {{ joinShip()!.kinematics!.position.z }})
-					{{ joinShip()!.kinematics!.reference.distanceUnit }}
+					({{ joinShip()!.spatial.positionKm.x }}, {{ joinShip()!.spatial.positionKm.y }}, {{ joinShip()!.spatial.positionKm.z }})
+					km
 				</p>
-				<p>
-					<strong>{{ t.game.shipViewSpecs.velocityLabel }}</strong>
-					({{ joinShip()!.kinematics!.velocity.x }}, {{ joinShip()!.kinematics!.velocity.y }}, {{ joinShip()!.kinematics!.velocity.z }})
-					{{ joinShip()!.kinematics!.reference.velocityUnit }}
-				</p>
-				<p><strong>{{ t.game.shipViewSpecs.speedLabel }}</strong> {{ shipMotion()!.speedKmPerSec.toFixed(3) }} km/s</p>
-				<p><strong>{{ t.game.shipViewSpecs.referenceFrameLabel }}</strong> {{ joinShip()!.kinematics!.reference.referenceKind }}</p>
-				@if (shipMotion()!.headingUnitVector) {
+				@if (joinShip()!.motion) {
 					<p>
-						<strong>{{ t.game.shipViewSpecs.headingUnitVectorLabel }}</strong>
-						({{ shipMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.y.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.z.toFixed(4) }})
+						<strong>{{ t.game.shipViewSpecs.velocityLabel }}</strong>
+						({{ joinShip()!.motion!.velocityKmPerSec.x }}, {{ joinShip()!.motion!.velocityKmPerSec.y }}, {{ joinShip()!.motion!.velocityKmPerSec.z }})
+						km/s
 					</p>
-				} @else {
-					<p><strong>{{ t.game.shipViewSpecs.headingLabel }}</strong> {{ t.game.shipViewSpecs.stationaryLabel }}</p>
+					<p><strong>{{ t.game.shipViewSpecs.speedLabel }}</strong> {{ shipMotion()!.speedKmPerSec.toFixed(3) }} km/s</p>
+					<p><strong>{{ t.game.shipViewSpecs.referenceFrameLabel }}</strong> {{ joinShip()!.spatial.frame }}</p>
+					@if (shipMotion()!.headingUnitVector) {
+						<p>
+							<strong>{{ t.game.shipViewSpecs.headingUnitVectorLabel }}</strong>
+							({{ shipMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.y.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.z.toFixed(4) }})
+						</p>
+					} @else {
+						<p><strong>{{ t.game.shipViewSpecs.headingLabel }}</strong> {{ t.game.shipViewSpecs.stationaryLabel }}</p>
+					}
 				}
 			} @else {
 				<p><strong>{{ t.game.shipViewSpecs.kinematicsLabel }}</strong> {{ t.game.shipViewSpecs.kinematicsUnavailableLabel }}</p>

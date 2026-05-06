@@ -1,6 +1,5 @@
-import { AsteroidKinematics } from './asteroid-kinematics';
 import { AsteroidMaterialProfile } from './asteroid-materials';
-import { CelestialBodyLocation } from './celestial-body-location';
+import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
 import { Triple } from './triple';
 
 export const CELESTIAL_BODY_LIST_REQUEST_EVENT = 'celestial-body-list-request';
@@ -21,17 +20,18 @@ export interface CelestialBodyListRequest {
 export interface CelestialBodyListItem {
 	id: string;
 	catalogId: string;
-	solarSystemId: string;
 	sourceScanId: string;
 	createdByCharacterId: string;
 	missionId?: string;
 	missionInstanceId?: string | null;
 	createdAt: string;
 	updatedAt: string;
-	location: CelestialBodyLocation;
-	kinematics: AsteroidKinematics;
+	spatial: SpatialState;
+	motion?: MotionState;
+	physical?: PhysicalState;
 	composition?: AsteroidMaterialProfile;
-	state?: 'unscanned' | 'active' | 'destroyed';
+	observability: ObservabilityState;
+	state?: 'active' | 'destroyed';
 	destroyedAt?: string | null;
 	destroyedReason?: string | null;
 	debrisSeed?: number | null;

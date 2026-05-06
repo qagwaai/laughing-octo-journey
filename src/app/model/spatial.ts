@@ -14,6 +14,16 @@ export interface ObservabilityState {
 	scanState: 'unscanned' | 'scanned';
 }
 
+export interface MotionState {
+	velocityKmPerSec: Triple;
+	angularVelocityRadPerSec?: Triple;
+}
+
+export interface PhysicalState {
+	estimatedMassKg?: number;
+	estimatedDiameterM?: number;
+}
+
 export function assertSameSpatialFrame(a: SpatialState, b: SpatialState): void {
 	if (a.solarSystemId !== b.solarSystemId) {
 		throw new Error(`Spatial comparison requires matching solarSystemId: ${a.solarSystemId} !== ${b.solarSystemId}`);

@@ -384,7 +384,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 	protected activeScanAsteroidId = signal<string | null>(null);
 	protected targetedAsteroidId = signal<string | null>(null);
 	protected asteroidSamples = signal<AsteroidScanSample[]>([]);
-	readonly launchHotkeysEnabled = computed(() => !!this.targetedAsteroidId());
+	readonly launchHotkeysEnabled = computed(() => {
+		const targetedId = this.targetedAsteroidId();
+		if (!targetedId) {
+			return false;
+		}
+
+		const targeted = this.asteroidSamples().find((sample) => sample.id === targetedId);
+		const serverId = targeted?.serverCelestialBodyId?.trim() ?? '';
+		return serverId.length > 0;
+	});
 	readonly launchHotkeySlots = computed<LaunchHotkeySlot[]>(() => {
 		const launchables = this.launchableInventory().slice(0, ShipExteriorViewScene.HOTKEY_SLOT_COUNT);
 		const enabled = this.launchHotkeysEnabled();
@@ -1082,14 +1091,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}
 
 		const slot = this.launchHotkeySlots().find((candidate) => candidate.hotkey === hotkey);
-		if (!slot?.item || !slot.enabled) {
+		if (!slot?.item) {
 			this.setLaunchToast(`Hotkey ${hotkey} has no launchable item.`, 'error', null);
 			return;
 		}
 
 		const targetCelestialBodyId = this.resolveTargetCelestialBodyIdForLaunch(targetedSampleId);
 		if (!targetCelestialBodyId) {
-			this.setLaunchToast('Target is not synchronized yet. Scan and wait for sync before launch.', 'error', null);
+			this.setLaunchToast('Target synchronization in progress. Wait for server confirmation before launch.', 'error', null);
 			return;
 		}
 
@@ -1734,16 +1743,31 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			celestialBody: {
 				id: requestedCelestialBodyId,
 				catalogId: deterministicCatalogId,
-				solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
 				sourceScanId: sample.id,
 				createdByCharacterId,
 				missionId: this.missionDefinition.missionId,
 				createdAt: nowIso,
 				updatedAt: nowIso,
-				location: sample.solarSystemLocation,
-				kinematics: resolvedKinematics,
+				spatial: {
+					solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+					frame: 'barycentric',
+					positionKm: sample.solarSystemLocation.positionKm,
+					epochMs: Date.now(),
+				},
+				motion: {
+					velocityKmPerSec: resolvedKinematics.velocityKmPerSec,
+					angularVelocityRadPerSec: resolvedKinematics.angularVelocityRadPerSec,
+				},
+				physical: {
+					estimatedMassKg: resolvedKinematics.estimatedMassKg,
+					estimatedDiameterM: resolvedKinematics.estimatedDiameterM,
+				},
 				composition: item.revealedMaterial ?? sample.revealedMaterial ?? undefined,
-				state: item.state,
+				observability: {
+					visibility: 'visible',
+					scanState: item.state === 'unscanned' ? 'unscanned' : 'scanned',
+				},
+				state: item.state === 'destroyed' ? 'destroyed' : 'active',
 			},
 		};
 
