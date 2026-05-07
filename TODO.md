@@ -1,5 +1,61 @@
 # TODO
 
+## Test Quality Remediation (from TEST_QUALITY_REVIEW.md, 2026-05-07)
+
+**Context:** Full review in [TEST_QUALITY_REVIEW.md](TEST_QUALITY_REVIEW.md). 1199 unit + 68 e2e tests pass, but ~55 % of spec code (10 386 LOC across 30 files) consists of "shadow specs" that re-implement component logic instead of importing the SUT, inflating reported coverage and providing no real regression protection.
+
+### Phase A — Stop the bleeding (Priority: HIGH)
+
+- [ ] Add CI guard: every `src/app/**/*.spec.ts` (except `*.integration.spec.ts`) must `import` the file at the matching path; fail the build otherwise.
+- [ ] Extract `src/testing/` shared helpers typed against the real service interfaces:
+  - [ ] `createSignal<T>()` (currently duplicated in 21 spec files)
+  - [ ] `MockSocketService` implementing the public surface of `src/app/services/socket.service.ts` (currently duplicated in 13 spec files)
+  - [ ] `MockSessionService`, `MockMissionService`, `MockPrinterStateService` against their real interfaces
+- [ ] Delete duplicated helper blocks from existing specs once the shared module is in place.
+- [ ] Update [TODO.md](TODO.md) and [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md) test counts to current values (1199 unit / 68 e2e).
+- [ ] Remove scratch file `.cov-extract.cjs` and confirm `coverage/` is git-ignored.
+
+### Phase B — Convert shadow specs to real component tests (Priority: HIGH)
+
+Goal: each spec drives the actual component via `TestBed`. Use [src/app/component/cube.spec.ts](src/app/component/cube.spec.ts) and [src/app/component/character-ship-badge.spec.ts](src/app/component/character-ship-badge.spec.ts) as the template.
+
+Order by LOC / traffic:
+
+- [ ] [src/app/page/game/market-hub.spec.ts](src/app/page/game/market-hub.spec.ts) (972 LOC, 18 tests) → import `MarketHubComponent`, drive via `TestBed`
+- [ ] [src/app/page/character/character-list.spec.ts](src/app/page/character/character-list.spec.ts) (763 LOC, 25 tests)
+- [ ] [src/app/page/game/ship-hangar.spec.ts](src/app/page/game/ship-hangar.spec.ts) (582 LOC, 15 tests)
+- [ ] [src/app/page/game/mission-board.spec.ts](src/app/page/game/mission-board.spec.ts) (20 tests)
+- [ ] [src/app/page/game/repair-retrofit.spec.ts](src/app/page/game/repair-retrofit.spec.ts) and the four `repair-retrofit-*` detail/items/ship-detail/item-detail siblings
+- [ ] [src/app/page/game/fabrication-lab.spec.ts](src/app/page/game/fabrication-lab.spec.ts)
+- [ ] [src/app/page/game/print-queue.spec.ts](src/app/page/game/print-queue.spec.ts)
+- [ ] [src/app/page/game/character-profile.spec.ts](src/app/page/game/character-profile.spec.ts)
+- [ ] [src/app/page/game/game-join.spec.ts](src/app/page/game/game-join.spec.ts), [src/app/page/game/game-main.spec.ts](src/app/page/game/game-main.spec.ts), [src/app/page/game/logout.spec.ts](src/app/page/game/logout.spec.ts)
+- [ ] [src/app/page/game/item-view-specs.spec.ts](src/app/page/game/item-view-specs.spec.ts), [src/app/page/game/ship-view-inventory.spec.ts](src/app/page/game/ship-view-inventory.spec.ts), [src/app/page/game/ship-view-specs.spec.ts](src/app/page/game/ship-view-specs.spec.ts), [src/app/page/game/stellar-initiation.spec.ts](src/app/page/game/stellar-initiation.spec.ts)
+- [ ] [src/app/page/character/character-setup.spec.ts](src/app/page/character/character-setup.spec.ts)
+- [ ] [src/app/page/public/login.spec.ts](src/app/page/public/login.spec.ts), [src/app/page/public/registration.spec.ts](src/app/page/public/registration.spec.ts), [src/app/page/public/intro.spec.ts](src/app/page/public/intro.spec.ts)
+- [ ] [src/app/page/opening/cold-boot.spec.ts](src/app/page/opening/cold-boot.spec.ts)
+- [ ] [src/app/scene/ship-exterior-view.spec.ts](src/app/scene/ship-exterior-view.spec.ts), [src/app/scene/ship-view-specs.spec.ts](src/app/scene/ship-view-specs.spec.ts)
+- [ ] [src/app/scene/hud/cold-boot-hud-scene.spec.ts](src/app/scene/hud/cold-boot-hud-scene.spec.ts), [src/app/scene/hud/hud-overlay.spec.ts](src/app/scene/hud/hud-overlay.spec.ts)
+- [ ] [src/app/component/button.spec.ts](src/app/component/button.spec.ts), [src/app/component/current.spec.ts](src/app/component/current.spec.ts)
+- [ ] [src/app/services/mission-flow.integration.spec.ts](src/app/services/mission-flow.integration.spec.ts) — convert to a real integration test wired to the real `MissionService` + fake `SocketService`
+
+### Phase C — Re-baseline coverage (Priority: MEDIUM)
+
+- [ ] Re-run `npm run test:ci` after Phase B; record new (lower) baseline numbers.
+- [ ] Bring branch coverage above the 75 % policy floor in:
+  - [ ] [src/app/component](src/app/component) (currently 51 %)
+  - [ ] [src/app/i18n/locale.ts](src/app/i18n/locale.ts) (currently 38 %)
+  - [ ] [src/app/services/mission.service.ts](src/app/services/mission.service.ts) error/timeout paths
+- [ ] Add a real "service integration" tier (`*.integration.spec.ts`) targeting the policy's 20 % integration band — start with mission flow + socket reconnect.
+- [ ] Add `requestId` correlation tests once the contract change lands (cross-references the existing TODO item under Technical Debt).
+
+### Phase D — Operational compliance (Priority: LOW)
+
+- [ ] Record the first real cycle in [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md): flake rate, CI runtime, escaped-bug mapping, coverage snapshot.
+- [ ] Add a CODEOWNERS / PR template note pointing at [docs/testing-policy.md](docs/testing-policy.md) PR checklist.
+
+---
+
 ## UX / Navigation
 
 - [X] Character creation automatically goes back to character list
