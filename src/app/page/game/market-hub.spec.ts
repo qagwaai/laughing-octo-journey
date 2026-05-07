@@ -2,6 +2,7 @@ export {};
 
 import type { MarketSummary } from '../../model/market-list';
 import type { Triple } from '../../model/triple';
+import { resolveJumpGateHops } from '../../model/jump-gate';
 
 function createSignal<T>(initial: T) {
 	let value = initial;
@@ -298,6 +299,44 @@ class MockMarketHubPage {
 				const bDistance = typeof b.distanceAu === 'number' ? b.distanceAu : Number.POSITIVE_INFINITY;
 				return aDistance - bDistance;
 			});
+	}
+
+	marketRouteStatus(market: MarketSummary): 'in-system' | 'gate-route' | 'no-route' {
+		if (market.route) {
+			return market.route.kind;
+		}
+
+		if (market.solarSystemId === this.getSolarSystemId()) {
+			return 'in-system';
+		}
+
+		return resolveJumpGateHops(this.getSolarSystemId(), market.solarSystemId) === null ? 'no-route' : 'gate-route';
+	}
+
+	resolvedGateHopsForMarket(market: MarketSummary): number | null {
+		if (market.route?.hops !== undefined) {
+			return market.route.hops;
+		}
+
+		return resolveJumpGateHops(this.getSolarSystemId(), market.solarSystemId);
+	}
+
+	marketRouteLabel(market: MarketSummary): string {
+		const routeStatus = this.marketRouteStatus(market);
+		if (routeStatus === 'in-system') {
+			return 'In-system';
+		}
+
+		if (routeStatus === 'no-route') {
+			return 'No route';
+		}
+
+		const hops = this.resolvedGateHopsForMarket(market);
+		if (hops === null) {
+			return 'No route';
+		}
+
+		return `${hops} ${hops === 1 ? 'gate hop' : 'gate hops'}`;
 	}
 }
 
@@ -607,5 +646,134 @@ describe('MarketHubPage', () => {
 		sessionService.activeShip.set({ status: 'docked' });
 		expect(component.isDocked()).toBeTrue();
 		expect(component.canTransact()).toBeTrue();
+	});
+
+	describe('marketRouteStatus — server-route precedence', () => {
+		function makeComponent() {
+			const socketService = createMockSocketService();
+			socketService.connected = true;
+			const sessionService = createMockSessionService('session-key');
+			sessionService.activeShip.set({
+				status: 'ACTIVE',
+				spatial: { solarSystemId: 'sol', positionKm: { x: 100, y: 0, z: 0 } },
+			});
+			return new MockMarketHubPage(socketService, sessionService, {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova' },
+			});
+		}
+
+		it('uses server route kind when present — gate-route', () => {
+			const component = makeComponent();
+			const market: MarketSummary = {
+				marketId: 'ac-station',
+				solarSystemId: 'alpha-centauri',
+				marketName: 'Alpha Station',
+				siteType: 'station',
+				siteName: 'AC Hub',
+				spatial: { solarSystemId: 'alpha-centauri', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+				distanceAu: undefined,
+				isDocked: false,
+				priceMultiplier: 1,
+				driftPercentPerHour: 6,
+				restockIntervalMinutes: 60,
+				route: { kind: 'gate-route', hops: 1 },
+			};
+
+			expect(component.marketRouteStatus(market)).toBe('gate-route');
+			expect(component.marketRouteLabel(market)).toBe('1 gate hop');
+		});
+
+		it('server no-route overrides BFS when BFS would return gate-route', () => {
+			const component = makeComponent();
+			// alpha-centauri is reachable by BFS from sol (1 hop), but server explicitly says no-route
+			const market: MarketSummary = {
+				marketId: 'ac-station',
+				solarSystemId: 'alpha-centauri',
+				marketName: 'Alpha Station',
+				siteType: 'station',
+				siteName: 'AC Hub',
+				spatial: { solarSystemId: 'alpha-centauri', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+				distanceAu: undefined,
+				isDocked: false,
+				priceMultiplier: 1,
+				driftPercentPerHour: 6,
+				restockIntervalMinutes: 60,
+				route: { kind: 'no-route' },
+			};
+
+			// Sanity check: BFS alone would say gate-route
+			expect(resolveJumpGateHops('sol', 'alpha-centauri')).toBe(1);
+
+			// But server wins
+			expect(component.marketRouteStatus(market)).toBe('no-route');
+			expect(component.marketRouteLabel(market)).toBe('No route');
+		});
+
+		it('falls back to BFS when server route is absent', () => {
+			const component = makeComponent();
+			const market: MarketSummary = {
+				marketId: 'ac-station',
+				solarSystemId: 'alpha-centauri',
+				marketName: 'Alpha Station',
+				siteType: 'station',
+				siteName: 'AC Hub',
+				spatial: { solarSystemId: 'alpha-centauri', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+				distanceAu: undefined,
+				isDocked: false,
+				priceMultiplier: 1,
+				driftPercentPerHour: 6,
+				restockIntervalMinutes: 60,
+				// no route field
+			};
+
+			expect(component.marketRouteStatus(market)).toBe('gate-route');
+			expect(component.marketRouteLabel(market)).toBe('1 gate hop');
+		});
+
+		it('uses server-provided hops count over BFS hops when both are available', () => {
+			const component = makeComponent();
+			// Server says 3 hops, BFS would say 2 (Barnard's Star via alpha-centauri)
+			const market: MarketSummary = {
+				marketId: 'bs-depot',
+				solarSystemId: 'barnards-star',
+				marketName: "Barnard's Depot",
+				siteType: 'station',
+				siteName: "Barnard's Freight",
+				spatial: { solarSystemId: 'barnards-star', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+				distanceAu: undefined,
+				isDocked: false,
+				priceMultiplier: 1,
+				driftPercentPerHour: 10,
+				restockIntervalMinutes: 120,
+				route: { kind: 'gate-route', hops: 3 },
+			};
+
+			// BFS says 2, server says 3
+			expect(resolveJumpGateHops('sol', 'barnards-star')).toBe(2);
+			expect(component.resolvedGateHopsForMarket(market)).toBe(3);
+			expect(component.marketRouteLabel(market)).toBe('3 gate hops');
+		});
+
+		it('uses in-system from server route even for cross-solarSystem id (unlikely but valid)', () => {
+			const component = makeComponent();
+			const market: MarketSummary = {
+				marketId: 'mystery-station',
+				solarSystemId: 'unknown-system',
+				marketName: 'Mystery Station',
+				siteType: 'station',
+				siteName: 'Mystery',
+				spatial: { solarSystemId: 'unknown-system', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+				distanceAu: 0.4,
+				isDocked: false,
+				priceMultiplier: 1,
+				driftPercentPerHour: 6,
+				restockIntervalMinutes: 60,
+				route: { kind: 'in-system' },
+			};
+
+			expect(component.marketRouteStatus(market)).toBe('in-system');
+			expect(component.marketRouteLabel(market)).toBe('In-system');
+		});
 	});
 });

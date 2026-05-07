@@ -329,9 +329,12 @@ export default class MarketHubPage {
 	protected formatMarketFlavorText(market: MarketSummary): string {
 		const activeSystem = this.activeShipSolarSystemId();
 		if (market.solarSystemId !== activeSystem) {
-			const hops = this.jumpGateHopsForMarket(market);
-			if (hops !== null) {
-				return `${market.marketName}, ${hops} ${hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel} ${this.t.game.marketHub.awaySuffix}`;
+			const routeStatus = this.marketRouteStatus(market);
+			if (routeStatus === 'gate-route') {
+				const hops = this.resolvedGateHopsForMarket(market);
+				if (hops !== null) {
+					return `${market.marketName}, ${hops} ${hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel} ${this.t.game.marketHub.awaySuffix}`;
+				}
 			}
 
 			return `${market.marketName}, ${this.t.game.marketHub.unreachableRouteLabel}`;
@@ -343,11 +346,24 @@ export default class MarketHubPage {
 	}
 
 	protected marketRouteStatus(market: MarketSummary): MarketRouteStatus {
+		if (market.route) {
+			return market.route.kind;
+		}
+
 		if (market.solarSystemId === this.activeShipSolarSystemId()) {
 			return 'in-system';
 		}
 
 		return this.jumpGateHopsForMarket(market) === null ? 'no-route' : 'gate-route';
+	}
+
+	/** Resolved hop count: server-provided hops take precedence over client BFS. */
+	private resolvedGateHopsForMarket(market: MarketSummary): number | null {
+		if (market.route?.hops !== undefined) {
+			return market.route.hops;
+		}
+
+		return this.jumpGateHopsForMarket(market);
 	}
 
 	protected marketRouteLabel(market: MarketSummary): string {
@@ -360,7 +376,7 @@ export default class MarketHubPage {
 			return this.t.game.marketHub.noRouteLabel;
 		}
 
-		const hops = this.jumpGateHopsForMarket(market);
+		const hops = this.resolvedGateHopsForMarket(market);
 		if (hops === null) {
 			return this.t.game.marketHub.noRouteLabel;
 		}
@@ -371,7 +387,7 @@ export default class MarketHubPage {
 
 	protected isMarketWithinDriveRange(market: MarketSummary): boolean {
 		if (market.solarSystemId !== this.activeShipSolarSystemId()) {
-			return this.jumpGateHopsForMarket(market) !== null;
+			return this.marketRouteStatus(market) === 'gate-route';
 		}
 
 		const distanceAu = market.distanceAu;
@@ -384,7 +400,12 @@ export default class MarketHubPage {
 
 	protected requiredDriveNameForMarket(market: MarketSummary): string {
 		if (market.solarSystemId !== this.activeShipSolarSystemId()) {
-			const hops = this.jumpGateHopsForMarket(market);
+			const routeStatus = this.marketRouteStatus(market);
+			if (routeStatus === 'no-route') {
+				return this.t.game.marketHub.unreachableRouteLabel;
+			}
+
+			const hops = this.resolvedGateHopsForMarket(market);
 			if (hops !== null) {
 				return `${hops} ${hops === 1 ? this.t.game.marketHub.gateHopLabel : this.t.game.marketHub.gateHopsLabel}`;
 			}

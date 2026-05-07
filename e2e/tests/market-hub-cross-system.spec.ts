@@ -256,4 +256,120 @@ test.describe('Market Hub cross-system route badges', () => {
     // No-route market is not transactable
     await expect(wolfMarket.locator('.transact-btn')).toBeDisabled();
   });
+
+  test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async ({
+    page,
+  }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+
+    mock.on('character-list-request', () => ({
+      event: 'character-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characters: [CHARACTER],
+      },
+    }));
+
+    mock.on('game-join', () => null);
+
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: CHARACTER.id,
+        ships: [SHIP_IN_SOL],
+      },
+    }));
+
+    mock.on('market-list-by-location-request', (payload) => {
+      const request = payload as MarketByLocationRequest;
+      return {
+        event: 'market-list-by-location-response',
+        data: {
+          success: true,
+          message: '',
+          playerName: TEST_PLAYER,
+          solarSystemId: 'sol',
+          positionKm: SHIP_IN_SOL.spatial.positionKm,
+          distanceAu: request.distanceAu,
+          locationTypes: ['station'],
+          isDocked: false,
+          dockedMarketId: null,
+          markets: [
+            {
+              marketId: 'sol-near-station',
+              solarSystemId: 'sol',
+              marketName: 'Near Station',
+              siteType: 'station',
+              siteName: 'Sol Core Ring',
+              spatial: {
+                solarSystemId: 'sol',
+                frame: 'barycentric',
+                positionKm: { x: 413_700_400, y: 0, z: 0 },
+                epochMs: Date.now(),
+              },
+              distanceAu: 0.003,
+              isDocked: false,
+              priceMultiplier: 1,
+              driftPercentPerHour: 6,
+              restockIntervalMinutes: 60,
+            },
+            {
+              // Alpha Centauri is 1 BFS hop from Sol — but server explicitly says no-route
+              marketId: 'alpha-centauri-station',
+              solarSystemId: 'alpha-centauri',
+              marketName: 'Alpha Station',
+              siteType: 'station',
+              siteName: 'Alpha Centauri Hub',
+              spatial: {
+                solarSystemId: 'alpha-centauri',
+                frame: 'barycentric',
+                positionKm: { x: 0, y: 0, z: 0 },
+                epochMs: Date.now(),
+              },
+              distanceAu: null,
+              isDocked: false,
+              priceMultiplier: 1.1,
+              driftPercentPerHour: 8,
+              restockIntervalMinutes: 120,
+              route: { kind: 'no-route' },
+            },
+          ],
+        },
+      };
+    });
+
+    await loginViaUI(page, mock);
+
+    await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
+
+    await page.locator('button[aria-label="Market Hub"]').click();
+    await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+
+    await expect
+      .poll(
+        async () => {
+          const count = await page.locator('.market-item').count();
+          if (count === 0) {
+            await page.locator('.reload-btn').click();
+          }
+          return count;
+        },
+        { timeout: 15_000 },
+      )
+      .toBe(2);
+
+    const alphaMarket = page.locator('.market-item').nth(1);
+    await expect(alphaMarket).toContainText('Alpha Station');
+    // Server says no-route — must NOT show '1 gate hop' even though BFS would reach it
+    await expect(alphaMarket).toContainText('No route');
+    await expect(alphaMarket).not.toContainText('gate hop');
+    await expect(alphaMarket.locator('.transact-btn')).toBeDisabled();
+  });
 });

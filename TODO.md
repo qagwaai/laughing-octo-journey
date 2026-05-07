@@ -59,16 +59,16 @@
 **Effort:** 1 day (logic + minor UI tweaks)
 
 ### Tasks
-- [ ] Implement marketRouteStatus() to prefer markets[].route from server when present
-- [ ] Fall back to client-side jump-gate inference only if server route is missing
-- [ ] Add unit test for explicit route override (server route wins over heuristic)
-- [ ] Update marketRouteLabel() to use server-provided hops count if available
-- [ ] Ensure no-route markets from server are still properly gated (transact button disabled)
+- [X] Implement marketRouteStatus() to prefer markets[].route from server when present
+- [X] Fall back to client-side jump-gate inference only if server route is missing
+- [X] Add unit test for explicit route override (server route wins over heuristic)
+- [X] Update marketRouteLabel() to use server-provided hops count if available
+- [X] Ensure no-route markets from server are still properly gated (transact button disabled)
 
 ### Files to Modify
-- `src/app/page/game/market-hub.ts` (update route classification logic)
-- `src/app/page/game/market-hub.spec.ts` (add server-route precedence test)
-- `e2e/tests/market-hub-by-location.spec.ts` (assert server route used, not heuristic)
+- `src/app/page/game/market-hub.ts` (updated route classification logic — server route wins)
+- `src/app/page/game/market-hub.spec.ts` (added 5 server-route precedence tests; 15 total)
+- `e2e/tests/market-hub-cross-system.spec.ts` (added no-route override test — server beats BFS)
 
 ### Acceptance Criteria
 - Server-provided route metadata takes precedence over client heuristics.
