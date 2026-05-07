@@ -179,27 +179,21 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
 
   await page.locator('button[aria-label="Market Hub"]').click();
   await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+
+  // Wait for the reachable section to fully render before the test body proceeds.
+  await expect(page.getByRole('heading', { name: 'Reachable Markets' })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('Market Hub cross-system route badges', () => {
+  test.setTimeout(60_000);
+
   test('renders in-system, gate-route, and no-route badges correctly', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
     await setupAndOpenMarketHub(page, (req) => requests.push(req));
 
-    await expect
-      .poll(
-        async () => {
-          if (requests.length === 0) {
-            await page.locator('.reload-btn').click();
-          }
-          return requests.length;
-        },
-        { timeout: 15_000 },
-      )
-      .toBeGreaterThan(0);
-
     const marketRows = page.locator('.market-item');
-    await expect(marketRows).toHaveCount(4);
+    // Gate-route markets (alpha, barnards) are reachable; no-route (wolf) is behind the toggle.
+    await expect(marketRows).toHaveCount(3);
 
     // In-system market
     const nearStation = marketRows.nth(0);
@@ -218,7 +212,11 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(barnardsMarket).toContainText('2 gate hops');
     await expect(barnardsMarket).toContainText("Barnard's Depot, 2 gate hops away");
 
-    // No-route market
+    // No-route market is hidden by default; reveal it via the toggle.
+    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
+    await toggleCheckbox.scrollIntoViewIfNeeded();
+    await toggleCheckbox.check();
+    await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
     const wolfMarket = marketRows.nth(3);
     await expect(wolfMarket).toContainText('Wolf-359 Outpost');
     await expect(wolfMarket).toContainText('No route');
@@ -231,19 +229,13 @@ test.describe('Market Hub cross-system route badges', () => {
     const requests: MarketByLocationRequest[] = [];
     await setupAndOpenMarketHub(page, (req) => requests.push(req));
 
-    await expect
-      .poll(
-        async () => {
-          if (requests.length === 0) {
-            await page.locator('.reload-btn').click();
-          }
-          return requests.length;
-        },
-        { timeout: 15_000 },
-      )
-      .toBeGreaterThan(0);
-
     const marketRows = page.locator('.market-item');
+
+    // Enable toggle so no-route market (wolf) is visible alongside gate-route markets.
+    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
+    await toggleCheckbox.scrollIntoViewIfNeeded();
+    await toggleCheckbox.check();
+    await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
 
     const alphaMarket = marketRows.nth(1);
     const barnardsMarket = marketRows.nth(2);
@@ -352,18 +344,14 @@ test.describe('Market Hub cross-system route badges', () => {
     await page.locator('button[aria-label="Market Hub"]').click();
     await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
 
-    await expect
-      .poll(
-        async () => {
-          const count = await page.locator('.market-item').count();
-          if (count === 0) {
-            await page.locator('.reload-btn').click();
-          }
-          return count;
-        },
-        { timeout: 15_000 },
-      )
-      .toBe(2);
+    // Wait for the reachable section to appear before checking the toggle.
+    await expect(page.getByRole('heading', { name: 'Reachable Markets' })).toBeVisible({ timeout: 15_000 });
+
+    // Alpha Centauri has server-declared no-route, so it is hidden behind the toggle.
+    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
+    await toggleCheckbox.scrollIntoViewIfNeeded();
+    await toggleCheckbox.check();
+    await expect(page.locator('.market-item')).toHaveCount(2, { timeout: 5_000 });
 
     const alphaMarket = page.locator('.market-item').nth(1);
     await expect(alphaMarket).toContainText('Alpha Station');

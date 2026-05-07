@@ -54,16 +54,42 @@
 				<label for="radiusAu">{{ t.game.marketHub.radiusLabel }}</label>
 				<select id="radiusAu" formControlName="radiusAu" (change)="applyRadiusSelection()">
 					@for (option of marketRadiusOptionsAu; track option) {
-						<option [value]="option">{{ option.toFixed(3) }} {{ t.game.marketHub.auLabel }}</option>
+						<option [value]="option">{{ formatRadiusOptionLabel(option) }}</option>
 					}
 				</select>
 				<p class="search-context">
-					{{ t.game.marketHub.effectiveRadiusLabel }}
-					<strong>{{ effectiveSearchRadiusAu().toFixed(3) }} {{ t.game.marketHub.auLabel }}</strong>
+					{{ t.game.marketHub.selectedRadiusLabel }}
+					<strong>{{ formatSelectedRadiusLabel() }}</strong>
 				</p>
-				@if (isSearchRadiusClamped()) {
-					<p class="status-message warning-message">{{ t.game.marketHub.radiusClampedHintLabel }}</p>
-				}
+				<p class="search-context">{{ t.game.marketHub.marketTypeFiltersLabel }}</p>
+				<label for="includeStations" class="checkbox-label">
+					<input
+						id="includeStations"
+						type="checkbox"
+						formControlName="includeStations"
+						(change)="applyRadiusSelection()"
+					/>
+					{{ t.game.marketHub.includeStationsLabel }}
+				</label>
+				<label for="includeFreeFloating" class="checkbox-label">
+					<input
+						id="includeFreeFloating"
+						type="checkbox"
+						formControlName="includeFreeFloating"
+						(change)="applyRadiusSelection()"
+					/>
+					{{ t.game.marketHub.includeFreeFloatingLabel }}
+				</label>
+				<label for="showOutOfRangeMarkets" class="checkbox-label">
+					<input
+						id="showOutOfRangeMarkets"
+						type="checkbox"
+						formControlName="showOutOfRangeMarkets"
+						(change)="applyRadiusSelection()"
+					/>
+					{{ t.game.marketHub.showOutOfRangeMarketsLabel }}
+				</label>
+				<p class="search-context">{{ t.game.marketHub.outOfRangeToggleHintLabel }}</p>
 				<button type="submit" class="apply-btn">{{ t.game.marketHub.applyRadiusLabel }}</button>
 				<button type="button" class="reload-btn" (click)="loadNearbyMarkets()" [disabled]="isLoadingMarkets()">
 					{{ isLoadingMarkets() ? t.game.marketHub.loadingMarketsLabel : t.game.marketHub.reloadMarketsLabel }}
@@ -82,20 +108,18 @@
 				<p class="status-message error-message">{{ marketListError() }}</p>
 			}
 
-			@if (!marketListError() && !isLoadingMarkets() && localMarkets().length === 0) {
+			@if (!marketListError() && !isLoadingMarkets() && reachableMarkets().length === 0 && (!showOutOfRangeMarkets() || outOfRangeMarkets().length === 0)) {
 				<p class="empty-state">{{ t.game.marketHub.noLocalMarketsLabel }}</p>
 			}
 
-			@if (localMarkets().length > 0) {
+			@if (reachableMarkets().length > 0) {
+				<h3>{{ t.game.marketHub.reachableMarketsSectionLabel }}</h3>
 				<ul class="market-list">
-					@for (market of localMarkets(); track market.marketId) {
+					@for (market of reachableMarkets(); track market.marketId) {
 						<li class="market-item">
 							<div class="market-item-header">
 								<h3>{{ market.marketName }}</h3>
 								<span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
-								@if (!isMarketWithinDriveRange(market)) {
-									<span class="dock-required-badge">{{ t.game.marketHub.outOfRangeBadgeLabel }}</span>
-								}
 								@if (!canTransactAtMarket(market)) {
 									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
 								}
@@ -114,14 +138,45 @@
 								</span>
 							</p>
 							<p>{{ formatMarketFlavorText(market) }}</p>
-							@if (!isMarketWithinDriveRange(market)) {
-								<p class="status-message warning-message">
-									{{ t.game.marketHub.requiresDriveUpgradeLabel }}
-									{{ t.game.marketHub.requiredDriveLabel }}
-									<strong>{{ requiredDriveNameForMarket(market) }}</strong>
-								</p>
-							}
 							<button type="button" class="transact-btn" [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market)">{{ t.game.marketHub.transactLabel }}</button>
+						</li>
+					}
+				</ul>
+			}
+
+			@if (showOutOfRangeMarkets() && outOfRangeMarkets().length > 0) {
+				<h3>{{ t.game.marketHub.outOfRangeMarketsSectionLabel }}</h3>
+				<ul class="market-list">
+					@for (market of outOfRangeMarkets(); track market.marketId) {
+						<li class="market-item">
+							<div class="market-item-header">
+								<h3>{{ market.marketName }}</h3>
+								<span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
+								<span class="dock-required-badge">{{ t.game.marketHub.outOfRangeBadgeLabel }}</span>
+								@if (!canTransactAtMarket(market)) {
+									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
+								}
+							</div>
+							<p>
+								<strong>{{ t.game.marketHub.marketIdLabel }}</strong> {{ market.marketId }}
+							</p>
+							<p>
+								<strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
+								{{ market.siteName }} ({{ market.siteType }})
+							</p>
+							<p>
+								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
+								<span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
+									{{ formatMarketDistanceAu(market.distanceAu ?? null) }}
+								</span>
+							</p>
+							<p>{{ formatMarketFlavorText(market) }}</p>
+							<p class="status-message warning-message">
+								{{ t.game.marketHub.requiresDriveUpgradeLabel }}
+								{{ t.game.marketHub.requiredDriveLabel }}
+								<strong>{{ requiredDriveNameForMarket(market) }}</strong>
+							</p>
+							<button type="button" class="transact-btn" [disabled]="true">{{ t.game.marketHub.transactLabel }}</button>
 						</li>
 					}
 				</ul>

@@ -113,7 +113,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_709_800, y: 10, z: -5 },
               epochMs: Date.now(),
             },
-            distanceAu: 4.2,
+            distanceAu: 0.35,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -131,7 +131,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_704_821.8, y: 10, z: -5 },
               epochMs: Date.now(),
             },
-            distanceAu: 2.3,
+            distanceAu: 0.15,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -173,7 +173,7 @@ test.describe('Market Hub by-location contract', () => {
     expect(firstRequest.solarSystemId).toBe('sol');
     expect(firstRequest.distanceAu).toBe(0.5);
     expect(firstRequest.limit).toBe(50);
-    expect(firstRequest.locationTypes).toEqual(['station']);
+    expect(firstRequest.locationTypes).toEqual(['station', 'free-floating']);
     expect(firstRequest.characterId).toBe(CHARACTER.id);
     expect(firstRequest.shipId).toBe(SHIP_WITH_POSITION.id);
     expect(firstRequest.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
@@ -182,10 +182,10 @@ test.describe('Market Hub by-location contract', () => {
     await expect(marketRows).toHaveCount(2);
     await expect(marketRows.nth(0)).toContainText('Ceres Exchange');
     await expect(marketRows.nth(0)).toContainText('In-system');
-    await expect(marketRows.nth(0)).toContainText('2.300 AU');
-    await expect(marketRows.nth(0)).toContainText('about 8 hours at standard cruise');
+    await expect(marketRows.nth(0)).toContainText('0.150 AU');
+    await expect(marketRows.nth(0)).toContainText('about less than 1 hour at standard cruise');
     await expect(marketRows.nth(1)).toContainText('Far Exchange');
     await expect(marketRows.nth(1)).toContainText('In-system');
-    await expect(marketRows.nth(1)).toContainText('4.200 AU');
+    await expect(marketRows.nth(1)).toContainText('0.350 AU');
   });
 });

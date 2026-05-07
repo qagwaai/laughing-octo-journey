@@ -33,7 +33,9 @@ import type { Triple } from '../../model/triple';
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 const DEFAULT_MARKET_RADIUS_AU = 0.5;
-const MARKET_RADIUS_OPTIONS_AU: readonly number[] = [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50];
+const UNLIMITED_MARKET_RADIUS_AU = 1_000_000;
+const DEFAULT_MARKET_LOCATION_TYPES = ['station', 'free-floating'] as const;
+const MARKET_RADIUS_OPTIONS_AU: readonly number[] = [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, UNLIMITED_MARKET_RADIUS_AU];
 
 interface MarketHubNavigationState {
 	playerName?: string;
@@ -68,6 +70,8 @@ export default class MarketHubPage {
 	protected missions = signal<CharacterMissionProgress[]>(this.navigationState.missions ?? []);
 	protected marketRadiusOptionsAu = MARKET_RADIUS_OPTIONS_AU;
 	protected selectedRadiusAu = signal<number>(DEFAULT_MARKET_RADIUS_AU);
+	protected selectedLocationTypes = signal<string[]>([...DEFAULT_MARKET_LOCATION_TYPES]);
+	protected showOutOfRangeMarkets = signal(false);
 	protected markets = signal<MarketSummary[]>([]);
 	protected isLoadingMarkets = signal(false);
 	protected marketListError = signal<string | null>(null);
@@ -77,6 +81,9 @@ export default class MarketHubPage {
 
 	protected marketFilterForm = this.fb.group({
 		radiusAu: [DEFAULT_MARKET_RADIUS_AU, [Validators.required, Validators.min(0.001)]],
+		includeStations: [true],
+		includeFreeFloating: [true],
+		showOutOfRangeMarkets: [false],
 	});
 
 	protected readonly activeShipSolarSystemId = computed(
@@ -97,13 +104,6 @@ export default class MarketHubPage {
 	);
 
 	protected readonly activeDriveRangeAu = computed(() => this.activeDriveProfile().rangeAu);
-	protected readonly effectiveSearchRadiusAu = computed(() =>
-		Math.min(this.selectedRadiusAu(), this.activeDriveRangeAu()),
-	);
-
-	protected readonly isSearchRadiusClamped = computed(
-		() => this.selectedRadiusAu() > this.activeDriveRangeAu(),
-	);
 
 	protected readonly localMarkets = computed<MarketSummary[]>(() =>
 		(this.markets() ?? []).slice().sort((a, b) => {
@@ -111,6 +111,14 @@ export default class MarketHubPage {
 			const bDistance = typeof b.distanceAu === 'number' ? b.distanceAu : Number.POSITIVE_INFINITY;
 			return aDistance - bDistance;
 		}),
+	);
+
+	protected readonly reachableMarkets = computed<MarketSummary[]>(() =>
+		this.localMarkets().filter((market) => this.isMarketWithinDriveRange(market)),
+	);
+
+	protected readonly outOfRangeMarkets = computed<MarketSummary[]>(() =>
+		this.localMarkets().filter((market) => !this.isMarketWithinDriveRange(market)),
 	);
 
 	/** The M-01 mission progress entry if it is active. */
@@ -219,7 +227,23 @@ export default class MarketHubPage {
 
 		const selectedRadius = Number(this.marketFilterForm.controls.radiusAu.value ?? DEFAULT_MARKET_RADIUS_AU);
 		this.selectedRadiusAu.set(selectedRadius);
+		this.selectedLocationTypes.set(this.resolveSelectedLocationTypes());
+		this.showOutOfRangeMarkets.set(Boolean(this.marketFilterForm.controls.showOutOfRangeMarkets.value));
 		this.loadNearbyMarkets();
+	}
+
+	private resolveSelectedLocationTypes(): string[] {
+		const locationTypes: string[] = [];
+
+		if (this.marketFilterForm.controls.includeStations.value) {
+			locationTypes.push('station');
+		}
+
+		if (this.marketFilterForm.controls.includeFreeFloating.value) {
+			locationTypes.push('free-floating');
+		}
+
+		return locationTypes;
 	}
 
 	loadNearbyMarkets(): void {
@@ -273,18 +297,36 @@ export default class MarketHubPage {
 			},
 		);
 
+		// When the out-of-range toggle is on, request the widest available scan radius so
+		// all remote markets are included in one response.
+		const fetchRadiusAu = this.showOutOfRangeMarkets()
+			? MARKET_RADIUS_OPTIONS_AU[MARKET_RADIUS_OPTIONS_AU.length - 1]
+			: this.selectedRadiusAu();
+
 		const request: MarketListByLocationRequest = {
 			playerName,
 			sessionKey,
 			solarSystemId,
 			positionKm,
-			distanceAu: this.effectiveSearchRadiusAu(),
+			distanceAu: fetchRadiusAu,
 			limit: 50,
-			locationTypes: ['station'],
+			locationTypes: this.selectedLocationTypes(),
 			...(characterId ? { characterId } : {}),
 			...(shipId ? { shipId } : {}),
 		};
 		this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, request);
+	}
+
+	protected formatRadiusOptionLabel(radiusAu: number): string {
+		if (radiusAu === UNLIMITED_MARKET_RADIUS_AU) {
+			return this.t.game.marketHub.unlimitedRadiusLabel;
+		}
+
+		return `${radiusAu.toFixed(3)} ${this.t.game.marketHub.auLabel}`;
+	}
+
+	protected formatSelectedRadiusLabel(): string {
+		return this.formatRadiusOptionLabel(this.selectedRadiusAu());
 	}
 
 	protected formatMarketDistanceAu(distanceAu: number | null): string {

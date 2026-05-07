@@ -107,6 +107,8 @@ class MockMarketHubPage {
  	markets = createSignal<MarketSummary[]>([]);
  	marketListError = createSignal<string | null>(null);
 	selectedRadiusAu = createSignal<number>(0.5);
+	selectedLocationTypes = createSignal<string[]>(['station', 'free-floating']);
+	showOutOfRangeMarkets = createSignal(false);
 	isDockedAtAnyMarket = createSignal(false);
 	dockedMarketId = createSignal<string | null>(null);
 
@@ -252,14 +254,16 @@ class MockMarketHubPage {
 			}
 		});
 
+		const fetchRadiusAu = this.showOutOfRangeMarkets() ? 1_000_000 : this.selectedRadiusAu();
+
 		this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, {
 			playerName,
 			sessionKey,
 			solarSystemId,
 			positionKm,
-			distanceAu: this.selectedRadiusAu(),
+			distanceAu: fetchRadiusAu,
 			limit: 50,
-			locationTypes: ['station'],
+			locationTypes: this.selectedLocationTypes(),
 			...(characterId ? { characterId } : {}),
 			...(shipId ? { shipId } : {}),
 		});
@@ -267,6 +271,14 @@ class MockMarketHubPage {
 
 	setRadius(radiusAu: number): void {
 		this.selectedRadiusAu.set(radiusAu);
+	}
+
+	setShowOutOfRangeMarkets(value: boolean): void {
+		this.showOutOfRangeMarkets.set(value);
+	}
+
+	setLocationTypes(locationTypes: string[]): void {
+		this.selectedLocationTypes.set(locationTypes);
 	}
 
 	isDocked(): boolean {
@@ -286,7 +298,6 @@ class MockMarketHubPage {
 
 	localMarkets(): MarketSummary[] {
 		return this.markets()
-			.filter((market) => market.solarSystemId === this.getSolarSystemId())
 			.map((market) => {
 				const distanceAu = typeof market.distanceAu === 'number' ? market.distanceAu : undefined;
 				return {
@@ -299,6 +310,14 @@ class MockMarketHubPage {
 				const bDistance = typeof b.distanceAu === 'number' ? b.distanceAu : Number.POSITIVE_INFINITY;
 				return aDistance - bDistance;
 			});
+	}
+
+	reachableMarkets(): MarketSummary[] {
+		return this.localMarkets().filter((market) => this.isMarketWithinDriveRange(market));
+	}
+
+	outOfRangeMarkets(): MarketSummary[] {
+		return this.localMarkets().filter((market) => !this.isMarketWithinDriveRange(market));
 	}
 
 	marketRouteStatus(market: MarketSummary): 'in-system' | 'gate-route' | 'no-route' {
@@ -337,6 +356,19 @@ class MockMarketHubPage {
 		}
 
 		return `${hops} ${hops === 1 ? 'gate hop' : 'gate hops'}`;
+	}
+
+	isMarketWithinDriveRange(market: MarketSummary): boolean {
+		if (market.solarSystemId !== this.getSolarSystemId()) {
+			return this.marketRouteStatus(market) === 'gate-route';
+		}
+
+		const distanceAu = market.distanceAu;
+		if (distanceAu === undefined || !Number.isFinite(distanceAu)) {
+			return false;
+		}
+
+		return distanceAu <= 0.5;
 	}
 }
 
@@ -389,7 +421,7 @@ describe('MarketHubPage', () => {
 				positionKm: { x: 413_700_000, y: 0, z: 0 },
 				distanceAu: 0.5,
 				limit: 50,
-				locationTypes: ['station'],
+				locationTypes: ['station', 'free-floating'],
 				characterId: 'c-1',
 			},
 		});
@@ -572,6 +604,167 @@ describe('MarketHubPage', () => {
 		expect(component.localMarkets().length).toBe(2);
 		expect(component.localMarkets()[0].marketId).toBe('sol-ceres-exchange');
 		expect(component.localMarkets()[1].marketId).toBe('sol-far-exchange');
+		expect(component.reachableMarkets()[0].marketId).toBe('sol-ceres-exchange');
+		expect(component.reachableMarkets()[1].marketId).toBe('sol-far-exchange');
+	});
+
+	it('should request markets using selected radius even when it exceeds starter drive range', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			status: 'docked',
+			model: 'Scavenger Pod',
+			tier: 1,
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
+			},
+		} as any);
+		const component = new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		component.setRadius(10);
+		component.loadNearbyMarkets();
+
+		const request = socketService.emittedEvents[socketService.emittedEvents.length - 1];
+		expect(request).toEqual({
+			event: MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				sessionKey: 'session-key',
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				distanceAu: 10,
+				limit: 50,
+				locationTypes: ['station', 'free-floating'],
+				characterId: 'c-1',
+			},
+		});
+	});
+
+	it('should allow sending an empty market type filter to the backend', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			status: 'docked',
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
+			},
+		} as any);
+		const component = new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		component.setLocationTypes([]);
+		component.loadNearbyMarkets();
+
+		const request = socketService.emittedEvents[socketService.emittedEvents.length - 1];
+		expect(request).toEqual({
+			event: MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+			data: {
+				playerName: 'Pioneer',
+				sessionKey: 'session-key',
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				distanceAu: 0.5,
+				limit: 50,
+				locationTypes: [],
+				characterId: 'c-1',
+			},
+		});
+	});
+
+	it('should separate reachable and beyond-current-drive markets', () => {
+		const socketService = createMockSocketService();
+		socketService.connected = true;
+		const sessionService = createMockSessionService('session-key');
+		sessionService.activeShip.set({
+			status: 'docked',
+			spatial: {
+				solarSystemId: 'sol',
+				positionKm: { x: 413_700_020, y: 0, z: 0 },
+			},
+		});
+		const component = new MockMarketHubPage(socketService, sessionService, {
+			playerName: 'Pioneer',
+			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		});
+
+		socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			isDocked: false,
+			dockedMarketId: null,
+			markets: [
+				{
+					marketId: 'sol-near-exchange',
+					solarSystemId: 'sol',
+					marketName: 'Near Exchange',
+					siteType: 'station',
+					siteName: 'Near Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_700_120, y: 0, z: 0 }, epochMs: 1 },
+					distanceAu: 0.2,
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+				},
+				{
+					marketId: 'sol-far-exchange',
+					solarSystemId: 'sol',
+					marketName: 'Far Exchange',
+					siteType: 'station',
+					siteName: 'Far Ring',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 413_709_520, y: 0, z: 0 }, epochMs: 1 },
+					distanceAu: 0.8,
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+				},
+				{
+					marketId: 'ac-station',
+					solarSystemId: 'alpha-centauri',
+					marketName: 'Alpha Station',
+					siteType: 'station',
+					siteName: 'AC Hub',
+					spatial: { solarSystemId: 'alpha-centauri', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+					route: { kind: 'gate-route', hops: 1 },
+				},
+				{
+					marketId: 'wolf-outpost',
+					solarSystemId: 'wolf-359',
+					marketName: 'Wolf Outpost',
+					siteType: 'station',
+					siteName: 'Wolf Hub',
+					spatial: { solarSystemId: 'wolf-359', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+					isDocked: false,
+					priceMultiplier: 1,
+					driftPercentPerHour: 6,
+					restockIntervalMinutes: 60,
+					route: { kind: 'no-route' },
+				},
+			],
+		});
+
+		expect(component.reachableMarkets().map((market) => market.marketId)).toEqual([
+			'sol-near-exchange',
+			'ac-station',
+		]);
+		expect(component.outOfRangeMarkets().map((market) => market.marketId)).toEqual([
+			'sol-far-exchange',
+			'wolf-outpost',
+		]);
 	});
 
 	it('should use response docking state to enable transact only at docked market', () => {

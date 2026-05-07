@@ -124,7 +124,7 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
               positionKm: { x: 413_700_440.2, y: 0, z: 0 },
               epochMs: Date.now(),
             },
-            distanceAu: 0.9,
+            distanceAu: 0.6,
             isDocked: false,
             priceMultiplier: 1,
             driftPercentPerHour: 6,
@@ -317,14 +317,12 @@ test.describe('Market Hub docking and radius behavior', () => {
     await expect(dockedMarket.locator('.transact-btn')).toBeEnabled();
     await expect(remoteMarket.locator('.transact-btn')).toBeDisabled();
     await expect(remoteMarket.locator('.dock-required-badge', { hasText: 'Dock required' })).toBeVisible();
-    await expect(remoteMarket.locator('.dock-required-badge', { hasText: 'Out of range' })).toBeVisible();
-    await expect(remoteMarket).toContainText('Requires drive range upgrade.');
     await expect(page.getByText('Rapid Transit Thruster').first()).toBeVisible();
 
     await page.selectOption('#radiusAu', '1');
 
     await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(1);
     const latestRequest = requests[requests.length - 1];
-    expect(latestRequest.distanceAu).toBe(0.8);
+    expect(latestRequest.distanceAu).toBe(1);
   });
 });
