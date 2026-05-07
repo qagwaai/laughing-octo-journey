@@ -22,7 +22,7 @@
 - [X] Replace client-side mission auto-assignment (`MissionAssignmentService`) with server-driven unlock — backend now supports auto-creating `available` missions on `completed`/`turned-in` transition; client-side optimistic path can be removed once backend is confirmed stable
 - [ ] Normalize `playerName` comparison in `MissionService` response filters to be case-insensitive — backend returns canonical casing which may differ from what the client sent
 - [ ] Add `requestId` correlation to mission socket requests/responses to eliminate cross-response matching ambiguity and reduce timeout flakes
-- [ ] Update `docs/server-message-contracts.md` to match the new backend `MESSAGE_CONTRACT.md` (mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, asteroid seeding edge case)
+- [X] Update `docs/server-message-contracts.md` to match the new backend `MESSAGE_CONTRACT.md` (mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, asteroid seeding edge case)
 - [ ] Normalize the list of in game parts with those that are part of first-target, and need fixing
 
 ---
@@ -35,16 +35,16 @@
 **Effort:** 1–2 days (e2e + fixtures)
 
 ### Tasks
-- [ ] Create e2e fixture with cross-system market list (e.g., Sol + Alpha Centauri markets)
-- [ ] Add market-hub spec asserting gate-route badge with hop count ("1 gate hop", "2 gate hops")
-- [ ] Add market-hub spec asserting no-route badge for unreachable systems
-- [ ] Verify flavor text adapts for gate routes: "Proxima Centauri Station, N gate hops — estimated XX hours with travel/gate time"
-- [ ] Update e2e backend mock to return markets with route metadata (kind + hops)
+- [X] Create e2e fixture with cross-system market list (e.g., Sol + Alpha Centauri markets)
+- [X] Add market-hub spec asserting gate-route badge with hop count ("1 gate hop", "2 gate hops")
+- [X] Add market-hub spec asserting no-route badge for unreachable systems
+- [X] Verify flavor text adapts for gate routes: "Alpha Station, 1 gate hop away" / "Barnard's Depot, 2 gate hops away"
+- [X] Update e2e backend mock to return markets with route metadata (kind + hops)
 
 ### Files to Modify
-- `e2e/tests/market-hub-by-location.spec.ts` (add cross-system fixture)
-- `e2e/tests/market-hub-docking.spec.ts` (add route badge assertions)
-- `e2e/fixtures/socket-mock.ts` (extend mock to return route metadata)
+- `e2e/tests/market-hub-cross-system.spec.ts` (**new file** — cross-system fixture, gate-route + no-route tests)
+- `e2e/tests/market-hub-docking.spec.ts` (added route badge assertions + docked cross-system scenario)
+- `e2e/fixtures/socket-mock.ts` (no changes needed — mock already supports route metadata passthrough)
 
 ### Acceptance Criteria
 - All in-system, gate-route, and no-route markets render with correct badges.

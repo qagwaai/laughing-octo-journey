@@ -54,6 +54,22 @@ This document describes the socket message contracts currently used by the appli
 | `market-list-response` | server -> client | Return market list and metadata |
 | `market-list-by-location-request` | client -> server | Fetch nearby markets by position and radius |
 | `market-list-by-location-response` | server -> client | Return nearby markets with authoritative distance and docking state |
+| `market-quote-request` | client -> server | Request a buy or sell price quote for a market item |
+| `market-quote-response` | server -> client | Return price quote for a market item |
+| `market-inventory-list-request` | client -> server | Fetch paginated market item catalog |
+| `market-inventory-list-response` | server -> client | Return market item catalog with stock levels |
+| `market-buy-request` | client -> server | Execute a buy transaction at a market |
+| `market-buy-response` | server -> client | Return buy transaction result |
+| `market-sell-request` | client -> server | Execute a sell transaction at a market |
+| `market-sell-response` | server -> client | Return sell transaction result |
+| `market-ledger-list-request` | client -> server | Fetch paginated market transaction ledger |
+| `market-ledger-list-response` | server -> client | Return market transaction ledger entries |
+| `item-upsert-request` | client -> server | Create or update an item record |
+| `item-upsert-response` | server -> client | Return item create/update result |
+| `item-list-by-container-request` | client -> server | Fetch items by container (ship or market) |
+| `item-list-by-container-response` | server -> client | Return items in a specified container |
+| `item-list-by-location-request` | client -> server | Fetch deployed items within spatial radius |
+| `item-list-by-location-response` | server -> client | Return deployed items within spatial radius |
 | `launch-item-request` | client -> server | Launch a ship inventory item at a target celestial body |
 | `launch-item-response` | server -> client | Return launch outcome and resolution details |
 | `invalid-session` | server -> client | Notify client session is no longer valid |
@@ -371,6 +387,7 @@ Payload:
         "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
         "epochMs": 1775000000000
       },
+      "distanceAu": 2.766,
       "priceMultiplier": 1,
       "driftPercentPerHour": 6,
       "restockIntervalMinutes": 60
@@ -716,7 +733,7 @@ Payload:
   "characterId": "string",
   "ship": {
     "id": "string",
-    "shipName": "string",
+    "name": "string",
     "model": "string",
     "tier": 1,
     "inventory": ["Expendable Dart Drone"],
@@ -904,14 +921,31 @@ Required payload:
   "characterId": "string",
   "missionId": "string",
   "sessionKey": "string",
-  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in (optional)"
+  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in (optional)",
+  "statusDetail": "string (optional)",
+  "requestId": "string (optional, echoed in response)"
 }
 ```
+
+Canonical mission catalog IDs:
+
+- `first-target`
+- `m-01`, `m-02`, `m-03`, `m-04`, `m-05`
+- `sq-01`, `sq-02`, `sq-03`, `sq-04`
+
+Prerequisite graph (server auto-unlocks dependents on `completed`/`turned-in`):
+
+- `first-target` → `m-01`, `sq-02`, `sq-03`
+- `m-01` → `m-02`
+- `m-02` → `m-03`, `sq-01`
+- `m-03` → `m-04`
+- `m-04` → `m-05`, `sq-04`
 
 Client-side behavior:
 
 - Use this event to create or upsert a mission status entry for one character.
 - If `status` is omitted, server should default to `available`.
+- Include `requestId` to correlate responses and avoid cross-response matching ambiguity.
 
 Server requirements:
 
@@ -931,6 +965,7 @@ Payload:
   "message": "string",
   "playerName": "string",
   "characterId": "string",
+  "requestId": "string (optional, echoed when provided)",
   "mission": {
     "missionId": "string",
     "status": "string",
@@ -1078,7 +1113,9 @@ Required payload:
   "characterId": "string",
   "missionId": "string",
   "sessionKey": "string",
-  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in"
+  "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in",
+  "statusDetail": "string (optional)",
+  "requestId": "string (optional, echoed in response)"
 }
 ```
 
@@ -1086,6 +1123,7 @@ Client-side behavior:
 
 - Use this contract when a flow must explicitly set mission status (for example transitioning `first-target` to `started`).
 - Unlike Mission Add, `status` is required for upsert requests.
+- Include `requestId` to correlate responses and avoid cross-response matching ambiguity.
 
 Server requirements:
 
@@ -1105,6 +1143,7 @@ Payload:
   "message": "string",
   "playerName": "string",
   "characterId": "string",
+  "requestId": "string (optional, echoed when provided)",
   "mission": {
     "missionId": "string",
     "status": "string",
@@ -1276,6 +1315,385 @@ Field semantics:
 ### New character initialization
 
 - On `character-add-request` success, the server seeds a starting balance of 425 credits recorded as a single `put` ledger entry with description `"Starting credits"`.
+
+---
+
+## Market Commerce
+
+### `market-quote-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "itemId": "string",
+  "direction": "buy | sell",
+  "quantity": 1,
+  "requestId": "string (optional, echoed in response)"
+}
+```
+
+### `market-quote-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "characterId": "string",
+  "requestId": "string (optional)",
+  "quote": {
+    "marketId": "string",
+    "solarSystemId": "string",
+    "itemId": "string",
+    "itemType": "string",
+    "displayName": "string",
+    "rarity": "string",
+    "direction": "buy | sell",
+    "quantity": 5,
+    "unitPrice": 29,
+    "totalPrice": 145,
+    "availableStock": 1200,
+    "marketCanBuy": true,
+    "marketCanSell": true,
+    "marketMultiplier": 1,
+    "driftMultiplier": 0.97,
+    "quotedAt": "ISO-8601 string"
+  }
+}
+```
+
+Failure `reason` values: `INVALID_PAYLOAD`, `PLAYER_NOT_REGISTERED`, `CHARACTER_NOT_FOUND`, `MARKET_NOT_FOUND`, `ITEM_NOT_FOUND`, `ITEM_NOT_TRADEABLE`, `INVALID_DIRECTION`, `INVALID_QUANTITY`, `MARKET_DOES_NOT_BUY_ITEM`.
+
+Edge cases:
+
+- Price is evaluated at quote request time (not pre-locked).
+- Unit price applies market multiplier and hourly deterministic drift.
+- Invalid session emits `invalid-session`.
+
+---
+
+### `market-inventory-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "offset": 0,
+  "limit": 50
+}
+```
+
+`offset` and `limit` are optional (defaults `0` and `50`).
+
+### `market-inventory-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "marketName": "string",
+  "inventory": [
+    {
+      "itemId": "string",
+      "itemType": "string",
+      "displayName": "string",
+      "rarity": "string",
+      "stock": 1198,
+      "maxStock": 1200,
+      "restockPerInterval": 96,
+      "marketCanBuy": true,
+      "marketCanSell": true
+    }
+  ],
+  "total": 21,
+  "offset": 0,
+  "limit": 50,
+  "asOf": "ISO-8601 string"
+}
+```
+
+Edge cases:
+
+- Market stock is restocked lazily on reads based on `restockIntervalMinutes`.
+- Invalid session emits `invalid-session`.
+
+---
+
+### `market-buy-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "itemId": "string",
+  "quantity": 3,
+  "requestId": "string (optional)",
+  "transactionId": "string (optional, idempotency key; autogenerated when omitted)"
+}
+```
+
+### `market-buy-response` (response)
+
+Payload on success:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "requestId": "string (optional)",
+  "transaction": {
+    "transactionId": "string",
+    "requestId": "string (optional)",
+    "marketId": "string",
+    "solarSystemId": "string",
+    "characterId": "string",
+    "itemId": "string",
+    "direction": "buy",
+    "quantity": 3,
+    "unitPrice": 29,
+    "totalPrice": 87,
+    "timestamp": "ISO-8601 string",
+    "characterCredits": 338,
+    "marketStock": 1197
+  }
+}
+```
+
+Failure `reason` values: `INVALID_PAYLOAD`, `PLAYER_NOT_REGISTERED`, `CHARACTER_NOT_FOUND`, `MARKET_NOT_FOUND`, `ITEM_NOT_FOUND`, `ITEM_NOT_TRADEABLE`, `INSUFFICIENT_CREDITS`, `INSUFFICIENT_MARKET_STOCK`, `NO_SHIP_AVAILABLE`, `PARTIAL_WRITE_REVERSED`, `TRANSACTION_FAILED`.
+
+---
+
+### `market-sell-request` / `market-sell-response`
+
+Same request/response shape as `market-buy-request` / `market-buy-response`, with `direction: "sell"`.
+
+Additional failure `reason` values for sell: `MARKET_DOES_NOT_BUY_ITEM`, `INSUFFICIENT_ITEM_QUANTITY`.
+
+Edge cases (both buy and sell):
+
+- `characterCredits` in the transaction reflects the post-transaction balance.
+- Character's `creditLedger` is updated server-side; client should re-fetch `character-list-response` or trust `characterCredits` from transaction.
+- Invalid session emits `invalid-session`.
+
+---
+
+### `market-ledger-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "characterId": "string (optional)",
+  "itemId": "string (optional)",
+  "direction": "buy | sell | reversal (optional)",
+  "startAt": "ISO-8601 string (optional, inclusive)",
+  "endAt": "ISO-8601 string (optional, inclusive)",
+  "offset": 0,
+  "limit": 50
+}
+```
+
+### `market-ledger-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "marketId": "string",
+  "solarSystemId": "string",
+  "entries": [
+    {
+      "transactionId": "string",
+      "requestId": "string (optional)",
+      "characterId": "string",
+      "itemId": "string",
+      "direction": "buy | sell | reversal",
+      "quantity": 3,
+      "unitPrice": 29,
+      "totalPrice": 87,
+      "timestamp": "ISO-8601 string",
+      "reversalOfTransactionId": "string | null"
+    }
+  ],
+  "total": 2,
+  "offset": 0,
+  "limit": 50
+}
+```
+
+Edge cases:
+
+- Ledger is append-only. Failed partial writes append a reversal entry where possible (`PARTIAL_WRITE_REVERSED`).
+- Invalid session emits `invalid-session`.
+
+---
+
+## Item Events
+
+### `item-upsert-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "item": {
+    "id": "string (optional; omit to create)",
+    "itemType": "string (required on create)",
+    "displayName": "string (required on create)",
+    "state": "contained | deployed | destroyed (optional)",
+    "damageStatus": "intact | damaged | disabled | destroyed (optional)",
+    "container": {
+      "containerType": "ship | market",
+      "containerId": "string"
+    },
+    "kinematics": null,
+    "owningPlayerId": "string (optional)",
+    "owningCharacterId": "string (optional)",
+    "destroyedAt": "ISO-8601 string (optional)",
+    "destroyedReason": "string (optional)",
+    "launchable": true
+  }
+}
+```
+
+### `item-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Item created successfully | Item updated successfully",
+  "playerName": "string",
+  "item": {
+    "id": "string",
+    "itemType": "string",
+    "displayName": "string",
+    "state": "string",
+    "damageStatus": "string",
+    "container": { "containerType": "string", "containerId": "string" },
+    "kinematics": null,
+    "owningPlayerId": "string",
+    "owningCharacterId": "string",
+    "destroyedAt": null,
+    "destroyedReason": null,
+    "discoveredAt": null,
+    "discoveredByCharacterId": null,
+    "launchable": true,
+    "createdAt": "ISO-8601 string",
+    "updatedAt": "ISO-8601 string"
+  }
+}
+```
+
+Edge cases:
+
+- Any authenticated player may upsert any item (no ownership check).
+- When `state` transitions to `destroyed` and no `destroyedAt` is provided, server auto-sets it.
+- Items are stored in global `items` collection; ship inventory stores references hydrated on response.
+- Invalid session emits `invalid-session`.
+
+---
+
+### `item-list-by-container-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "containerType": "ship | market",
+  "containerId": "string"
+}
+```
+
+### `item-list-by-container-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "containerType": "string",
+  "containerId": "string",
+  "items": [ ]
+}
+```
+
+`items` entries use the same shape as `item-upsert-response.item`. Returns `[]` when no items match.
+
+---
+
+### `item-list-by-location-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100,
+  "itemType": "string (optional filter)",
+  "limit": 50
+}
+```
+
+Note: this endpoint uses `distanceKm` (not `distanceAu`) — asteroid/item proximity queries operate at short km-scale.
+
+### `item-list-by-location-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "playerName": "string",
+  "solarSystemId": "string",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100,
+  "itemType": null,
+  "items": [ ]
+}
+```
+
+`items` entries include `distanceKm` as a computed field. Only items with `kinematics` are included (deployed items). Results sorted nearest-first.
 
 ---
 
