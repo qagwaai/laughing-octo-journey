@@ -1,3 +1,4 @@
+import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
 /**
  * Unit tests for CharacterSetupPage component
  *
@@ -43,6 +44,29 @@ import {
 import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
+/**
+ * character-setup needs upsertShip/upsertItem convenience methods on top of
+ * the shared MockSocketService. Extend locally rather than polluting the shared mock.
+ */
+type MockSocketServiceWithUpsert = MockSocketService & {
+	upsertShip(request: any, onResponse?: (r: any) => void): void;
+	upsertItem(request: any, onResponse?: (r: any) => void): void;
+};
+
+function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
+	const base = createMockSocketService();
+	return Object.assign(base, {
+		upsertShip(request: any, onResponse?: (r: any) => void) {
+			if (onResponse) base.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
+			base.emit(SHIP_UPSERT_REQUEST_EVENT, request);
+		},
+		upsertItem(request: any, onResponse?: (r: any) => void) {
+			if (onResponse) base.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
+			base.emit(ITEM_UPSERT_REQUEST_EVENT, request);
+		},
+	});
+}
+
 interface StarterShipInventoryItemDefinition {
 	itemType: string;
 	displayName: string;
@@ -67,39 +91,15 @@ const STARTER_SHIP_INVENTORY_ITEMS: readonly StarterShipInventoryItemDefinition[
 	},
 ];
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
+
 
 interface MockRouter {
 	navigate: jasmine.Spy;
 }
 
-interface MockSessionService {
-	storedKey: string | null;
-	setSessionKey(key: string): void;
-	getSessionKey(): string | null;
-	clearSession(): void;
-	hasSession(): boolean;
-}
 
-interface MockSocketService {
-	emittedEvents: Array<{ event: string; data: any }>;
-	registeredListeners: Map<string, (data: any) => void>;
-	onceListeners: Map<string, (data: any) => void>;
-	emit(event: string, data?: any): void;
-	on(event: string, cb: (data: any) => void): () => void;
-	once(event: string, cb: (data: any) => void): void;
-	upsertShip(request: any, onResponse?: (r: any) => void): void;
-	upsertItem(request: any, onResponse?: (r: any) => void): void;
-	triggerEvent(event: string, data: any): void;
-	triggerOnce(event: string, data: any): void;
-}
+
+
 
 interface SetupState {
 	playerName?: string;
@@ -107,61 +107,13 @@ interface SetupState {
 	editCharacter?: { id: string; characterName: string; level?: number };
 }
 
-function createMockSocketService(): MockSocketService {
-	const emittedEvents: Array<{ event: string; data: any }> = [];
-	const registeredListeners = new Map<string, (data: any) => void>();
-	const onceListeners = new Map<string, (data: any) => void>();
 
-	const service: MockSocketService = {
-		emittedEvents,
-		registeredListeners,
-		onceListeners,
-		emit(event: string, data?: any) {
-			emittedEvents.push({ event, data });
-		},
-		on(event: string, cb: (data: any) => void) {
-			registeredListeners.set(event, cb);
-			return () => registeredListeners.delete(event);
-		},
-		once(event: string, cb: (data: any) => void) {
-			onceListeners.set(event, cb);
-		},
-		upsertShip(request: any, onResponse?: (r: any) => void) {
-			if (onResponse) { service.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse); }
-			service.emit(SHIP_UPSERT_REQUEST_EVENT, request);
-		},
-		upsertItem(request: any, onResponse?: (r: any) => void) {
-			if (onResponse) { service.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse); }
-			service.emit(ITEM_UPSERT_REQUEST_EVENT, request);
-		},
-		triggerEvent(event: string, data: any) {
-			registeredListeners.get(event)?.(data);
-		},
-		triggerOnce(event: string, data: any) {
-			const cb = onceListeners.get(event);
-			if (cb) {
-				onceListeners.delete(event);
-				cb(data);
-			}
-		},
-	};
-	return service;
-}
 
-function createMockSessionService(initialKey: string | null = null): MockSessionService {
-	const state = { key: initialKey };
-	return {
-		get storedKey() { return state.key; },
-		setSessionKey(key: string) { state.key = key; },
-		getSessionKey() { return state.key; },
-		clearSession() { state.key = null; },
-		hasSession() { return state.key !== null; },
-	};
-}
+
 
 class MockCharacterSetupPage {
 	private router: MockRouter;
-	private socketService: MockSocketService;
+	private socketService: MockSocketServiceWithUpsert;
 	private sessionService: MockSessionService;
 	private unsubscribeAddResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
@@ -189,7 +141,7 @@ class MockCharacterSetupPage {
 
 	constructor(
 		router: MockRouter,
-		socketService: MockSocketService,
+		socketService: MockSocketServiceWithUpsert,
 		sessionService: MockSessionService,
 		setupState?: SetupState,
 	) {
@@ -426,12 +378,12 @@ class MockCharacterSetupPage {
 describe('CharacterSetupPage', () => {
 	let component: MockCharacterSetupPage;
 	let router: MockRouter;
-	let socketService: MockSocketService;
+	let socketService: MockSocketServiceWithUpsert;
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		router = { navigate: jasmine.createSpy() };
-		socketService = createMockSocketService();
+		socketService = createExtendedMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
 		component = new MockCharacterSetupPage(router, socketService, sessionService);
 	});

@@ -1,13 +1,8 @@
 export {};
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
+import { createSignal } from '../../testing';
+
+
 
 interface ShipViewSpecsState {
 	playerName?: string;

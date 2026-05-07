@@ -1,3 +1,4 @@
+import { createSignal } from '../../../testing';
 import {
 	CONDUIT_SEALS_PRINTABLE_ITEM,
 	HULL_PATCH_KIT_PRINTABLE_ITEM,
@@ -11,14 +12,7 @@ import {
 
 export {};
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
+
 
 interface NavigationState {
 	playerName?: string;

@@ -1,3 +1,4 @@
+import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../../model/register';
 
 const passwordMatchValidator = (group: any) => {
@@ -17,63 +18,19 @@ const passwordMatchValidator = (group: any) => {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => { value = v; };
-	return sig;
-}
 
-interface MockSocketService {
-	emittedEvents: Array<{ event: string; data: any }>;
-	registeredListeners: Map<string, (data: any) => void>;
-	emit(event: string, data?: any): void;
-	on(event: string, cb: (data: any) => void): () => void;
-	triggerEvent(event: string, data: any): void;
-}
+
+
 
 interface MockRouter {
 	navigate: jasmine.Spy;
 }
 
-interface MockSessionService {
-	storedKey: string | null;
-	setSessionKey(key: string): void;
-	getSessionKey(): string | null;
-	clearSession(): void;
-	hasSession(): boolean;
-}
 
-function createMockSocketService(): MockSocketService {
-	const emittedEvents: Array<{ event: string; data: any }> = [];
-	const registeredListeners = new Map<string, (data: any) => void>();
 
-	return {
-		emittedEvents,
-		registeredListeners,
-		emit(event: string, data?: any) {
-			emittedEvents.push({ event, data });
-		},
-		on(event: string, cb: (data: any) => void) {
-			registeredListeners.set(event, cb);
-			return () => registeredListeners.delete(event);
-		},
-		triggerEvent(event: string, data: any) {
-			registeredListeners.get(event)?.(data);
-		},
-	};
-}
 
-function createMockSessionService(): MockSessionService {
-	const state = { key: null as string | null };
-	return {
-		get storedKey() { return state.key; },
-		setSessionKey(key: string) { state.key = key; },
-		getSessionKey() { return state.key; },
-		clearSession() { state.key = null; },
-		hasSession() { return state.key !== null; },
-	};
-}
+
+
 
 // ── Mock component ────────────────────────────────────────────────────────────
 

@@ -1,13 +1,8 @@
 export {};
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
+import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
+
+
 
 const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
 const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
@@ -153,67 +148,13 @@ class MockGameJoinPage {
 	}
 }
 
-interface MockSocketService {
-	emittedEvents: Array<{ event: string; data: any }>;
-	registeredListeners: Map<string, (data: any) => void>;
-	onceListeners: Map<string, (data?: any) => void>;
-	connected: boolean;
-	emit(event: string, data?: any): void;
-	on(event: string, cb: (data: any) => void): () => void;
-	once(event: string, cb: (data?: any) => void): void;
-	getIsConnected(): boolean;
-	triggerEvent(event: string, data: any): void;
-	triggerOnceEvent(event: string, data?: any): void;
-}
 
-interface MockSessionService {
-	getSessionKey(): string | null;
-}
 
-function createMockSocketService(): MockSocketService {
-	const emittedEvents: Array<{ event: string; data: any }> = [];
-	const registeredListeners = new Map<string, (data: any) => void>();
-	const onceListeners = new Map<string, (data?: any) => void>();
 
-	return {
-		emittedEvents,
-		registeredListeners,
-		onceListeners,
-		connected: false,
-		emit(event: string, data?: any) {
-			emittedEvents.push({ event, data });
-		},
-		on(event: string, cb: (data: any) => void) {
-			registeredListeners.set(event, cb);
-			return () => registeredListeners.delete(event);
-		},
-		once(event: string, cb: (data?: any) => void) {
-			onceListeners.set(event, cb);
-		},
-		getIsConnected() {
-			return this.connected;
-		},
-		triggerEvent(event: string, data: any) {
-			registeredListeners.get(event)?.(data);
-		},
-		triggerOnceEvent(event: string, data?: any) {
-			const cb = onceListeners.get(event);
-			if (cb) {
-				onceListeners.delete(event);
-				cb(data);
-			}
-		},
-	};
-}
 
-function createMockSessionService(initialKey: string | null = null): MockSessionService {
-	const state = { key: initialKey };
-	return {
-		getSessionKey() {
-			return state.key;
-		},
-	};
-}
+
+
+
 
 describe('GameJoinPage', () => {
 	let socketService: MockSocketService;

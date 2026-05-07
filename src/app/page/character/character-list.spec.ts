@@ -1,3 +1,4 @@
+import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
 import {
 	CHARACTER_DELETE_REQUEST_EVENT,
 	CHARACTER_DELETE_RESPONSE_EVENT,
@@ -19,90 +20,19 @@ import { INVALID_SESSION_EVENT } from '../../model/session';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
 
-interface MockSocketService {
-	emittedEvents: Array<{ event: string; data: any }>;
-	registeredListeners: Map<string, (data: any) => void>;
-	onceListeners: Map<string, (data?: any) => void>;
-	connected: boolean;
-	emit(event: string, data?: any): void;
-	on(event: string, cb: (data: any) => void): () => void;
-	once(event: string, cb: (data?: any) => void): void;
-	getIsConnected(): boolean;
-	triggerEvent(event: string, data: any): void;
-	triggerOnceEvent(event: string, data?: any): void;
-}
+
+
 
 interface MockRouter {
 	navigate: jasmine.Spy;
 }
 
-interface MockSessionService {
-	storedKey: string | null;
-	activeShip: any | null;
-	setSessionKey(key: string): void;
-	getSessionKey(): string | null;
-	clearSession(): void;
-	hasSession(): boolean;
-	setActiveShip(ship: any): void;
-}
 
-function createMockSocketService(): MockSocketService {
-	const emittedEvents: Array<{ event: string; data: any }> = [];
-	const registeredListeners = new Map<string, (data: any) => void>();
-	const onceListeners = new Map<string, (data?: any) => void>();
 
-	return {
-		emittedEvents,
-		registeredListeners,
-		onceListeners,
-		connected: false,
-		emit(event: string, data?: any) {
-			emittedEvents.push({ event, data });
-		},
-		on(event: string, cb: (data: any) => void) {
-			registeredListeners.set(event, cb);
-			return () => registeredListeners.delete(event);
-		},
-		once(event: string, cb: (data?: any) => void) {
-			onceListeners.set(event, cb);
-		},
-		getIsConnected() {
-			return this.connected;
-		},
-		triggerEvent(event: string, data: any) {
-			registeredListeners.get(event)?.(data);
-		},
-		triggerOnceEvent(event: string, data?: any) {
-			const cb = onceListeners.get(event);
-			if (cb) {
-				onceListeners.delete(event);
-				cb(data);
-			}
-		},
-	};
-}
 
-function createMockSessionService(initialKey: string | null = null): MockSessionService {
-	const state = { key: initialKey, activeShip: null as any | null };
-	return {
-		get storedKey() { return state.key; },
-		get activeShip() { return state.activeShip; },
-		setSessionKey(key: string) { state.key = key; },
-		getSessionKey() { return state.key; },
-		clearSession() { state.key = null; state.activeShip = null; },
-		hasSession() { return state.key !== null; },
-		setActiveShip(ship: any) { state.activeShip = ship; },
-	};
-}
+
+
 
 class MockCharacterListPage {
 	private socketService: MockSocketService;
@@ -337,6 +267,7 @@ class MockCharacterListPage {
 					model: 'Scavenger Pod',
 					tier: 1,
 					status: 'ACTIVE',
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
 				});
 			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
 		}
@@ -599,13 +530,13 @@ describe('CharacterListPage', () => {
 			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
 
-			expect(sessionService.activeShip).toEqual({
+			expect(sessionService.activeShip()).toEqual(jasmine.objectContaining({
 				id: 'starter-pod-1',
 				name: 'Scavenger Pod',
 				model: 'Scavenger Pod',
 				tier: 1,
 				status: 'ACTIVE',
-			});
+			}));
 
 			expect(dispatchSpy).toHaveBeenCalled();
 			const dispatchedEvent = dispatchSpy.calls.mostRecent().args[0] as Event;

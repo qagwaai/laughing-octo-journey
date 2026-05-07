@@ -1,3 +1,4 @@
+import { createSignal } from '../../../testing';
 import {
 	getSpecsImagePath,
 	normalizeItemTypeForImage,
@@ -7,12 +8,7 @@ import {
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/item-view-specs-configs';
 import { ShipItem } from '../../model/ship-item';
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => { value = v; };
-	return sig;
-}
+
 
 function createComputed<T>(fn: () => T) {
 	return () => fn();

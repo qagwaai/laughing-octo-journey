@@ -1,15 +1,10 @@
 export {};
 
+import { createSignal } from '../../../testing';
+
 import type { CreditLedgerEntry } from '../../model/character-economy';
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
+
 
 interface MockCharacter {
 	id: string;

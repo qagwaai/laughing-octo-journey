@@ -1,17 +1,13 @@
 export {};
 
+import { createSignal } from '../../../testing';
+
 /**
  * Unit tests for PrintQueuePage component.
  * Uses the mock-component pattern consistent with other page specs in this project.
  */
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const signal = () => value;
-	signal.set = (next: T) => { value = next; };
-	signal.update = (fn: (v: T) => T) => { value = fn(value); };
-	return signal;
-}
+
 
 interface MockRouter {
 	navigate: jasmine.Spy;

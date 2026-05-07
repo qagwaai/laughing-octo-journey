@@ -1,97 +1,26 @@
 export {};
 
+import { createSignal, type WritableSignalLike, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
+
 import type { MarketSummary } from '../../model/market-list';
 import type { Triple } from '../../model/triple';
 import { resolveJumpGateHops } from '../../model/jump-gate';
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => {
-		value = v;
-	};
-	return sig;
-}
 
-type WritableSignalLike<T> = (() => T) & { set(v: T): void };
+
 
 interface NavigationState {
 	playerName?: string;
 	joinCharacter?: { id: string; characterName: string };
 }
 
-interface MockSocketService {
-	emittedEvents: Array<{ event: string; data: any }>;
-	registeredListeners: Map<string, (data: any) => void>;
-	onceListeners: Map<string, (data?: any) => void>;
-	connected: boolean;
-	emit(event: string, data?: any): void;
-	on(event: string, cb: (data: any) => void): () => void;
-	once(event: string, cb: (data?: any) => void): void;
-	getIsConnected(): boolean;
-	triggerEvent(event: string, data: any): void;
-	triggerOnceEvent(event: string, data?: any): void;
-}
 
-interface MockSessionService {
-	getSessionKey(): string | null;
-	activeShip: WritableSignalLike<{
-		id?: string;
-		status?: string | null;
-		spatial?: { solarSystemId?: string; positionKm: Triple };
-	} | null>;
-}
 
-function createMockSocketService(): MockSocketService {
-	const emittedEvents: Array<{ event: string; data: any }> = [];
-	const registeredListeners = new Map<string, (data: any) => void>();
-	const onceListeners = new Map<string, (data?: any) => void>();
 
-	return {
-		emittedEvents,
-		registeredListeners,
-		onceListeners,
-		connected: false,
-		emit(event: string, data?: any) {
-			emittedEvents.push({ event, data });
-		},
-		on(event: string, cb: (data: any) => void) {
-			registeredListeners.set(event, cb);
-			return () => registeredListeners.delete(event);
-		},
-		once(event: string, cb: (data?: any) => void) {
-			onceListeners.set(event, cb);
-		},
-		getIsConnected() {
-			return this.connected;
-		},
-		triggerEvent(event: string, data: any) {
-			registeredListeners.get(event)?.(data);
-		},
-		triggerOnceEvent(event: string, data?: any) {
-			const cb = onceListeners.get(event);
-			if (cb) {
-				onceListeners.delete(event);
-				cb(data);
-			}
-		},
-	};
-}
 
-function createMockSessionService(initialKey: string | null = null): MockSessionService {
-	const activeShip = createSignal<{
-		id?: string;
-		status?: string | null;
-		spatial?: { solarSystemId?: string; positionKm: Triple };
-	} | null>(null);
 
-	return {
-		getSessionKey() {
-			return initialKey;
-		},
-		activeShip,
-	};
-}
+
+
 
 const MARKET_LIST_BY_LOCATION_REQUEST_EVENT = 'market-list-by-location-request';
 const MARKET_LIST_BY_LOCATION_RESPONSE_EVENT = 'market-list-by-location-response';
@@ -171,7 +100,7 @@ class MockMarketHubPage {
 				const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
 				const resolved = sameShip ?? shipWithPosition ?? ships[0];
 
-				this.sessionService.activeShip.set(resolved);
+				this.sessionService.activeShip.set(resolved as any);
 				if (this.hasUsableShipPosition(resolved)) {
 					this.loadNearbyMarkets();
 				}
@@ -403,9 +332,11 @@ describe('MarketHubPage', () => {
 			status: 'docked',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_000, y: 0, z: 0 },
+				epochMs: 0,
 			},
-		});
+		} as any);
 
 		new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
@@ -457,7 +388,7 @@ describe('MarketHubPage', () => {
 					model: 'Scavenger Pod',
 					tier: 1,
 					status: 'docked',
-					spatial: { solarSystemId: 'sol', positionKm: { x: 100, y: 200, z: 300 } },
+					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 100, y: 200, z: 300 }, epochMs: 0 },
 				},
 			],
 		});
@@ -474,9 +405,11 @@ describe('MarketHubPage', () => {
 			status: 'ACTIVE',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 0, y: 0, z: 0 },
+				epochMs: 0,
 			},
-		});
+		} as any);
 
 		new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
@@ -515,9 +448,11 @@ describe('MarketHubPage', () => {
 			status: 'docked',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_000, y: 0, z: 0 },
+				epochMs: 0,
 			},
-		});
+		} as any);
 		const component = new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
@@ -558,9 +493,11 @@ describe('MarketHubPage', () => {
 			status: 'docked',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				epochMs: 0,
 			},
-		});
+		} as any);
 		const component = new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
@@ -618,7 +555,9 @@ describe('MarketHubPage', () => {
 			tier: 1,
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				epochMs: 0,
 			},
 		} as any);
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -653,7 +592,9 @@ describe('MarketHubPage', () => {
 			status: 'docked',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				epochMs: 0,
 			},
 		} as any);
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -688,9 +629,11 @@ describe('MarketHubPage', () => {
 			status: 'docked',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				epochMs: 0,
 			},
-		});
+		} as any);
 		const component = new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
@@ -773,10 +716,15 @@ describe('MarketHubPage', () => {
 		const sessionService = createMockSessionService('session-key');
 		sessionService.activeShip.set({
 			id: 'starter-pod-c-1',
+			name: 'Test Ship',
+			model: 'Scavenger Pod',
+			tier: 1,
 			status: 'in-flight',
 			spatial: {
 				solarSystemId: 'sol',
+				frame: 'barycentric',
 				positionKm: { x: 413_700_020, y: 0, z: 0 },
+				epochMs: 0,
 			},
 		});
 		const component = new MockMarketHubPage(socketService, sessionService, {
@@ -827,7 +775,7 @@ describe('MarketHubPage', () => {
 		const socketService = createMockSocketService();
 		socketService.connected = true;
 		const sessionService = createMockSessionService('session-key');
-		sessionService.activeShip.set({ status: 'in-flight' });
+		sessionService.activeShip.set({ id: 'p1', name: 'S', model: 'M', tier: 1, status: 'in-flight', spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 } });
 		const component = new MockMarketHubPage(socketService, sessionService, {
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
@@ -836,7 +784,7 @@ describe('MarketHubPage', () => {
 		expect(component.isDocked()).toBeFalse();
 		expect(component.canTransact()).toBeFalse();
 
-		sessionService.activeShip.set({ status: 'docked' });
+		sessionService.activeShip.set({ id: 'p1', name: 'S', model: 'M', tier: 1, status: 'docked', spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 } });
 		expect(component.isDocked()).toBeTrue();
 		expect(component.canTransact()).toBeTrue();
 	});
@@ -847,8 +795,9 @@ describe('MarketHubPage', () => {
 			socketService.connected = true;
 			const sessionService = createMockSessionService('session-key');
 			sessionService.activeShip.set({
+				id: 'p1', name: 'S', model: 'M', tier: 1,
 				status: 'ACTIVE',
-				spatial: { solarSystemId: 'sol', positionKm: { x: 100, y: 0, z: 0 } },
+				spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 100, y: 0, z: 0 }, epochMs: 0 },
 			});
 			return new MockMarketHubPage(socketService, sessionService, {
 				playerName: 'Pioneer',
@@ -970,3 +919,4 @@ describe('MarketHubPage', () => {
 		});
 	});
 });
+

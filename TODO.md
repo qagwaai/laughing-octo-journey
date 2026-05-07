@@ -6,14 +6,14 @@
 
 ### Phase A — Stop the bleeding (Priority: HIGH)
 
-- [ ] Add CI guard: every `src/app/**/*.spec.ts` (except `*.integration.spec.ts`) must `import` the file at the matching path; fail the build otherwise.
-- [ ] Extract `src/testing/` shared helpers typed against the real service interfaces:
-  - [ ] `createSignal<T>()` (currently duplicated in 21 spec files)
-  - [ ] `MockSocketService` implementing the public surface of `src/app/services/socket.service.ts` (currently duplicated in 13 spec files)
-  - [ ] `MockSessionService`, `MockMissionService`, `MockPrinterStateService` against their real interfaces
-- [ ] Delete duplicated helper blocks from existing specs once the shared module is in place.
-- [ ] Update [TODO.md](TODO.md) and [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md) test counts to current values (1199 unit / 68 e2e).
-- [ ] Remove scratch file `.cov-extract.cjs` and confirm `coverage/` is git-ignored.
+- [X] Add CI guard: every `src/app/**/*.spec.ts` (except `*.integration.spec.ts`) must `import` the file at the matching path; fail the build otherwise.
+- [X] Extract `src/testing/` shared helpers typed against the real service interfaces:
+  - [X] `createSignal<T>()` (currently duplicated in 21 spec files)
+  - [X] `MockSocketService` implementing the public surface of `src/app/services/socket.service.ts` (currently duplicated in 13 spec files)
+  - [X] `MockSessionService`, `MockMissionService`, `MockPrinterStateService` against their real interfaces
+- [X] Delete duplicated helper blocks from existing specs once the shared module is in place.
+- [X] Update [TODO.md](TODO.md) and [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md) test counts to current values (1199 unit / 68 e2e).
+- [X] Remove scratch file `.cov-extract.cjs` and confirm `coverage/` is git-ignored.
 
 ### Phase B — Convert shadow specs to real component tests (Priority: HIGH)
 
@@ -303,9 +303,9 @@ These items must be completed by the backend team to fully support the client im
 
 ## Testing & Validation Checklist
 
-- [ ] All unit tests passing (26 tests as of last run: drive-profile, jump-gate, market-hub)
-- [ ] All e2e tests passing (2 tests as of last run: market-hub-by-location, market-hub-docking)
-- [ ] Playwright runs report no regressions in existing tests after Phase 8–9 additions
+- [X] All unit tests passing (1199 tests as of 2026-05-07: full suite after Phase A helper migration)
+- [X] All e2e tests passing (68 tests as of 2026-05-07)
+- [X] Playwright runs report no regressions in existing tests after Phase 8–9 additions
 - [ ] Manual testing confirms:
   - AU distances render correctly with km tooltips
   - Drive range clamping in effect

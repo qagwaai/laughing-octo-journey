@@ -1,15 +1,12 @@
 export {};
 
+import { createSignal } from '../../../testing';
+
 // ---------------------------------------------------------------------------
 // Minimal signal factory
 // ---------------------------------------------------------------------------
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => { value = v; };
-	return sig;
-}
+
 
 // ---------------------------------------------------------------------------
 // Local type stubs

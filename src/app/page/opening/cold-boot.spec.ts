@@ -1,12 +1,10 @@
 export {};
 
+import { createMockMissionService, type MockMissionService } from '../../../testing';
+
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const DEFAULT_SHIP_MODEL = 'Scavenger Pod';
 const DEFAULT_SHIP_TIER = 1;
-
-interface MockMissionService {
-	upsertMissionStatus: jasmine.Spy;
-}
 
 interface MockSessionService {
 	getSessionKey: () => string | null;
@@ -52,7 +50,7 @@ class MockColdBootOpeningPage {
 	};
 
 	constructor(
-		private missionService: MockMissionService = { upsertMissionStatus: jasmine.createSpy('upsertMissionStatus') },
+		private missionService: MockMissionService = createMockMissionService(),
 		private sessionService: MockSessionService = {
 			getSessionKey: () => 'session-key',
 			setActiveShip: jasmine.createSpy('setActiveShip'),
@@ -189,9 +187,8 @@ describe('ColdBootOpeningPage', () => {
 	});
 
 	it('should not start mission automatically on init', () => {
-		const missionService: MockMissionService = {
-			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
-		};
+		const missionService = createMockMissionService();
+		missionService.upsertMissionStatus.and.returnValue(Promise.resolve('updated'));
 		const sessionService: MockSessionService = {
 			getSessionKey: () => 'session-key',
 			setActiveShip: jasmine.createSpy('setActiveShip'),
@@ -211,9 +208,8 @@ describe('ColdBootOpeningPage', () => {
 	});
 
 	it('should start first mission and navigate to scanning pane when requested', async () => {
-		const missionService: MockMissionService = {
-			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
-		};
+		const missionService = createMockMissionService();
+		missionService.upsertMissionStatus.and.returnValue(Promise.resolve('updated'));
 		const sessionService: MockSessionService = {
 			getSessionKey: () => 'session-key',
 			setActiveShip: jasmine.createSpy('setActiveShip'),
@@ -263,9 +259,8 @@ describe('ColdBootOpeningPage', () => {
 	});
 
 	it('should surface an error when mission start context is missing', async () => {
-		const missionService: MockMissionService = {
-			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
-		};
+		const missionService = createMockMissionService();
+		missionService.upsertMissionStatus.and.returnValue(Promise.resolve('updated'));
 		const sessionService: MockSessionService = {
 			getSessionKey: () => null,
 			setActiveShip: jasmine.createSpy('setActiveShip'),
@@ -280,9 +275,8 @@ describe('ColdBootOpeningPage', () => {
 	});
 
 	it('should surface an error when mission status update fails', async () => {
-		const missionService: MockMissionService = {
-			upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('update-failed')),
-		};
+		const missionService = createMockMissionService();
+		missionService.upsertMissionStatus.and.returnValue(Promise.resolve('update-failed'));
 		const sessionService: MockSessionService = {
 			getSessionKey: () => 'session-key',
 			setActiveShip: jasmine.createSpy('setActiveShip'),

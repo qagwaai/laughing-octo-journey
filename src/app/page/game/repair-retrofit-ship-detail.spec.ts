@@ -1,3 +1,4 @@
+import { createSignal } from '../../../testing';
 import {
 	HULL_PATCH_KIT_PRINTABLE_ITEM,
 	hasPrintableItemInInventory,
@@ -10,12 +11,7 @@ export {};
 // Minimal signal factory
 // ---------------------------------------------------------------------------
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => { value = v; };
-	return sig;
-}
+
 
 // ---------------------------------------------------------------------------
 // Local type stubs

@@ -1,3 +1,4 @@
+import { createSignal } from '../../../testing';
 import {
 	HULL_PATCH_KIT_PRINTABLE_ITEM,
 	findConsumableMaterialsForPrintableItem,
@@ -17,12 +18,7 @@ export {};
 // Minimal signal factory (avoids Angular DI in unit tests)
 // ---------------------------------------------------------------------------
 
-function createSignal<T>(initial: T) {
-	let value = initial;
-	const sig = () => value;
-	sig.set = (v: T) => { value = v; };
-	return sig;
-}
+
 
 // ---------------------------------------------------------------------------
 // Local type stubs
