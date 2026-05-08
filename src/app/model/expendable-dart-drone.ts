@@ -25,7 +25,7 @@ export function createExpendableDartDrone(): ExpendableDartDrone {
 		container: null,
 		owningPlayerId: null,
 		owningCharacterId: null,
-		kinematics: null,
+		spatial: null,
 		destroyedAt: null,
 		destroyedReason: null,
 		discoveredAt: null,

@@ -22,7 +22,7 @@ describe('ship-list inventory helpers', () => {
 			container: null,
 			owningPlayerId: null,
 			owningCharacterId: null,
-			kinematics: null,
+			spatial: null,
 			destroyedAt: null,
 			destroyedReason: null,
 			discoveredAt: null,

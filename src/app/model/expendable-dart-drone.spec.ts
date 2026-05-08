@@ -31,7 +31,7 @@ describe('expendable-dart-drone model', () => {
 			expect(drone.container).toBeNull();
 			expect(drone.owningPlayerId).toBeNull();
 			expect(drone.owningCharacterId).toBeNull();
-			expect(drone.kinematics).toBeNull();
+			expect(drone.spatial).toBeNull();
 		});
 
 		it('creates a drone with null lifecycle timestamps', () => {
@@ -112,7 +112,7 @@ describe('expendable-dart-drone model', () => {
 				container: null,
 				owningPlayerId: 'player-1',
 				owningCharacterId: 'char-1',
-				kinematics: null,
+				spatial: null,
 				destroyedAt: null,
 				destroyedReason: null,
 				discoveredAt: null,
@@ -140,7 +140,7 @@ describe('expendable-dart-drone model', () => {
 				container: { containerType: 'ship', containerId: 'ship-99' },
 				owningPlayerId: null,
 				owningCharacterId: null,
-				kinematics: null,
+				spatial: null,
 				destroyedAt: null,
 				destroyedReason: null,
 				discoveredAt: null,

@@ -33,7 +33,7 @@ function makeDroneItem(overrides?: Partial<ShipItem>): ShipItem {
 		container: null,
 		owningPlayerId: null,
 		owningCharacterId: null,
-		kinematics: null,
+		spatial: null,
 		destroyedAt: null,
 		destroyedReason: null,
 		discoveredAt: null,

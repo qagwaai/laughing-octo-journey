@@ -1,4 +1,5 @@
 import { ItemContainer, ItemDamageStatus, ItemKinematics, ItemState, ShipItem } from './ship-item';
+import { SpatialState, MotionState } from './spatial';
 
 export const ITEM_UPSERT_REQUEST_EVENT = 'item-upsert-request';
 export const ITEM_UPSERT_RESPONSE_EVENT = 'item-upsert-response';
@@ -12,6 +13,11 @@ export interface ItemUpsertPayload {
 	state?: ItemState;
 	damageStatus?: ItemDamageStatus;
 	container?: ItemContainer | null;
+	/** Canonical spatial state (null for contained items). */
+	spatial?: SpatialState | null;
+	/** Optional motion state; only present when item is in motion. */
+	motion?: MotionState | null;
+	/** Legacy kinematics (deprecated; use spatial/motion instead). */
 	kinematics?: ItemKinematics | null;
 	owningPlayerId?: string | null;
 	owningCharacterId?: string | null;

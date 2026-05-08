@@ -28,7 +28,21 @@ export interface CelestialBodyUpsertEntity {
 	physical?: PhysicalState;
 	composition?: AsteroidMaterialProfile;
 	observability: ObservabilityState;
-	state?: 'active' | 'destroyed';
+	/** Lifecycle state: unscanned | active | destroyed. Defaults to 'active'. */
+	state?: 'unscanned' | 'active' | 'destroyed';
+	/** ISO timestamp when body was destroyed. Only present if state=destroyed. */
+	destroyedAt?: string | null;
+	/** Reason for destruction (e.g., 'impacted-by:expendable-dart-drone'). */
+	destroyedReason?: string | null;
+	/** Deterministic seed for debris generation on target-destroyed outcomes. */
+	debrisSeed?: number | null;
+	/** Array of debris items yielded from destruction. */
+	debris?: Array<{
+		material: string;
+		rarity: string;
+		quantity: number;
+		itemType: string;
+	}>;
 }
 
 export interface CelestialBodyUpsertRequest {

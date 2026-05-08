@@ -1,22 +1,699 @@
 # Server Message Contracts
 
-This document describes the socket message contracts currently used by the application when talking to the server.
+This document describes the socket message contracts currently used by the application when talking to the server. This is the canonical specification; implementation must conform to this contract.
+
+**Contract Version**: 2.0.0 (canonical-only; no dual-key transition)  
+**Last Updated**: 2026-05-08
 
 ## Scope
 
-- Source of truth: client-side models and usage in page components.
-- These contracts are what the client expects to send and receive.
-- If server behavior differs, update both server and this document together.
+- Source of truth: remote server contract (https://github.com/qagwaai/solid-train/blob/main/MESSAGE_CONTRACT.md)
+- These contracts are what the client must send and receive.
+- All string fields are trimmed by the server.
+- Player lookup is case-insensitive by `playerName`; canonical casing is returned.
+- Invalid or missing session for character operations emits `invalid-session` event instead of typed response.
 
 ## Global Requirements
 
 - Transport: Socket.IO events.
 - Message shape: JSON-compatible payloads.
 - Session handling: authenticated character operations require a valid `sessionKey`.
-- Invalid session behavior: server can emit `invalid-session` at any time; client clears session and routes back to login.
+- Invalid session behavior: server emits `invalid-session` at any time; client clears session and routes back to login.
 - One-response pattern: for each request event below, the client attaches one temporary response listener and unsubscribes after the first matching response.
 
+## Canonical Data Models
+
+### Spatial Representation
+
+All entities in space use canonical spatial + optional motion representation:
+
+```typescript
+spatial: {
+  solarSystemId: string;        // unique solar system identifier
+  frame: "barycentric";         // always barycentric (center-of-mass frame)
+  positionKm: { x, y, z };      // position in kilometers
+  epochMs: number;              // milliseconds timestamp
+}
+
+motion: {
+  velocityKmPerSec: { x, y, z }; // optional motion vector
+}
+```
+
+### Distance Units
+
+- **Spatial distances**: always in kilometers (`distanceKm`)
+- **Market/drive distances**: always in astronomical units (`distanceAu`), 1 AU = 149,597,870.7 km
+- **Market route descriptor**: `{ kind: "in-system" | "gate-route" | "no-route", hops?: number }`
+
+### Item Spatial (Canonical)
+
+Items use canonical spatial + optional motion; legacy `kinematics` is rejected:
+
+```typescript
+spatial: SpatialState | null;      // null for contained items
+motion?: MotionState | null;       // optional when present
+// kinematics is REJECTED with message: "use canonical item.spatial (and optional item.motion) instead"
+```
+
+### Celestial Body Lifecycle
+
+Celestial bodies track lifecycle state and destruction:
+
+```typescript
+state: "unscanned" | "active" | "destroyed";   // defaults to "active"
+destroyedAt?: string | null;                   // ISO timestamp
+destroyedReason?: string | null;               // reason for destruction
+debrisSeed?: number | null;                    // deterministic seed for debris
+debris?: Array<{ material, rarity, quantity, itemType }>;
+```
+
+### Market Response Fields
+
+Markets include:
+
+```typescript
+spatial: SpatialState;                    // canonical position
+trajectory?: {                            // optional orbital data
+  kind: "static" | "orbital-elements";
+  orbit?: { anchorBodyId, semiMajorAxisKm, eccentricity, ... }
+};
+route?: {                                 // for location-filtered queries
+  kind: "in-system" | "gate-route" | "no-route";
+  hops?: number;
+};
+distanceAu?: number;                      // distance in AU (null for cross-system)
+isStarterMarket?: boolean;
+```
+
+### Ship Drive Profile (Canonical)
+
+Ships optionally include configured drives:
+
+```typescript
+driveProfile?: {
+  id: "standard-cruise" | "rapid-transit" | "quantum-fold";
+  name: string;
+  rangeAu: number;
+  cruiseSpeedAuPerHour: number;
+  fuelCostPerAu: number;
+} | null;
+```
+
+All numeric fields must be positive and finite; invalid profiles are silently dropped.
+
+### Locale Handling
+
+- `register` and `login` accept optional `locale` parameter
+- Normalized as lowercase base language: `en-US` → `en`, `it-IT` → `it`
+- Supported: `en`, `it`; unknown/missing defaults to `en`
+- `register`: persists locale as `preferredLocale`
+- `login`: updates `preferredLocale` when locale is provided; preserves existing when omitted
+
+---
+
 ## Event Catalog
+
+| Event Name | Direction | Purpose |
+| --- | --- | --- |
+| `login` | client -> server | Authenticate existing player |
+| `login-response` | server -> client | Return login result with sessionKey |
+| `register` | client -> server | Register a new player |
+| `register-response` | server -> client | Return registration result |
+| `character-list-request` | client -> server | Fetch player characters |
+| `character-list-response` | server -> client | Return character list with ships/missions |
+| `character-add-request` | client -> server | Create a new character |
+| `character-add-response` | server -> client | Return character creation result |
+| `character-edit` | client -> server | Update an existing character |
+| `character-edit-response` | server -> client | Return character edit result |
+| `character-delete-request` | client -> server | Delete an existing character |
+| `character-delete-response` | server -> client | Return character delete result |
+| `game-join` | client -> server | Validate and begin game join for selected character |
+| `game-join-response` | server -> client | Return game join validation/result |
+| `ship-list-request` | client -> server | Fetch ship list for selected character |
+| `ship-list-response` | server -> client | Return ship list with canonical spatial and driveProfile |
+| `ship-upsert-request` | client -> server | Patch/update an existing ship |
+| `ship-upsert-response` | server -> client | Return ship patch/update result |
+| `celestial-body-upsert-request` | client -> server | Upsert scanned celestial body with canonical spatial |
+| `celestial-body-upsert-response` | server -> client | Return celestial body upsert result |
+| `celestial-body-list-request` | client -> server | Fetch celestial bodies within spatial radius |
+| `celestial-body-list-response` | server -> client | Return celestial body list with lifecycle state |
+| `add-mission-request` | client -> server | Add mission status record for selected character |
+| `add-mission-response` | server -> client | Return mission add result |
+| `mission-upsert-request` | client -> server | Alias for add-mission-request |
+| `mission-upsert-response` | server -> client | Alias for add-mission-response |
+| `list-missions-request` | client -> server | Fetch missions and statuses for selected character |
+| `list-missions-response` | server -> client | Return mission list/statuses |
+| `market-list-request` | client -> server | Fetch markets for current or requested solar system |
+| `market-list-response` | server -> client | Return market list with canonical spatial and trajectory |
+| `market-list-by-location-request` | client -> server | Fetch nearby markets by position and distanceAu radius |
+| `market-list-by-location-response` | server -> client | Return nearby markets with route descriptor and docking state |
+| `market-quote-request` | client -> server | Request a buy or sell price quote for a market item |
+| `market-quote-response` | server -> client | Return price quote with requestId echo |
+| `market-inventory-list-request` | client -> server | Fetch paginated market item catalog |
+| `market-inventory-list-response` | server -> client | Return market item catalog with stock levels |
+| `market-buy-request` | client -> server | Execute a buy transaction at a market |
+| `market-buy-response` | server -> client | Return buy transaction result with requestId echo |
+| `market-sell-request` | client -> server | Execute a sell transaction at a market |
+| `market-sell-response` | server -> client | Return sell transaction result with requestId echo |
+| `market-ledger-list-request` | client -> server | Fetch paginated market transaction ledger |
+| `market-ledger-list-response` | server -> client | Return market transaction ledger entries |
+| `item-upsert-request` | client -> server | Create or update an item with canonical spatial/motion |
+| `item-upsert-response` | server -> client | Return item create/update result |
+| `item-list-by-container-request` | client -> server | Fetch items by container (ship or market) |
+| `item-list-by-container-response` | server -> client | Return items in a specified container |
+| `item-list-by-location-request` | client -> server | Fetch deployed items within spatial radius |
+| `item-list-by-location-response` | server -> client | Return deployed items within spatial radius with distanceKm |
+| `launch-item-request` | client -> server | Launch a ship inventory item at a target celestial body |
+| `launch-item-response` | server -> client | Return launch outcome and resolution details |
+| `invalid-session` | server -> client | Notify client session is no longer valid |
+
+---
+
+## Market Listing
+
+### `market-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string (optional)"
+}
+```
+
+Client-side behavior:
+
+- `playerName` is trimmed before sending.
+- `sessionKey` is required.
+- Omitting `solarSystemId` returns markets across all solar systems.
+
+### `market-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Market list retrieved successfully",
+  "playerName": "canonical player name",
+  "solarSystemId": "sol (optional)",
+  "markets": [
+    {
+      "marketId": "sol-ceres-exchange",
+      "solarSystemId": "sol",
+      "marketName": "Ceres Exchange",
+      "siteType": "station",
+      "siteName": "Ceres Belt Trade Ring",
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+        "epochMs": 1776384000000
+      },
+      "trajectory": {
+        "kind": "orbital-elements",
+        "orbit": {
+          "anchorBodyId": "ceres",
+          "semiMajorAxisKm": 480,
+          "eccentricity": 0.006,
+          "inclinationDeg": 2.1,
+          "longitudeOfAscendingNodeDeg": 95,
+          "argumentOfPeriapsisDeg": 12,
+          "meanAnomalyAtEpochDeg": 8,
+          "orbitalPeriodSec": 21600,
+          "epoch": "2026-05-08T00:00:00.000Z"
+        }
+      },
+      "distanceAu": 2.766,
+      "priceMultiplier": 1,
+      "driftPercentPerHour": 6,
+      "restockIntervalMinutes": 60
+    }
+  ]
+}
+```
+
+**Edge cases:**
+- `distanceAu` is computed from solar system barycenter `{x:0,y:0,z:0}`
+
+### `market-list-by-location-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceAu": 0.5,
+  "limit": 50 (optional),
+  "locationTypes": ["station"] (optional; case-insensitive match),
+  "characterId": "string (optional; for docking state)",
+  "shipId": "string (optional; for docking state)"
+}
+```
+
+Client-side behavior:
+
+- Used by Market Hub for local-area browsing.
+- `positionKm` comes from active ship spatial state.
+- `distanceAu` comes from user-selected radius (NOT `distanceKm`).
+- Client clamps `distanceAu` to the active drive range before emitting the request.
+- `locationTypes` is a request-time filter list (for example `['station']`).
+- `characterId` and `shipId` are included when available so server can compute docking state.
+
+### `market-list-by-location-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Local market list retrieved successfully",
+  "playerName": "canonical player name",
+  "solarSystemId": "sol",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceAu": 0.5,
+  "locationTypes": ["station"],
+  "isDocked": false,
+  "dockedMarketId": null,
+  "markets": [
+    {
+      "marketId": "sol-ceres-exchange",
+      "solarSystemId": "sol",
+      "marketName": "Ceres Exchange",
+      "siteType": "station",
+      "siteName": "Ceres Belt Trade Ring",
+      "isStarterMarket": true,
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 123.45, "y": -22.1, "z": 0.9 },
+        "epochMs": 1776384000000
+      },
+      "trajectory": {
+        "kind": "orbital-elements",
+        "orbit": { ... }
+      },
+      "distanceAu": 0.032,
+      "route": { "kind": "in-system" },
+      "isDocked": false,
+      "priceMultiplier": 1,
+      "driftPercentPerHour": 6,
+      "restockIntervalMinutes": 60
+    },
+    {
+      "marketId": "ac-proxima-station",
+      "solarSystemId": "alpha-centauri",
+      "marketName": "Proxima Gateway Market",
+      "siteType": "station",
+      "siteName": "Proxima Centauri Orbital Market",
+      "isStarterMarket": true,
+      "spatial": { ... },
+      "trajectory": { ... },
+      "distanceAu": null,
+      "route": { "kind": "gate-route", "hops": 1 },
+      "isDocked": false,
+      "priceMultiplier": 1.12,
+      "driftPercentPerHour": 6,
+      "restockIntervalMinutes": 60
+    }
+  ]
+}
+```
+
+**Edge cases:**
+- Invalid session emits `invalid-session` instead of market-list-by-location-response.
+- Distances are server-computed from market spatial state and request `positionKm`.
+- Distance is expressed as `distanceAu` (1 AU = 149,597,870.7 km).
+- Results sorted: in-system markets first (nearest-first by km), then gate-route markets (fewest hops), then no-route markets.
+- Cross-system markets have `distanceAu: null` since in-system distances are not applicable.
+- Results are capped by `limit` after sorting.
+
+---
+
+## Ship List
+
+### `ship-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "characterId": "string",
+  "sessionKey": "string"
+}
+```
+
+### `ship-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Ship list retrieved successfully",
+  "playerName": "canonical player name",
+  "characterId": "<character id>",
+  "ships": [
+    {
+      "id": "<ship id>",
+      "name": "<ship name>",
+      "status": "active (or null)",
+      "model": "Scavenger Pod",
+      "tier": 1,
+      "inventory": [ ... ],
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 100.5, "y": 200.3, "z": 50.1 },
+        "epochMs": 1713607200000
+      },
+      "motion": {
+        "velocityKmPerSec": { "x": 0.5, "y": -0.2, "z": 0.1 }
+      },
+      "launchable": true,
+      "damageProfile": { ... } or null,
+      "driveProfile": {
+        "id": "standard-cruise",
+        "name": "Standard Cruise Drive",
+        "rangeAu": 10,
+        "cruiseSpeedAuPerHour": 0.5,
+        "fuelCostPerAu": 2.5
+      } or null
+    }
+  ]
+}
+```
+
+**Edge cases:**
+- Invalid session emits `invalid-session`.
+- `driveProfile` is included when the ship has a configured drive; it is `null` or absent otherwise.
+- All `driveProfile` numeric fields must be positive and finite; invalid profiles are silently dropped.
+
+---
+
+## Item Upsert
+
+### `item-upsert-request` (request)
+
+Required payload (example):
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "item": {
+    "id": "string (optional; omit to create)",
+    "itemType": "expendable-dart-drone",
+    "displayName": "Expendable Dart Drone",
+    "state": "deployed",
+    "damageStatus": "intact",
+    "container": null,
+    "spatial": {
+      "solarSystemId": "sol",
+      "frame": "barycentric",
+      "positionKm": { "x": 100, "y": 200, "z": 300 },
+      "epochMs": 1713607200000
+    },
+    "motion": {
+      "velocityKmPerSec": { "x": 1, "y": 0.5, "z": 0 }
+    },
+    "launchable": true
+  }
+}
+```
+
+**Key contract changes:**
+- `spatial` and optional `motion` are now CANONICAL (required for deployed items).
+- Legacy `kinematics` is EXPLICITLY REJECTED with message: "item.kinematics is no longer accepted; use canonical item.spatial (and optional item.motion) instead"
+- Contained items have `spatial: null`.
+- `motion` is optional and only set when item is moving.
+
+### `item-upsert-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Item created successfully",
+  "playerName": "canonical player name",
+  "item": {
+    "id": "<uuid>",
+    "itemType": "expendable-dart-drone",
+    "displayName": "Expendable Dart Drone",
+    "state": "contained",
+    "damageStatus": "intact",
+    "container": { "containerType": "ship", "containerId": "<ship id>" },
+    "spatial": null,
+    "motion": null,
+    "owningPlayerId": "<player id>",
+    "owningCharacterId": "<character id>",
+    "destroyedAt": null,
+    "destroyedReason": null,
+    "discoveredAt": null,
+    "discoveredByCharacterId": null,
+    "launchable": true,
+    "createdAt": "2026-05-08T...",
+    "updatedAt": "2026-05-08T..."
+  }
+}
+```
+
+---
+
+## Celestial Body Listing
+
+### `celestial-body-list-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "solarSystemId": "string",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100,
+  "limit": 50 (optional),
+  "states": ["active", "unscanned"] (optional)
+}
+```
+
+**Note:** Uses `distanceKm`, NOT `distanceAu` (unlike market queries).
+
+### `celestial-body-list-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "Celestial body list retrieved successfully",
+  "playerName": "canonical player name",
+  "solarSystemId": "sol",
+  "positionKm": { "x": 0, "y": 0, "z": 0 },
+  "distanceKm": 100,
+  "celestialBodies": [
+    {
+      "id": "<celestial body id>",
+      "catalogId": "<catalog id>",
+      "sourceScanId": "<scan id>",
+      "createdByCharacterId": "<character id>",
+      "missionId": "first-target",
+      "missionInstanceId": null,
+      "createdAt": "2026-05-08T...",
+      "updatedAt": "2026-05-08T...",
+      "spatial": {
+        "solarSystemId": "sol",
+        "frame": "barycentric",
+        "positionKm": { "x": 1, "y": 2, "z": 3 },
+        "epochMs": 1776384000000
+      },
+      "motion": {
+        "velocityKmPerSec": { "x": 1, "y": 2, "z": 3 }
+      },
+      "physical": {
+        "estimatedMassKg": 42000000000,
+        "estimatedDiameterM": 320
+      },
+      "observability": {
+        "visibility": "visible",
+        "scanState": "scanned"
+      },
+      "composition": {
+        "rarity": "Rare",
+        "material": "Nickel-Iron",
+        "textureColor": "#8df7b2"
+      },
+      "state": "active",
+      "destroyedAt": null,
+      "destroyedReason": null,
+      "debrisSeed": null,
+      "debris": [],
+      "distanceKm": 3.74
+    }
+  ]
+}
+```
+
+**Edge cases:**
+- Invalid session emits `invalid-session`.
+- By default, list includes all lifecycle states unless `states` filter is provided.
+- Results are sorted nearest-first by computed `distanceKm`.
+- `limit` is applied after filtering and sorting.
+
+---
+
+## Launch Item
+
+### `launch-item-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "characterId": "string",
+  "shipId": "string",
+  "targetCelestialBodyId": "string",
+  "hotkey": 1,
+  "itemId": "string",
+  "itemType": "string"
+}
+```
+
+### `launch-item-response` (response)
+
+**Success: target-destroyed outcome**
+
+```json
+{
+  "success": true,
+  "message": "Launch successful: target destroyed and materials yielded",
+  "playerName": "canonical player name",
+  "characterId": "<character id>",
+  "shipId": "<ship id>",
+  "targetCelestialBodyId": "<celestial body id>",
+  "hotkey": 3,
+  "itemId": "<item id>",
+  "itemType": "expendable-dart-drone",
+  "launchedItem": {
+    "id": "<item id>",
+    "state": "destroyed",
+    "container": null,
+    "launchable": false,
+    "destroyedAt": "2026-05-08T...",
+    "destroyedReason": "expended-on-target:<celestial body id>",
+    "updatedAt": "2026-05-08T..."
+  },
+  "resolution": {
+    "outcome": "target-destroyed",
+    "targetDestroyed": true,
+    "yieldedMaterials": [
+      {
+        "material": "Nickel-Iron",
+        "rarity": "Rare",
+        "quantity": 32
+      }
+    ],
+    "yieldedItems": [
+      {
+        "id": "<item id>",
+        "itemType": "raw-material-nickel-iron",
+        "displayName": "Nickel-Iron (Raw Material)",
+        "quantity": 32,
+        "state": "contained",
+        "container": {
+          "containerType": "ship",
+          "containerId": "<ship id>"
+        },
+        "launchable": false
+      }
+    ],
+    "targetCelestialBody": {
+      "id": "<celestial body id>",
+      "state": "destroyed",
+      "destroyedAt": "2026-05-08T...",
+      "destroyedReason": "impacted-by:expendable-dart-drone",
+      "debrisSeed": 123456789,
+      "debris": [
+        {
+          "material": "Nickel-Iron",
+          "rarity": "Rare",
+          "quantity": 32,
+          "itemType": "raw-material-nickel-iron"
+        }
+      ]
+    },
+    "launchSeed": 123456789
+  }
+}
+```
+
+**Success: no-effect outcome**
+
+```json
+{
+  "success": true,
+  "message": "Launch completed with no effect for itemType: basic-mining-laser",
+  "playerName": "canonical player name",
+  "characterId": "<character id>",
+  "shipId": "<ship id>",
+  "targetCelestialBodyId": "<celestial body id>",
+  "hotkey": 2,
+  "itemId": "<item id>",
+  "itemType": "basic-mining-laser",
+  "launchedItem": {
+    "id": "<item id>",
+    "state": "destroyed",
+    "container": null,
+    "launchable": false
+  },
+  "resolution": {
+    "outcome": "no-effect",
+    "targetDestroyed": false,
+    "yieldedMaterials": [],
+    "yieldedItems": [],
+    "launchSeed": 123456789
+  }
+}
+```
+
+**Yield Quantity Calculation:**
+```
+baseFromMass = max(1, round(estimatedMassKg / 5,000,000,000))
+quantity = clamp(baseFromMass * 2, 1, 100)
+```
+
+**Edge cases:**
+- Invalid session emits `invalid-session`.
+- The launched item is always consumed, including `no-effect` outcomes.
+- `launchSeed` is deterministic for same inputs.
+- Yielded materials persisted as quantity-based item records added to ship inventory.
+- Target state transitions to `destroyed`; `destroyedAt` and `destroyedReason` are server-set.
+
+---
+
+## Notes For Client Implementers
+
+- Treat `invalid-session` as a top-level auth/session failure signal; clear session and route to login.
+- Use returned `playerName` as the canonical casing from server state when present.
+- For login failures, branch on `reason` field in addition to `message`.
+- **Item spatial/motion is CANONICAL**; reject requests with legacy `kinematics`.
+- **Market distances are in AU**; clamp `distanceAu` to drive range before sending market-list-by-location-request.
+- **Celestial body distances are in km** (spherical radius query).
+- Market responses include `trajectory` for orbital mechanics; `route` for pathfinding context.
+- Ship responses include optional `driveProfile` when a drive is configured.
+
+
 
 | Event Name | Direction | Purpose |
 | --- | --- | --- |

@@ -28,7 +28,7 @@ export function create3DPrinter(): ThreeDPrinter {
 		container: null,
 		owningPlayerId: null,
 		owningCharacterId: null,
-		kinematics: null,
+		spatial: null,
 		destroyedAt: null,
 		destroyedReason: null,
 		discoveredAt: null,

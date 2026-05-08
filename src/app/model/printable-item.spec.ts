@@ -22,7 +22,7 @@ function makeItem(overrides: Partial<ShipItem> & { itemType: string; displayName
     container: null,
     owningPlayerId: null,
     owningCharacterId: null,
-    kinematics: null,
+    spatial: null,
     destroyedAt: null,
     destroyedReason: null,
     discoveredAt: null,
