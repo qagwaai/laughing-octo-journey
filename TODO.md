@@ -34,7 +34,7 @@ Order by LOC / traffic:
 - [X] [src/app/page/character/character-setup.spec.ts](src/app/page/character/character-setup.spec.ts)
 - [X] [src/app/page/public/login.spec.ts](src/app/page/public/login.spec.ts), [src/app/page/public/registration.spec.ts](src/app/page/public/registration.spec.ts), [src/app/page/public/intro.spec.ts](src/app/page/public/intro.spec.ts)
 - [x] [src/app/page/opening/cold-boot.spec.ts](src/app/page/opening/cold-boot.spec.ts)
-- [ ] [src/app/scene/ship-exterior-view.spec.ts](src/app/scene/ship-exterior-view.spec.ts), [src/app/scene/ship-view-specs.spec.ts](src/app/scene/ship-view-specs.spec.ts)
+- [x] [src/app/scene/ship-exterior-view.spec.ts](src/app/scene/ship-exterior-view.spec.ts), [src/app/scene/ship-view-specs.spec.ts](src/app/scene/ship-view-specs.spec.ts)
 - [ ] [src/app/scene/hud/cold-boot-hud-scene.spec.ts](src/app/scene/hud/cold-boot-hud-scene.spec.ts), [src/app/scene/hud/hud-overlay.spec.ts](src/app/scene/hud/hud-overlay.spec.ts)
 - [ ] [src/app/component/button.spec.ts](src/app/component/button.spec.ts), [src/app/component/current.spec.ts](src/app/component/current.spec.ts)
 - [ ] [src/app/services/mission-flow.integration.spec.ts](src/app/services/mission-flow.integration.spec.ts) — convert to a real integration test wired to the real `MissionService` + fake `SocketService`

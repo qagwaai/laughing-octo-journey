@@ -1,51 +1,63 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
+import { NGT_STORE } from 'angular-three';
 
-import { createSignal } from '../../testing';
+import ShipViewSpecs from './ship-view-specs';
 
-
-
-interface ShipViewSpecsState {
+interface NavigationState {
 	playerName?: string;
 	joinCharacter?: { id: string; characterName: string };
 	joinShip?: { id: string; name: string; model?: string; tier?: number; status?: string };
 }
 
-class MockShipViewSpecsScene {
-	currentRouteLabel = '/ship-view-specs';
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<ShipViewSpecsState['joinCharacter'] | null>(null);
-	joinShip = createSignal<ShipViewSpecsState['joinShip'] | null>(null);
+function setup(state?: NavigationState) {
+	const mockRouter = {
+		getCurrentNavigation: () => (state ? { extras: { state } } : null),
+	};
 
-	constructor(state?: ShipViewSpecsState) {
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-		this.joinShip.set(state?.joinShip ?? null);
-	}
+	TestBed.configureTestingModule({
+		imports: [ShipViewSpecs],
+		providers: [
+			{ provide: Router, useValue: mockRouter },
+			{ provide: NGT_STORE, useValue: { snapshot: { gl: {} } } },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
+
+	TestBed.overrideComponent(ShipViewSpecs, { set: { imports: [], template: '' } });
+
+	const fixture = TestBed.createComponent(ShipViewSpecs);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture };
 }
 
 describe('ShipViewSpecs Scene', () => {
+	afterEach(() => TestBed.resetTestingModule());
+
 	it('should initialize selected ship context from navigation state', () => {
-		const component = new MockShipViewSpecsScene({
+		const { component } = setup({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 			joinShip: { id: 'd-2', name: 'Guardian', model: 'G-Class', tier: 2, status: 'ACTIVE' },
 		});
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova' });
-		expect(component.joinShip()).toEqual({ id: 'd-2', name: 'Guardian', model: 'G-Class', tier: 2, status: 'ACTIVE' });
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toEqual(jasmine.objectContaining({ id: 'c-1', characterName: 'Nova' }));
+		expect(component['joinShip']()).toEqual(jasmine.objectContaining({ id: 'd-2', name: 'Guardian', model: 'G-Class', tier: 2, status: 'ACTIVE' }));
 	});
 
 	it('should handle missing ship context safely', () => {
-		const component = new MockShipViewSpecsScene({ playerName: 'Pioneer' });
+		const { component } = setup({ playerName: 'Pioneer' });
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toBeNull();
-		expect(component.joinShip()).toBeNull();
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toBeNull();
+		expect(component['joinShip']()).toBeNull();
 	});
 
 	it('should define its own current route label for in-canvas display', () => {
-		const component = new MockShipViewSpecsScene();
-		expect(component.currentRouteLabel).toBe('/ship-view-specs');
+		const { component } = setup();
+		// Real component uses computed 'routeLabel' (not 'currentRouteLabel' string property)
+		expect(component['routeLabel']()).toBe('/ship-view-specs');
 	});
 });
