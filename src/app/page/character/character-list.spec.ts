@@ -1,380 +1,150 @@
-import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Router } from '@angular/router';
+import CharacterListPage from './character-list';
+import { SocketService } from '../../services/socket.service';
+import { SessionService } from '../../services/session.service';
+import {
+	createMockSocketService,
+	type MockSocketService,
+	createMockSessionService,
+	type MockSessionService,
+} from '../../../testing';
 import {
 	CHARACTER_DELETE_REQUEST_EVENT,
 	CHARACTER_DELETE_RESPONSE_EVENT,
-	CharacterDeleteRequest,
-	CharacterDeleteResponse,
+	type CharacterDeleteResponse,
 } from '../../model/character-delete';
 import {
 	CHARACTER_LIST_REQUEST_EVENT,
 	CHARACTER_LIST_RESPONSE_EVENT,
-	CharacterListRequest,
-	CharacterListResponse,
+	type CharacterListResponse,
 } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import {
-	GAME_JOIN_REQUEST_EVENT,
-	GameJoinRequest,
-} from '../../model/game-join';
+import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
+// ---------------------------------------------------------------------------
+// Test helpers
+// ---------------------------------------------------------------------------
 
-
-
-
-interface MockRouter {
-	navigate: jasmine.Spy;
+function makeMockRouter(playerName = 'Pioneer') {
+	return {
+		getCurrentNavigation: () => ({ extras: { state: { playerName } } }),
+		navigate: jasmine.createSpy('navigate').and.returnValue(Promise.resolve(true)),
+	};
 }
 
+function setup(options: {
+	socketService: MockSocketService;
+	sessionService: MockSessionService;
+	playerName?: string;
+}): { component: CharacterListPage; fixture: ComponentFixture<CharacterListPage> } {
+	const router = makeMockRouter(options.playerName ?? 'Pioneer');
 
+	TestBed.configureTestingModule({
+		imports: [CharacterListPage],
+		providers: [
+			{ provide: SocketService, useValue: options.socketService },
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: Router, useValue: router },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-
-
-
-
-class MockCharacterListPage {
-	private socketService: MockSocketService;
-	private router: MockRouter;
-	private sessionService: MockSessionService;
-	private unsubscribeResponse?: () => void;
-	private unsubscribeDeleteResponse?: () => void;
-	private unsubscribeInvalidSession?: () => void;
-
-	playerName = createSignal('Pioneer');
-	characters = createSignal<any[]>([]);
-	isLoading = createSignal(false);
-	errorMessage = createSignal<string | null>(null);
-	pendingDeleteCharacter = createSignal<any | null>(null);
-	isDeleting = createSignal(false);
-
-	constructor(socketService: MockSocketService, router: MockRouter, sessionService: MockSessionService) {
-		this.socketService = socketService;
-		this.router = router;
-		this.sessionService = sessionService;
-
-		this.unsubscribeInvalidSession = this.socketService.on(
-			INVALID_SESSION_EVENT,
-			() => {
-				this.sessionService.clearSession();
-				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-			},
-		);
-
-		if (this.socketService.getIsConnected()) {
-			this.loadCharacters();
-		} else {
-			this.socketService.once('connect', () => this.loadCharacters());
-		}
-	}
-
-	loadCharacters(): void {
-		const playerName = this.playerName().trim();
-		if (!playerName) {
-			this.errorMessage.set('Player name is required to load characters.');
-			this.characters.set([]);
-			return;
-		}
-
-		this.isLoading.set(true);
-		this.errorMessage.set(null);
-		this.unsubscribeResponse?.();
-
-		this.unsubscribeResponse = this.socketService.on(
-			CHARACTER_LIST_RESPONSE_EVENT,
-			(response: CharacterListResponse) => {
-				this.isLoading.set(false);
-				if (response.success) {
-					this.characters.set(this.normalizeCharacters(response.characters));
-				} else {
-					this.characters.set([]);
-					this.errorMessage.set(response.message);
-				}
-				this.unsubscribeResponse?.();
-			},
-		);
-
-		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
-		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
-	}
-
-	private normalizeCharacters(characters: unknown): any[] {
-		if (!Array.isArray(characters)) {
-			return [];
-		}
-
-		return characters.map((raw, index) => {
-			const item = (raw ?? {}) as {
-				id?: unknown;
-				characterId?: unknown;
-				characterName?: unknown;
-				name?: unknown;
-				character?: { name?: unknown };
-				level?: unknown;
-				createdAt?: unknown;
-				missions?: unknown;
-			};
-
-			const nameFromObject =
-				typeof item.character?.name === 'string' ? item.character.name : undefined;
-			const resolvedCharacterName =
-				typeof item.characterName === 'string'
-					? item.characterName
-					: typeof item.name === 'string'
-						? item.name
-						: nameFromObject;
-			const missions = this.normalizeMissionProgress(item.missions);
-
-			return {
-				id:
-					typeof item.id === 'string'
-						? item.id
-						: typeof item.characterId === 'string'
-							? item.characterId
-							: `char-${index}`,
-				characterName: (resolvedCharacterName ?? '').trim(),
-				level: typeof item.level === 'number' ? item.level : undefined,
-				createdAt: typeof item.createdAt === 'string' ? item.createdAt : undefined,
-				...(missions ? { missions } : {}),
-			};
-		});
-	}
-
-	private normalizeMissionProgress(missions: unknown): any[] | undefined {
-		if (!Array.isArray(missions)) {
-			return undefined;
-		}
-
-		const normalizedMissions = missions.flatMap((rawMission) => {
-			const mission = (rawMission ?? {}) as { missionId?: unknown; status?: unknown };
-			if (typeof mission.missionId !== 'string' || typeof mission.status !== 'string') {
-				return [];
-			}
-
-			return [{ missionId: mission.missionId, status: mission.status }];
-		});
-
-		return normalizedMissions.length > 0 ? normalizedMissions : undefined;
-	}
-
-	private getFirstTargetStatus(character: any): string | null {
-		const firstTargetMission = character.missions?.find((mission: any) => mission.missionId === FIRST_TARGET_MISSION_ID);
-		return firstTargetMission?.status ?? null;
-	}
-
-	getJoinGameLabel(character: any): string {
-		return this.getFirstTargetStatus(character) === 'started'
-			? 'Join Game in Progress'
-			: 'Join Game';
-	}
-
-	requestDeleteCharacter(character: any): void {
-		this.errorMessage.set(null);
-		this.pendingDeleteCharacter.set(character);
-	}
-
-	cancelDeleteCharacter(): void {
-		if (this.isDeleting()) {
-			return;
-		}
-		this.pendingDeleteCharacter.set(null);
-	}
-
-	confirmDeleteCharacter(): void {
-		const playerName = this.playerName().trim();
-		const character = this.pendingDeleteCharacter();
-		if (!character) {
-			return;
-		}
-		if (!playerName) {
-			this.errorMessage.set('Player name is required to delete a character.');
-			return;
-		}
-
-		this.isDeleting.set(true);
-		this.errorMessage.set(null);
-		this.unsubscribeDeleteResponse?.();
-
-		this.unsubscribeDeleteResponse = this.socketService.on(
-			CHARACTER_DELETE_RESPONSE_EVENT,
-			(response: CharacterDeleteResponse) => {
-				this.isDeleting.set(false);
-				if (response.success) {
-					this.characters.set(this.characters().filter((c) => c.id !== character.id));
-					this.pendingDeleteCharacter.set(null);
-				} else {
-					this.errorMessage.set(response.message);
-				}
-				this.unsubscribeDeleteResponse?.();
-			},
-		);
-
-		const request: CharacterDeleteRequest = {
-			playerName,
-			characterId: character.id,
-			characterName: character.characterName,
-			sessionKey: this.sessionService.getSessionKey()!,
-		};
-		this.socketService.emit(CHARACTER_DELETE_REQUEST_EVENT, request);
-	}
-
-	navigateToCharacterSetup(): void {
-		const playerName = this.playerName();
-		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
-			preserveFragment: true,
-			state: { playerName, mode: 'create' },
-		});
-	}
-
-	navigateToCharacterEdit(character: any): void {
-		const playerName = this.playerName();
-		this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
-			preserveFragment: true,
-			state: {
-				playerName,
-				mode: 'edit',
-				editCharacter: character,
-			},
-		});
-	}
-
-	navigateToGameJoin(character: any): void {
-		const playerName = this.playerName().trim();
-		if (!playerName) {
-			this.errorMessage.set('Player name is required to join a game.');
-			return;
-		}
-		if (!character.id) {
-			this.errorMessage.set('Character id is required to join a game.');
-			return;
-		}
-
-		const request: GameJoinRequest = {
-			playerName,
-			characterId: character.id,
-			sessionKey: this.sessionService.getSessionKey()!,
-		};
-		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
-
-		const firstTargetStatus = this.getFirstTargetStatus(character);
-			const isFirstTargetInProgress =
-				firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
-			if (isFirstTargetInProgress) {
-				this.sessionService.setActiveShip({
-					id: `starter-pod-${character.id}`,
-					name: 'Scavenger Pod',
-					model: 'Scavenger Pod',
-					tier: 1,
-					status: 'ACTIVE',
-					spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
-				});
-			window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
-		}
-
-		const outlets =
-				isFirstTargetInProgress
-				? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
-				: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
-			const missionContext = isFirstTargetInProgress
-			? {
-				missionId: FIRST_TARGET_MISSION_ID,
-				missionStatusHint: firstTargetStatus,
-				seedPolicy: 'auto',
-				shipDamagePreset: 'cold-boot-starter-damaged',
-			}
-			: undefined;
-
-		this.router.navigate([{ outlets }], {
-			preserveFragment: true,
-			state: {
-				playerName,
-				joinCharacter: character,
-				...(missionContext ? { missionContext } : {}),
-					...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
-			},
-		});
-	}
-
-	ngOnDestroy(): void {
-		this.unsubscribeResponse?.();
-		this.unsubscribeDeleteResponse?.();
-		this.unsubscribeInvalidSession?.();
-	}
+	const fixture = TestBed.createComponent(CharacterListPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture };
 }
+
+// ---------------------------------------------------------------------------
+// Spec
+// ---------------------------------------------------------------------------
 
 describe('CharacterListPage', () => {
-	let component: MockCharacterListPage;
 	let socketService: MockSocketService;
-	let router: MockRouter;
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
-		router = { navigate: jasmine.createSpy() };
 		sessionService = createMockSessionService('test-session-key');
-		component = new MockCharacterListPage(socketService, router, sessionService);
-	});
-
-	afterEach(() => {
-		component.ngOnDestroy();
 	});
 
 	it('should create', () => {
+		const { component } = setup({ socketService, sessionService });
 		expect(component).toBeTruthy();
 	});
 
 	it('should initialize with empty list and no error', () => {
-		expect(component.characters()).toEqual([]);
-		expect(component.errorMessage()).toBeNull();
-		expect(component.isLoading()).toBe(false);
+		const { component } = setup({ socketService, sessionService });
+		expect(component['characters']()).toEqual([]);
+		expect(component['errorMessage']()).toBeNull();
+		expect(component['isLoading']()).toBe(false);
 	});
+
+	// -------------------------------------------------------------------------
+	// Constructor auto-load behaviour
+	// -------------------------------------------------------------------------
 
 	describe('constructor auto-load behavior', () => {
 		it('should load characters immediately when socket is already connected', () => {
 			const connectedSocket = createMockSocketService();
 			connectedSocket.connected = true;
-			const autoLoadComponent = new MockCharacterListPage(connectedSocket, router, sessionService);
 
-			expect(autoLoadComponent.isLoading()).toBe(true);
+			const { component } = setup({ socketService: connectedSocket, sessionService });
+
+			expect(component['isLoading']()).toBe(true);
 			expect(connectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
 		});
 
 		it('should load characters when connect event fires if initially disconnected', () => {
 			const disconnectedSocket = createMockSocketService();
 			disconnectedSocket.connected = false;
-			const autoLoadComponent = new MockCharacterListPage(disconnectedSocket, router, sessionService);
 
-			expect(disconnectedSocket.emittedEvents).toBeDefined(); if (disconnectedSocket.emittedEvents) { expect(disconnectedSocket.emittedEvents.length).toBe(0) };
+			setup({ socketService: disconnectedSocket, sessionService });
+
+			expect(disconnectedSocket.emittedEvents.length).toBe(0);
 			disconnectedSocket.triggerOnceEvent('connect');
 			expect(disconnectedSocket.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
-			autoLoadComponent.ngOnDestroy();
 		});
 	});
 
+	// -------------------------------------------------------------------------
+	// loadCharacters()
+	// -------------------------------------------------------------------------
+
 	describe('loadCharacters()', () => {
 		it('should emit character list request with playerName', () => {
-			component.playerName.set('Pioneer');
+			socketService.connected = true;
+			const { component } = setup({ socketService, sessionService });
+			// Clear auto-load events, then call explicitly
+			socketService.emittedEvents.length = 0;
+			component['playerName'].set('Pioneer');
 			component.loadCharacters();
 
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
+			expect(socketService.emittedEvents.length).toBe(1);
 			expect(socketService.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
-				 expect(socketService.emittedEvents[0].data).toEqual({
+			expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				sessionKey: 'test-session-key',
 			});
 		});
 
 		it('should show validation error when playerName is empty', () => {
-			component.playerName.set('   ');
+			const { component } = setup({ socketService, sessionService });
+			component['playerName'].set('   ');
 			component.loadCharacters();
 
-			expect(component.errorMessage()).toBe('Player name is required to load characters.');
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+			expect(component['errorMessage']()).toBe('Player name is required to load characters.');
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it('should populate characters on successful response', () => {
-			component.loadCharacters();
+			socketService.connected = true;
+			const { component } = setup({ socketService, sessionService });
+
 			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
@@ -385,13 +155,15 @@ describe('CharacterListPage', () => {
 				],
 			} satisfies CharacterListResponse);
 
-			expect(component.characters()).toBeDefined(); if (component.characters()) { expect(component.characters().length).toBe(2) };
-			expect(component.errorMessage()).toBeNull();
-			expect(component.isLoading()).toBe(false);
+			expect(component['characters']().length).toBe(2);
+			expect(component['errorMessage']()).toBeNull();
+			expect(component['isLoading']()).toBe(false);
 		});
 
 		it('should map alternate backend name fields to characterName', () => {
-			component.loadCharacters();
+			socketService.connected = true;
+			const { component } = setup({ socketService, sessionService });
+
 			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
@@ -402,14 +174,16 @@ describe('CharacterListPage', () => {
 				],
 			} as any);
 
-			expect(component.characters()).toEqual([
+			expect(component['characters']()).toEqual([
 				{ id: '1', characterName: 'Nova', level: undefined, createdAt: undefined },
 				{ id: '2', characterName: 'Atlas', level: undefined, createdAt: undefined },
 			]);
 		});
 
 		it('should preserve mission progress from the character list response', () => {
-			component.loadCharacters();
+			socketService.connected = true;
+			const { component } = setup({ socketService, sessionService });
+
 			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
@@ -423,7 +197,7 @@ describe('CharacterListPage', () => {
 				],
 			} as any);
 
-			expect(component.characters()).toEqual([
+			expect(component['characters']()).toEqual([
 				{
 					id: '1',
 					characterName: 'Nova',
@@ -435,7 +209,9 @@ describe('CharacterListPage', () => {
 		});
 
 		it('should set error and clear list on failure response', () => {
-			component.loadCharacters();
+			socketService.connected = true;
+			const { component } = setup({ socketService, sessionService });
+
 			socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
 				success: false,
 				message: 'Player not found.',
@@ -443,15 +219,35 @@ describe('CharacterListPage', () => {
 				characters: [],
 			} satisfies CharacterListResponse);
 
-			expect(component.characters()).toEqual([]);
-			expect(component.errorMessage()).toBe('Player not found.');
-			expect(component.isLoading()).toBe(false);
+			expect(component['characters']()).toEqual([]);
+			expect(component['errorMessage']()).toBe('Player not found.');
+			expect(component['isLoading']()).toBe(false);
 		});
 	});
 
+	// -------------------------------------------------------------------------
+	// Navigation methods
+	// -------------------------------------------------------------------------
+
 	describe('navigateToCharacterSetup()', () => {
+		let router: ReturnType<typeof makeMockRouter>;
+
+		beforeEach(() => {
+			router = makeMockRouter('Pioneer');
+			TestBed.configureTestingModule({
+				imports: [CharacterListPage],
+				providers: [
+					{ provide: SocketService, useValue: socketService },
+					{ provide: SessionService, useValue: sessionService },
+					{ provide: Router, useValue: router },
+				],
+				schemas: [CUSTOM_ELEMENTS_SCHEMA],
+			});
+		});
+
 		it('should navigate to character-setup with playerName in left outlet', () => {
-			component.playerName.set('Pioneer');
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
 			component.navigateToCharacterSetup();
 
 			expect(router.navigate).toHaveBeenCalledWith(
@@ -461,73 +257,66 @@ describe('CharacterListPage', () => {
 		});
 
 		it('should navigate to character-setup in edit mode with selected character state', () => {
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
 			const character = { id: '1', characterName: 'Nova', level: 5 };
-			component.playerName.set('Pioneer');
-			component.navigateToCharacterEdit(character);
+			component.navigateToCharacterEdit(character as any);
 
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-setup'] } }],
 				{
 					preserveFragment: true,
-					state: {
-						playerName: 'Pioneer',
-						mode: 'edit',
-						editCharacter: character,
-					},
+					state: { playerName: 'Pioneer', mode: 'edit', editCharacter: character },
 				},
 			);
 		});
 
 		it('should navigate to opening-cold-boot in primary and left outlets with selected character state', () => {
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
 			const character = {
 				id: '1',
 				characterName: 'Nova',
 				level: 5,
-				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'available' }],
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'available' as const }],
 			};
-			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
 
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
 				event: GAME_JOIN_REQUEST_EVENT,
-				data: {
-					playerName: 'Pioneer',
-					characterId: '1',
-					sessionKey: 'test-session-key',
-				},
+				data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
 			});
-
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] } }],
 				{
 					preserveFragment: true,
-					state: {
-						playerName: 'Pioneer',
-						joinCharacter: character,
-					},
+					state: { playerName: 'Pioneer', joinCharacter: character },
 				},
 			);
 		});
 
 		it('should show the in-progress join label when first-target is started', () => {
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
 			const character = {
 				id: '1',
 				characterName: 'Nova',
-				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' as const }],
 			};
 
-			expect(component.getJoinGameLabel(character)).toBe('Join Game in Progress');
+			expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
 		});
 
 		it('should navigate directly to game-main and cold-boot-scan when first-target is already started', () => {
 			const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
 			const character = {
 				id: '1',
 				characterName: 'Nova',
 				level: 5,
-				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+				missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' as const }],
 			};
-			component.playerName.set('Pioneer');
 			component.navigateToGameJoin(character);
 
 			expect(sessionService.activeShip()).toEqual(jasmine.objectContaining({
@@ -544,13 +333,8 @@ describe('CharacterListPage', () => {
 
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
 				event: GAME_JOIN_REQUEST_EVENT,
-				data: {
-					playerName: 'Pioneer',
-					characterId: '1',
-					sessionKey: 'test-session-key',
-				},
+				data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
 			});
-
 			expect(router.navigate).toHaveBeenCalledWith(
 				[{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
 				{
@@ -571,62 +355,73 @@ describe('CharacterListPage', () => {
 		});
 
 		it('should set error and not navigate when playerName is empty for game join', () => {
-			const character = { id: '1', characterName: 'Nova', level: 5 };
-			component.playerName.set('   ');
-			component.navigateToGameJoin(character);
+			TestBed.overrideProvider(Router, { useValue: { getCurrentNavigation: () => ({ extras: { state: { playerName: '' } } }), navigate: router.navigate } });
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
+			component['playerName'].set('   ');
+			component.navigateToGameJoin({ id: '1', characterName: 'Nova', level: 5 });
 
-			expect(component.errorMessage()).toBe('Player name is required to join a game.');
+			expect(component['errorMessage']()).toBe('Player name is required to join a game.');
 			expect(router.navigate).not.toHaveBeenCalled();
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it('should set error and not navigate when character id is missing for game join', () => {
-			component.playerName.set('Pioneer');
-			component.navigateToGameJoin({ characterName: 'Nova' });
+			const fixture = TestBed.createComponent(CharacterListPage);
+			const component = fixture.componentInstance;
+			component.navigateToGameJoin({ characterName: 'Nova' } as any);
 
-			expect(component.errorMessage()).toBe('Character id is required to join a game.');
+			expect(component['errorMessage']()).toBe('Character id is required to join a game.');
 			expect(router.navigate).not.toHaveBeenCalled();
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 	});
 
+	// -------------------------------------------------------------------------
+	// Delete character workflow
+	// -------------------------------------------------------------------------
+
 	describe('delete character workflow', () => {
+		let component: CharacterListPage;
+
 		beforeEach(() => {
-			component.characters.set([
+			socketService.connected = true;
+			({ component } = setup({ socketService, sessionService }));
+			component['characters'].set([
 				{ id: '1', characterName: 'Nova', level: 5 },
 				{ id: '2', characterName: 'Atlas', level: 8 },
-			]);
+			] as any);
 		});
 
 		it('should open confirmation dialog when delete is requested', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 
-			expect(component.pendingDeleteCharacter()).toEqual({ id: '1', characterName: 'Nova' });
+			expect(component['pendingDeleteCharacter']()).toEqual({ id: '1', characterName: 'Nova' });
 		});
 
 		it('should cancel delete and clear pending character', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 			component.cancelDeleteCharacter();
 
-			expect(component.pendingDeleteCharacter()).toBeNull();
+			expect(component['pendingDeleteCharacter']()).toBeNull();
 		});
 
 		it('should emit character delete request on confirm', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 			component.confirmDeleteCharacter();
 
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].event).toBe(CHARACTER_DELETE_REQUEST_EVENT);
-				 expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual({
+			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual({
 				playerName: 'Pioneer',
 				characterId: '1',
 				characterName: 'Nova',
 				sessionKey: 'test-session-key',
 			});
-			expect(component.isDeleting()).toBe(true);
+			expect(component['isDeleting']()).toBe(true);
 		});
 
 		it('should remove character and close dialog on successful delete response', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 			component.confirmDeleteCharacter();
 			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
 				success: true,
@@ -635,13 +430,13 @@ describe('CharacterListPage', () => {
 				characterId: '1',
 			} satisfies CharacterDeleteResponse);
 
-			expect(component.characters()).toEqual([{ id: '2', characterName: 'Atlas', level: 8 }]);
-			expect(component.pendingDeleteCharacter()).toBeNull();
-			expect(component.isDeleting()).toBe(false);
+			expect(component['characters']()).toEqual([{ id: '2', characterName: 'Atlas', level: 8 }]);
+			expect(component['pendingDeleteCharacter']()).toBeNull();
+			expect(component['isDeleting']()).toBe(false);
 		});
 
 		it('should keep dialog open and show error on failed delete response', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 			component.confirmDeleteCharacter();
 			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
 				success: false,
@@ -649,13 +444,13 @@ describe('CharacterListPage', () => {
 				playerName: 'Pioneer',
 			} satisfies CharacterDeleteResponse);
 
-			expect(component.errorMessage()).toBe('Character cannot be deleted.');
-			expect(component.pendingDeleteCharacter()).toEqual({ id: '1', characterName: 'Nova' });
-			expect(component.isDeleting()).toBe(false);
+			expect(component['errorMessage']()).toBe('Character cannot be deleted.');
+			expect(component['pendingDeleteCharacter']()).toEqual({ id: '1', characterName: 'Nova' });
+			expect(component['isDeleting']()).toBe(false);
 		});
 
 		it('should allow cancel after failed delete response', () => {
-			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' });
+			component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
 			component.confirmDeleteCharacter();
 			socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
 				success: false,
@@ -664,12 +459,33 @@ describe('CharacterListPage', () => {
 			} satisfies CharacterDeleteResponse);
 			component.cancelDeleteCharacter();
 
-			expect(component.pendingDeleteCharacter()).toBeNull();
+			expect(component['pendingDeleteCharacter']()).toBeNull();
 		});
 	});
 
+	// -------------------------------------------------------------------------
+	// Invalid session handling
+	// -------------------------------------------------------------------------
+
 	describe('invalid session handling', () => {
+		let router: ReturnType<typeof makeMockRouter>;
+
+		beforeEach(() => {
+			router = makeMockRouter('Pioneer');
+			TestBed.configureTestingModule({
+				imports: [CharacterListPage],
+				providers: [
+					{ provide: SocketService, useValue: socketService },
+					{ provide: SessionService, useValue: sessionService },
+					{ provide: Router, useValue: router },
+				],
+				schemas: [CUSTOM_ELEMENTS_SCHEMA],
+			});
+		});
+
 		it('should clear session and navigate to login on invalid-session event', () => {
+			TestBed.createComponent(CharacterListPage);
+
 			expect(sessionService.hasSession()).toBe(true);
 
 			socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
@@ -682,13 +498,40 @@ describe('CharacterListPage', () => {
 		});
 	});
 
+	// -------------------------------------------------------------------------
+	// ngOnDestroy
+	// -------------------------------------------------------------------------
+
 	describe('ngOnDestroy()', () => {
 		it('should unsubscribe all listeners on destroy', () => {
+			const { component } = setup({ socketService, sessionService });
+
 			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(true);
 
 			component.ngOnDestroy();
 
 			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(false);
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// DOM smoke tests
+	// -------------------------------------------------------------------------
+
+	describe('DOM smoke tests', () => {
+		it('should render the host element', () => {
+			const { fixture } = setup({ socketService, sessionService });
+			expect(fixture.nativeElement).toBeTruthy();
+		});
+
+		it('should show validation error in template when playerName is empty', () => {
+			const { component, fixture } = setup({ socketService, sessionService });
+			component['playerName'].set('   ');
+			component.loadCharacters();
+			fixture.detectChanges();
+
+			const text: string = fixture.nativeElement.textContent ?? '';
+			expect(text).toContain('Player name is required');
 		});
 	});
 });

@@ -22,7 +22,7 @@ Goal: each spec drives the actual component via `TestBed`. Use [src/app/componen
 Order by LOC / traffic:
 
 - [X] [src/app/page/game/market-hub.spec.ts](src/app/page/game/market-hub.spec.ts) (972 LOC, 18 tests) → import `MarketHubComponent`, drive via `TestBed`
-- [ ] [src/app/page/character/character-list.spec.ts](src/app/page/character/character-list.spec.ts) (763 LOC, 25 tests)
+- [X] [src/app/page/character/character-list.spec.ts](src/app/page/character/character-list.spec.ts) (763 LOC, 25 tests)
 - [ ] [src/app/page/game/ship-hangar.spec.ts](src/app/page/game/ship-hangar.spec.ts) (582 LOC, 15 tests)
 - [ ] [src/app/page/game/mission-board.spec.ts](src/app/page/game/mission-board.spec.ts) (20 tests)
 - [ ] [src/app/page/game/repair-retrofit.spec.ts](src/app/page/game/repair-retrofit.spec.ts) and the four `repair-retrofit-*` detail/items/ship-detail/item-detail siblings
