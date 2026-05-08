@@ -1,88 +1,59 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-import { createSignal } from '../../../testing';
-
-// ---------------------------------------------------------------------------
-// Minimal signal factory
-// ---------------------------------------------------------------------------
-
-
-
-// ---------------------------------------------------------------------------
-// Local type stubs
-// ---------------------------------------------------------------------------
-
-interface InventoryItem {
-	id: string;
-	itemType: string;
-	displayName?: string;
-	damageStatus?: string;
-	state?: string;
-}
-
-interface ShipStub {
-	id: string;
-	inventory?: InventoryItem[];
-}
-
-interface RepairAssetEntry {
-	key: string;
-	kind: string;
-	itemId?: string;
-}
-
-interface CharacterStub {
-	id: string;
-}
+import RepairRetrofitItemDetailPage from './repair-retrofit-item-detail';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
+import {
+	createMockSessionService,
+	createMockSocketService,
+	type MockSocketService,
+} from '../../../testing';
+import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 
 interface NavigationState {
 	playerName?: string;
-	joinCharacter?: CharacterStub | null;
-	joinShip?: ShipStub | null;
-	asset?: RepairAssetEntry;
+	joinCharacter?: { id: string } | null;
+	joinShip?: any;
+	asset?: any;
 }
 
-// ---------------------------------------------------------------------------
-// Mock class — mirrors RepairRetrofitItemDetailPage logic
-// ---------------------------------------------------------------------------
+type MockSocketWithUpsert = MockSocketService & {
+	upsertItem(request: any, cb?: (r: any) => void): void;
+};
 
-class MockRepairRetrofitItemDetailPage {
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<CharacterStub | null>(null);
-	joinShip = createSignal<ShipStub | null>(null);
-	selectedAsset = createSignal<RepairAssetEntry | null>(null);
-	isPersisting = createSignal(false);
-	persistError = createSignal<string | null>(null);
-	persistSuccess = createSignal<string | null>(null);
+function createSocketWithUpsert(): MockSocketWithUpsert {
+	const base = createMockSocketService();
+	return Object.assign(base, {
+		upsertItem(request: any, cb?: (r: any) => void) {
+			if (cb) { base.once(ITEM_UPSERT_RESPONSE_EVENT, cb); }
+			base.emit(ITEM_UPSERT_REQUEST_EVENT, request);
+		},
+	});
+}
 
-	constructor(state?: NavigationState) {
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-		this.joinShip.set(state?.joinShip ?? null);
-		this.selectedAsset.set(state?.asset ?? null);
-	}
+function setup(state?: NavigationState) {
+	const mockRouter = {
+		getCurrentNavigation: () => (state ? { extras: { state } } : null),
+		navigate: jasmine.createSpy('navigate'),
+	};
+	const mockSocket = createSocketWithUpsert();
+	const mockSession = createMockSessionService('session-key');
 
-	selectedItem(): InventoryItem | null {
-		const itemId = this.selectedAsset()?.itemId;
-		if (!itemId) {
-			return null;
-		}
-		return this.joinShip()?.inventory?.find((item) => item.id === itemId) ?? null;
-	}
+	TestBed.configureTestingModule({
+		imports: [RepairRetrofitItemDetailPage],
+		providers: [
+			{ provide: Router, useValue: mockRouter },
+			{ provide: SocketService, useValue: mockSocket },
+			{ provide: SessionService, useValue: mockSession },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-	canFullyRepair(): boolean {
-		return this.selectedItem()?.damageStatus !== 'intact';
-	}
-
-	/** Mirrors the guard conditions before the socket call in fullyRepairItem(). */
-	fullyRepairItemGuarded(sessionKey: string): string | null {
-		const item = this.selectedItem();
-		const playerName = this.playerName().trim();
-		if (!item || !sessionKey.trim() || !playerName) {
-			return 'Missing item or session context for repair operation.';
-		}
-		return null;
-	}
+	const fixture = TestBed.createComponent(RepairRetrofitItemDetailPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter, mockSocket, mockSession };
 }
 
 // ---------------------------------------------------------------------------
@@ -91,27 +62,36 @@ class MockRepairRetrofitItemDetailPage {
 
 describe('RepairRetrofitItemDetailPage - initialization', () => {
 	it('should initialize signals from navigation state', () => {
-		const asset: RepairAssetEntry = { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' };
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1' },
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
-			asset,
+			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
 		});
 
-		expect(page.playerName()).toBe('Pioneer');
-		expect(page.joinCharacter()?.id).toBe('c-1');
-		expect(page.joinShip()?.id).toBe('s-1');
-		expect(page.selectedAsset()?.itemId).toBe('i-1');
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()?.id).toBe('c-1');
+		expect(component['joinShip']()?.id).toBe('s-1');
+		expect(component['selectedAsset']()?.itemId).toBe('i-1');
 	});
 
 	it('should fall back to empty values when state is absent', () => {
-		const page = new MockRepairRetrofitItemDetailPage();
+		const { component } = setup();
 
-		expect(page.playerName()).toBe('');
-		expect(page.joinCharacter()).toBeNull();
-		expect(page.joinShip()).toBeNull();
-		expect(page.selectedAsset()).toBeNull();
+		expect(component['playerName']()).toBe('');
+		expect(component['joinCharacter']()).toBeNull();
+		expect(component['joinShip']()).toBeNull();
+		expect(component['selectedAsset']()).toBeNull();
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1' },
+			});
+			expect(fixture.nativeElement).toBeTruthy();
+		});
 	});
 });
 
@@ -121,30 +101,30 @@ describe('RepairRetrofitItemDetailPage - initialization', () => {
 
 describe('RepairRetrofitItemDetailPage - selectedItem', () => {
 	it('should return null when no asset is selected', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron' }] },
 		});
-		expect(page.selectedItem()).toBeNull();
+		expect(component['selectedItem']()).toBeNull();
 	});
 
 	it('should return null when asset has no itemId', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron' }] },
 			asset: { key: 'ship:s-1', kind: 'ship' },
 		});
-		expect(page.selectedItem()).toBeNull();
+		expect(component['selectedItem']()).toBeNull();
 	});
 
 	it('should return null when itemId does not match any inventory item', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron' }] },
 			asset: { key: 'inventory-item:i-999', kind: 'inventory-item', itemId: 'i-999' },
 		});
-		expect(page.selectedItem()).toBeNull();
+		expect(component['selectedItem']()).toBeNull();
 	});
 
 	it('should return the matching inventory item by itemId', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: {
 				id: 's-1',
 				inventory: [
@@ -154,7 +134,7 @@ describe('RepairRetrofitItemDetailPage - selectedItem', () => {
 			},
 			asset: { key: 'inventory-item:i-2', kind: 'inventory-item', itemId: 'i-2' },
 		});
-		const item = page.selectedItem();
+		const item = component['selectedItem']();
 		expect(item?.id).toBe('i-2');
 		expect(item?.itemType).toBe('conduit');
 		expect(item?.damageStatus).toBe('damaged');
@@ -167,34 +147,34 @@ describe('RepairRetrofitItemDetailPage - selectedItem', () => {
 
 describe('RepairRetrofitItemDetailPage - canFullyRepair', () => {
 	it('should be true when selected item is damaged', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
 			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
 		});
-		expect(page.canFullyRepair()).toBe(true);
+		expect(component['canFullyRepair']()).toBe(true);
 	});
 
 	it('should be false when selected item is intact', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'intact' }] },
 			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
 		});
-		expect(page.canFullyRepair()).toBe(false);
+		expect(component['canFullyRepair']()).toBe(false);
 	});
 
 	it('should be true when selected item is critical', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'critical' }] },
 			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
 		});
-		expect(page.canFullyRepair()).toBe(true);
+		expect(component['canFullyRepair']()).toBe(true);
 	});
 
 	it('should be true when no item is selected (undefined damageStatus !== "intact")', () => {
 		// When selectedItem() returns null, null?.damageStatus is undefined, and undefined !== 'intact' is true.
 		// This mirrors the actual computed in the component, and the template guards the repair button separately.
-		const page = new MockRepairRetrofitItemDetailPage();
-		expect(page.canFullyRepair()).toBe(true);
+		const { component } = setup();
+		expect(component['canFullyRepair']()).toBe(true);
 	});
 });
 
@@ -203,45 +183,56 @@ describe('RepairRetrofitItemDetailPage - canFullyRepair', () => {
 // ---------------------------------------------------------------------------
 
 describe('RepairRetrofitItemDetailPage - fullyRepairItem guard', () => {
-	function buildPageWithItem(overrides?: Partial<NavigationState>): MockRepairRetrofitItemDetailPage {
-		return new MockRepairRetrofitItemDetailPage({
+	it('should allow repair when all context is present', () => {
+		const { component } = setup({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1' },
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
 			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
-			...overrides,
 		});
-	}
-
-	it('should allow repair when all context is present', () => {
-		const page = buildPageWithItem();
-		expect(page.fullyRepairItemGuarded('session-1')).toBeNull();
+		// With all context, fullyRepairItem() proceeds to socket call without setting persistError
+		component['fullyRepairItem']();
+		expect(component['persistError']()).toBeNull();
 	});
 
 	it('should report error when no item is selected', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			playerName: 'Pioneer',
 			joinShip: { id: 's-1', inventory: [] },
 		});
-		expect(page.fullyRepairItemGuarded('session-1')).not.toBeNull();
+		component['fullyRepairItem']();
+		expect(component['persistError']()).not.toBeNull();
 	});
 
 	it('should report error when sessionKey is empty', () => {
-		const page = buildPageWithItem();
-		expect(page.fullyRepairItemGuarded('')).not.toBeNull();
+		const { component, mockSession } = setup({
+			playerName: 'Pioneer',
+			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
+			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
+		});
+		mockSession.setSessionKey('');
+		component['fullyRepairItem']();
+		expect(component['persistError']()).not.toBeNull();
 	});
 
 	it('should report error when sessionKey is only whitespace', () => {
-		const page = buildPageWithItem();
-		expect(page.fullyRepairItemGuarded('   ')).not.toBeNull();
+		const { component, mockSession } = setup({
+			playerName: 'Pioneer',
+			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
+			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
+		});
+		mockSession.setSessionKey('   ');
+		component['fullyRepairItem']();
+		expect(component['persistError']()).not.toBeNull();
 	});
 
 	it('should report error when playerName is empty', () => {
-		const page = new MockRepairRetrofitItemDetailPage({
+		const { component } = setup({
 			playerName: '',
 			joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
 			asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
 		});
-		expect(page.fullyRepairItemGuarded('session-1')).not.toBeNull();
+		component['fullyRepairItem']();
+		expect(component['persistError']()).not.toBeNull();
 	});
 });
