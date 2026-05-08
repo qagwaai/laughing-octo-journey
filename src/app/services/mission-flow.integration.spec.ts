@@ -3,7 +3,7 @@ import {
 	MISSION_UPSERT_RESPONSE_EVENT,
 	type MissionUpsertRequest,
 } from '../model/mission-upsert.model';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, flushMicrotasks, TestBed, tick } from '@angular/core/testing';
 import { MissionProgressSyncService } from './mission-progress-sync.service';
 import { MissionService, type UpsertMissionStatusResult } from './mission.service';
 import { SocketService } from './socket.service';
@@ -292,4 +292,67 @@ describe('Mission integration proof of concept', () => {
 		expect(statusDetail.steps.filter((step) => step.status === 'completed').length).toBe(0);
 		expect(statusDetail.steps.find((step) => step.key === 'identify_iron_asteroid')?.status).toBe('active');
 	});
+
+	it('should reconnect socket and continue upsert flow when initially disconnected', async () => {
+		socketService.connected = false;
+
+		const gateState = createGateState(
+			missionId,
+			characterId,
+			['completed', 'active', 'locked', 'locked'],
+			'2026-05-01T00:00:02.000Z',
+		);
+
+		const pending = syncService.syncGateState({
+			playerName,
+			characterId,
+			sessionKey,
+			gateState: gateState as never,
+		});
+
+		expect(socketService.connectCalls).toBe(1);
+
+		socketService.connected = true;
+		socketService.trigger('connect', {});
+		await Promise.resolve();
+
+		const emittedRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1];
+		expect(emittedRequest?.event).toBe(MISSION_UPSERT_REQUEST_EVENT);
+		socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+			success: true,
+			message: 'ok',
+			playerName,
+			characterId,
+			mission: {
+				missionId,
+				status: 'in-progress',
+				statusDetail: emittedRequest.data.statusDetail,
+			},
+		});
+
+		expect(await pending).toBe('updated');
+	});
+
+	it('should return not-connected when reconnect event does not arrive before timeout', fakeAsync(() => {
+		socketService.connected = false;
+		let result: UpsertMissionStatusResult | undefined;
+
+		missionService
+			.upsertMissionStatus({
+				playerName,
+				characterId,
+				sessionKey,
+				missionId,
+				status: 'started',
+			})
+			.then((value) => {
+				result = value;
+			});
+
+		expect(socketService.connectCalls).toBe(1);
+		tick(5001);
+		flushMicrotasks();
+
+		expect(result).toBe('not-connected');
+	}));
 });

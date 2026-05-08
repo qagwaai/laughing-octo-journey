@@ -156,6 +156,161 @@ describe('Asteroid', () => {
 		(component as any).emitHover(false);
 		expect((component as any).showResultDialog()).toBeFalse();
 	});
+
+	it('should format velocity, spin, mass and diameter fallback text when kinematics are unavailable', () => {
+		expect((component as any).resultDialogVelocityText()).toBe('VEL: ---');
+		expect((component as any).resultDialogSpinText()).toBe('SPIN: ---');
+		expect((component as any).resultDialogMassText()).toBe('MASS: ---');
+		expect((component as any).resultDialogDiameterText()).toBe('DIAM: ---');
+	});
+
+	it('should format velocity and spin text when kinematics are available', () => {
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 3, y: 4, z: 0 },
+			angularVelocityRadPerSec: { x: 0.3, y: 0.4, z: 0 },
+			estimatedMassKg: 1234,
+			estimatedDiameterM: 12,
+		});
+		fixture.detectChanges();
+
+		expect((component as any).resultDialogVelocityText()).toBe('VEL: 5.0 km/s');
+		expect((component as any).resultDialogSpinText()).toBe('SPIN: 0.5000 rad/s');
+	});
+
+	it('should format mass text across threshold branches', () => {
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+			estimatedMassKg: 2.5e12,
+			estimatedDiameterM: 12,
+		});
+		fixture.detectChanges();
+		expect((component as any).resultDialogMassText()).toBe('MASS: 2.50e12 kg');
+
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+			estimatedMassKg: 3.75e9,
+			estimatedDiameterM: 12,
+		});
+		fixture.detectChanges();
+		expect((component as any).resultDialogMassText()).toBe('MASS: 3.75e9 kg');
+
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+			estimatedMassKg: 999,
+			estimatedDiameterM: 12,
+		});
+		fixture.detectChanges();
+		expect((component as any).resultDialogMassText()).toBe('MASS: 999 kg');
+	});
+
+	it('should format diameter text for meter and kilometer branches', () => {
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+			estimatedMassKg: 10,
+			estimatedDiameterM: 1200,
+		});
+		fixture.detectChanges();
+		expect((component as any).resultDialogDiameterText()).toBe('DIAM: 1.20 km');
+
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+			estimatedMassKg: 10,
+			estimatedDiameterM: 150,
+		});
+		fixture.detectChanges();
+		expect((component as any).resultDialogDiameterText()).toBe('DIAM: 150 m');
+	});
+
+	it('should format location and cluster text branches', () => {
+		expect((component as any).resultDialogLocationText()).toBe('LOC: ---');
+		expect((component as any).resultDialogClusterText()).toBe('CLUSTER(Mkm): ---');
+
+		fixture.componentRef.setInput('revealedLocation', {
+			positionKm: { x: 1234000, y: -5678000, z: 900000 },
+		});
+		fixture.componentRef.setInput('revealedClusterCenterKm', {
+			x: 1000000,
+			y: -5000000,
+			z: 750000,
+		});
+		fixture.detectChanges();
+
+		expect((component as any).resultDialogLocationText()).toContain('LOC(Mkm): X 1.234 | Y -5.678 | Z 0.900');
+		expect((component as any).resultDialogClusterText()).toContain('CLUSTER(Mkm): X 1.000 | Y -5.000 | Z 0.750');
+	});
+
+	it('should format offset text only when both location and cluster are available', () => {
+		expect((component as any).resultDialogOffsetText()).toBe('OFFSET(km): ---');
+
+		fixture.componentRef.setInput('revealedLocation', {
+			positionKm: { x: 1200, y: 3500, z: -700 },
+		});
+		fixture.componentRef.setInput('revealedClusterCenterKm', {
+			x: 1000,
+			y: 3000,
+			z: -500,
+		});
+		fixture.detectChanges();
+
+		expect((component as any).resultDialogOffsetText()).toContain('OFFSET(km): dX 200 dY 500 dZ -200');
+	});
+
+	it('should emit right-button pointer down events for button or bitmask input', () => {
+		const downSpy = jasmine.createSpy('pointerButtonDown');
+		component.pointerButtonDown.subscribe(downSpy);
+
+		(component as any).onPointerDown({ button: 2 });
+		(component as any).onPointerDown({ buttons: 2 });
+
+		expect(downSpy).toHaveBeenCalledTimes(2);
+		expect(downSpy.calls.mostRecent().args[0]).toEqual({ id: 'sample-1', button: 2 });
+	});
+
+	it('should ignore non-right-button pointer down events', () => {
+		const downSpy = jasmine.createSpy('pointerButtonDown');
+		component.pointerButtonDown.subscribe(downSpy);
+
+		(component as any).onPointerDown({ button: 0 });
+		(component as any).onPointerDown({ buttons: 1 });
+
+		expect(downSpy).not.toHaveBeenCalled();
+	});
+
+	it('should emit pointer up only for right button', () => {
+		const upSpy = jasmine.createSpy('pointerButtonUp');
+		component.pointerButtonUp.subscribe(upSpy);
+
+		(component as any).onPointerUp({ button: 0 });
+		(component as any).onPointerUp({ button: 2 });
+
+		expect(upSpy).toHaveBeenCalledTimes(1);
+		expect(upSpy).toHaveBeenCalledWith({ id: 'sample-1', button: 2 });
+	});
+
+	it('should apply revealed kinematics spin in beforeRender when scanned', () => {
+		const mockMesh = new THREE.Mesh();
+		(component as any).meshRef = jasmine.createSpy().and.returnValue({ nativeElement: mockMesh });
+
+		fixture.componentRef.setInput('scanned', true);
+		fixture.componentRef.setInput('revealedKinematics', {
+			velocityKmPerSec: { x: 0, y: 0, z: 0 },
+			angularVelocityRadPerSec: { x: 0.05, y: 0.1, z: 0.15 },
+			estimatedMassKg: 50,
+			estimatedDiameterM: 5,
+		});
+		fixture.detectChanges();
+
+		(component as any).beforeRenderCallback({ delta: 1 });
+
+		expect(mockMesh.rotation.x).toBeCloseTo(1, 5);
+		expect(mockMesh.rotation.y).toBeCloseTo(2, 5);
+		expect(mockMesh.rotation.z).toBeCloseTo(3, 5);
+	});
 });
 
 describe('resolveAsteroidMaterialColor', () => {
