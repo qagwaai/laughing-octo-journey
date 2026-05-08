@@ -3,8 +3,10 @@ import {
 	MISSION_UPSERT_RESPONSE_EVENT,
 	type MissionUpsertRequest,
 } from '../model/mission-upsert.model';
+import { TestBed } from '@angular/core/testing';
 import { MissionProgressSyncService } from './mission-progress-sync.service';
 import { MissionService, type UpsertMissionStatusResult } from './mission.service';
+import { SocketService } from './socket.service';
 
 type Listener = (payload: any) => void;
 type StepStatus = 'locked' | 'active' | 'completed' | 'pending-retry';
@@ -169,8 +171,19 @@ describe('Mission integration proof of concept', () => {
 
 	beforeEach(() => {
 		socketService = new MockSocketService();
-		missionService = new MissionService(socketService as never);
-		syncService = new MissionProgressSyncService(missionService);
+		TestBed.configureTestingModule({
+			providers: [
+				MissionService,
+				MissionProgressSyncService,
+				{ provide: SocketService, useValue: socketService },
+			],
+		});
+		missionService = TestBed.inject(MissionService);
+		syncService = TestBed.inject(MissionProgressSyncService);
+	});
+
+	afterEach(() => {
+		TestBed.resetTestingModule();
 	});
 
 	async function syncGateStateAndAcknowledge(gateState: GateState): Promise<MissionUpsertRequest> {

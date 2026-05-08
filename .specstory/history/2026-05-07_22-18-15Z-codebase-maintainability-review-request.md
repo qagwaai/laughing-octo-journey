@@ -239,3 +239,178 @@ The user wants to:
 2. Update any documentation with findings
 
 Let me look at what Phase A items are in TODO.md and what needs to be marked complete, then update the operational testing checklist.
+
+---
+
+_**User (2026-05-08 02:06:42Z)**_
+
+am interested in starting with Phase B in todo.  use a selectable form to ask questions before implementing
+
+_**User (2026-05-08 02:21:24Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+---
+
+_**Agent (copilot/auto)**_
+
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
+
+**Input:**
+
+- filePath: `c:\Development\Projects\Github\laughing-octo-journey\TODO.md`
+- newString: `- [X] All unit tests passing (1202 tests as of Phase B market-hub conversion: 3 new DOM smoke tests added)`
+- oldString: `- [X] All unit tests passing (1199 tests as of 2026-05-07: full suite after Phase A helper migration)`
+
+</details></tool-use>
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+
+---
+
+_**User (2026-05-08 02:22:28Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+_**User (2026-05-08 02:28:27Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+Let me check the current state of the TODO.md and the character-list.spec.ts to understand what's been done and what's next.
+
+---
+
+_**User (2026-05-08 02:37:34Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+---
+
+_**Agent (copilot/auto)**_
+
+
+```
+
+
+---
+
+_**User (2026-05-08 02:49:59Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+_**User (2026-05-08 03:10:57Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+_**User (2026-05-08 03:11:13Z)**_
+
+@agent Try Again
+
+_**User (2026-05-08 03:14:29Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll gather your Phase B preferences in a short selectable form so I can continue with exactly the files and workflow you want.
+
+---
+
+_**User (2026-05-08 03:19:11Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+I’ll use a quick selectable form again to capture your next Phase B batch preferences before I implement anything.
+
+---
+
+_**User (2026-05-08 03:23:39Z)**_
+
+continue
+
+_**User (2026-05-08 03:35:44Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+_**User (2026-05-08 03:42:27Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+The user wants to continue with Phase B (shadow spec → TestBed conversion) and wants me to ask questions using a selectable form before implementing. Let me check the current TODO.md to see what's left in Phase B.
+
+---
+
+_**User (2026-05-08 03:48:52Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+Let me check the current state of TODO.md to see what's remaining in Phase B.
+
+---
+
+_**User (2026-05-08 03:58:32Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+---
+
+_**Agent (copilot/auto)**_
+
+`missionDefinition` is a resolved mission object from `resolveShipExteriorMission()`. This is an internal component dependency, not injected via Angular DI. So I can't easily mock it.
+
+The seeding tests are actually testing the behavior of `createResumedAsteroidSamples()` which is part of the mission definition, not the component itself. In the real component TestBed conversion, I'd need to run the full async flow with socket responses to test this behavior.
+
+At this point, I need to decide: should I try to convert the seeding tests to test the real component behavior (requiring async socket flow), or should I acknowledge that those 7 tests are testing internal merge logic that might be better tested elsewhere (or in a separate unit test for the mission definition)?
+ 
+For Phase B, I think the right move is to test the real component behavior through its socket emissions. The first two seeding tests can verify `resolveSeedPolicy()` by checking what events fire after initialization, while the merge logic tests would need to run through the full async socket flow to properly validate the component's behavior rather than just the internal mission definition logic.
+
+Since I'm using `fakeAsync` with the mock socket, I can set up the component with the mission status and auth context, then synchronously trigger the socket events in sequence—first checking for the `SHIP_LIST_REQUEST_EVENT` emission, then feeding back the response events with ship and celestial body data, and finally verifying the resulting `asteroidSamples`. The mock socket tracks emitted events and registered listeners, so this approach should work cleanly.
+
+Now I need to check what `createMockSessionService` actually provides for the `getSessionKey()` method.
+
+---
+
+_**User (2026-05-08 04:15:06Z)**_
+
+@agent Continue: "Continue to iterate?"
+
+---
+
+_**Agent (copilot/auto)**_
+
+The tsc errors for 
+
+---
+
+_**User (2026-05-08 04:22:21Z)**_
+
+am interested in continuing with Phase B in todo.  use a selectable form to ask questions before implementing
+
+---
+
+_**Agent (copilot/auto)**_
+
+Let me check the current TODO.md to see what's left in Phase B.

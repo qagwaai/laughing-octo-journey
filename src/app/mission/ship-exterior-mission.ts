@@ -115,13 +115,12 @@ export interface ShipExteriorMissionDefinition {
 	resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus;
 }
 
-const SHIP_EXTERIOR_MISSION_REGISTRY = new Map<string, ShipExteriorMissionDefinition>([
-	[FIRST_TARGET_SHIP_EXTERIOR_MISSION.missionId, FIRST_TARGET_SHIP_EXTERIOR_MISSION],
-]);
-
 export function resolveShipExteriorMission(missionId?: string | null): ShipExteriorMissionDefinition {
 	const normalizedMissionId = missionId?.trim() || FIRST_TARGET_MISSION_ID;
-	return SHIP_EXTERIOR_MISSION_REGISTRY.get(normalizedMissionId) ?? FIRST_TARGET_SHIP_EXTERIOR_MISSION;
+	const registry = new Map<string, ShipExteriorMissionDefinition>([
+		[FIRST_TARGET_SHIP_EXTERIOR_MISSION.missionId, FIRST_TARGET_SHIP_EXTERIOR_MISSION],
+	]);
+	return registry.get(normalizedMissionId) ?? FIRST_TARGET_SHIP_EXTERIOR_MISSION;
 }
 
 export function createInitialMissionGateState(params: {

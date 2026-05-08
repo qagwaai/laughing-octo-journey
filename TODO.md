@@ -35,9 +35,11 @@ Order by LOC / traffic:
 - [X] [src/app/page/public/login.spec.ts](src/app/page/public/login.spec.ts), [src/app/page/public/registration.spec.ts](src/app/page/public/registration.spec.ts), [src/app/page/public/intro.spec.ts](src/app/page/public/intro.spec.ts)
 - [x] [src/app/page/opening/cold-boot.spec.ts](src/app/page/opening/cold-boot.spec.ts)
 - [x] [src/app/scene/ship-exterior-view.spec.ts](src/app/scene/ship-exterior-view.spec.ts), [src/app/scene/ship-view-specs.spec.ts](src/app/scene/ship-view-specs.spec.ts)
-- [ ] [src/app/scene/hud/cold-boot-hud-scene.spec.ts](src/app/scene/hud/cold-boot-hud-scene.spec.ts), [src/app/scene/hud/hud-overlay.spec.ts](src/app/scene/hud/hud-overlay.spec.ts)
-- [ ] [src/app/component/button.spec.ts](src/app/component/button.spec.ts), [src/app/component/current.spec.ts](src/app/component/current.spec.ts)
-- [ ] [src/app/services/mission-flow.integration.spec.ts](src/app/services/mission-flow.integration.spec.ts) — convert to a real integration test wired to the real `MissionService` + fake `SocketService`
+- [X] [src/app/scene/hud/cold-boot-hud-scene.spec.ts](src/app/scene/hud/cold-boot-hud-scene.spec.ts), [src/app/scene/hud/hud-overlay.spec.ts](src/app/scene/hud/hud-overlay.spec.ts)
+- [X] [src/app/component/button.spec.ts](src/app/component/button.spec.ts), [src/app/component/current.spec.ts](src/app/component/current.spec.ts) (real TestBed specs; button physics binding mocked via DI token)
+- [X] [src/app/services/mission-flow.integration.spec.ts](src/app/services/mission-flow.integration.spec.ts) — real integration wiring via Angular TestBed + fake `SocketService`
+
+Phase B completion note: converted remaining shadow shell specs [src/app/app.component.spec.ts](src/app/app.component.spec.ts) and [src/app/routed-scene.spec.ts](src/app/routed-scene.spec.ts) to real TestBed coverage; shadow-spec guard now reports zero known/new shadow specs.
 
 ### Phase C — Re-baseline coverage (Priority: MEDIUM)
 

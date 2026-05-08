@@ -1,9 +1,24 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, EventEmitter, input, Output, signal, viewChild } from "@angular/core";
+import {
+    Component,
+    CUSTOM_ELEMENTS_SCHEMA,
+    ElementRef,
+    EventEmitter,
+    inject,
+    InjectionToken,
+    input,
+    Output,
+    signal,
+    viewChild,
+} from "@angular/core";
 import { Triplet } from '@pmndrs/cannon-worker-api';
 import { NgtArgs } from "angular-three";
 import { NgtcPhysics } from "angular-three-cannon";
 import { box } from 'angular-three-cannon/body';
 import { Mesh } from "three/src/objects/Mesh.js";
+
+export const BUTTON_BOX_FN = new InjectionToken<typeof box>('BUTTON_BOX_FN', {
+    factory: () => box,
+});
 
 @Component({
     selector: "app-button",
@@ -26,6 +41,8 @@ import { Mesh } from "three/src/objects/Mesh.js";
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class Button {
+	private boxFn = inject(BUTTON_BOX_FN);
+
     position = input<Triplet>([0, 0, 0]);
     color = input<string>('red');
     hoverColor = input<string>('darkred');
@@ -37,7 +54,7 @@ export class Button {
     protected clicked = signal(false);
 
     constructor() {
-        box(() => ({ mass: 0, position: this.position(), args: this.args }), this.mesh);
+		this.boxFn(() => ({ mass: 0, position: this.position(), args: this.args }), this.mesh);
     }
 
     onClick() {
