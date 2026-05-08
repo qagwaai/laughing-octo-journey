@@ -26,7 +26,6 @@ const KNOWN_SHADOW_SPECS = new Set([
   // --- Phase B conversion backlog (see TEST_QUALITY_REVIEW.md) ---
   'src/app/app.component.spec.ts',
   'src/app/routed-scene.spec.ts',
-  'src/app/page/opening/cold-boot.spec.ts',
   'src/app/scene/ship-exterior-view.spec.ts',
   'src/app/scene/ship-view-specs.spec.ts',
   'src/app/scene/hud/cold-boot-hud-scene.spec.ts',
