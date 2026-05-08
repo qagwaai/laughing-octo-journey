@@ -1,73 +1,23 @@
-import { createSignal } from '../../../testing';
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+
+import ItemViewSpecsPage from './item-view-specs';
 import {
 	getSpecsImagePath,
 	normalizeItemTypeForImage,
 	resolveGroups,
-	ItemViewSpecsConfig,
+	type ItemViewSpecsConfig,
 } from '../../model/item-view-specs';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/item-view-specs-configs';
-import { ShipItem } from '../../model/ship-item';
-
-
-
-function createComputed<T>(fn: () => T) {
-	return () => fn();
-}
+import type { ShipItem } from '../../model/ship-item';
 
 interface NavState {
 	playerName?: string;
 	joinCharacter?: { id: string; characterName: string };
 	itemType?: string;
 	item?: unknown;
-}
-
-class MockItemViewSpecsPage {
-	private mockRouter: { navigate: jasmine.Spy };
-
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<NavState['joinCharacter'] | null>(null);
-	itemType = createSignal<string>('');
-	item = createSignal<unknown>(null);
-	imageNotFound = createSignal<boolean>(false);
-
-	config = createComputed<ItemViewSpecsConfig | null>(() => {
-		const type = this.itemType();
-		return ITEM_VIEW_SPECS_CONFIGS.get(type) ?? null;
-	});
-
-	resolvedGroups = createComputed(() => {
-		const cfg = this.config();
-		const data = this.item();
-		if (!cfg || data === null) return [];
-		return resolveGroups(cfg, data);
-	});
-
-	specImagePath = createComputed(() => getSpecsImagePath(this.itemType()));
-
-	constructor(mockRouter: { navigate: jasmine.Spy }, state?: NavState) {
-		this.mockRouter = mockRouter;
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-		this.itemType.set(state?.itemType ?? '');
-		this.item.set(state?.item ?? null);
-	}
-
-	onImageError(): void {
-		this.imageNotFound.set(true);
-	}
-
-	navigateToCharacterProfile(): void {
-		this.mockRouter.navigate(
-			[{ outlets: { left: ['character-profile'] } }],
-			{
-				preserveFragment: true,
-				state: {
-					playerName: this.playerName(),
-					joinCharacter: this.joinCharacter(),
-				},
-			},
-		);
-	}
 }
 
 function makeDroneItem(overrides?: Partial<ShipItem>): ShipItem {
@@ -92,6 +42,25 @@ function makeDroneItem(overrides?: Partial<ShipItem>): ShipItem {
 		updatedAt: now,
 		...restOverrides,
 	};
+}
+
+function setup(navigationState?: NavState) {
+	const events$ = new Subject<unknown>();
+	const mockRouter = {
+		events: events$.asObservable(),
+		getCurrentNavigation: () => (navigationState ? { extras: { state: navigationState } } : null),
+		navigate: jasmine.createSpy('navigate'),
+	};
+
+	TestBed.configureTestingModule({
+		imports: [ItemViewSpecsPage],
+		providers: [{ provide: Router, useValue: mockRouter }],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
+
+	const fixture = TestBed.createComponent(ItemViewSpecsPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter, events$ };
 }
 
 describe('normalizeItemTypeForImage', () => {
@@ -167,29 +136,27 @@ describe('resolveGroups', () => {
 
 	it('applies the format function when provided', () => {
 		const groups = resolveGroups(simpleConfig, { name: 'Widget', type: 'gadget', value: 7 });
-		const statusGroup = groups.find(g => g.label === 'Status')!;
+		const statusGroup = groups.find((g) => g.label === 'Status')!;
 		expect(statusGroup.fields[0].displayValue).toBe('7 units');
 	});
 
 	it('excludes fields whose getValue returns null', () => {
 		const groups = resolveGroups(simpleConfig, { name: 'Widget', type: null, value: 5 });
-		const identityGroup = groups.find(g => g.label === 'Identity')!;
+		const identityGroup = groups.find((g) => g.label === 'Identity')!;
 		expect(identityGroup.fields.length).toBe(1);
 		expect(identityGroup.fields[0].label).toBe('Name');
 	});
 
 	it('excludes groups where all fields return null', () => {
 		const groups = resolveGroups(simpleConfig, { name: null, type: null, value: 10 });
-		expect(groups.find(g => g.label === 'Identity')).toBeUndefined();
+		expect(groups.find((g) => g.label === 'Identity')).toBeUndefined();
 	});
 
 	it('returns empty array when all groups are empty', () => {
 		const nullConfig: ItemViewSpecsConfig = {
 			itemType: 'null-item',
 			title: 'Null Item',
-			groups: [
-				{ label: 'Group', fields: [{ label: 'Field', getValue: () => null }] },
-			],
+			groups: [{ label: 'Group', fields: [{ label: 'Field', getValue: () => null }] }],
 		};
 		expect(resolveGroups(nullConfig, {})).toEqual([]);
 	});
@@ -222,14 +189,14 @@ describe('ITEM_VIEW_SPECS_CONFIGS', () => {
 
 	it('Scavenger Pod config has Identity and Kinematics groups', () => {
 		const config = ITEM_VIEW_SPECS_CONFIGS.get('Scavenger Pod')!;
-		const groupLabels = config.groups.map(g => g.label);
+		const groupLabels = config.groups.map((g) => g.label);
 		expect(groupLabels).toContain('Identity');
 		expect(groupLabels).toContain('Kinematics');
 	});
 
 	it('expendable-dart-drone config has Identity and Lifecycle groups', () => {
 		const config = ITEM_VIEW_SPECS_CONFIGS.get('expendable-dart-drone')!;
-		const groupLabels = config.groups.map(g => g.label);
+		const groupLabels = config.groups.map((g) => g.label);
 		expect(groupLabels).toContain('Identity');
 		expect(groupLabels).toContain('Lifecycle');
 		expect(groupLabels).toContain('Kinematics');
@@ -237,67 +204,55 @@ describe('ITEM_VIEW_SPECS_CONFIGS', () => {
 });
 
 describe('ItemViewSpecsPage', () => {
-	let mockRouter: { navigate: jasmine.Spy };
-
-	beforeEach(() => {
-		mockRouter = { navigate: jasmine.createSpy('navigate') };
-	});
-
 	it('should initialize state from navigation', () => {
 		const drone = makeDroneItem();
-		const component = new MockItemViewSpecsPage(mockRouter, {
+		const { component } = setup({
 			playerName: 'Pioneer',
 			joinCharacter: { id: 'c-1', characterName: 'Nova' },
 			itemType: 'expendable-dart-drone',
 			item: drone,
 		});
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova' });
-		expect(component.itemType()).toBe('expendable-dart-drone');
-		expect(component.item()).toEqual(drone);
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
+		expect(component['itemType']()).toBe('expendable-dart-drone');
+		expect(component['item']()).toEqual(drone);
 	});
 
 	it('should resolve config for a known itemType', () => {
-		const component = new MockItemViewSpecsPage(mockRouter, { itemType: 'expendable-dart-drone' });
-		expect(component.config()).not.toBeNull();
-		expect(component.config()?.title).toBe('Expendable Dart Drone');
+		const { component } = setup({ itemType: 'expendable-dart-drone' });
+		expect(component['config']()).not.toBeNull();
+		expect(component['config']()?.title).toBe('Expendable Dart Drone');
 	});
 
 	it('should return null config for an unknown itemType', () => {
-		const component = new MockItemViewSpecsPage(mockRouter, { itemType: 'unknown-item-xyz' });
-		expect(component.config()).toBeNull();
+		const { component } = setup({ itemType: 'unknown-item-xyz' });
+		expect(component['config']()).toBeNull();
 	});
 
 	it('should return empty resolved groups when item is null', () => {
-		const component = new MockItemViewSpecsPage(mockRouter, { itemType: 'expendable-dart-drone' });
-		expect(component.resolvedGroups()).toEqual([]);
+		const { component } = setup({ itemType: 'expendable-dart-drone' });
+		expect(component['resolvedGroups']()).toEqual([]);
 	});
 
 	it('should resolve Identity group fields for a ShipItem', () => {
 		const drone = makeDroneItem();
-		const component = new MockItemViewSpecsPage(mockRouter, {
-			itemType: 'expendable-dart-drone',
-			item: drone,
-		});
+		const { component } = setup({ itemType: 'expendable-dart-drone', item: drone });
 
-		const identityGroup = component.resolvedGroups().find(g => g.label === 'Identity');
+		const identityGroup = component['resolvedGroups']().find((g) => g.label === 'Identity');
 		expect(identityGroup).toBeDefined();
-		expect(identityGroup!.fields.find(f => f.label === 'Name')?.displayValue).toBe('Expendable Dart Drone');
-		expect(identityGroup!.fields.find(f => f.label === 'State')?.displayValue).toBe('contained');
-		expect(identityGroup!.fields.find(f => f.label === 'Damage Status')?.displayValue).toBe('intact');
+		expect(identityGroup!.fields.find((f) => f.label === 'Name')?.displayValue).toBe('Expendable Dart Drone');
+		expect(identityGroup!.fields.find((f) => f.label === 'State')?.displayValue).toBe('contained');
+		expect(identityGroup!.fields.find((f) => f.label === 'Damage Status')?.displayValue).toBe('intact');
 	});
 
 	it('should exclude null fields from Lifecycle group', () => {
 		const drone = makeDroneItem({ destroyedAt: null, discoveredAt: null });
-		const component = new MockItemViewSpecsPage(mockRouter, {
-			itemType: 'expendable-dart-drone',
-			item: drone,
-		});
+		const { component } = setup({ itemType: 'expendable-dart-drone', item: drone });
 
-		const lifecycleGroup = component.resolvedGroups().find(g => g.label === 'Lifecycle');
+		const lifecycleGroup = component['resolvedGroups']().find((g) => g.label === 'Lifecycle');
 		expect(lifecycleGroup).toBeDefined();
-		const fieldLabels = lifecycleGroup!.fields.map(f => f.label);
+		const fieldLabels = lifecycleGroup!.fields.map((f) => f.label);
 		expect(fieldLabels).toContain('Created');
 		expect(fieldLabels).toContain('Updated');
 		expect(fieldLabels).not.toContain('Destroyed');
@@ -306,38 +261,32 @@ describe('ItemViewSpecsPage', () => {
 
 	it('should exclude Kinematics group when item has no kinematics', () => {
 		const drone = makeDroneItem({ kinematics: null });
-		const component = new MockItemViewSpecsPage(mockRouter, {
-			itemType: 'expendable-dart-drone',
-			item: drone,
-		});
+		const { component } = setup({ itemType: 'expendable-dart-drone', item: drone });
 
-		const kinematicsGroup = component.resolvedGroups().find(g => g.label === 'Kinematics');
+		const kinematicsGroup = component['resolvedGroups']().find((g) => g.label === 'Kinematics');
 		expect(kinematicsGroup).toBeUndefined();
 	});
 
 	it('should compute the correct spec image path for a kebab-case itemType', () => {
-		const component = new MockItemViewSpecsPage(mockRouter, { itemType: 'expendable-dart-drone' });
-		expect(component.specImagePath()).toBe('images/expendable_dart_drone_specs.png');
+		const { component } = setup({ itemType: 'expendable-dart-drone' });
+		expect(component['specImagePath']()).toBe('images/expendable_dart_drone_specs.png');
 	});
 
 	it('should compute the correct spec image path for a display-name itemType', () => {
-		const component = new MockItemViewSpecsPage(mockRouter, { itemType: 'Scavenger Pod' });
-		expect(component.specImagePath()).toBe('images/scavenger_pod_specs.png');
+		const { component } = setup({ itemType: 'Scavenger Pod' });
+		expect(component['specImagePath']()).toBe('images/scavenger_pod_specs.png');
 	});
 
 	it('should set imageNotFound to true on image error', () => {
-		const component = new MockItemViewSpecsPage(mockRouter);
-		expect(component.imageNotFound()).toBeFalse();
+		const { component } = setup();
+		expect(component['imageNotFound']()).toBeFalse();
 		component.onImageError();
-		expect(component.imageNotFound()).toBeTrue();
+		expect(component['imageNotFound']()).toBeTrue();
 	});
 
 	it('should navigate to character profile with current player and character state', () => {
 		const character = { id: 'c-1', characterName: 'Nova' };
-		const component = new MockItemViewSpecsPage(mockRouter, {
-			playerName: 'Pioneer',
-			joinCharacter: character,
-		});
+		const { component, mockRouter } = setup({ playerName: 'Pioneer', joinCharacter: character });
 
 		component.navigateToCharacterProfile();
 
@@ -354,11 +303,19 @@ describe('ItemViewSpecsPage', () => {
 	});
 
 	it('should handle missing navigation state gracefully', () => {
-		const component = new MockItemViewSpecsPage(mockRouter);
-		expect(component.playerName()).toBe('');
-		expect(component.joinCharacter()).toBeNull();
-		expect(component.itemType()).toBe('');
-		expect(component.item()).toBeNull();
-		expect(component.imageNotFound()).toBeFalse();
+		const { component } = setup();
+		expect(component['playerName']()).toBe('');
+		expect(component['joinCharacter']()).toBeNull();
+		expect(component['itemType']()).toBe('');
+		expect(component['item']()).toBeNull();
+		expect(component['imageNotFound']()).toBeFalse();
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({ itemType: 'expendable-dart-drone', item: makeDroneItem() });
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
+		});
 	});
 });

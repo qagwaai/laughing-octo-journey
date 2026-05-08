@@ -1,12 +1,16 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-import { createSignal } from '../../../testing';
-
-
-
-function createComputed<T>(fn: () => T) {
-	return () => fn();
-}
+import ShipViewInventoryPage from './ship-view-inventory';
+import { SocketService } from '../../services/socket.service';
+import { SessionService } from '../../services/session.service';
+import {
+	createMockSocketService,
+	type MockSocketService,
+	createMockSessionService,
+	type MockSessionService,
+} from '../../../testing';
 
 interface ItemStub {
 	id: string;
@@ -27,25 +31,6 @@ interface InventoryGroup {
 	item: ItemStub;
 }
 
-function groupInventory(inventory: ItemStub[]): InventoryGroup[] {
-	const counts = new Map<string, InventoryGroup>();
-	for (const item of inventory) {
-		const existing = counts.get(item.itemType);
-		if (existing) {
-			existing.quantity += 1;
-			continue;
-		}
-
-		counts.set(item.itemType, {
-			itemType: item.itemType,
-			name: item.displayName,
-			quantity: 1,
-			item,
-		});
-	}
-	return Array.from(counts.values());
-}
-
 function makeItem(overrides?: Partial<ItemStub>): ItemStub {
 	return {
 		id: overrides?.id ?? 'item-1',
@@ -54,92 +39,75 @@ function makeItem(overrides?: Partial<ItemStub>): ItemStub {
 	};
 }
 
-class MockShipViewInventoryPage {
-	private mockRouter: { navigate: jasmine.Spy };
+function setup(options: {
+	socketService: MockSocketService;
+	sessionService: MockSessionService;
+	navigationState?: NavigationState;
+}) {
+	const mockRouter = {
+		getCurrentNavigation: () =>
+			options.navigationState ? { extras: { state: options.navigationState } } : null,
+		navigate: jasmine.createSpy('navigate'),
+	};
 
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<NavigationState['joinCharacter'] | null>(null);
-	joinShip = createSignal<NavigationState['joinShip'] | null>(null);
+	TestBed.configureTestingModule({
+		imports: [ShipViewInventoryPage],
+		providers: [
+			{ provide: SocketService, useValue: options.socketService },
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: Router, useValue: mockRouter },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-	inventoryGroups = createComputed<InventoryGroup[]>(() =>
-		groupInventory(this.joinShip()?.inventory ?? []),
-	);
-
-	constructor(mockRouter: { navigate: jasmine.Spy }, state?: NavigationState) {
-		this.mockRouter = mockRouter;
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-		this.joinShip.set(state?.joinShip ?? null);
-	}
-
-	getShipDisplayName(): string {
-		const ship = this.joinShip();
-		return ship?.name?.trim() || ship?.id || '';
-	}
-
-	navigateBackToHangar(): void {
-		this.mockRouter.navigate(
-			[{ outlets: { left: ['ship-hangar'] } }],
-			{
-				preserveFragment: true,
-				state: {
-					playerName: this.playerName(),
-					joinCharacter: this.joinCharacter(),
-				},
-			},
-		);
-	}
-
-	navigateToItemSpecs(group: InventoryGroup): void {
-		this.mockRouter.navigate(
-			[{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }],
-			{
-				preserveFragment: true,
-				queryParams: { specsNav: Date.now() },
-				state: {
-					playerName: this.playerName(),
-					joinCharacter: this.joinCharacter(),
-					itemType: group.itemType,
-					item: group.item,
-				},
-			},
-		);
-	}
+	const fixture = TestBed.createComponent(ShipViewInventoryPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter };
 }
 
 describe('ShipViewInventoryPage', () => {
-	let mockRouter: { navigate: jasmine.Spy };
+	let socketService: MockSocketService;
+	let sessionService: MockSessionService;
 
 	beforeEach(() => {
-		mockRouter = { navigate: jasmine.createSpy('navigate') };
+		socketService = createMockSocketService();
+		sessionService = createMockSessionService('test-session-key');
 	});
 
 	it('should initialize context from navigation state', () => {
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			joinShip: { id: 's-1', name: 'Scavenger I', model: 'Scavenger Pod', tier: 1, inventory: [makeItem()] },
-		});
-
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova' });
-		expect(component.joinShip()?.id).toBe('s-1');
-	});
-
-	it('should group inventory items by item type with quantity counts', () => {
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			joinShip: {
-				id: 's-1',
-				name: 'Scavenger I',
-				inventory: [
-					makeItem({ id: 'item-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' }),
-					makeItem({ id: 'item-2', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone Mk II' }),
-					makeItem({ id: 'item-3', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' }),
-				],
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova' },
+				joinShip: { id: 's-1', name: 'Scavenger I', model: 'Scavenger Pod', tier: 1, inventory: [makeItem()] },
 			},
 		});
 
-		const groups = component.inventoryGroups();
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
+		expect(component['joinShip']()?.id).toBe('s-1');
+	});
+
+	it('should group inventory items by item type with quantity counts', () => {
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				joinShip: {
+					id: 's-1',
+					name: 'Scavenger I',
+					inventory: [
+						makeItem({ id: 'item-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' }),
+						makeItem({ id: 'item-2', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone Mk II' }),
+						makeItem({ id: 'item-3', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' }),
+					],
+				},
+			},
+		});
+
+		const groups = component['inventoryGroups']() as InventoryGroup[];
 
 		expect(groups.length).toBe(2);
 		expect(groups[0].itemType).toBe('expendable-dart-drone');
@@ -152,16 +120,20 @@ describe('ShipViewInventoryPage', () => {
 	it('should navigate to item-view-specs with grouped item context', () => {
 		const character = { id: 'c-1', characterName: 'Nova' };
 		const groupedItem = makeItem({ id: 'item-1', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' });
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			playerName: 'Pioneer',
-			joinCharacter: character,
+		const { component, mockRouter } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: character,
+			},
 		});
 
 		component.navigateToItemSpecs({
 			itemType: groupedItem.itemType,
 			name: groupedItem.displayName,
 			quantity: 3,
-			item: groupedItem,
+			item: groupedItem as any,
 		});
 
 		expect(mockRouter.navigate).toHaveBeenCalledWith(
@@ -180,25 +152,33 @@ describe('ShipViewInventoryPage', () => {
 	});
 
 	it('should return empty inventory groups when ship inventory is empty', () => {
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+			},
 		});
 
-		expect(component.inventoryGroups()).toEqual([]);
+		expect(component['inventoryGroups']()).toEqual([]);
 	});
 
 	it('should return empty inventory groups when no ship is selected', () => {
-		const component = new MockShipViewInventoryPage(mockRouter);
+		const { component } = setup({ socketService, sessionService });
 
-		expect(component.inventoryGroups()).toEqual([]);
+		expect(component['inventoryGroups']()).toEqual([]);
 	});
 
 	it('should navigate back to ship-hangar with player and character state', () => {
 		const character = { id: 'c-1', characterName: 'Nova' };
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			playerName: 'Pioneer',
-			joinCharacter: character,
-			joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+		const { component, mockRouter } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: character,
+				joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+			},
 		});
 
 		component.navigateBackToHangar();
@@ -216,18 +196,42 @@ describe('ShipViewInventoryPage', () => {
 	});
 
 	it('should return ship display name from ship name', () => {
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			joinShip: { id: 's-2', name: 'Dart Runner' },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				joinShip: { id: 's-2', name: 'Dart Runner' },
+			},
 		});
 
-		expect(component.getShipDisplayName()).toBe('Dart Runner');
+		expect(component['getShipDisplayName']()).toBe('Dart Runner');
 	});
 
 	it('should fall back to ship id when name is blank', () => {
-		const component = new MockShipViewInventoryPage(mockRouter, {
-			joinShip: { id: 's-3', name: '  ' },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				joinShip: { id: 's-3', name: '  ' },
+			},
 		});
 
-		expect(component.getShipDisplayName()).toBe('s-3');
+		expect(component['getShipDisplayName']()).toBe('s-3');
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({
+				socketService,
+				sessionService,
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova' },
+					joinShip: { id: 's-1', name: 'Scavenger I', inventory: [makeItem()] },
+				},
+			});
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
+		});
 	});
 });
