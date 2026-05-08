@@ -1,4 +1,5 @@
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+const fs = require('fs');
+const spec = `import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
@@ -34,7 +35,7 @@ describe('IntroPage Logic', () => {
 			expect(component).toBeTruthy();
 		});
 
-		it("should have projectName set to 'ngt-template'", () => {
+		it('should have projectName set to \'ngt-template\'', () => {
 			// Project name is defined in angular.json / package.json
 			expect('ngt-template').toBe('ngt-template');
 		});
@@ -106,7 +107,7 @@ describe('IntroPage Logic', () => {
 			expect(fixture.nativeElement).toBeTruthy();
 		});
 
-		it("should include 'Welcome to' prefix", () => {
+		it('should include \'Welcome to\' prefix', () => {
 			const { fixture } = setup();
 			expect(fixture.nativeElement).toBeTruthy();
 		});
@@ -307,3 +308,6 @@ describe('IntroPage Logic', () => {
 		});
 	});
 });
+`;
+fs.writeFileSync('src/app/page/public/intro.spec.ts', spec);
+console.log('done', spec.split('\n').length, 'lines');

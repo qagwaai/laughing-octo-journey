@@ -1,4 +1,5 @@
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+const fs = require('fs');
+const spec = `import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -8,7 +9,6 @@ import { SocketService } from '../../services/socket.service';
 import { SessionService } from '../../services/session.service';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT } from '../../model/register';
 import type { RegisterResponse } from '../../model/register';
-import { setActiveLocaleCode } from '../../i18n/locale';
 import {
 	createMockSocketService,
 	type MockSocketService,
@@ -56,13 +56,8 @@ describe('RegistrationPage', () => {
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
-		setActiveLocaleCode('en');
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService();
-	});
-
-	afterEach(() => {
-		setActiveLocaleCode('en');
 	});
 
 	it('should create', () => {
@@ -92,12 +87,12 @@ describe('RegistrationPage', () => {
 			expect(component['isSubmitting']()).toBe(true);
 		});
 
-		it(`should emit '${REGISTER_EVENT}' with correct payload`, () => {
+		it(\`should emit '\${REGISTER_EVENT}' with correct payload\`, () => {
 			const { component } = setup({ socketService, sessionService });
 			component['registrationForm'].patchValue({
 				locale: 'it',
 				playerName: '  Pioneer  ',
-				email: 'pioneer@stellar.com',
+				email: '  pioneer@stellar.com  ',
 				password: 'password123',
 				confirmPassword: 'password123',
 			});
@@ -125,7 +120,7 @@ describe('RegistrationPage', () => {
 			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
-		it(`should register a listener for '${REGISTER_RESPONSE_EVENT}'`, () => {
+		it(\`should register a listener for '\${REGISTER_RESPONSE_EVENT}'\`, () => {
 			const { component } = setup({ socketService, sessionService });
 			fillValidForm(component);
 			component.submit();
@@ -334,3 +329,6 @@ describe('passwordMatchValidator', () => {
 		expect(component['registrationForm'].errors).toBeNull();
 	});
 });
+`;
+fs.writeFileSync('src/app/page/public/registration.spec.ts', spec);
+console.log('done', spec.split('\n').length, 'lines');

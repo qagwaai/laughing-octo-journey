@@ -1,49 +1,50 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-interface MockRouter {
-	navigate: jasmine.Spy;
-}
+import LogoutPage from './logout';
+import { SessionService } from '../../services/session.service';
+import { createMockSessionService, type MockSessionService } from '../../../testing';
 
-interface MockSessionService {
-	clearSession: jasmine.Spy;
-}
+function setup(options: {
+	sessionService: MockSessionService;
+	navigationState?: Record<string, unknown>;
+}) {
+	const mockRouter = {
+		getCurrentNavigation: () =>
+			options.navigationState ? { extras: { state: options.navigationState } } : null,
+		navigate: jasmine.createSpy('navigate'),
+	};
 
-class MockLogoutPage {
-	private router: MockRouter;
-	private sessionService: MockSessionService;
-	private _playerName: string;
+	TestBed.configureTestingModule({
+		imports: [LogoutPage],
+		providers: [
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: Router, useValue: mockRouter },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-	constructor(router: MockRouter, sessionService: MockSessionService, playerName = '') {
-		this.router = router;
-		this.sessionService = sessionService;
-		this._playerName = playerName;
-	}
-
-	confirmLogout(): void {
-		this.sessionService.clearSession();
-		this.router.navigate([{ outlets: { primary: ['intro'], left: ['login'], right: null } }], {
-			preserveFragment: true,
-		});
-	}
-
-	navigateToCharacterList(): void {
-		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-			preserveFragment: true,
-			state: { playerName: this._playerName },
-		});
-	}
+	const fixture = TestBed.createComponent(LogoutPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter };
 }
 
 describe('LogoutPage', () => {
+	let sessionService: MockSessionService;
+
+	beforeEach(() => {
+		sessionService = createMockSessionService('test-session-key');
+	});
+
 	it('should clear session and navigate to login', () => {
-		const router: MockRouter = { navigate: jasmine.createSpy() };
-		const sessionService: MockSessionService = { clearSession: jasmine.createSpy() };
-		const component = new MockLogoutPage(router, sessionService);
+		const { component, mockRouter } = setup({ sessionService });
+		const clearSpy = spyOn(sessionService, 'clearSession');
 
 		component.confirmLogout();
 
-		expect(sessionService.clearSession).toHaveBeenCalled();
-		expect(router.navigate).toHaveBeenCalledWith(
+		expect(clearSpy).toHaveBeenCalled();
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
 			[{ outlets: { primary: ['intro'], left: ['login'], right: null } }],
 			{ preserveFragment: true },
 		);
@@ -51,39 +52,45 @@ describe('LogoutPage', () => {
 
 	describe('navigateToCharacterList()', () => {
 		it('should navigate to character-list in left outlet', () => {
-			const router: MockRouter = { navigate: jasmine.createSpy() };
-			const sessionService: MockSessionService = { clearSession: jasmine.createSpy() };
-			const component = new MockLogoutPage(router, sessionService);
+			const { component, mockRouter } = setup({ sessionService });
 
 			component.navigateToCharacterList();
 
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: '' } },
 			);
 		});
 
 		it('should pass playerName in navigation state', () => {
-			const router: MockRouter = { navigate: jasmine.createSpy() };
-			const sessionService: MockSessionService = { clearSession: jasmine.createSpy() };
-			const component = new MockLogoutPage(router, sessionService, 'Pioneer');
+			const { component, mockRouter } = setup({
+				sessionService,
+				navigationState: { playerName: 'Pioneer' },
+			});
 
 			component.navigateToCharacterList();
 
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
 		});
 
 		it('should not clear session when navigating to character list', () => {
-			const router: MockRouter = { navigate: jasmine.createSpy() };
-			const sessionService: MockSessionService = { clearSession: jasmine.createSpy() };
-			const component = new MockLogoutPage(router, sessionService);
+			const { component } = setup({ sessionService });
+			const clearSpy = spyOn(sessionService, 'clearSession');
 
 			component.navigateToCharacterList();
 
-			expect(sessionService.clearSession).not.toHaveBeenCalled();
+			expect(clearSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({ sessionService });
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
 		});
 	});
 });

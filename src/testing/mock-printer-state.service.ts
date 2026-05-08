@@ -1,4 +1,4 @@
-import { createSignal, WritableSignalLike } from './signal';
+import { signal, type WritableSignal } from '@angular/core';
 import type { PrintQueueItem } from '../app/services/printer-state.service';
 
 /**
@@ -11,7 +11,7 @@ import type { PrintQueueItem } from '../app/services/printer-state.service';
  *   beforeEach(() => { printerState = createMockPrinterStateService(); });
  */
 export interface MockPrinterStateService {
-	queue: WritableSignalLike<PrintQueueItem[]>;
+	queue: WritableSignal<PrintQueueItem[]>;
 	loadQueue(playerName: string, characterId: string): void;
 	addToQueue(
 		playerName: string,
@@ -22,7 +22,7 @@ export interface MockPrinterStateService {
 }
 
 export function createMockPrinterStateService(): MockPrinterStateService {
-	const queue = createSignal<PrintQueueItem[]>([]);
+	const queue = signal<PrintQueueItem[]>([]);
 
 	return {
 		queue,

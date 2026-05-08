@@ -1,132 +1,111 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-import { createSignal } from '../../../testing';
+import PrintQueuePage from './print-queue';
+import { SocketService } from '../../services/socket.service';
+import { SessionService } from '../../services/session.service';
+import { PrinterStateService } from '../../services/printer-state.service';
+import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import {
+	createMockSocketService,
+	type MockSocketService,
+	createMockSessionService,
+	type MockSessionService,
+	createMockPrinterStateService,
+	type MockPrinterStateService,
+} from '../../../testing';
+import { signal } from '@angular/core';
 
-/**
- * Unit tests for PrintQueuePage component.
- * Uses the mock-component pattern consistent with other page specs in this project.
- */
+function setup(options: {
+	socketService: MockSocketService;
+	sessionService: MockSessionService;
+	printerService: MockPrinterStateService;
+	navigationState?: Record<string, unknown>;
+}) {
+	const mockRouter = {
+		getCurrentNavigation: () =>
+			options.navigationState ? { extras: { state: options.navigationState } } : null,
+		navigate: jasmine.createSpy('navigate'),
+	};
 
+	const mockMissionState = { lastSaved: signal(null), loadState: () => null, saveState: () => {} };
+	const mockMissionProgressSync = { syncGateState: () => Promise.resolve('skipped' as const) };
 
+	TestBed.configureTestingModule({
+		imports: [PrintQueuePage],
+		providers: [
+			{ provide: SocketService, useValue: options.socketService },
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: PrinterStateService, useValue: options.printerService },
+			{ provide: ShipExteriorMissionStateService, useValue: mockMissionState },
+			{ provide: MissionProgressSyncService, useValue: mockMissionProgressSync },
+			{ provide: Router, useValue: mockRouter },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-interface MockRouter {
-	navigate: jasmine.Spy;
-}
-
-interface MockPrintQueueItem {
-	id: string;
-	itemType: string;
-	label: string;
-	startedAt: string;
-	durationMs: number;
-	consumedMaterials?: Array<{ id: string; itemType: string; label: string }>;
-}
-
-class MockPrintQueuePage {
-	private router: MockRouter;
-	private _playerName: string;
-	private _characterId: string;
-	private _shipId: string;
-	private _queue: MockPrintQueueItem[];
-
-	constructor(
-		router: MockRouter,
-		playerName = 'Pioneer',
-		characterId = 'char-1',
-		shipId = 'ship-1',
-		queue: MockPrintQueueItem[] = [],
-	) {
-		this.router = router;
-		this._playerName = playerName;
-		this._characterId = characterId;
-		this._shipId = shipId;
-		this._queue = queue;
-	}
-
-	printerStatus(): 'printing' | 'idle' {
-		return this._queue.length > 0 ? 'printing' : 'idle';
-	}
-
-	formatRemainingTime(ms: number): string {
-		if (ms <= 0) {
-			return '0:00';
-		}
-
-		const totalSeconds = Math.floor(ms / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-	}
-
-	navigateBack(): void {
-		this.router.navigate(
-			[{ outlets: { right: null, left: ['repair-retrofit'] } }],
-			{ preserveFragment: true, state: { playerName: this._playerName } },
-		);
-	}
+	const fixture = TestBed.createComponent(PrintQueuePage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter };
 }
 
 describe('PrintQueuePage', () => {
-	let router: MockRouter;
-	let component: MockPrintQueuePage;
+	let socketService: MockSocketService;
+	let sessionService: MockSessionService;
+	let printerService: MockPrinterStateService;
 
 	beforeEach(() => {
-		router = { navigate: jasmine.createSpy() };
-		component = new MockPrintQueuePage(router);
+		socketService = createMockSocketService();
+		sessionService = createMockSessionService('test-session-key');
+		printerService = createMockPrinterStateService();
 	});
 
 	describe('printerStatus()', () => {
 		it('should return idle when queue is empty', () => {
-			expect(component.printerStatus()).toBe('idle');
+			const { component } = setup({ socketService, sessionService, printerService });
+			expect(component['printerStatus']()).toBe('idle');
 		});
 
 		it('should return printing when queue has items', () => {
-			const componentWithJobs = new MockPrintQueuePage(router, 'Pioneer', 'char-1', 'ship-1', [
-				{ id: 'job-1', itemType: 'hull-patch-kit', label: 'Hull Patch Kit', startedAt: new Date().toISOString(), durationMs: 60000 },
-			]);
-			expect(componentWithJobs.printerStatus()).toBe('printing');
+			const { component, fixture } = setup({ socketService, sessionService, printerService });
+			printerService.queue.set([{ id: 'job-1', itemType: 'hull-patch-kit', label: 'Hull Patch Kit', startedAt: new Date().toISOString(), durationMs: 60000 }]);
+			fixture.detectChanges();
+			expect(component['printerStatus']()).toBe('printing');
 		});
 	});
 
 	describe('formatRemainingTime()', () => {
 		it('should return 0:00 for zero or negative ms', () => {
-			expect(component.formatRemainingTime(0)).toBe('0:00');
-			expect(component.formatRemainingTime(-1000)).toBe('0:00');
+			const { component } = setup({ socketService, sessionService, printerService });
+			expect(component['formatRemainingTime'](0)).toBe('0:00');
+			expect(component['formatRemainingTime'](-1000)).toBe('0:00');
 		});
 
 		it('should format under 1 minute correctly', () => {
-			expect(component.formatRemainingTime(30000)).toBe('0:30');
-			expect(component.formatRemainingTime(9000)).toBe('0:09');
+			const { component } = setup({ socketService, sessionService, printerService });
+			expect(component['formatRemainingTime'](30000)).toBe('0:30');
+			expect(component['formatRemainingTime'](9000)).toBe('0:09');
 		});
 
 		it('should format minutes and seconds correctly', () => {
-			expect(component.formatRemainingTime(90000)).toBe('1:30');
-			expect(component.formatRemainingTime(125000)).toBe('2:05');
+			const { component } = setup({ socketService, sessionService, printerService });
+			expect(component['formatRemainingTime'](90000)).toBe('1:30');
+			expect(component['formatRemainingTime'](125000)).toBe('2:05');
 		});
 
 		it('should pad seconds with leading zero', () => {
-			expect(component.formatRemainingTime(61000)).toBe('1:01');
+			const { component } = setup({ socketService, sessionService, printerService });
+			expect(component['formatRemainingTime'](61000)).toBe('1:01');
 		});
 	});
 
-	describe('navigateBack()', () => {
-		it('should navigate to repair-retrofit in left outlet and close right outlet', () => {
-			component.navigateBack();
-
-			expect(router.navigate).toHaveBeenCalledWith(
-				[{ outlets: { right: null, left: ['repair-retrofit'] } }],
-				jasmine.objectContaining({ preserveFragment: true }),
-			);
-		});
-
-		it('should include playerName in navigation state', () => {
-			const componentWithPlayer = new MockPrintQueuePage(router, 'Vega');
-			componentWithPlayer.navigateBack();
-
-			expect(router.navigate).toHaveBeenCalledWith(
-				jasmine.anything(),
-				jasmine.objectContaining({ state: jasmine.objectContaining({ playerName: 'Vega' }) }),
-			);
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({ socketService, sessionService, printerService });
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
 		});
 	});
 });

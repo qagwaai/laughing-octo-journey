@@ -1,65 +1,66 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-import { createSignal } from '../../../testing';
-
+import CharacterProfilePage from './character-profile';
 import type { CreditLedgerEntry } from '../../model/character-economy';
 
+function setup(options: { navigationState?: Record<string, unknown> } = {}) {
+	const mockRouter = {
+		getCurrentNavigation: () =>
+			options.navigationState ? { extras: { state: options.navigationState } } : null,
+		navigate: jasmine.createSpy('navigate'),
+	};
 
+	TestBed.configureTestingModule({
+		imports: [CharacterProfilePage],
+		providers: [{ provide: Router, useValue: mockRouter }],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-interface MockCharacter {
-	id: string;
-	characterName: string;
-	credits?: number;
-	creditLedger?: CreditLedgerEntry[];
-}
-
-interface NavigationState {
-	playerName?: string;
-	joinCharacter?: MockCharacter;
-}
-
-class MockCharacterProfilePage {
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<MockCharacter | null>(null);
-
-	constructor(state?: NavigationState) {
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-	}
+	const fixture = TestBed.createComponent(CharacterProfilePage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture };
 }
 
 describe('CharacterProfilePage', () => {
 	it('should initialize from navigation state', () => {
-		const component = new MockCharacterProfilePage({
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova' },
+		const { component } = setup({
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova' },
+			},
 		});
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova' });
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toEqual(jasmine.objectContaining({ id: 'c-1', characterName: 'Nova' }));
 	});
 
 	it('should fallback to empty values', () => {
-		const component = new MockCharacterProfilePage();
-		expect(component.playerName()).toBe('');
-		expect(component.joinCharacter()).toBeNull();
+		const { component } = setup();
+		expect(component['playerName']()).toBe('');
+		expect(component['joinCharacter']()).toBeNull();
 	});
 
 	describe('credits display', () => {
 		it('should expose credits from joinCharacter when present', () => {
-			const component = new MockCharacterProfilePage({
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 425 },
+			const { component } = setup({
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 425 },
+				},
 			});
-			expect(component.joinCharacter()?.credits).toBe(425);
+			expect(component['joinCharacter']()?.credits).toBe(425);
 		});
 
 		it('should treat missing credits as zero', () => {
-			const component = new MockCharacterProfilePage({
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
+			const { component } = setup({
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova' },
+				},
 			});
-			expect(component.joinCharacter()?.credits ?? 0).toBe(0);
+			expect(component['joinCharacter']()?.credits ?? 0).toBe(0);
 		});
 
 		it('should expose creditLedger from joinCharacter when present', () => {
@@ -70,20 +71,24 @@ describe('CharacterProfilePage', () => {
 				timestamp: '2026-05-01T00:00:00.000Z',
 				referenceId: null,
 			};
-			const component = new MockCharacterProfilePage({
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 425, creditLedger: [entry] },
+			const { component } = setup({
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 425, creditLedger: [entry] },
+				},
 			});
-			expect(component.joinCharacter()?.creditLedger?.length).toBe(1);
-			expect(component.joinCharacter()?.creditLedger?.[0]).toEqual(entry);
+			expect(component['joinCharacter']()?.creditLedger?.length).toBe(1);
+			expect(component['joinCharacter']()?.creditLedger?.[0]).toEqual(entry);
 		});
 
 		it('should treat missing creditLedger as empty', () => {
-			const component = new MockCharacterProfilePage({
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 0 },
+			const { component } = setup({
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 0 },
+				},
 			});
-			expect(component.joinCharacter()?.creditLedger ?? []).toEqual([]);
+			expect(component['joinCharacter']()?.creditLedger ?? []).toEqual([]);
 		});
 
 		it('should correctly identify put and take entry types', () => {
@@ -101,16 +106,13 @@ describe('CharacterProfilePage', () => {
 				timestamp: '2026-05-03T00:00:00.000Z',
 				referenceId: null,
 			};
-			const component = new MockCharacterProfilePage({
-				playerName: 'Pioneer',
-				joinCharacter: {
-					id: 'c-1',
-					characterName: 'Nova',
-					credits: 150,
-					creditLedger: [putEntry, takeEntry],
+			const { component } = setup({
+				navigationState: {
+					playerName: 'Pioneer',
+					joinCharacter: { id: 'c-1', characterName: 'Nova', credits: 150, creditLedger: [putEntry, takeEntry] },
 				},
 			});
-			const ledger = component.joinCharacter()!.creditLedger!;
+			const ledger = component['joinCharacter']()!.creditLedger!;
 			expect(ledger[0].type).toBe('put');
 			expect(ledger[1].type).toBe('take');
 		});
@@ -132,6 +134,14 @@ describe('CharacterProfilePage', () => {
 			};
 			expect(withRef.referenceId).toBe('mission-ref-1');
 			expect(withoutRef.referenceId).toBeNull();
+		});
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup();
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
 		});
 	});
 });

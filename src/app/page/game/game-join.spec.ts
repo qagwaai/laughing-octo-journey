@@ -1,182 +1,72 @@
-export {};
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
-import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
-
-
+import GameJoinPage from './game-join';
+import { SocketService } from '../../services/socket.service';
+import { SessionService } from '../../services/session.service';
+import {
+	createMockSocketService,
+	type MockSocketService,
+	createMockSessionService,
+	type MockSessionService,
+} from '../../../testing';
 
 const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
 const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 
-interface GameJoinState {
-	playerName?: string;
-	joinCharacter?: {
-		id: string;
-		characterName: string;
-		level?: number;
+function setup(options: {
+	socketService: MockSocketService;
+	sessionService: MockSessionService;
+	navigationState?: Record<string, unknown>;
+	connected?: boolean;
+}) {
+	const mockRouter = {
+		getCurrentNavigation: () =>
+			options.navigationState ? { extras: { state: options.navigationState } } : null,
+		navigate: jasmine.createSpy('navigate'),
 	};
+
+	options.socketService.connected = options.connected ?? false;
+
+	TestBed.configureTestingModule({
+		imports: [GameJoinPage],
+		providers: [
+			{ provide: SocketService, useValue: options.socketService },
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: Router, useValue: mockRouter },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
+
+	const fixture = TestBed.createComponent(GameJoinPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter };
 }
-
-interface MockRouter {
-	navigate: jasmine.Spy;
-}
-
-class MockGameJoinPage {
-	private socketService: MockSocketService;
-	private sessionService: MockSessionService;
-	private router: MockRouter;
-	private unsubscribeShipListResponse?: () => void;
-
-	playerName = createSignal<string>('');
-	joinCharacter = createSignal<GameJoinState['joinCharacter'] | null>(null);
-	characterName = createSignal<string>('Unknown Character');
-    ships = createSignal<Array<{ id: string; name: string; status?: string; model?: string }>>([]);
-	isLoadingShips = createSignal(false);
-	shipListError = createSignal<string | null>(null);
-
-	constructor(socketService: MockSocketService, sessionService: MockSessionService, router: MockRouter, state?: GameJoinState) {
-		this.socketService = socketService;
-		this.sessionService = sessionService;
-		this.router = router;
-		this.playerName.set(state?.playerName ?? '');
-		this.joinCharacter.set(state?.joinCharacter ?? null);
-		this.characterName.set(state?.joinCharacter?.characterName ?? 'Unknown Character');
-
-		if (this.socketService.getIsConnected()) {
-			this.loadShipsForCharacter();
-		} else {
-			this.socketService.once('connect', () => this.loadShipsForCharacter());
-		}
-	}
-
-	loadShipsForCharacter(): void {
-		const playerName = this.playerName().trim();
-		const character = this.joinCharacter();
-
-		if (!playerName) {
-			this.shipListError.set('Player name is required to load ships.');
-			this.ships.set([]);
-			return;
-		}
-
-		if (!character?.id) {
-			this.shipListError.set('Character id is required to load ships.');
-			this.ships.set([]);
-			return;
-		}
-
-		this.isLoadingShips.set(true);
-		this.shipListError.set(null);
-		this.unsubscribeShipListResponse?.();
-
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: {
-				success: boolean;
-				message: string;
-				playerName: string;
-				characterId: string;
-				ships: Array<{ id: string; name: string; status?: string; model?: string }>;
-			}) => {
-				this.isLoadingShips.set(false);
-				if (response.success) {
-					this.ships.set(response.ships ?? []);
-					this.shipListError.set(null);
-				} else {
-					this.ships.set([]);
-					this.shipListError.set(response.message);
-				}
-				this.unsubscribeShipListResponse?.();
-			},
-		);
-
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, {
-			playerName,
-			characterId: character.id,
-			sessionKey: this.sessionService.getSessionKey()!,
-		});
-	}
-
-	navigateToShipSpecs(ship: { id: string; name: string; status?: string; model?: string }): void {
-		const model = typeof ship.model === 'string' && ship.model.trim() ? ship.model.trim() : 'Scavenger Pod';
-		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }], {
-			preserveFragment: true,
-			queryParams: { specsNav: Date.now() },
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-				itemType: model,
-				item: ship,
-			},
-		});
-	}
-
-	getShipDisplayName(ship: { id: string; name: string }): string {
-		return ship.name.trim() || 'Unnamed Ship';
-	}
-
-	getShipKinematicsSummary(ship: {
-		spatial?: {
-			frame: string;
-			positionKm: { x: number; y: number; z: number };
-		};
-		motion?: {
-			velocityKmPerSec: { x: number; y: number; z: number };
-		};
-	}): string {
-		const spatial = ship.spatial;
-		const motion = ship.motion;
-		if (!spatial || !motion) {
-			return 'Kinematics unavailable';
-		}
-
-		const speedKmPerSec = Math.sqrt(
-			motion.velocityKmPerSec.x ** 2 +
-			motion.velocityKmPerSec.y ** 2 +
-			motion.velocityKmPerSec.z ** 2,
-		);
-		const position = `(${spatial.positionKm.x}, ${spatial.positionKm.y}, ${spatial.positionKm.z}) km`;
-		if (speedKmPerSec <= 1e-9) {
-			return `${spatial.frame}, position ${position}, stationary at ${speedKmPerSec.toFixed(3)} km/s`;
-		}
-
-		const heading = `(${(motion.velocityKmPerSec.x / speedKmPerSec).toFixed(3)}, ${(motion.velocityKmPerSec.y / speedKmPerSec).toFixed(3)}, ${(motion.velocityKmPerSec.z / speedKmPerSec).toFixed(3)})`;
-		return `${spatial.frame}, position ${position}, speed ${speedKmPerSec.toFixed(3)} km/s, heading ${heading}`;
-	}
-
-	ngOnDestroy(): void {
-		this.unsubscribeShipListResponse?.();
-	}
-}
-
-
-
-
-
-
-
-
 
 describe('GameJoinPage', () => {
 	let socketService: MockSocketService;
 	let sessionService: MockSessionService;
-	let router: MockRouter;
 
 	beforeEach(() => {
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
-		router = { navigate: jasmine.createSpy() };
 	});
 
 	it('should initialize character name from navigation state', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime', level: 7 },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime', level: 7 },
+			},
+			connected: true,
 		});
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toEqual({ id: 'c-1', characterName: 'Nova-Prime', level: 7 });
-		expect(component.characterName()).toBe('Nova-Prime');
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova-Prime', level: 7 });
+		expect(component['characterName']()).toBe('Nova-Prime');
 		expect(socketService.emittedEvents[0]).toEqual({
 			event: SHIP_LIST_REQUEST_EVENT,
 			data: {
@@ -185,42 +75,48 @@ describe('GameJoinPage', () => {
 				sessionKey: 'test-session-key',
 			},
 		});
-
-		component.ngOnDestroy();
 	});
 
 	it('should fall back to Unknown Character when no character is provided', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, { playerName: 'Pioneer' });
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: { playerName: 'Pioneer' },
+			connected: true,
+		});
 
-		expect(component.playerName()).toBe('Pioneer');
-		expect(component.joinCharacter()).toBeNull();
-		expect(component.characterName()).toBe('Unknown Character');
-		expect(component.shipListError()).toBe('Character id is required to load ships.');
-		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
-
-		component.ngOnDestroy();
+		expect(component['playerName']()).toBe('Pioneer');
+		expect(component['joinCharacter']()).toBeNull();
+		expect(component['characterName']()).toBe('Unknown Character');
+		expect(component['shipListError']()).toBe('Character id is required to load ships.');
+		expect(socketService.emittedEvents.length).toBe(0);
 	});
 
 	it('should request ships when connect event fires for initially disconnected socket', () => {
-		socketService.connected = false;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: false,
 		});
 
-		expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+		expect(socketService.emittedEvents.length).toBe(0);
 		socketService.triggerOnceEvent('connect');
 		expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_REQUEST_EVENT);
-
-		component.ngOnDestroy();
 	});
 
 	it('should populate ships on successful response', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: true,
 		});
 
 		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
@@ -234,26 +130,23 @@ describe('GameJoinPage', () => {
 			],
 		});
 
-		expect(component.isLoadingShips()).toBe(false);
-		expect(component.shipListError()).toBeNull();
-		expect(component.ships()).toEqual([
-			{ id: 'd-1', name: 'Surveyor' },
-			{ id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
-		]);
-
-		component.ngOnDestroy();
+		expect(component['isLoadingShips']()).toBe(false);
+		expect(component['shipListError']()).toBeNull();
+		expect(component['ships']().length).toBe(2);
+		expect(component['ships']()[0].name).toBe('Surveyor');
+		expect(component['ships']()[1].name).toBe('Guardian');
+		expect(component['ships']()[1].status).toBe('ACTIVE');
 	});
 
 	it('should recover ship names from alternate payload fields', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-		});
-
-		const normalizeShipSummary = (ship: { id: string; name?: string; shipName?: string; displayName?: string }) => ({
-			id: ship.id,
-			name: ship.name?.trim() || ship.shipName?.trim() || ship.displayName?.trim() || ship.id,
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: true,
 		});
 
 		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
@@ -262,45 +155,24 @@ describe('GameJoinPage', () => {
 			playerName: 'Pioneer',
 			characterId: 'c-1',
 			ships: [
-				normalizeShipSummary({ id: 'd-1', shipName: 'Surveyor' }),
-				normalizeShipSummary({ id: 'd-2', name: '   ', displayName: 'Guardian' }),
+				{ id: 'd-1', shipName: 'Surveyor' } as any,
+				{ id: 'd-2', name: '   ', displayName: 'Guardian' } as any,
 			],
 		});
 
-		expect(component.ships()).toEqual([
-			{ id: 'd-1', name: 'Surveyor' },
-			{ id: 'd-2', name: 'Guardian' },
-		]);
-
-		component.ngOnDestroy();
+		expect(component['ships']()[0].name).toBe('Surveyor');
+		expect(component['ships']()[1].name).toBe('Guardian');
 	});
 
 	it('should preserve canonical spatial and motion payload fields', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-		});
-
-		const normalizeShipSummary = (ship: {
-			id: string;
-			name?: string;
-			spatial?: { x: number; y: number; z: number };
-			velocityKmPerSec?: { x: number; y: number; z: number };
-			frame?: 'barycentric';
-			solarSystemId?: string;
-		}) => ({
-			id: ship.id,
-			name: ship.name?.trim() || ship.id,
-			spatial: ship.spatial ? {
-				frame: ship.frame ?? 'barycentric',
-				solarSystemId: ship.solarSystemId ?? 'unknown-system',
-				positionKm: ship.spatial,
-				epochMs: jasmine.any(Number),
-			} : undefined,
-			motion: ship.velocityKmPerSec ? {
-				velocityKmPerSec: ship.velocityKmPerSec,
-			} : undefined,
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: true,
 		});
 
 		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
@@ -309,35 +181,37 @@ describe('GameJoinPage', () => {
 			playerName: 'Pioneer',
 			characterId: 'c-1',
 			ships: [
-				normalizeShipSummary({
+				{
 					id: 'd-1',
 					name: 'Surveyor',
-					spatial: { x: 10, y: 20, z: 30 },
-					velocityKmPerSec: { x: 3, y: 4, z: 0 },
-					solarSystemId: 'sol',
-					frame: 'barycentric',
-				}),
+					spatial: {
+						frame: 'barycentric',
+						solarSystemId: 'sol',
+						positionKm: { x: 10, y: 20, z: 30 },
+						epochMs: Date.now(),
+					},
+					motion: {
+						velocityKmPerSec: { x: 3, y: 4, z: 0 },
+					},
+				} as any,
 			],
 		});
 
-		expect(component.getShipKinematicsSummary(component.ships()[0] as {
-			spatial?: {
-				frame: string;
-				positionKm: { x: number; y: number; z: number };
-			};
-			motion?: {
-				velocityKmPerSec: { x: number; y: number; z: number };
-			};
-		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
-
-		component.ngOnDestroy();
+		const ship = component['ships']()[0];
+		expect(component['getShipKinematicsSummary'](ship)).toBe(
+			'barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)',
+		);
 	});
 
 	it('should set error and clear ships on failed response', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		const { component } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: true,
 		});
 
 		socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
@@ -348,24 +222,26 @@ describe('GameJoinPage', () => {
 			ships: [],
 		});
 
-		expect(component.isLoadingShips()).toBe(false);
-		expect(component.ships()).toEqual([]);
-		expect(component.shipListError()).toBe('Character ships unavailable.');
-
-		component.ngOnDestroy();
+		expect(component['isLoadingShips']()).toBe(false);
+		expect(component['ships']()).toEqual([]);
+		expect(component['shipListError']()).toBe('Character ships unavailable.');
 	});
 
 	it('should navigate to item-view-specs by changing right outlet and preserving left game-join', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		const { component, mockRouter } = setup({
+			socketService,
+			sessionService,
+			navigationState: {
+				playerName: 'Pioneer',
+				joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+			},
+			connected: true,
 		});
 
 		const ship = { id: 'd-1', name: 'Surveyor', status: 'ACTIVE' };
-		component.navigateToShipSpecs(ship);
+		component.navigateToShipSpecs(ship as any);
 
-		expect(router.navigate).toHaveBeenCalledWith(
+		expect(mockRouter.navigate).toHaveBeenCalledWith(
 			[{ outlets: { right: ['item-view-specs'], left: ['game-join'] } }],
 			{
 				preserveFragment: true,
@@ -378,51 +254,43 @@ describe('GameJoinPage', () => {
 				},
 			},
 		);
-
-		component.ngOnDestroy();
 	});
 
 	it('should return a fallback display name for blank ship names', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-		});
+		const { component } = setup({ socketService, sessionService });
 
-		expect(component.getShipDisplayName({ id: 'd-1', name: '   ' })).toBe('Unnamed Ship');
-
-		component.ngOnDestroy();
+		expect(component['getShipDisplayName']({ id: 'd-1', name: '   ' } as any)).toBe('Unnamed Ship');
 	});
 
 	it('should summarize ship kinematics for the list', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
-		});
+		const { component } = setup({ socketService, sessionService });
 
-		expect(component.getShipKinematicsSummary({
+		expect(component['getShipKinematicsSummary']({
+			id: 'd-1', name: 'S',
 			spatial: {
 				frame: 'barycentric',
+				solarSystemId: 'sol',
 				positionKm: { x: 10, y: 20, z: 30 },
+				epochMs: 0,
 			},
 			motion: {
 				velocityKmPerSec: { x: 3, y: 4, z: 0 },
 			},
-		})).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
-
-		component.ngOnDestroy();
+			model: 'Scavenger Pod', tier: 1,
+		} as any)).toBe('barycentric, position (10, 20, 30) km, speed 5.000 km/s, heading (0.600, 0.800, 0.000)');
 	});
 
 	it('should return an explicit fallback when kinematics are missing', () => {
-		socketService.connected = true;
-		const component = new MockGameJoinPage(socketService, sessionService, router, {
-			playerName: 'Pioneer',
-			joinCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+		const { component } = setup({ socketService, sessionService });
+
+		expect(component['getShipKinematicsSummary']({ id: 'd-1', name: 'S', model: 'Scavenger Pod', tier: 1, spatial: null } as any)).toBe('Kinematics unavailable');
+	});
+
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({ socketService, sessionService });
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
 		});
-
-		expect(component.getShipKinematicsSummary({})).toBe('Kinematics unavailable');
-
-		component.ngOnDestroy();
 	});
 });

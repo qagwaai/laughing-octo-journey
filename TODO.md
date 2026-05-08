@@ -23,16 +23,16 @@ Order by LOC / traffic:
 
 - [X] [src/app/page/game/market-hub.spec.ts](src/app/page/game/market-hub.spec.ts) (972 LOC, 18 tests) → import `MarketHubComponent`, drive via `TestBed`
 - [X] [src/app/page/character/character-list.spec.ts](src/app/page/character/character-list.spec.ts) (763 LOC, 25 tests)
-- [ ] [src/app/page/game/ship-hangar.spec.ts](src/app/page/game/ship-hangar.spec.ts) (582 LOC, 15 tests)
-- [ ] [src/app/page/game/mission-board.spec.ts](src/app/page/game/mission-board.spec.ts) (20 tests)
+- [X] [src/app/page/game/ship-hangar.spec.ts](src/app/page/game/ship-hangar.spec.ts) (582 LOC, 15 tests)
+- [X] [src/app/page/game/mission-board.spec.ts](src/app/page/game/mission-board.spec.ts) (20 tests)
 - [ ] [src/app/page/game/repair-retrofit.spec.ts](src/app/page/game/repair-retrofit.spec.ts) and the four `repair-retrofit-*` detail/items/ship-detail/item-detail siblings
-- [ ] [src/app/page/game/fabrication-lab.spec.ts](src/app/page/game/fabrication-lab.spec.ts)
-- [ ] [src/app/page/game/print-queue.spec.ts](src/app/page/game/print-queue.spec.ts)
-- [ ] [src/app/page/game/character-profile.spec.ts](src/app/page/game/character-profile.spec.ts)
-- [ ] [src/app/page/game/game-join.spec.ts](src/app/page/game/game-join.spec.ts), [src/app/page/game/game-main.spec.ts](src/app/page/game/game-main.spec.ts), [src/app/page/game/logout.spec.ts](src/app/page/game/logout.spec.ts)
+- [X] [src/app/page/game/fabrication-lab.spec.ts](src/app/page/game/fabrication-lab.spec.ts)
+- [X] [src/app/page/game/print-queue.spec.ts](src/app/page/game/print-queue.spec.ts)
+- [X] [src/app/page/game/character-profile.spec.ts](src/app/page/game/character-profile.spec.ts)
+- [X] [src/app/page/game/game-join.spec.ts](src/app/page/game/game-join.spec.ts), [src/app/page/game/game-main.spec.ts](src/app/page/game/game-main.spec.ts), [src/app/page/game/logout.spec.ts](src/app/page/game/logout.spec.ts)
 - [ ] [src/app/page/game/item-view-specs.spec.ts](src/app/page/game/item-view-specs.spec.ts), [src/app/page/game/ship-view-inventory.spec.ts](src/app/page/game/ship-view-inventory.spec.ts), [src/app/page/game/ship-view-specs.spec.ts](src/app/page/game/ship-view-specs.spec.ts), [src/app/page/game/stellar-initiation.spec.ts](src/app/page/game/stellar-initiation.spec.ts)
 - [ ] [src/app/page/character/character-setup.spec.ts](src/app/page/character/character-setup.spec.ts)
-- [ ] [src/app/page/public/login.spec.ts](src/app/page/public/login.spec.ts), [src/app/page/public/registration.spec.ts](src/app/page/public/registration.spec.ts), [src/app/page/public/intro.spec.ts](src/app/page/public/intro.spec.ts)
+- [X] [src/app/page/public/login.spec.ts](src/app/page/public/login.spec.ts), [src/app/page/public/registration.spec.ts](src/app/page/public/registration.spec.ts), [src/app/page/public/intro.spec.ts](src/app/page/public/intro.spec.ts)
 - [ ] [src/app/page/opening/cold-boot.spec.ts](src/app/page/opening/cold-boot.spec.ts)
 - [ ] [src/app/scene/ship-exterior-view.spec.ts](src/app/scene/ship-exterior-view.spec.ts), [src/app/scene/ship-view-specs.spec.ts](src/app/scene/ship-view-specs.spec.ts)
 - [ ] [src/app/scene/hud/cold-boot-hud-scene.spec.ts](src/app/scene/hud/cold-boot-hud-scene.spec.ts), [src/app/scene/hud/hud-overlay.spec.ts](src/app/scene/hud/hud-overlay.spec.ts)

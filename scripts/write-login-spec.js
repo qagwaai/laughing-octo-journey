@@ -1,4 +1,5 @@
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+const fs = require('fs');
+const spec = `import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -8,7 +9,6 @@ import { SocketService } from '../../services/socket.service';
 import { SessionService } from '../../services/session.service';
 import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT } from '../../model/login';
 import type { LoginResponse } from '../../model/login';
-import { setActiveLocaleCode } from '../../i18n/locale';
 import {
 	createMockSocketService,
 	type MockSocketService,
@@ -47,13 +47,8 @@ describe('LoginPage', () => {
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
-		setActiveLocaleCode('en');
 		socketService = createMockSocketService();
 		sessionService = createMockSessionService();
-	});
-
-	afterEach(() => {
-		setActiveLocaleCode('en');
 	});
 
 	it('should create', () => {
@@ -78,7 +73,7 @@ describe('LoginPage', () => {
 			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
-		it(`should emit '${LOGIN_EVENT}' with correct payload`, () => {
+		it(\`should emit '\${LOGIN_EVENT}' with correct payload\`, () => {
 			const { component } = setup({ socketService, sessionService });
 			component['loginForm'].patchValue({ playerName: '  Pioneer  ', password: 'password123', locale: 'it' });
 			component.submit();
@@ -99,7 +94,7 @@ describe('LoginPage', () => {
 			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
-		it(`should register a listener for '${LOGIN_RESPONSE_EVENT}'`, () => {
+		it(\`should register a listener for '\${LOGIN_RESPONSE_EVENT}'\`, () => {
 			const { component } = setup({ socketService, sessionService });
 			component['loginForm'].patchValue({ playerName: 'Pioneer', password: 'password123' });
 			component.submit();
@@ -266,3 +261,6 @@ describe('LoginPage', () => {
 		});
 	});
 });
+`;
+fs.writeFileSync('src/app/page/public/login.spec.ts', spec);
+console.log('done', spec.split('\n').length, 'lines');
