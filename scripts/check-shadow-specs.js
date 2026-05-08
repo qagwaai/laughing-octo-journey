@@ -34,7 +34,6 @@ const KNOWN_SHADOW_SPECS = new Set([
   'src/app/page/game/ship-view-inventory.spec.ts',
   'src/app/page/game/ship-view-specs.spec.ts',
   'src/app/page/game/stellar-initiation.spec.ts',
-  'src/app/page/character/character-setup.spec.ts',
   'src/app/page/opening/cold-boot.spec.ts',
   'src/app/scene/ship-exterior-view.spec.ts',
   'src/app/scene/ship-view-specs.spec.ts',

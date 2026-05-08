@@ -1,53 +1,47 @@
-import { createSignal, createMockSocketService, type MockSocketService, createMockSessionService, type MockSessionService } from '../../../testing';
-/**
- * Unit tests for CharacterSetupPage component
- *
- * Uses direct logic testing with a mock component pattern consistent with
- * existing page specs in this project.
- */
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 
+import CharacterSetupPage from './character-setup';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
 import {
 	CHARACTER_ADD_REQUEST_EVENT,
 	CHARACTER_ADD_RESPONSE_EVENT,
-	CharacterAddRequest,
-	CharacterAddResponse,
+	type CharacterAddRequest,
+	type CharacterAddResponse,
 } from '../../model/character-add';
 import {
 	CHARACTER_EDIT_REQUEST_EVENT,
 	CHARACTER_EDIT_RESPONSE_EVENT,
-	CharacterEditResponse,
+	type CharacterEditResponse,
 } from '../../model/character-edit';
 import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 	type ShipListResponse,
 } from '../../model/ship-list';
+import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
+import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import {
-	SHIP_UPSERT_REQUEST_EVENT,
-	SHIP_UPSERT_RESPONSE_EVENT,
-} from '../../model/ship-upsert';
-import {
-	ITEM_UPSERT_REQUEST_EVENT,
-	ITEM_UPSERT_RESPONSE_EVENT,
-} from '../../model/item-upsert';
-import {
-	EXPENDABLE_DART_DRONE_ITEM_TYPE,
 	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+	EXPENDABLE_DART_DRONE_ITEM_TYPE,
 	createExpendableDartDrone,
 } from '../../model/expendable-dart-drone';
 import {
-	THREE_D_PRINTER_ITEM_TYPE,
 	THREE_D_PRINTER_DISPLAY_NAME,
+	THREE_D_PRINTER_ITEM_TYPE,
 	THREE_D_PRINTER_TIER,
 	create3DPrinter,
 } from '../../model/3d-printer';
-import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
 import { INVALID_SESSION_EVENT } from '../../model/session';
+import {
+	createMockSessionService,
+	createMockSocketService,
+	type MockSessionService,
+	type MockSocketService,
+} from '../../../testing';
 
-/**
- * character-setup needs upsertShip/upsertItem convenience methods on top of
- * the shared MockSocketService. Extend locally rather than polluting the shared mock.
- */
 type MockSocketServiceWithUpsert = MockSocketService & {
 	upsertShip(request: any, onResponse?: (r: any) => void): void;
 	upsertItem(request: any, onResponse?: (r: any) => void): void;
@@ -57,49 +51,19 @@ function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
 	const base = createMockSocketService();
 	return Object.assign(base, {
 		upsertShip(request: any, onResponse?: (r: any) => void) {
-			if (onResponse) base.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
+			if (onResponse) {
+				base.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
+			}
 			base.emit(SHIP_UPSERT_REQUEST_EVENT, request);
 		},
 		upsertItem(request: any, onResponse?: (r: any) => void) {
-			if (onResponse) base.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
+			if (onResponse) {
+				base.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
+			}
 			base.emit(ITEM_UPSERT_REQUEST_EVENT, request);
 		},
 	});
 }
-
-interface StarterShipInventoryItemDefinition {
-	itemType: string;
-	displayName: string;
-	tier?: number;
-	launchable: boolean;
-	failureMessage: string;
-}
-
-const STARTER_SHIP_INVENTORY_ITEMS: readonly StarterShipInventoryItemDefinition[] = [
-	{
-		itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-		displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-		launchable: true,
-		failureMessage: 'Ship updated, but starter drone could not be created.',
-	},
-	{
-		itemType: THREE_D_PRINTER_ITEM_TYPE,
-		displayName: THREE_D_PRINTER_DISPLAY_NAME,
-		tier: THREE_D_PRINTER_TIER,
-		launchable: false,
-		failureMessage: 'Ship updated, but starter 3D printer could not be created.',
-	},
-];
-
-
-
-interface MockRouter {
-	navigate: jasmine.Spy;
-}
-
-
-
-
 
 interface SetupState {
 	playerName?: string;
@@ -107,363 +71,144 @@ interface SetupState {
 	editCharacter?: { id: string; characterName: string; level?: number };
 }
 
+function createShipListResponse(params?: {
+	success?: boolean;
+	ships?: ShipListResponse['ships'];
+	message?: string;
+}): ShipListResponse {
+	return {
+		success: params?.success ?? true,
+		message: params?.message ?? 'ok',
+		playerName: 'Pioneer',
+		characterId: 'c-1',
+		ships:
+			params?.ships ??
+			[
+				{
+					id: 'ship-1',
+					model: 'Scavenger Pod',
+					tier: 1,
+					name: "Pioneer's Ship",
+					spatial: {
+						solarSystemId: 'sol',
+						frame: 'barycentric',
+						positionKm: { x: 0, y: 0, z: 0 },
+						epochMs: 1,
+					},
+				},
+			],
+	};
+}
 
+function setup(options: {
+	socketService: MockSocketServiceWithUpsert;
+	sessionService: MockSessionService;
+	setupState?: SetupState;
+}) {
+	const navigationState: SetupState = options.setupState ?? { playerName: 'Pioneer' };
 
-
-
-class MockCharacterSetupPage {
-	private router: MockRouter;
-	private socketService: MockSocketServiceWithUpsert;
-	private sessionService: MockSessionService;
-	private unsubscribeAddResponse?: () => void;
-	private unsubscribeInvalidSession?: () => void;
-	private editCharacterId: string | null = null;
-
-	playerName = createSignal<string>('Pioneer');
-	isEditMode = createSignal(false);
-	isSaved = createSignal(false);
-	successMessage = createSignal<string | null>(null);
-	errorMessage = createSignal<string | null>(null);
-	warningMessage = createSignal<string | null>(null);
-	isSubmitting = createSignal(false);
-
-	characterForm = {
-		characterName: 'Pioneer',
-		invalid: false,
-		touched: false,
-		markAllAsTouched() {
-			this.touched = true;
-		},
-		get value() {
-			return { characterName: this.characterName };
-		},
+	const mockRouter = {
+		getCurrentNavigation: () => ({ extras: { state: navigationState } }),
+		navigate: jasmine.createSpy('navigate'),
 	};
 
-	constructor(
-		router: MockRouter,
-		socketService: MockSocketServiceWithUpsert,
-		sessionService: MockSessionService,
-		setupState?: SetupState,
-	) {
-		this.router = router;
-		this.socketService = socketService;
-		this.sessionService = sessionService;
+	TestBed.configureTestingModule({
+		imports: [CharacterSetupPage],
+		providers: [
+			{ provide: SocketService, useValue: options.socketService },
+			{ provide: SessionService, useValue: options.sessionService },
+			{ provide: Router, useValue: mockRouter },
+		],
+		schemas: [CUSTOM_ELEMENTS_SCHEMA],
+	});
 
-		if (setupState?.playerName !== undefined) {
-			this.playerName.set(setupState.playerName);
-		}
-
-		if (setupState?.mode === 'edit' && setupState.editCharacter) {
-			this.isEditMode.set(true);
-			this.characterForm.characterName = setupState.editCharacter.characterName;
-			this.editCharacterId = setupState.editCharacter.id;
-		} else {
-			this.characterForm.characterName = this.playerName();
-		}
-
-		this.unsubscribeInvalidSession = this.socketService.on(
-			INVALID_SESSION_EVENT,
-			() => {
-				this.sessionService.clearSession();
-				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-			},
-		);
-	}
-
-	saveCharacter(): void {
-		if (this.characterForm.invalid) {
-			this.characterForm.markAllAsTouched();
-			return;
-		}
-
-		const playerName = this.playerName().trim();
-		const characterName = this.characterForm.value.characterName;
-
-		if (!playerName) {
-			this.errorMessage.set('Player name is required to save a character.');
-			this.isSaved.set(false);
-			return;
-		}
-
-		this.isSubmitting.set(true);
-		this.errorMessage.set(null);
-		this.successMessage.set(null);
-		this.isSaved.set(false);
-		this.unsubscribeAddResponse?.();
-
-		const isEditMode = this.isEditMode();
-		if (isEditMode && !this.editCharacterId) {
-			this.isSubmitting.set(false);
-			this.errorMessage.set('Character id is required to edit a character.');
-			return;
-		}
-
-		const responseEventName = isEditMode ? CHARACTER_EDIT_RESPONSE_EVENT : CHARACTER_ADD_RESPONSE_EVENT;
-
-		this.unsubscribeAddResponse = this.socketService.on(
-			responseEventName,
-			(response: CharacterAddResponse | CharacterEditResponse) => {
-				this.isSubmitting.set(false);
-				if (response.success) {
-					this.isSaved.set(true);
-					this.successMessage.set(response.message);
-					this.errorMessage.set(null);
-					if (!isEditMode) {
-					const addResponse = response as CharacterAddResponse;
-					this.createStarterShipForCharacter(addResponse.characterId);
-					}
-					this.navigateToCharacterList();
-				} else {
-					this.isSaved.set(false);
-					this.successMessage.set(null);
-					this.errorMessage.set(response.message);
-				}
-				this.unsubscribeAddResponse?.();
-			},
-		);
-
-		if (isEditMode) {
-			this.socketService.emit(CHARACTER_EDIT_REQUEST_EVENT, {
-				characterId: this.editCharacterId!,
-				playerName,
-				characterName,
-				sessionKey: this.sessionService.getSessionKey()!,
-			});
-			return;
-		}
-
-		const request: CharacterAddRequest = { playerName, characterName, sessionKey: this.sessionService.getSessionKey()! };
-		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
-	}
-
-	private createStarterShipForCharacter(characterId?: string): void {
-		const playerName = this.playerName().trim();
-		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-		const resolvedCharacterId = characterId?.trim() ?? '';
-
-		if (!playerName || !sessionKey || !resolvedCharacterId) {
-			this.warningMessage.set('Character created, but starter ship initialization is pending.');
-			return;
-		}
-
-		this.socketService.once(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				if (!response.success) {
-					this.warningMessage.set('Character created, but starter ship could not be resolved yet.');
-					return;
-				}
-
-				const starterShipId = response.ships?.[0]?.id?.trim();
-				if (!starterShipId) {
-					this.warningMessage.set('Character created, but no starter ship record was returned.');
-					return;
-				}
-
-				const existingInventory = response.ships?.[0]?.inventory ?? [];
-
-				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
-				this.socketService.upsertShip(
-					{
-						playerName,
-						characterId: resolvedCharacterId,
-						sessionKey,
-						ship: shipUpdate,
-					},
-					(upsertResponse: any) => {
-						if (!upsertResponse.success) {
-							this.warningMessage.set('Character created, but starter ship position update failed.');
-							return;
-						}
-
-						const upsertedInventory = upsertResponse.ship?.inventory ?? [];
-						const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
-							(definition) =>
-								!this.hasStarterShipInventoryItem(existingInventory, definition) &&
-								!this.hasStarterShipInventoryItem(upsertedInventory, definition),
-						);
-
-						if (missingStarterItems.length === 0) {
-							this.warningMessage.set(null);
-							return;
-						}
-
-						this.upsertStarterShipInventoryItems(
-							missingStarterItems,
-							playerName,
-							sessionKey,
-							resolvedCharacterId,
-							starterShipId,
-						);
-					},
-				);
-			},
-		);
-
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, {
-			playerName,
-			characterId: resolvedCharacterId,
-			sessionKey,
-		});
-	}
-
-	private hasStarterShipInventoryItem(
-		inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
-		definition: StarterShipInventoryItemDefinition,
-	): boolean {
-		return (
-			inventory?.some(
-				(item) =>
-					item.itemType === definition.itemType &&
-					(definition.tier === undefined || item.tier === definition.tier),
-			) ?? false
-		);
-	}
-
-	private upsertStarterShipInventoryItems(
-		items: readonly StarterShipInventoryItemDefinition[],
-		playerName: string,
-		sessionKey: string,
-		characterId: string,
-		shipId: string,
-		index = 0,
-	): void {
-		const itemDefinition = items[index];
-		if (!itemDefinition) {
-			this.warningMessage.set(null);
-			return;
-		}
-
-		this.socketService.upsertItem(
-			{
-				playerName,
-				sessionKey,
-				item: {
-					itemType: itemDefinition.itemType,
-					displayName: itemDefinition.displayName,
-					...(itemDefinition.tier === undefined ? {} : { tier: itemDefinition.tier }),
-					launchable: itemDefinition.launchable,
-					state: 'contained',
-					damageStatus: 'intact',
-					container: { containerType: 'ship', containerId: shipId },
-					owningPlayerId: playerName,
-					owningCharacterId: characterId,
-				},
-			},
-			(itemResponse: any) => {
-				if (!itemResponse.success) {
-					this.warningMessage.set(itemDefinition.failureMessage);
-					return;
-				}
-
-				this.upsertStarterShipInventoryItems(items, playerName, sessionKey, characterId, shipId, index + 1);
-			},
-		);
-	}
-
-	navigateToCharacterList(): void {
-		const playerName = this.playerName() || this.characterForm.value.characterName || '';
-		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-			preserveFragment: true,
-			state: { playerName },
-		});
-	}
-
-	ngOnDestroy(): void {
-		this.unsubscribeAddResponse?.();
-		this.unsubscribeInvalidSession?.();
-	}
+	const fixture = TestBed.createComponent(CharacterSetupPage);
+	fixture.detectChanges();
+	return { component: fixture.componentInstance, fixture, mockRouter };
 }
 
 describe('CharacterSetupPage', () => {
-	let component: MockCharacterSetupPage;
-	let router: MockRouter;
 	let socketService: MockSocketServiceWithUpsert;
 	let sessionService: MockSessionService;
 
 	beforeEach(() => {
-		router = { navigate: jasmine.createSpy() };
 		socketService = createExtendedMockSocketService();
 		sessionService = createMockSessionService('test-session-key');
-		component = new MockCharacterSetupPage(router, socketService, sessionService);
-	});
-
-	afterEach(() => {
-		component.ngOnDestroy();
 	});
 
 	it('should create', () => {
+		const { component } = setup({ socketService, sessionService });
 		expect(component).toBeTruthy();
 	});
 
 	it('should initialize with a playerName value', () => {
-		expect(component.playerName()).toBe('Pioneer');
+		const { component } = setup({ socketService, sessionService, setupState: { playerName: 'Pioneer' } });
+		expect(component['playerName']()).toBe('Pioneer');
 	});
 
 	it('should initialize form in edit mode using selected character name', () => {
-		const editModeComponent = new MockCharacterSetupPage(
-			router,
+		const { component } = setup({
 			socketService,
 			sessionService,
-			{
+			setupState: {
 				playerName: 'Pioneer',
 				mode: 'edit',
 				editCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
 			},
-		);
+		});
 
-		expect(editModeComponent.isEditMode()).toBe(true);
-		expect(editModeComponent.characterForm.characterName).toBe('Nova-Prime');
-		expect(editModeComponent.playerName()).toBe('Pioneer');
-
-		editModeComponent.ngOnDestroy();
+		expect(component['isEditMode']()).toBe(true);
+		expect(component['characterForm'].value.characterName).toBe('Nova-Prime');
+		expect(component['playerName']()).toBe('Pioneer');
 	});
 
 	it('should initialize with unsaved and idle state', () => {
-		expect(component.isSaved()).toBe(false);
-		expect(component.successMessage()).toBeNull();
-		expect(component.errorMessage()).toBeNull();
-		expect(component.isSubmitting()).toBe(false);
+		const { component } = setup({ socketService, sessionService });
+		expect(component['isSaved']()).toBe(false);
+		expect(component['successMessage']()).toBeNull();
+		expect(component['errorMessage']()).toBeNull();
+		expect(component['isSubmitting']()).toBe(false);
 	});
 
 	describe('saveCharacter()', () => {
 		it('should mark form touched and not emit when invalid', () => {
-			component.characterForm.invalid = true;
+			const { component } = setup({ socketService, sessionService });
+			component['characterForm'].patchValue({ characterName: '' });
+
 			component.saveCharacter();
 
-			expect(component.characterForm.touched).toBe(true);
-			expect(component.isSaved()).toBe(false);
-			expect(component.successMessage()).toBeNull();
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+			expect(component['characterForm'].touched).toBe(true);
+			expect(component['isSaved']()).toBe(false);
+			expect(component['successMessage']()).toBeNull();
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it('should set error when playerName is missing', () => {
-			component.playerName.set('');
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova';
+			const { component } = setup({ socketService, sessionService });
+			component['playerName'].set('');
+			component['characterForm'].patchValue({ characterName: 'Nova' });
+
 			component.saveCharacter();
 
-			expect(component.errorMessage()).toBe('Player name is required to save a character.');
-			expect(component.isSaved()).toBe(false);
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(0) };
+			expect(component['errorMessage']()).toBe('Player name is required to save a character.');
+			expect(component['isSaved']()).toBe(false);
+			expect(socketService.emittedEvents.length).toBe(0);
 		});
 
 		it('should emit save request in edit mode with updated character name', () => {
-			const editModeComponent = new MockCharacterSetupPage(
-				router,
+			const { component } = setup({
 				socketService,
 				sessionService,
-				{
+				setupState: {
 					playerName: 'Pioneer',
 					mode: 'edit',
 					editCharacter: { id: 'c-1', characterName: 'Nova' },
 				},
-			);
-			editModeComponent.characterForm.invalid = false;
-			editModeComponent.characterForm.characterName = 'Nova-Prime';
-			editModeComponent.saveCharacter();
+			});
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
+			component.saveCharacter();
 
-			expect(editModeComponent.isEditMode()).toBe(true);
+			expect(component['isEditMode']()).toBe(true);
 			expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
 				event: CHARACTER_EDIT_REQUEST_EVENT,
 				data: {
@@ -473,25 +218,21 @@ describe('CharacterSetupPage', () => {
 					sessionKey: 'test-session-key',
 				},
 			});
-
-			editModeComponent.ngOnDestroy();
 		});
 
 		it('should handle successful character-edit response in edit mode', () => {
-			const editModeComponent = new MockCharacterSetupPage(
-				router,
+			const { component, mockRouter } = setup({
 				socketService,
 				sessionService,
-				{
+				setupState: {
 					playerName: 'Pioneer',
 					mode: 'edit',
 					editCharacter: { id: 'c-1', characterName: 'Nova' },
 				},
-			);
+			});
 
-			editModeComponent.characterForm.invalid = false;
-			editModeComponent.characterForm.characterName = 'Nova-Prime';
-			editModeComponent.saveCharacter();
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
+			component.saveCharacter();
 
 			socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
 				success: true,
@@ -501,36 +242,34 @@ describe('CharacterSetupPage', () => {
 				characterName: 'Nova-Prime',
 			} satisfies CharacterEditResponse);
 
-			expect(editModeComponent.isSubmitting()).toBe(false);
-			expect(editModeComponent.isSaved()).toBe(true);
-			expect(editModeComponent.successMessage()).toBe("Character 'Nova-Prime' updated.");
-			expect(editModeComponent.errorMessage()).toBeNull();
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(component['isSubmitting']()).toBe(false);
+			expect(component['isSaved']()).toBe(true);
+			expect(component['successMessage']()).toBe("Character 'Nova-Prime' updated.");
+			expect(component['errorMessage']()).toBeNull();
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
-
-			editModeComponent.ngOnDestroy();
 		});
 
 		it('should emit character-add request when valid', () => {
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova-Prime';
+			const { component } = setup({ socketService, sessionService });
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
 			component.saveCharacter();
 
-			expect(socketService.emittedEvents).toBeDefined(); if (socketService.emittedEvents) { expect(socketService.emittedEvents.length).toBe(1) };
+			expect(socketService.emittedEvents.length).toBe(1);
 			expect(socketService.emittedEvents[0].event).toBe(CHARACTER_ADD_REQUEST_EVENT);
-				expect(socketService.emittedEvents[0].data).toEqual({
+			expect(socketService.emittedEvents[0].data).toEqual({
 				playerName: 'Pioneer',
 				characterName: 'Nova-Prime',
 				sessionKey: 'test-session-key',
-			});
-			expect(component.isSubmitting()).toBe(true);
+			} satisfies CharacterAddRequest);
+			expect(component['isSubmitting']()).toBe(true);
 		});
 
 		it('should handle successful character-add response', () => {
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova-Prime';
+			const { component, mockRouter } = setup({ socketService, sessionService });
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
 			component.saveCharacter();
 
 			socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
@@ -541,19 +280,19 @@ describe('CharacterSetupPage', () => {
 				characterId: 'c-1',
 			} satisfies CharacterAddResponse);
 
-			expect(component.isSubmitting()).toBe(false);
-			expect(component.isSaved()).toBe(true);
-			expect(component.successMessage()).toBe("Character 'Nova-Prime' created.");
-			expect(component.errorMessage()).toBeNull();
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(component['isSubmitting']()).toBe(false);
+			expect(component['isSaved']()).toBe(true);
+			expect(component['successMessage']()).toBe("Character 'Nova-Prime' created.");
+			expect(component['errorMessage']()).toBeNull();
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
 		});
 
 		it('should handle failed character-add response', () => {
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova-Prime';
+			const { component, mockRouter } = setup({ socketService, sessionService });
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
 			component.saveCharacter();
 
 			socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
@@ -562,42 +301,44 @@ describe('CharacterSetupPage', () => {
 				playerName: 'Pioneer',
 			} satisfies CharacterAddResponse);
 
-			expect(component.isSubmitting()).toBe(false);
-			expect(component.isSaved()).toBe(false);
-			expect(component.successMessage()).toBeNull();
-			expect(component.errorMessage()).toBe('Character name already exists.');
-			expect(router.navigate).not.toHaveBeenCalled();
+			expect(component['isSubmitting']()).toBe(false);
+			expect(component['isSaved']()).toBe(false);
+			expect(component['successMessage']()).toBeNull();
+			expect(component['errorMessage']()).toBe('Character name already exists.');
+			expect(mockRouter.navigate).not.toHaveBeenCalled();
 		});
 
 		it('should clear previous messages before a new request', () => {
-			component.errorMessage.set('Old error');
-			component.successMessage.set('Old success');
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Atlas';
+			const { component } = setup({ socketService, sessionService });
+			component['errorMessage'].set('Old error');
+			component['successMessage'].set('Old success');
+			component['characterForm'].patchValue({ characterName: 'Atlas' });
 			component.saveCharacter();
 
-			expect(component.errorMessage()).toBeNull();
-			expect(component.successMessage()).toBeNull();
+			expect(component['errorMessage']()).toBeNull();
+			expect(component['successMessage']()).toBeNull();
 		});
 	});
 
 	describe('navigateToCharacterList()', () => {
 		it('should navigate to character-list with playerName from login context', () => {
-			component.playerName.set('Pioneer');
+			const { component, mockRouter } = setup({ socketService, sessionService });
+			component['playerName'].set('Pioneer');
 			component.navigateToCharacterList();
 
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Pioneer' } },
 			);
 		});
 
 		it('should fallback to character name when playerName is empty', () => {
-			component.playerName.set('');
-			component.characterForm.characterName = 'Nova';
+			const { component, mockRouter } = setup({ socketService, sessionService });
+			component['playerName'].set('');
+			component['characterForm'].patchValue({ characterName: 'Nova' });
 			component.navigateToCharacterList();
 
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['character-list'] } }],
 				{ preserveFragment: true, state: { playerName: 'Nova' } },
 			);
@@ -606,8 +347,8 @@ describe('CharacterSetupPage', () => {
 
 	describe('ngOnDestroy()', () => {
 		it('should unsubscribe add-response listener on destroy', () => {
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova';
+			const { component } = setup({ socketService, sessionService });
+			component['characterForm'].patchValue({ characterName: 'Nova' });
 			component.saveCharacter();
 			expect(socketService.registeredListeners.has(CHARACTER_ADD_RESPONSE_EVENT)).toBe(true);
 
@@ -616,6 +357,7 @@ describe('CharacterSetupPage', () => {
 		});
 
 		it('should unsubscribe invalid-session listener on destroy', () => {
+			const { component } = setup({ socketService, sessionService });
 			expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(true);
 
 			component.ngOnDestroy();
@@ -625,12 +367,13 @@ describe('CharacterSetupPage', () => {
 
 	describe('invalid session handling', () => {
 		it('should clear session and navigate to login on invalid-session event', () => {
+			const { mockRouter } = setup({ socketService, sessionService });
 			expect(sessionService.hasSession()).toBe(true);
 
 			socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
 
 			expect(sessionService.hasSession()).toBe(false);
-			expect(router.navigate).toHaveBeenCalledWith(
+			expect(mockRouter.navigate).toHaveBeenCalledWith(
 				[{ outlets: { left: ['login'] } }],
 				{ preserveFragment: true },
 			);
@@ -638,9 +381,8 @@ describe('CharacterSetupPage', () => {
 	});
 
 	describe('createStarterShipForCharacter() — cold-boot item provisioning', () => {
-		function triggerSuccessfulCharacterAdd(characterId = 'c-1') {
-			component.characterForm.invalid = false;
-			component.characterForm.characterName = 'Nova';
+		function triggerSuccessfulCharacterAdd(component: CharacterSetupPage, characterId = 'c-1') {
+			component['characterForm'].patchValue({ characterName: 'Nova' });
 			component.saveCharacter();
 			socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
 				success: true,
@@ -652,9 +394,10 @@ describe('CharacterSetupPage', () => {
 		}
 
 		it('should emit ship-list-request after successful character-add', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			const shipListEmit = socketService.emittedEvents.find(e => e.event === SHIP_LIST_REQUEST_EVENT);
+			const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_REQUEST_EVENT);
 			expect(shipListEmit).toBeDefined();
 			expect(shipListEmit!.data).toEqual({
 				playerName: 'Pioneer',
@@ -664,45 +407,30 @@ describe('CharacterSetupPage', () => {
 		});
 
 		it('should set warningMessage when ship-list-response fails', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: false,
-				message: 'No ships found.',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [],
-			} satisfies ShipListResponse);
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse({ success: false, ships: [], message: 'No ships found.' }));
 
-			expect(component.warningMessage()).toBe('Character created, but starter ship could not be resolved yet.');
+			expect(component['warningMessage']()).toBe('Character created, but starter ship could not be resolved yet.');
 		});
 
 		it('should set warningMessage when ship-list-response has no ships', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [],
-			} satisfies ShipListResponse);
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse({ ships: [] }));
 
-			expect(component.warningMessage()).toBe('Character created, but no starter ship record was returned.');
+			expect(component['warningMessage']()).toBe('Character created, but no starter ship record was returned.');
 		});
 
 		it('should emit ship-upsert-request when ship-list-response succeeds with a ship', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 
-			const shipUpsertEmit = socketService.emittedEvents.find(e => e.event === SHIP_UPSERT_REQUEST_EVENT);
+			const shipUpsertEmit = socketService.emittedEvents.find((e) => e.event === SHIP_UPSERT_REQUEST_EVENT);
 			expect(shipUpsertEmit).toBeDefined();
 			expect(shipUpsertEmit!.data.playerName).toBe('Pioneer');
 			expect(shipUpsertEmit!.data.characterId).toBe('c-1');
@@ -710,45 +438,33 @@ describe('CharacterSetupPage', () => {
 		});
 
 		it('should set warningMessage when ship-upsert-response fails', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: false,
 				message: 'Ship upsert failed.',
 				playerName: 'Pioneer',
 			});
 
-			expect(component.warningMessage()).toBe('Character created, but starter ship position update failed.');
-			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			expect(component['warningMessage']()).toBe('Character created, but starter ship position update failed.');
+			const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
 			expect(itemEmit).toBeUndefined();
 		});
 
 		it('should emit item-upsert-request with drone payload after successful ship upsert', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
 
-			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
 			expect(itemEmit).toBeDefined();
 			expect(itemEmit!.data).toEqual({
 				playerName: 'Pioneer',
@@ -767,29 +483,22 @@ describe('CharacterSetupPage', () => {
 		});
 
 		it('should emit second item-upsert-request with 3D printer payload after drone creation succeeds', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'Drone created.',
 				playerName: 'Pioneer',
 			});
 
-			const itemEmits = socketService.emittedEvents.filter(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			const itemEmits = socketService.emittedEvents.filter((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
 			expect(itemEmits.length).toBe(2);
 			expect(itemEmits[1].data).toEqual({
 				playerName: 'Pioneer',
@@ -809,169 +518,169 @@ describe('CharacterSetupPage', () => {
 		});
 
 		it('should skip 3D printer provisioning when the starter ship already has one in inventory', () => {
+			const { component } = setup({ socketService, sessionService });
 			const existingPrinter = create3DPrinter();
 			existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
 			existingPrinter.owningPlayerId = 'Pioneer';
 			existingPrinter.owningCharacterId = 'c-1';
 
-			triggerSuccessfulCharacterAdd('c-1');
-
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingPrinter], spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			triggerSuccessfulCharacterAdd(component, 'c-1');
+			socketService.triggerOnce(
+				SHIP_LIST_RESPONSE_EVENT,
+				createShipListResponse({
+					ships: [
+						{
+							id: 'ship-1',
+							model: 'Scavenger Pod',
+							tier: 1,
+							name: "Pioneer's Ship",
+							inventory: [existingPrinter],
+							spatial: {
+								solarSystemId: 'sol',
+								frame: 'barycentric',
+								positionKm: { x: 0, y: 0, z: 0 },
+								epochMs: 1,
+							},
+						},
+					],
+				}),
+			);
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
 
-			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
 			expect(itemEmit).toBeDefined();
 			expect(itemEmit!.data.item.itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
 		});
 
 		it('should skip item-upsert when starter ship already has both default items in inventory', () => {
+			const { component } = setup({ socketService, sessionService });
 			const existingDrone = createExpendableDartDrone();
 			existingDrone.container = { containerType: 'ship', containerId: 'ship-1' };
 			existingDrone.owningPlayerId = 'Pioneer';
 			existingDrone.owningCharacterId = 'c-1';
+
 			const existingPrinter = create3DPrinter();
 			existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
 			existingPrinter.owningPlayerId = 'Pioneer';
 			existingPrinter.owningCharacterId = 'c-1';
 
-			triggerSuccessfulCharacterAdd('c-1');
-
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", inventory: [existingDrone, existingPrinter], spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			triggerSuccessfulCharacterAdd(component, 'c-1');
+			socketService.triggerOnce(
+				SHIP_LIST_RESPONSE_EVENT,
+				createShipListResponse({
+					ships: [
+						{
+							id: 'ship-1',
+							model: 'Scavenger Pod',
+							tier: 1,
+							name: "Pioneer's Ship",
+							inventory: [existingDrone, existingPrinter],
+							spatial: {
+								solarSystemId: 'sol',
+								frame: 'barycentric',
+								positionKm: { x: 0, y: 0, z: 0 },
+								epochMs: 1,
+							},
+						},
+					],
+				}),
+			);
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
 
-			const itemEmit = socketService.emittedEvents.find(e => e.event === ITEM_UPSERT_REQUEST_EVENT);
+			const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
 			expect(itemEmit).toBeUndefined();
-			expect(component.warningMessage()).toBeNull();
+			expect(component['warningMessage']()).toBeNull();
 		});
 
 		it('should set warningMessage when drone item-upsert-response fails', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: false,
 				message: 'Item creation failed.',
 				playerName: 'Pioneer',
 			});
 
-			expect(component.warningMessage()).toBe('Ship updated, but starter drone could not be created.');
+			expect(component['warningMessage']()).toBe('Ship updated, but starter drone could not be created.');
 		});
 
 		it('should set warningMessage when 3D printer item-upsert-response fails', () => {
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'Drone created.',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: false,
 				message: 'Printer creation failed.',
 				playerName: 'Pioneer',
 			});
 
-			expect(component.warningMessage()).toBe('Ship updated, but starter 3D printer could not be created.');
+			expect(component['warningMessage']()).toBe('Ship updated, but starter 3D printer could not be created.');
 		});
 
 		it('should clear warningMessage after full successful provisioning flow', () => {
-			component.warningMessage.set('Previous warning');
-			triggerSuccessfulCharacterAdd('c-1');
+			const { component } = setup({ socketService, sessionService });
+			component['warningMessage'].set('Previous warning');
+			triggerSuccessfulCharacterAdd(component, 'c-1');
 
-			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, {
-				success: true,
-				message: 'ok',
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				ships: [{ id: 'ship-1', model: 'Scavenger Pod', tier: 1, name: "Pioneer's Ship", spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 } }],
-			} satisfies ShipListResponse);
-
+			socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
 			socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'ok',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: 'Drone created.',
 				playerName: 'Pioneer',
 			});
-
 			socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
 				success: true,
 				message: '3D printer created.',
 				playerName: 'Pioneer',
 			});
 
-			expect(component.warningMessage()).toBeNull();
+			expect(component['warningMessage']()).toBeNull();
 		});
 
 		it('should not trigger ship provisioning on character-edit success', () => {
-			const editModeComponent = new MockCharacterSetupPage(
-				router,
+			const { component } = setup({
 				socketService,
 				sessionService,
-				{
+				setupState: {
 					playerName: 'Pioneer',
 					mode: 'edit',
 					editCharacter: { id: 'c-1', characterName: 'Nova' },
 				},
-			);
+			});
 
-			editModeComponent.characterForm.invalid = false;
-			editModeComponent.characterForm.characterName = 'Nova-Prime';
-			editModeComponent.saveCharacter();
+			component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
+			component.saveCharacter();
 
 			socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
 				success: true,
@@ -981,10 +690,16 @@ describe('CharacterSetupPage', () => {
 				characterName: 'Nova-Prime',
 			} satisfies CharacterEditResponse);
 
-			const shipListEmit = socketService.emittedEvents.find(e => e.event === SHIP_LIST_REQUEST_EVENT);
+			const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_REQUEST_EVENT);
 			expect(shipListEmit).toBeUndefined();
+		});
+	});
 
-			editModeComponent.ngOnDestroy();
+	describe('DOM smoke tests', () => {
+		it('should render without error', () => {
+			const { fixture } = setup({ socketService, sessionService });
+			fixture.detectChanges();
+			expect(fixture.nativeElement).toBeTruthy();
 		});
 	});
 });
