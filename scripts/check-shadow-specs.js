@@ -32,7 +32,6 @@ const KNOWN_SHADOW_SPECS = new Set([
   'src/app/page/game/game-main.spec.ts',
   'src/app/page/game/item-view-specs.spec.ts',
   'src/app/page/game/logout.spec.ts',
-  'src/app/page/game/market-hub.spec.ts',
   'src/app/page/game/mission-board.spec.ts',
   'src/app/page/game/print-queue.spec.ts',
   'src/app/page/game/repair-retrofit.spec.ts',

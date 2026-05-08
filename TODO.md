@@ -21,7 +21,7 @@ Goal: each spec drives the actual component via `TestBed`. Use [src/app/componen
 
 Order by LOC / traffic:
 
-- [ ] [src/app/page/game/market-hub.spec.ts](src/app/page/game/market-hub.spec.ts) (972 LOC, 18 tests) → import `MarketHubComponent`, drive via `TestBed`
+- [X] [src/app/page/game/market-hub.spec.ts](src/app/page/game/market-hub.spec.ts) (972 LOC, 18 tests) → import `MarketHubComponent`, drive via `TestBed`
 - [ ] [src/app/page/character/character-list.spec.ts](src/app/page/character/character-list.spec.ts) (763 LOC, 25 tests)
 - [ ] [src/app/page/game/ship-hangar.spec.ts](src/app/page/game/ship-hangar.spec.ts) (582 LOC, 15 tests)
 - [ ] [src/app/page/game/mission-board.spec.ts](src/app/page/game/mission-board.spec.ts) (20 tests)
@@ -303,7 +303,7 @@ These items must be completed by the backend team to fully support the client im
 
 ## Testing & Validation Checklist
 
-- [X] All unit tests passing (1199 tests as of 2026-05-07: full suite after Phase A helper migration)
+- [X] All unit tests passing (1202 tests as of Phase B market-hub conversion: 3 new DOM smoke tests added)
 - [X] All e2e tests passing (68 tests as of 2026-05-07)
 - [X] Playwright runs report no regressions in existing tests after Phase 8–9 additions
 - [ ] Manual testing confirms:

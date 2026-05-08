@@ -19,7 +19,10 @@ export interface MockSocketService {
 	onceListeners: Map<string, (data?: any) => void>;
 	/** Mutable flag — set to true to simulate a connected socket. */
 	connected: boolean;
+	/** Server URL — used by components that call connect(serverUrl). */
+	serverUrl: string;
 
+	connect(url: string): void;
 	emit(event: string, data?: any): void;
 	on(event: string, cb: (data: any) => void): () => void;
 	once(event: string, cb: (data?: any) => void): void;
@@ -43,6 +46,8 @@ export function createMockSocketService(): MockSocketService {
 		registeredListeners,
 		onceListeners,
 		connected: false,
+		serverUrl: '',
+		connect(_url: string) { /* no-op */ },
 		emit(event: string, data?: any) {
 			emittedEvents.push({ event, data });
 		},
