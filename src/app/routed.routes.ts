@@ -187,7 +187,7 @@ const rightOutletRoutes: Routes = [
   {
     path: 'ship-exterior-view',
     outlet: 'right',
-    loadComponent: () => import('./scene/ship-exterior-view'),
+    loadComponent: () => import('./page/opening/cold-boot-scan'),
     canActivate: [authGuard],
   },
   {
