@@ -407,7 +407,7 @@ describe('ShipExteriorViewScene', () => {
     expect(component['asteroidSamples']().some((s) => s.id === 'sample-a3')).toBe(false);
     expect(component['targetedAsteroidId']()).toBeNull();
     expect(component['activeScanAsteroidId']()).toBeNull();
-    expect(component['launchFeedbackToast']()).toEqual(jasmine.objectContaining({ tone: 'success' }));
+    expect(component.activeLaunchToast()).toEqual(jasmine.objectContaining({ tone: 'success' }));
   });
 
   it('should keep target when no-effect and set success toast', () => {
@@ -442,7 +442,7 @@ describe('ShipExteriorViewScene', () => {
 
     expect(component['asteroidSamples']().some((s) => s.id === 'sample-a2')).toBe(true);
     expect(component['targetedAsteroidId']()).toBe('sample-a2');
-    expect(component['launchFeedbackToast']()?.tone).toBe('success');
+    expect(component.activeLaunchToast()?.tone).toBe('success');
   });
 
   it('should set error toast on failed launch response', () => {
@@ -466,7 +466,7 @@ describe('ShipExteriorViewScene', () => {
       itemType: 'basic-tool',
     });
 
-    expect(component['launchFeedbackToast']()).toEqual(
+    expect(component.activeLaunchToast()).toEqual(
       jasmine.objectContaining({ tone: 'error', message: 'Launch item is not launchable' }),
     );
   });

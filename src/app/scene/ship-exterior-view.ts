@@ -26,11 +26,18 @@ import {
   hasMissionGatePendingRetry,
   markMissionGateStepPendingRetry,
   parseMissionGateState,
-  resolveShipExteriorMission,
   serializeMissionGateState,
   type ShipExteriorMissionGateState,
   type ShipExteriorMissionGateStepStatus,
 } from '../mission/ship-exterior-mission';
+import {
+  resolveMissionScenePlugin,
+  type MissionScenePlugin,
+} from '../mission/mission-scene-plugin';
+// Side-effect import: register additional missions and their plugin factories
+// so `resolveMissionScenePlugin` can resolve them when the navigation state
+// targets one of these missions.
+import '../mission/generic-exploration-ship-exterior-mission';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
 import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../model/celestial-body-list';
 import {
@@ -41,15 +48,10 @@ import {
 import { PlayerCharacterSummary } from '../model/character-list';
 import { type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
 import { type AsteroidKinematics } from '../model/math/asteroid-kinematics';
-import { DEFAULT_CLUSTER_SPREAD_KM, type CelestialBodyLocation } from '../model/math/celestial-body-location';
+import { DEFAULT_CLUSTER_SPREAD_KM } from '../model/math/celestial-body-location';
 import { type MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { Triple } from '../model/shared/triple';
-import {
-  coerceShipDamageProfile,
-  resolveShipDamageProfileFromPreset,
-  type ShipDamageProfile,
-} from '../model/ship-damage';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
   resolveShipExteriorViewSeedPolicy,
@@ -76,6 +78,26 @@ import {
 } from '../services/ship-exterior-mission-state.service';
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
 import { SocketService } from '../services/socket.service';
+import {
+  ASTRONOMICAL_UNIT_KM,
+  DEFAULT_SHIP_SUN_DISTANCE_KM,
+  cloneForTest,
+  formatClusterText,
+  formatDiameterText,
+  formatLocationText,
+  formatMassText,
+  formatOffsetText,
+  formatSpinText,
+  formatVelocityText,
+  getLaunchableLabel,
+  normalizeDirection,
+  resolveHotkeyNumber,
+  resolveSunConfigForSolarSystem,
+} from './ship-exterior/ship-exterior-formatters';
+import { AsyncSerialQueue } from './ship-exterior/async-serial-queue';
+import { HotkeyFlashController } from './ship-exterior/hotkey-flash-controller';
+import { LaunchToastController, type LaunchFeedbackToast } from './ship-exterior/launch-toast-controller';
+import { ShipDamageController } from './ship-exterior/ship-damage-controller';
 
 interface ShipExteriorViewNavigationState {
   playerName?: string;
@@ -91,17 +113,6 @@ interface LaunchHotkeySlot {
   label: string;
   enabled: boolean;
   launching: boolean;
-}
-
-interface SolarSystemSunConfig {
-  color: string;
-  radius: number;
-}
-
-interface LaunchFeedbackToast {
-  message: string;
-  tone: 'success' | 'error';
-  seed: number | null;
 }
 
 interface CelestialBodyUpsertQueueItem {
@@ -139,120 +150,6 @@ declare global {
   }
 }
 
-const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
-const DEFAULT_SHIP_SUN_DISTANCE_KM = 395_000_000;
-const SOLAR_SYSTEM_SUN_CONFIGS: Record<string, SolarSystemSunConfig> = {
-  sol: {
-    color: '#f5ff6b',
-    radius: 1,
-  },
-};
-const DEFAULT_SUN_CONFIG: SolarSystemSunConfig = {
-  color: '#f5ff6b',
-  radius: 1,
-};
-
-/**
- * Formats asteroid linear speed from scan kinematics for HUD display.
- */
-function formatVelocityText(k: AsteroidKinematics | null): string {
-  if (!k) {
-    return 'VEL: ---';
-  }
-
-  const { x, y, z } = k.velocityKmPerSec;
-  const speed = Math.sqrt(x * x + y * y + z * z);
-  return `VEL: ${speed.toFixed(1)} km/s`;
-}
-
-/**
- * Formats asteroid angular speed from scan kinematics for HUD display.
- */
-function formatSpinText(k: AsteroidKinematics | null): string {
-  if (!k) {
-    return 'SPIN: ---';
-  }
-
-  const { x, y, z } = k.angularVelocityRadPerSec;
-  const spin = Math.sqrt(x * x + y * y + z * z);
-  return `SPIN: ${spin.toFixed(4)} rad/s`;
-}
-
-/**
- * Formats estimated asteroid mass with compact scientific-style suffixes.
- */
-function formatMassText(k: AsteroidKinematics | null): string {
-  if (!k) {
-    return 'MASS: ---';
-  }
-
-  const kg = k.estimatedMassKg;
-  if (kg >= 1e12) {
-    return `MASS: ${(kg / 1e12).toFixed(2)}e12 kg`;
-  }
-  if (kg >= 1e9) {
-    return `MASS: ${(kg / 1e9).toFixed(2)}e9 kg`;
-  }
-  return `MASS: ${kg.toFixed(0)} kg`;
-}
-
-/**
- * Formats estimated asteroid diameter in meters or kilometers based on scale.
- */
-function formatDiameterText(k: AsteroidKinematics | null): string {
-  if (!k) {
-    return 'DIAM: ---';
-  }
-
-  return k.estimatedDiameterM >= 1000
-    ? `DIAM: ${(k.estimatedDiameterM / 1000).toFixed(2)} km`
-    : `DIAM: ${k.estimatedDiameterM} m`;
-}
-
-/**
- * Formats absolute world position (Mkm) for cockpit telemetry readout.
- */
-function formatLocationText(location: CelestialBodyLocation | null): string {
-  if (!location) {
-    return 'LOC(Mkm): ---';
-  }
-
-  const { x, y, z } = location.positionKm;
-  const xM = (x / 1e6).toFixed(3);
-  const yM = (y / 1e6).toFixed(3);
-  const zM = (z / 1e6).toFixed(3);
-  return `LOC(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
-}
-
-/**
- * Formats cluster-center position (Mkm) used by the seeded asteroid field.
- */
-function formatClusterText(center: Triple | null): string {
-  if (!center) {
-    return 'CLUSTER(Mkm): ---';
-  }
-
-  const xM = (center.x / 1e6).toFixed(3);
-  const yM = (center.y / 1e6).toFixed(3);
-  const zM = (center.z / 1e6).toFixed(3);
-  return `CLUSTER(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
-}
-
-/**
- * Formats offset from cluster center with radial distance for targeting context.
- */
-function formatOffsetText(location: CelestialBodyLocation | null, center: Triple | null): string {
-  if (!location || !center) {
-    return 'OFFSET(km): ---';
-  }
-
-  const dx = location.positionKm.x - center.x;
-  const dy = location.positionKm.y - center.y;
-  const dz = location.positionKm.z - center.z;
-  const distance = Math.hypot(dx, dy, dz);
-  return `OFFSET(km): dX ${dx.toFixed(0)} dY ${dy.toFixed(0)} dZ ${dz.toFixed(0)} | R ${distance.toFixed(0)}`;
-}
-
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
@@ -271,9 +168,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
   private static readonly SCANNED_MOTION_DAMPING = 0.65;
   private static readonly HOTKEY_SLOT_COUNT = 5;
-  private static readonly HOTKEY_LAUNCH_FLASH_MS = 220;
   private static readonly POST_LAUNCH_REFRESH_DEBOUNCE_MS = 90;
-  private static readonly LAUNCH_TOAST_MS = 3200;
   private static readonly SOLAR_DISTANCE_SCENE_SCALE_KM = 5_500_000;
   private static readonly SUN_DISTANCE_MIN_SCENE_UNITS = 56;
   private static readonly SUN_DISTANCE_MAX_SCENE_UNITS = 120;
@@ -287,28 +182,23 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private missionStateService = inject(ShipExteriorMissionStateService);
   private scanIntervalId: number | null = null;
   private targetHoldTimeoutId: number | null = null;
-  private hotkeyLaunchFlashTimeoutIds = new Map<1 | 2 | 3 | 4 | 5, number>();
   protected targetHoldCandidateId = signal<string | null>(null);
   private sceneElapsedSeconds = 0;
   private sentCelestialBodyUpserts = new Set<string>();
   private pendingActiveStateUpserts = new Set<string>();
-  private celestialBodyUpsertQueue: CelestialBodyUpsertQueueItem[] = [];
-  private celestialBodyUpsertInFlight = false;
-  private missionProgressUpsertQueue: MissionProgressUpsertQueueItem[] = [];
-  private missionProgressUpsertInFlight = false;
   private unsubscribeShipListResponse?: () => void;
   private unsubscribeCelestialBodyListResponse?: () => void;
   private unsubscribeLaunchItemResponse?: () => void;
-  private launchToastTimeoutId: number | null = null;
   private postLaunchRefreshTimeoutId: number | null = null;
   private launchSeedHint: number | null = null;
   private navigationState: ShipExteriorViewNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
     (history.state as ShipExteriorViewNavigationState | undefined) ??
     {};
-  private readonly missionDefinition = resolveShipExteriorMission(
+  private readonly missionScenePlugin: MissionScenePlugin = resolveMissionScenePlugin(
     this.navigationState.missionContext?.missionId ?? FIRST_TARGET_MISSION_ID,
   );
+  private readonly missionDefinition = this.missionScenePlugin.definition;
 
   protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
   protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
@@ -320,9 +210,18 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
   private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
   private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
-  private activeShipDamageProfile = signal<ShipDamageProfile | null>(this.resolveInitialShipDamageProfile());
-  private launchingHotkeys = signal<ReadonlySet<1 | 2 | 3 | 4 | 5>>(new Set());
-  private launchFeedbackToast = signal<LaunchFeedbackToast | null>(null);
+  private readonly shipDamageController = new ShipDamageController(
+    this.navigationState.missionContext?.shipDamagePreset,
+    this.navigationState.joinShip,
+  );
+  private readonly hotkeyFlashController = new HotkeyFlashController();
+  private readonly launchToastController = new LaunchToastController();
+  private readonly celestialBodyUpsertQueue = new AsyncSerialQueue<CelestialBodyUpsertQueueItem>((item) =>
+    this.processCelestialBodyUpsert(item),
+  );
+  private readonly missionProgressUpsertQueue = new AsyncSerialQueue<MissionProgressUpsertQueueItem>((item) =>
+    this.processMissionProgressUpsert(item),
+  );
   private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
   private readonly missionGateStateSync = effect(() => {
     const updated = this.missionStateService.lastSaved();
@@ -338,14 +237,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.missionGateState.set(updated);
   });
   readonly shipConditionLine = computed(() => {
-    const profile = this.activeShipDamageProfile();
+    const profile = this.shipDamageController.current();
     if (!profile) {
       return 'SHIP CONDITION // UNKNOWN';
     }
 
     return `SHIP CONDITION // ${profile.overallStatus.toUpperCase()} // ${profile.summary.toUpperCase()}`;
   });
-  readonly activeLaunchToast = computed(() => this.launchFeedbackToast());
+  readonly activeLaunchToast: () => LaunchFeedbackToast | null = this.launchToastController.current;
   readonly showQuickTargetIronControl = computed(
     () => !environment.production && this.missionDefinition.missionId === FIRST_TARGET_MISSION_ID,
   );
@@ -417,7 +316,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   readonly launchHotkeySlots = computed<LaunchHotkeySlot[]>(() => {
     const launchables = this.launchableInventory().slice(0, ShipExteriorViewScene.HOTKEY_SLOT_COUNT);
     const enabled = this.launchHotkeysEnabled();
-    const launchingHotkeys = this.launchingHotkeys();
+    const launchingHotkeys = this.hotkeyFlashController.active();
 
     return Array.from({ length: ShipExteriorViewScene.HOTKEY_SLOT_COUNT }, (_, index) => {
       const hotkey = (index + 1) as 1 | 2 | 3 | 4 | 5;
@@ -618,16 +517,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private resolveNavigationSolarSystemId(): string {
     return this.navigationState.joinShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
-  }
-
-  private resolveInitialShipDamageProfile(): ShipDamageProfile | null {
-    const rawProfile = this.navigationState.joinShip?.damageProfile;
-    const explicit = coerceShipDamageProfile(rawProfile);
-    if (explicit) {
-      return explicit;
-    }
-
-    return resolveShipDamageProfileFromPreset(this.navigationState.missionContext?.shipDamagePreset);
   }
 
   private resolveAsteroidStateContext(): ShipExteriorAsteroidStateContext | null {
@@ -890,12 +779,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     window.removeEventListener('pointerup', this.onWindowPointerUp);
     window.removeEventListener('contextmenu', this.onWindowContextMenu);
     window.removeEventListener('keydown', this.onWindowKeyDown);
-    this.hotkeyLaunchFlashTimeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
-    this.hotkeyLaunchFlashTimeoutIds.clear();
-    if (this.launchToastTimeoutId !== null) {
-      clearTimeout(this.launchToastTimeoutId);
-      this.launchToastTimeoutId = null;
-    }
+    this.hotkeyFlashController.dispose();
+    this.launchToastController.dispose();
     if (this.postLaunchRefreshTimeoutId !== null) {
       clearTimeout(this.postLaunchRefreshTimeoutId);
       this.postLaunchRefreshTimeoutId = null;
@@ -960,7 +845,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName || !characterId || !sessionKey) {
-      const samples = this.missionDefinition.createFallbackAsteroidSamples();
+      const samples = this.missionScenePlugin.seedPolicy.createFallbackSamples();
       this.setAsteroidSamples(samples);
       appLogger.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', {
         count: samples.length,
@@ -981,7 +866,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         const center = firstShip?.spatial?.positionKm;
 
         if (!center) {
-          const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
+          const fallbackSamples = this.missionScenePlugin.seedPolicy.createFallbackSamples();
           this.setAsteroidSamples(fallbackSamples);
           appLogger.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
           return;
@@ -1001,7 +886,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.unsubscribeCelestialBodyListResponse = this.shipExteriorSocketService.listCelestialBodies(
           cbRequest,
           (cbResponse: CelestialBodyListResponse) => {
-            const seededSamples = this.missionDefinition.createResumedAsteroidSamples({
+            const seededSamples = this.missionScenePlugin.seedPolicy.createResumedSamples({
               playerName,
               characterId,
               center,
@@ -1030,7 +915,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName || !characterId || !sessionKey) {
-      const samples = this.missionDefinition.createFallbackAsteroidSamples();
+      const samples = this.missionScenePlugin.seedPolicy.createFallbackSamples();
       this.setAsteroidSamples(samples);
       appLogger.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
       return;
@@ -1042,7 +927,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       request,
       (response: ShipListResponse) => {
         if (!response.success) {
-          const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
+          const fallbackSamples = this.missionScenePlugin.seedPolicy.createFallbackSamples();
           this.setAsteroidSamples(fallbackSamples);
           appLogger.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
           return;
@@ -1053,13 +938,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         const firstShip = response.ships?.[0];
         const center = firstShip?.spatial?.positionKm;
         if (!center) {
-          const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
+          const fallbackSamples = this.missionScenePlugin.seedPolicy.createFallbackSamples();
           this.setAsteroidSamples(fallbackSamples);
           appLogger.warn('ColdBootScan ship list missing required spatial.positionKm; using fallback random center.');
           return;
         }
 
-        const samples = this.missionDefinition.createNewAsteroidSamplesAroundShip({
+        const samples = this.missionScenePlugin.seedPolicy.createNewSamples({
           playerName,
           characterId,
           center,
@@ -1088,10 +973,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
     this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
-    this.activeShipDamageProfile.set(
-      coerceShipDamageProfile(matchingShip?.damageProfile) ??
-        resolveShipDamageProfileFromPreset(this.navigationState.missionContext?.shipDamagePreset),
-    );
+    this.shipDamageController.resolveFromShipSummary(matchingShip);
   }
 
   private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {
@@ -1290,6 +1172,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           completedStepKey: launchEvaluation.completedStepKey,
           toastMessage: launchEvaluation.completionToastMessage,
         });
+        this.invokePluginHook('onLaunch', { response, gateState: launchEvaluation.gateState });
         if (launchEvaluation.completionToastMessage) {
           toastMessage = `${toastMessage} ${launchEvaluation.completionToastMessage}`;
         }
@@ -1362,19 +1245,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private setLaunchToast(message: string, tone: 'success' | 'error', seed: number | null): void {
-    this.launchFeedbackToast.set({ message, tone, seed });
-    if (this.launchToastTimeoutId !== null) {
-      clearTimeout(this.launchToastTimeoutId);
-    }
-
-    this.launchToastTimeoutId = window.setTimeout(() => {
-      this.launchFeedbackToast.set(null);
-      this.launchToastTimeoutId = null;
-    }, ShipExteriorViewScene.LAUNCH_TOAST_MS);
-  }
-
-  private cloneForTest<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T;
+    this.launchToastController.set(message, tone, seed);
   }
 
   private registerTestUtils(): void {
@@ -1385,10 +1256,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     window.__shipExteriorTestUtils = {
       getMissionGateState: () => {
         const gateState = this.missionGateState();
-        return gateState ? this.cloneForTest(gateState) : null;
+        return gateState ? cloneForTest(gateState) : null;
       },
       getMissionObjectiveText: () => this.missionObjectiveText(),
-      getAsteroidSamples: () => this.cloneForTest(this.asteroidSamples()),
+      getAsteroidSamples: () => cloneForTest(this.asteroidSamples()),
       getTargetedAsteroidId: () => this.targetedAsteroidId(),
       hoverAsteroid: (sampleId: string) => {
         const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
@@ -1419,7 +1290,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         for (let index = 0; index < safeTicks; index += 1) {
           this.tickScene();
         }
-        return this.cloneForTest(this.asteroidSamples());
+        return cloneForTest(this.asteroidSamples());
       },
       forceCompleteIronScan: (sampleId?: string) => {
         const targetId = sampleId ?? this.asteroidSamples()[0]?.id;
@@ -1455,7 +1326,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.persistAsteroidSamples();
         this.evaluateMissionGateForCompletedSamples([targetId]);
         const gateState = this.missionGateState();
-        return gateState ? this.cloneForTest(gateState) : null;
+        return gateState ? cloneForTest(gateState) : null;
       },
       simulateManufacture: (itemType: string) => {
         const gateState = this.missionGateState();
@@ -1471,8 +1342,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         if (evaluation.changed) {
           this.missionGateState.set(evaluation.gateState);
           this.persistMissionGateState(evaluation.gateState);
+          this.invokePluginHook('onManufacture', {
+            manufacturedItemType: itemType,
+            gateState: evaluation.gateState,
+          });
         }
-        return this.cloneForTest(this.missionGateState());
+        return cloneForTest(this.missionGateState());
       },
       simulateRepair: (repairKind: string) => {
         const gateState = this.missionGateState();
@@ -1488,14 +1363,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         if (evaluation.changed) {
           this.missionGateState.set(evaluation.gateState);
           this.persistMissionGateState(evaluation.gateState);
+          this.invokePluginHook('onRepair', { repairKind, gateState: evaluation.gateState });
         }
-        return this.cloneForTest(this.missionGateState());
+        return cloneForTest(this.missionGateState());
       },
       launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => {
         this.launchFromHotkeySlot(hotkey);
       },
       clearToast: () => {
-        this.launchFeedbackToast.set(null);
+        this.launchToastController.clear();
       },
     };
   }
@@ -1553,6 +1429,29 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         completedStepKey: evaluation.completedStepKey,
         toastMessage: evaluation.completionToastMessage,
       });
+      this.invokePluginHook('onScan', { sample, gateState });
+    }
+  }
+
+  /**
+   * Invoke a `MissionScenePlugin` lifecycle hook. Hooks are advisory: any
+   * exception is caught and logged so plugin authors cannot destabilize the
+   * scene.
+   */
+  private invokePluginHook<K extends keyof MissionScenePlugin['hooks']>(
+    name: K,
+    payload: Parameters<NonNullable<MissionScenePlugin['hooks'][K]>>[0],
+  ): void {
+    const hook = this.missionScenePlugin.hooks[name] as
+      | ((arg: typeof payload) => void)
+      | undefined;
+    if (!hook) {
+      return;
+    }
+    try {
+      hook(payload);
+    } catch (error) {
+      appLogger.warn(`MissionScenePlugin hook "${String(name)}" threw an error.`, error);
     }
   }
 
@@ -1562,7 +1461,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.missionProgressUpsertQueue.length > 0 || this.missionProgressUpsertInFlight) {
+    if (this.missionProgressUpsertQueue.hasPending) {
       return;
     }
 
@@ -1575,35 +1474,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private enqueueMissionProgressUpsert(item: MissionProgressUpsertQueueItem): void {
     const statusDetail = serializeMissionGateState(item.gateState);
-    if (
-      this.missionProgressUpsertQueue.some((queued) => serializeMissionGateState(queued.gateState) === statusDetail)
-    ) {
-      return;
-    }
-
-    this.missionProgressUpsertQueue.push(item);
-    this.processNextMissionProgressUpsert();
+    this.missionProgressUpsertQueue.enqueue(
+      item,
+      (queued) => serializeMissionGateState(queued.gateState) === statusDetail,
+    );
   }
 
-  private async processNextMissionProgressUpsert(): Promise<void> {
-    if (this.missionProgressUpsertInFlight) {
-      return;
-    }
-
-    const item = this.missionProgressUpsertQueue.shift();
-    if (!item) {
-      return;
-    }
-
+  private async processMissionProgressUpsert(item: MissionProgressUpsertQueueItem): Promise<void> {
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
     const playerName = this.playerName().trim();
     const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
     if (!sessionKey || !playerName || !characterId) {
-      this.processNextMissionProgressUpsert();
       return;
     }
 
-    this.missionProgressUpsertInFlight = true;
     const result = await this.missionService.upsertMissionStatus({
       playerName,
       characterId,
@@ -1612,7 +1496,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       status: this.missionDefinition.resolveMissionStatusFromGateState(item.gateState),
       statusDetail: serializeMissionGateState(item.gateState),
     });
-    this.missionProgressUpsertInFlight = false;
 
     if (result !== 'updated') {
       if (item.completedStepKey) {
@@ -1621,7 +1504,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.persistMissionGateState(nextState);
         this.setLaunchToast('Mission progress sync pending; retrying on next scan event.', 'error', null);
       }
-      this.processNextMissionProgressUpsert();
       return;
     }
 
@@ -1631,32 +1513,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     if (item.toastMessage) {
       this.setLaunchToast(item.toastMessage, 'success', null);
     }
-
-    this.processNextMissionProgressUpsert();
   }
 
   private triggerHotkeyLaunchFlash(hotkey: 1 | 2 | 3 | 4 | 5): void {
-    this.launchingHotkeys.update((current) => {
-      const next = new Set(current);
-      next.add(hotkey);
-      return next;
-    });
-
-    const existingTimeout = this.hotkeyLaunchFlashTimeoutIds.get(hotkey);
-    if (existingTimeout !== undefined) {
-      clearTimeout(existingTimeout);
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      this.launchingHotkeys.update((current) => {
-        const next = new Set(current);
-        next.delete(hotkey);
-        return next;
-      });
-      this.hotkeyLaunchFlashTimeoutIds.delete(hotkey);
-    }, ShipExteriorViewScene.HOTKEY_LAUNCH_FLASH_MS);
-
-    this.hotkeyLaunchFlashTimeoutIds.set(hotkey, timeoutId);
+    this.hotkeyFlashController.trigger(hotkey);
   }
 
   protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {
@@ -1777,124 +1637,112 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     revealedMaterial: AsteroidMaterialProfile | null,
     revealedKinematics: AsteroidKinematics | null,
   ): void {
-    if (this.celestialBodyUpsertQueue.some((item) => item.sampleId === sample.id && item.state === state)) {
-      return;
-    }
-
-    this.celestialBodyUpsertQueue.push({
-      sampleId: sample.id,
-      state,
-      revealedMaterial,
-      revealedKinematics,
-    });
-    this.processNextCelestialBodyUpsert();
+    this.celestialBodyUpsertQueue.enqueue(
+      {
+        sampleId: sample.id,
+        state,
+        revealedMaterial,
+        revealedKinematics,
+      },
+      (existing) => existing.sampleId === sample.id && existing.state === state,
+    );
   }
 
-  private processNextCelestialBodyUpsert(): void {
-    if (this.celestialBodyUpsertInFlight) {
-      return;
-    }
-
-    const item = this.celestialBodyUpsertQueue.shift();
-    if (!item) {
-      return;
-    }
-
-    const sample = this.asteroidSamples().find((candidate) => candidate.id === item.sampleId);
-    if (!sample) {
-      this.processNextCelestialBodyUpsert();
-      return;
-    }
-
-    const sessionKey = this.sessionService.getSessionKey();
-    const playerName = this.playerName().trim();
-    const createdByCharacterId = this.navigationState.joinCharacter?.id;
-    if (!sessionKey || !playerName || !createdByCharacterId) {
-      appLogger.warn('Skipping celestial body upsert due to missing actor/session context.');
-      this.processNextCelestialBodyUpsert();
-      return;
-    }
-
-    const nowIso = new Date().toISOString();
-    const deterministicId = `cb-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
-    const deterministicCatalogId = `sol-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
-    const requestedCelestialBodyId = sample.serverCelestialBodyId ?? deterministicId;
-    const resolvedKinematics = item.revealedKinematics ?? sample.capturedKinematics;
-    const request: CelestialBodyUpsertRequest = {
-      sessionKey,
-      playerName,
-      createdByCharacterId,
-      celestialBody: {
-        id: requestedCelestialBodyId,
-        catalogId: deterministicCatalogId,
-        sourceScanId: sample.id,
-        createdByCharacterId,
-        missionId: this.missionDefinition.missionId,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        spatial: {
-          solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
-          frame: 'barycentric',
-          positionKm: sample.solarSystemLocation.positionKm,
-          epochMs: Date.now(),
-        },
-        motion: {
-          velocityKmPerSec: resolvedKinematics.velocityKmPerSec,
-          angularVelocityRadPerSec: resolvedKinematics.angularVelocityRadPerSec,
-        },
-        physical: {
-          estimatedMassKg: resolvedKinematics.estimatedMassKg,
-          estimatedDiameterM: resolvedKinematics.estimatedDiameterM,
-        },
-        composition: item.revealedMaterial ?? sample.revealedMaterial ?? undefined,
-        observability: {
-          visibility: 'visible',
-          scanState: item.state === 'unscanned' ? 'unscanned' : 'scanned',
-        },
-        state: item.state === 'destroyed' ? 'destroyed' : 'active',
-      },
-    };
-
-    this.celestialBodyUpsertInFlight = true;
-    this.socketService.upsertCelestialBody(request, (response: CelestialBodyUpsertResponse) => {
-      this.celestialBodyUpsertInFlight = false;
-
-      if (!response.success) {
-        appLogger.warn('Celestial body upsert failed:', response.message);
-        this.processNextCelestialBodyUpsert();
+  private processCelestialBodyUpsert(item: CelestialBodyUpsertQueueItem): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const sample = this.asteroidSamples().find((candidate) => candidate.id === item.sampleId);
+      if (!sample) {
+        resolve();
         return;
       }
 
-      const responseCelestialBodyId = response.celestialBody?.id?.trim();
-      const persistedId =
-        responseCelestialBodyId && responseCelestialBodyId.length > 0
-          ? responseCelestialBodyId
-          : requestedCelestialBodyId;
-      this.asteroidSamples.update((samples) =>
-        samples.map((candidate) =>
-          candidate.id === sample.id
-            ? {
-                ...candidate,
-                serverCelestialBodyId: persistedId,
-              }
-            : candidate,
-        ),
-      );
-
-      if (item.state === 'unscanned' && this.pendingActiveStateUpserts.has(sample.id)) {
-        const latest = this.asteroidSamples().find((candidate) => candidate.id === sample.id);
-        if (latest) {
-          this.pendingActiveStateUpserts.delete(sample.id);
-          this.emitCelestialBodyUpsert(
-            latest,
-            'active',
-            latest.revealedMaterial,
-            latest.revealedKinematics ?? latest.capturedKinematics,
-          );
-        }
+      const sessionKey = this.sessionService.getSessionKey();
+      const playerName = this.playerName().trim();
+      const createdByCharacterId = this.navigationState.joinCharacter?.id;
+      if (!sessionKey || !playerName || !createdByCharacterId) {
+        appLogger.warn('Skipping celestial body upsert due to missing actor/session context.');
+        resolve();
+        return;
       }
-      this.persistAsteroidSamples();
-      this.processNextCelestialBodyUpsert();
+
+      const nowIso = new Date().toISOString();
+      const deterministicId = `cb-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
+      const deterministicCatalogId = `sol-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
+      const requestedCelestialBodyId = sample.serverCelestialBodyId ?? deterministicId;
+      const resolvedKinematics = item.revealedKinematics ?? sample.capturedKinematics;
+      const request: CelestialBodyUpsertRequest = {
+        sessionKey,
+        playerName,
+        createdByCharacterId,
+        celestialBody: {
+          id: requestedCelestialBodyId,
+          catalogId: deterministicCatalogId,
+          sourceScanId: sample.id,
+          createdByCharacterId,
+          missionId: this.missionDefinition.missionId,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+          spatial: {
+            solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+            frame: 'barycentric',
+            positionKm: sample.solarSystemLocation.positionKm,
+            epochMs: Date.now(),
+          },
+          motion: {
+            velocityKmPerSec: resolvedKinematics.velocityKmPerSec,
+            angularVelocityRadPerSec: resolvedKinematics.angularVelocityRadPerSec,
+          },
+          physical: {
+            estimatedMassKg: resolvedKinematics.estimatedMassKg,
+            estimatedDiameterM: resolvedKinematics.estimatedDiameterM,
+          },
+          composition: item.revealedMaterial ?? sample.revealedMaterial ?? undefined,
+          observability: {
+            visibility: 'visible',
+            scanState: item.state === 'unscanned' ? 'unscanned' : 'scanned',
+          },
+          state: item.state === 'destroyed' ? 'destroyed' : 'active',
+        },
+      };
+
+      this.socketService.upsertCelestialBody(request, (response: CelestialBodyUpsertResponse) => {
+        if (!response.success) {
+          appLogger.warn('Celestial body upsert failed:', response.message);
+          resolve();
+          return;
+        }
+
+        const responseCelestialBodyId = response.celestialBody?.id?.trim();
+        const persistedId =
+          responseCelestialBodyId && responseCelestialBodyId.length > 0
+            ? responseCelestialBodyId
+            : requestedCelestialBodyId;
+        this.asteroidSamples.update((samples) =>
+          samples.map((candidate) =>
+            candidate.id === sample.id
+              ? {
+                  ...candidate,
+                  serverCelestialBodyId: persistedId,
+                }
+              : candidate,
+          ),
+        );
+
+        if (item.state === 'unscanned' && this.pendingActiveStateUpserts.has(sample.id)) {
+          const latest = this.asteroidSamples().find((candidate) => candidate.id === sample.id);
+          if (latest) {
+            this.pendingActiveStateUpserts.delete(sample.id);
+            this.emitCelestialBodyUpsert(
+              latest,
+              'active',
+              latest.revealedMaterial,
+              latest.revealedKinematics ?? latest.capturedKinematics,
+            );
+          }
+        }
+        this.persistAsteroidSamples();
+        resolve();
+      });
     });
   }
 
@@ -1919,53 +1767,5 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   revealPropertiesPanel(): void {
     this.propertiesPanelHidden.set(false);
-  }
-}
-
-function resolveSunConfigForSolarSystem(solarSystemId: string): SolarSystemSunConfig {
-  const normalizedId = solarSystemId.trim().toLowerCase();
-  return SOLAR_SYSTEM_SUN_CONFIGS[normalizedId] ?? DEFAULT_SUN_CONFIG;
-}
-
-function normalizeDirection(vector: Triple, fallback: Triple): Triple {
-  const magnitude = Math.hypot(vector.x, vector.y, vector.z);
-  if (magnitude <= 0) {
-    return normalizeDirection(fallback, { x: -1, y: 0, z: 0 });
-  }
-
-  return {
-    x: vector.x / magnitude,
-    y: vector.y / magnitude,
-    z: vector.z / magnitude,
-  };
-}
-
-function getLaunchableLabel(item: ShipItem): string {
-  const preferred = item.displayName?.trim() || item.itemType?.trim() || 'Unknown';
-  if (preferred.length <= 12) {
-    return preferred;
-  }
-
-  return `${preferred.slice(0, 9)}...`;
-}
-
-function resolveHotkeyNumber(event: KeyboardEvent): 1 | 2 | 3 | 4 | 5 | null {
-  if (event.key >= '1' && event.key <= '5') {
-    return Number(event.key) as 1 | 2 | 3 | 4 | 5;
-  }
-
-  switch (event.code) {
-    case 'Numpad1':
-      return 1;
-    case 'Numpad2':
-      return 2;
-    case 'Numpad3':
-      return 3;
-    case 'Numpad4':
-      return 4;
-    case 'Numpad5':
-      return 5;
-    default:
-      return null;
   }
 }

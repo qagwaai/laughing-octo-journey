@@ -18,6 +18,7 @@ export interface ShipExteriorMissionLaunchResponseResolution {
 
 export const SHIP_EXTERIOR_MISSION_IDS = {
   firstTarget: FIRST_TARGET_MISSION_ID,
+  genericExploration: 'generic-exploration',
 } as const;
 
 export type ShipExteriorMissionGateStepStatus = 'locked' | 'active' | 'completed' | 'pending-retry';
@@ -115,12 +116,30 @@ export interface ShipExteriorMissionDefinition {
   resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus;
 }
 
+let shipExteriorMissionRegistry: Map<string, ShipExteriorMissionDefinition> | null = null;
+
+function getShipExteriorMissionRegistry(): Map<string, ShipExteriorMissionDefinition> {
+  if (!shipExteriorMissionRegistry) {
+    shipExteriorMissionRegistry = new Map<string, ShipExteriorMissionDefinition>([
+      [FIRST_TARGET_SHIP_EXTERIOR_MISSION.missionId, FIRST_TARGET_SHIP_EXTERIOR_MISSION],
+    ]);
+  }
+  return shipExteriorMissionRegistry;
+}
+
 export function resolveShipExteriorMission(missionId?: string | null): ShipExteriorMissionDefinition {
   const normalizedMissionId = missionId?.trim() || FIRST_TARGET_MISSION_ID;
-  const registry = new Map<string, ShipExteriorMissionDefinition>([
-    [FIRST_TARGET_SHIP_EXTERIOR_MISSION.missionId, FIRST_TARGET_SHIP_EXTERIOR_MISSION],
-  ]);
-  return registry.get(normalizedMissionId) ?? FIRST_TARGET_SHIP_EXTERIOR_MISSION;
+  const registered = getShipExteriorMissionRegistry().get(normalizedMissionId);
+  return registered ?? FIRST_TARGET_SHIP_EXTERIOR_MISSION;
+}
+
+/**
+ * Register an additional mission definition with the resolver. Call this at
+ * module init time from a mission's own module to make it discoverable via
+ * `resolveShipExteriorMission`.
+ */
+export function registerShipExteriorMission(definition: ShipExteriorMissionDefinition): void {
+  getShipExteriorMissionRegistry().set(definition.missionId, definition);
 }
 
 export function createInitialMissionGateState(params: {
