@@ -8,15 +8,15 @@ _Method: full unit + e2e test runs, coverage extraction, per-spec inspection of 
 
 ## 1. Headline Numbers
 
-| Metric | Value | Policy Floor | Status |
-| --- | ---: | ---: | --- |
-| Unit tests | **1199 / 1199 pass** | — | ✅ |
-| Playwright e2e tests | **68 / 68 pass** (~29 s, 10 workers) | — | ✅ |
-| Statements | 86.02 % (1594 / 1853) | 80 % | ✅ on instrumented set |
-| Branches | **74.06 %** (657 / 887) | **75 %** | ⚠️ below floor |
-| Functions | 84.12 % (355 / 422) | 80 % | ✅ |
-| Lines | 87.20 % (1526 / 1750) | 85 % | ✅ |
-| Spec LOC / Source LOC | 19 029 / 15 586 | — | ratio 1.22 (high) |
+| Metric                |                                Value | Policy Floor | Status                 |
+| --------------------- | -----------------------------------: | -----------: | ---------------------- |
+| Unit tests            |                 **1199 / 1199 pass** |            — | ✅                     |
+| Playwright e2e tests  | **68 / 68 pass** (~29 s, 10 workers) |            — | ✅                     |
+| Statements            |                86.02 % (1594 / 1853) |         80 % | ✅ on instrumented set |
+| Branches              |              **74.06 %** (657 / 887) |     **75 %** | ⚠️ below floor         |
+| Functions             |                  84.12 % (355 / 422) |         80 % | ✅                     |
+| Lines                 |                87.20 % (1526 / 1750) |         85 % | ✅                     |
+| Spec LOC / Source LOC |                      19 029 / 15 586 |            — | ratio 1.22 (high)      |
 
 > **Caveat that dominates this review:** the coverage denominators above only count source files that are actually imported by a `.spec.ts`. Roughly **half of the production code in `page/`, `scene/`, and the `component/` THREE.js wrappers is never imported by any spec** (see §3) and is therefore silently excluded from the coverage report. The real, project-wide coverage is materially lower than 86 %.
 
@@ -24,16 +24,16 @@ _Method: full unit + e2e test runs, coverage extraction, per-spec inspection of 
 
 ## 2. Per-Folder Coverage (instrumented files only)
 
-| Folder | Statements | Branches | Functions | Lines | Notes |
-| --- | ---: | ---: | ---: | ---: | --- |
-| [src/app/component](src/app/component) | 71.4 % | **51.0 %** | **53.8 %** | 76.4 % | 9 files instrumented; THREE wrappers under-tested |
-| [src/app/guards](src/app/guards) | 100 % | 100 % | 100 % | 100 % | `auth.guard.ts` only |
-| [src/app/i18n](src/app/i18n) | 54.5 % | **38.2 %** | 70 % | 54.5 % | `locale.ts` selector branches |
-| [src/app/i18n/locales](src/app/i18n/locales) | 100 % | n/a | n/a | 100 % | static catalogs |
-| [src/app/mission](src/app/mission) | 94.9 % | 79.0 % | 94.3 % | 95.0 % | strong |
-| [src/app/model](src/app/model) | 96.7 % | 83.6 % | 100 % | 97.2 % | strongest tier |
-| [src/app/page/game](src/app/page/game) | **9.1 %** | **7.7 %** | **16.7 %** | **10.5 %** | only `repair-retrofit-state.ts` instrumented (1 of ~14) |
-| [src/app/services](src/app/services) | 88.1 % | 76.1 % | 88.8 % | 88.1 % | solid |
+| Folder                                       | Statements |   Branches |  Functions |      Lines | Notes                                                   |
+| -------------------------------------------- | ---------: | ---------: | ---------: | ---------: | ------------------------------------------------------- |
+| [src/app/component](src/app/component)       |     71.4 % | **51.0 %** | **53.8 %** |     76.4 % | 9 files instrumented; THREE wrappers under-tested       |
+| [src/app/guards](src/app/guards)             |      100 % |      100 % |      100 % |      100 % | `auth.guard.ts` only                                    |
+| [src/app/i18n](src/app/i18n)                 |     54.5 % | **38.2 %** |       70 % |     54.5 % | `locale.ts` selector branches                           |
+| [src/app/i18n/locales](src/app/i18n/locales) |      100 % |        n/a |        n/a |      100 % | static catalogs                                         |
+| [src/app/mission](src/app/mission)           |     94.9 % |     79.0 % |     94.3 % |     95.0 % | strong                                                  |
+| [src/app/model](src/app/model)               |     96.7 % |     83.6 % |      100 % |     97.2 % | strongest tier                                          |
+| [src/app/page/game](src/app/page/game)       |  **9.1 %** |  **7.7 %** | **16.7 %** | **10.5 %** | only `repair-retrofit-state.ts` instrumented (1 of ~14) |
+| [src/app/services](src/app/services)         |     88.1 % |     76.1 % |     88.8 % |     88.1 % | solid                                                   |
 
 **Folders with effectively zero unit-coverage** (no source file imported by any spec, so absent from the report entirely):
 
@@ -135,7 +135,7 @@ These specs correctly drive the SUT through `TestBed` and produce real coverage;
 - 68 tests pass in 28.8 s on 10 workers; no flakes observed in this run.
 - Deterministic via [e2e/fixtures/socket-mock.ts](e2e/fixtures/socket-mock.ts), aligned with [docs/server-message-contracts.md](docs/server-message-contracts.md).
 - Page-object layer in [e2e/page-objects](e2e/page-objects) is consistent and small.
-- Risk: the e2e suite is currently the *only* layer exercising real Angular components for `page/game/*`, `page/character/*`, `page/public/*`, `page/opening/*`, and `scene/*`. If shadow specs remain, every regression in those areas must be caught e2e — which is slower, more brittle, and harder to triage.
+- Risk: the e2e suite is currently the _only_ layer exercising real Angular components for `page/game/*`, `page/character/*`, `page/public/*`, `page/opening/*`, and `scene/*`. If shadow specs remain, every regression in those areas must be caught e2e — which is slower, more brittle, and harder to triage.
 
 ### 4.6 Documentation drift
 
@@ -160,16 +160,16 @@ These specs correctly drive the SUT through `TestBed` and produce real coverage;
 
 ## 6. Risk-Ranked Recommendations
 
-| # | Risk | Recommendation | Effort |
-| ---: | --- | --- | --- |
-| 1 | **Critical** | Convert the 30 shadow specs to real `TestBed` component tests that import the SUT. Start with `market-hub`, `mission-board`, `ship-hangar`, `character-list` (highest-LOC, highest-traffic). | L (per spec) |
-| 2 | High | Extract a shared `src/testing/` helper module (`createSignal`, `MockSocketService`, `MockSessionService`, `MockMissionService`) typed against the real service interfaces. Delete 21 × 13 duplicated definitions. | M |
-| 3 | High | Republish coverage with the shadow specs converted; expect headline numbers to drop, then drive them back up against the real production code. Re-baseline the policy floors only after that. | M |
-| 4 | Medium | Add explicit "no shadow spec" guard: a CI check that asserts every `*.spec.ts` (other than `*.integration.spec.ts`) imports the file at the matching path. | S |
-| 5 | Medium | Bring branch coverage above 75 % in `component/`, `i18n/locale.ts`, and `services/mission.service.ts`. | M |
-| 6 | Medium | Add a real "service integration" tier (e.g. `mission-flow.integration.spec.ts` wired to the real `MissionService` + a fake `SocketService`) to cover the policy 20 % integration band. | M |
-| 7 | Low | Remove `.cov-extract.cjs`; add `coverage/` confirmation to `.gitignore` if not already. | S |
-| 8 | Low | Update [TODO.md](TODO.md) test counts; fill in the first real entry in [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md). | S |
+|   # | Risk         | Recommendation                                                                                                                                                                                                    | Effort       |
+| --: | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+|   1 | **Critical** | Convert the 30 shadow specs to real `TestBed` component tests that import the SUT. Start with `market-hub`, `mission-board`, `ship-hangar`, `character-list` (highest-LOC, highest-traffic).                      | L (per spec) |
+|   2 | High         | Extract a shared `src/testing/` helper module (`createSignal`, `MockSocketService`, `MockSessionService`, `MockMissionService`) typed against the real service interfaces. Delete 21 × 13 duplicated definitions. | M            |
+|   3 | High         | Republish coverage with the shadow specs converted; expect headline numbers to drop, then drive them back up against the real production code. Re-baseline the policy floors only after that.                     | M            |
+|   4 | Medium       | Add explicit "no shadow spec" guard: a CI check that asserts every `*.spec.ts` (other than `*.integration.spec.ts`) imports the file at the matching path.                                                        | S            |
+|   5 | Medium       | Bring branch coverage above 75 % in `component/`, `i18n/locale.ts`, and `services/mission.service.ts`.                                                                                                            | M            |
+|   6 | Medium       | Add a real "service integration" tier (e.g. `mission-flow.integration.spec.ts` wired to the real `MissionService` + a fake `SocketService`) to cover the policy 20 % integration band.                            | M            |
+|   7 | Low          | Remove `.cov-extract.cjs`; add `coverage/` confirmation to `.gitignore` if not already.                                                                                                                           | S            |
+|   8 | Low          | Update [TODO.md](TODO.md) test counts; fill in the first real entry in [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md).                                                            | S            |
 
 ---
 

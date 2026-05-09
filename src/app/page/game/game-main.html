@@ -1,17 +1,20 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.main.title }}</h1>
-				<p class="subtitle">{{ t.game.main.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.main.title }}</h1>
+        <p class="subtitle">{{ t.game.main.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		<section class="ops-card">
-			<h2>{{ t.game.main.sectionTitle }}</h2>
-			<p>{{ t.game.main.sectionDescription }}</p>
-		</section>
-	</div>
+    <section class="ops-card">
+      <h2>{{ t.game.main.sectionTitle }}</h2>
+      <p>{{ t.game.main.sectionDescription }}</p>
+    </section>
+  </div>
 </div>

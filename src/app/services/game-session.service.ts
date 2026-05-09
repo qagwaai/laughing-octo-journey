@@ -5,15 +5,15 @@ import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
 export class GameSessionService {
-	private socketService = inject(SocketService);
+  private socketService = inject(SocketService);
 
-	subscribeInvalidSession(onInvalidSession: () => void): () => void {
-		return this.socketService.on(INVALID_SESSION_EVENT, () => {
-			onInvalidSession();
-		});
-	}
+  subscribeInvalidSession(onInvalidSession: () => void): () => void {
+    return this.socketService.on(INVALID_SESSION_EVENT, () => {
+      onInvalidSession();
+    });
+  }
 
-	requestGameJoin(request: GameJoinRequest): void {
-		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
-	}
+  requestGameJoin(request: GameJoinRequest): void {
+    this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
+  }
 }

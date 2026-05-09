@@ -1,30 +1,24 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { locale } from '../../i18n/locale';
-import {
-	CharacterAddRequest,
-	CharacterAddResponse,
-} from '../../model/character-add';
-import {
-	CharacterEditRequest,
-	CharacterEditResponse,
-} from '../../model/character-edit';
-import {
-	type ShipListRequest,
-	type ShipListResponse,
-} from '../../model/ship-list';
-import { type ShipUpsertResponse } from '../../model/ship-upsert';
-import { type ItemUpsertResponse } from '../../model/item-upsert';
-import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/domain/expendable-dart-drone';
-import {
-	THREE_D_PRINTER_ITEM_TYPE,
-	THREE_D_PRINTER_DISPLAY_NAME,
-	THREE_D_PRINTER_TIER,
-} from '../../model/domain/3d-printer';
-import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { locale } from '../../i18n/locale';
+import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
+import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import {
+  THREE_D_PRINTER_DISPLAY_NAME,
+  THREE_D_PRINTER_ITEM_TYPE,
+  THREE_D_PRINTER_TIER,
+} from '../../model/domain/3d-printer';
+import {
+  EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+  EXPENDABLE_DART_DRONE_ITEM_TYPE,
+} from '../../model/domain/expendable-dart-drone';
+import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
+import { type ItemUpsertResponse } from '../../model/item-upsert';
+import { type ShipListRequest, type ShipListResponse } from '../../model/ship-list';
+import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
@@ -33,298 +27,292 @@ import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 
 interface StarterShipInventoryItemDefinition {
-	itemType: string;
-	displayName: string;
-	tier?: number;
-	launchable: boolean;
-	failureMessage: string;
+  itemType: string;
+  displayName: string;
+  tier?: number;
+  launchable: boolean;
+  failureMessage: string;
 }
 
 const STARTER_SHIP_INVENTORY_ITEMS: readonly StarterShipInventoryItemDefinition[] = [
-	{
-		itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-		displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-		launchable: true,
-		failureMessage: 'Ship updated, but starter drone could not be created.',
-	},
-	{
-		itemType: THREE_D_PRINTER_ITEM_TYPE,
-		displayName: THREE_D_PRINTER_DISPLAY_NAME,
-		tier: THREE_D_PRINTER_TIER,
-		launchable: false,
-		failureMessage: 'Ship updated, but starter 3D printer could not be created.',
-	},
+  {
+    itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
+    displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+    launchable: true,
+    failureMessage: 'Ship updated, but starter drone could not be created.',
+  },
+  {
+    itemType: THREE_D_PRINTER_ITEM_TYPE,
+    displayName: THREE_D_PRINTER_DISPLAY_NAME,
+    tier: THREE_D_PRINTER_TIER,
+    launchable: false,
+    failureMessage: 'Ship updated, but starter 3D printer could not be created.',
+  },
 ];
 
 interface CharacterSetupNavigationState {
-	playerName?: string;
-	mode?: 'create' | 'edit';
-	editCharacter?: PlayerCharacterSummary;
+  playerName?: string;
+  mode?: 'create' | 'edit';
+  editCharacter?: PlayerCharacterSummary;
 }
 
 @Component({
-	selector: 'app-character-setup-page',
-	templateUrl: './character-setup.html',
-	styleUrls: ['./character-setup.css'],
-	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [ReactiveFormsModule, GuardedLeftMenu],
+  selector: 'app-character-setup-page',
+  templateUrl: './character-setup.html',
+  styleUrls: ['./character-setup.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ReactiveFormsModule, GuardedLeftMenu],
 })
 export default class CharacterSetupPage implements OnDestroy {
-	protected readonly t = locale;
-	private fb = inject(FormBuilder);
-	private router = inject(Router);
-	private characterService = inject(CharacterService);
-	private gameSessionService = inject(GameSessionService);
-	private socketService = inject(SocketService);
-	private shipService = inject(ShipService);
-	private sessionService = inject(SessionService);
-	private unsubscribeAddResponse?: () => void;
-	private unsubscribeInvalidSession?: () => void;
-	private setupState: CharacterSetupNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
-		(history.state as CharacterSetupNavigationState | undefined) ??
-		{};
+  protected readonly t = locale;
+  private fb = inject(FormBuilder);
+  private router = inject(Router);
+  private characterService = inject(CharacterService);
+  private gameSessionService = inject(GameSessionService);
+  private socketService = inject(SocketService);
+  private shipService = inject(ShipService);
+  private sessionService = inject(SessionService);
+  private unsubscribeAddResponse?: () => void;
+  private unsubscribeInvalidSession?: () => void;
+  private setupState: CharacterSetupNavigationState =
+    (this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
+    (history.state as CharacterSetupNavigationState | undefined) ??
+    {};
 
-	protected playerName = signal<string>(
-		this.setupState.playerName ??
-			'',
-	);
-	protected editCharacter = signal<PlayerCharacterSummary | null>(this.setupState.editCharacter ?? null);
-	protected isEditMode = signal(
-		this.setupState.mode === 'edit' && !!this.setupState.editCharacter,
-	);
+  protected playerName = signal<string>(this.setupState.playerName ?? '');
+  protected editCharacter = signal<PlayerCharacterSummary | null>(this.setupState.editCharacter ?? null);
+  protected isEditMode = signal(this.setupState.mode === 'edit' && !!this.setupState.editCharacter);
 
-	protected characterForm = this.fb.group({
-		characterName: [
-			this.editCharacter()?.characterName ?? this.playerName(),
-			[Validators.required, Validators.minLength(2), Validators.maxLength(24)],
-		],
-	});
+  protected characterForm = this.fb.group({
+    characterName: [
+      this.editCharacter()?.characterName ?? this.playerName(),
+      [Validators.required, Validators.minLength(2), Validators.maxLength(24)],
+    ],
+  });
 
-	protected isSaved = signal(false);
-	protected successMessage = signal<string | null>(null);
-	protected errorMessage = signal<string | null>(null);
-	protected warningMessage = signal<string | null>(null);
-	protected isSubmitting = signal(false);
+  protected isSaved = signal(false);
+  protected successMessage = signal<string | null>(null);
+  protected errorMessage = signal<string | null>(null);
+  protected warningMessage = signal<string | null>(null);
+  protected isSubmitting = signal(false);
 
-	constructor() {
-		this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
-			this.sessionService.clearSession();
-			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-		});
-	}
+  constructor() {
+    this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+      this.sessionService.clearSession();
+      this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+    });
+  }
 
-	saveCharacter(): void {
-		if (this.characterForm.invalid) {
-			this.characterForm.markAllAsTouched();
-			return;
-		}
+  saveCharacter(): void {
+    if (this.characterForm.invalid) {
+      this.characterForm.markAllAsTouched();
+      return;
+    }
 
-		const playerName = this.playerName().trim();
-		const characterName = this.characterForm.value.characterName!;
+    const playerName = this.playerName().trim();
+    const characterName = this.characterForm.value.characterName!;
 
-		if (!playerName) {
-			this.errorMessage.set(this.t.character.setup.messages.saveRequiresPlayer);
-			this.isSaved.set(false);
-			return;
-		}
+    if (!playerName) {
+      this.errorMessage.set(this.t.character.setup.messages.saveRequiresPlayer);
+      this.isSaved.set(false);
+      return;
+    }
 
-		this.isSubmitting.set(true);
-		this.errorMessage.set(null);
-		this.successMessage.set(null);
-		this.warningMessage.set(null);
-		this.isSaved.set(false);
-		this.unsubscribeAddResponse?.();
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.warningMessage.set(null);
+    this.isSaved.set(false);
+    this.unsubscribeAddResponse?.();
 
-		const isEditMode = this.isEditMode();
-		if (isEditMode) {
-			const editCharacter = this.editCharacter();
-			if (!editCharacter?.id) {
-				this.isSubmitting.set(false);
-				this.errorMessage.set(this.t.character.setup.messages.editRequiresCharacterId);
-				return;
-			}
-		}
+    const isEditMode = this.isEditMode();
+    if (isEditMode) {
+      const editCharacter = this.editCharacter();
+      if (!editCharacter?.id) {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(this.t.character.setup.messages.editRequiresCharacterId);
+        return;
+      }
+    }
 
-		const handleSaveResponse = (response: CharacterAddResponse | CharacterEditResponse): void => {
-			this.isSubmitting.set(false);
-			if (response.success) {
-				this.isSaved.set(true);
-				this.successMessage.set(response.message);
-				this.errorMessage.set(null);
-				if (!isEditMode) {
-					const addResponse = response as CharacterAddResponse;
-					this.createStarterShipForCharacter(addResponse.characterId);
-				}
-				this.navigateToCharacterList();
-			} else {
-				this.isSaved.set(false);
-				this.successMessage.set(null);
-				this.errorMessage.set(response.message);
-			}
-			this.unsubscribeAddResponse?.();
-		};
+    const handleSaveResponse = (response: CharacterAddResponse | CharacterEditResponse): void => {
+      this.isSubmitting.set(false);
+      if (response.success) {
+        this.isSaved.set(true);
+        this.successMessage.set(response.message);
+        this.errorMessage.set(null);
+        if (!isEditMode) {
+          const addResponse = response as CharacterAddResponse;
+          this.createStarterShipForCharacter(addResponse.characterId);
+        }
+        this.navigateToCharacterList();
+      } else {
+        this.isSaved.set(false);
+        this.successMessage.set(null);
+        this.errorMessage.set(response.message);
+      }
+      this.unsubscribeAddResponse?.();
+    };
 
-		if (isEditMode) {
-			const editCharacter = this.editCharacter()!;
-			const request: CharacterEditRequest = {
-				characterId: editCharacter.id,
-				playerName,
-				characterName,
-				sessionKey: this.sessionService.getSessionKey()!,
-			};
-			this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
-				handleSaveResponse(response);
-			});
-			return;
-		}
+    if (isEditMode) {
+      const editCharacter = this.editCharacter()!;
+      const request: CharacterEditRequest = {
+        characterId: editCharacter.id,
+        playerName,
+        characterName,
+        sessionKey: this.sessionService.getSessionKey()!,
+      };
+      this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
+        handleSaveResponse(response);
+      });
+      return;
+    }
 
-		const request: CharacterAddRequest = {
-			playerName,
-			characterName,
-			sessionKey: this.sessionService.getSessionKey()!,
-		};
-		this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
-			handleSaveResponse(response);
-		});
-	}
+    const request: CharacterAddRequest = {
+      playerName,
+      characterName,
+      sessionKey: this.sessionService.getSessionKey()!,
+    };
+    this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
+      handleSaveResponse(response);
+    });
+  }
 
-	private createStarterShipForCharacter(characterId?: string): void {
-		const playerName = this.playerName().trim();
-		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-		const resolvedCharacterId = characterId?.trim() ?? '';
+  private createStarterShipForCharacter(characterId?: string): void {
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const resolvedCharacterId = characterId?.trim() ?? '';
 
-		if (!playerName || !sessionKey || !resolvedCharacterId) {
-			appLogger.warn('Skipping starter ship upsert due to missing character context.');
-			this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
-			return;
-		}
+    if (!playerName || !sessionKey || !resolvedCharacterId) {
+      appLogger.warn('Skipping starter ship upsert due to missing character context.');
+      this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
+      return;
+    }
 
-		const followupRequest: ShipListRequest = {
-			playerName,
-			characterId: resolvedCharacterId,
-			sessionKey,
-		};
-		this.shipService.listShips(followupRequest, (response: ShipListResponse) => {
-			if (!response.success) {
-				appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
-				this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
-				return;
-			}
+    const followupRequest: ShipListRequest = {
+      playerName,
+      characterId: resolvedCharacterId,
+      sessionKey,
+    };
+    this.shipService.listShips(followupRequest, (response: ShipListResponse) => {
+      if (!response.success) {
+        appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
+        this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
+        return;
+      }
 
-			const starterShipId = response.ships?.[0]?.id?.trim();
-			if (!starterShipId) {
-				appLogger.warn('Starter ship id was not returned by ship-list response.');
-				this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
-				return;
-			}
+      const starterShipId = response.ships?.[0]?.id?.trim();
+      if (!starterShipId) {
+        appLogger.warn('Starter ship id was not returned by ship-list response.');
+        this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
+        return;
+      }
 
-			const existingInventory = response.ships?.[0]?.inventory ?? [];
+      const existingInventory = response.ships?.[0]?.inventory ?? [];
 
-			const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
-			this.socketService.upsertShip(
-				{
-					playerName,
-					characterId: resolvedCharacterId,
-					sessionKey,
-					ship: shipUpdate,
-				},
-				(upsertResponse: ShipUpsertResponse) => {
-					if (!upsertResponse.success) {
-						appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
-						this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
-						return;
-					}
+      const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
+      this.socketService.upsertShip(
+        {
+          playerName,
+          characterId: resolvedCharacterId,
+          sessionKey,
+          ship: shipUpdate,
+        },
+        (upsertResponse: ShipUpsertResponse) => {
+          if (!upsertResponse.success) {
+            appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
+            this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
+            return;
+          }
 
-					const upsertedInventory = upsertResponse.ship?.inventory ?? [];
-					const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
-						(definition) =>
-							!this.hasStarterShipInventoryItem(existingInventory, definition) &&
-							!this.hasStarterShipInventoryItem(upsertedInventory, definition),
-					);
+          const upsertedInventory = upsertResponse.ship?.inventory ?? [];
+          const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
+            (definition) =>
+              !this.hasStarterShipInventoryItem(existingInventory, definition) &&
+              !this.hasStarterShipInventoryItem(upsertedInventory, definition),
+          );
 
-					if (missingStarterItems.length === 0) {
-						this.warningMessage.set(null);
-						return;
-					}
+          if (missingStarterItems.length === 0) {
+            this.warningMessage.set(null);
+            return;
+          }
 
-					this.upsertStarterShipInventoryItems(
-						missingStarterItems,
-						playerName,
-						sessionKey,
-						resolvedCharacterId,
-						starterShipId,
-					);
-				},
-			);
-		});
-	}
+          this.upsertStarterShipInventoryItems(
+            missingStarterItems,
+            playerName,
+            sessionKey,
+            resolvedCharacterId,
+            starterShipId,
+          );
+        },
+      );
+    });
+  }
 
-	private hasStarterShipInventoryItem(
-		inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
-		definition: StarterShipInventoryItemDefinition,
-	): boolean {
-		return (
-			inventory?.some(
-				(item) =>
-					item.itemType === definition.itemType &&
-					(definition.tier === undefined || item.tier === definition.tier),
-			) ?? false
-		);
-	}
+  private hasStarterShipInventoryItem(
+    inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
+    definition: StarterShipInventoryItemDefinition,
+  ): boolean {
+    return (
+      inventory?.some(
+        (item) =>
+          item.itemType === definition.itemType && (definition.tier === undefined || item.tier === definition.tier),
+      ) ?? false
+    );
+  }
 
-	private upsertStarterShipInventoryItems(
-		items: readonly StarterShipInventoryItemDefinition[],
-		playerName: string,
-		sessionKey: string,
-		characterId: string,
-		shipId: string,
-		index = 0,
-	): void {
-		const itemDefinition = items[index];
-		if (!itemDefinition) {
-			this.warningMessage.set(null);
-			return;
-		}
+  private upsertStarterShipInventoryItems(
+    items: readonly StarterShipInventoryItemDefinition[],
+    playerName: string,
+    sessionKey: string,
+    characterId: string,
+    shipId: string,
+    index = 0,
+  ): void {
+    const itemDefinition = items[index];
+    if (!itemDefinition) {
+      this.warningMessage.set(null);
+      return;
+    }
 
-		this.socketService.upsertItem(
-			{
-				playerName,
-				sessionKey,
-				item: {
-					itemType: itemDefinition.itemType,
-					displayName: itemDefinition.displayName,
-					...(itemDefinition.tier === undefined ? {} : { tier: itemDefinition.tier }),
-					launchable: itemDefinition.launchable,
-					state: 'contained',
-					damageStatus: 'intact',
-					container: { containerType: 'ship', containerId: shipId },
-					owningPlayerId: playerName,
-					owningCharacterId: characterId,
-				},
-			},
-			(itemResponse: ItemUpsertResponse) => {
-				if (!itemResponse.success) {
-					appLogger.warn(`Starter item creation failed for ${itemDefinition.itemType}:`, itemResponse.message);
-					this.warningMessage.set(itemDefinition.failureMessage);
-					return;
-				}
+    this.socketService.upsertItem(
+      {
+        playerName,
+        sessionKey,
+        item: {
+          itemType: itemDefinition.itemType,
+          displayName: itemDefinition.displayName,
+          ...(itemDefinition.tier === undefined ? {} : { tier: itemDefinition.tier }),
+          launchable: itemDefinition.launchable,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: shipId },
+          owningPlayerId: playerName,
+          owningCharacterId: characterId,
+        },
+      },
+      (itemResponse: ItemUpsertResponse) => {
+        if (!itemResponse.success) {
+          appLogger.warn(`Starter item creation failed for ${itemDefinition.itemType}:`, itemResponse.message);
+          this.warningMessage.set(itemDefinition.failureMessage);
+          return;
+        }
 
-				this.upsertStarterShipInventoryItems(items, playerName, sessionKey, characterId, shipId, index + 1);
-			},
-		);
-	}
+        this.upsertStarterShipInventoryItems(items, playerName, sessionKey, characterId, shipId, index + 1);
+      },
+    );
+  }
 
-	navigateToCharacterList(): void {
-		const playerName = this.playerName() || this.characterForm.value.characterName || '';
-		this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-			preserveFragment: true,
-			state: { playerName },
-		});
-	}
+  navigateToCharacterList(): void {
+    const playerName = this.playerName() || this.characterForm.value.characterName || '';
+    this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+      preserveFragment: true,
+      state: { playerName },
+    });
+  }
 
-	ngOnDestroy(): void {
-		this.unsubscribeAddResponse?.();
-		this.unsubscribeInvalidSession?.();
-	}
+  ngOnDestroy(): void {
+    this.unsubscribeAddResponse?.();
+    this.unsubscribeInvalidSession?.();
+  }
 }

@@ -83,9 +83,7 @@ const BOLD = '\x1b[1m';
 if (knownViolations.length > 0) {
   console.warn(`${YELLOW}${BOLD}Shadow spec warnings (known — Phase B backlog):${RESET}`);
   knownViolations.forEach(({ file }) => console.warn(`  ${YELLOW}⚠${RESET}  ${file}`));
-  console.warn(
-    `${YELLOW}  ${knownViolations.length} known shadow spec(s). Convert via Phase B in TODO.md.${RESET}\n`,
-  );
+  console.warn(`${YELLOW}  ${knownViolations.length} known shadow spec(s). Convert via Phase B in TODO.md.${RESET}\n`);
 }
 
 if (newViolations.length > 0) {

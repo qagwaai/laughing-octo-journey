@@ -1,155 +1,155 @@
 .ops-page-container {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-	margin: 1rem;
-	padding: 1.25rem;
-	border-radius: 12px;
-	background: rgba(20, 33, 56, 0.9);
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	color: #e8f2ff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
 }
 
 .page-main {
-	min-width: 0;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
-	.ops-page-container {
-		grid-template-columns: 1fr;
-	}
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 .subtitle {
-	margin: 0 0 1rem;
-	color: #b4cfff;
+  margin: 0 0 1rem;
+  color: #b4cfff;
 }
 
 .ops-card {
-	margin-top: 1rem;
-	padding: 0.9rem;
-	border-radius: 8px;
-	background: rgba(30, 49, 84, 0.55);
-	border: 1px solid rgba(140, 190, 255, 0.25);
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: rgba(30, 49, 84, 0.55);
+  border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
 .market-search-card h2 {
-	margin-top: 0;
+  margin-top: 0;
 }
 
 .search-context {
-	margin: 0.35rem 0;
-	color: #b4cfff;
+  margin: 0.35rem 0;
+  color: #b4cfff;
 }
 
 .market-filter-form {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: end;
-	gap: 0.6rem;
-	margin: 0.8rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
 }
 
 .market-filter-form label {
-	font-size: 0.9rem;
-	color: #b4cfff;
+  font-size: 0.9rem;
+  color: #b4cfff;
 }
 
 .market-filter-form select {
-	min-width: 130px;
-	padding: 0.4rem 0.5rem;
-	border-radius: 6px;
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	background: rgba(20, 33, 56, 0.9);
-	color: #e8f2ff;
+  min-width: 130px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  background: rgba(20, 33, 56, 0.9);
+  color: #e8f2ff;
 }
 
 .apply-btn,
 .reload-btn,
 .transact-btn {
-	padding: 0.42rem 0.72rem;
-	border-radius: 6px;
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	background: rgba(53, 120, 214, 0.24);
-	color: #e8f2ff;
-	cursor: pointer;
+  padding: 0.42rem 0.72rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  background: rgba(53, 120, 214, 0.24);
+  color: #e8f2ff;
+  cursor: pointer;
 }
 
 .apply-btn:hover,
 .reload-btn:hover,
 .transact-btn:hover {
-	background: rgba(53, 120, 214, 0.35);
+  background: rgba(53, 120, 214, 0.35);
 }
 
 .transact-btn:disabled,
 .reload-btn:disabled {
-	opacity: 0.55;
-	cursor: not-allowed;
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .status-message {
-	margin: 0.6rem 0;
-	padding: 0.55rem 0.7rem;
-	border-radius: 6px;
-	font-size: 0.92rem;
+  margin: 0.6rem 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
 }
 
 .warning-message {
-	background: rgba(255, 196, 80, 0.15);
-	border: 1px solid rgba(255, 196, 80, 0.4);
-	color: #ffd58a;
+  background: rgba(255, 196, 80, 0.15);
+  border: 1px solid rgba(255, 196, 80, 0.4);
+  color: #ffd58a;
 }
 
 .error-message {
-	background: rgba(255, 80, 80, 0.16);
-	border: 1px solid rgba(255, 80, 80, 0.4);
-	color: #ff9b9b;
+  background: rgba(255, 80, 80, 0.16);
+  border: 1px solid rgba(255, 80, 80, 0.4);
+  color: #ff9b9b;
 }
 
 .empty-state {
-	margin: 0.6rem 0;
-	color: #b4cfff;
+  margin: 0.6rem 0;
+  color: #b4cfff;
 }
 
 .market-list {
-	list-style: none;
-	padding: 0;
-	margin: 0.9rem 0 0 0;
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-	gap: 0.7rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.9rem 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.7rem;
 }
 
 .market-item {
-	padding: 0.7rem;
-	border-radius: 8px;
-	background: rgba(22, 39, 71, 0.78);
-	border: 1px solid rgba(140, 190, 255, 0.22);
+  padding: 0.7rem;
+  border-radius: 8px;
+  background: rgba(22, 39, 71, 0.78);
+  border: 1px solid rgba(140, 190, 255, 0.22);
 }
 
 .market-item p {
-	margin: 0.3rem 0;
-	font-size: 0.9rem;
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
 }
 
 .market-item-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .market-item-header h3 {
-	margin: 0;
-	font-size: 1rem;
+  margin: 0;
+  font-size: 1rem;
 }
 
 .dock-required-badge {
-	font-size: 0.78rem;
-	padding: 0.2rem 0.45rem;
-	border-radius: 999px;
-	background: rgba(255, 196, 80, 0.2);
-	border: 1px solid rgba(255, 196, 80, 0.5);
-	color: #ffd58a;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 196, 80, 0.2);
+  border: 1px solid rgba(255, 196, 80, 0.5);
+  color: #ffd58a;
 }

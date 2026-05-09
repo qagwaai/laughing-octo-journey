@@ -25,7 +25,15 @@ describe('PrinterStateService', () => {
     });
 
     it('loads a previously saved queue from localStorage', () => {
-      const stored = [{ id: 'p-1', itemType: 'hull-patch-kit', label: 'Hull Patch Kit', startedAt: '2026-01-01T00:00:00.000Z', durationMs: 60000 }];
+      const stored = [
+        {
+          id: 'p-1',
+          itemType: 'hull-patch-kit',
+          label: 'Hull Patch Kit',
+          startedAt: '2026-01-01T00:00:00.000Z',
+          durationMs: 60000,
+        },
+      ];
       localStorage.setItem('printer-queue:player1:char-1', JSON.stringify(stored));
 
       service.loadQueue('player1', 'char-1');
@@ -142,7 +150,11 @@ describe('PrinterStateService', () => {
   describe('cross-character lifecycle', () => {
     it('isolates char-B queue from char-A items when loadQueue is called before switching context', () => {
       // Char-A builds up a queue during their session
-      service.addToQueue('player1', 'char-1', { itemType: 'hull-patch-kit', label: 'Hull Patch Kit', durationMs: 60000 });
+      service.addToQueue('player1', 'char-1', {
+        itemType: 'hull-patch-kit',
+        label: 'Hull Patch Kit',
+        durationMs: 60000,
+      });
       service.addToQueue('player1', 'char-1', { itemType: 'iron-plate', label: 'Iron Plate', durationMs: 30000 });
       expect(service.queue().length).toBe(2);
 

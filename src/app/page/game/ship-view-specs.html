@@ -1,56 +1,82 @@
 <div class="ship-specs-container">
-	<div class="page-header">
-		<div>
-			<h1>{{ t.game.shipViewSpecs.title }}</h1>
-			<p class="subtitle">{{ t.game.shipViewSpecs.subtitle }}</p>
-		</div>
-		<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-	</div>
+  <div class="page-header">
+    <div>
+      <h1>{{ t.game.shipViewSpecs.title }}</h1>
+      <p class="subtitle">{{ t.game.shipViewSpecs.subtitle }}</p>
+    </div>
+    <app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
+  </div>
 
-	@if (joinShip()) {
-		<div class="spec-card">
-			<p><strong>{{ t.game.shipViewSpecs.nameLabel }}</strong> {{ joinShip()!.name }}</p>
-			<p><strong>{{ t.game.shipViewSpecs.idLabel }}</strong> {{ joinShip()!.id }}</p>
-			<p><strong>{{ t.game.shipViewSpecs.modelLabel }}</strong> {{ shipModel() }}</p>
-			<p><strong>{{ t.game.shipViewSpecs.tierLabel }}</strong> {{ shipTier() }}</p>
-			<p><strong>{{ t.game.shipViewSpecs.statusLabel }}</strong> {{ joinShip()!.status ?? t.game.shipViewSpecs.unknownStatusLabel }}</p>
+  @if (joinShip()) {
+  <div class="spec-card">
+    <p>
+      <strong>{{ t.game.shipViewSpecs.nameLabel }}</strong>
+      {{ joinShip()!.name }}
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.idLabel }}</strong>
+      {{ joinShip()!.id }}
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.modelLabel }}</strong>
+      {{ shipModel() }}
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.tierLabel }}</strong>
+      {{ shipTier() }}
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.statusLabel }}</strong>
+      {{ joinShip()!.status ?? t.game.shipViewSpecs.unknownStatusLabel }}
+    </p>
 
-			@if (joinShip()!.spatial) {
-				<p>
-					<strong>{{ t.game.shipViewSpecs.positionLabel }}</strong>
-					({{ joinShip()!.spatial.positionKm.x }}, {{ joinShip()!.spatial.positionKm.y }}, {{ joinShip()!.spatial.positionKm.z }})
-					km
-				</p>
-				@if (joinShip()!.motion) {
-					<p>
-						<strong>{{ t.game.shipViewSpecs.velocityLabel }}</strong>
-						({{ joinShip()!.motion!.velocityKmPerSec.x }}, {{ joinShip()!.motion!.velocityKmPerSec.y }}, {{ joinShip()!.motion!.velocityKmPerSec.z }})
-						km/s
-					</p>
-					<p><strong>{{ t.game.shipViewSpecs.speedLabel }}</strong> {{ shipMotion()!.speedKmPerSec.toFixed(3) }} km/s</p>
-					<p><strong>{{ t.game.shipViewSpecs.referenceFrameLabel }}</strong> {{ joinShip()!.spatial.frame }}</p>
-					@if (shipMotion()!.headingUnitVector) {
-						<p>
-							<strong>{{ t.game.shipViewSpecs.headingUnitVectorLabel }}</strong>
-							({{ shipMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.y.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.z.toFixed(4) }})
-						</p>
-					} @else {
-						<p><strong>{{ t.game.shipViewSpecs.headingLabel }}</strong> {{ t.game.shipViewSpecs.stationaryLabel }}</p>
-					}
-				}
-			} @else {
-				<p><strong>{{ t.game.shipViewSpecs.kinematicsLabel }}</strong> {{ t.game.shipViewSpecs.kinematicsUnavailableLabel }}</p>
-			}
+    @if (joinShip()!.spatial) {
+    <p>
+      <strong>{{ t.game.shipViewSpecs.positionLabel }}</strong>
+      ({{ joinShip()!.spatial.positionKm.x }}, {{ joinShip()!.spatial.positionKm.y }}, {{
+      joinShip()!.spatial.positionKm.z }}) km
+    </p>
+    @if (joinShip()!.motion) {
+    <p>
+      <strong>{{ t.game.shipViewSpecs.velocityLabel }}</strong>
+      ({{ joinShip()!.motion!.velocityKmPerSec.x }}, {{ joinShip()!.motion!.velocityKmPerSec.y }}, {{
+      joinShip()!.motion!.velocityKmPerSec.z }}) km/s
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.speedLabel }}</strong>
+      {{ shipMotion()!.speedKmPerSec.toFixed(3) }} km/s
+    </p>
+    <p>
+      <strong>{{ t.game.shipViewSpecs.referenceFrameLabel }}</strong>
+      {{ joinShip()!.spatial.frame }}
+    </p>
+    @if (shipMotion()!.headingUnitVector) {
+    <p>
+      <strong>{{ t.game.shipViewSpecs.headingUnitVectorLabel }}</strong>
+      ({{ shipMotion()!.headingUnitVector!.x.toFixed(4) }}, {{ shipMotion()!.headingUnitVector!.y.toFixed(4) }}, {{
+      shipMotion()!.headingUnitVector!.z.toFixed(4) }})
+    </p>
+    } @else {
+    <p>
+      <strong>{{ t.game.shipViewSpecs.headingLabel }}</strong>
+      {{ t.game.shipViewSpecs.stationaryLabel }}
+    </p>
+    } } } @else {
+    <p>
+      <strong>{{ t.game.shipViewSpecs.kinematicsLabel }}</strong>
+      {{ t.game.shipViewSpecs.kinematicsUnavailableLabel }}
+    </p>
+    }
 
-			<div class="ship-image-block">
-				<img
-					src="images/Expendable_Dart_Ship_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"
-					[alt]="t.game.shipViewSpecs.shipImageAlt"
-					class="ship-image"
-				/>
-			</div>
-		</div>
-	} @else {
-		<p class="empty-state">{{ t.game.shipViewSpecs.emptyState }}</p>
-	}
+    <div class="ship-image-block">
+      <img
+        src="images/Expendable_Dart_Ship_Gemini_Generated_Image_vzq3vfvzq3vfvzq3.png"
+        [alt]="t.game.shipViewSpecs.shipImageAlt"
+        class="ship-image"
+      />
+    </div>
+  </div>
+  } @else {
+  <p class="empty-state">{{ t.game.shipViewSpecs.emptyState }}</p>
+  }
 </div>

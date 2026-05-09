@@ -14,14 +14,17 @@ while (i < lines.length) {
     while (j < lines.length) {
       const l = lines[j];
       for (const ch of l) {
-        if (ch === '{') { depth++; started = true; }
+        if (ch === '{') {
+          depth++;
+          started = true;
+        }
         if (ch === '}') depth--;
       }
       block.push(j);
       j++;
       if (started && depth <= 0) break;
     }
-    const blockText = block.map(idx => lines[idx]).join('\n');
+    const blockText = block.map((idx) => lines[idx]).join('\n');
     if (!blockText.includes('as any') && !blockText.includes('as ShipSummary')) {
       const hasName = blockText.includes('name:');
       const hasModel = blockText.includes('model:');

@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { appLogger } from './logger';
 import {
   CELESTIAL_BODY_LIST_REQUEST_EVENT,
   CELESTIAL_BODY_LIST_RESPONSE_EVENT,
@@ -14,12 +13,6 @@ import {
   CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
 import {
-  SHIP_UPSERT_REQUEST_EVENT,
-  SHIP_UPSERT_RESPONSE_EVENT,
-  ShipUpsertRequest,
-  ShipUpsertResponse,
-} from '../model/ship-upsert';
-import {
   ITEM_UPSERT_REQUEST_EVENT,
   ITEM_UPSERT_RESPONSE_EVENT,
   ItemUpsertRequest,
@@ -31,21 +24,28 @@ import {
   LaunchItemRequest,
   LaunchItemResponse,
 } from '../model/launch-item';
+import {
+  SHIP_UPSERT_REQUEST_EVENT,
+  SHIP_UPSERT_RESPONSE_EVENT,
+  ShipUpsertRequest,
+  ShipUpsertResponse,
+} from '../model/ship-upsert';
+import { appLogger } from './logger';
 
 /**
  * Socket.IO Service
- * 
+ *
  * Provides a centralized service for managing Socket.IO client connections
  * and communication with a Socket.IO server. Handles connection state management,
  * event emission, and event listening using Angular signals for reactivity.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SocketService {
   public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
   private socket: Socket | null = null;
-  
+
   // Signal to track connection state
   protected isConnected = signal(false);
   protected connectionError = signal<string | null>(null);
@@ -53,7 +53,7 @@ export class SocketService {
   constructor() {
     this.connect(this.serverUrl);
   }
-  
+
   /**
    * Connect to a Socket.IO server
    * @param url - The server URL (e.g., 'http://localhost:3000')
@@ -71,7 +71,7 @@ export class SocketService {
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         reconnectionAttempts: 5,
-        ...options
+        ...options,
       });
 
       this.setupConnectionListeners();
@@ -144,10 +144,7 @@ export class SocketService {
   /**
    * Emit a ship upsert request and optionally handle a one-time response.
    */
-  upsertShip(
-    request: ShipUpsertRequest,
-    onResponse?: (response: ShipUpsertResponse) => void,
-  ): void {
+  upsertShip(request: ShipUpsertRequest, onResponse?: (response: ShipUpsertResponse) => void): void {
     if (onResponse) {
       this.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
     }
@@ -158,10 +155,7 @@ export class SocketService {
   /**
    * Emit an item upsert request and optionally handle a one-time response.
    */
-  upsertItem(
-    request: ItemUpsertRequest,
-    onResponse?: (response: ItemUpsertResponse) => void,
-  ): void {
+  upsertItem(request: ItemUpsertRequest, onResponse?: (response: ItemUpsertResponse) => void): void {
     if (onResponse) {
       this.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
     }
@@ -172,10 +166,7 @@ export class SocketService {
   /**
    * Emit a launch item request and optionally handle a one-time response.
    */
-  launchItem(
-    request: LaunchItemRequest,
-    onResponse?: (response: LaunchItemResponse) => void,
-  ): void {
+  launchItem(request: LaunchItemRequest, onResponse?: (response: LaunchItemResponse) => void): void {
     if (onResponse) {
       this.once(LAUNCH_ITEM_RESPONSE_EVENT, onResponse);
     }

@@ -11,35 +11,31 @@ import type { PrintQueueItem } from '../app/services/printer-state.service';
  *   beforeEach(() => { printerState = createMockPrinterStateService(); });
  */
 export interface MockPrinterStateService {
-	queue: WritableSignal<PrintQueueItem[]>;
-	loadQueue(playerName: string, characterId: string): void;
-	addToQueue(
-		playerName: string,
-		characterId: string,
-		item: Omit<PrintQueueItem, 'id' | 'startedAt'>,
-	): PrintQueueItem;
-	removeFromQueue(playerName: string, characterId: string, itemId: string): void;
+  queue: WritableSignal<PrintQueueItem[]>;
+  loadQueue(playerName: string, characterId: string): void;
+  addToQueue(playerName: string, characterId: string, item: Omit<PrintQueueItem, 'id' | 'startedAt'>): PrintQueueItem;
+  removeFromQueue(playerName: string, characterId: string, itemId: string): void;
 }
 
 export function createMockPrinterStateService(): MockPrinterStateService {
-	const queue = signal<PrintQueueItem[]>([]);
+  const queue = signal<PrintQueueItem[]>([]);
 
-	return {
-		queue,
-		loadQueue(_playerName: string, _characterId: string) {
-			// no-op by default; tests can pre-populate via queue.set(...)
-		},
-		addToQueue(_playerName: string, _characterId: string, item: Omit<PrintQueueItem, 'id' | 'startedAt'>) {
-			const newItem: PrintQueueItem = {
-				...item,
-				id: `mock-print-${Date.now()}`,
-				startedAt: new Date().toISOString(),
-			};
-			queue.set([...queue(), newItem]);
-			return newItem;
-		},
-		removeFromQueue(_playerName: string, _characterId: string, itemId: string) {
-			queue.set(queue().filter((i) => i.id !== itemId));
-		},
-	};
+  return {
+    queue,
+    loadQueue(_playerName: string, _characterId: string) {
+      // no-op by default; tests can pre-populate via queue.set(...)
+    },
+    addToQueue(_playerName: string, _characterId: string, item: Omit<PrintQueueItem, 'id' | 'startedAt'>) {
+      const newItem: PrintQueueItem = {
+        ...item,
+        id: `mock-print-${Date.now()}`,
+        startedAt: new Date().toISOString(),
+      };
+      queue.set([...queue(), newItem]);
+      return newItem;
+    },
+    removeFromQueue(_playerName: string, _characterId: string, itemId: string) {
+      queue.set(queue().filter((i) => i.id !== itemId));
+    },
+  };
 }

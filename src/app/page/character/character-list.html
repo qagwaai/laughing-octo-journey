@@ -1,61 +1,70 @@
 <div class="character-list-container">
-	<app-guarded-left-menu [playerName]="playerName()" [disableNonLogout]="true"></app-guarded-left-menu>
-	<div class="page-main">
-		<h1>{{ t.character.list.title }}</h1>
-		<p class="subtitle">{{ t.character.list.subtitle }}</p>
+  <app-guarded-left-menu [playerName]="playerName()" [disableNonLogout]="true"></app-guarded-left-menu>
+  <div class="page-main">
+    <h1>{{ t.character.list.title }}</h1>
+    <p class="subtitle">{{ t.character.list.subtitle }}</p>
 
-		@if (playerName()) {
-			<p class="player-name">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
-		}
+    @if (playerName()) {
+    <p class="player-name">
+      {{ t.common.playerPrefix }}
+      <strong>{{ playerName() }}</strong>
+    </p>
+    }
 
-		<button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
-			{{ isLoading() ? t.character.list.loadingLabel : t.character.list.loadLabel }}
-		</button>
-		<button class="setup-btn" (click)="navigateToCharacterSetup()">{{ t.character.list.setupLabel }}</button>
+    <button class="load-btn" (click)="loadCharacters()" [disabled]="isLoading()">
+      {{ isLoading() ? t.character.list.loadingLabel : t.character.list.loadLabel }}
+    </button>
+    <button class="setup-btn" (click)="navigateToCharacterSetup()">{{ t.character.list.setupLabel }}</button>
 
-		@if (errorMessage()) {
-			<div class="status-message error-message">{{ errorMessage() }}</div>
-		}
+    @if (errorMessage()) {
+    <div class="status-message error-message">{{ errorMessage() }}</div>
+    } @if (!errorMessage() && !isLoading() && characters().length === 0) {
+    <p class="empty-state">{{ t.character.list.emptyState }}</p>
+    } @if (characters().length > 0) {
+    <ul class="character-list">
+      @for (character of characters(); track character.id) {
+      <li class="character-item">
+        <div class="character-row">
+          <div class="character-name">{{ character.characterName }}</div>
+          <div class="character-actions">
+            <button class="join-link" type="button" (click)="navigateToGameJoin(character)">
+              {{ getJoinGameLabel(character) }}
+            </button>
+            <button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">
+              {{ t.character.list.editLabel }}
+            </button>
+            <button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">
+              {{ t.character.list.deleteLabel }}
+            </button>
+          </div>
+        </div>
+        @if (character.level !== undefined) {
+        <div class="character-meta">{{ t.common.levelPrefix }} {{ character.level }}</div>
+        }
+      </li>
+      }
+    </ul>
+    }
+  </div>
 
-		@if (!errorMessage() && !isLoading() && characters().length === 0) {
-			<p class="empty-state">{{ t.character.list.emptyState }}</p>
-		}
-
-		@if (characters().length > 0) {
-			<ul class="character-list">
-				@for (character of characters(); track character.id) {
-					<li class="character-item">
-						<div class="character-row">
-							<div class="character-name">{{ character.characterName }}</div>
-							<div class="character-actions">
-								<button class="join-link" type="button" (click)="navigateToGameJoin(character)">{{ getJoinGameLabel(character) }}</button>
-								<button class="edit-link" type="button" (click)="navigateToCharacterEdit(character)">{{ t.character.list.editLabel }}</button>
-								<button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">{{ t.character.list.deleteLabel }}</button>
-							</div>
-						</div>
-						@if (character.level !== undefined) {
-							<div class="character-meta">{{ t.common.levelPrefix }} {{ character.level }}</div>
-						}
-					</li>
-				}
-			</ul>
-		}
-	</div>
-
-	@if (pendingDeleteCharacter()) {
-		<div class="dialog-backdrop">
-			<div class="dialog-panel">
-				<h2>{{ t.character.list.dialog.title }}</h2>
-				<p>{{ t.character.list.dialog.confirmQuestion }} <strong>{{ pendingDeleteCharacter()!.characterName }}</strong>?</p>
-				<div class="dialog-actions">
-					<button type="button" class="confirm-delete-btn" (click)="confirmDeleteCharacter()" [disabled]="isDeleting()">
-						{{ isDeleting() ? t.character.list.dialog.confirmingLabel : t.character.list.dialog.confirmLabel }}
-					</button>
-					<button type="button" class="cancel-delete-btn" (click)="cancelDeleteCharacter()" [disabled]="isDeleting()">
-						{{ t.character.list.dialog.cancelLabel }}
-					</button>
-				</div>
-			</div>
-		</div>
-	}
+  @if (pendingDeleteCharacter()) {
+  <div class="dialog-backdrop">
+    <div class="dialog-panel">
+      <h2>{{ t.character.list.dialog.title }}</h2>
+      <p>
+        {{ t.character.list.dialog.confirmQuestion }}
+        <strong>{{ pendingDeleteCharacter()!.characterName }}</strong>
+        ?
+      </p>
+      <div class="dialog-actions">
+        <button type="button" class="confirm-delete-btn" (click)="confirmDeleteCharacter()" [disabled]="isDeleting()">
+          {{ isDeleting() ? t.character.list.dialog.confirmingLabel : t.character.list.dialog.confirmLabel }}
+        </button>
+        <button type="button" class="cancel-delete-btn" (click)="cancelDeleteCharacter()" [disabled]="isDeleting()">
+          {{ t.character.list.dialog.cancelLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
 </div>

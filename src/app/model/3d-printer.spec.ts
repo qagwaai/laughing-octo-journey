@@ -1,9 +1,9 @@
 import {
   THREE_D_PRINTER_ITEM_TYPE,
   THREE_D_PRINTER_TIER,
-  isThreeDPrinter,
-  create3DPrinter,
   coerce3DPrinter,
+  create3DPrinter,
+  isThreeDPrinter,
 } from './3d-printer';
 import type { ShipItem } from './ship-item';
 

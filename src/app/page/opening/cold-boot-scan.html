@@ -1,80 +1,68 @@
 <div class="cold-boot-scan-host">
-	<ngt-canvas shadows [camera]="{ position: [0, 1.8, 6.6], fov: 52 }" [lookAt]="[0, 0, 0]">
-		<app-ship-exterior-view-scene *canvasContent />
-	</ngt-canvas>
+  <ngt-canvas shadows [camera]="{ position: [0, 1.8, 6.6], fov: 52 }" [lookAt]="[0, 0, 0]">
+    <app-ship-exterior-view-scene *canvasContent />
+  </ngt-canvas>
 
-	<section class="ship-exterior-objective" aria-live="polite">
-		<p>{{ shipConditionLine() }}</p>
-		<p>{{ missionObjectiveText() }}</p>
-	</section>
+  <section class="ship-exterior-objective" aria-live="polite">
+    <p>{{ shipConditionLine() }}</p>
+    <p>{{ missionObjectiveText() }}</p>
+  </section>
 
-	<section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
-		@for (slot of launchHotkeySlots(); track slot.hotkey) {
-			<button
-				type="button"
-				class="ship-exterior-hotkey-tile"
-				[class.ship-exterior-hotkey-tile--enabled]="slot.enabled"
-				[class.ship-exterior-hotkey-tile--launching]="slot.launching"
-				[disabled]="!slot.enabled"
-				(click)="launchFromHotkeySlot(slot.hotkey)"
-			>
-				<span class="ship-exterior-hotkey-tile__key">{{ slot.hotkey }}</span>
-				<span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
-			</button>
-		}
+  <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
+    @for (slot of launchHotkeySlots(); track slot.hotkey) {
+    <button
+      type="button"
+      class="ship-exterior-hotkey-tile"
+      [class.ship-exterior-hotkey-tile--enabled]="slot.enabled"
+      [class.ship-exterior-hotkey-tile--launching]="slot.launching"
+      [disabled]="!slot.enabled"
+      (click)="launchFromHotkeySlot(slot.hotkey)"
+    >
+      <span class="ship-exterior-hotkey-tile__key">{{ slot.hotkey }}</span>
+      <span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
+    </button>
+    } @if (showQuickTargetIronControl()) {
+    <button type="button" class="ship-exterior-test-target-button" (click)="quickTargetIronAsteroidForTest()">
+      TARGET IRON
+    </button>
+    }
+  </section>
 
-		@if (showQuickTargetIronControl()) {
-			<button
-				type="button"
-				class="ship-exterior-test-target-button"
-				(click)="quickTargetIronAsteroidForTest()"
-			>
-				TARGET IRON
-			</button>
-		}
-	</section>
+  @if (activeLaunchToast(); as toast) {
+  <section
+    class="ship-exterior-launch-toast"
+    [class.ship-exterior-launch-toast--success]="toast.tone === 'success'"
+    [class.ship-exterior-launch-toast--error]="toast.tone === 'error'"
+    role="status"
+    aria-live="polite"
+  >
+    <p>{{ toast.message }}</p>
+    @if (toast.seed !== null) {
+    <span class="ship-exterior-launch-toast__seed">seed {{ toast.seed }}</span>
+    }
+  </section>
+  } @if (showPropertiesPanel()) {
+  <section class="ship-exterior-properties-panel" aria-live="polite">
+    <header class="ship-exterior-properties-panel__header">
+      <h3>{{ propertiesPanelTitle() }}</h3>
+      <button type="button" class="ship-exterior-properties-panel__toggle" (click)="hidePropertiesPanel()">HIDE</button>
+    </header>
 
-	@if (activeLaunchToast(); as toast) {
-		<section
-			class="ship-exterior-launch-toast"
-			[class.ship-exterior-launch-toast--success]="toast.tone === 'success'"
-			[class.ship-exterior-launch-toast--error]="toast.tone === 'error'"
-			role="status"
-			aria-live="polite"
-		>
-			<p>{{ toast.message }}</p>
-			@if (toast.seed !== null) {
-				<span class="ship-exterior-launch-toast__seed">seed {{ toast.seed }}</span>
-			}
-		</section>
-	}
-
-	@if (showPropertiesPanel()) {
-		<section class="ship-exterior-properties-panel" aria-live="polite">
-			<header class="ship-exterior-properties-panel__header">
-				<h3>{{ propertiesPanelTitle() }}</h3>
-				<button type="button" class="ship-exterior-properties-panel__toggle" (click)="hidePropertiesPanel()">HIDE</button>
-			</header>
-
-			<div class="ship-exterior-properties-panel__body">
-				<p>{{ propertiesMaterialText() }}</p>
-				<p>{{ propertiesRarityText() }}</p>
-				<p>{{ propertiesVelocityText() }}</p>
-				<p>{{ propertiesSpinText() }}</p>
-				<p>{{ propertiesMassText() }}</p>
-				<p>{{ propertiesDiameterText() }}</p>
-				<p>{{ propertiesLocationText() }}</p>
-				<p>{{ propertiesClusterText() }}</p>
-				<p>{{ propertiesOffsetText() }}</p>
-			</div>
-		</section>
-	} @else if (showPropertiesPanelReveal()) {
-		<button
-			type="button"
-			class="ship-exterior-properties-reveal"
-			(click)="revealPropertiesPanel()"
-		>
-			SHOW PROPERTIES
-		</button>
-	}
+    <div class="ship-exterior-properties-panel__body">
+      <p>{{ propertiesMaterialText() }}</p>
+      <p>{{ propertiesRarityText() }}</p>
+      <p>{{ propertiesVelocityText() }}</p>
+      <p>{{ propertiesSpinText() }}</p>
+      <p>{{ propertiesMassText() }}</p>
+      <p>{{ propertiesDiameterText() }}</p>
+      <p>{{ propertiesLocationText() }}</p>
+      <p>{{ propertiesClusterText() }}</p>
+      <p>{{ propertiesOffsetText() }}</p>
+    </div>
+  </section>
+  } @else if (showPropertiesPanelReveal()) {
+  <button type="button" class="ship-exterior-properties-reveal" (click)="revealPropertiesPanel()">
+    SHOW PROPERTIES
+  </button>
+  }
 </div>

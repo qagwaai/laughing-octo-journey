@@ -15,10 +15,13 @@ export class MarketService {
     request: MarketListByLocationRequest,
     onResponse: (response: MarketListByLocationResponse) => void,
   ): void {
-    const unsubscribe = this.socketService.on(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, (response: MarketListByLocationResponse) => {
-      unsubscribe();
-      onResponse(response);
-    });
+    const unsubscribe = this.socketService.on(
+      MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
+      (response: MarketListByLocationResponse) => {
+        unsubscribe();
+        onResponse(response);
+      },
+    );
     this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, request);
   }
 }

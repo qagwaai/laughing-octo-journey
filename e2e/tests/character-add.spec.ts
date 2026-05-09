@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
@@ -160,11 +160,9 @@ test.describe('Character Add — from character list', () => {
     expect(receivedShipUpsertRequest?.['sessionKey']).toBe('test-session-key-abc123');
     expect((receivedShipUpsertRequest?.['ship'] as Record<string, unknown>)?.['id']).toBe('starter-ship-001');
 
-    expect(emittedEvents).toEqual(expect.arrayContaining([
-      'character-add-request',
-      'ship-list-request',
-      'ship-upsert-request',
-    ]));
+    expect(emittedEvents).toEqual(
+      expect.arrayContaining(['character-add-request', 'ship-list-request', 'ship-upsert-request']),
+    );
 
     // Item upsert is conditional: it only fires when starter ship inventory
     // does not already include the expendable dart drone.
@@ -172,7 +170,9 @@ test.describe('Character Add — from character list', () => {
       expect(receivedItemUpsertRequest).not.toBeNull();
       expect(receivedItemUpsertRequest?.['playerName']).toBe(TEST_PLAYER);
       expect(receivedItemUpsertRequest?.['sessionKey']).toBe('test-session-key-abc123');
-      expect((receivedItemUpsertRequest?.['item'] as Record<string, unknown>)?.['owningCharacterId']).toBe('char-new-001');
+      expect((receivedItemUpsertRequest?.['item'] as Record<string, unknown>)?.['owningCharacterId']).toBe(
+        'char-new-001',
+      );
     }
 
     await expect(characterListPage.characterItems).toHaveCount(1);

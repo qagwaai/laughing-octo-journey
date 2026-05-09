@@ -1,6 +1,6 @@
 import {
-  SHIP_DAMAGE_SEVERITIES,
   SHIP_DAMAGE_OVERALL_STATUSES,
+  SHIP_DAMAGE_SEVERITIES,
   coerceShipDamageProfile,
   createColdBootStarterShipDamageProfile,
   resolveShipDamageProfileFromPreset,

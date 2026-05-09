@@ -1,213 +1,213 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PlayerCharacterSummary } from '../../model/character-list';
-import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import {
-	coerceShipModel,
-	coerceShipStatus,
-	coerceShipDamageProfileOrNull,
-	coerceShipInventory,
-	coerceShipTier,
-	type ShipListRequest,
-	type ShipListResponse,
-	type ShipSummary,
-} from '../../model/ship-list';
-import { type MissionStatus } from '../../model/mission';
-import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { PlayerCharacterSummary } from '../../model/character-list';
+import { type MissionStatus } from '../../model/mission';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
+import {
+  coerceShipDamageProfileOrNull,
+  coerceShipInventory,
+  coerceShipModel,
+  coerceShipStatus,
+  coerceShipTier,
+  type ShipListRequest,
+  type ShipListResponse,
+  type ShipSummary,
+} from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 
 interface ShipHangarNavigationState {
-	playerName?: string;
-	joinCharacter?: PlayerCharacterSummary;
+  playerName?: string;
+  joinCharacter?: PlayerCharacterSummary;
 }
 
 @Component({
-	selector: 'app-ship-hangar-page',
-	templateUrl: './ship-hangar.html',
-	styleUrls: ['./ship-hangar.css'],
-	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu, CharacterShipBadge],
+  selector: 'app-ship-hangar-page',
+  templateUrl: './ship-hangar.html',
+  styleUrls: ['./ship-hangar.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class ShipHangarPage {
-	protected readonly t = locale;
-	private router = inject(Router);
-	private socketService = inject(SocketService);
-	private shipService = inject(ShipService);
-	private sessionService = inject(SessionService);
-	private navigationState: ShipHangarNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
-		(history.state as ShipHangarNavigationState | undefined) ??
-		{};
+  protected readonly t = locale;
+  private router = inject(Router);
+  private socketService = inject(SocketService);
+  private shipService = inject(ShipService);
+  private sessionService = inject(SessionService);
+  private navigationState: ShipHangarNavigationState =
+    (this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
+    (history.state as ShipHangarNavigationState | undefined) ??
+    {};
 
-	protected playerName = signal<string>(this.navigationState.playerName ?? '');
-	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
-	protected ships = signal<ShipSummary[]>([]);
-	protected isLoadingShips = signal(false);
-	protected shipListError = signal<string | null>(null);
+  protected playerName = signal<string>(this.navigationState.playerName ?? '');
+  protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
+  protected ships = signal<ShipSummary[]>([]);
+  protected isLoadingShips = signal(false);
+  protected shipListError = signal<string | null>(null);
 
-	constructor() {
-		this.socketService.connect(this.socketService.serverUrl);
+  constructor() {
+    this.socketService.connect(this.socketService.serverUrl);
 
-		if (this.socketService.getIsConnected()) {
-			this.loadShipsForCharacter();
-		} else {
-			this.socketService.once('connect', () => this.loadShipsForCharacter());
-		}
-	}
+    if (this.socketService.getIsConnected()) {
+      this.loadShipsForCharacter();
+    } else {
+      this.socketService.once('connect', () => this.loadShipsForCharacter());
+    }
+  }
 
-	loadShipsForCharacter(): void {
-		const playerName = this.playerName().trim();
-		const characterId = this.joinCharacter()?.id?.trim() ?? '';
-		const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+  loadShipsForCharacter(): void {
+    const playerName = this.playerName().trim();
+    const characterId = this.joinCharacter()?.id?.trim() ?? '';
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
-		if (!playerName) {
-			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresPlayer);
-			this.ships.set([]);
-			return;
-		}
+    if (!playerName) {
+      this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresPlayer);
+      this.ships.set([]);
+      return;
+    }
 
-		if (!characterId) {
-			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresCharacterId);
-			this.ships.set([]);
-			return;
-		}
+    if (!characterId) {
+      this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresCharacterId);
+      this.ships.set([]);
+      return;
+    }
 
-		if (!sessionKey) {
-			this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresSessionKey);
-			this.ships.set([]);
-			return;
-		}
+    if (!sessionKey) {
+      this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresSessionKey);
+      this.ships.set([]);
+      return;
+    }
 
-		this.isLoadingShips.set(true);
-		this.shipListError.set(null);
+    this.isLoadingShips.set(true);
+    this.shipListError.set(null);
 
-		const request: ShipListRequest = { playerName, characterId, sessionKey };
-		this.shipService.listShips(request, (response: ShipListResponse) => {
-			this.isLoadingShips.set(false);
-			if (response.success) {
-				this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
-				this.shipListError.set(null);
-			} else {
-				this.ships.set([]);
-				this.shipListError.set(response.message);
-			}
-		});
-	}
+    const request: ShipListRequest = { playerName, characterId, sessionKey };
+    this.shipService.listShips(request, (response: ShipListResponse) => {
+      this.isLoadingShips.set(false);
+      if (response.success) {
+        this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+        this.shipListError.set(null);
+      } else {
+        this.ships.set([]);
+        this.shipListError.set(response.message);
+      }
+    });
+  }
 
-	private normalizeShipSummary(ship: ShipSummary): ShipSummary {
-		const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
-		const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
-		return {
-			...ship,
-			status: coerceShipStatus(rawShip.status),
-			damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
-			model: normalizedModel,
-			tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
-			inventory: coerceShipInventory(rawShip.inventory),
-		};
-	}
+  private normalizeShipSummary(ship: ShipSummary): ShipSummary {
+    const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
+    const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
+    return {
+      ...ship,
+      status: coerceShipStatus(rawShip.status),
+      damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
+      model: normalizedModel,
+      tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
+      inventory: coerceShipInventory(rawShip.inventory),
+    };
+  }
 
-	protected getShipDisplayName(ship: ShipSummary): string {
-		return ship.name?.trim() || ship.id;
-	}
+  protected getShipDisplayName(ship: ShipSummary): string {
+    return ship.name?.trim() || ship.id;
+  }
 
-	protected getShipModelLabel(ship: ShipSummary): string {
-		return coerceShipModel(ship.model);
-	}
+  protected getShipModelLabel(ship: ShipSummary): string {
+    return coerceShipModel(ship.model);
+  }
 
-	protected getShipTierLabel(ship: ShipSummary): string {
-		return `T${coerceShipTier(ship.tier)}`;
-	}
+  protected getShipTierLabel(ship: ShipSummary): string {
+    return `T${coerceShipTier(ship.tier)}`;
+  }
 
-	protected getShipLocationSummary(ship: ShipSummary): string {
-		const position = ship.spatial?.positionKm;
-		if (!position) {
-			return this.t.game.shipHangar.locationUnavailable;
-		}
+  protected getShipLocationSummary(ship: ShipSummary): string {
+    const position = ship.spatial?.positionKm;
+    if (!position) {
+      return this.t.game.shipHangar.locationUnavailable;
+    }
 
-		return `(${position.x}, ${position.y}, ${position.z}) km`;
-	}
+    return `(${position.x}, ${position.y}, ${position.z}) km`;
+  }
 
-	private getFirstTargetMissionStatus(): MissionStatus | undefined {
-		const missions = this.joinCharacter()?.missions;
-		if (!Array.isArray(missions)) {
-			return undefined;
-		}
+  private getFirstTargetMissionStatus(): MissionStatus | undefined {
+    const missions = this.joinCharacter()?.missions;
+    if (!Array.isArray(missions)) {
+      return undefined;
+    }
 
-		return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
-	}
+    return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
+  }
 
-	private isFirstTargetInProgress(status: MissionStatus | undefined): boolean {
-		if (!status) {
-			return false;
-		}
+  private isFirstTargetInProgress(status: MissionStatus | undefined): boolean {
+    if (!status) {
+      return false;
+    }
 
-		const normalized = status.toLowerCase();
-		return normalized === 'started' || normalized === 'in-progress' || normalized === 'paused';
-	}
+    const normalized = status.toLowerCase();
+    return normalized === 'started' || normalized === 'in-progress' || normalized === 'paused';
+  }
 
-	navigateToShipInventory(ship: ShipSummary): void {
-		this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
-			preserveFragment: true,
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-				joinShip: ship,
-			},
-		});
-	}
+  navigateToShipInventory(ship: ShipSummary): void {
+    this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
+        joinShip: ship,
+      },
+    });
+  }
 
-	navigateToExteriorView(ship: ShipSummary): void {
-		const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
-		const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
-		const missionContext: ShipExteriorViewMissionContext = {
-			missionId: FIRST_TARGET_MISSION_ID,
-			seedPolicy: 'resume',
-			...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
-			...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' as const } : {}),
-		};
+  navigateToExteriorView(ship: ShipSummary): void {
+    const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
+    const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
+    const missionContext: ShipExteriorViewMissionContext = {
+      missionId: FIRST_TARGET_MISSION_ID,
+      seedPolicy: 'resume',
+      ...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+      ...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' as const } : {}),
+    };
 
-		this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
-			preserveFragment: true,
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-				joinShip: ship,
-				missionContext,
-				...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
-			},
-		});
-	}
+    this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
+        joinShip: ship,
+        missionContext,
+        ...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
+      },
+    });
+  }
 
-	navigateToShipSpecs(ship: ShipSummary): void {
-		this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
-			preserveFragment: true,
-			queryParams: { specsNav: Date.now() },
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-				itemType: coerceShipModel(ship.model),
-				item: ship,
-			},
-		});
-	}
+  navigateToShipSpecs(ship: ShipSummary): void {
+    this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-hangar'] } }], {
+      preserveFragment: true,
+      queryParams: { specsNav: Date.now() },
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
+        itemType: coerceShipModel(ship.model),
+        item: ship,
+      },
+    });
+  }
 
-	setActiveShip(ship: ShipSummary): void {
-		this.sessionService.setActiveShip(ship);
-	}
+  setActiveShip(ship: ShipSummary): void {
+    this.sessionService.setActiveShip(ship);
+  }
 
-	navigateToCharacterProfile(): void {
-		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
-			preserveFragment: true,
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-			},
-		});
-	}
+  navigateToCharacterProfile(): void {
+    this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
+      },
+    });
+  }
 }

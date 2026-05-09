@@ -3,13 +3,13 @@
 
 <ngt-ambient-light #ambient name="ambient" [intensity]="0.5" />
 <ngt-spot-light
-    name="spot"
-    [position]="[5, 10, -10]"
-    [intensity]="0.5 * Math.PI"
-    [angle]="0.5"
-    [penumbra]="1"
-    [decay]="0"
-    castShadow
+  name="spot"
+  [position]="[5, 10, -10]"
+  [intensity]="0.5 * Math.PI"
+  [angle]="0.5"
+  [penumbra]="1"
+  [decay]="0"
+  castShadow
 />
 
 <ngts-orbit-controls name="orbit" [options]="{ zoomSpeed: 0.2 }" />
@@ -18,6 +18,6 @@
 
 @let _textures = textures.value();
 <ngt-mesh name="specsheet-plane" [position]="[-3, 2, 0]">
-    <ngt-plane-geometry *args="[10, 10]" />
-    <ngt-mesh-standard-material [map]="_textures?.specsheet ?? null" [transparent]="true" />
+  <ngt-plane-geometry *args="[10, 10]" />
+  <ngt-mesh-standard-material [map]="_textures?.specsheet ?? null" [transparent]="true" />
 </ngt-mesh>

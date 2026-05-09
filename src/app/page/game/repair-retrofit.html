@@ -1,27 +1,30 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.repairRetrofit.title }}</h1>
-				<p class="subtitle">{{ t.game.repairRetrofit.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.repairRetrofit.title }}</h1>
+        <p class="subtitle">{{ t.game.repairRetrofit.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		<section class="ops-card">
-			<h2>{{ t.game.repairRetrofit.sectionTitle }}</h2>
-			<p>{{ t.game.repairRetrofit.sectionDescription }}</p>
+    <section class="ops-card">
+      <h2>{{ t.game.repairRetrofit.sectionTitle }}</h2>
+      <p>{{ t.game.repairRetrofit.sectionDescription }}</p>
 
-			@if (isLoadingShip()) {
-				<p>{{ t.game.repairRetrofit.loadingShipLabel }}</p>
-			} @else if (shipLoadError()) {
-				<p role="alert">{{ shipLoadError() }}</p>
-			} @else {
-				<button type="button" class="repair-action" [disabled]="!canOpenRepairItems()" (click)="openRepairItemsView()">
-					{{ t.game.repairRetrofit.viewDetailsLabel }}
-				</button>
-			}
-		</section>
-	</div>
+      @if (isLoadingShip()) {
+      <p>{{ t.game.repairRetrofit.loadingShipLabel }}</p>
+      } @else if (shipLoadError()) {
+      <p role="alert">{{ shipLoadError() }}</p>
+      } @else {
+      <button type="button" class="repair-action" [disabled]="!canOpenRepairItems()" (click)="openRepairItemsView()">
+        {{ t.game.repairRetrofit.viewDetailsLabel }}
+      </button>
+      }
+    </section>
+  </div>
 </div>

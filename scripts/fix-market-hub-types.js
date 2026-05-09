@@ -8,7 +8,7 @@ src = src.replace(
   /\{\n(\t+)solarSystemId: '([^']+)',\n(\t+)positionKm: (\{[^}]+\}),?\n(\t+)\}/g,
   (match, i1, sysId, i2, posKm, ci) => {
     return `{\n${i1}solarSystemId: '${sysId}',\n${i2}frame: 'barycentric',\n${i2}positionKm: ${posKm},\n${i2}epochMs: 0,\n${ci}}`;
-  }
+  },
 );
 
 // Fix ShipSummary objects in activeShip.set() that are missing name/model/tier
@@ -29,17 +29,17 @@ while (i < lines.length) {
     }
     block.push(lines[i]); // the closing });
     i++;
-    
+
     const blockStr = block.join('\n');
     const hasName = blockStr.includes('name:');
     const hasModel = blockStr.includes('model:');
     const hasTier = blockStr.includes('tier:');
     const hasCast = blockStr.includes('as any') || blockStr.includes('as ShipSummary');
-    
+
     if (!hasCast && (!hasName || !hasModel || !hasTier)) {
       // Find the line with 'id:' and add missing fields after it
-      let fixed = block.map(l => l);
-      const idIdx = fixed.findIndex(l => l.includes("id: '") && !l.includes('characterId'));
+      let fixed = block.map((l) => l);
+      const idIdx = fixed.findIndex((l) => l.includes("id: '") && !l.includes('characterId'));
       if (idIdx >= 0) {
         const indent = fixed[idIdx].match(/^(\t+)/)[1];
         const inserts = [];

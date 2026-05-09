@@ -1,33 +1,33 @@
 <nav
-	class="ops-menu"
-	[class.is-expanded]="isExpanded()"
-	[class.is-pinned]="isPinned()"
-	(mouseenter)="onMouseEnter()"
-	(mouseleave)="onMouseLeave()"
+  class="ops-menu"
+  [class.is-expanded]="isExpanded()"
+  [class.is-pinned]="isPinned()"
+  (mouseenter)="onMouseEnter()"
+  (mouseleave)="onMouseLeave()"
 >
-	<button
-		type="button"
-		class="pin-toggle"
-		(click)="togglePinned()"
-		[attr.aria-pressed]="isPinned()"
-		[attr.aria-label]="isPinned() ? 'Unpin operations menu' : 'Pin operations menu'"
-	>
-		<span class="menu-icon" aria-hidden="true">{{ isPinned() ? '◧' : '◨' }}</span>
-		<span class="menu-label">{{ isPinned() ? 'Unpin Menu' : 'Pin Menu' }}</span>
-	</button>
+  <button
+    type="button"
+    class="pin-toggle"
+    (click)="togglePinned()"
+    [attr.aria-pressed]="isPinned()"
+    [attr.aria-label]="isPinned() ? 'Unpin operations menu' : 'Pin operations menu'"
+  >
+    <span class="menu-icon" aria-hidden="true">{{ isPinned() ? '◧' : '◨' }}</span>
+    <span class="menu-label">{{ isPinned() ? 'Unpin Menu' : 'Pin Menu' }}</span>
+  </button>
 
-	@for (item of menuItems; track item.route) {
-		<button
-			type="button"
-			(click)="navigateLeft(item.route)"
-			[class.logout]="item.logout"
-			[class.is-disabled]="disableNonLogout && !item.logout"
-			[disabled]="disableNonLogout && !item.logout"
-			[attr.aria-label]="item.label"
-			[attr.title]="isExpanded() ? null : item.label"
-		>
-			<span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
-			<span class="menu-label">{{ item.label }}</span>
-		</button>
-	}
+  @for (item of menuItems; track item.route) {
+  <button
+    type="button"
+    (click)="navigateLeft(item.route)"
+    [class.logout]="item.logout"
+    [class.is-disabled]="disableNonLogout && !item.logout"
+    [disabled]="disableNonLogout && !item.logout"
+    [attr.aria-label]="item.label"
+    [attr.title]="isExpanded() ? null : item.label"
+  >
+    <span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
+    <span class="menu-label">{{ item.label }}</span>
+  </button>
+  }
 </nav>

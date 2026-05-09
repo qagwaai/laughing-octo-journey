@@ -1,58 +1,66 @@
 <div class="login-container">
-	<h1>{{ t.public.login.title }}</h1>
-	<p class="subtitle">{{ t.public.login.subtitle }}</p>
+  <h1>{{ t.public.login.title }}</h1>
+  <p class="subtitle">{{ t.public.login.subtitle }}</p>
 
-	<form [formGroup]="loginForm" (ngSubmit)="submit()" class="login-form">
-		<div class="form-group">
-			<label for="locale">{{ t.public.login.localeLabel }}</label>
-			<select id="locale" formControlName="locale">
-				@for (code of supportedLocaleCodes; track code) {
-					<option [value]="code">{{ t.common.localeNames[code] }}</option>
-				}
-			</select>
-			<small>{{ t.public.login.localeHint }}</small>
-		</div>
+  <form [formGroup]="loginForm" (ngSubmit)="submit()" class="login-form">
+    <div class="form-group">
+      <label for="locale">{{ t.public.login.localeLabel }}</label>
+      <select id="locale" formControlName="locale">
+        @for (code of supportedLocaleCodes; track code) {
+        <option [value]="code">{{ t.common.localeNames[code] }}</option>
+        }
+      </select>
+      <small>{{ t.public.login.localeHint }}</small>
+    </div>
 
-		<div class="form-group">
-			<label for="playerName">{{ t.public.login.playerNameLabel }}</label>
-			<input id="playerName" type="text" formControlName="playerName" [placeholder]="t.public.login.playerNamePlaceholder" />
-			@if (loginForm.get('playerName')?.invalid && loginForm.get('playerName')?.touched) {
-				<span class="field-error">
-					@if (loginForm.get('playerName')?.errors?.['required']) { {{ t.public.login.errors.playerNameRequired }} }
-					@if (loginForm.get('playerName')?.errors?.['minlength']) { {{ t.public.login.errors.playerNameMinLength }} }
-				</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="playerName">{{ t.public.login.playerNameLabel }}</label>
+      <input
+        id="playerName"
+        type="text"
+        formControlName="playerName"
+        [placeholder]="t.public.login.playerNamePlaceholder"
+      />
+      @if (loginForm.get('playerName')?.invalid && loginForm.get('playerName')?.touched) {
+      <span class="field-error">
+        @if (loginForm.get('playerName')?.errors?.['required']) { {{ t.public.login.errors.playerNameRequired }} } @if
+        (loginForm.get('playerName')?.errors?.['minlength']) { {{ t.public.login.errors.playerNameMinLength }} }
+      </span>
+      }
+    </div>
 
-		<div class="form-group">
-			<label for="password">{{ t.public.login.passwordLabel }}</label>
-			<input id="password" type="password" formControlName="password" [placeholder]="t.public.login.passwordPlaceholder" />
-			@if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
-				<span class="field-error">
-					@if (loginForm.get('password')?.errors?.['required']) { {{ t.public.login.errors.passwordRequired }} }
-					@if (loginForm.get('password')?.errors?.['minlength']) { {{ t.public.login.errors.passwordMinLength }} }
-				</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="password">{{ t.public.login.passwordLabel }}</label>
+      <input
+        id="password"
+        type="password"
+        formControlName="password"
+        [placeholder]="t.public.login.passwordPlaceholder"
+      />
+      @if (loginForm.get('password')?.invalid && loginForm.get('password')?.touched) {
+      <span class="field-error">
+        @if (loginForm.get('password')?.errors?.['required']) { {{ t.public.login.errors.passwordRequired }} } @if
+        (loginForm.get('password')?.errors?.['minlength']) { {{ t.public.login.errors.passwordMinLength }} }
+      </span>
+      }
+    </div>
 
-		@if (errorMessage()) {
-			<div class="status-message error-message">{{ errorMessage() }}</div>
-		}
-		@if (canNavigateToRegister()) {
-			<p class="register-link">
-				<a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.login.playerNotFoundLink }}</a>
-			</p>
-		}
-		@if (successMessage()) {
-			<div class="status-message success-message">{{ successMessage() }}</div>
-		}
+    @if (errorMessage()) {
+    <div class="status-message error-message">{{ errorMessage() }}</div>
+    } @if (canNavigateToRegister()) {
+    <p class="register-link">
+      <a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.login.playerNotFoundLink }}</a>
+    </p>
+    } @if (successMessage()) {
+    <div class="status-message success-message">{{ successMessage() }}</div>
+    }
 
-		<button type="submit" [disabled]="loginForm.invalid || isSubmitting()" class="submit-btn">
-			{{ isSubmitting() ? t.public.login.submittingLabel : t.public.login.submitLabel }}
-		</button>
+    <button type="submit" [disabled]="loginForm.invalid || isSubmitting()" class="submit-btn">
+      {{ isSubmitting() ? t.public.login.submittingLabel : t.public.login.submitLabel }}
+    </button>
 
-		<p class="register-link">
-			<a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.login.registerLink }}</a>
-		</p>
-	</form>
+    <p class="register-link">
+      <a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.login.registerLink }}</a>
+    </p>
+  </form>
 </div>

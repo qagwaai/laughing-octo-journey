@@ -1,10 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import {
-  LOGIN_EVENT,
-  LOGIN_RESPONSE_EVENT,
-  type LoginRequest,
-  type LoginResponse,
-} from '../model/login';
+import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, type LoginRequest, type LoginResponse } from '../model/login';
 import {
   REGISTER_EVENT,
   REGISTER_RESPONSE_EVENT,

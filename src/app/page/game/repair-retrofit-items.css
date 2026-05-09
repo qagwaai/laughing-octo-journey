@@ -1,190 +1,192 @@
 .ops-page-container {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-	margin: 1rem;
-	padding: 1.25rem;
-	border-radius: 12px;
-	background: rgba(20, 33, 56, 0.9);
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	color: #e8f2ff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
 }
 
 .page-main {
-	min-width: 0;
+  min-width: 0;
 }
 
 .subtitle {
-	margin: 0 0 1rem 0;
-	color: #b4cfff;
+  margin: 0 0 1rem 0;
+  color: #b4cfff;
 }
 
 .ops-card {
-	margin-top: 1rem;
-	padding: 0.9rem;
-	border-radius: 8px;
-	background: rgba(30, 49, 84, 0.55);
-	border: 1px solid rgba(140, 190, 255, 0.25);
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: rgba(30, 49, 84, 0.55);
+  border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
 .repair-controls {
-	display: grid;
-	grid-template-columns: repeat(6, max-content);
-	align-items: center;
-	gap: 0.5rem 0.7rem;
-	margin: 0.8rem 0;
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  align-items: center;
+  gap: 0.5rem 0.7rem;
+  margin: 0.8rem 0;
 }
 
 .repair-controls select,
 .repair-controls input {
-	background: rgba(16, 28, 46, 0.92);
-	color: #e8f2ff;
-	border: 1px solid rgba(171, 198, 255, 0.32);
-	border-radius: 6px;
-	padding: 0.3rem 0.45rem;
+  background: rgba(16, 28, 46, 0.92);
+  color: #e8f2ff;
+  border: 1px solid rgba(171, 198, 255, 0.32);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
 }
 
 .repair-controls input {
-	min-width: 15rem;
+  min-width: 15rem;
 }
 
 .repair-group-heading {
-	margin: 0.9rem 0 0.4rem;
-	color: #d2e8ff;
-	letter-spacing: 0.03em;
+  margin: 0.9rem 0 0.4rem;
+  color: #d2e8ff;
+  letter-spacing: 0.03em;
 }
 
 .damaged-assets-list {
-	list-style: none;
-	padding: 0;
-	margin: 0.8rem 0;
-	display: grid;
-	gap: 0.55rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.8rem 0;
+  display: grid;
+  gap: 0.55rem;
 }
 
 .damaged-assets-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 0.8rem;
-	padding: 0.7rem;
-	border-radius: 8px;
-	background: rgba(16, 28, 46, 0.8);
-	border: 1px solid rgba(255, 157, 157, 0.24);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 0.7rem;
+  border-radius: 8px;
+  background: rgba(16, 28, 46, 0.8);
+  border: 1px solid rgba(255, 157, 157, 0.24);
 }
 
 .row-actions {
-	display: flex;
-	flex-direction: column;
-	gap: 0.45rem;
-	align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-self: center;
 }
 
 .damaged-assets-item__meta p {
-	margin: 0.1rem 0;
+  margin: 0.1rem 0;
 }
 
 .damage-kind {
-	margin-left: 0.4rem;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: #b8cce7;
-	font-size: 0.78rem;
+  margin-left: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b8cce7;
+  font-size: 0.78rem;
 }
 
 .damage-item__severity {
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: #ffd0d0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #ffd0d0;
 }
 
 .repair-action {
-	align-self: center;
-	padding: 0.45rem 0.7rem;
-	border-radius: 7px;
-	border: 1px solid rgba(255, 182, 182, 0.48);
-	background: linear-gradient(180deg, rgba(112, 38, 38, 0.9), rgba(73, 27, 27, 0.96));
-	color: #ffe9e9;
-	font-weight: 600;
-	cursor: pointer;
-	transition: transform 120ms ease, border-color 120ms ease;
+  align-self: center;
+  padding: 0.45rem 0.7rem;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 182, 182, 0.48);
+  background: linear-gradient(180deg, rgba(112, 38, 38, 0.9), rgba(73, 27, 27, 0.96));
+  color: #ffe9e9;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease;
 }
 
 .repair-action:hover {
-	transform: translateY(-1px);
-	border-color: rgba(255, 222, 222, 0.72);
+  transform: translateY(-1px);
+  border-color: rgba(255, 222, 222, 0.72);
 }
 
 .repair-action:disabled {
-	opacity: 0.65;
-	cursor: not-allowed;
-	transform: none;
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .status-line {
-	margin: 0.5rem 0;
-	padding: 0.45rem 0.6rem;
-	border-radius: 7px;
-	font-size: 0.92rem;
-	background: rgba(67, 90, 128, 0.34);
-	border: 1px solid rgba(171, 198, 255, 0.24);
+  margin: 0.5rem 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 7px;
+  font-size: 0.92rem;
+  background: rgba(67, 90, 128, 0.34);
+  border: 1px solid rgba(171, 198, 255, 0.24);
 }
 
 .status-line--error {
-	background: rgba(98, 33, 33, 0.45);
-	border-color: rgba(255, 169, 169, 0.38);
-	color: #ffdede;
+  background: rgba(98, 33, 33, 0.45);
+  border-color: rgba(255, 169, 169, 0.38);
+  color: #ffdede;
 }
 
 .status-line--success {
-	background: rgba(29, 82, 57, 0.44);
-	border-color: rgba(154, 255, 206, 0.35);
-	color: #ddffee;
+  background: rgba(29, 82, 57, 0.44);
+  border-color: rgba(154, 255, 206, 0.35);
+  color: #ddffee;
 }
 
 .status-line--info {
-	background: rgba(27, 60, 98, 0.48);
-	border-color: rgba(140, 190, 255, 0.35);
-	color: #c8dfff;
+  background: rgba(27, 60, 98, 0.48);
+  border-color: rgba(140, 190, 255, 0.35);
+  color: #c8dfff;
 }
 
 .fabrication-cta {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	padding: 0.65rem 0.8rem;
-	margin: 0.5rem 0;
-	border-radius: 7px;
-	background: rgba(56, 40, 10, 0.45);
-	border: 1px solid rgba(255, 200, 100, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  margin: 0.5rem 0;
+  border-radius: 7px;
+  background: rgba(56, 40, 10, 0.45);
+  border: 1px solid rgba(255, 200, 100, 0.3);
 }
 
 .fabrication-cta p {
-	margin: 0;
-	color: #ffe4a0;
-	font-size: 0.875rem;
+  margin: 0;
+  color: #ffe4a0;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 900px) {
-	.repair-controls {
-		grid-template-columns: 1fr;
-	}
+  .repair-controls {
+    grid-template-columns: 1fr;
+  }
 
-	.repair-controls input {
-		min-width: 0;
-	}
+  .repair-controls input {
+    min-width: 0;
+  }
 
-	.damaged-assets-item {
-		flex-direction: column;
-	}
+  .damaged-assets-item {
+    flex-direction: column;
+  }
 
-	.row-actions {
-		align-self: flex-start;
-	}
+  .row-actions {
+    align-self: flex-start;
+  }
 
-	.repair-action {
-		align-self: flex-start;
-	}
+  .repair-action {
+    align-self: flex-start;
+  }
 }

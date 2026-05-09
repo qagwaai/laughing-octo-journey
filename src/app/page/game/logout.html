@@ -1,21 +1,26 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<h1>{{ t.game.logout.title }}</h1>
-		<p class="subtitle">{{ t.game.logout.subtitle }}</p>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <h1>{{ t.game.logout.title }}</h1>
+    <p class="subtitle">{{ t.game.logout.subtitle }}</p>
 
-		@if (playerName()) {
-			<p class="context">{{ t.common.playerPrefix }} <strong>{{ playerName() }}</strong></p>
-		}
+    @if (playerName()) {
+    <p class="context">
+      {{ t.common.playerPrefix }}
+      <strong>{{ playerName() }}</strong>
+    </p>
+    }
 
-		<section class="ops-card">
-			<h2>{{ t.game.logout.sectionTitle }}</h2>
-			<p>{{ t.game.logout.sectionDescription }}</p>
-			<button type="button" class="logout-btn" (click)="confirmLogout()">{{ t.game.logout.confirmLabel }}</button>
-		</section>
+    <section class="ops-card">
+      <h2>{{ t.game.logout.sectionTitle }}</h2>
+      <p>{{ t.game.logout.sectionDescription }}</p>
+      <button type="button" class="logout-btn" (click)="confirmLogout()">{{ t.game.logout.confirmLabel }}</button>
+    </section>
 
-		<section class="ops-card">
-			<button type="button" class="character-list-link" (click)="navigateToCharacterList()">{{ t.game.logout.characterListLink }}</button>
-		</section>
-	</div>
+    <section class="ops-card">
+      <button type="button" class="character-list-link" (click)="navigateToCharacterList()">
+        {{ t.game.logout.characterListLink }}
+      </button>
+    </section>
+  </div>
 </div>

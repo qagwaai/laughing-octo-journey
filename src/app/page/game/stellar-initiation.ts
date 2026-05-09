@@ -1,40 +1,40 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PlayerCharacterSummary } from '../../model/character-list';
-import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { PlayerCharacterSummary } from '../../model/character-list';
 
 interface StellarInitiationNavigationState {
-	playerName?: string;
-	joinCharacter?: PlayerCharacterSummary;
+  playerName?: string;
+  joinCharacter?: PlayerCharacterSummary;
 }
 
 @Component({
-	selector: 'app-stellar-initiation-page',
-	templateUrl: './stellar-initiation.html',
-	styleUrls: ['./stellar-initiation.css'],
-	changeDetection: ChangeDetectionStrategy.OnPush,
-	imports: [GuardedLeftMenu, CharacterShipBadge],
+  selector: 'app-stellar-initiation-page',
+  templateUrl: './stellar-initiation.html',
+  styleUrls: ['./stellar-initiation.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class StellarInitiationPage {
-	protected readonly t = locale;
-	private router = inject(Router);
-	private navigationState: StellarInitiationNavigationState =
-		(this.router.getCurrentNavigation()?.extras.state as StellarInitiationNavigationState | undefined) ??
-		(history.state as StellarInitiationNavigationState | undefined) ??
-		{};
+  protected readonly t = locale;
+  private router = inject(Router);
+  private navigationState: StellarInitiationNavigationState =
+    (this.router.getCurrentNavigation()?.extras.state as StellarInitiationNavigationState | undefined) ??
+    (history.state as StellarInitiationNavigationState | undefined) ??
+    {};
 
-	protected playerName = signal<string>(this.navigationState.playerName ?? '');
-	protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
+  protected playerName = signal<string>(this.navigationState.playerName ?? '');
+  protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 
-	navigateToCharacterProfile(): void {
-		this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
-			preserveFragment: true,
-			state: {
-				playerName: this.playerName(),
-				joinCharacter: this.joinCharacter(),
-			},
-		});
-	}
+  navigateToCharacterProfile(): void {
+    this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
+      },
+    });
+  }
 }

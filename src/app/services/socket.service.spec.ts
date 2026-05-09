@@ -1,24 +1,12 @@
-import { SocketService } from './socket.service';
 import {
   CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
   CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
   type CelestialBodyUpsertRequest,
 } from '../model/celestial-body-upsert';
-import {
-  SHIP_UPSERT_REQUEST_EVENT,
-  SHIP_UPSERT_RESPONSE_EVENT,
-  type ShipUpsertRequest,
-} from '../model/ship-upsert';
-import {
-  ITEM_UPSERT_REQUEST_EVENT,
-  ITEM_UPSERT_RESPONSE_EVENT,
-  type ItemUpsertRequest,
-} from '../model/item-upsert';
-import {
-  LAUNCH_ITEM_REQUEST_EVENT,
-  LAUNCH_ITEM_RESPONSE_EVENT,
-  type LaunchItemRequest,
-} from '../model/launch-item';
+import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT, type ItemUpsertRequest } from '../model/item-upsert';
+import { LAUNCH_ITEM_REQUEST_EVENT, LAUNCH_ITEM_RESPONSE_EVENT, type LaunchItemRequest } from '../model/launch-item';
+import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT, type ShipUpsertRequest } from '../model/ship-upsert';
+import { SocketService } from './socket.service';
 
 describe('SocketService', () => {
   let service: SocketService;
@@ -51,20 +39,20 @@ describe('SocketService', () => {
       // Mock socket connection
       service['socket'] = { connected: true, disconnect: () => {} } as any;
       service.connect('http://localhost:3000');
-      
+
       // Verify socket is still the same (not reconnected)
       expect(service.getSocket()).toBeTruthy();
     });
 
     it('should accept custom options', () => {
-      const options = { 
+      const options = {
         reconnection: false,
-        reconnectionDelay: 500
+        reconnectionDelay: 500,
       };
-      
+
       // This will fail without a server, but we're testing option passing
       service.connect('http://localhost:3000', options);
-      
+
       // Verify no unhandled errors
       expect(service).toBeTruthy();
     });
@@ -75,14 +63,14 @@ describe('SocketService', () => {
       const warnSpy = spyOn(console, 'warn');
       service['socket'] = null;
       service.emit('test', { data: 'test' });
-      
+
       expect(warnSpy).toHaveBeenCalledWith('Socket not initialized. Use connect() first');
     });
 
     it('should emit event with callback', () => {
       let emitCalled = false;
       let callbackCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         emit: (event: string, data: any, cb?: Function) => {
@@ -91,20 +79,22 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
-      const callback = () => { callbackCalled = true; };
+
+      const callback = () => {
+        callbackCalled = true;
+      };
       service.emit('test', { data: 'test' }, callback);
-      
+
       expect(emitCalled).toBe(true);
       expect(callbackCalled).toBe(true);
     });
 
     it('should emit event without callback', () => {
       let emitCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: any) => {
@@ -112,12 +102,12 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       service.emit('test', { data: 'test' });
-      
+
       expect(emitCalled).toBe(true);
     });
   });
@@ -141,7 +131,7 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
 
@@ -214,7 +204,7 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
 
@@ -280,7 +270,7 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
 
@@ -338,7 +328,7 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
 
@@ -379,17 +369,15 @@ describe('SocketService', () => {
       const warnSpy = spyOn(console, 'warn');
       service['socket'] = null;
       const unsubscribe = service.on('test', () => {});
-      
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Socket not initialized. Use connect() first'
-      );
+
+      expect(warnSpy).toHaveBeenCalledWith('Socket not initialized. Use connect() first');
       expect(unsubscribe()).toBeUndefined();
     });
 
     it('should register event listener', () => {
       let onCalled = false;
       let offCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         on: (event: string, callback: Function) => {
@@ -398,15 +386,15 @@ describe('SocketService', () => {
         off: (event: string, callback?: Function) => {
           offCalled = true;
         },
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       const callback = () => {};
       const unsubscribe = service.on('test', callback);
-      
+
       expect(onCalled).toBe(true);
-      
+
       // Test unsubscribe
       unsubscribe();
       expect(offCalled).toBe(true);
@@ -418,15 +406,13 @@ describe('SocketService', () => {
       const warnSpy = spyOn(console, 'warn');
       service['socket'] = null;
       service.once('test', () => {});
-      
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Socket not initialized. Use connect() first'
-      );
+
+      expect(warnSpy).toHaveBeenCalledWith('Socket not initialized. Use connect() first');
     });
 
     it('should register one-time event listener', () => {
       let onceCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         once: (event: string, callback: Function) => {
@@ -434,13 +420,13 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       const callback = () => {};
       service.once('test', callback);
-      
+
       expect(onceCalled).toBe(true);
     });
   });
@@ -452,7 +438,7 @@ describe('SocketService', () => {
 
     it('should remove specific event listener', () => {
       let offCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         off: (event: string, callback?: Function) => {
@@ -460,19 +446,19 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         once: (event: string, callback: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       const callback = () => {};
       service.off('test', callback);
-      
+
       expect(offCalled).toBe(true);
     });
 
     it('should remove all listeners for event', () => {
       let offCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         off: (event: string, callback?: Function) => {
@@ -480,12 +466,12 @@ describe('SocketService', () => {
         },
         on: (event: string, callback: Function) => {},
         once: (event: string, callback: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       service.off('test');
-      
+
       expect(offCalled).toBe(true);
     });
   });
@@ -493,20 +479,20 @@ describe('SocketService', () => {
   describe('disconnect', () => {
     it('should disconnect socket', () => {
       let disconnectCalled = false;
-      
+
       const mockSocket = {
         connected: true,
         disconnect: () => {
           disconnectCalled = true;
         },
         on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {}
+        off: (event: string, callback?: Function) => {},
       };
       service['socket'] = mockSocket as any;
       service['isConnected'].set(true);
-      
+
       service.disconnect();
-      
+
       expect(disconnectCalled).toBe(true);
       expect(service.getSocket()).toBeNull();
       expect(service.getIsConnected()).toBe(false);
@@ -528,18 +514,18 @@ describe('SocketService', () => {
           }
         },
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       service['setupConnectionListeners']();
-      
+
       expect(service.getIsConnected()).toBe(true);
     });
 
     it('should set isConnected to false on disconnect event', () => {
       service['isConnected'].set(true);
-      
+
       const mockSocket = {
         connected: false,
         on: (event: string, callback: Function) => {
@@ -548,12 +534,12 @@ describe('SocketService', () => {
           }
         },
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       service['setupConnectionListeners']();
-      
+
       expect(service.getIsConnected()).toBe(false);
     });
 
@@ -566,12 +552,12 @@ describe('SocketService', () => {
           }
         },
         off: (event: string, callback?: Function) => {},
-        disconnect: () => {}
+        disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
-      
+
       service['setupConnectionListeners']();
-      
+
       expect(service.getConnectionError()).toBe('Connection failed');
     });
   });
@@ -579,20 +565,20 @@ describe('SocketService', () => {
   describe('signals', () => {
     it('should update isConnected signal', () => {
       expect(service['isConnected']()).toBe(false);
-      
+
       service['isConnected'].set(true);
       expect(service['isConnected']()).toBe(true);
-      
+
       service['isConnected'].set(false);
       expect(service['isConnected']()).toBe(false);
     });
 
     it('should update connectionError signal', () => {
       expect(service['connectionError']()).toBeNull();
-      
+
       service['connectionError'].set('Test error');
       expect(service['connectionError']()).toBe('Test error');
-      
+
       service['connectionError'].set(null);
       expect(service['connectionError']()).toBeNull();
     });

@@ -2,16 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/karma",
-    "types": [
-      "jasmine",
-      "node"
-    ],
+    "types": ["jasmine", "node"],
     "esModuleInterop": true,
     "emitDecoratorMetadata": true
   },
-  "include": [
-    "src/**/*.spec.ts",
-    "src/**/*.d.ts",
-    "src/testing/**/*.ts"
-  ]
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/testing/**/*.ts"]
 }

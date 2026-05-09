@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 
@@ -216,8 +216,11 @@ test.describe('Market Hub grouped sections', () => {
     mock.on('ship-list-request', () => ({
       event: 'ship-list-response',
       data: {
-        success: true, message: '', playerName: TEST_PLAYER,
-        characterId: CHARACTER.id, ships: [SHIP],
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: CHARACTER.id,
+        ships: [SHIP],
       },
     }));
     mock.on('market-list-by-location-request', (payload) => {
@@ -225,7 +228,10 @@ test.describe('Market Hub grouped sections', () => {
       return {
         event: 'market-list-by-location-response',
         data: {
-          success: true, message: '', isDocked: false, dockedMarketId: null,
+          success: true,
+          message: '',
+          isDocked: false,
+          dockedMarketId: null,
           markets: [NEAR_MARKET, DISTANT_MARKET],
         },
       };

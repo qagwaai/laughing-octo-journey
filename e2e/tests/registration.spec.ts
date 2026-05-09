@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { RegistrationPage } from '../page-objects/registration.page';
 
 test.describe('Registration', () => {

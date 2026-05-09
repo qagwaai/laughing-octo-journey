@@ -1,331 +1,341 @@
 :host {
-	display: block;
-	height: 100%;
-	min-height: 100%;
+  display: block;
+  height: 100%;
+  min-height: 100%;
 }
 
 .cold-boot-scan-host {
-	position: relative;
-	--ship-properties-offset-x: 16px;
-	--ship-properties-offset-y: 16px;
-	--ship-hotkey-offset-x: 16px;
-	--ship-hotkey-offset-y: 16px;
-	height: 100%;
-	min-height: 100%;
-	background: #030c12;
+  position: relative;
+  --ship-properties-offset-x: 16px;
+  --ship-properties-offset-y: 16px;
+  --ship-hotkey-offset-x: 16px;
+  --ship-hotkey-offset-y: 16px;
+  height: 100%;
+  min-height: 100%;
+  background: #030c12;
 }
 
 .ship-exterior-objective {
-	position: absolute;
-	left: var(--ship-hotkey-offset-x);
-	top: var(--ship-hotkey-offset-y);
-	max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-	padding: 0.45rem 0.62rem;
-	border-radius: 0.5rem;
-	border: 1px solid rgba(138, 224, 255, 0.56);
-	background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
-	color: #d8f4ff;
-	box-shadow:
-		0 10px 24px rgba(0, 7, 15, 0.54),
-		inset 0 0 0 1px rgba(196, 241, 255, 0.1);
-	font-size: 0.67rem;
-	letter-spacing: 0.06em;
-	z-index: 19;
-	pointer-events: none;
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  top: var(--ship-hotkey-offset-y);
+  max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.45rem 0.62rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(138, 224, 255, 0.56);
+  background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
+  color: #d8f4ff;
+  box-shadow:
+    0 10px 24px rgba(0, 7, 15, 0.54),
+    inset 0 0 0 1px rgba(196, 241, 255, 0.1);
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  z-index: 19;
+  pointer-events: none;
 }
 
 .ship-exterior-objective p {
-	margin: 0;
-	font-weight: 600;
-	line-height: 1.2;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .ship-exterior-objective p:first-child {
-	color: #ffb3b3;
-	margin-bottom: 0.18rem;
+  color: #ffb3b3;
+  margin-bottom: 0.18rem;
 }
 
 .ship-exterior-hotkey-row {
-	position: absolute;
-	left: var(--ship-hotkey-offset-x);
-	bottom: var(--ship-hotkey-offset-y);
-	display: flex;
-	align-items: center;
-	gap: 0.45rem;
-	z-index: 18;
-	pointer-events: auto;
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: var(--ship-hotkey-offset-y);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  z-index: 18;
+  pointer-events: auto;
 }
 
 .ship-exterior-launch-toast {
-	position: absolute;
-	left: var(--ship-hotkey-offset-x);
-	bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
-	display: grid;
-	gap: 0.12rem;
-	max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-	padding: 0.45rem 0.62rem;
-	border-radius: 0.5rem;
-	border: 1px solid rgba(138, 224, 255, 0.56);
-	background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
-	color: #d8f4ff;
-	box-shadow:
-		0 10px 24px rgba(0, 7, 15, 0.54),
-		inset 0 0 0 1px rgba(196, 241, 255, 0.1);
-	font-size: 0.67rem;
-	letter-spacing: 0.06em;
-	z-index: 19;
-	pointer-events: none;
-	animation: ship-launch-toast-enter 170ms ease-out;
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
+  display: grid;
+  gap: 0.12rem;
+  max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.45rem 0.62rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(138, 224, 255, 0.56);
+  background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
+  color: #d8f4ff;
+  box-shadow:
+    0 10px 24px rgba(0, 7, 15, 0.54),
+    inset 0 0 0 1px rgba(196, 241, 255, 0.1);
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  z-index: 19;
+  pointer-events: none;
+  animation: ship-launch-toast-enter 170ms ease-out;
 }
 
 .ship-exterior-launch-toast p {
-	margin: 0;
-	font-weight: 600;
-	line-height: 1.2;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .ship-exterior-launch-toast__seed {
-	font-size: 0.54rem;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: rgba(222, 242, 250, 0.8);
-	line-height: 1;
+  font-size: 0.54rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(222, 242, 250, 0.8);
+  line-height: 1;
 }
 
 .ship-exterior-launch-toast--success {
-	border-color: rgba(151, 239, 184, 0.7);
-	background: linear-gradient(165deg, rgba(5, 45, 30, 0.92), rgba(6, 22, 17, 0.95));
-	color: #d9ffe8;
+  border-color: rgba(151, 239, 184, 0.7);
+  background: linear-gradient(165deg, rgba(5, 45, 30, 0.92), rgba(6, 22, 17, 0.95));
+  color: #d9ffe8;
 }
 
 .ship-exterior-launch-toast--error {
-	border-color: rgba(255, 146, 146, 0.8);
-	background: linear-gradient(165deg, rgba(76, 14, 14, 0.93), rgba(37, 9, 9, 0.96));
-	color: #ffe0e0;
+  border-color: rgba(255, 146, 146, 0.8);
+  background: linear-gradient(165deg, rgba(76, 14, 14, 0.93), rgba(37, 9, 9, 0.96));
+  color: #ffe0e0;
 }
 
 @keyframes ship-launch-toast-enter {
-	0% {
-		opacity: 0;
-		transform: translateY(5px);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0);
-	}
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ship-exterior-hotkey-tile {
-	width: 4.85rem;
-	min-height: 2.35rem;
-	padding: 0.22rem 0.35rem;
-	border: 1px solid rgba(111, 165, 187, 0.35);
-	border-radius: 0.5rem;
-	background: rgba(7, 19, 30, 0.84);
-	box-shadow: inset 0 0 0 1px rgba(188, 228, 246, 0.05);
-	color: rgba(150, 181, 196, 0.7);
-	display: grid;
-	grid-template-rows: auto 1fr;
-	gap: 0.12rem;
-	text-align: left;
-	cursor: default;
-	transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease, transform 140ms ease;
+  width: 4.85rem;
+  min-height: 2.35rem;
+  padding: 0.22rem 0.35rem;
+  border: 1px solid rgba(111, 165, 187, 0.35);
+  border-radius: 0.5rem;
+  background: rgba(7, 19, 30, 0.84);
+  box-shadow: inset 0 0 0 1px rgba(188, 228, 246, 0.05);
+  color: rgba(150, 181, 196, 0.7);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 0.12rem;
+  text-align: left;
+  cursor: default;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
 }
 
 .ship-exterior-hotkey-tile__key {
-	font-size: 0.62rem;
-	letter-spacing: 0.15em;
-	font-weight: 700;
-	line-height: 1;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .ship-exterior-hotkey-tile__name {
-	font-size: 0.61rem;
-	letter-spacing: 0.04em;
-	font-weight: 600;
-	line-height: 1.18;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+  font-size: 0.61rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  line-height: 1.18;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ship-exterior-hotkey-tile--enabled {
-	border-color: rgba(138, 224, 255, 0.54);
-	background: linear-gradient(165deg, rgba(7, 39, 55, 0.9), rgba(8, 20, 32, 0.93));
-	color: #cfeeff;
-	cursor: pointer;
-	box-shadow:
-		0 7px 18px rgba(0, 7, 15, 0.36),
-		inset 0 0 0 1px rgba(202, 241, 255, 0.14);
+  border-color: rgba(138, 224, 255, 0.54);
+  background: linear-gradient(165deg, rgba(7, 39, 55, 0.9), rgba(8, 20, 32, 0.93));
+  color: #cfeeff;
+  cursor: pointer;
+  box-shadow:
+    0 7px 18px rgba(0, 7, 15, 0.36),
+    inset 0 0 0 1px rgba(202, 241, 255, 0.14);
 }
 
 .ship-exterior-hotkey-tile--enabled:hover {
-	border-color: rgba(190, 244, 255, 0.76);
-	background: linear-gradient(165deg, rgba(13, 55, 77, 0.95), rgba(9, 26, 38, 0.95));
-	transform: translateY(-1px);
+  border-color: rgba(190, 244, 255, 0.76);
+  background: linear-gradient(165deg, rgba(13, 55, 77, 0.95), rgba(9, 26, 38, 0.95));
+  transform: translateY(-1px);
 }
 
 .ship-exterior-hotkey-tile--launching {
-	border-color: rgba(255, 160, 160, 0.88);
-	background: linear-gradient(170deg, rgba(172, 22, 22, 0.96), rgba(108, 11, 11, 0.96));
-	color: #ffe7e7;
-	box-shadow:
-		0 0 18px rgba(255, 59, 59, 0.48),
-		inset 0 0 0 1px rgba(255, 229, 229, 0.28);
-	animation: ship-hotkey-launch-flash 220ms ease-out;
-	transform: translateY(0);
+  border-color: rgba(255, 160, 160, 0.88);
+  background: linear-gradient(170deg, rgba(172, 22, 22, 0.96), rgba(108, 11, 11, 0.96));
+  color: #ffe7e7;
+  box-shadow:
+    0 0 18px rgba(255, 59, 59, 0.48),
+    inset 0 0 0 1px rgba(255, 229, 229, 0.28);
+  animation: ship-hotkey-launch-flash 220ms ease-out;
+  transform: translateY(0);
 }
 
 @keyframes ship-hotkey-launch-flash {
-	0% {
-		filter: saturate(1.4) brightness(1.2);
-	}
-	100% {
-		filter: saturate(1) brightness(1);
-	}
+  0% {
+    filter: saturate(1.4) brightness(1.2);
+  }
+  100% {
+    filter: saturate(1) brightness(1);
+  }
 }
 
 .ship-exterior-hotkey-tile:disabled {
-	opacity: 1;
+  opacity: 1;
 }
 
 .ship-exterior-test-target-button {
-	min-height: 2.35rem;
-	padding: 0.3rem 0.62rem;
-	border: 1px solid rgba(255, 205, 122, 0.62);
-	border-radius: 0.5rem;
-	background: linear-gradient(165deg, rgba(67, 43, 9, 0.92), rgba(36, 23, 6, 0.95));
-	box-shadow:
-		0 7px 18px rgba(0, 7, 15, 0.36),
-		inset 0 0 0 1px rgba(255, 230, 189, 0.18);
-	color: #ffe8c6;
-	font-size: 0.61rem;
-	font-weight: 700;
-	letter-spacing: 0.12em;
-	cursor: pointer;
-	transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+  min-height: 2.35rem;
+  padding: 0.3rem 0.62rem;
+  border: 1px solid rgba(255, 205, 122, 0.62);
+  border-radius: 0.5rem;
+  background: linear-gradient(165deg, rgba(67, 43, 9, 0.92), rgba(36, 23, 6, 0.95));
+  box-shadow:
+    0 7px 18px rgba(0, 7, 15, 0.36),
+    inset 0 0 0 1px rgba(255, 230, 189, 0.18);
+  color: #ffe8c6;
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
 }
 
 .ship-exterior-test-target-button:hover {
-	border-color: rgba(255, 226, 166, 0.82);
-	background: linear-gradient(165deg, rgba(86, 57, 13, 0.95), rgba(46, 30, 8, 0.96));
-	transform: translateY(-1px);
+  border-color: rgba(255, 226, 166, 0.82);
+  background: linear-gradient(165deg, rgba(86, 57, 13, 0.95), rgba(46, 30, 8, 0.96));
+  transform: translateY(-1px);
 }
 
 .ship-exterior-properties-panel {
-	position: absolute;
-	right: var(--ship-properties-offset-x);
-	bottom: var(--ship-properties-offset-y);
-	width: 21.5rem;
-	max-width: min(21.5rem, calc(100% - (var(--ship-properties-offset-x) * 2)));
-	padding: 0.7rem 0.78rem 0.76rem;
-	border: 1px solid rgba(116, 217, 255, 0.34);
-	border-radius: 0.65rem;
-	background:
-		linear-gradient(165deg, rgba(5, 27, 40, 0.93) 0%, rgba(7, 17, 28, 0.96) 64%),
-		radial-gradient(circle at 16% -12%, rgba(79, 179, 232, 0.26), transparent 44%);
-	box-shadow:
-		0 10px 24px rgba(0, 7, 15, 0.58),
-		inset 0 0 0 1px rgba(196, 241, 255, 0.08);
-	color: #d6f2ff;
-	z-index: 18;
-	pointer-events: auto;
+  position: absolute;
+  right: var(--ship-properties-offset-x);
+  bottom: var(--ship-properties-offset-y);
+  width: 21.5rem;
+  max-width: min(21.5rem, calc(100% - (var(--ship-properties-offset-x) * 2)));
+  padding: 0.7rem 0.78rem 0.76rem;
+  border: 1px solid rgba(116, 217, 255, 0.34);
+  border-radius: 0.65rem;
+  background:
+    linear-gradient(165deg, rgba(5, 27, 40, 0.93) 0%, rgba(7, 17, 28, 0.96) 64%),
+    radial-gradient(circle at 16% -12%, rgba(79, 179, 232, 0.26), transparent 44%);
+  box-shadow:
+    0 10px 24px rgba(0, 7, 15, 0.58),
+    inset 0 0 0 1px rgba(196, 241, 255, 0.08);
+  color: #d6f2ff;
+  z-index: 18;
+  pointer-events: auto;
 }
 
 .ship-exterior-properties-panel__header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.75rem;
-	margin-bottom: 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
 }
 
 .ship-exterior-properties-panel__header h3 {
-	margin: 0;
-	font-size: 0.69rem;
-	letter-spacing: 0.15em;
-	font-weight: 600;
-	color: #8fd9ff;
+  margin: 0;
+  font-size: 0.69rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+  color: #8fd9ff;
 }
 
 .ship-exterior-properties-panel__toggle,
 .ship-exterior-properties-reveal {
-	border: 1px solid rgba(152, 226, 255, 0.38);
-	border-radius: 0.45rem;
-	background: rgba(9, 36, 53, 0.82);
-	color: #d4f1ff;
-	font-size: 0.62rem;
-	font-weight: 600;
-	letter-spacing: 0.14em;
-	padding: 0.24rem 0.56rem;
-	cursor: pointer;
-	transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
-	z-index: 18;
+  border: 1px solid rgba(152, 226, 255, 0.38);
+  border-radius: 0.45rem;
+  background: rgba(9, 36, 53, 0.82);
+  color: #d4f1ff;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  padding: 0.24rem 0.56rem;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  z-index: 18;
 }
 
 .ship-exterior-properties-panel__toggle:hover,
 .ship-exterior-properties-reveal:hover {
-	background: rgba(18, 63, 89, 0.94);
-	border-color: rgba(188, 238, 255, 0.62);
-	transform: translateY(-1px);
+  background: rgba(18, 63, 89, 0.94);
+  border-color: rgba(188, 238, 255, 0.62);
+  transform: translateY(-1px);
 }
 
 .ship-exterior-properties-panel__body {
-	display: grid;
-	gap: 0.33rem;
-	font-size: 0.64rem;
-	line-height: 1.3;
-	letter-spacing: 0.045em;
+  display: grid;
+  gap: 0.33rem;
+  font-size: 0.64rem;
+  line-height: 1.3;
+  letter-spacing: 0.045em;
 }
 
 .ship-exterior-properties-panel__body p {
-	margin: 0;
-	color: #d6f2ff;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+  margin: 0;
+  color: #d6f2ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ship-exterior-properties-panel__body p:nth-child(1),
 .ship-exterior-properties-panel__body p:nth-child(2) {
-	color: #a8e1ff;
+  color: #a8e1ff;
 }
 
 .ship-exterior-properties-panel__body p:nth-child(5),
 .ship-exterior-properties-panel__body p:nth-child(6) {
-	color: #ffd18e;
+  color: #ffd18e;
 }
 
 .ship-exterior-properties-reveal {
-	position: absolute;
-	right: var(--ship-properties-offset-x);
-	bottom: var(--ship-properties-offset-y);
-	pointer-events: auto;
+  position: absolute;
+  right: var(--ship-properties-offset-x);
+  bottom: var(--ship-properties-offset-y);
+  pointer-events: auto;
 }
 
 @media (max-width: 640px) {
-	.cold-boot-scan-host {
-		--ship-properties-offset-x: 8px;
-		--ship-properties-offset-y: 8px;
-		--ship-hotkey-offset-x: 8px;
-		--ship-hotkey-offset-y: 8px;
-	}
+  .cold-boot-scan-host {
+    --ship-properties-offset-x: 8px;
+    --ship-properties-offset-y: 8px;
+    --ship-hotkey-offset-x: 8px;
+    --ship-hotkey-offset-y: 8px;
+  }
 
-	.ship-exterior-properties-panel {
-		width: min(21.5rem, calc(100% - (var(--ship-properties-offset-x) * 2)));
-	}
+  .ship-exterior-properties-panel {
+    width: min(21.5rem, calc(100% - (var(--ship-properties-offset-x) * 2)));
+  }
 
-	.ship-exterior-hotkey-row {
-		gap: 0.28rem;
-	}
+  .ship-exterior-hotkey-row {
+    gap: 0.28rem;
+  }
 
-	.ship-exterior-launch-toast {
-		bottom: calc(var(--ship-hotkey-offset-y) + 2.7rem);
-	}
+  .ship-exterior-launch-toast {
+    bottom: calc(var(--ship-hotkey-offset-y) + 2.7rem);
+  }
 
-	.ship-exterior-hotkey-tile {
-		width: 3.82rem;
-		min-height: 2.12rem;
-		padding: 0.2rem 0.3rem;
-	}
+  .ship-exterior-hotkey-tile {
+    width: 3.82rem;
+    min-height: 2.12rem;
+    padding: 0.2rem 0.3rem;
+  }
 }

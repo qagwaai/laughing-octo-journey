@@ -1,59 +1,67 @@
 <div class="game-join-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.join.title }}</h1>
-				<p class="subtitle">{{ t.game.join.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.join.title }}</h1>
+        <p class="subtitle">{{ t.game.join.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		<p class="character-display">
-			{{ t.common.characterPrefix }} <strong>{{ characterName() }}</strong>
-		</p>
+    <p class="character-display">
+      {{ t.common.characterPrefix }}
+      <strong>{{ characterName() }}</strong>
+    </p>
 
-		<section class="ship-list-section">
-			<h2>{{ t.game.join.shipsTitle }}</h2>
+    <section class="ship-list-section">
+      <h2>{{ t.game.join.shipsTitle }}</h2>
 
-			@if (isLoadingShips()) {
-				<p class="ship-status">{{ t.game.join.shipLoadingStatus }}</p>
-			}
-
-			@if (shipListError()) {
-				<p class="ship-status error">{{ shipListError() }}</p>
-			}
-
-			@if (!isLoadingShips() && !shipListError() && ships().length === 0) {
-				<p class="ship-status">{{ t.game.join.shipEmptyStatus }}</p>
-			}
-
-			@if (ships().length > 0) {
-				<ul class="ship-list">
-					@for (ship of ships(); track ship.id) {
-						<li class="ship-item">
-							<div class="ship-row">
-								<div class="ship-identity">
-									<div class="ship-name"><strong>{{ t.game.join.shipNameLabel }}</strong> {{ getShipDisplayName(ship) }}</div>
-									<div class="ship-id"><strong>{{ t.game.join.shipIdLabel }}</strong> {{ ship.id }}</div>
-								</div>
-								<button class="ship-spec-link" type="button" (click)="navigateToShipSpecs(ship)">{{ t.game.join.shipViewSpecsLabel }}</button>
-							</div>
-							<div class="ship-meta">
-								<strong>{{ t.game.join.shipModelLabel }}</strong>
-								{{ getShipModelLabel(ship) }}
-								<span> // </span>
-								<strong>{{ t.game.join.shipTierLabel }}</strong>
-								{{ getShipTierLabel(ship) }}
-								@if (ship.status) {
-									<span> - {{ ship.status }}</span>
-								}
-							</div>
-							<div class="ship-kinematics"><strong>{{ t.game.join.shipKinematicsLabel }}</strong> {{ getShipKinematicsSummary(ship) }}</div>
-						</li>
-					}
-				</ul>
-			}
-		</section>
-	</div>
+      @if (isLoadingShips()) {
+      <p class="ship-status">{{ t.game.join.shipLoadingStatus }}</p>
+      } @if (shipListError()) {
+      <p class="ship-status error">{{ shipListError() }}</p>
+      } @if (!isLoadingShips() && !shipListError() && ships().length === 0) {
+      <p class="ship-status">{{ t.game.join.shipEmptyStatus }}</p>
+      } @if (ships().length > 0) {
+      <ul class="ship-list">
+        @for (ship of ships(); track ship.id) {
+        <li class="ship-item">
+          <div class="ship-row">
+            <div class="ship-identity">
+              <div class="ship-name">
+                <strong>{{ t.game.join.shipNameLabel }}</strong>
+                {{ getShipDisplayName(ship) }}
+              </div>
+              <div class="ship-id">
+                <strong>{{ t.game.join.shipIdLabel }}</strong>
+                {{ ship.id }}
+              </div>
+            </div>
+            <button class="ship-spec-link" type="button" (click)="navigateToShipSpecs(ship)">
+              {{ t.game.join.shipViewSpecsLabel }}
+            </button>
+          </div>
+          <div class="ship-meta">
+            <strong>{{ t.game.join.shipModelLabel }}</strong>
+            {{ getShipModelLabel(ship) }}
+            <span>//</span>
+            <strong>{{ t.game.join.shipTierLabel }}</strong>
+            {{ getShipTierLabel(ship) }} @if (ship.status) {
+            <span>- {{ ship.status }}</span>
+            }
+          </div>
+          <div class="ship-kinematics">
+            <strong>{{ t.game.join.shipKinematicsLabel }}</strong>
+            {{ getShipKinematicsSummary(ship) }}
+          </div>
+        </li>
+        }
+      </ul>
+      }
+    </section>
+  </div>
 </div>

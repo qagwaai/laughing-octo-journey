@@ -1,62 +1,66 @@
 .character-ship-badge {
-	display: flex;
-	align-items: center;
-	gap: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .character-avatar {
-	width: 2.4rem;
-	height: 2.4rem;
-	border-radius: 50%;
-	border: 2px solid rgba(140, 190, 255, 0.5);
-	background: rgba(20, 33, 56, 0.9);
-	color: #e8f2ff;
-	font-size: 1rem;
-	font-weight: 700;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	transition: border-color 150ms ease, background 150ms ease;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 2px solid rgba(140, 190, 255, 0.5);
+  background: rgba(20, 33, 56, 0.9);
+  color: #e8f2ff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 
 .character-avatar:hover {
-	border-color: rgba(140, 190, 255, 0.9);
-	background: rgba(30, 50, 90, 0.9);
+  border-color: rgba(140, 190, 255, 0.9);
+  background: rgba(30, 50, 90, 0.9);
 }
 
 .ship-badge {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	padding: 0.25rem 0.6rem;
-	border-radius: 6px;
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	background: rgba(20, 33, 56, 0.9);
-	color: #e8f2ff;
-	font-size: 0.78rem;
-	cursor: pointer;
-	white-space: nowrap;
-	transition: border-color 150ms ease, background 150ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  background: rgba(20, 33, 56, 0.9);
+  color: #e8f2ff;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
 }
 
 .ship-badge:hover {
-	border-color: rgba(140, 190, 255, 0.75);
-	background: rgba(30, 50, 90, 0.9);
+  border-color: rgba(140, 190, 255, 0.75);
+  background: rgba(30, 50, 90, 0.9);
 }
 
 .ship-badge.no-ship {
-	border-color: rgba(140, 190, 255, 0.18);
-	color: rgba(200, 220, 255, 0.5);
+  border-color: rgba(140, 190, 255, 0.18);
+  color: rgba(200, 220, 255, 0.5);
 }
 
 .ship-badge-label {
-	font-size: 0.68rem;
-	color: rgba(140, 190, 255, 0.7);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  color: rgba(140, 190, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .ship-badge-name {
-	font-weight: 600;
+  font-weight: 600;
 }

@@ -1,59 +1,62 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.shipHangar.title }}</h1>
-				<p class="subtitle">{{ t.game.shipHangar.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.shipHangar.title }}</h1>
+        <p class="subtitle">{{ t.game.shipHangar.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		<section class="ops-card">
-			<h2>{{ t.game.shipHangar.sectionTitle }}</h2>
-			<p>{{ t.game.shipHangar.sectionDescription }}</p>
+    <section class="ops-card">
+      <h2>{{ t.game.shipHangar.sectionTitle }}</h2>
+      <p>{{ t.game.shipHangar.sectionDescription }}</p>
 
-			@if (isLoadingShips()) {
-				<p>{{ t.game.shipHangar.shipLoadingStatus }}</p>
-			} @else if (shipListError()) {
-				<p role="alert">{{ shipListError() }}</p>
-			} @else if (ships().length === 0) {
-				<p>{{ t.game.shipHangar.shipEmptyStatus }}</p>
-			} @else {
-				<ul class="ship-list" aria-label="Ship list">
-					@for (ship of ships(); track ship.id) {
-						<li class="ship-item">
-							<p>
-								<strong>{{ t.game.shipHangar.shipNameLabel }}</strong>
-								{{ getShipDisplayName(ship) }}
-							</p>
-							<p>
-								<strong>{{ t.game.shipHangar.shipModelLabel }}</strong>
-								{{ getShipModelLabel(ship) }}
-								<span> // </span>
-								<strong>{{ t.game.shipHangar.shipTierLabel }}</strong>
-								{{ getShipTierLabel(ship) }}
-							</p>
-							<p>
-								<strong>{{ t.game.shipHangar.shipLocationLabel }}</strong>
-								{{ getShipLocationSummary(ship) }}
-							</p>
-							<button type="button" class="inventory-link" (click)="navigateToExteriorView(ship)">
-							{{ t.game.shipHangar.shipExteriorViewLabel }}
-						</button>
-						<button type="button" class="inventory-link" (click)="navigateToShipSpecs(ship)">
-								{{ t.game.join.shipViewSpecsLabel }}
-							</button>
-							<button type="button" class="inventory-link" (click)="navigateToShipInventory(ship)">
-								{{ t.game.shipHangar.shipViewInventoryLabel }}
-							</button>
-							<button type="button" class="inventory-link" (click)="setActiveShip(ship)">
-								{{ t.game.shipHangar.shipSetActiveLabel }}
-							</button>
-						</li>
-					}
-				</ul>
-			}
-		</section>
-	</div>
+      @if (isLoadingShips()) {
+      <p>{{ t.game.shipHangar.shipLoadingStatus }}</p>
+      } @else if (shipListError()) {
+      <p role="alert">{{ shipListError() }}</p>
+      } @else if (ships().length === 0) {
+      <p>{{ t.game.shipHangar.shipEmptyStatus }}</p>
+      } @else {
+      <ul class="ship-list" aria-label="Ship list">
+        @for (ship of ships(); track ship.id) {
+        <li class="ship-item">
+          <p>
+            <strong>{{ t.game.shipHangar.shipNameLabel }}</strong>
+            {{ getShipDisplayName(ship) }}
+          </p>
+          <p>
+            <strong>{{ t.game.shipHangar.shipModelLabel }}</strong>
+            {{ getShipModelLabel(ship) }}
+            <span>//</span>
+            <strong>{{ t.game.shipHangar.shipTierLabel }}</strong>
+            {{ getShipTierLabel(ship) }}
+          </p>
+          <p>
+            <strong>{{ t.game.shipHangar.shipLocationLabel }}</strong>
+            {{ getShipLocationSummary(ship) }}
+          </p>
+          <button type="button" class="inventory-link" (click)="navigateToExteriorView(ship)">
+            {{ t.game.shipHangar.shipExteriorViewLabel }}
+          </button>
+          <button type="button" class="inventory-link" (click)="navigateToShipSpecs(ship)">
+            {{ t.game.join.shipViewSpecsLabel }}
+          </button>
+          <button type="button" class="inventory-link" (click)="navigateToShipInventory(ship)">
+            {{ t.game.shipHangar.shipViewInventoryLabel }}
+          </button>
+          <button type="button" class="inventory-link" (click)="setActiveShip(ship)">
+            {{ t.game.shipHangar.shipSetActiveLabel }}
+          </button>
+        </li>
+        }
+      </ul>
+      }
+    </section>
+  </div>
 </div>

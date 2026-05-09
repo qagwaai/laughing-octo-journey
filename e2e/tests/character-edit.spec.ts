@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
@@ -21,9 +21,7 @@ async function setupCharacterEditTest(page: Page) {
 
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
-    data: characterListResponse([
-      { id: 'char-edit-001', characterName: currentCharacterName, level: 5 },
-    ]),
+    data: characterListResponse([{ id: 'char-edit-001', characterName: currentCharacterName, level: 5 }]),
   }));
 
   await loginViaUI(page, mock);

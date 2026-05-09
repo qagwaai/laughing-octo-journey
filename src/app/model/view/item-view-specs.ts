@@ -1,73 +1,73 @@
 export interface FieldConfig {
-	label: string;
-	getValue: (item: unknown) => unknown;
-	format?: (value: unknown) => string;
+  label: string;
+  getValue: (item: unknown) => unknown;
+  format?: (value: unknown) => string;
 }
 
 export interface FieldGroupConfig {
-	label: string;
-	fields: FieldConfig[];
+  label: string;
+  fields: FieldConfig[];
 }
 
 export interface ItemViewSpecsConfig {
-	itemType: string;
-	title: string;
-	groups: FieldGroupConfig[];
-	blueprint?: ItemBlueprintConfig;
+  itemType: string;
+  title: string;
+  groups: FieldGroupConfig[];
+  blueprint?: ItemBlueprintConfig;
 }
 
 export interface ItemBlueprintLabelConfig {
-	label: string;
-	topPercent: number;
-	leftPercent: number;
+  label: string;
+  topPercent: number;
+  leftPercent: number;
 }
 
 export interface ItemBlueprintConfig {
-	unitLine?: string;
-	classificationLine?: string;
-	footerTag?: string;
-	backgroundImagePath?: string;
-	blueprintImagePath?: string;
-	labels?: ItemBlueprintLabelConfig[];
+  unitLine?: string;
+  classificationLine?: string;
+  footerTag?: string;
+  backgroundImagePath?: string;
+  blueprintImagePath?: string;
+  labels?: ItemBlueprintLabelConfig[];
 }
 
 export interface ResolvedField {
-	label: string;
-	displayValue: string;
+  label: string;
+  displayValue: string;
 }
 
 export interface ResolvedGroup {
-	label: string;
-	fields: ResolvedField[];
+  label: string;
+  fields: ResolvedField[];
 }
 
 export function resolveGroups(config: ItemViewSpecsConfig, item: unknown): ResolvedGroup[] {
-	return config.groups
-		.map(group => ({
-			label: group.label,
-			fields: group.fields
-				.map(field => {
-					const value = field.getValue(item);
-					if (value === null || value === undefined) return null;
-					return {
-						label: field.label,
-						displayValue: field.format ? field.format(value) : String(value),
-					};
-				})
-				.filter((f): f is ResolvedField => f !== null),
-		}))
-		.filter(g => g.fields.length > 0);
+  return config.groups
+    .map((group) => ({
+      label: group.label,
+      fields: group.fields
+        .map((field) => {
+          const value = field.getValue(item);
+          if (value === null || value === undefined) return null;
+          return {
+            label: field.label,
+            displayValue: field.format ? field.format(value) : String(value),
+          };
+        })
+        .filter((f): f is ResolvedField => f !== null),
+    }))
+    .filter((g) => g.fields.length > 0);
 }
 
 export function normalizeItemTypeForImage(itemType: string): string {
-	return itemType
-		.toLowerCase()
-		.replace(/-/g, '_')
-		.replace(/[^a-z0-9\s_]/g, '')
-		.replace(/\s+/g, '_')
-		.trim();
+  return itemType
+    .toLowerCase()
+    .replace(/-/g, '_')
+    .replace(/[^a-z0-9\s_]/g, '')
+    .replace(/\s+/g, '_')
+    .trim();
 }
 
 export function getSpecsImagePath(itemType: string): string {
-	return `images/${normalizeItemTypeForImage(itemType)}_specs.png`;
+  return `images/${normalizeItemTypeForImage(itemType)}_specs.png`;
 }

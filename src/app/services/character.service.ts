@@ -6,17 +6,17 @@ import {
   type CharacterAddResponse,
 } from '../model/character-add';
 import {
-  CHARACTER_EDIT_REQUEST_EVENT,
-  CHARACTER_EDIT_RESPONSE_EVENT,
-  type CharacterEditRequest,
-  type CharacterEditResponse,
-} from '../model/character-edit';
-import {
   CHARACTER_DELETE_REQUEST_EVENT,
   CHARACTER_DELETE_RESPONSE_EVENT,
   type CharacterDeleteRequest,
   type CharacterDeleteResponse,
 } from '../model/character-delete';
+import {
+  CHARACTER_EDIT_REQUEST_EVENT,
+  CHARACTER_EDIT_RESPONSE_EVENT,
+  type CharacterEditRequest,
+  type CharacterEditResponse,
+} from '../model/character-edit';
 import {
   CHARACTER_LIST_REQUEST_EVENT,
   CHARACTER_LIST_RESPONSE_EVENT,
@@ -29,10 +29,7 @@ import { SocketService } from './socket.service';
 export class CharacterService {
   private socketService = inject(SocketService);
 
-  addCharacter(
-    request: CharacterAddRequest,
-    onResponse: (response: CharacterAddResponse) => void,
-  ): () => void {
+  addCharacter(request: CharacterAddRequest, onResponse: (response: CharacterAddResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_ADD_RESPONSE_EVENT, (response: CharacterAddResponse) => {
       unsubscribe();
       onResponse(response);
@@ -42,10 +39,7 @@ export class CharacterService {
     return unsubscribe;
   }
 
-  editCharacter(
-    request: CharacterEditRequest,
-    onResponse: (response: CharacterEditResponse) => void,
-  ): () => void {
+  editCharacter(request: CharacterEditRequest, onResponse: (response: CharacterEditResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_EDIT_RESPONSE_EVENT, (response: CharacterEditResponse) => {
       unsubscribe();
       onResponse(response);
@@ -55,10 +49,7 @@ export class CharacterService {
     return unsubscribe;
   }
 
-  listCharacters(
-    request: CharacterListRequest,
-    onResponse: (response: CharacterListResponse) => void,
-  ): () => void {
+  listCharacters(request: CharacterListRequest, onResponse: (response: CharacterListResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_LIST_RESPONSE_EVENT, (response: CharacterListResponse) => {
       unsubscribe();
       onResponse(response);

@@ -1,73 +1,90 @@
 <div class="registration-container">
-	<h1>{{ t.public.registration.title }}</h1>
-	<p class="subtitle">{{ t.public.registration.subtitle }}</p>
+  <h1>{{ t.public.registration.title }}</h1>
+  <p class="subtitle">{{ t.public.registration.subtitle }}</p>
 
-	<form [formGroup]="registrationForm" (ngSubmit)="submit()" class="registration-form">
-		<div class="form-group">
-			<label for="locale">{{ t.public.registration.localeLabel }}</label>
-			<select id="locale" formControlName="locale">
-				@for (code of supportedLocaleCodes; track code) {
-					<option [value]="code">{{ t.common.localeNames[code] }}</option>
-				}
-			</select>
-		</div>
+  <form [formGroup]="registrationForm" (ngSubmit)="submit()" class="registration-form">
+    <div class="form-group">
+      <label for="locale">{{ t.public.registration.localeLabel }}</label>
+      <select id="locale" formControlName="locale">
+        @for (code of supportedLocaleCodes; track code) {
+        <option [value]="code">{{ t.common.localeNames[code] }}</option>
+        }
+      </select>
+    </div>
 
-		<div class="form-group">
-			<label for="playerName">{{ t.public.registration.playerNameLabel }}</label>
-			<input id="playerName" type="text" formControlName="playerName" [placeholder]="t.public.registration.playerNamePlaceholder" />
-			@if (registrationForm.get('playerName')?.invalid && registrationForm.get('playerName')?.touched) {
-				<span class="field-error">
-					@if (registrationForm.get('playerName')?.errors?.['required']) { {{ t.public.registration.errors.playerNameRequired }} }
-					@if (registrationForm.get('playerName')?.errors?.['minlength']) { {{ t.public.registration.errors.playerNameMinLength }} }
-					@if (registrationForm.get('playerName')?.errors?.['maxlength']) { {{ t.public.registration.errors.playerNameMaxLength }} }
-				</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="playerName">{{ t.public.registration.playerNameLabel }}</label>
+      <input
+        id="playerName"
+        type="text"
+        formControlName="playerName"
+        [placeholder]="t.public.registration.playerNamePlaceholder"
+      />
+      @if (registrationForm.get('playerName')?.invalid && registrationForm.get('playerName')?.touched) {
+      <span class="field-error">
+        @if (registrationForm.get('playerName')?.errors?.['required']) { {{
+        t.public.registration.errors.playerNameRequired }} } @if
+        (registrationForm.get('playerName')?.errors?.['minlength']) { {{
+        t.public.registration.errors.playerNameMinLength }} } @if
+        (registrationForm.get('playerName')?.errors?.['maxlength']) { {{
+        t.public.registration.errors.playerNameMaxLength }} }
+      </span>
+      }
+    </div>
 
-		<div class="form-group">
-			<label for="email">{{ t.public.registration.emailLabel }}</label>
-			<input id="email" type="email" formControlName="email" [placeholder]="t.public.registration.emailPlaceholder" />
-			@if (registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched) {
-				<span class="field-error">
-					@if (registrationForm.get('email')?.errors?.['required']) { {{ t.public.registration.errors.emailRequired }} }
-					@if (registrationForm.get('email')?.errors?.['email']) { {{ t.public.registration.errors.emailInvalid }} }
-				</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="email">{{ t.public.registration.emailLabel }}</label>
+      <input id="email" type="email" formControlName="email" [placeholder]="t.public.registration.emailPlaceholder" />
+      @if (registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched) {
+      <span class="field-error">
+        @if (registrationForm.get('email')?.errors?.['required']) { {{ t.public.registration.errors.emailRequired }} }
+        @if (registrationForm.get('email')?.errors?.['email']) { {{ t.public.registration.errors.emailInvalid }} }
+      </span>
+      }
+    </div>
 
-		<div class="form-group">
-			<label for="password">{{ t.public.registration.passwordLabel }}</label>
-			<input id="password" type="password" formControlName="password" [placeholder]="t.public.registration.passwordPlaceholder" />
-			@if (registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched) {
-				<span class="field-error">
-					@if (registrationForm.get('password')?.errors?.['required']) { {{ t.public.registration.errors.passwordRequired }} }
-					@if (registrationForm.get('password')?.errors?.['minlength']) { {{ t.public.registration.errors.passwordMinLength }} }
-				</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="password">{{ t.public.registration.passwordLabel }}</label>
+      <input
+        id="password"
+        type="password"
+        formControlName="password"
+        [placeholder]="t.public.registration.passwordPlaceholder"
+      />
+      @if (registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched) {
+      <span class="field-error">
+        @if (registrationForm.get('password')?.errors?.['required']) { {{ t.public.registration.errors.passwordRequired
+        }} } @if (registrationForm.get('password')?.errors?.['minlength']) { {{
+        t.public.registration.errors.passwordMinLength }} }
+      </span>
+      }
+    </div>
 
-		<div class="form-group">
-			<label for="confirmPassword">{{ t.public.registration.confirmPasswordLabel }}</label>
-			<input id="confirmPassword" type="password" formControlName="confirmPassword" [placeholder]="t.public.registration.confirmPasswordPlaceholder" />
-			@if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
-				<span class="field-error">{{ t.public.registration.errors.passwordMismatch }}</span>
-			}
-		</div>
+    <div class="form-group">
+      <label for="confirmPassword">{{ t.public.registration.confirmPasswordLabel }}</label>
+      <input
+        id="confirmPassword"
+        type="password"
+        formControlName="confirmPassword"
+        [placeholder]="t.public.registration.confirmPasswordPlaceholder"
+      />
+      @if (registrationForm.errors?.['passwordMismatch'] && registrationForm.get('confirmPassword')?.touched) {
+      <span class="field-error">{{ t.public.registration.errors.passwordMismatch }}</span>
+      }
+    </div>
 
-		@if (errorMessage()) {
-			<div class="status-message error-message">{{ errorMessage() }}</div>
-		}
-		@if (successMessage()) {
-			<div class="status-message success-message">{{ successMessage() }}</div>
-		}
+    @if (errorMessage()) {
+    <div class="status-message error-message">{{ errorMessage() }}</div>
+    } @if (successMessage()) {
+    <div class="status-message success-message">{{ successMessage() }}</div>
+    }
 
-		<button type="submit" [disabled]="registrationForm.invalid || isSubmitting()" class="submit-btn">
-			{{ isSubmitting() ? t.public.registration.submittingLabel : t.public.registration.submitLabel }}
-		</button>
+    <button type="submit" [disabled]="registrationForm.invalid || isSubmitting()" class="submit-btn">
+      {{ isSubmitting() ? t.public.registration.submittingLabel : t.public.registration.submitLabel }}
+    </button>
 
-		<p class="login-link">
-			<a (click)="navigateToLogin()" class="login-link-text">{{ t.public.registration.loginLink }}</a>
-		</p>
-
-	</form>
+    <p class="login-link">
+      <a (click)="navigateToLogin()" class="login-link-text">{{ t.public.registration.loginLink }}</a>
+    </p>
+  </form>
 </div>

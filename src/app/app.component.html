@@ -1,11 +1,15 @@
 <div class="flex h-dvh w-full" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
   <!-- Left Content Area with Router Outlet -->
-  <div class="bg-gray-900 text-white overflow-auto flex flex-col" #leftPanel>
+  <div class="flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
     <router-outlet name="left" />
     <div class="p-4">
       <tweakpane-pane title="Options" [container]="host">
         <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
-        <tweakpane-checkbox [(value)]="audioHooksEnabled" label="Audio Hooks" (valueChange)="onAudioHooksChange($event)" />
+        <tweakpane-checkbox
+          [(value)]="audioHooksEnabled"
+          label="Audio Hooks"
+          (valueChange)="onAudioHooksChange($event)"
+        />
         <tweakpane-checkbox [(value)]="audioArmed" [label]="audioArmedLabel()" [disabled]="true" />
         <tweakpane-checkbox [(value)]="audioBedRunning" [label]="audioBedLabel()" [disabled]="true" />
         <tweakpane-checkbox [(value)]="speechAvailable" label="Speech Synth" [disabled]="true" />
@@ -20,13 +24,10 @@
   </div>
 
   <!-- Divider -->
-  <div
-    class="relative"
-    style="width: 20px; pointer-events: auto; user-select: none; z-index: 10; flex-shrink: 0;"
-  >
+  <div class="relative" style="width: 20px; pointer-events: auto; user-select: none; z-index: 10; flex-shrink: 0">
     <button
       type="button"
-      class="absolute left-1/2 top-2 -translate-x-1/2 z-20 flex h-6 w-6 items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      class="absolute top-2 left-1/2 z-20 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
       (mousedown)="$event.stopPropagation()"
       (click)="resetSplit()"
       aria-label="Reset split to 50/50"
@@ -40,15 +41,15 @@
 
     <div
       #divider
-      class="absolute left-1/2 top-0 h-full -translate-x-1/2 bg-gray-700 hover:bg-blue-500 cursor-col-resize transition-colors"
-      style="width: 2px;"
+      class="absolute top-0 left-1/2 h-full -translate-x-1/2 cursor-col-resize bg-gray-700 transition-colors hover:bg-blue-500"
+      style="width: 2px"
       (mousedown)="startResize($event)"
       (dblclick)="resetSplit()"
     ></div>
   </div>
 
   <!-- Right Canvas Area -->
-  <div class="flex-1 relative" #rightPanel>
+  <div class="relative flex-1" #rightPanel>
     @if (rightOutletActive()) {
       <div class="h-full overflow-auto bg-gray-950 text-white">
         <router-outlet name="right" />
@@ -67,7 +68,7 @@
 
       @if (showColdBootLookHint()) {
         <div
-          class="pointer-events-none absolute left-1/2 bottom-5 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
+          class="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
           [style.opacity]="lookHintOpacity()"
         >
           HOLD DRAG TO LOOK

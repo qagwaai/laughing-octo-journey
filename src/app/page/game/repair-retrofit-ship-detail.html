@@ -1,36 +1,46 @@
 <div class="ops-page-container">
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.repairRetrofitShipDetail.title }}</h1>
-				<p class="subtitle">{{ t.game.repairRetrofitShipDetail.subtitle }}</p>
-			</div>
-		</div>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.repairRetrofitShipDetail.title }}</h1>
+        <p class="subtitle">{{ t.game.repairRetrofitShipDetail.subtitle }}</p>
+      </div>
+    </div>
 
-		<section class="ops-card">
-			<p><strong>{{ t.game.repairRetrofitShipDetail.shipLabel }}</strong> {{ getShipName() }}</p>
-			<p><strong>{{ t.game.repairRetrofitShipDetail.currentStatusLabel }}</strong> {{ damageProfile()?.overallStatus || t.game.repairRetrofitShipDetail.unknownStatusLabel }}</p>
-			<p><strong>{{ t.game.repairRetrofitShipDetail.summaryLabel }}</strong> {{ damageProfile()?.summary || t.game.repairRetrofitShipDetail.noProfileLabel }}</p>
+    <section class="ops-card">
+      <p>
+        <strong>{{ t.game.repairRetrofitShipDetail.shipLabel }}</strong>
+        {{ getShipName() }}
+      </p>
+      <p>
+        <strong>{{ t.game.repairRetrofitShipDetail.currentStatusLabel }}</strong>
+        {{ damageProfile()?.overallStatus || t.game.repairRetrofitShipDetail.unknownStatusLabel }}
+      </p>
+      <p>
+        <strong>{{ t.game.repairRetrofitShipDetail.summaryLabel }}</strong>
+        {{ damageProfile()?.summary || t.game.repairRetrofitShipDetail.noProfileLabel }}
+      </p>
 
-			<button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
-				{{ t.game.repairRetrofitShipDetail.backLabel }}
-			</button>
+      <button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
+        {{ t.game.repairRetrofitShipDetail.backLabel }}
+      </button>
 
-			@if (persistError()) {
-				<p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
-			}
-			@if (persistSuccess()) {
-				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
-			}
+      @if (persistError()) {
+      <p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
+      } @if (persistSuccess()) {
+      <p class="status-line status-line--success">{{ persistSuccess() }}</p>
+      } @if (!hasHullPatchKit()) {
+      <p class="status-line status-line--error">{{ t.game.repairRetrofitShipDetail.hullPatchKitRequiredLabel }}</p>
+      }
 
-			@if (!hasHullPatchKit()) {
-				<p class="status-line status-line--error">{{ t.game.repairRetrofitShipDetail.hullPatchKitRequiredLabel }}</p>
-			}
-
-			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairShip()">
-				{{ t.game.repairRetrofitShipDetail.repairLabel }}
-			</button>
-		</section>
-
-	</div>
+      <button
+        type="button"
+        class="repair-action"
+        [disabled]="isPersisting() || !canFullyRepair()"
+        (click)="fullyRepairShip()"
+      >
+        {{ t.game.repairRetrofitShipDetail.repairLabel }}
+      </button>
+    </section>
+  </div>
 </div>

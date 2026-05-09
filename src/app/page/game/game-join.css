@@ -1,123 +1,123 @@
 .game-join-container {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-	margin: 1rem;
-	padding: 1.25rem;
-	border-radius: 12px;
-	background: rgba(16, 26, 44, 0.85);
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	color: #e8f2ff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(16, 26, 44, 0.85);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
 }
 
 .page-main {
-	min-width: 0;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
-	.game-join-container {
-		grid-template-columns: 1fr;
-	}
+  .game-join-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 h1 {
-	margin-top: 0;
-	margin-bottom: 0.5rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
 .subtitle {
-	margin-top: 0;
-	margin-bottom: 1rem;
-	color: #b4cfff;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #b4cfff;
 }
 
 .player-name,
 .character-display {
-	margin: 0.5rem 0;
+  margin: 0.5rem 0;
 }
 
 .ship-list-section {
-	margin-top: 1.25rem;
-	padding-top: 0.75rem;
-	border-top: 1px solid rgba(180, 207, 255, 0.25);
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(180, 207, 255, 0.25);
 }
 
 .ship-list-section h2 {
-	margin: 0 0 0.75rem 0;
-	font-size: 1.15rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 1.15rem;
 }
 
 .ship-status {
-	margin: 0.5rem 0;
-	color: #c8ddff;
+  margin: 0.5rem 0;
+  color: #c8ddff;
 }
 
 .ship-status.error {
-	color: #ff9f9f;
+  color: #ff9f9f;
 }
 
 .ship-list {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	display: flex;
-	flex-direction: column;
-	gap: 0.6rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 .ship-item {
-	padding: 0.6rem 0.75rem;
-	border-radius: 6px;
-	border: 1px solid rgba(140, 190, 255, 0.25);
-	background: rgba(28, 46, 78, 0.5);
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.25);
+  background: rgba(28, 46, 78, 0.5);
 }
 
 .ship-row {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
 }
 
 .ship-identity {
-	display: flex;
-	flex-direction: column;
-	gap: 0.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .ship-name {
-	font-weight: 600;
+  font-weight: 600;
 }
 
 .ship-id {
-	font-size: 0.88rem;
-	color: #c8ddff;
+  font-size: 0.88rem;
+  color: #c8ddff;
 }
 
 .ship-spec-link {
-	background: transparent;
-	border: none;
-	color: #b6ffbe;
-	text-decoration: underline;
-	font-size: 0.88rem;
-	cursor: pointer;
-	padding: 0;
+  background: transparent;
+  border: none;
+  color: #b6ffbe;
+  text-decoration: underline;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 0;
 }
 
 .ship-spec-link:hover {
-	color: #daffde;
+  color: #daffde;
 }
 
 .ship-meta {
-	margin-top: 0.2rem;
-	font-size: 0.9rem;
-	color: #b4cfff;
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  color: #b4cfff;
 }
 
 .ship-kinematics {
-	margin-top: 0.35rem;
-	font-size: 0.85rem;
-	line-height: 1.35;
-	color: #9fd4ff;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #9fd4ff;
 }

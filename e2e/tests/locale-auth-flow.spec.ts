@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 
 const TEST_PLAYER = 'localeplayer';
@@ -71,7 +71,9 @@ test.describe('Locale auth flow', () => {
 
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
     await expect(page.locator('.page-main h1')).toHaveText('Lista Personaggi');
-    await expect(page.locator('.page-main .subtitle')).toHaveText('Rivedi i personaggi creati per il tuo profilo giocatore.');
+    await expect(page.locator('.page-main .subtitle')).toHaveText(
+      'Rivedi i personaggi creati per il tuo profilo giocatore.',
+    );
     await expect(page.locator('.character-item .join-link').first()).toHaveText('Entra nel gioco');
   });
 

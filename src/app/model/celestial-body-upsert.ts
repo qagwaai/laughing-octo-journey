@@ -7,55 +7,55 @@ export const CELESTIAL_BODY_UPSERT_RESPONSE_EVENT = 'celestial-body-upsert-respo
 export const DEFAULT_SOLAR_SYSTEM_ID = 'sol';
 
 export interface CelestialBodyUpsertEntity {
-	/** Stable unique identifier for this celestial body record. */
-	id?: string;
-	/** Secondary catalog identifier for indexing/search. */
-	catalogId: string;
-	/** Scan/source identifier used for idempotent upsert behavior. */
-	sourceScanId: string;
-	/** Character ID that created/discovered this body. */
-	createdByCharacterId: string;
-	/** Optional mission scope for asteroid fields that belong to a mission. */
-	missionId?: string;
-	/** Optional mission instance identifier for future multi-instance mission support. */
-	missionInstanceId?: string | null;
-	/** ISO-8601 UTC timestamp. */
-	createdAt: string;
-	/** ISO-8601 UTC timestamp. */
-	updatedAt: string;
-	spatial: SpatialState;
-	motion?: MotionState;
-	physical?: PhysicalState;
-	composition?: AsteroidMaterialProfile;
-	observability: ObservabilityState;
-	/** Lifecycle state: unscanned | active | destroyed. Defaults to 'active'. */
-	state?: 'unscanned' | 'active' | 'destroyed';
-	/** ISO timestamp when body was destroyed. Only present if state=destroyed. */
-	destroyedAt?: string | null;
-	/** Reason for destruction (e.g., 'impacted-by:expendable-dart-drone'). */
-	destroyedReason?: string | null;
-	/** Deterministic seed for debris generation on target-destroyed outcomes. */
-	debrisSeed?: number | null;
-	/** Array of debris items yielded from destruction. */
-	debris?: Array<{
-		material: string;
-		rarity: string;
-		quantity: number;
-		itemType: string;
-	}>;
+  /** Stable unique identifier for this celestial body record. */
+  id?: string;
+  /** Secondary catalog identifier for indexing/search. */
+  catalogId: string;
+  /** Scan/source identifier used for idempotent upsert behavior. */
+  sourceScanId: string;
+  /** Character ID that created/discovered this body. */
+  createdByCharacterId: string;
+  /** Optional mission scope for asteroid fields that belong to a mission. */
+  missionId?: string;
+  /** Optional mission instance identifier for future multi-instance mission support. */
+  missionInstanceId?: string | null;
+  /** ISO-8601 UTC timestamp. */
+  createdAt: string;
+  /** ISO-8601 UTC timestamp. */
+  updatedAt: string;
+  spatial: SpatialState;
+  motion?: MotionState;
+  physical?: PhysicalState;
+  composition?: AsteroidMaterialProfile;
+  observability: ObservabilityState;
+  /** Lifecycle state: unscanned | active | destroyed. Defaults to 'active'. */
+  state?: 'unscanned' | 'active' | 'destroyed';
+  /** ISO timestamp when body was destroyed. Only present if state=destroyed. */
+  destroyedAt?: string | null;
+  /** Reason for destruction (e.g., 'impacted-by:expendable-dart-drone'). */
+  destroyedReason?: string | null;
+  /** Deterministic seed for debris generation on target-destroyed outcomes. */
+  debrisSeed?: number | null;
+  /** Array of debris items yielded from destruction. */
+  debris?: Array<{
+    material: string;
+    rarity: string;
+    quantity: number;
+    itemType: string;
+  }>;
 }
 
 export interface CelestialBodyUpsertRequest {
-	sessionKey: string;
-	/** Context player name for audit/logging (not ownership association). */
-	playerName: string;
-	/** Explicit actor character id for easier backend extraction. */
-	createdByCharacterId: string;
-	celestialBody: CelestialBodyUpsertEntity;
+  sessionKey: string;
+  /** Context player name for audit/logging (not ownership association). */
+  playerName: string;
+  /** Explicit actor character id for easier backend extraction. */
+  createdByCharacterId: string;
+  celestialBody: CelestialBodyUpsertEntity;
 }
 
 export interface CelestialBodyUpsertResponse {
-	success: boolean;
-	message: string;
-	celestialBody?: CelestialBodyUpsertEntity;
+  success: boolean;
+  message: string;
+  celestialBody?: CelestialBodyUpsertEntity;
 }

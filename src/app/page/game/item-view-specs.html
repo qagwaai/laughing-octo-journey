@@ -1,60 +1,54 @@
 <div class="item-blueprint-shell" [style.background-image]="shellBackgroundStyle()">
-	<div class="scan-line" aria-hidden="true"></div>
+  <div class="scan-line" aria-hidden="true"></div>
 
-	<header class="blueprint-header">
-		<div class="header-text">
-			<h1>{{ t.game.itemViewSpecs.unitPrefix }} {{ displayTitle() }}</h1>
-			<p class="unit-line">{{ unitLine() }}</p>
-			<p class="classification-line">{{ classificationLine() }}</p>
-		</div>
-		<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-	</header>
+  <header class="blueprint-header">
+    <div class="header-text">
+      <h1>{{ t.game.itemViewSpecs.unitPrefix }} {{ displayTitle() }}</h1>
+      <p class="unit-line">{{ unitLine() }}</p>
+      <p class="classification-line">{{ classificationLine() }}</p>
+    </div>
+    <app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
+  </header>
 
-	@if (item()) {
-		<section class="blueprint-body">
-			<div class="blueprint-stage">
-				@if (imageNotFound()) {
-					<p class="image-not-found">{{ t.game.itemViewSpecs.imageNotFoundPrefix }} {{ blueprintImagePath() }}</p>
-				} @else {
-					<img
-						[src]="blueprintImagePath()"
-						[alt]="displayTitle() + ' ' + t.game.itemViewSpecs.blueprintImageAltSuffix"
-						class="blueprint-image"
-						(error)="onImageError()"
-					/>
-				}
+  @if (item()) {
+  <section class="blueprint-body">
+    <div class="blueprint-stage">
+      @if (imageNotFound()) {
+      <p class="image-not-found">{{ t.game.itemViewSpecs.imageNotFoundPrefix }} {{ blueprintImagePath() }}</p>
+      } @else {
+      <img
+        [src]="blueprintImagePath()"
+        [alt]="displayTitle() + ' ' + t.game.itemViewSpecs.blueprintImageAltSuffix"
+        class="blueprint-image"
+        (error)="onImageError()"
+      />
+      } @for (label of blueprintLabels(); track label.label) {
+      <div class="blueprint-label" [style.top.%]="label.topPercent" [style.left.%]="label.leftPercent">
+        {{ label.label }}
+      </div>
+      }
+    </div>
 
-				@for (label of blueprintLabels(); track label.label) {
-					<div
-						class="blueprint-label"
-						[style.top.%]="label.topPercent"
-						[style.left.%]="label.leftPercent"
-					>
-						{{ label.label }}
-					</div>
-				}
-			</div>
+    <aside class="stats-block">
+      <h2>{{ t.game.itemViewSpecs.statsBlockTitle }}</h2>
+      @for (group of resolvedGroups(); track group.label) {
+      <section class="stats-group">
+        <h3>{{ group.label }}</h3>
+        <ul class="stats-list">
+          @for (field of group.fields; track field.label) {
+          <li>
+            <span>{{ field.label }}</span>
+            <span>{{ field.displayValue }}</span>
+          </li>
+          }
+        </ul>
+      </section>
+      }
+    </aside>
+  </section>
 
-			<aside class="stats-block">
-				<h2>{{ t.game.itemViewSpecs.statsBlockTitle }}</h2>
-				@for (group of resolvedGroups(); track group.label) {
-					<section class="stats-group">
-						<h3>{{ group.label }}</h3>
-						<ul class="stats-list">
-							@for (field of group.fields; track field.label) {
-								<li>
-									<span>{{ field.label }}</span>
-									<span>{{ field.displayValue }}</span>
-								</li>
-							}
-						</ul>
-					</section>
-				}
-			</aside>
-		</section>
-
-		<footer class="blueprint-footer">{{ footerTag() }}</footer>
-	} @else {
-		<p class="empty-state">{{ t.game.itemViewSpecs.emptyState }}</p>
-	}
+  <footer class="blueprint-footer">{{ footerTag() }}</footer>
+  } @else {
+  <p class="empty-state">{{ t.game.itemViewSpecs.emptyState }}</p>
+  }
 </div>

@@ -1,109 +1,109 @@
 .ops-page-container {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-	margin: 1rem;
-	padding: 1.25rem;
-	border-radius: 12px;
-	background: rgba(20, 33, 56, 0.9);
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	color: #e8f2ff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
 }
 
 .page-main {
-	min-width: 0;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
-	.ops-page-container {
-		grid-template-columns: 1fr;
-	}
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 .subtitle {
-	margin: 0 0 1rem 0;
-	color: #b4cfff;
+  margin: 0 0 1rem 0;
+  color: #b4cfff;
 }
 
 .context {
-	margin: 0.35rem 0;
+  margin: 0.35rem 0;
 }
 
 .ops-card {
-	margin-top: 1rem;
-	padding: 0.9rem;
-	border-radius: 8px;
-	background: rgba(30, 49, 84, 0.55);
-	border: 1px solid rgba(140, 190, 255, 0.25);
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: rgba(30, 49, 84, 0.55);
+  border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
 .ship-context {
-	margin: 0.5rem 0 0.75rem;
+  margin: 0.5rem 0 0.75rem;
 }
 
 .empty-state {
-	margin-top: 0.5rem;
-	color: #c8ddff;
+  margin-top: 0.5rem;
+  color: #c8ddff;
 }
 
 .inventory-table {
-	width: 100%;
-	border-collapse: collapse;
-	margin-top: 0.75rem;
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
 }
 
 .inventory-table th,
 .inventory-table td {
-	text-align: left;
-	padding: 0.4rem 0.6rem;
-	border-bottom: 1px solid rgba(140, 190, 255, 0.15);
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(140, 190, 255, 0.15);
 }
 
 .inventory-table th {
-	color: #b4cfff;
-	font-weight: 600;
+  color: #b4cfff;
+  font-weight: 600;
 }
 
 .qty-col {
-	text-align: center;
-	width: 4rem;
+  text-align: center;
+  width: 4rem;
 }
 
 .actions-col {
-	text-align: right;
-	width: 8rem;
+  text-align: right;
+  width: 8rem;
 }
 
 .spec-link {
-	background: transparent;
-	border: none;
-	color: #8ec5ff;
-	text-decoration: underline;
-	cursor: pointer;
-	font-size: 0.9rem;
-	padding: 0;
+  background: transparent;
+  border: none;
+  color: #8ec5ff;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
 }
 
 .spec-link:hover {
-	color: #c8ddff;
+  color: #c8ddff;
 }
 
 .back-nav {
-	margin-top: 1.25rem;
+  margin-top: 1.25rem;
 }
 
 .back-nav button {
-	background: transparent;
-	border: 1px solid rgba(140, 190, 255, 0.4);
-	color: #8ec5ff;
-	padding: 0.4rem 0.9rem;
-	border-radius: 6px;
-	cursor: pointer;
-	font-size: 0.9rem;
+  background: transparent;
+  border: 1px solid rgba(140, 190, 255, 0.4);
+  color: #8ec5ff;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
 }
 
 .back-nav button:hover {
-	background: rgba(140, 190, 255, 0.1);
-	border-color: rgba(140, 190, 255, 0.7);
+  background: rgba(140, 190, 255, 0.1);
+  border-color: rgba(140, 190, 255, 0.7);
 }

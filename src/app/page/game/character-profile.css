@@ -1,99 +1,99 @@
 .ops-page-container {
-	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
-	align-items: start;
-	gap: 1rem;
-	margin: 1rem;
-	padding: 1.25rem;
-	border-radius: 12px;
-	background: rgba(20, 33, 56, 0.9);
-	border: 1px solid rgba(140, 190, 255, 0.35);
-	color: #e8f2ff;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
 }
 
 .page-main {
-	min-width: 0;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
-	.ops-page-container {
-		grid-template-columns: 1fr;
-	}
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
 }
 
 .subtitle {
-	margin: 0 0 1rem 0;
-	color: #b4cfff;
+  margin: 0 0 1rem 0;
+  color: #b4cfff;
 }
 
 .context {
-	margin: 0.35rem 0;
+  margin: 0.35rem 0;
 }
 
 .ops-card {
-	margin-top: 1rem;
-	padding: 0.9rem;
-	border-radius: 8px;
-	background: rgba(30, 49, 84, 0.55);
-	border: 1px solid rgba(140, 190, 255, 0.25);
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: rgba(30, 49, 84, 0.55);
+  border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
 .credits-section h2 {
-	margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5rem 0;
 }
 
 .credits-section h3 {
-	font-size: 1rem;
-	margin: 1rem 0 0.4rem 0;
-	color: #b4cfff;
+  font-size: 1rem;
+  margin: 1rem 0 0.4rem 0;
+  color: #b4cfff;
 }
 
 .credits-balance {
-	margin: 0;
-	font-size: 1rem;
+  margin: 0;
+  font-size: 1rem;
 }
 
 .ledger-empty {
-	opacity: 0.6;
-	font-size: 0.9rem;
-	margin: 0;
+  opacity: 0.6;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .ledger-table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: 0.875rem;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
 .ledger-table th {
-	text-align: left;
-	padding: 0.4rem 0.6rem;
-	border-bottom: 1px solid rgba(140, 190, 255, 0.3);
-	color: #b4cfff;
-	font-weight: bold;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(140, 190, 255, 0.3);
+  color: #b4cfff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .ledger-table td {
-	padding: 0.4rem 0.6rem;
-	border-bottom: 1px solid rgba(140, 190, 255, 0.08);
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(140, 190, 255, 0.08);
 }
 
 .ledger-put td {
-	color: #7fff9f;
+  color: #7fff9f;
 }
 
 .ledger-take td {
-	color: #ff9f9f;
+  color: #ff9f9f;
 }
 
 .ledger-amount {
-	font-variant-numeric: tabular-nums;
-	text-align: right;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .ledger-timestamp {
-	white-space: nowrap;
-	opacity: 0.7;
+  white-space: nowrap;
+  opacity: 0.7;
 }

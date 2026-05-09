@@ -1,12 +1,12 @@
 import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core';
-import { provideNgtRenderer } from 'angular-three/dom';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideNgtRenderer } from 'angular-three/dom';
 import routes from './routed.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZonelessChangeDetection(), 
+    provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding()),
-    provideNgtRenderer()
+    provideNgtRenderer(),
   ],
 };

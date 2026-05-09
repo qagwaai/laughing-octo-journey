@@ -1,186 +1,187 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.marketHub.title }}</h1>
-				<p class="subtitle">{{ t.game.marketHub.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.marketHub.title }}</h1>
+        <p class="subtitle">{{ t.game.marketHub.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		@if (activeM01Mission() && m01Definition) {
-			<section class="ops-card">
-				<h2>{{ t.game.marketHub.activeMissionSectionTitle }}</h2>
-				<p><strong>{{ m01Definition.title }}</strong></p>
-				<p>{{ m01Definition.briefing }}</p>
-				<p><strong>{{ t.game.marketHub.activeMissionLabel }}</strong></p>
-				<ul>
-					@for (objective of m01Definition.objectives; track objective) {
-						<li>{{ objective }}</li>
-					}
-				</ul>
-			</section>
-		}
+    @if (activeM01Mission() && m01Definition) {
+    <section class="ops-card">
+      <h2>{{ t.game.marketHub.activeMissionSectionTitle }}</h2>
+      <p><strong>{{ m01Definition.title }}</strong></p>
+      <p>{{ m01Definition.briefing }}</p>
+      <p><strong>{{ t.game.marketHub.activeMissionLabel }}</strong></p>
+      <ul>
+        @for (objective of m01Definition.objectives; track objective) {
+        <li>{{ objective }}</li>
+        }
+      </ul>
+    </section>
+    }
 
-		<section class="ops-card">
-			<h2>{{ t.game.marketHub.sectionTitle }}</h2>
-			<p>{{ t.game.marketHub.sectionDescription }}</p>
-		</section>
+    <section class="ops-card">
+      <h2>{{ t.game.marketHub.sectionTitle }}</h2>
+      <p>{{ t.game.marketHub.sectionDescription }}</p>
+    </section>
 
-		<section class="ops-card market-search-card">
-			<h2>{{ t.game.marketHub.localMarketsSectionTitle }}</h2>
-			<p class="search-context">
-				{{ t.game.marketHub.searchSolarSystemLabel }}
-				<strong>{{ activeShipSolarSystemId() }}</strong>
-			</p>
+    <section class="ops-card market-search-card">
+      <h2>{{ t.game.marketHub.localMarketsSectionTitle }}</h2>
+      <p class="search-context">
+        {{ t.game.marketHub.searchSolarSystemLabel }}
+        <strong>{{ activeShipSolarSystemId() }}</strong>
+      </p>
 
-			@if (activeShip()) {
-				<p class="search-context">
-					{{ t.game.marketHub.driveNameLabel }}
-					<strong>{{ activeDriveProfile().name }}</strong>
-				</p>
-				<p class="search-context">
-					{{ t.game.marketHub.activeShipStatusLabel }}
-					<strong>{{ activeShip()!.status ?? t.game.marketHub.shipStatusUnknownLabel }}</strong>
-				</p>
-				<p class="search-context">
-					{{ t.game.marketHub.driveRangeLabel }}
-					<strong>{{ activeDriveRangeAu().toFixed(3) }} {{ t.game.marketHub.auLabel }}</strong>
-				</p>
-			}
+      @if (activeShip()) {
+      <p class="search-context">
+        {{ t.game.marketHub.driveNameLabel }}
+        <strong>{{ activeDriveProfile().name }}</strong>
+      </p>
+      <p class="search-context">
+        {{ t.game.marketHub.activeShipStatusLabel }}
+        <strong>{{ activeShip()!.status ?? t.game.marketHub.shipStatusUnknownLabel }}</strong>
+      </p>
+      <p class="search-context">
+        {{ t.game.marketHub.driveRangeLabel }}
+        <strong>{{ activeDriveRangeAu().toFixed(3) }} {{ t.game.marketHub.auLabel }}</strong>
+      </p>
+      }
 
-			<form [formGroup]="marketFilterForm" (ngSubmit)="applyRadiusSelection()" class="market-filter-form">
-				<label for="radiusAu">{{ t.game.marketHub.radiusLabel }}</label>
-				<select id="radiusAu" formControlName="radiusAu" (change)="applyRadiusSelection()">
-					@for (option of marketRadiusOptionsAu; track option) {
-						<option [value]="option">{{ formatRadiusOptionLabel(option) }}</option>
-					}
-				</select>
-				<p class="search-context">
-					{{ t.game.marketHub.selectedRadiusLabel }}
-					<strong>{{ formatSelectedRadiusLabel() }}</strong>
-				</p>
-				<p class="search-context">{{ t.game.marketHub.marketTypeFiltersLabel }}</p>
-				<label for="includeStations" class="checkbox-label">
-					<input
-						id="includeStations"
-						type="checkbox"
-						formControlName="includeStations"
-						(change)="applyRadiusSelection()"
-					/>
-					{{ t.game.marketHub.includeStationsLabel }}
-				</label>
-				<label for="includeFreeFloating" class="checkbox-label">
-					<input
-						id="includeFreeFloating"
-						type="checkbox"
-						formControlName="includeFreeFloating"
-						(change)="applyRadiusSelection()"
-					/>
-					{{ t.game.marketHub.includeFreeFloatingLabel }}
-				</label>
-				<label for="showOutOfRangeMarkets" class="checkbox-label">
-					<input
-						id="showOutOfRangeMarkets"
-						type="checkbox"
-						formControlName="showOutOfRangeMarkets"
-						(change)="applyRadiusSelection()"
-					/>
-					{{ t.game.marketHub.showOutOfRangeMarketsLabel }}
-				</label>
-				<p class="search-context">{{ t.game.marketHub.outOfRangeToggleHintLabel }}</p>
-				<button type="submit" class="apply-btn">{{ t.game.marketHub.applyRadiusLabel }}</button>
-				<button type="button" class="reload-btn" (click)="loadNearbyMarkets()" [disabled]="isLoadingMarkets()">
-					{{ isLoadingMarkets() ? t.game.marketHub.loadingMarketsLabel : t.game.marketHub.reloadMarketsLabel }}
-				</button>
-			</form>
+      <form [formGroup]="marketFilterForm" (ngSubmit)="applyRadiusSelection()" class="market-filter-form">
+        <label for="radiusAu">{{ t.game.marketHub.radiusLabel }}</label>
+        <select id="radiusAu" formControlName="radiusAu" (change)="applyRadiusSelection()">
+          @for (option of marketRadiusOptionsAu; track option) {
+          <option [value]="option">{{ formatRadiusOptionLabel(option) }}</option>
+          }
+        </select>
+        <p class="search-context">
+          {{ t.game.marketHub.selectedRadiusLabel }}
+          <strong>{{ formatSelectedRadiusLabel() }}</strong>
+        </p>
+        <p class="search-context">{{ t.game.marketHub.marketTypeFiltersLabel }}</p>
+        <label for="includeStations" class="checkbox-label">
+          <input
+            id="includeStations"
+            type="checkbox"
+            formControlName="includeStations"
+            (change)="applyRadiusSelection()"
+          />
+          {{ t.game.marketHub.includeStationsLabel }}
+        </label>
+        <label for="includeFreeFloating" class="checkbox-label">
+          <input
+            id="includeFreeFloating"
+            type="checkbox"
+            formControlName="includeFreeFloating"
+            (change)="applyRadiusSelection()"
+          />
+          {{ t.game.marketHub.includeFreeFloatingLabel }}
+        </label>
+        <label for="showOutOfRangeMarkets" class="checkbox-label">
+          <input
+            id="showOutOfRangeMarkets"
+            type="checkbox"
+            formControlName="showOutOfRangeMarkets"
+            (change)="applyRadiusSelection()"
+          />
+          {{ t.game.marketHub.showOutOfRangeMarketsLabel }}
+        </label>
+        <p class="search-context">{{ t.game.marketHub.outOfRangeToggleHintLabel }}</p>
+        <button type="submit" class="apply-btn">{{ t.game.marketHub.applyRadiusLabel }}</button>
+        <button type="button" class="reload-btn" (click)="loadNearbyMarkets()" [disabled]="isLoadingMarkets()">
+          {{ isLoadingMarkets() ? t.game.marketHub.loadingMarketsLabel : t.game.marketHub.reloadMarketsLabel }}
+        </button>
+      </form>
 
-			@if (!activeShipPositionKm()) {
-				<p class="status-message warning-message">{{ t.game.marketHub.activeShipPositionMissingLabel }}</p>
-			}
-
-			@if (!isDocked()) {
-				<p class="status-message warning-message">{{ t.game.marketHub.dockRequiredHintLabel }}</p>
-			}
-
-			@if (marketListError()) {
-				<p class="status-message error-message">{{ marketListError() }}</p>
-			}
-
-			@if (!marketListError() && !isLoadingMarkets() && reachableMarkets().length === 0 && (!showOutOfRangeMarkets() || outOfRangeMarkets().length === 0)) {
-				<p class="empty-state">{{ t.game.marketHub.noLocalMarketsLabel }}</p>
-			}
-
-			@if (reachableMarkets().length > 0) {
-				<h3>{{ t.game.marketHub.reachableMarketsSectionLabel }}</h3>
-				<ul class="market-list">
-					@for (market of reachableMarkets(); track market.marketId) {
-						<li class="market-item">
-							<div class="market-item-header">
-								<h3>{{ market.marketName }}</h3>
-								<span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
-								@if (!canTransactAtMarket(market)) {
-									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
-								}
-							</div>
-							<p>
-								<strong>{{ t.game.marketHub.marketIdLabel }}</strong> {{ market.marketId }}
-							</p>
-							<p>
-								<strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
-								{{ market.siteName }} ({{ market.siteType }})
-							</p>
-							<p>
-								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
-								<span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
-									{{ formatMarketDistanceAu(market.distanceAu ?? null) }}
-								</span>
-							</p>
-							<p>{{ formatMarketFlavorText(market) }}</p>
-							<button type="button" class="transact-btn" [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market)">{{ t.game.marketHub.transactLabel }}</button>
-						</li>
-					}
-				</ul>
-			}
-
-			@if (showOutOfRangeMarkets() && outOfRangeMarkets().length > 0) {
-				<h3>{{ t.game.marketHub.outOfRangeMarketsSectionLabel }}</h3>
-				<ul class="market-list">
-					@for (market of outOfRangeMarkets(); track market.marketId) {
-						<li class="market-item">
-							<div class="market-item-header">
-								<h3>{{ market.marketName }}</h3>
-								<span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
-								<span class="dock-required-badge">{{ t.game.marketHub.outOfRangeBadgeLabel }}</span>
-								@if (!canTransactAtMarket(market)) {
-									<span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
-								}
-							</div>
-							<p>
-								<strong>{{ t.game.marketHub.marketIdLabel }}</strong> {{ market.marketId }}
-							</p>
-							<p>
-								<strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
-								{{ market.siteName }} ({{ market.siteType }})
-							</p>
-							<p>
-								<strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
-								<span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
-									{{ formatMarketDistanceAu(market.distanceAu ?? null) }}
-								</span>
-							</p>
-							<p>{{ formatMarketFlavorText(market) }}</p>
-							<p class="status-message warning-message">
-								{{ t.game.marketHub.requiresDriveUpgradeLabel }}
-								{{ t.game.marketHub.requiredDriveLabel }}
-								<strong>{{ requiredDriveNameForMarket(market) }}</strong>
-							</p>
-							<button type="button" class="transact-btn" [disabled]="true">{{ t.game.marketHub.transactLabel }}</button>
-						</li>
-					}
-				</ul>
-			}
-		</section>
-	</div>
+      @if (!activeShipPositionKm()) {
+      <p class="status-message warning-message">{{ t.game.marketHub.activeShipPositionMissingLabel }}</p>
+      } @if (!isDocked()) {
+      <p class="status-message warning-message">{{ t.game.marketHub.dockRequiredHintLabel }}</p>
+      } @if (marketListError()) {
+      <p class="status-message error-message">{{ marketListError() }}</p>
+      } @if (!marketListError() && !isLoadingMarkets() && reachableMarkets().length === 0 && (!showOutOfRangeMarkets()
+      || outOfRangeMarkets().length === 0)) {
+      <p class="empty-state">{{ t.game.marketHub.noLocalMarketsLabel }}</p>
+      } @if (reachableMarkets().length > 0) {
+      <h3>{{ t.game.marketHub.reachableMarketsSectionLabel }}</h3>
+      <ul class="market-list">
+        @for (market of reachableMarkets(); track market.marketId) {
+        <li class="market-item">
+          <div class="market-item-header">
+            <h3>{{ market.marketName }}</h3>
+            <span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
+            @if (!canTransactAtMarket(market)) {
+            <span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
+            }
+          </div>
+          <p>
+            <strong>{{ t.game.marketHub.marketIdLabel }}</strong>
+            {{ market.marketId }}
+          </p>
+          <p>
+            <strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
+            {{ market.siteName }} ({{ market.siteType }})
+          </p>
+          <p>
+            <strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
+            <span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
+              {{ formatMarketDistanceAu(market.distanceAu ?? null) }}
+            </span>
+          </p>
+          <p>{{ formatMarketFlavorText(market) }}</p>
+          <button
+            type="button"
+            class="transact-btn"
+            [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market)"
+          >
+            {{ t.game.marketHub.transactLabel }}
+          </button>
+        </li>
+        }
+      </ul>
+      } @if (showOutOfRangeMarkets() && outOfRangeMarkets().length > 0) {
+      <h3>{{ t.game.marketHub.outOfRangeMarketsSectionLabel }}</h3>
+      <ul class="market-list">
+        @for (market of outOfRangeMarkets(); track market.marketId) {
+        <li class="market-item">
+          <div class="market-item-header">
+            <h3>{{ market.marketName }}</h3>
+            <span class="dock-required-badge">{{ marketRouteLabel(market) }}</span>
+            <span class="dock-required-badge">{{ t.game.marketHub.outOfRangeBadgeLabel }}</span>
+            @if (!canTransactAtMarket(market)) {
+            <span class="dock-required-badge">{{ t.game.marketHub.dockRequiredBadgeLabel }}</span>
+            }
+          </div>
+          <p>
+            <strong>{{ t.game.marketHub.marketIdLabel }}</strong>
+            {{ market.marketId }}
+          </p>
+          <p>
+            <strong>{{ t.game.marketHub.marketLocationLabel }}</strong>
+            {{ market.siteName }} ({{ market.siteType }})
+          </p>
+          <p>
+            <strong>{{ t.game.marketHub.marketDistanceLabel }}</strong>
+            <span [title]="formatMarketDistanceKmTooltip(market.distanceAu ?? null)">
+              {{ formatMarketDistanceAu(market.distanceAu ?? null) }}
+            </span>
+          </p>
+          <p>{{ formatMarketFlavorText(market) }}</p>
+          <p class="status-message warning-message">
+            {{ t.game.marketHub.requiresDriveUpgradeLabel }} {{ t.game.marketHub.requiredDriveLabel }}
+            <strong>{{ requiredDriveNameForMarket(market) }}</strong>
+          </p>
+          <button type="button" class="transact-btn" [disabled]="true">{{ t.game.marketHub.transactLabel }}</button>
+        </li>
+        }
+      </ul>
+      }
+    </section>
+  </div>
 </div>

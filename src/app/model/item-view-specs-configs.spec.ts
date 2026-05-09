@@ -1,5 +1,5 @@
-import { ITEM_VIEW_SPECS_CONFIGS } from './item-view-specs-configs';
 import { resolveGroups } from './item-view-specs';
+import { ITEM_VIEW_SPECS_CONFIGS } from './item-view-specs-configs';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -104,10 +104,13 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Scavenger Pod (ShipSummary)', () => {
   });
 
   it('uses default units for canonical spatial and motion fields', () => {
-    const fields = fieldMap(config, makeShipSummary({
-      spatial: { frame: 'barycentric', positionKm: { x: 1, y: 2, z: 3 }, epochMs: 0 },
-      motion: { velocityKmPerSec: { x: 0, y: 0, z: 1 } },
-    }));
+    const fields = fieldMap(
+      config,
+      makeShipSummary({
+        spatial: { frame: 'barycentric', positionKm: { x: 1, y: 2, z: 3 }, epochMs: 0 },
+        motion: { velocityKmPerSec: { x: 0, y: 0, z: 1 } },
+      }),
+    );
     expect(fields.get('Position')).toContain('km');
     expect(fields.get('Velocity')).toContain('km/s');
   });

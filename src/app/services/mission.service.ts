@@ -1,285 +1,265 @@
 import { Injectable } from '@angular/core';
+import type { MissionStatus } from '../model/mission';
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT, MissionAddResponse } from '../model/mission-add';
 import {
-	MISSION_UPSERT_REQUEST_EVENT,
-	MISSION_UPSERT_RESPONSE_EVENT,
-	MissionUpsertRequest,
-	MissionUpsertResponse,
-} from '../model/mission-upsert.model';
-import {
-	MISSION_LIST_REQUEST_EVENT,
-	MISSION_LIST_RESPONSE_EVENT,
-	MissionListRequest,
-	MissionListResponse,
+  MISSION_LIST_REQUEST_EVENT,
+  MISSION_LIST_RESPONSE_EVENT,
+  MissionListRequest,
+  MissionListResponse,
 } from '../model/mission-list';
-import type { MissionStatus } from '../model/mission';
+import {
+  MISSION_UPSERT_REQUEST_EVENT,
+  MISSION_UPSERT_RESPONSE_EVENT,
+  MissionUpsertRequest,
+  MissionUpsertResponse,
+} from '../model/mission-upsert.model';
 import { SocketService } from './socket.service';
 
 export interface EnsureMissionExistsRequest {
-	playerName: string;
-	characterId: string;
-	sessionKey: string;
-	missionId: string;
-	initialStatus?: MissionStatus;
+  playerName: string;
+  characterId: string;
+  sessionKey: string;
+  missionId: string;
+  initialStatus?: MissionStatus;
 }
 
 export type EnsureMissionExistsResult =
-	| 'added'
-	| 'already-exists'
-	| 'invalid-request'
-	| 'not-connected'
-	| 'list-failed'
-	| 'add-failed'
-	| 'timeout';
+  | 'added'
+  | 'already-exists'
+  | 'invalid-request'
+  | 'not-connected'
+  | 'list-failed'
+  | 'add-failed'
+  | 'timeout';
 
-export type UpsertMissionStatusResult =
-	| 'updated'
-	| 'invalid-request'
-	| 'not-connected'
-	| 'update-failed'
-	| 'timeout';
+export type UpsertMissionStatusResult = 'updated' | 'invalid-request' | 'not-connected' | 'update-failed' | 'timeout';
 
 export interface ListMissionsResult {
-	status: 'loaded' | 'invalid-request' | 'not-connected' | 'list-failed' | 'timeout';
-	missions: MissionListResponse['missions'];
-	message?: string;
+  status: 'loaded' | 'invalid-request' | 'not-connected' | 'list-failed' | 'timeout';
+  missions: MissionListResponse['missions'];
+  message?: string;
 }
 
 @Injectable({
-	providedIn: 'root',
+  providedIn: 'root',
 })
 export class MissionService {
-	private static readonly RESPONSE_TIMEOUT_MS = 5000;
+  private static readonly RESPONSE_TIMEOUT_MS = 5000;
 
-	constructor(private socketService: SocketService) {}
+  constructor(private socketService: SocketService) {}
 
-	async ensureMissionExists(request: EnsureMissionExistsRequest): Promise<EnsureMissionExistsResult> {
-		const playerName = request.playerName.trim();
-		const characterId = request.characterId.trim();
-		const missionId = request.missionId.trim();
-		const sessionKey = request.sessionKey.trim();
+  async ensureMissionExists(request: EnsureMissionExistsRequest): Promise<EnsureMissionExistsResult> {
+    const playerName = request.playerName.trim();
+    const characterId = request.characterId.trim();
+    const missionId = request.missionId.trim();
+    const sessionKey = request.sessionKey.trim();
 
-		if (!playerName || !characterId || !missionId || !sessionKey) {
-			return 'invalid-request';
-		}
+    if (!playerName || !characterId || !missionId || !sessionKey) {
+      return 'invalid-request';
+    }
 
-		const isConnected = await this.ensureConnected();
-		if (!isConnected) {
-			return 'not-connected';
-		}
+    const isConnected = await this.ensureConnected();
+    if (!isConnected) {
+      return 'not-connected';
+    }
 
-		const listRequest: MissionListRequest = { playerName, characterId, sessionKey };
+    const listRequest: MissionListRequest = { playerName, characterId, sessionKey };
 
-		return new Promise<EnsureMissionExistsResult>((resolve) => {
-			let settled = false;
-			let unsubscribeList: (() => void) | undefined;
-			let unsubscribeAdd: (() => void) | undefined;
+    return new Promise<EnsureMissionExistsResult>((resolve) => {
+      let settled = false;
+      let unsubscribeList: (() => void) | undefined;
+      let unsubscribeAdd: (() => void) | undefined;
 
-			const settle = (result: EnsureMissionExistsResult) => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				clearTimeout(timeoutId);
-				unsubscribeList?.();
-				unsubscribeAdd?.();
-				resolve(result);
-			};
+      const settle = (result: EnsureMissionExistsResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        unsubscribeList?.();
+        unsubscribeAdd?.();
+        resolve(result);
+      };
 
-			const timeoutId = window.setTimeout(() => {
-				settle('timeout');
-			}, MissionService.RESPONSE_TIMEOUT_MS);
+      const timeoutId = window.setTimeout(() => {
+        settle('timeout');
+      }, MissionService.RESPONSE_TIMEOUT_MS);
 
-			unsubscribeList = this.socketService.on(
-				MISSION_LIST_RESPONSE_EVENT,
-				(response: MissionListResponse) => {
-					if (response.playerName !== playerName || response.characterId !== characterId) {
-						return;
-					}
+      unsubscribeList = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
+        if (response.playerName !== playerName || response.characterId !== characterId) {
+          return;
+        }
 
-					if (!response.success) {
-						settle('list-failed');
-						return;
-					}
+        if (!response.success) {
+          settle('list-failed');
+          return;
+        }
 
-					const hasMission = (response.missions ?? []).some((mission) => mission.missionId === missionId);
-					if (hasMission) {
-						settle('already-exists');
-						return;
-					}
+        const hasMission = (response.missions ?? []).some((mission) => mission.missionId === missionId);
+        if (hasMission) {
+          settle('already-exists');
+          return;
+        }
 
-					unsubscribeAdd = this.socketService.on(
-						MISSION_ADD_RESPONSE_EVENT,
-						(addResponse: MissionAddResponse) => {
-							if (
-								addResponse.playerName !== playerName ||
-								addResponse.characterId !== characterId
-							) {
-								return;
-							}
+        unsubscribeAdd = this.socketService.on(MISSION_ADD_RESPONSE_EVENT, (addResponse: MissionAddResponse) => {
+          if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
+            return;
+          }
 
-							settle(addResponse.success ? 'added' : 'add-failed');
-						},
-					);
+          settle(addResponse.success ? 'added' : 'add-failed');
+        });
 
-					this.socketService.emit(MISSION_ADD_REQUEST_EVENT, {
-						playerName,
-						characterId,
-						missionId,
-						sessionKey,
-						status: request.initialStatus ?? 'available',
-					});
-				},
-			);
+        this.socketService.emit(MISSION_ADD_REQUEST_EVENT, {
+          playerName,
+          characterId,
+          missionId,
+          sessionKey,
+          status: request.initialStatus ?? 'available',
+        });
+      });
 
-			this.socketService.emit(MISSION_LIST_REQUEST_EVENT, listRequest);
-		});
-	}
+      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, listRequest);
+    });
+  }
 
-	async listMissions(request: MissionListRequest): Promise<ListMissionsResult> {
-		const playerName = request.playerName.trim();
-		const characterId = request.characterId.trim();
-		const sessionKey = request.sessionKey.trim();
+  async listMissions(request: MissionListRequest): Promise<ListMissionsResult> {
+    const playerName = request.playerName.trim();
+    const characterId = request.characterId.trim();
+    const sessionKey = request.sessionKey.trim();
 
-		if (!playerName || !characterId || !sessionKey) {
-			return { status: 'invalid-request', missions: [] };
-		}
+    if (!playerName || !characterId || !sessionKey) {
+      return { status: 'invalid-request', missions: [] };
+    }
 
-		const isConnected = await this.ensureConnected();
-		if (!isConnected) {
-			return { status: 'not-connected', missions: [] };
-		}
+    const isConnected = await this.ensureConnected();
+    if (!isConnected) {
+      return { status: 'not-connected', missions: [] };
+    }
 
-		return new Promise<ListMissionsResult>((resolve) => {
-			let settled = false;
-			let unsubscribeList: (() => void) | undefined;
+    return new Promise<ListMissionsResult>((resolve) => {
+      let settled = false;
+      let unsubscribeList: (() => void) | undefined;
 
-			const settle = (result: ListMissionsResult) => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				clearTimeout(timeoutId);
-				unsubscribeList?.();
-				resolve(result);
-			};
+      const settle = (result: ListMissionsResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        unsubscribeList?.();
+        resolve(result);
+      };
 
-			const timeoutId = window.setTimeout(() => {
-				settle({ status: 'timeout', missions: [] });
-			}, MissionService.RESPONSE_TIMEOUT_MS);
+      const timeoutId = window.setTimeout(() => {
+        settle({ status: 'timeout', missions: [] });
+      }, MissionService.RESPONSE_TIMEOUT_MS);
 
-			unsubscribeList = this.socketService.on(
-				MISSION_LIST_RESPONSE_EVENT,
-				(response: MissionListResponse) => {
-					if (response.playerName !== playerName || response.characterId !== characterId) {
-						return;
-					}
+      unsubscribeList = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
+        if (response.playerName !== playerName || response.characterId !== characterId) {
+          return;
+        }
 
-					if (!response.success) {
-						settle({
-							status: 'list-failed',
-							missions: [],
-							message: response.message,
-						});
-						return;
-					}
+        if (!response.success) {
+          settle({
+            status: 'list-failed',
+            missions: [],
+            message: response.message,
+          });
+          return;
+        }
 
-					settle({
-						status: 'loaded',
-						missions: response.missions ?? [],
-					});
-				},
-			);
+        settle({
+          status: 'loaded',
+          missions: response.missions ?? [],
+        });
+      });
 
-			this.socketService.emit(MISSION_LIST_REQUEST_EVENT, {
-				playerName,
-				characterId,
-				sessionKey,
-				...(Array.isArray(request.statuses) ? { statuses: request.statuses } : {}),
-			});
-		});
-	}
+      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, {
+        playerName,
+        characterId,
+        sessionKey,
+        ...(Array.isArray(request.statuses) ? { statuses: request.statuses } : {}),
+      });
+    });
+  }
 
-	async upsertMissionStatus(request: MissionUpsertRequest): Promise<UpsertMissionStatusResult> {
-		const playerName = request.playerName.trim();
-		const characterId = request.characterId.trim();
-		const missionId = request.missionId.trim();
-		const sessionKey = request.sessionKey.trim();
-		const status = request.status.trim();
+  async upsertMissionStatus(request: MissionUpsertRequest): Promise<UpsertMissionStatusResult> {
+    const playerName = request.playerName.trim();
+    const characterId = request.characterId.trim();
+    const missionId = request.missionId.trim();
+    const sessionKey = request.sessionKey.trim();
+    const status = request.status.trim();
 
-		if (!playerName || !characterId || !missionId || !sessionKey || !status) {
-			return 'invalid-request';
-		}
+    if (!playerName || !characterId || !missionId || !sessionKey || !status) {
+      return 'invalid-request';
+    }
 
-		const isConnected = await this.ensureConnected();
-		if (!isConnected) {
-			return 'not-connected';
-		}
+    const isConnected = await this.ensureConnected();
+    if (!isConnected) {
+      return 'not-connected';
+    }
 
-		return new Promise<UpsertMissionStatusResult>((resolve) => {
-			let settled = false;
-			let unsubscribeAdd: (() => void) | undefined;
+    return new Promise<UpsertMissionStatusResult>((resolve) => {
+      let settled = false;
+      let unsubscribeAdd: (() => void) | undefined;
 
-			const settle = (result: UpsertMissionStatusResult) => {
-				if (settled) {
-					return;
-				}
-				settled = true;
-				clearTimeout(timeoutId);
-				unsubscribeAdd?.();
-				resolve(result);
-			};
+      const settle = (result: UpsertMissionStatusResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        unsubscribeAdd?.();
+        resolve(result);
+      };
 
-			const timeoutId = window.setTimeout(() => {
-				settle('timeout');
-			}, MissionService.RESPONSE_TIMEOUT_MS);
+      const timeoutId = window.setTimeout(() => {
+        settle('timeout');
+      }, MissionService.RESPONSE_TIMEOUT_MS);
 
-			unsubscribeAdd = this.socketService.on(
-				MISSION_UPSERT_RESPONSE_EVENT,
-				(addResponse: MissionUpsertResponse) => {
-					if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
-						return;
-					}
+      unsubscribeAdd = this.socketService.on(MISSION_UPSERT_RESPONSE_EVENT, (addResponse: MissionUpsertResponse) => {
+        if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
+          return;
+        }
 
-					settle(addResponse.success ? 'updated' : 'update-failed');
-				},
-			);
+        settle(addResponse.success ? 'updated' : 'update-failed');
+      });
 
-			this.socketService.emit(MISSION_UPSERT_REQUEST_EVENT, {
-				playerName,
-				characterId,
-				missionId,
-				sessionKey,
-				status,
-				...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
-			});
-		});
-	}
+      this.socketService.emit(MISSION_UPSERT_REQUEST_EVENT, {
+        playerName,
+        characterId,
+        missionId,
+        sessionKey,
+        status,
+        ...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
+      });
+    });
+  }
 
-	private ensureConnected(): Promise<boolean> {
-		if (this.socketService.getIsConnected()) {
-			return Promise.resolve(true);
-		}
+  private ensureConnected(): Promise<boolean> {
+    if (this.socketService.getIsConnected()) {
+      return Promise.resolve(true);
+    }
 
-		this.socketService.connect(this.socketService.serverUrl);
+    this.socketService.connect(this.socketService.serverUrl);
 
-		return new Promise<boolean>((resolve) => {
-			let resolved = false;
-			const timeoutId = window.setTimeout(() => {
-				if (!resolved) {
-					resolved = true;
-					resolve(false);
-				}
-			}, MissionService.RESPONSE_TIMEOUT_MS);
+    return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const timeoutId = window.setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
+      }, MissionService.RESPONSE_TIMEOUT_MS);
 
-			this.socketService.once('connect', () => {
-				if (resolved) {
-					return;
-				}
-				resolved = true;
-				clearTimeout(timeoutId);
-				resolve(true);
-			});
-		});
-	}
+      this.socketService.once('connect', () => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        clearTimeout(timeoutId);
+        resolve(true);
+      });
+    });
+  }
 }

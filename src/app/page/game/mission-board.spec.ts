@@ -1,523 +1,516 @@
-import { signal } from '@angular/core';
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
-	createMockSocketService,
-	type MockSocketService,
-	createMockSessionService,
-	type MockSessionService,
+  createMockSessionService,
+  createMockSocketService,
+  type MockSessionService,
+  type MockSocketService,
 } from '../../../testing';
-import { createInitialMissionGateState, resolveShipExteriorMission, parseMissionGateState } from '../../mission/ship-exterior-mission';
 import { serializeMissionGateState } from '../../mission/ship-exterior-mission';
-import MissionBoardPage from './mission-board';
-import { SocketService } from '../../services/socket.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { SocketService } from '../../services/socket.service';
+import MissionBoardPage from './mission-board';
 
 const MISSION_LIST_REQUEST_EVENT = 'list-missions-request';
 const MISSION_LIST_RESPONSE_EVENT = 'list-missions-response';
 
 function createMockMissionStateService() {
-	return {
-		lastSaved: signal<any>(null),
-		loadState: () => null,
-		saveState: () => {},
-	};
+  return {
+    lastSaved: signal<any>(null),
+    loadState: () => null,
+    saveState: () => {},
+  };
 }
 
 function setup(options: {
-	socketService: MockSocketService;
-	sessionService: MockSessionService;
-	navigationState?: Record<string, unknown>;
-	connected?: boolean;
+  socketService: MockSocketService;
+  sessionService: MockSessionService;
+  navigationState?: Record<string, unknown>;
+  connected?: boolean;
 }) {
-	const mockRouter = {
-		getCurrentNavigation: () =>
-			options.navigationState ? { extras: { state: options.navigationState } } : null,
-		navigate: jasmine.createSpy('navigate'),
-	};
+  const mockRouter = {
+    getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
+    navigate: jasmine.createSpy('navigate'),
+  };
 
-	options.socketService.connected = options.connected ?? false;
+  options.socketService.connected = options.connected ?? false;
 
-	TestBed.configureTestingModule({
-		imports: [MissionBoardPage],
-		providers: [
-			{ provide: SocketService, useValue: options.socketService },
-			{ provide: SessionService, useValue: options.sessionService },
-			{ provide: Router, useValue: mockRouter },
-			{ provide: ShipExteriorMissionStateService, useValue: createMockMissionStateService() },
-		],
-		schemas: [CUSTOM_ELEMENTS_SCHEMA],
-	});
+  TestBed.configureTestingModule({
+    imports: [MissionBoardPage],
+    providers: [
+      { provide: SocketService, useValue: options.socketService },
+      { provide: SessionService, useValue: options.sessionService },
+      { provide: Router, useValue: mockRouter },
+      { provide: ShipExteriorMissionStateService, useValue: createMockMissionStateService() },
+    ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  });
 
-	const fixture = TestBed.createComponent(MissionBoardPage);
-	fixture.detectChanges();
-	const component = fixture.componentInstance;
+  const fixture = TestBed.createComponent(MissionBoardPage);
+  fixture.detectChanges();
+  const component = fixture.componentInstance;
 
-	return { component, fixture, mockRouter };
+  return { component, fixture, mockRouter };
 }
 
 describe('MissionBoardPage', () => {
-	let socketService: MockSocketService;
-	let sessionService: MockSessionService;
+  let socketService: MockSocketService;
+  let sessionService: MockSessionService;
 
-	beforeEach(() => {
-		socketService = createMockSocketService();
-		sessionService = createMockSessionService('test-session-key');
-	});
+  beforeEach(() => {
+    socketService = createMockSocketService();
+    sessionService = createMockSessionService('test-session-key');
+  });
 
-	it('should initialize from navigation state and request missions when connected', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should initialize from navigation state and request missions when connected', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(component['playerName']()).toBe('Pioneer');
-		expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
-		expect(socketService.emittedEvents[0]).toEqual({
-			event: MISSION_LIST_REQUEST_EVENT,
-			data: {
-				playerName: 'Pioneer',
-				characterId: 'c-1',
-				sessionKey: 'test-session-key',
-			},
-		});
-	});
+    expect(component['playerName']()).toBe('Pioneer');
+    expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
+    expect(socketService.emittedEvents[0]).toEqual({
+      event: MISSION_LIST_REQUEST_EVENT,
+      data: {
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        sessionKey: 'test-session-key',
+      },
+    });
+  });
 
-	it('should request missions when connect event fires for initially disconnected socket', () => {
-		setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: false,
-		});
+  it('should request missions when connect event fires for initially disconnected socket', () => {
+    setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: false,
+    });
 
-		expect(socketService.emittedEvents.length).toBe(0);
-		socketService.triggerOnceEvent('connect');
-		expect(socketService.emittedEvents[0].event).toBe(MISSION_LIST_REQUEST_EVENT);
-	});
+    expect(socketService.emittedEvents.length).toBe(0);
+    socketService.triggerOnceEvent('connect');
+    expect(socketService.emittedEvents[0].event).toBe(MISSION_LIST_REQUEST_EVENT);
+  });
 
-	it('should set validation error when playerName is missing', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: '   ',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should set validation error when playerName is missing', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: '   ',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(component['missionListError']()).toBe('Player name is required to load missions.');
-		expect(component['missions']()).toEqual([]);
-		expect(socketService.emittedEvents.length).toBe(0);
-	});
+    expect(component['missionListError']()).toBe('Player name is required to load missions.');
+    expect(component['missions']()).toEqual([]);
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
 
-	it('should set validation error when character id is missing', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: '', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should set validation error when character id is missing', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: '', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(component['missionListError']()).toBe('Character id is required to load missions.');
-		expect(component['missions']()).toEqual([]);
-		expect(socketService.emittedEvents.length).toBe(0);
-	});
+    expect(component['missionListError']()).toBe('Character id is required to load missions.');
+    expect(component['missions']()).toEqual([]);
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
 
-	it('should set validation error when session key is missing', () => {
-		const { component } = setup({
-			socketService,
-			sessionService: createMockSessionService(null),
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should set validation error when session key is missing', () => {
+    const { component } = setup({
+      socketService,
+      sessionService: createMockSessionService(null),
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(component['missionListError']()).toBe('Session key is required to load missions.');
-		expect(component['missions']()).toEqual([]);
-		expect(socketService.emittedEvents.length).toBe(0);
-	});
+    expect(component['missionListError']()).toBe('Session key is required to load missions.');
+    expect(component['missions']()).toEqual([]);
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
 
-	it('should populate missions on successful response', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should populate missions on successful response', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
-			success: true,
-			message: 'ok',
-			missions: [
-				{ missionId: 'first-target', status: 'in-progress', startedAt: '2026-04-01T10:00:00Z' },
-				{ missionId: 'second-mission', status: 'completed', updatedAt: '2026-04-10T12:00:00Z' },
-			],
-		});
+    socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      missions: [
+        { missionId: 'first-target', status: 'in-progress', startedAt: '2026-04-01T10:00:00Z' },
+        { missionId: 'second-mission', status: 'completed', updatedAt: '2026-04-10T12:00:00Z' },
+      ],
+    });
 
-		expect(component['isLoadingMissions']()).toBe(false);
-		expect(component['missionListError']()).toBeNull();
-		expect(component['missions']().length).toBe(2);
-	});
+    expect(component['isLoadingMissions']()).toBe(false);
+    expect(component['missionListError']()).toBeNull();
+    expect(component['missions']().length).toBe(2);
+  });
 
-	it('should set error and clear missions on failed response', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should set error and clear missions on failed response', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
-			success: false,
-			message: 'Character not found',
-			missions: [],
-		});
+    socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
+      success: false,
+      message: 'Character not found',
+      missions: [],
+    });
 
-		expect(component['isLoadingMissions']()).toBe(false);
-		expect(component['missionListError']()).toBe('Character not found');
-		expect(component['missions']()).toEqual([]);
-	});
+    expect(component['isLoadingMissions']()).toBe(false);
+    expect(component['missionListError']()).toBe('Character not found');
+    expect(component['missions']()).toEqual([]);
+  });
 
-	it('should keep listener subscribed after receiving a response', () => {
-		const { } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should keep listener subscribed after receiving a response', () => {
+    const {} = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
-			success: true,
-			message: 'ok',
-			missions: [],
-		});
+    socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      missions: [],
+    });
 
-		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(true);
-	});
+    expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(true);
+  });
 
-	it('should set isLoadingMissions true while waiting for response', () => {
-		const { component } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should set isLoadingMissions true while waiting for response', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(component['isLoadingMissions']()).toBe(true);
-	});
+    expect(component['isLoadingMissions']()).toBe(true);
+  });
 
-	it('should format ISO date to YYYY-MM-DD', () => {
-		const { component } = setup({ socketService, sessionService });
+  it('should format ISO date to YYYY-MM-DD', () => {
+    const { component } = setup({ socketService, sessionService });
 
-		expect(component['formatDate']('2026-04-21T08:30:00.000Z')).toBe('2026-04-21');
-		expect(component['formatDate']('2026-01-05T00:00:00Z')).toBe('2026-01-05');
-	});
+    expect(component['formatDate']('2026-04-21T08:30:00.000Z')).toBe('2026-04-21');
+    expect(component['formatDate']('2026-01-05T00:00:00Z')).toBe('2026-01-05');
+  });
 
-	it('should return dash for missing date', () => {
-		const { component } = setup({ socketService, sessionService });
+  it('should return dash for missing date', () => {
+    const { component } = setup({ socketService, sessionService });
 
-		expect(component['formatDate'](undefined)).toBe('—');
-		expect(component['formatDate']('')).toBe('—');
-	});
+    expect(component['formatDate'](undefined)).toBe('—');
+    expect(component['formatDate']('')).toBe('—');
+  });
 
-	it('should navigate to character-profile with state', () => {
-		const character = { id: 'c-1', characterName: 'Nova' };
-		const { component, mockRouter } = setup({
-			socketService,
-			sessionService,
-			navigationState: { playerName: 'Pioneer', joinCharacter: character },
-		});
+  it('should navigate to character-profile with state', () => {
+    const character = { id: 'c-1', characterName: 'Nova' };
+    const { component, mockRouter } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: character },
+    });
 
-		component.navigateToCharacterProfile();
+    component.navigateToCharacterProfile();
 
-		expect(mockRouter.navigate).toHaveBeenCalledWith(
-			[{ outlets: { left: ['character-profile'] } }],
-			{
-				preserveFragment: true,
-				state: {
-					playerName: 'Pioneer',
-					joinCharacter: character,
-				},
-			},
-		);
-	});
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-profile'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: 'Pioneer',
+        joinCharacter: character,
+      },
+    });
+  });
 
-	it('should clean up listener on ngOnDestroy', () => {
-		const { fixture } = setup({
-			socketService,
-			sessionService,
-			navigationState: {
-				playerName: 'Pioneer',
-				joinCharacter: { id: 'c-1', characterName: 'Nova' },
-			},
-			connected: true,
-		});
+  it('should clean up listener on ngOnDestroy', () => {
+    const { fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
 
-		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(true);
+    expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(true);
 
-		fixture.destroy();
+    fixture.destroy();
 
-		expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(false);
-	});
+    expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(false);
+  });
 
-	describe('getMissionStageInfo', () => {
-		it('should return initial stage when statusDetail is absent', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
+  describe('getMissionStageInfo', () => {
+    it('should return initial stage when statusDetail is absent', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
 
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'started',
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 1 of 4');
-		});
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'started',
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 1 of 4');
+    });
 
-		it('should return initial stage when statusDetail is not parseable gate state', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
+    it('should return initial stage when statusDetail is not parseable gate state', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
 
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'in-progress',
-				statusDetail: 'not-json',
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 1 of 4');
-		});
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'in-progress',
+        statusDetail: 'not-json',
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 1 of 4');
+    });
 
-		it('should return Stage 1 of 4 when first step is active', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
-			const gateState = {
-				missionId: 'first-target',
-				characterId: 'c-1',
-				activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
-				updatedAt: '2026-04-01T10:00:00Z',
-				steps: [
-					{ key: 'identify_iron_asteroid', status: 'active' as const },
-					{ key: 'neutralize_identified_asteroid', status: 'locked' as const },
-					{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
-					{ key: 'repair_scavenger_pod', status: 'locked' as const },
-				],
-			};
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'started',
-				statusDetail: serializeMissionGateState(gateState),
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 1 of 4');
-			expect(result.nextStep).toBe('Objective: Identify an Iron asteroid via full scan.');
-		});
+    it('should return Stage 1 of 4 when first step is active', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+      const gateState = {
+        missionId: 'first-target',
+        characterId: 'c-1',
+        activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+        updatedAt: '2026-04-01T10:00:00Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'active' as const },
+          { key: 'neutralize_identified_asteroid', status: 'locked' as const },
+          { key: 'manufacture_hull_patch_kit', status: 'locked' as const },
+          { key: 'repair_scavenger_pod', status: 'locked' as const },
+        ],
+      };
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'started',
+        statusDetail: serializeMissionGateState(gateState),
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 1 of 4');
+      expect(result.nextStep).toBe('Objective: Identify an Iron asteroid via full scan.');
+    });
 
-		it('should return Stage 2 of 4 when second step is active', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
-			const gateState = {
-				missionId: 'first-target',
-				characterId: 'c-1',
-				activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
-				updatedAt: '2026-04-02T10:00:00Z',
-				steps: [
-					{ key: 'identify_iron_asteroid', status: 'completed' as const },
-					{ key: 'neutralize_identified_asteroid', status: 'active' as const },
-					{ key: 'manufacture_hull_patch_kit', status: 'locked' as const },
-					{ key: 'repair_scavenger_pod', status: 'locked' as const },
-				],
-			};
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'in-progress',
-				statusDetail: serializeMissionGateState(gateState),
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 2 of 4');
-			expect(result.nextStep).toBe(
-				'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
-			);
-		});
+    it('should return Stage 2 of 4 when second step is active', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+      const gateState = {
+        missionId: 'first-target',
+        characterId: 'c-1',
+        activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+        updatedAt: '2026-04-02T10:00:00Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' as const },
+          { key: 'neutralize_identified_asteroid', status: 'active' as const },
+          { key: 'manufacture_hull_patch_kit', status: 'locked' as const },
+          { key: 'repair_scavenger_pod', status: 'locked' as const },
+        ],
+      };
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'in-progress',
+        statusDetail: serializeMissionGateState(gateState),
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 2 of 4');
+      expect(result.nextStep).toBe(
+        'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+      );
+    });
 
-		it('should return Stage 3 of 4 when third step is active', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
-			const gateState = {
-				missionId: 'first-target',
-				characterId: 'c-1',
-				activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
-				updatedAt: '2026-04-03T10:00:00Z',
-				steps: [
-					{ key: 'identify_iron_asteroid', status: 'completed' as const },
-					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
-					{ key: 'manufacture_hull_patch_kit', status: 'active' as const },
-					{ key: 'repair_scavenger_pod', status: 'locked' as const },
-				],
-			};
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'in-progress',
-				statusDetail: serializeMissionGateState(gateState),
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 3 of 4');
-			expect(result.nextStep).toBe(
-				'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
-			);
-		});
+    it('should return Stage 3 of 4 when third step is active', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+      const gateState = {
+        missionId: 'first-target',
+        characterId: 'c-1',
+        activeObjectiveText:
+          'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
+        updatedAt: '2026-04-03T10:00:00Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' as const },
+          { key: 'neutralize_identified_asteroid', status: 'completed' as const },
+          { key: 'manufacture_hull_patch_kit', status: 'active' as const },
+          { key: 'repair_scavenger_pod', status: 'locked' as const },
+        ],
+      };
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'in-progress',
+        statusDetail: serializeMissionGateState(gateState),
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 3 of 4');
+      expect(result.nextStep).toBe(
+        'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
+      );
+    });
 
-		it('should return Stage 4 of 4 when fourth step is active', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
-			const gateState = {
-				missionId: 'first-target',
-				characterId: 'c-1',
-				activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
-				updatedAt: '2026-04-04T10:00:00Z',
-				steps: [
-					{ key: 'identify_iron_asteroid', status: 'completed' as const },
-					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
-					{ key: 'manufacture_hull_patch_kit', status: 'completed' as const },
-					{ key: 'repair_scavenger_pod', status: 'active' as const },
-				],
-			};
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'in-progress',
-				statusDetail: serializeMissionGateState(gateState),
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 4 of 4');
-			expect(result.nextStep).toBe(
-				'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
-			);
-		});
+    it('should return Stage 4 of 4 when fourth step is active', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+      const gateState = {
+        missionId: 'first-target',
+        characterId: 'c-1',
+        activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+        updatedAt: '2026-04-04T10:00:00Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' as const },
+          { key: 'neutralize_identified_asteroid', status: 'completed' as const },
+          { key: 'manufacture_hull_patch_kit', status: 'completed' as const },
+          { key: 'repair_scavenger_pod', status: 'active' as const },
+        ],
+      };
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'in-progress',
+        statusDetail: serializeMissionGateState(gateState),
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 4 of 4');
+      expect(result.nextStep).toBe('Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.');
+    });
 
-		it('should return Stage 4 of 4 — Complete when all steps are complete', () => {
-			const { component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-			});
-			const gateState = {
-				missionId: 'first-target',
-				characterId: 'c-1',
-				activeObjectiveText: 'Mission objectives complete. Await further directives.',
-				updatedAt: '2026-04-05T10:00:00Z',
-				steps: [
-					{ key: 'identify_iron_asteroid', status: 'completed' as const },
-					{ key: 'neutralize_identified_asteroid', status: 'completed' as const },
-					{ key: 'manufacture_hull_patch_kit', status: 'completed' as const },
-					{ key: 'repair_scavenger_pod', status: 'completed' as const },
-				],
-			};
-			const result = component.getMissionStageInfo({
-				missionId: 'first-target',
-				status: 'completed',
-				statusDetail: serializeMissionGateState(gateState),
-			});
-			expect(result).not.toBeNull();
-			expect(result.stage).toBe('Stage 4 of 4 — Complete');
-			expect(result.nextStep).toBe('Mission objectives complete. Await further directives.');
-		});
-	});
+    it('should return Stage 4 of 4 — Complete when all steps are complete', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+      const gateState = {
+        missionId: 'first-target',
+        characterId: 'c-1',
+        activeObjectiveText: 'Mission objectives complete. Await further directives.',
+        updatedAt: '2026-04-05T10:00:00Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' as const },
+          { key: 'neutralize_identified_asteroid', status: 'completed' as const },
+          { key: 'manufacture_hull_patch_kit', status: 'completed' as const },
+          { key: 'repair_scavenger_pod', status: 'completed' as const },
+        ],
+      };
+      const result = component.getMissionStageInfo({
+        missionId: 'first-target',
+        status: 'completed',
+        statusDetail: serializeMissionGateState(gateState),
+      });
+      expect(result).not.toBeNull();
+      expect(result.stage).toBe('Stage 4 of 4 — Complete');
+      expect(result.nextStep).toBe('Mission objectives complete. Await further directives.');
+    });
+  });
 
-	describe('DOM smoke tests', () => {
-		it('should render the page container without error', () => {
-			const { fixture } = setup({ socketService, sessionService });
-			fixture.detectChanges();
-			const el: HTMLElement = fixture.nativeElement;
-			expect(el.querySelector('.ops-page-container')).toBeTruthy();
-		});
+  describe('DOM smoke tests', () => {
+    it('should render the page container without error', () => {
+      const { fixture } = setup({ socketService, sessionService });
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('.ops-page-container')).toBeTruthy();
+    });
 
-		it('should show error message when mission load fails', () => {
-			const { fixture, component } = setup({
-				socketService,
-				sessionService,
-				navigationState: {
-					playerName: 'Pioneer',
-					joinCharacter: { id: 'c-1', characterName: 'Nova' },
-				},
-				connected: true,
-			});
+    it('should show error message when mission load fails', () => {
+      const { fixture, component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+        connected: true,
+      });
 
-			socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
-				success: false,
-				message: 'Load failed',
-				missions: [],
-			});
+      socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
+        success: false,
+        message: 'Load failed',
+        missions: [],
+      });
 
-			fixture.detectChanges();
-			const el: HTMLElement = fixture.nativeElement;
-			const alert = el.querySelector('[role="alert"]');
-			expect(alert?.textContent?.trim()).toBe('Load failed');
-		});
-	});
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      const alert = el.querySelector('[role="alert"]');
+      expect(alert?.textContent?.trim()).toBe('Load failed');
+    });
+  });
 });

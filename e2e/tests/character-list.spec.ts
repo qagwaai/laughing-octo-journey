@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
@@ -134,7 +134,12 @@ test.describe('Character List — loading characters', () => {
 
     mock.on('character-list-request', () => ({
       event: 'character-list-response',
-      data: { success: false, message: 'Session expired. Please log in again.', playerName: TEST_PLAYER, characters: [] },
+      data: {
+        success: false,
+        message: 'Session expired. Please log in again.',
+        playerName: TEST_PLAYER,
+        characters: [],
+      },
     }));
 
     await characterListPage.clickLoad();
@@ -324,5 +329,4 @@ test.describe('Character List — navigation', () => {
 
     await expect(page).toHaveURL(/left:character-setup/);
   });
-
 });

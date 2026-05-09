@@ -1,15 +1,15 @@
 import {
-  HULL_PATCH_KIT_PRINTABLE_ITEM,
   CONDUIT_SEALS_PRINTABLE_ITEM,
+  countAvailablePrintableMaterial,
+  describePrintableMaterials,
+  findConsumableMaterialsForPrintableItem,
+  formatPrintableDuration,
+  getMissingPrintableMaterials,
+  hasPrintableItemInInventory,
+  HULL_PATCH_KIT_PRINTABLE_ITEM,
+  isPrintableItemQueued,
   PRINTABLE_ITEMS,
   resolvePrintableItemDefinition,
-  formatPrintableDuration,
-  hasPrintableItemInInventory,
-  isPrintableItemQueued,
-  countAvailablePrintableMaterial,
-  findConsumableMaterialsForPrintableItem,
-  describePrintableMaterials,
-  getMissingPrintableMaterials,
 } from './printable-item';
 import type { ShipItem } from './ship-item';
 
@@ -163,7 +163,9 @@ describe('printable-item', () => {
 
     it('returns null when only partially satisfying multi-material item', () => {
       // conduit-seals needs 2 copper + 1 polymer; only 1 copper present
-      expect(findConsumableMaterialsForPrintableItem([copperItem, polymerItem], CONDUIT_SEALS_PRINTABLE_ITEM)).toBeNull();
+      expect(
+        findConsumableMaterialsForPrintableItem([copperItem, polymerItem], CONDUIT_SEALS_PRINTABLE_ITEM),
+      ).toBeNull();
     });
 
     it('returns consumed materials for conduit seals with full inventory', () => {

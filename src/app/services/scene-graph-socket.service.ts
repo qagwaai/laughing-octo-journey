@@ -3,18 +3,18 @@ import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
 export class SceneGraphSocketService {
-	private socketService = inject(SocketService);
+  private socketService = inject(SocketService);
 
-	connectAndSubscribeMessages(onMessage: (data: unknown) => void): () => void {
-		this.socketService.connect('http://localhost:3000');
-		return this.socketService.on('message', onMessage);
-	}
+  connectAndSubscribeMessages(onMessage: (data: unknown) => void): () => void {
+    this.socketService.connect('http://localhost:3000');
+    return this.socketService.on('message', onMessage);
+  }
 
-	sendMessage(text: string): void {
-		this.socketService.emit('message', { text });
-	}
+  sendMessage(text: string): void {
+    this.socketService.emit('message', { text });
+  }
 
-	disconnect(): void {
-		this.socketService.disconnect();
-	}
+  disconnect(): void {
+    this.socketService.disconnect();
+  }
 }

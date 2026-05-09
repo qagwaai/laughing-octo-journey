@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 
 const TEST_PLAYER = 'localeplayer';
@@ -46,7 +46,7 @@ async function loginWithItalianLocale(page: Page, mock: SocketIOMock) {
   mock.push('login-response', loginResponse);
   await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
 
-    await expect(page.locator('.page-main h1')).toHaveText('Lista Personaggi');
+  await expect(page.locator('.page-main h1')).toHaveText('Lista Personaggi');
   await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('stellar.preferredLocale'))).toBe('it');
   await expect.poll(async () => page.evaluate(() => document.documentElement.lang)).toBe('it');
 }

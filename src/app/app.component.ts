@@ -1,10 +1,22 @@
-import { AfterViewInit, ChangeDetectorRef, Component, CUSTOM_ELEMENTS_SCHEMA, ElementRef, computed, inject, NgZone, OnDestroy, signal, viewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+  ElementRef,
+  inject,
+  NgZone,
+  OnDestroy,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { Subscription, filter, map, startWith } from 'rxjs';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
+import { filter, map, startWith, Subscription } from 'rxjs';
 import { RoutedScene } from './routed-scene';
 import { OpeningAudioService } from './services';
 import { appLogger } from './services/logger';
@@ -15,29 +27,35 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
   selector: 'app-root',
   templateUrl: './app.component.html',
   host: { class: 'block h-dvh w-full' },
-  styles: `:host { display: block; height: 100vh; width: 100vw;
-    & .stats {
-				position: static !important;
+  styles: `
+    :host {
+      display: block;
+      height: 100vh;
+      width: 100vw;
+      & .stats {
+        position: static !important;
 
-				& canvas {
-					margin-top: 0 !important;
-				}
-			}
+        & canvas {
+          margin-top: 0 !important;
+        }
+      }
 
-    &.resizing {
-      user-select: none;
+      &.resizing {
+        user-select: none;
+      }
     }
-  }`,
-  schemas: [CUSTOM_ELEMENTS_SCHEMA], 
+  `,
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [
-    NgtCanvas, 
-    TweakpanePane, 
-    TweakpaneCheckbox, 
-    TweakpaneColor, 
-    TweakpaneButton, 
-    NgtsStats, 
-    RoutedScene, 
-    RouterOutlet],
+    NgtCanvas,
+    TweakpanePane,
+    TweakpaneCheckbox,
+    TweakpaneColor,
+    TweakpaneButton,
+    NgtsStats,
+    RoutedScene,
+    RouterOutlet,
+  ],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
   private static readonly LOOK_HINT_HIDE_DELAY_MS = 2000;
@@ -62,12 +80,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected audioArmed = signal(this.openingAudio.isArmed());
   protected audioBedRunning = signal(this.openingAudio.isCinematicBedRunning());
   protected speechAvailable = signal(this.openingAudio.isSpeechSynthesisAvailable());
-  protected audioArmedLabel = computed(() =>
-    `Armed: ${this.openingAudio.isArmed() ? '●' : '○'}`
-  );
-  protected audioBedLabel = computed(() =>
-    `Bed: ${this.openingAudio.isCinematicBedRunning() ? '●' : '○'}`
-  );
+  protected audioArmedLabel = computed(() => `Armed: ${this.openingAudio.isArmed() ? '●' : '○'}`);
+  protected audioBedLabel = computed(() => `Bed: ${this.openingAudio.isCinematicBedRunning() ? '●' : '○'}`);
   protected leftPanelWidth = signal(50);
   protected isResizing = signal(false);
   protected lookHintOpacity = signal(0);
@@ -81,13 +95,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     { initialValue: this.router.url },
   );
 
-  protected isColdBootSceneActive = computed(() =>
-    this.currentUrl().includes('opening-cold-boot') && !this.rightOutletActive(),
+  protected isColdBootSceneActive = computed(
+    () => this.currentUrl().includes('opening-cold-boot') && !this.rightOutletActive(),
   );
 
-  protected showColdBootLookHint = computed(() =>
-    this.isColdBootSceneActive() && this.lookHintOpacity() > 0,
-  );
+  protected showColdBootLookHint = computed(() => this.isColdBootSceneActive() && this.lookHintOpacity() > 0);
 
   private startX = 0;
   private lookHintTimerId: number | null = null;
@@ -138,7 +150,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
    */
   isRouteActive(route: string): boolean {
     return this.router.routerState.root.firstChild?.component === undefined
-      ? this.router.url.includes(route) || this.router.url === '/' && route === 'intro'
+      ? this.router.url.includes(route) || (this.router.url === '/' && route === 'intro')
       : this.router.routerState.root.firstChild?.routeConfig?.path === route;
   }
 
@@ -170,7 +182,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   reset() {
     appLogger.log('Resetting billboard settings');
-	}
+  }
 
   onCanvasClick() {}
 
@@ -189,7 +201,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.isResizing.set(true);
     this.startX = event.clientX;
     this.host.nativeElement.classList.add('resizing');
-    
+
     // Attach event listeners directly to document (they'll be removed on mouseup)
     document.addEventListener('mousemove', this.onMouseMoveListener);
     document.addEventListener('mouseup', this.onMouseUpListener);
@@ -199,18 +211,18 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     // Reset the state
     this.isResizing.set(false);
     this.host.nativeElement.classList.remove('resizing');
-    
+
     this.leftPanelWidth.set(50);
     this.clearSplitTransitionTimer();
     const leftPanel = this.leftPanelRef().nativeElement;
     const rightPanel = this.rightPanelRef().nativeElement;
-    
+
     if (leftPanel && rightPanel) {
       leftPanel.style.width = '50%';
       leftPanel.style.flex = 'none';
       rightPanel.style.width = '50%';
       rightPanel.style.flex = 'none';
-      
+
       // Force a reflow to trigger layout recalculation
       void leftPanel.offsetHeight;
       void rightPanel.offsetHeight;
@@ -244,16 +256,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           }
         }
       });
-    } catch (error) {
+    } catch {
       // Silently ignore errors during resize
     }
   };
 
-  private onMouseUpListener = (event: MouseEvent) => {
+  private onMouseUpListener = (_event: MouseEvent) => {
     if (this.isResizing()) {
       this.isResizing.set(false);
       this.host.nativeElement.classList.remove('resizing');
-      
+
       // Remove event listeners
       document.removeEventListener('mousemove', this.onMouseMoveListener);
       document.removeEventListener('mouseup', this.onMouseUpListener);

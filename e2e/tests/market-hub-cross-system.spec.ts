@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 
@@ -223,9 +223,7 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(wolfMarket).toContainText('Wolf-359 Outpost, no known gate route');
   });
 
-  test('gate-route markets have transact button disabled and no-route market is not transactable', async ({
-    page,
-  }) => {
+  test('gate-route markets have transact button disabled and no-route market is not transactable', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
     await setupAndOpenMarketHub(page, (req) => requests.push(req));
 
@@ -249,9 +247,7 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(wolfMarket.locator('.transact-btn')).toBeDisabled();
   });
 
-  test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async ({
-    page,
-  }) => {
+  test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();
 

@@ -1,32 +1,44 @@
 <div class="ops-page-container">
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.repairRetrofitSystemDetail.title }}</h1>
-				<p class="subtitle">{{ t.game.repairRetrofitSystemDetail.subtitle }}</p>
-			</div>
-		</div>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.repairRetrofitSystemDetail.title }}</h1>
+        <p class="subtitle">{{ t.game.repairRetrofitSystemDetail.subtitle }}</p>
+      </div>
+    </div>
 
-		<section class="ops-card">
-			<p><strong>{{ t.game.repairRetrofitSystemDetail.systemLabel }}</strong> {{ selectedAsset()?.label || t.game.repairRetrofitSystemDetail.unknownSystemLabel }}</p>
-			<p><strong>{{ t.game.repairRetrofitSystemDetail.severityLabel }}</strong> {{ selectedAsset()?.severity || t.game.repairRetrofitSystemDetail.unknownSeverityLabel }}</p>
-			<p><strong>{{ t.game.repairRetrofitSystemDetail.summaryLabel }}</strong> {{ selectedAsset()?.summary || t.game.repairRetrofitSystemDetail.noSummaryLabel }}</p>
+    <section class="ops-card">
+      <p>
+        <strong>{{ t.game.repairRetrofitSystemDetail.systemLabel }}</strong>
+        {{ selectedAsset()?.label || t.game.repairRetrofitSystemDetail.unknownSystemLabel }}
+      </p>
+      <p>
+        <strong>{{ t.game.repairRetrofitSystemDetail.severityLabel }}</strong>
+        {{ selectedAsset()?.severity || t.game.repairRetrofitSystemDetail.unknownSeverityLabel }}
+      </p>
+      <p>
+        <strong>{{ t.game.repairRetrofitSystemDetail.summaryLabel }}</strong>
+        {{ selectedAsset()?.summary || t.game.repairRetrofitSystemDetail.noSummaryLabel }}
+      </p>
 
-			<button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
-				{{ t.game.repairRetrofitSystemDetail.backLabel }}
-			</button>
+      <button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
+        {{ t.game.repairRetrofitSystemDetail.backLabel }}
+      </button>
 
-			@if (persistError()) {
-				<p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
-			}
-			@if (persistSuccess()) {
-				<p class="status-line status-line--success">{{ persistSuccess() }}</p>
-			}
+      @if (persistError()) {
+      <p class="status-line status-line--error" role="alert">{{ persistError() }}</p>
+      } @if (persistSuccess()) {
+      <p class="status-line status-line--success">{{ persistSuccess() }}</p>
+      }
 
-			<button type="button" class="repair-action" [disabled]="isPersisting() || !canFullyRepair()" (click)="fullyRepairSystem()">
-				{{ t.game.repairRetrofitSystemDetail.repairLabel }}
-			</button>
-		</section>
-
-	</div>
+      <button
+        type="button"
+        class="repair-action"
+        [disabled]="isPersisting() || !canFullyRepair()"
+        (click)="fullyRepairSystem()"
+      >
+        {{ t.game.repairRetrofitSystemDetail.repairLabel }}
+      </button>
+    </section>
+  </div>
 </div>

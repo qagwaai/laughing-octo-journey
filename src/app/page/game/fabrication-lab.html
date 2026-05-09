@@ -1,37 +1,45 @@
 <div class="ops-page-container">
-	<app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
-	<div class="page-main">
-		<div class="page-header">
-			<div>
-				<h1>{{ t.game.fabricationLab.title }}</h1>
-				<p class="subtitle">{{ t.game.fabricationLab.subtitle }}</p>
-			</div>
-			<app-character-ship-badge [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-character-ship-badge>
-		</div>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.fabricationLab.title }}</h1>
+        <p class="subtitle">{{ t.game.fabricationLab.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
 
-		<section class="ops-card">
-			<h2>{{ t.game.fabricationLab.sectionTitle }}</h2>
-			<p>{{ t.game.fabricationLab.sectionDescription }}</p>
-		</section>
+    <section class="ops-card">
+      <h2>{{ t.game.fabricationLab.sectionTitle }}</h2>
+      <p>{{ t.game.fabricationLab.sectionDescription }}</p>
+    </section>
 
-		@if (joinCharacter()) {
-			<section class="ops-card printer-section">
-				<h2>{{ t.game.fabricationLab.printerSectionTitle }}</h2>
+    @if (joinCharacter()) {
+    <section class="ops-card printer-section">
+      <h2>{{ t.game.fabricationLab.printerSectionTitle }}</h2>
 
-				<div class="printer-status-bar">
-					<span class="printer-status-label">{{ t.game.fabricationLab.printerStatusLabel }}</span>
-					<span
-						class="printer-status-value"
-						[class.printer-status--printing]="printerStatus() === 'printing'"
-						[class.printer-status--idle]="printerStatus() === 'idle'"
-					>
-						{{ printerStatus() === 'printing' ? t.game.fabricationLab.printerPrintingLabel : t.game.fabricationLab.printerIdleLabel }}
-					</span>
-				</div>
+      <div class="printer-status-bar">
+        <span class="printer-status-label">{{ t.game.fabricationLab.printerStatusLabel }}</span>
+        <span
+          class="printer-status-value"
+          [class.printer-status--printing]="printerStatus() === 'printing'"
+          [class.printer-status--idle]="printerStatus() === 'idle'"
+        >
+          {{ printerStatus() === 'printing' ? t.game.fabricationLab.printerPrintingLabel :
+          t.game.fabricationLab.printerIdleLabel }}
+        </span>
+      </div>
 
-				<p class="printer-job-count">{{ t.game.fabricationLab.printerActiveJobCountLabel }} {{ printerActiveJobCount() }}</p>
-				<button type="button" class="repair-action" (click)="openPrintQueueView()">{{ t.game.fabricationLab.viewPrintQueueLabel }}</button>
-			</section>
-		}
-	</div>
+      <p class="printer-job-count">
+        {{ t.game.fabricationLab.printerActiveJobCountLabel }} {{ printerActiveJobCount() }}
+      </p>
+      <button type="button" class="repair-action" (click)="openPrintQueueView()">
+        {{ t.game.fabricationLab.viewPrintQueueLabel }}
+      </button>
+    </section>
+    }
+  </div>
 </div>

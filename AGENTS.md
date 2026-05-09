@@ -43,6 +43,42 @@ Build in watch mode:
 npm run watch
 ```
 
+Lint TypeScript files:
+
+```bash
+npm run lint
+```
+
+Auto-fix lint issues where possible:
+
+```bash
+npm run lint:fix
+```
+
+Typecheck app + karma spec TS:
+
+```bash
+npm run typecheck
+```
+
+Typecheck Angular templates via build:
+
+```bash
+npm run typecheck:templates
+```
+
+Run formatter checks for html/css/json/markdown:
+
+```bash
+npm run format:check
+```
+
+Optional TS/JS formatter check (broader, may reveal existing repo-wide debt):
+
+```bash
+npm run format:check:ts
+```
+
 Run Angular/Karma tests once:
 
 ```bash
@@ -103,10 +139,22 @@ Run a single Angular spec file:
 npm test -- --include="**/market-hub.spec.ts"
 ```
 
+Run focused Angular specs with the helper script:
+
+```bash
+npm run test:spec -- "**/market-hub.spec.ts"
+```
+
 Run selected Playwright specs:
 
 ```bash
 npx playwright test e2e/tests/market-hub-by-location.spec.ts e2e/tests/market-hub-docking.spec.ts
+```
+
+Run selected Playwright specs with line reporter:
+
+```bash
+npm run e2e:spec -- e2e/tests/market-hub-by-location.spec.ts
 ```
 
 Run a single Playwright spec and exit cleanly (no persistent "Serving HTML report" server):
