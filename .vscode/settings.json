@@ -2,7 +2,8 @@
   "html.customData": ["./node_modules/angular-three/metadata.json", "./node_modules/angular-three-soba/metadata.json"],
   "npm.scriptExplorerAction": "run",
   "chat.tools.terminal.autoApprove": {
-    "npx playwright": true
+    "npx playwright": true,
+    "npx tsc": true
   },
   "specstory.cloudSync.enabled": "never"
 }

@@ -1,7 +1,15 @@
 export { OpeningAudioService } from './opening-audio.service';
 export { MissionService } from './mission.service';
+export { MissionBoardService } from './mission-board.service';
+export { ShipExteriorSocketService } from './ship-exterior-socket.service';
+export { GameSessionService } from './game-session.service';
+export { MarketService } from './market.service';
+export { CharacterService } from './character.service';
+export { AuthService } from './auth.service';
+export { SceneGraphSocketService } from './scene-graph-socket.service';
 export { SessionService } from './session.service';
 export { SocketService } from './socket.service';
+export { ShipService } from './ship.service';
 export { ShipExteriorAsteroidStateService } from './ship-exterior-asteroid-state.service';
 export { ShipExteriorMissionStateService } from './ship-exterior-mission-state.service';
 export { PrinterStateService } from './printer-state.service';

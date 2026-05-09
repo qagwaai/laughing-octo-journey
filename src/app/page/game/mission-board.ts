@@ -2,8 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
-	MISSION_LIST_REQUEST_EVENT,
-	MISSION_LIST_RESPONSE_EVENT,
 	type MissionListRequest,
 	type MissionListResponse,
 } from '../../model/mission-list';
@@ -11,6 +9,7 @@ import type { CharacterMissionProgress } from '../../model/mission';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
+import { MissionBoardService } from '../../services/mission-board.service';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -26,7 +25,7 @@ import {
 	isMissionCompleted,
 	resolveMissionById,
 	type MissionDefinition,
-} from '../../model/mission-catalog';
+} from '../../model/catalog/mission-catalog';
 
 interface MissionBoardNavigationState {
 	playerName?: string;
@@ -43,6 +42,7 @@ interface MissionBoardNavigationState {
 export default class MissionBoardPage {
 	protected readonly t = locale;
 	private router = inject(Router);
+	private missionBoardService = inject(MissionBoardService);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private missionStateService = inject(ShipExteriorMissionStateService);
@@ -157,8 +157,9 @@ export default class MissionBoardPage {
 		this.missionListError.set(null);
 		this.unsubscribeMissionListResponse?.();
 
-		this.unsubscribeMissionListResponse = this.socketService.on(
-			MISSION_LIST_RESPONSE_EVENT,
+		const request: MissionListRequest = { playerName, characterId, sessionKey };
+		this.unsubscribeMissionListResponse = this.missionBoardService.listMissions(
+			request,
 			(response: MissionListResponse) => {
 				this.isLoadingMissions.set(false);
 				if (response.success) {
@@ -170,9 +171,6 @@ export default class MissionBoardPage {
 				}
 			},
 		);
-
-		const request: MissionListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(MISSION_LIST_REQUEST_EVENT, request);
 	}
 
 	getMissionStageInfo(mission: CharacterMissionProgress): { stage: string; nextStep: string } {

@@ -27,13 +27,13 @@ import {
 	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
 	EXPENDABLE_DART_DRONE_ITEM_TYPE,
 	createExpendableDartDrone,
-} from '../../model/expendable-dart-drone';
+} from '../../model/domain/expendable-dart-drone';
 import {
 	THREE_D_PRINTER_DISPLAY_NAME,
 	THREE_D_PRINTER_ITEM_TYPE,
 	THREE_D_PRINTER_TIER,
 	create3DPrinter,
-} from '../../model/3d-printer';
+} from '../../model/domain/3d-printer';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import {
 	createMockSessionService,

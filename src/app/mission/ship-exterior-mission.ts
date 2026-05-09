@@ -97,13 +97,13 @@ export interface ShipExteriorMissionDefinition {
 	createNewAsteroidSamplesAroundShip(params: {
 		playerName: string;
 		characterId: string;
-		center: import('../model/triple').Triple;
+		center: import('../model/shared/triple').Triple;
 		launchSeedHint?: number | null;
 	}): import('../model/ship-exterior-asteroid-sample').AsteroidScanSample[];
 	createResumedAsteroidSamples(params: {
 		playerName: string;
 		characterId: string;
-		center: import('../model/triple').Triple;
+		center: import('../model/shared/triple').Triple;
 		launchSeedHint?: number | null;
 		existingBodies: import('../model/celestial-body-list').CelestialBodyListItem[];
 	}): import('../model/ship-exterior-asteroid-sample').AsteroidScanSample[];

@@ -6,17 +6,13 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import type { CharacterMissionProgress } from '../../model/mission';
-import { MISSION_IDS, resolveMissionById } from '../../model/mission-catalog';
+import { MISSION_IDS, resolveMissionById } from '../../model/catalog/mission-catalog';
 import {
-	MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
-	MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
 	type MarketListByLocationRequest,
 	type MarketListByLocationResponse,
 	type MarketSummary,
 } from '../../model/market-list';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	type ShipListRequest,
 	type ShipListResponse,
 	type ShipSummary,
@@ -25,11 +21,13 @@ import {
 	estimateTravelHours,
 	resolveDriveProfileForShip,
 	resolveMinimumDriveProfileForDistance,
-} from '../../model/drive-profile';
-import { resolveJumpGateHops } from '../../model/jump-gate';
+} from '../../model/math/drive-profile';
+import { resolveJumpGateHops } from '../../model/math/jump-gate';
+import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
-import type { Triple } from '../../model/triple';
+import type { Triple } from '../../model/shared/triple';
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 const DEFAULT_MARKET_RADIUS_AU = 0.5;
@@ -56,10 +54,10 @@ export default class MarketHubPage {
 	protected readonly t = locale;
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
+	private marketService = inject(MarketService);
+	private shipService = inject(ShipService);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
-	private unsubscribeMarketListByLocationResponse?: () => void;
-	private unsubscribeShipListResponse?: () => void;
 	private navigationState: MarketHubNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as MarketHubNavigationState | undefined) ??
 		(history.state as MarketHubNavigationState | undefined) ??
@@ -146,8 +144,7 @@ export default class MarketHubPage {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeMarketListByLocationResponse?.();
-		this.unsubscribeShipListResponse?.();
+		// no-op: domain services use one-time response callbacks
 	}
 
 	private ensureActiveShipPosition(): void {
@@ -164,46 +161,36 @@ export default class MarketHubPage {
 			return;
 		}
 
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				if (!response.success) {
-					this.unsubscribeShipListResponse?.();
-					return;
-				}
-
-				const ships = response.ships ?? [];
-				if (ships.length === 0) {
-					this.unsubscribeShipListResponse?.();
-					return;
-				}
-
-				const current = this.activeShip();
-				const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-				const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
-				const fallbackShip = ships[0];
-
-				const resolvedShip: ShipSummary | undefined =
-					sameShip ?? shipWithPosition ?? fallbackShip;
-
-				if (resolvedShip) {
-					this.sessionService.setActiveShip(resolvedShip);
-					if (this.hasUsableShipPosition(resolvedShip)) {
-						this.loadNearbyMarkets();
-					}
-				}
-
-				this.unsubscribeShipListResponse?.();
-			},
-		);
-
 		const request: ShipListRequest = {
 			playerName,
 			characterId,
 			sessionKey,
 		};
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			if (!response.success) {
+				return;
+			}
+
+			const ships = response.ships ?? [];
+			if (ships.length === 0) {
+				return;
+			}
+
+			const current = this.activeShip();
+			const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
+			const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
+			const fallbackShip = ships[0];
+
+			const resolvedShip: ShipSummary | undefined =
+				sameShip ?? shipWithPosition ?? fallbackShip;
+
+			if (resolvedShip) {
+				this.sessionService.setActiveShip(resolvedShip);
+				if (this.hasUsableShipPosition(resolvedShip)) {
+					this.loadNearbyMarkets();
+				}
+			}
+		});
 	}
 
 	private hasUsableShipPosition(ship: ShipSummary | null): boolean {
@@ -276,26 +263,6 @@ export default class MarketHubPage {
 
 		this.isLoadingMarkets.set(true);
 		this.marketListError.set(null);
-		this.unsubscribeMarketListByLocationResponse?.();
-
-		this.unsubscribeMarketListByLocationResponse = this.socketService.on(
-			MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
-			(response: MarketListByLocationResponse) => {
-				this.isLoadingMarkets.set(false);
-				if (response.success) {
-					this.markets.set(response.markets ?? []);
-					this.isDockedAtAnyMarket.set(Boolean(response.isDocked));
-					this.dockedMarketId.set(response.dockedMarketId ?? null);
-					this.marketListError.set(null);
-				} else {
-					this.markets.set([]);
-					this.isDockedAtAnyMarket.set(false);
-					this.dockedMarketId.set(null);
-					this.marketListError.set(response.message);
-				}
-				this.unsubscribeMarketListByLocationResponse?.();
-			},
-		);
 
 		// When the out-of-range toggle is on, request the widest available scan radius so
 		// all remote markets are included in one response.
@@ -314,7 +281,20 @@ export default class MarketHubPage {
 			...(characterId ? { characterId } : {}),
 			...(shipId ? { shipId } : {}),
 		};
-		this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, request);
+		this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
+			this.isLoadingMarkets.set(false);
+			if (response.success) {
+				this.markets.set(response.markets ?? []);
+				this.isDockedAtAnyMarket.set(Boolean(response.isDocked));
+				this.dockedMarketId.set(response.dockedMarketId ?? null);
+				this.marketListError.set(null);
+			} else {
+				this.markets.set([]);
+				this.isDockedAtAnyMarket.set(false);
+				this.dockedMarketId.set(null);
+				this.marketListError.set(response.message);
+			}
+		});
 	}
 
 	protected formatRadiusOptionLabel(radiusAu: number): string {

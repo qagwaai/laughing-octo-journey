@@ -1,5 +1,48 @@
 # TODO
 
+## Maintainability Review (2026-05-08)
+
+**Scope:** keep this list focused on maintainability, architecture, and code health. Test coverage and test-quality work are intentionally excluded because that scope was already addressed separately.
+
+### Workstreams to Split Separately
+
+- [x] **Socket service consolidation**: move direct `SocketService` usage in pages/scenes into domain services so request/response handling, correlation, and timeout behavior live in one place. Completed by adding [src/app/services/ship.service.ts](src/app/services/ship.service.ts), [src/app/services/market.service.ts](src/app/services/market.service.ts), [src/app/services/character.service.ts](src/app/services/character.service.ts), [src/app/services/auth.service.ts](src/app/services/auth.service.ts), [src/app/services/mission-board.service.ts](src/app/services/mission-board.service.ts), [src/app/services/ship-exterior-socket.service.ts](src/app/services/ship-exterior-socket.service.ts), [src/app/services/scene-graph-socket.service.ts](src/app/services/scene-graph-socket.service.ts), and [src/app/services/game-session.service.ts](src/app/services/game-session.service.ts); migrated remaining page/scene flows in [src/app/page/game/ship-view-inventory.ts](src/app/page/game/ship-view-inventory.ts), [src/app/page/character/character-setup.ts](src/app/page/character/character-setup.ts), [src/app/page/game/market-hub.ts](src/app/page/game/market-hub.ts), [src/app/page/game/ship-hangar.ts](src/app/page/game/ship-hangar.ts), [src/app/page/game/game-join.ts](src/app/page/game/game-join.ts), [src/app/page/character/character-list.ts](src/app/page/character/character-list.ts), [src/app/page/public/login.ts](src/app/page/public/login.ts), [src/app/page/public/registration.ts](src/app/page/public/registration.ts), [src/app/page/game/mission-board.ts](src/app/page/game/mission-board.ts), [src/app/page/game/repair-retrofit.ts](src/app/page/game/repair-retrofit.ts), [src/app/page/game/print-queue.ts](src/app/page/game/print-queue.ts), [src/app/scene/ship-exterior-view.ts](src/app/scene/ship-exterior-view.ts), and [src/app/scene/scene-graph.ts](src/app/scene/scene-graph.ts).
+- [ ] **Scene decomposition**: break up [src/app/scene/ship-exterior-view.ts](src/app/scene/ship-exterior-view.ts), the largest source file, into smaller controllers/services with narrower responsibilities.
+- [x] **Routing cleanup**: make [src/app/routed.routes.ts](src/app/routed.routes.ts) consistently lazy-loaded and split route groups by feature/outlet. Completed: all eager component routes now use `loadComponent`, and route entries are grouped by outlet (`primaryRoutes`, `leftOutletRoutes`, `rightOutletRoutes`).
+- [ ] **Model folder reorganization**: separate DTOs, factories, locale catalogs, and helpers under [src/app/model](src/app/model) to reduce namespace clutter. Phase 1 started: moved `triple`, `kinematics`, and `drive-profile` into `shared/` and `math/` with compatibility re-export stubs.
+- [ ] **Naming disambiguation**: resolve duplicate basenames across page/scene/component files so file navigation is unambiguous.
+- [x] **Logging and scheduling abstraction**: replace raw `console.*` and ad hoc timer usage with small shared utilities. Logging pass completed: [src/app/services/logger.ts](src/app/services/logger.ts) is now the single non-test console surface.
+- [ ] **Docs and roadmap hygiene**: move completed planning notes out of [TODO.md](TODO.md) once each workstream gets its own tracked item. First pass done: added `Active Now (Execution Queue)` and `Reference Sections` markers.
+
+### Priority Order
+
+1. Socket service consolidation
+2. Scene decomposition
+3. Routing cleanup
+4. Model folder reorganization
+5. Logging and scheduling abstraction
+6. Naming disambiguation
+7. Docs and roadmap hygiene
+
+### Active Now (Execution Queue)
+
+- [x] **Socket service consolidation (first slice)**: start with one high-traffic flow (`ship-list` or `market-list`) moved behind a domain service.
+- [x] **Logging abstraction (finish pass)**: keep [src/app/services/logger.ts](src/app/services/logger.ts) as the single logging surface and migrate remaining ad hoc logs as they appear.
+- [x] **Model folder reorganization plan**: defined target subfolders and no-break migration order in [docs/model-folder-reorganization-plan.md](docs/model-folder-reorganization-plan.md).
+- [x] **Model folder reorganization (phase 1, batch 1)**: moved [src/app/model/shared/triple.ts](src/app/model/shared/triple.ts), [src/app/model/math/kinematics.ts](src/app/model/math/kinematics.ts), and [src/app/model/math/drive-profile.ts](src/app/model/math/drive-profile.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 2)**: moved [src/app/model/math/spatial.ts](src/app/model/math/spatial.ts) and [src/app/model/math/jump-gate.ts](src/app/model/math/jump-gate.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 3)**: moved [src/app/model/math/asteroid-kinematics.ts](src/app/model/math/asteroid-kinematics.ts) and [src/app/model/math/celestial-body-location.ts](src/app/model/math/celestial-body-location.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 4)**: moved [src/app/model/catalog/mission-catalog.ts](src/app/model/catalog/mission-catalog.ts) and [src/app/model/catalog/item-view-specs-configs.ts](src/app/model/catalog/item-view-specs-configs.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 5)**: moved [src/app/model/catalog/asteroid-materials.ts](src/app/model/catalog/asteroid-materials.ts) and [src/app/model/domain/expendable-dart-drone.ts](src/app/model/domain/expendable-dart-drone.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 6)**: moved [src/app/model/domain/character-economy.ts](src/app/model/domain/character-economy.ts) and [src/app/model/domain/starter-ship.ts](src/app/model/domain/starter-ship.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 7)**: moved [src/app/model/domain/3d-printer.ts](src/app/model/domain/3d-printer.ts) and [src/app/model/view/item-view-specs.ts](src/app/model/view/item-view-specs.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Model folder reorganization (phase 1, batch 8)**: moved [src/app/model/domain/celestial-body.ts](src/app/model/domain/celestial-body.ts) and [src/app/model/catalog/opening-sequence.locale.ts](src/app/model/catalog/opening-sequence.locale.ts), with compatibility re-exports preserved at legacy paths.
+- [x] **Naming disambiguation proposal**: drafted suffix conventions and rollout steps in [docs/naming-disambiguation-proposal.md](docs/naming-disambiguation-proposal.md).
+
+### Reference Sections (History / Deep Planning)
+
+The sections below are intentionally retained for historical context and longer-term planning. Keep active execution in the queue above.
+
 ## Test Quality Remediation (from TEST_QUALITY_REVIEW.md, 2026-05-07)
 
 **Context:** Full review in [TEST_QUALITY_REVIEW.md](TEST_QUALITY_REVIEW.md). 1199 unit + 68 e2e tests pass, but ~55 % of spec code (10 386 LOC across 30 files) consists of "shadow specs" that re-implement component logic instead of importing the SUT, inflating reported coverage and providing no real regression protection.

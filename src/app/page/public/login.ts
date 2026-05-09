@@ -9,14 +9,9 @@ import {
 	supportedLocaleCodes,
 	type SupportedLocaleCode,
 } from '../../i18n/locale';
-import {
-	LOGIN_EVENT,
-	LOGIN_RESPONSE_EVENT,
-	LoginRequest,
-	LoginResponse,
-} from '../../model/login';
+import { LoginRequest, LoginResponse } from '../../model/login';
+import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
-import { SocketService } from '../../services/socket.service';
 
 interface LoginNavigationState {
 	preferredLocale?: string;
@@ -32,7 +27,7 @@ interface LoginNavigationState {
 export default class LoginPage implements OnDestroy {
 	protected readonly t = locale;
 	protected readonly supportedLocaleCodes = supportedLocaleCodes;
-	private socketService = inject(SocketService);
+	private authService = inject(AuthService);
 	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
@@ -90,41 +85,37 @@ export default class LoginPage implements OnDestroy {
 		this.successMessage.set(null);
 		this.errorMessage.set(null);
 		this.canNavigateToRegister.set(false);
+		this.unsubscribeResponse?.();
 
-		this.unsubscribeResponse = this.socketService.on(
-			LOGIN_RESPONSE_EVENT,
-			(response: LoginResponse) => {
-				this.isSubmitting.set(false);
-				if (response.success) {
-					if (response.sessionKey) {
-						this.sessionService.setSessionKey(response.sessionKey);
-					}
-					this.successMessage.set(response.message);
-					this.canNavigateToRegister.set(false);
-					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-						preserveFragment: true,
-						state: { playerName: request.playerName },
-					});
-					this.unsubscribeResponse?.();
-					return;
+		this.unsubscribeResponse = this.authService.login(request, (response: LoginResponse) => {
+			this.isSubmitting.set(false);
+			if (response.success) {
+				if (response.sessionKey) {
+					this.sessionService.setSessionKey(response.sessionKey);
 				}
-
-				if (response.reason === 'PLAYER_NOT_REGISTERED') {
-					this.errorMessage.set(this.t.public.login.messages.playerNotRegistered);
-					this.canNavigateToRegister.set(true);
-				} else if (response.reason === 'PASSWORD_MISMATCH') {
-					this.errorMessage.set(this.t.public.login.messages.passwordMismatch);
-					this.canNavigateToRegister.set(false);
-				} else {
-					this.errorMessage.set(response.message);
-					this.canNavigateToRegister.set(false);
-				}
-
+				this.successMessage.set(response.message);
+				this.canNavigateToRegister.set(false);
+				this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+					preserveFragment: true,
+					state: { playerName: request.playerName },
+				});
 				this.unsubscribeResponse?.();
-			},
-		);
+				return;
+			}
 
-		this.socketService.emit(LOGIN_EVENT, request);
+			if (response.reason === 'PLAYER_NOT_REGISTERED') {
+				this.errorMessage.set(this.t.public.login.messages.playerNotRegistered);
+				this.canNavigateToRegister.set(true);
+			} else if (response.reason === 'PASSWORD_MISMATCH') {
+				this.errorMessage.set(this.t.public.login.messages.passwordMismatch);
+				this.canNavigateToRegister.set(false);
+			} else {
+				this.errorMessage.set(response.message);
+				this.canNavigateToRegister.set(false);
+			}
+
+			this.unsubscribeResponse?.();
+		});
 	}
 
 	navigateToRegistration(): void {

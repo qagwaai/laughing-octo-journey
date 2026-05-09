@@ -1,15 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
-import { SessionService, SocketService } from '../../services';
+import { SessionService, ShipService, SocketService } from '../../services';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipInventory,
 	type ShipItem,
 	type ShipListRequest,
@@ -45,6 +43,7 @@ import { type PrintQueueNavigationState } from './repair-retrofit-state';
 export default class PrintQueuePage {
 	protected readonly t = locale;
 	private router = inject(Router);
+	private shipService = inject(ShipService);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private missionProgressSyncService = inject(MissionProgressSyncService);
@@ -52,7 +51,6 @@ export default class PrintQueuePage {
 	private printerService = inject(PrinterStateService);
 	private destroyRef = inject(DestroyRef);
 	private collectingItemIds = new Set<string>();
-	private unsubscribeShipListResponse?: () => void;
 	private navigationState: PrintQueueNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as PrintQueueNavigationState | undefined) ??
 		(history.state as PrintQueueNavigationState | undefined) ??
@@ -99,7 +97,6 @@ export default class PrintQueuePage {
 		}, 1000);
 		this.destroyRef.onDestroy(() => {
 			clearInterval(intervalId);
-			this.unsubscribeShipListResponse?.();
 		});
 
 		this.checkPrintCompletion();
@@ -114,36 +111,28 @@ export default class PrintQueuePage {
 			return;
 		}
 
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
-
-				if (!response.success) {
-					return;
-				}
-
-				const nextShip = response.ships?.[0] ?? null;
-				if (!nextShip) {
-					return;
-				}
-
-				const hydratedShip: ShipSummary = {
-					...nextShip,
-					inventory: coerceShipInventory(nextShip.inventory),
-				};
-
-				this.activeShip.set(hydratedShip);
-			},
-		);
-
 		const request: ShipListRequest = {
 			playerName,
 			characterId,
 			sessionKey,
 		};
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			if (!response.success) {
+				return;
+			}
+
+			const nextShip = response.ships?.[0] ?? null;
+			if (!nextShip) {
+				return;
+			}
+
+			const hydratedShip: ShipSummary = {
+				...nextShip,
+				inventory: coerceShipInventory(nextShip.inventory),
+			};
+
+			this.activeShip.set(hydratedShip);
+		});
 	}
 
 	protected queuePrintableItem(printableItem: PrintableItemDefinition): void {

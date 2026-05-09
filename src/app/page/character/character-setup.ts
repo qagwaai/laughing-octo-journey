@@ -3,36 +3,33 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import {
-	CHARACTER_ADD_REQUEST_EVENT,
-	CHARACTER_ADD_RESPONSE_EVENT,
 	CharacterAddRequest,
 	CharacterAddResponse,
 } from '../../model/character-add';
 import {
-	CHARACTER_EDIT_REQUEST_EVENT,
-	CHARACTER_EDIT_RESPONSE_EVENT,
 	CharacterEditRequest,
 	CharacterEditResponse,
 } from '../../model/character-edit';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	type ShipListRequest,
 	type ShipListResponse,
 } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
-import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/expendable-dart-drone';
+import { EXPENDABLE_DART_DRONE_ITEM_TYPE, EXPENDABLE_DART_DRONE_DISPLAY_NAME } from '../../model/domain/expendable-dart-drone';
 import {
 	THREE_D_PRINTER_ITEM_TYPE,
 	THREE_D_PRINTER_DISPLAY_NAME,
 	THREE_D_PRINTER_TIER,
-} from '../../model/3d-printer';
-import { generateDeterministicStarterShipUpdate } from '../../model/starter-ship';
+} from '../../model/domain/3d-printer';
+import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import { INVALID_SESSION_EVENT } from '../../model/session';
+import { CharacterService } from '../../services/character.service';
+import { GameSessionService } from '../../services/game-session.service';
+import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 
 interface StarterShipInventoryItemDefinition {
@@ -76,7 +73,10 @@ export default class CharacterSetupPage implements OnDestroy {
 	protected readonly t = locale;
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
+	private characterService = inject(CharacterService);
+	private gameSessionService = inject(GameSessionService);
 	private socketService = inject(SocketService);
+	private shipService = inject(ShipService);
 	private sessionService = inject(SessionService);
 	private unsubscribeAddResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
@@ -108,13 +108,10 @@ export default class CharacterSetupPage implements OnDestroy {
 	protected isSubmitting = signal(false);
 
 	constructor() {
-		this.unsubscribeInvalidSession = this.socketService.on(
-			INVALID_SESSION_EVENT,
-			() => {
-				this.sessionService.clearSession();
-				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-			},
-		);
+		this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+			this.sessionService.clearSession();
+			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+		});
 	}
 
 	saveCharacter(): void {
@@ -149,29 +146,24 @@ export default class CharacterSetupPage implements OnDestroy {
 			}
 		}
 
-		const responseEventName = isEditMode ? CHARACTER_EDIT_RESPONSE_EVENT : CHARACTER_ADD_RESPONSE_EVENT;
-
-		this.unsubscribeAddResponse = this.socketService.on(
-			responseEventName,
-			(response: CharacterAddResponse | CharacterEditResponse) => {
-				this.isSubmitting.set(false);
-				if (response.success) {
-					this.isSaved.set(true);
-					this.successMessage.set(response.message);
-					this.errorMessage.set(null);
-					if (!isEditMode) {
-						const addResponse = response as CharacterAddResponse;
-						this.createStarterShipForCharacter(addResponse.characterId);
-					}
-					this.navigateToCharacterList();
-				} else {
-					this.isSaved.set(false);
-					this.successMessage.set(null);
-					this.errorMessage.set(response.message);
+		const handleSaveResponse = (response: CharacterAddResponse | CharacterEditResponse): void => {
+			this.isSubmitting.set(false);
+			if (response.success) {
+				this.isSaved.set(true);
+				this.successMessage.set(response.message);
+				this.errorMessage.set(null);
+				if (!isEditMode) {
+					const addResponse = response as CharacterAddResponse;
+					this.createStarterShipForCharacter(addResponse.characterId);
 				}
-				this.unsubscribeAddResponse?.();
-			},
-		);
+				this.navigateToCharacterList();
+			} else {
+				this.isSaved.set(false);
+				this.successMessage.set(null);
+				this.errorMessage.set(response.message);
+			}
+			this.unsubscribeAddResponse?.();
+		};
 
 		if (isEditMode) {
 			const editCharacter = this.editCharacter()!;
@@ -181,7 +173,9 @@ export default class CharacterSetupPage implements OnDestroy {
 				characterName,
 				sessionKey: this.sessionService.getSessionKey()!,
 			};
-			this.socketService.emit(CHARACTER_EDIT_REQUEST_EVENT, request);
+			this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
+				handleSaveResponse(response);
+			});
 			return;
 		}
 
@@ -190,7 +184,9 @@ export default class CharacterSetupPage implements OnDestroy {
 			characterName,
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
-		this.socketService.emit(CHARACTER_ADD_REQUEST_EVENT, request);
+		this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
+			handleSaveResponse(response);
+		});
 	}
 
 	private createStarterShipForCharacter(characterId?: string): void {
@@ -199,74 +195,69 @@ export default class CharacterSetupPage implements OnDestroy {
 		const resolvedCharacterId = characterId?.trim() ?? '';
 
 		if (!playerName || !sessionKey || !resolvedCharacterId) {
-			console.warn('Skipping starter ship upsert due to missing character context.');
+			appLogger.warn('Skipping starter ship upsert due to missing character context.');
 			this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
 			return;
 		}
-
-		this.socketService.once(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				if (!response.success) {
-					console.warn('Unable to resolve starter ship from ship-list:', response.message);
-					this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
-					return;
-				}
-
-				const starterShipId = response.ships?.[0]?.id?.trim();
-				if (!starterShipId) {
-					console.warn('Starter ship id was not returned by ship-list response.');
-					this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
-					return;
-				}
-
-				const existingInventory = response.ships?.[0]?.inventory ?? [];
-
-				const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
-				this.socketService.upsertShip(
-					{
-						playerName,
-						characterId: resolvedCharacterId,
-						sessionKey,
-						ship: shipUpdate,
-					},
-					(upsertResponse: ShipUpsertResponse) => {
-						if (!upsertResponse.success) {
-							console.warn('Starter ship upsert failed:', upsertResponse.message);
-							this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
-							return;
-						}
-
-						const upsertedInventory = upsertResponse.ship?.inventory ?? [];
-						const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
-							(definition) =>
-								!this.hasStarterShipInventoryItem(existingInventory, definition) &&
-								!this.hasStarterShipInventoryItem(upsertedInventory, definition),
-						);
-
-						if (missingStarterItems.length === 0) {
-							this.warningMessage.set(null);
-							return;
-						}
-
-						this.upsertStarterShipInventoryItems(
-							missingStarterItems,
-							playerName,
-							sessionKey,
-							resolvedCharacterId,
-							starterShipId,
-						);
-					},
-				);
-			},
-		);
 
 		const followupRequest: ShipListRequest = {
 			playerName,
 			characterId: resolvedCharacterId,
 			sessionKey,
 		};
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, followupRequest);
+		this.shipService.listShips(followupRequest, (response: ShipListResponse) => {
+			if (!response.success) {
+				appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
+				this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
+				return;
+			}
+
+			const starterShipId = response.ships?.[0]?.id?.trim();
+			if (!starterShipId) {
+				appLogger.warn('Starter ship id was not returned by ship-list response.');
+				this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
+				return;
+			}
+
+			const existingInventory = response.ships?.[0]?.inventory ?? [];
+
+			const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
+			this.socketService.upsertShip(
+				{
+					playerName,
+					characterId: resolvedCharacterId,
+					sessionKey,
+					ship: shipUpdate,
+				},
+				(upsertResponse: ShipUpsertResponse) => {
+					if (!upsertResponse.success) {
+						appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
+						this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
+						return;
+					}
+
+					const upsertedInventory = upsertResponse.ship?.inventory ?? [];
+					const missingStarterItems = STARTER_SHIP_INVENTORY_ITEMS.filter(
+						(definition) =>
+							!this.hasStarterShipInventoryItem(existingInventory, definition) &&
+							!this.hasStarterShipInventoryItem(upsertedInventory, definition),
+					);
+
+					if (missingStarterItems.length === 0) {
+						this.warningMessage.set(null);
+						return;
+					}
+
+					this.upsertStarterShipInventoryItems(
+						missingStarterItems,
+						playerName,
+						sessionKey,
+						resolvedCharacterId,
+						starterShipId,
+					);
+				},
+			);
+		});
 	}
 
 	private hasStarterShipInventoryItem(
@@ -314,7 +305,7 @@ export default class CharacterSetupPage implements OnDestroy {
 			},
 			(itemResponse: ItemUpsertResponse) => {
 				if (!itemResponse.success) {
-					console.warn(`Starter item creation failed for ${itemDefinition.itemType}:`, itemResponse.message);
+					appLogger.warn(`Starter item creation failed for ${itemDefinition.itemType}:`, itemResponse.message);
 					this.warningMessage.set(itemDefinition.failureMessage);
 					return;
 				}

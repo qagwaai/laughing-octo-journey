@@ -2,14 +2,10 @@ import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import {
-	CHARACTER_DELETE_REQUEST_EVENT,
-	CHARACTER_DELETE_RESPONSE_EVENT,
 	CharacterDeleteRequest,
 	CharacterDeleteResponse,
 } from '../../model/character-delete';
 import {
-	CHARACTER_LIST_REQUEST_EVENT,
-	CHARACTER_LIST_RESPONSE_EVENT,
 	CharacterListRequest,
 	CharacterListResponse,
 	PlayerCharacterSummary,
@@ -18,12 +14,12 @@ import type { CharacterMissionProgress, MissionStatus } from '../../model/missio
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import {
-	GAME_JOIN_REQUEST_EVENT,
 	GameJoinRequest,
 } from '../../model/game-join';
 import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
-import { INVALID_SESSION_EVENT } from '../../model/session';
+import { CharacterService } from '../../services/character.service';
+import { GameSessionService } from '../../services/game-session.service';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 
@@ -38,11 +34,11 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 })
 export default class CharacterListPage implements OnDestroy {
 	protected readonly t = locale;
+	private characterService = inject(CharacterService);
+	private gameSessionService = inject(GameSessionService);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
 	private router = inject(Router);
-	private unsubscribeResponse?: () => void;
-	private unsubscribeDeleteResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 
 	protected playerName = signal<string>(
@@ -57,13 +53,10 @@ export default class CharacterListPage implements OnDestroy {
 	protected isDeleting = signal(false);
 
 	constructor() {
-		this.unsubscribeInvalidSession = this.socketService.on(
-			INVALID_SESSION_EVENT,
-			() => {
-				this.sessionService.clearSession();
-				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-			},
-		);
+		this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+			this.sessionService.clearSession();
+			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+		});
 
 		if (this.socketService.getIsConnected()) {
 			this.loadCharacters();
@@ -82,24 +75,17 @@ export default class CharacterListPage implements OnDestroy {
 
 		this.isLoading.set(true);
 		this.errorMessage.set(null);
-		this.unsubscribeResponse?.();
-
-		this.unsubscribeResponse = this.socketService.on(
-			CHARACTER_LIST_RESPONSE_EVENT,
-			(response: CharacterListResponse) => {
-				this.isLoading.set(false);
-				if (response.success) {
-					this.characters.set(this.normalizeCharacters(response.characters));
-				} else {
-					this.characters.set([]);
-					this.errorMessage.set(response.message);
-				}
-				this.unsubscribeResponse?.();
-			},
-		);
 
 		const request: CharacterListRequest = { playerName, sessionKey: this.sessionService.getSessionKey()! };
-		this.socketService.emit(CHARACTER_LIST_REQUEST_EVENT, request);
+		this.characterService.listCharacters(request, (response: CharacterListResponse) => {
+			this.isLoading.set(false);
+			if (response.success) {
+				this.characters.set(this.normalizeCharacters(response.characters));
+			} else {
+				this.characters.set([]);
+				this.errorMessage.set(response.message);
+			}
+		});
 	}
 
 	private normalizeCharacters(characters: unknown): PlayerCharacterSummary[] {
@@ -197,21 +183,6 @@ export default class CharacterListPage implements OnDestroy {
 
 		this.isDeleting.set(true);
 		this.errorMessage.set(null);
-		this.unsubscribeDeleteResponse?.();
-
-		this.unsubscribeDeleteResponse = this.socketService.on(
-			CHARACTER_DELETE_RESPONSE_EVENT,
-			(response: CharacterDeleteResponse) => {
-				this.isDeleting.set(false);
-				if (response.success) {
-					this.characters.set(this.characters().filter((c) => c.id !== character.id));
-					this.pendingDeleteCharacter.set(null);
-				} else {
-					this.errorMessage.set(response.message);
-				}
-				this.unsubscribeDeleteResponse?.();
-			},
-		);
 
 		const request: CharacterDeleteRequest = {
 			playerName,
@@ -219,7 +190,15 @@ export default class CharacterListPage implements OnDestroy {
 			characterName: character.characterName,
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
-		this.socketService.emit(CHARACTER_DELETE_REQUEST_EVENT, request);
+		this.characterService.deleteCharacter(request, (response: CharacterDeleteResponse) => {
+			this.isDeleting.set(false);
+			if (response.success) {
+				this.characters.set(this.characters().filter((c) => c.id !== character.id));
+				this.pendingDeleteCharacter.set(null);
+			} else {
+				this.errorMessage.set(response.message);
+			}
+		});
 	}
 
 	navigateToCharacterSetup(): void {
@@ -258,7 +237,7 @@ export default class CharacterListPage implements OnDestroy {
 			characterId: character.id,
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
-		this.socketService.emit(GAME_JOIN_REQUEST_EVENT, request);
+		this.gameSessionService.requestGameJoin(request);
 
 		const firstTargetStatus = this.getFirstTargetStatus(character);
 		const isFirstTargetInProgress =
@@ -300,8 +279,6 @@ export default class CharacterListPage implements OnDestroy {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeResponse?.();
-		this.unsubscribeDeleteResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 }

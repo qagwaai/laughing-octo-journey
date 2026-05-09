@@ -13,10 +13,10 @@ import {
 	computed,
 } from '@angular/core';
 import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
-import { AsteroidKinematics } from '../model/asteroid-kinematics';
-import { CelestialBodyLocation } from '../model/celestial-body-location';
-import { AsteroidMaterialProfile } from '../model/asteroid-materials';
-import { Triple } from '../model/triple';
+import { AsteroidKinematics } from '../model/math/asteroid-kinematics';
+import { CelestialBodyLocation } from '../model/math/celestial-body-location';
+import { AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
+import { Triple } from '../model/shared/triple';
 import * as THREE from 'three';
 
 export interface AsteroidHoverEvent {

@@ -7,6 +7,7 @@ import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } fro
 import { NgtCanvas } from 'angular-three/dom';
 import { RoutedScene } from './routed-scene';
 import { OpeningAudioService } from './services';
+import { appLogger } from './services/logger';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -168,7 +169,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   reset() {
-		console.log("Resetting billboard settings");
+    appLogger.log('Resetting billboard settings');
 	}
 
   onCanvasClick() {}

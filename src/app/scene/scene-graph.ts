@@ -1,4 +1,4 @@
-import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, OnDestroy, OnInit, viewChild } from "@angular/core";
+import { AfterContentInit, ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, inject, OnDestroy, OnInit, viewChild } from "@angular/core";
 import { Triplet } from "@pmndrs/cannon-worker-api";
 import { beforeRender, extend, injectStore, NgtArgs } from "angular-three";
 import { NgtcPhysics } from 'angular-three-cannon';
@@ -17,7 +17,8 @@ import { CurrentRoute } from "../component/current";
 import { Cube } from "../component/cube";
 import { ExpendableDartShip } from "../component/expendable-dart-drone";
 import { Sol } from "../component/sol";
-import { SocketService } from "../services/socket.service";
+import { appLogger } from "../services/logger";
+import { SceneGraphSocketService } from "../services/scene-graph-socket.service";
 
 extend(THREE);
 
@@ -117,8 +118,10 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
     private instancesRef = viewChild<ElementRef<InstancedMesh>>('instances');
     private boxGeometryRef = viewChild<ElementRef<BoxGeometry>>('boxGeometry');
     private planetsRef = viewChild<ElementRef<THREE.Group>>('planets');
+    private sceneGraphSocketService = inject(SceneGraphSocketService);
+    private unsubscribeMessage?: () => void;
 
-    constructor(private socket: SocketService) {
+    constructor() {
         const o = new Object3D();
 
         effect(() => {
@@ -126,29 +129,8 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
         });
 
         beforeRender(({ scene, delta }) => {
-            // let count = 0;
-            const time = performance.now() / 1000;
-            // scene.traverse((child) => {
-            // 	child.rotation.x = count + time / 3;
-            // 	child.rotation.z = count + time / 4;
-            // 	count++;
-            // });
-            if (time % 5 < 0.02) {
-                // console.log(time, "br Scene children size:", scene.children.length);
-                // scene.traverse((child) => {
-                //     console.log("traverse child", child);
-                //     if (child instanceof THREE.InstancedMesh) {
-                //         console.log("traverse child is InstancedMesh", child);
-                //         child.children.forEach((c) => {
-                //             console.log("traverse child InstancedMesh child", c);
-                //         });
-
-                //     }
-                // },)
-            }
             let instancesRef = this.instancesRef()?.nativeElement;
             if (instancesRef) {
-                //console.log("beforeRender instancesRef", instancesRef);
                 instancesRef.rotation.y += delta;
             }
 
@@ -192,7 +174,6 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
             ];
             if (!instances || !boxGeometry) return;
 
-            //console.log("effect", "boxGeometry", boxGeometry, "instances", instances);
             let i = 0;
             const root = Math.round(Math.pow(this.length, 1 / 3));
             const halfRoot = root / 2;
@@ -214,31 +195,31 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
 
     }
     ngOnDestroy(): void {
-        this.socket.disconnect();
+        this.unsubscribeMessage?.();
+        this.sceneGraphSocketService.disconnect();
     }
     ngOnInit(): void {
-        this.socket.connect('http://localhost:3000');
-        this.socket.on('message', (data) => console.log(data));
+        this.unsubscribeMessage = this.sceneGraphSocketService.connectAndSubscribeMessages((data) => appLogger.log(data));
     }
 
     sendMessage(msg: string) {
-        this.socket.emit('message', { text: msg });
+        this.sceneGraphSocketService.sendMessage(msg);
     }
 
     onPlanetClick() {
-        console.log("Planet Button clicked");
+        appLogger.log('Planet Button clicked');
         this.addPlanet('darkblue', [3 * Math.random(), 3 * Math.random(), 3 * Math.random()]);
     }
 
     onBlockClick() {
-        console.log("Block Button clicked");
+        appLogger.log('Block Button clicked');
         this.positions.push(3 * Math.random() - 1.5);
     }
 
     addPlanet(color: string = 'blue', position: Triplet = [3, 3, 3]) {
         const planets = this.planetsRef()?.nativeElement;
         if (!planets) return;
-        console.log("Current Planets count: ", planets.children.length);
+        appLogger.log('Current Planets count: ', planets.children.length);
         const sphereGeometry = new THREE.SphereGeometry(0.1, 32, 32);
         const material = new THREE.MeshStandardMaterial({ color: color });
         const planetMesh = new THREE.Mesh(sphereGeometry, material);
@@ -251,11 +232,11 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
     }
 
     onPlanetAdded() {
-        console.log("Child added to planets group");
+        appLogger.log('Child added to planets group');
     }
 
     onBlockAdded() {
-        console.log("Child added to blocks group");
+        appLogger.log('Child added to blocks group');
     }
 
     ngAfterContentInit(): void {

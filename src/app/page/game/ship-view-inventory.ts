@@ -2,8 +2,6 @@ import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal, computed
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	type ShipListRequest,
 	type ShipListResponse,
 	ShipSummary,
@@ -16,13 +14,15 @@ import {
 import { ShipItem } from '../../model/ship-item';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { appLogger } from '../../services/logger';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SessionService } from '../../services/session.service';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import {
 	EXPENDABLE_DART_DRONE_ITEM_TYPE,
 	EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-} from '../../model/expendable-dart-drone';
+} from '../../model/domain/expendable-dart-drone';
 import type { ItemUpsertResponse } from '../../model/item-upsert';
 
 interface ShipViewInventoryNavigationState {
@@ -49,8 +49,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
 	protected readonly t = locale;
 	private router = inject(Router);
 	private socketService = inject(SocketService);
+	private shipService = inject(ShipService);
 	private sessionService = inject(SessionService);
-	private unsubscribeShipListResponse?: () => void;
 	private navigationState: ShipViewInventoryNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ShipViewInventoryNavigationState | undefined) ??
 		(history.state as ShipViewInventoryNavigationState | undefined) ??
@@ -95,9 +95,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
 		return ship?.name?.trim() || ship?.id || '';
 	}
 
-	ngOnDestroy(): void {
-		this.unsubscribeShipListResponse?.();
-	}
+	ngOnDestroy(): void {}
 
 	navigateBackToHangar(): void {
 		this.router.navigate([{ outlets: { left: ['ship-hangar'] } }], {
@@ -155,7 +153,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
 			},
 			(response: ItemUpsertResponse) => {
 				if (!response.success || !response.item) {
-					console.warn('Add drone failed:', response.message);
+					appLogger.warn('Add drone failed:', response.message);
 					return;
 				}
 
@@ -176,26 +174,17 @@ export default class ShipViewInventoryPage implements OnDestroy {
 			return;
 		}
 
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				if (!response.success) {
-					this.unsubscribeShipListResponse?.();
-					return;
-				}
-
-				const matchingShip = (response.ships ?? []).find((ship) => ship.id === shipId);
-				if (matchingShip) {
-					this.joinShip.set(this.normalizeShipSummary(matchingShip));
-				}
-
-				this.unsubscribeShipListResponse?.();
-			},
-		);
-
 		const request: ShipListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			if (!response.success) {
+				return;
+			}
+
+			const matchingShip = (response.ships ?? []).find((ship) => ship.id === shipId);
+			if (matchingShip) {
+				this.joinShip.set(this.normalizeShipSummary(matchingShip));
+			}
+		});
 	}
 
 	private normalizeShipSummary(ship: ShipSummary): ShipSummary {

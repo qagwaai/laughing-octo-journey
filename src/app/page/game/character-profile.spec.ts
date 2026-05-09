@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import CharacterProfilePage from './character-profile';
-import type { CreditLedgerEntry } from '../../model/character-economy';
+import type { CreditLedgerEntry } from '../../model/domain/character-economy';
 
 function setup(options: { navigationState?: Record<string, unknown> } = {}) {
 	const mockRouter = {

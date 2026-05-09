@@ -9,8 +9,8 @@ import {
 	normalizeItemTypeForImage,
 	resolveGroups,
 	type ItemViewSpecsConfig,
-} from '../../model/item-view-specs';
-import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/item-view-specs-configs';
+} from '../../model/view/item-view-specs';
+import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import type { ShipItem } from '../../model/ship-item';
 
 interface NavState {

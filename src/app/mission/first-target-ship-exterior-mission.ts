@@ -2,20 +2,20 @@ import {
 	DEFAULT_CLUSTER_SPREAD_KM,
 	generateRandomAsteroidBeltClusterCenterKm,
 	generateRandomCelestialBodyLocationNear,
-} from '../model/celestial-body-location';
+} from '../model/math/celestial-body-location';
 import type { CelestialBodyListItem } from '../model/celestial-body-list';
-import { generateRandomAsteroidKinematics } from '../model/asteroid-kinematics';
+import { generateRandomAsteroidKinematics } from '../model/math/asteroid-kinematics';
 import {
 	ASTEROID_MATERIALS,
 	pickWeightedAsteroidMaterial,
 	type AsteroidMaterialProfile,
-} from '../model/asteroid-materials';
+} from '../model/catalog/asteroid-materials';
 import { coerceShipInventory } from '../model/ship-list';
 import type { LaunchItemResponse } from '../model/launch-item';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import type { MissionStatus } from '../model/mission';
-import type { Triple } from '../model/triple';
+import type { Triple } from '../model/shared/triple';
 import {
 	createInitialMissionGateState,
 	type ShipExteriorMissionDefinition,

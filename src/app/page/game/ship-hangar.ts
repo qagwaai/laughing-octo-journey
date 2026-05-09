@@ -3,8 +3,6 @@ import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
 	coerceShipStatus,
 	coerceShipDamageProfileOrNull,
@@ -20,6 +18,7 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 
 interface ShipHangarNavigationState {
@@ -38,8 +37,8 @@ export default class ShipHangarPage {
 	protected readonly t = locale;
 	private router = inject(Router);
 	private socketService = inject(SocketService);
+	private shipService = inject(ShipService);
 	private sessionService = inject(SessionService);
-	private unsubscribeShipListResponse?: () => void;
 	private navigationState: ShipHangarNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
 		(history.state as ShipHangarNavigationState | undefined) ??
@@ -86,25 +85,18 @@ export default class ShipHangarPage {
 
 		this.isLoadingShips.set(true);
 		this.shipListError.set(null);
-		this.unsubscribeShipListResponse?.();
-
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				this.isLoadingShips.set(false);
-				if (response.success) {
-					this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
-					this.shipListError.set(null);
-				} else {
-					this.ships.set([]);
-					this.shipListError.set(response.message);
-				}
-				this.unsubscribeShipListResponse?.();
-			},
-		);
 
 		const request: ShipListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			this.isLoadingShips.set(false);
+			if (response.success) {
+				this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+				this.shipListError.set(null);
+			} else {
+				this.ships.set([]);
+				this.shipListError.set(response.message);
+			}
+		});
 	}
 
 	private normalizeShipSummary(ship: ShipSummary): ShipSummary {

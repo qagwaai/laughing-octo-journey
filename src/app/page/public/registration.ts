@@ -9,9 +9,9 @@ import {
 	supportedLocaleCodes,
 	type SupportedLocaleCode,
 } from '../../i18n/locale';
-import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT, RegisterRequest, RegisterResponse } from '../../model/register';
+import { RegisterRequest, RegisterResponse } from '../../model/register';
+import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
-import { SocketService } from '../../services/socket.service';
 
 interface RegistrationNavigationState {
 	preferredLocale?: string;
@@ -35,7 +35,7 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
 export default class RegistrationPage implements OnDestroy {
 	protected readonly t = locale;
 	protected readonly supportedLocaleCodes = supportedLocaleCodes;
-	private socketService = inject(SocketService);
+	private authService = inject(AuthService);
 	private sessionService = inject(SessionService);
 	private fb = inject(FormBuilder);
 	private router = inject(Router);
@@ -97,29 +97,25 @@ export default class RegistrationPage implements OnDestroy {
 		this.isSubmitting.set(true);
 		this.successMessage.set(null);
 		this.errorMessage.set(null);
+		this.unsubscribeResponse?.();
 
-		this.unsubscribeResponse = this.socketService.on(
-			REGISTER_RESPONSE_EVENT,
-			(response: RegisterResponse) => {
-				this.isSubmitting.set(false);
-				if (response.success) {
-					if (response.sessionKey) {
-						this.sessionService.setSessionKey(response.sessionKey);
-					}
-					this.successMessage.set(response.message);
-					this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-						preserveFragment: true,
-						state: { playerName: request.playerName },
-					});
-					this.registrationForm.reset();
-				} else {
-					this.errorMessage.set(response.message);
+		this.unsubscribeResponse = this.authService.register(request, (response: RegisterResponse) => {
+			this.isSubmitting.set(false);
+			if (response.success) {
+				if (response.sessionKey) {
+					this.sessionService.setSessionKey(response.sessionKey);
 				}
-				this.unsubscribeResponse?.();
-			},
-		);
-
-		this.socketService.emit(REGISTER_EVENT, request);
+				this.successMessage.set(response.message);
+				this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+					preserveFragment: true,
+					state: { playerName: request.playerName },
+				});
+				this.registrationForm.reset();
+			} else {
+				this.errorMessage.set(response.message);
+			}
+			this.unsubscribeResponse?.();
+		});
 	}
 
 	navigateToLogin(): void {

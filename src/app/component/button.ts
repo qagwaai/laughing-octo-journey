@@ -15,6 +15,7 @@ import { NgtArgs } from "angular-three";
 import { NgtcPhysics } from "angular-three-cannon";
 import { box } from 'angular-three-cannon/body';
 import { Mesh } from "three/src/objects/Mesh.js";
+import { appLogger } from '../services/logger';
 
 export const BUTTON_BOX_FN = new InjectionToken<typeof box>('BUTTON_BOX_FN', {
     factory: () => box,
@@ -59,7 +60,7 @@ export class Button {
 
     onClick() {
         this.clicked.set(!this.clicked())
-        console.log("Button clicked: clicked state is now", this.clicked());
+        appLogger.log('Button clicked: clicked state is now', this.clicked());
         this.click.emit(null);
     }
 }

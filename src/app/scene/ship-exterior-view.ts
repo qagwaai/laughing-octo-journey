@@ -15,8 +15,8 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
 import { Sol } from '../component/sol';
-import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/asteroid-kinematics';
-import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/asteroid-materials';
+import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../model/math/asteroid-kinematics';
+import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
@@ -25,20 +25,16 @@ import {
 	type CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
 import {
-	CELESTIAL_BODY_LIST_REQUEST_EVENT,
-	CELESTIAL_BODY_LIST_RESPONSE_EVENT,
 	type CelestialBodyListRequest,
 	type CelestialBodyListResponse,
 } from '../model/celestial-body-list';
 import {
 	DEFAULT_CLUSTER_SPREAD_KM,
 	type CelestialBodyLocation,
-} from '../model/celestial-body-location';
+} from '../model/math/celestial-body-location';
 import { type MissionStatus } from '../model/mission';
 import { PlayerCharacterSummary } from '../model/character-list';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipInventory,
 	coerceShipModel,
 	type ShipListRequest,
@@ -55,10 +51,8 @@ import {
 	resolveShipExteriorViewSeedPolicy,
 	type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
-import { Triple } from '../model/triple';
+import { Triple } from '../model/shared/triple';
 import {
-	LAUNCH_ITEM_REQUEST_EVENT,
-	LAUNCH_ITEM_RESPONSE_EVENT,
 	type LaunchItemRequest,
 	type LaunchItemResponse,
 } from '../model/launch-item';
@@ -78,7 +72,9 @@ import {
 	type ShipExteriorMissionGateStepStatus,
 } from '../mission/ship-exterior-mission';
 import { MissionService } from '../services/mission.service';
+import { appLogger } from '../services/logger';
 import { SessionService } from '../services/session.service';
+import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
 import {
 	ShipExteriorAsteroidStateService,
 	type ShipExteriorAsteroidStateContext,
@@ -269,6 +265,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 	private router = inject(Router);
 	private socketService = inject(SocketService);
+	private shipExteriorSocketService = inject(ShipExteriorSocketService);
 	private sessionService = inject(SessionService);
 	private missionService = inject(MissionService);
 	private asteroidStateService = inject(ShipExteriorAsteroidStateService);
@@ -540,8 +537,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		this.initializeMissionGateState();
 		this.refreshMissionGateStateFromBackend();
 		this.registerTestUtils();
-		this.unsubscribeLaunchItemResponse = this.socketService.on(
-			LAUNCH_ITEM_RESPONSE_EVENT,
+		this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
 			(response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
 		);
 		const seedPolicy = this.resolveSeedPolicy();
@@ -937,15 +933,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		if (!playerName || !characterId || !sessionKey) {
 			const samples = this.missionDefinition.createFallbackAsteroidSamples();
 			this.setAsteroidSamples(samples);
-			console.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
+			appLogger.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', { count: samples.length });
 			return;
 		}
 
 		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
+		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
+		this.unsubscribeShipListResponse = this.shipExteriorSocketService.listShips(
+			shipRequest,
 			(shipResponse: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
 				if (shipResponse.success) {
 					this.updateTargetingCapabilityFromShipList(shipResponse.ships);
 				}
@@ -956,34 +952,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.setAsteroidSamples(fallbackSamples);
-					console.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
+					appLogger.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
 					return;
 				}
 
 				this.unsubscribeCelestialBodyListResponse?.();
-				this.unsubscribeCelestialBodyListResponse = this.socketService.on(
-					CELESTIAL_BODY_LIST_RESPONSE_EVENT,
-					(cbResponse: CelestialBodyListResponse) => {
-						this.unsubscribeCelestialBodyListResponse?.();
-
-						const seededSamples = this.missionDefinition.createResumedAsteroidSamples({
-							playerName,
-							characterId,
-							center,
-							launchSeedHint: this.launchSeedHint,
-							existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
-						});
-
-						this.setAsteroidSamples(seededSamples);
-						this.persistSeededAsteroidsAsUnscanned(seededSamples);
-						console.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
-							existing: cbResponse.success ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length : 0,
-							total: seededSamples.length,
-							centerKm: center,
-						});
-					},
-				);
-
 				const cbRequest: CelestialBodyListRequest = {
 					playerName,
 					sessionKey,
@@ -994,12 +967,28 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 					createdByCharacterId: characterId,
 					missionId: this.missionDefinition.missionId,
 				};
-				this.socketService.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, cbRequest);
+				this.unsubscribeCelestialBodyListResponse = this.shipExteriorSocketService.listCelestialBodies(
+					cbRequest,
+					(cbResponse: CelestialBodyListResponse) => {
+						const seededSamples = this.missionDefinition.createResumedAsteroidSamples({
+							playerName,
+							characterId,
+							center,
+							launchSeedHint: this.launchSeedHint,
+							existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
+						});
+
+						this.setAsteroidSamples(seededSamples);
+						this.persistSeededAsteroidsAsUnscanned(seededSamples);
+						appLogger.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
+							existing: cbResponse.success ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length : 0,
+							total: seededSamples.length,
+							centerKm: center,
+						});
+					},
+				);
 			},
 		);
-
-		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, shipRequest);
 	}
 
 	private seedAsteroidsAroundStarterShip(): void {
@@ -1010,19 +999,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		if (!playerName || !characterId || !sessionKey) {
 			const samples = this.missionDefinition.createFallbackAsteroidSamples();
 			this.setAsteroidSamples(samples);
-			console.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
+			appLogger.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
 			return;
 		}
 
 		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
+		const request: ShipListRequest = { playerName, characterId, sessionKey };
+		this.unsubscribeShipListResponse = this.shipExteriorSocketService.listShips(
+			request,
 			(response: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
 				if (!response.success) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.setAsteroidSamples(fallbackSamples);
-					console.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
+					appLogger.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
 					return;
 				}
 
@@ -1033,7 +1022,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				if (!center) {
 					const fallbackSamples = this.missionDefinition.createFallbackAsteroidSamples();
 					this.setAsteroidSamples(fallbackSamples);
-					console.warn('ColdBootScan ship list missing required spatial.positionKm; using fallback random center.');
+					appLogger.warn('ColdBootScan ship list missing required spatial.positionKm; using fallback random center.');
 					return;
 				}
 
@@ -1045,15 +1034,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				});
 				this.setAsteroidSamples(samples);
 				this.persistSeededAsteroidsAsUnscanned(samples);
-				console.info('ColdBootScan seeded asteroids around starter ship center.', {
+				appLogger.info('ColdBootScan seeded asteroids around starter ship center.', {
 					count: samples.length,
 					centerKm: center,
 				});
 			},
 		);
-
-		const request: ShipListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
 	}
 
 	private updateTargetingCapabilityFromShipList(ships: ShipSummary[] | undefined): void {
@@ -1133,7 +1119,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
 		// Deliberate decision: rapid launches are allowed. Requests are emitted
 		// immediately, and responses are consumed on one shared listener.
-		this.socketService.launchItem(request);
+		this.shipExteriorSocketService.launchItem(request);
 		this.setLaunchToast(`Launch request sent for hotkey ${hotkey}.`, 'success', null);
 		this.triggerHotkeyLaunchFlash(hotkey);
 	}
@@ -1327,10 +1313,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		}
 
 		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
+		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
+		this.unsubscribeShipListResponse = this.shipExteriorSocketService.listShips(
+			shipRequest,
 			(shipResponse: ShipListResponse) => {
-				this.unsubscribeShipListResponse?.();
 				if (!shipResponse.success) {
 					return;
 				}
@@ -1338,9 +1324,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 				this.updateTargetingCapabilityFromShipList(shipResponse.ships);
 			},
 		);
-
-		const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, shipRequest);
 	}
 
 	private setLaunchToast(message: string, tone: 'success' | 'error', seed: number | null): void {
@@ -1798,7 +1781,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 		const playerName = this.playerName().trim();
 		const createdByCharacterId = this.navigationState.joinCharacter?.id;
 		if (!sessionKey || !playerName || !createdByCharacterId) {
-			console.warn('Skipping celestial body upsert due to missing actor/session context.');
+			appLogger.warn('Skipping celestial body upsert due to missing actor/session context.');
 			this.processNextCelestialBodyUpsert();
 			return;
 		}
@@ -1848,7 +1831,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 			this.celestialBodyUpsertInFlight = false;
 
 			if (!response.success) {
-				console.warn('Celestial body upsert failed:', response.message);
+					appLogger.warn('Celestial body upsert failed:', response.message);
 				this.processNextCelestialBodyUpsert();
 				return;
 			}

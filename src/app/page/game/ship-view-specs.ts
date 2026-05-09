@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { coerceShipModel, coerceShipTier, ShipSummary } from '../../model/ship-list';
-import { summarizeShipMotion } from '../../model/kinematics';
+import { summarizeShipMotion } from '../../model/math/kinematics';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 

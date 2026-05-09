@@ -3,8 +3,6 @@ import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipModel,
 	coerceShipStatus,
 	coerceShipDamageProfileOrNull,
@@ -15,10 +13,11 @@ import {
 	type ShipMotion,
 	type ShipSummary,
 } from '../../model/ship-list';
-import { summarizeShipMotion } from '../../model/kinematics';
-import { INVALID_SESSION_EVENT } from '../../model/session';
-import { type SpatialState } from '../../model/spatial';
+import { summarizeShipMotion } from '../../model/math/kinematics';
+import { type SpatialState } from '../../model/math/spatial';
+import { GameSessionService } from '../../services/game-session.service';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
@@ -38,9 +37,10 @@ interface GameJoinNavigationState {
 export default class GameJoinPage {
 	protected readonly t = locale;
 	private router = inject(Router);
+	private gameSessionService = inject(GameSessionService);
 	private socketService = inject(SocketService);
+	private shipService = inject(ShipService);
 	private sessionService = inject(SessionService);
-	private unsubscribeShipListResponse?: () => void;
 	private unsubscribeInvalidSession?: () => void;
 	private navigationState: GameJoinNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as GameJoinNavigationState | undefined) ??
@@ -55,13 +55,10 @@ export default class GameJoinPage {
 	protected shipListError = signal<string | null>(null);
 
 	constructor() {
-		this.unsubscribeInvalidSession = this.socketService.on(
-			INVALID_SESSION_EVENT,
-			() => {
-				this.sessionService.clearSession();
-				this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-			},
-		);
+		this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+			this.sessionService.clearSession();
+			this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+		});
 
 		if (this.socketService.getIsConnected()) {
 			this.loadShipsForCharacter();
@@ -88,29 +85,22 @@ export default class GameJoinPage {
 
 		this.isLoadingShips.set(true);
 		this.shipListError.set(null);
-		this.unsubscribeShipListResponse?.();
-
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				this.isLoadingShips.set(false);
-				if (response.success) {
-					this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
-					this.shipListError.set(null);
-				} else {
-					this.ships.set([]);
-					this.shipListError.set(response.message);
-				}
-				this.unsubscribeShipListResponse?.();
-			},
-		);
 
 		const request: ShipListRequest = {
 			playerName,
 			characterId: character.id,
 			sessionKey: this.sessionService.getSessionKey()!,
 		};
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			this.isLoadingShips.set(false);
+			if (response.success) {
+				this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+				this.shipListError.set(null);
+			} else {
+				this.ships.set([]);
+				this.shipListError.set(response.message);
+			}
+		});
 	}
 
 	private normalizeShipSummary(ship: ShipSummary): ShipSummary {
@@ -197,7 +187,6 @@ export default class GameJoinPage {
 	}
 
 	ngOnDestroy(): void {
-		this.unsubscribeShipListResponse?.();
 		this.unsubscribeInvalidSession?.();
 	}
 

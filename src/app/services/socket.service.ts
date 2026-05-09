@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
+import { appLogger } from './logger';
 import {
   CELESTIAL_BODY_LIST_REQUEST_EVENT,
   CELESTIAL_BODY_LIST_RESPONSE_EVENT,
@@ -60,7 +61,7 @@ export class SocketService {
    */
   connect(url: string, options?: any): void {
     if (this.socket?.connected) {
-      console.warn('Socket already connected');
+      appLogger.warn('Socket already connected');
       return;
     }
 
@@ -78,7 +79,7 @@ export class SocketService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Connection failed';
       this.connectionError.set(errorMessage);
-      console.error('Socket connection error:', errorMessage);
+      appLogger.error('Socket connection error:', errorMessage);
     }
   }
 
@@ -101,7 +102,7 @@ export class SocketService {
    */
   emit(eventName: string, data?: any, callback?: (response: any) => void): void {
     if (!this.socket) {
-      console.warn('Socket not initialized. Use connect() first');
+      appLogger.warn('Socket not initialized. Use connect() first');
       return;
     }
 
@@ -190,7 +191,7 @@ export class SocketService {
    */
   on(eventName: string, callback: (data: any) => void): () => void {
     if (!this.socket) {
-      console.warn('Socket not initialized. Use connect() first');
+      appLogger.warn('Socket not initialized. Use connect() first');
       return () => {};
     }
 
@@ -211,7 +212,7 @@ export class SocketService {
    */
   once(eventName: string, callback: (data: any) => void): void {
     if (!this.socket) {
-      console.warn('Socket not initialized. Use connect() first');
+      appLogger.warn('Socket not initialized. Use connect() first');
       return;
     }
 
@@ -265,23 +266,23 @@ export class SocketService {
     this.socket.on('connect', () => {
       this.isConnected.set(true);
       this.connectionError.set(null);
-      console.log('Socket connected:', this.socket?.id);
+      appLogger.log('Socket connected:', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason: string) => {
       this.isConnected.set(false);
-      console.log('Socket disconnected:', reason);
+      appLogger.log('Socket disconnected:', reason);
     });
 
     this.socket.on('connect_error', (error: any) => {
       const errorMessage = error instanceof Error ? error.message : 'Connection error';
       this.connectionError.set(errorMessage);
-      console.error('Socket connection error:', errorMessage);
+      appLogger.error('Socket connection error:', errorMessage);
     });
 
     this.socket.on('error', (error: any) => {
       const errorMessage = error instanceof Error ? error.message : 'Socket error';
-      console.error('Socket error:', errorMessage);
+      appLogger.error('Socket error:', errorMessage);
     });
   }
 }

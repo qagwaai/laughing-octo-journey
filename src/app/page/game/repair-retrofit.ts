@@ -3,8 +3,6 @@ import { Router } from '@angular/router';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
-	SHIP_LIST_REQUEST_EVENT,
-	SHIP_LIST_RESPONSE_EVENT,
 	coerceShipInventory,
 	type ShipListRequest,
 	type ShipListResponse,
@@ -18,7 +16,7 @@ import {
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
-import { SessionService, SocketService } from '../../services';
+import { SessionService, ShipService, SocketService } from '../../services';
 import {
 	type RepairAssetGrouping,
 	type RepairAssetFilter,
@@ -43,9 +41,9 @@ interface RepairRetrofitNavigationState {
 export default class RepairRetrofitPage {
 	protected readonly t = locale;
 	private router = inject(Router);
+	private shipService = inject(ShipService);
 	private socketService = inject(SocketService);
 	private sessionService = inject(SessionService);
-	private unsubscribeShipListResponse?: () => void;
 	private navigationState: RepairRetrofitNavigationState =
 		(this.router.getCurrentNavigation()?.extras.state as RepairRetrofitNavigationState | undefined) ??
 		(history.state as RepairRetrofitNavigationState | undefined) ??
@@ -124,37 +122,31 @@ export default class RepairRetrofitPage {
 
 		this.isLoadingShip.set(true);
 		this.shipLoadError.set(null);
-		this.unsubscribeShipListResponse?.();
-		this.unsubscribeShipListResponse = this.socketService.on(
-			SHIP_LIST_RESPONSE_EVENT,
-			(response: ShipListResponse) => {
-				this.isLoadingShip.set(false);
-				this.unsubscribeShipListResponse?.();
-
-				if (!response.success) {
-					this.shipLoadError.set(response.message || 'Unable to load ship for repair operations.');
-					return;
-				}
-
-				const nextShip = response.ships?.[0] ?? null;
-				this.activeShip.set(
-					nextShip
-						? {
-							...nextShip,
-							inventory: coerceShipInventory(nextShip.inventory),
-						}
-						: null,
-				);
-				this.damageProfile.set(this.resolveDamageProfileForShip(nextShip));
-			},
-		);
 
 		const request: ShipListRequest = {
 			playerName,
 			characterId,
 			sessionKey,
 		};
-		this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+		this.shipService.listShips(request, (response: ShipListResponse) => {
+			this.isLoadingShip.set(false);
+
+			if (!response.success) {
+				this.shipLoadError.set(response.message || 'Unable to load ship for repair operations.');
+				return;
+			}
+
+			const nextShip = response.ships?.[0] ?? null;
+			this.activeShip.set(
+				nextShip
+					? {
+						...nextShip,
+						inventory: coerceShipInventory(nextShip.inventory),
+					}
+					: null,
+			);
+			this.damageProfile.set(this.resolveDamageProfileForShip(nextShip));
+		});
 	}
 
 	protected openRepairItemsView(): void {

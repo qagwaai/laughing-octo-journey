@@ -19,7 +19,7 @@ import {
 	SHIP_LIST_REQUEST_EVENT,
 	SHIP_LIST_RESPONSE_EVENT,
 } from '../../model/ship-list';
-import { resolveJumpGateHops } from '../../model/jump-gate';
+import { resolveJumpGateHops } from '../../model/math/jump-gate';
 
 // ---------------------------------------------------------------------------
 // Test helpers

@@ -1,33 +1,8 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
-import CharacterListPage from './page/character/character-list';
-import CharacterSetupPage from './page/character/character-setup';
-import CharacterProfilePage from './page/game/character-profile';
-import MissionBoardPage from './page/game/mission-board';
-import ShipViewSpecsPage from './page/game/ship-view-specs';
-import ItemViewSpecsPage from './page/game/item-view-specs';
-import ShipHangarPage from './page/game/ship-hangar';
-import ShipViewInventoryPage from './page/game/ship-view-inventory';
-import FabricationLabPage from './page/game/fabrication-lab';
-import GameMainPage from './page/game/game-main';
-import GameJoinPage from './page/game/game-join';
-import LogoutPage from './page/game/logout';
-import MarketHubPage from './page/game/market-hub';
-import ColdBootScanPage from './page/opening/cold-boot-scan';
-import RepairRetrofitPage from './page/game/repair-retrofit';
-import RepairRetrofitItemsPage from './page/game/repair-retrofit-items';
-import RepairRetrofitShipDetailPage from './page/game/repair-retrofit-ship-detail';
-import RepairRetrofitSystemDetailPage from './page/game/repair-retrofit-system-detail';
-import RepairRetrofitItemDetailPage from './page/game/repair-retrofit-item-detail';
-import PrintQueuePage from './page/game/print-queue';
-import StellarInitiationPage from './page/game/stellar-initiation';
-import ShipExteriorViewScene from './scene/ship-exterior-view';
-import ShipViewSpecs from './scene/ship-view-specs';
-import ColdBootOpeningPage from './page/opening/cold-boot';
-import ColdBootHudScene from './scene/hud/cold-boot-hud-scene';
 
-const routes: Routes = [
-	// Primary outlet routes (right panel - canvas content)
+const primaryRoutes: Routes = [
+	// Primary outlet routes (right panel - canvas scenes)
 	{
 		path: 'intro',
 		loadComponent: () => import('./page/public/intro'),
@@ -51,29 +26,32 @@ const routes: Routes = [
 	},
 	{
 		path: 'character-setup',
-		component: CharacterSetupPage,
+		loadComponent: () => import('./page/character/character-setup'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'character-list',
-		component: CharacterListPage,
+		loadComponent: () => import('./page/character/character-list'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'game-join',
-		component: GameJoinPage,
+		loadComponent: () => import('./page/game/game-join'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'ship-view-specs',
-		component: ShipViewSpecs,
+		loadComponent: () => import('./scene/ship-view-specs'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'opening-cold-boot',
-		component: ColdBootHudScene,
+		loadComponent: () => import('./scene/hud/cold-boot-hud-scene'),
 		canActivate: [authGuard],
 	},
+];
+
+const leftOutletRoutes: Routes = [
 	// Auxiliary outlet routes (left panel)
 	{
 		path: 'controls',
@@ -103,143 +81,152 @@ const routes: Routes = [
 	{
 		path: 'character-setup',
 		outlet: 'left',
-		component: CharacterSetupPage,
+		loadComponent: () => import('./page/character/character-setup'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'character-list',
 		outlet: 'left',
-		component: CharacterListPage,
+		loadComponent: () => import('./page/character/character-list'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'game-join',
 		outlet: 'left',
-		component: GameJoinPage,
+		loadComponent: () => import('./page/game/game-join'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'opening-cold-boot',
 		outlet: 'left',
-		component: ColdBootOpeningPage,
+		loadComponent: () => import('./page/opening/cold-boot'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'stellar-initiation',
 		outlet: 'left',
-		component: StellarInitiationPage,
+		loadComponent: () => import('./page/game/stellar-initiation'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'character-profile',
 		outlet: 'left',
-		component: CharacterProfilePage,
+		loadComponent: () => import('./page/game/character-profile'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'mission-board',
 		outlet: 'left',
-		component: MissionBoardPage,
+		loadComponent: () => import('./page/game/mission-board'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'ship-hangar',
 		outlet: 'left',
-		component: ShipHangarPage,
+		loadComponent: () => import('./page/game/ship-hangar'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'ship-view-inventory',
 		outlet: 'left',
-		component: ShipViewInventoryPage,
+		loadComponent: () => import('./page/game/ship-view-inventory'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'repair-retrofit',
 		outlet: 'left',
-		component: RepairRetrofitPage,
+		loadComponent: () => import('./page/game/repair-retrofit'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'market-hub',
 		outlet: 'left',
-		component: MarketHubPage,
+		loadComponent: () => import('./page/game/market-hub'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'fabrication-lab',
 		outlet: 'left',
-		component: FabricationLabPage,
+		loadComponent: () => import('./page/game/fabrication-lab'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'game-main',
 		outlet: 'left',
-		component: GameMainPage,
+		loadComponent: () => import('./page/game/game-main'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'logout',
 		outlet: 'left',
-		component: LogoutPage,
+		loadComponent: () => import('./page/game/logout'),
 		canActivate: [authGuard],
 	},
-	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
+];
+
+const rightOutletRoutes: Routes = [
 	// Right panel – Angular page routes (replaces ngt-canvas when active)
 	{
 		path: 'ship-view-specs',
 		outlet: 'right',
-		component: ShipViewSpecsPage,
+		loadComponent: () => import('./page/game/ship-view-specs'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'item-view-specs',
 		outlet: 'right',
-		component: ItemViewSpecsPage,
+		loadComponent: () => import('./page/game/item-view-specs'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'opening-cold-boot-scan',
 		outlet: 'right',
-		component: ColdBootScanPage,
+		loadComponent: () => import('./page/opening/cold-boot-scan'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'ship-exterior-view',
 		outlet: 'right',
-		component: ColdBootScanPage,
+		loadComponent: () => import('./scene/ship-exterior-view'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'repair-retrofit-items',
 		outlet: 'right',
-		component: RepairRetrofitItemsPage,
+		loadComponent: () => import('./page/game/repair-retrofit-items'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'repair-retrofit-ship-detail',
 		outlet: 'right',
-		component: RepairRetrofitShipDetailPage,
+		loadComponent: () => import('./page/game/repair-retrofit-ship-detail'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'repair-retrofit-system-detail',
 		outlet: 'right',
-		component: RepairRetrofitSystemDetailPage,
+		loadComponent: () => import('./page/game/repair-retrofit-system-detail'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'repair-retrofit-item-detail',
 		outlet: 'right',
-		component: RepairRetrofitItemDetailPage,
+		loadComponent: () => import('./page/game/repair-retrofit-item-detail'),
 		canActivate: [authGuard],
 	},
 	{
 		path: 'print-queue',
 		outlet: 'right',
-		component: PrintQueuePage,
+		loadComponent: () => import('./page/game/print-queue'),
 		canActivate: [authGuard],
 	},
+];
+
+const routes: Routes = [
+	...primaryRoutes,
+	...leftOutletRoutes,
+	{ path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
+	...rightOutletRoutes,
 ];
 
 export default routes;

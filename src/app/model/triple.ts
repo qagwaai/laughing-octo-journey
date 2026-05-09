@@ -1,5 +1,1 @@
-export interface Triple {
-  x: number;
-  y: number;
-  z: number;
-}
+export * from './shared/triple';
