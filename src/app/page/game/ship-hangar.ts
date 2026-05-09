@@ -33,6 +33,9 @@ interface ShipHangarNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Ship hangar page for ship listing, selection, and navigation into ship sub-flows.
+ */
 export default class ShipHangarPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -60,6 +63,9 @@ export default class ShipHangarPage {
     }
   }
 
+  /**
+   * Loads ships for active player/character context and normalizes response payloads.
+   */
   loadShipsForCharacter(): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -162,6 +168,9 @@ export default class ShipHangarPage {
     });
   }
 
+  /**
+   * Opens exterior view with mission context derived from first-target mission status.
+   */
   navigateToExteriorView(ship: ShipSummary): void {
     const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
     const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
@@ -197,6 +206,9 @@ export default class ShipHangarPage {
     });
   }
 
+  /**
+   * Persists chosen ship as active session ship for downstream flows.
+   */
   setActiveShip(ship: ShipSummary): void {
     this.sessionService.setActiveShip(ship);
   }

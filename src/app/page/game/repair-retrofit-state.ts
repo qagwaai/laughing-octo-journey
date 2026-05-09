@@ -2,6 +2,9 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import { ShipDamageProfile, ShipSubsystemDamage } from '../../model/ship-damage';
 import { ShipSummary } from '../../model/ship-list';
 
+/**
+ * Supported repair asset category tags used by list and detail routes.
+ */
 export type RepairAssetKind = 'ship' | 'ship-system' | 'inventory-item';
 export type RepairAssetFilter = 'all' | 'needs-repair' | 'critical-only' | 'intact-only';
 export type RepairAssetGrouping = 'asset-type' | 'severity' | 'priority-band';
@@ -36,6 +39,9 @@ export interface PrintQueueNavigationState {
   joinShip?: ShipSummary | null;
 }
 
+/**
+ * Maps damage profile overall status to persisted ship status label.
+ */
 export function mapOverallStatusToShipStatus(overallStatus: ShipDamageProfile['overallStatus']): string {
   if (overallStatus === 'intact') {
     return 'Operational';
@@ -48,6 +54,9 @@ export function mapOverallStatusToShipStatus(overallStatus: ShipDamageProfile['o
   return 'Damaged';
 }
 
+/**
+ * Resolves aggregate damage status from remaining subsystem severities.
+ */
 export function resolveOverallStatusFromSystems(
   systems: readonly ShipSubsystemDamage[],
 ): ShipDamageProfile['overallStatus'] {
@@ -62,6 +71,9 @@ export function resolveOverallStatusFromSystems(
   return 'damaged';
 }
 
+/**
+ * Builds user-facing summary text from remaining damaged subsystem list.
+ */
 export function describeSummaryForSystems(systems: readonly ShipSubsystemDamage[]): string {
   if (systems.length === 0) {
     return 'All critical ship systems stabilized and nominal.';

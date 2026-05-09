@@ -1,3 +1,6 @@
+/**
+ * Starter ship deterministic generation helpers for initial character setup.
+ */
 import { generateRandomAsteroidBeltClusterCenterKm } from '../math/celestial-body-location';
 import { SpatialState } from '../math/spatial';
 import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER, ShipMotion } from '../ship-list';

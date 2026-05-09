@@ -9,9 +9,15 @@ import {
 import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
+/**
+ * Handles authentication socket workflows for login and registration.
+ */
 export class AuthService {
   private socketService = inject(SocketService);
 
+  /**
+   * Sends login credentials and resolves once with the login response.
+   */
   login(request: LoginRequest, onResponse: (response: LoginResponse) => void): () => void {
     const unsubscribe = this.socketService.on(LOGIN_RESPONSE_EVENT, (response: LoginResponse) => {
       unsubscribe();
@@ -22,6 +28,9 @@ export class AuthService {
     return unsubscribe;
   }
 
+  /**
+   * Sends registration data and resolves once with the registration response.
+   */
   register(request: RegisterRequest, onResponse: (response: RegisterResponse) => void): () => void {
     const unsubscribe = this.socketService.on(REGISTER_RESPONSE_EVENT, (response: RegisterResponse) => {
       unsubscribe();

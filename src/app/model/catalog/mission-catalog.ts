@@ -44,6 +44,9 @@ export type KnownMissionId = (typeof MISSION_IDS)[keyof typeof MISSION_IDS];
 
 // -- Catalog ------------------------------------------------------------------
 
+/**
+ * Canonical mission registry used for lookup, unlock resolution, and UI display.
+ */
 export const MISSION_CATALOG: readonly MissionDefinition[] = [
   {
     id: MISSION_IDS.firstTarget,
@@ -197,6 +200,9 @@ export const MISSION_CATALOG: readonly MissionDefinition[] = [
 
 // -- Lookup helpers ------------------------------------------------------------
 
+/**
+ * Looks up a mission definition by ID in the canonical catalog.
+ */
 export function resolveMissionById(missionId: string): MissionDefinition | undefined {
   return MISSION_CATALOG.find((m) => m.id === missionId);
 }

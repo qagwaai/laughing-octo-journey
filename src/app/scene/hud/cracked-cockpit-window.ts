@@ -55,4 +55,7 @@ import { NgtArgs } from 'angular-three';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Static cockpit glass/frame/crack mesh composition used by cold-boot HUD scene.
+ */
 export class CrackedCockpitWindow {}

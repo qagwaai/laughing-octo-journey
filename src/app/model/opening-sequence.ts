@@ -1,3 +1,6 @@
+/**
+ * Opening sequence timing constants and locale-aware content resolution helpers.
+ */
 import {
   OPENING_SEQUENCE_LIBRARY,
   type OpeningSequenceContent,

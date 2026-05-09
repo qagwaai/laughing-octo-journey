@@ -1,3 +1,6 @@
+/**
+ * Localized opening-sequence content contracts and locale library.
+ */
 export interface OpeningSequenceContent {
   sequenceTitle: string;
   eyebrow: string;

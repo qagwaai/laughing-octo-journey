@@ -34,6 +34,9 @@ interface GameJoinNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Game-join staging page that loads ships and prepares ship-scoped navigation state.
+ */
 export default class GameJoinPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -67,6 +70,9 @@ export default class GameJoinPage {
     }
   }
 
+  /**
+   * Loads ships for the selected character and normalizes backend payload variants.
+   */
   loadShipsForCharacter(): void {
     const playerName = this.playerName().trim();
     const character = this.joinCharacter();
@@ -103,6 +109,9 @@ export default class GameJoinPage {
     });
   }
 
+  /**
+   * Normalizes optional/legacy ship fields into a consistent ShipSummary shape.
+   */
   private normalizeShipSummary(ship: ShipSummary): ShipSummary {
     const rawShip = ship as ShipSummary & {
       shipName?: string;
@@ -138,6 +147,9 @@ export default class GameJoinPage {
     };
   }
 
+  /**
+   * Opens item/specs panel for the selected ship and persists active-ship session state.
+   */
   navigateToShipSpecs(ship: ShipSummary): void {
     const playerName = this.playerName();
     const joinCharacter = this.joinCharacter();
@@ -168,6 +180,9 @@ export default class GameJoinPage {
     return `T${coerceShipTier(ship.tier)}`;
   }
 
+  /**
+   * Builds a human-readable kinematics summary from spatial + motion vectors.
+   */
   protected getShipKinematicsSummary(ship: ShipSummary): string {
     const spatial = ship.spatial;
     const motion = ship.motion;

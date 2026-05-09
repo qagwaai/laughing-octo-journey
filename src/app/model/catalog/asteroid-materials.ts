@@ -1,3 +1,6 @@
+/**
+ * Asteroid material catalog definitions and weighted-selection helpers.
+ */
 export type AsteroidMaterialRarity = 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
 
 export interface AsteroidMaterialProfile {

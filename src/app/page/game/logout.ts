@@ -17,6 +17,9 @@ interface LogoutNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu],
 })
+/**
+ * Logout confirmation page for clearing session and routing to public entry points.
+ */
 export default class LogoutPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -29,6 +32,9 @@ export default class LogoutPage {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 
+  /**
+   * Clears session state and routes user back to intro/login outlets.
+   */
   confirmLogout(): void {
     this.sessionService.clearSession();
     this.router.navigate([{ outlets: { primary: ['intro'], left: ['login'], right: null } }], {
@@ -36,6 +42,9 @@ export default class LogoutPage {
     });
   }
 
+  /**
+   * Returns to the character list without clearing current navigation context.
+   */
   navigateToCharacterList(): void {
     this.router.navigate([{ outlets: { left: ['character-list'] } }], {
       preserveFragment: true,

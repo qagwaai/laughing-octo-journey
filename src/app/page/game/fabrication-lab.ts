@@ -21,6 +21,9 @@ interface FabricationLabNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Fabrication lab page that reflects printer queue state and opens queue details.
+ */
 export default class FabricationLabPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -46,6 +49,9 @@ export default class FabricationLabPage {
     }
   }
 
+  /**
+   * Opens character profile panel from fabrication flow.
+   */
   navigateToCharacterProfile(): void {
     this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
       preserveFragment: true,
@@ -56,6 +62,9 @@ export default class FabricationLabPage {
     });
   }
 
+  /**
+   * Opens print-queue panel carrying player/character/ship context.
+   */
   protected openPrintQueueView(): void {
     const state: PrintQueueNavigationState = {
       playerName: this.playerName(),

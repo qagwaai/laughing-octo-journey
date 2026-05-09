@@ -1,3 +1,6 @@
+/**
+ * Ship damage severity/status contracts and coercion helpers.
+ */
 export const SHIP_DAMAGE_OVERALL_STATUSES = ['intact', 'damaged', 'disabled', 'destroyed'] as const;
 export type ShipDamageOverallStatus = (typeof SHIP_DAMAGE_OVERALL_STATUSES)[number];
 

@@ -1,3 +1,6 @@
+/**
+ * Centralized logging surface for non-test runtime code.
+ */
 export const appLogger = {
   debug: (...args: unknown[]): void => {
     console.debug(...args);

@@ -15,15 +15,24 @@ import {
 import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
+/**
+ * Socket contract wrapper dedicated to ship-exterior scene request/response flows.
+ */
 export class ShipExteriorSocketService {
   private socketService = inject(SocketService);
 
+  /**
+   * Subscribes to launch-item responses for active launch actions.
+   */
   subscribeLaunchResponses(onResponse: (response: LaunchItemResponse) => void): () => void {
     return this.socketService.on(LAUNCH_ITEM_RESPONSE_EVENT, (response: LaunchItemResponse) => {
       onResponse(response);
     });
   }
 
+  /**
+   * Requests ship list and resolves once with the first matching response.
+   */
   listShips(request: ShipListRequest, onResponse: (response: ShipListResponse) => void): () => void {
     const unsubscribe = this.socketService.on(SHIP_LIST_RESPONSE_EVENT, (response: ShipListResponse) => {
       unsubscribe();
@@ -34,6 +43,9 @@ export class ShipExteriorSocketService {
     return unsubscribe;
   }
 
+  /**
+   * Requests celestial bodies and resolves once with the first matching response.
+   */
   listCelestialBodies(
     request: CelestialBodyListRequest,
     onResponse: (response: CelestialBodyListResponse) => void,
@@ -50,6 +62,9 @@ export class ShipExteriorSocketService {
     return unsubscribe;
   }
 
+  /**
+   * Emits launch-item request using the shared socket helper.
+   */
   launchItem(request: LaunchItemRequest): void {
     this.socketService.launchItem(request);
   }

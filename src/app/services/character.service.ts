@@ -26,9 +26,15 @@ import {
 import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
+/**
+ * Centralizes character CRUD socket interactions used by character selection flows.
+ */
 export class CharacterService {
   private socketService = inject(SocketService);
 
+  /**
+   * Creates a character and invokes the callback when the matching response arrives.
+   */
   addCharacter(request: CharacterAddRequest, onResponse: (response: CharacterAddResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_ADD_RESPONSE_EVENT, (response: CharacterAddResponse) => {
       unsubscribe();
@@ -39,6 +45,9 @@ export class CharacterService {
     return unsubscribe;
   }
 
+  /**
+   * Updates an existing character and returns an unsubscribe hook for safety.
+   */
   editCharacter(request: CharacterEditRequest, onResponse: (response: CharacterEditResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_EDIT_RESPONSE_EVENT, (response: CharacterEditResponse) => {
       unsubscribe();
@@ -49,6 +58,9 @@ export class CharacterService {
     return unsubscribe;
   }
 
+  /**
+   * Requests character list data for the active player context.
+   */
   listCharacters(request: CharacterListRequest, onResponse: (response: CharacterListResponse) => void): () => void {
     const unsubscribe = this.socketService.on(CHARACTER_LIST_RESPONSE_EVENT, (response: CharacterListResponse) => {
       unsubscribe();
@@ -59,6 +71,9 @@ export class CharacterService {
     return unsubscribe;
   }
 
+  /**
+   * Deletes a character and emits the backend result through the callback.
+   */
   deleteCharacter(
     request: CharacterDeleteRequest,
     onResponse: (response: CharacterDeleteResponse) => void,

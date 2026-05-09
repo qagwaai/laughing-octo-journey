@@ -24,6 +24,9 @@ interface RegistrationNavigationState {
   preferredLocale?: string;
 }
 
+/**
+ * Validates matching password fields on registration form.
+ */
 export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
   const password = group.get('password')?.value;
   const confirmPassword = group.get('confirmPassword')?.value;
@@ -37,6 +40,9 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule],
 })
+/**
+ * Registration page that creates accounts and initializes session state on success.
+ */
 export default class RegistrationPage implements OnDestroy {
   protected readonly t = locale;
   protected readonly supportedLocaleCodes = supportedLocaleCodes;
@@ -70,6 +76,9 @@ export default class RegistrationPage implements OnDestroy {
   protected successMessage = signal<string | null>(null);
   protected errorMessage = signal<string | null>(null);
 
+  /**
+   * Validates registration form and submits account creation request.
+   */
   submit(): void {
     if (this.registrationForm.invalid) {
       this.registrationForm.markAllAsTouched();
@@ -121,6 +130,9 @@ export default class RegistrationPage implements OnDestroy {
     });
   }
 
+  /**
+   * Navigates back to login while preserving selected locale.
+   */
   navigateToLogin(): void {
     const selectedLocale = this.registrationForm.value.locale;
     this.router.navigate([{ outlets: { left: ['login'] } }], {

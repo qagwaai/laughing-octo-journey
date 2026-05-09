@@ -45,6 +45,9 @@ export interface InventoryGroup {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Ship inventory page with grouped item views, item upserts, and server refresh helpers.
+ */
 export default class ShipViewInventoryPage implements OnDestroy {
   protected readonly t = locale;
   private router = inject(Router);
@@ -117,6 +120,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
     });
   }
 
+  /**
+   * Navigates to item specs page for the selected grouped inventory item.
+   */
   navigateToItemSpecs(group: InventoryGroup): void {
     this.router.navigate([{ outlets: { right: ['item-view-specs'], left: ['ship-view-inventory'] } }], {
       preserveFragment: true,
@@ -130,6 +136,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
     });
   }
 
+  /**
+   * Adds a starter expendable drone item directly into current ship inventory.
+   */
   addDroneToInventory(): void {
     const ship = this.joinShip();
     const sessionKey = this.sessionService.getSessionKey();
@@ -165,6 +174,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
     );
   }
 
+  /**
+   * Reloads the active ship from backend ship-list for freshest inventory state.
+   */
   private refreshShipFromServer(): void {
     const sessionKey = this.sessionService.getSessionKey();
     const playerName = this.playerName().trim();

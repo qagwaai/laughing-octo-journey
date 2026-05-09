@@ -1,3 +1,6 @@
+/**
+ * Barrel exports for app-level service dependencies.
+ */
 export { AuthService } from './auth.service';
 export { CharacterService } from './character.service';
 export { GameSessionService } from './game-session.service';

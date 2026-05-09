@@ -40,6 +40,9 @@ import { type PrintQueueNavigationState } from './repair-retrofit-state';
   styleUrls: ['./print-queue.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Print queue controller for enqueue/cancel/collect fabrication jobs and mission sync hooks.
+ */
 export default class PrintQueuePage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -104,6 +107,9 @@ export default class PrintQueuePage {
     this.checkPrintCompletion();
   }
 
+  /**
+   * Loads current active ship snapshot for inventory-backed print operations.
+   */
   private loadActiveShip(): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -137,6 +143,9 @@ export default class PrintQueuePage {
     });
   }
 
+  /**
+   * Queues a printable item after validating inventory requirements and consuming materials.
+   */
   protected queuePrintableItem(printableItem: PrintableItemDefinition): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -176,6 +185,9 @@ export default class PrintQueuePage {
     });
   }
 
+  /**
+   * Cancels a queued print job and restores consumed materials to ship inventory.
+   */
   protected cancelPrintJob(item: PrintQueueItem): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -266,6 +278,9 @@ export default class PrintQueuePage {
     return `${missingMaterials.join(', ')} required in ship inventory to start this print job.`;
   }
 
+  /**
+   * Polls queue entries and collects jobs whose print duration has elapsed.
+   */
   private checkPrintCompletion(): void {
     const now = Date.now();
     for (const item of this.printerQueue()) {

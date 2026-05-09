@@ -6,12 +6,18 @@ export const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';
 export const MARKET_LIST_BY_LOCATION_REQUEST_EVENT = 'market-list-by-location-request';
 export const MARKET_LIST_BY_LOCATION_RESPONSE_EVENT = 'market-list-by-location-response';
 
+/**
+ * Socket payload for listing markets, optionally constrained by system.
+ */
 export interface MarketListRequest {
   playerName: string;
   sessionKey: string;
   solarSystemId?: string;
 }
 
+/**
+ * Market projection used by list and by-location responses.
+ */
 export interface MarketSummary {
   marketId: string;
   solarSystemId: string;
@@ -45,6 +51,9 @@ export interface MarketSummary {
   restockIntervalMinutes: number;
 }
 
+/**
+ * Socket response payload for market-list requests.
+ */
 export interface MarketListResponse {
   success: boolean;
   message: string;
@@ -53,6 +62,9 @@ export interface MarketListResponse {
   markets: MarketSummary[];
 }
 
+/**
+ * Socket payload for location-based market search with distance filtering.
+ */
 export interface MarketListByLocationRequest {
   playerName: string;
   sessionKey: string;
@@ -65,6 +77,9 @@ export interface MarketListByLocationRequest {
   shipId?: string;
 }
 
+/**
+ * Socket response payload for location-based market list queries.
+ */
 export interface MarketListByLocationResponse {
   success: boolean;
   message: string;
@@ -78,6 +93,9 @@ export interface MarketListByLocationResponse {
   markets: MarketSummary[];
 }
 
+/**
+ * Computes straight-line distance between positions and converts it to AU units.
+ */
 export function computeDistanceAu(a: Triple, b: Triple): number {
   const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
   const dx = a.x - b.x;

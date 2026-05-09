@@ -58,6 +58,9 @@ type MarketRouteStatus = 'in-system' | 'gate-route' | 'no-route';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge, ReactiveFormsModule],
 })
+/**
+ * Market browsing and docking page with radius/location filters and route-aware reachability.
+ */
 export default class MarketHubPage {
   protected readonly t = locale;
   private fb = inject(FormBuilder);
@@ -154,6 +157,9 @@ export default class MarketHubPage {
     // no-op: domain services use one-time response callbacks
   }
 
+  /**
+   * Hydrates active ship data when the navigation state lacks a reliable ship position.
+   */
   private ensureActiveShipPosition(): void {
     const existing = this.activeShip();
     if (this.hasUsableShipPosition(existing)) {
@@ -212,6 +218,9 @@ export default class MarketHubPage {
     return !(position.x === 0 && position.y === 0 && position.z === 0);
   }
 
+  /**
+   * Applies validated filter selections and refreshes market data.
+   */
   applyRadiusSelection(): void {
     if (this.marketFilterForm.invalid) {
       this.marketFilterForm.markAllAsTouched();
@@ -225,6 +234,9 @@ export default class MarketHubPage {
     this.loadNearbyMarkets();
   }
 
+  /**
+   * Resolves selected location-type filters from checkbox state.
+   */
   private resolveSelectedLocationTypes(): string[] {
     const locationTypes: string[] = [];
 
@@ -239,6 +251,9 @@ export default class MarketHubPage {
     return locationTypes;
   }
 
+  /**
+   * Loads nearby market data for the active ship location and selected filter state.
+   */
   loadNearbyMarkets(): void {
     const playerName = this.playerName().trim();
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
@@ -373,6 +388,9 @@ export default class MarketHubPage {
     return `${market.marketName}, ${distanceLabel} ${this.t.game.marketHub.awaySuffix} - ${travelEstimate}`;
   }
 
+  /**
+   * Resolves market route classification using server route metadata when available.
+   */
   protected marketRouteStatus(market: MarketSummary): MarketRouteStatus {
     if (market.route) {
       return market.route.kind;
@@ -413,6 +431,9 @@ export default class MarketHubPage {
     return `${hops} ${hopLabel}`;
   }
 
+  /**
+   * Returns true when the market is reachable by drive range or gate-route access.
+   */
   protected isMarketWithinDriveRange(market: MarketSummary): boolean {
     if (market.solarSystemId !== this.activeShipSolarSystemId()) {
       return this.marketRouteStatus(market) === 'gate-route';
@@ -426,6 +447,9 @@ export default class MarketHubPage {
     return distanceAu <= this.activeDriveProfile().rangeAu;
   }
 
+  /**
+   * Resolves the required drive/route label shown for out-of-range or cross-system markets.
+   */
   protected requiredDriveNameForMarket(market: MarketSummary): string {
     if (market.solarSystemId !== this.activeShipSolarSystemId()) {
       const routeStatus = this.marketRouteStatus(market);

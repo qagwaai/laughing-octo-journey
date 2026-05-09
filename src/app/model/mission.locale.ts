@@ -1,3 +1,6 @@
+/**
+ * Mission locale compatibility constants for first-target and mission ID exports.
+ */
 export const FIRST_TARGET_MISSION_ID = 'first-target';
 
 // Re-export from mission-catalog for backwards-compat callers that imported IDs from this file.

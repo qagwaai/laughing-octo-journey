@@ -152,6 +152,9 @@ const DEFAULT_SUN_CONFIG: SolarSystemSunConfig = {
   radius: 1,
 };
 
+/**
+ * Formats asteroid linear speed from scan kinematics for HUD display.
+ */
 function formatVelocityText(k: AsteroidKinematics | null): string {
   if (!k) {
     return 'VEL: ---';
@@ -162,6 +165,9 @@ function formatVelocityText(k: AsteroidKinematics | null): string {
   return `VEL: ${speed.toFixed(1)} km/s`;
 }
 
+/**
+ * Formats asteroid angular speed from scan kinematics for HUD display.
+ */
 function formatSpinText(k: AsteroidKinematics | null): string {
   if (!k) {
     return 'SPIN: ---';
@@ -172,6 +178,9 @@ function formatSpinText(k: AsteroidKinematics | null): string {
   return `SPIN: ${spin.toFixed(4)} rad/s`;
 }
 
+/**
+ * Formats estimated asteroid mass with compact scientific-style suffixes.
+ */
 function formatMassText(k: AsteroidKinematics | null): string {
   if (!k) {
     return 'MASS: ---';
@@ -187,6 +196,9 @@ function formatMassText(k: AsteroidKinematics | null): string {
   return `MASS: ${kg.toFixed(0)} kg`;
 }
 
+/**
+ * Formats estimated asteroid diameter in meters or kilometers based on scale.
+ */
 function formatDiameterText(k: AsteroidKinematics | null): string {
   if (!k) {
     return 'DIAM: ---';
@@ -197,6 +209,9 @@ function formatDiameterText(k: AsteroidKinematics | null): string {
     : `DIAM: ${k.estimatedDiameterM} m`;
 }
 
+/**
+ * Formats absolute world position (Mkm) for cockpit telemetry readout.
+ */
 function formatLocationText(location: CelestialBodyLocation | null): string {
   if (!location) {
     return 'LOC(Mkm): ---';
@@ -209,6 +224,9 @@ function formatLocationText(location: CelestialBodyLocation | null): string {
   return `LOC(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
 }
 
+/**
+ * Formats cluster-center position (Mkm) used by the seeded asteroid field.
+ */
 function formatClusterText(center: Triple | null): string {
   if (!center) {
     return 'CLUSTER(Mkm): ---';
@@ -220,6 +238,9 @@ function formatClusterText(center: Triple | null): string {
   return `CLUSTER(Mkm): X ${xM} | Y ${yM} | Z ${zM}`;
 }
 
+/**
+ * Formats offset from cluster center with radial distance for targeting context.
+ */
 function formatOffsetText(location: CelestialBodyLocation | null, center: Triple | null): string {
   if (!location || !center) {
     return 'OFFSET(km): ---';
@@ -239,6 +260,9 @@ function formatOffsetText(location: CelestialBodyLocation | null, center: Triple
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Real-time ship-exterior scene controller for scanning, mission gating, and launch actions.
+ */
 export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SCAN_TOTAL_MS = 10000;

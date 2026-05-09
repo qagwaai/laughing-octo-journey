@@ -55,6 +55,9 @@ interface RepairAssetGroup {
   styleUrls: ['./repair-retrofit-items.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Repair asset listing page with filtering/grouping, repair actions, and printable kit queueing.
+ */
 export default class RepairRetrofitItemsPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -362,6 +365,9 @@ export default class RepairRetrofitItemsPage {
     return this.t.game.repairRetrofitItems.repairShipLabel;
   }
 
+  /**
+   * Dispatches repair action to the correct handler for ship/system/inventory asset types.
+   */
   protected repairAsset(asset: RepairAssetEntry): void {
     if (!this.canRepairAsset(asset)) {
       return;
@@ -380,6 +386,9 @@ export default class RepairRetrofitItemsPage {
     this.repairShipAsset(asset);
   }
 
+  /**
+   * Queues hull patch kit printing after verifying required consumable materials.
+   */
   protected queueForPrinting(): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';

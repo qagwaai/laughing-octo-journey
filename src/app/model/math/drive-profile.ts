@@ -20,6 +20,9 @@ export interface ShipDriveResolverInput {
   driveProfile?: DriveProfileInput | null;
 }
 
+/**
+ * Baseline drive profile used when no explicit or inferred upgrade is available.
+ */
 export const STANDARD_CRUISE_DRIVE_PROFILE: DriveProfile = {
   id: 'standard-cruise',
   name: 'Standard Cruise Drive',
@@ -28,6 +31,9 @@ export const STANDARD_CRUISE_DRIVE_PROFILE: DriveProfile = {
   fuelCostPerAu: 1,
 };
 
+/**
+ * Mid-tier drive profile for cross-system progression.
+ */
 export const RAPID_TRANSIT_DRIVE_PROFILE: DriveProfile = {
   id: 'rapid-transit',
   name: 'Rapid Transit Thruster',
@@ -36,6 +42,9 @@ export const RAPID_TRANSIT_DRIVE_PROFILE: DriveProfile = {
   fuelCostPerAu: 4,
 };
 
+/**
+ * End-tier drive profile with the highest range and cruise speed.
+ */
 export const QUANTUM_FOLD_DRIVE_PROFILE: DriveProfile = {
   id: 'quantum-fold',
   name: 'Quantum Fold Engine',
@@ -44,6 +53,9 @@ export const QUANTUM_FOLD_DRIVE_PROFILE: DriveProfile = {
   fuelCostPerAu: 20,
 };
 
+/**
+ * Ordered by ascending range for threshold-based drive resolution.
+ */
 export const DRIVE_PROFILES_BY_RANGE: readonly DriveProfile[] = [
   STANDARD_CRUISE_DRIVE_PROFILE,
   RAPID_TRANSIT_DRIVE_PROFILE,
@@ -58,6 +70,9 @@ function coerceDriveId(rawId: string): DriveProfile['id'] {
   return 'standard-cruise';
 }
 
+/**
+ * Validates and normalizes partially trusted drive-profile payloads.
+ */
 export function coerceDriveProfile(input: DriveProfileInput | null | undefined): DriveProfile | null {
   if (!input) {
     return null;
@@ -85,6 +100,9 @@ export function coerceDriveProfile(input: DriveProfileInput | null | undefined):
   };
 }
 
+/**
+ * Resolves the active drive profile using explicit payload first, then model/tier fallback.
+ */
 export function resolveDriveProfileForShip(ship: ShipDriveResolverInput | null): DriveProfile {
   if (!ship) {
     return STANDARD_CRUISE_DRIVE_PROFILE;
@@ -107,6 +125,9 @@ export function resolveDriveProfileForShip(ship: ShipDriveResolverInput | null):
   return STANDARD_CRUISE_DRIVE_PROFILE;
 }
 
+/**
+ * Returns the minimum drive tier that can cover the provided AU distance.
+ */
 export function resolveMinimumDriveProfileForDistance(distanceAu: number): DriveProfile {
   if (!Number.isFinite(distanceAu) || distanceAu <= 0) {
     return STANDARD_CRUISE_DRIVE_PROFILE;
@@ -115,6 +136,9 @@ export function resolveMinimumDriveProfileForDistance(distanceAu: number): Drive
   return DRIVE_PROFILES_BY_RANGE.find((profile) => distanceAu <= profile.rangeAu) ?? QUANTUM_FOLD_DRIVE_PROFILE;
 }
 
+/**
+ * Estimates travel duration in hours for a distance/profile pair.
+ */
 export function estimateTravelHours(distanceAu: number, profile: DriveProfile): number {
   if (!Number.isFinite(distanceAu) || distanceAu <= 0) {
     return 0;

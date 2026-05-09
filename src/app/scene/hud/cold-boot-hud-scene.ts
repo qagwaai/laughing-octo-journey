@@ -23,6 +23,9 @@ import { CrackedCockpitWindow } from './cracked-cockpit-window';
   imports: [NgtArgs, NgtsOrbitControls, CrackedCockpitWindow],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * HUD scene controller for cold-boot sequence timing, lighting pulse, and debris reveal.
+ */
 export default class ColdBootHudScene implements OnInit, OnDestroy {
   private static readonly ALERT_STROBE_TICK_MS = 50;
   private static readonly ALERT_STROBE_CYCLE_MS = 1800;

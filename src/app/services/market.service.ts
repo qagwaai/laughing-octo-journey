@@ -8,9 +8,15 @@ import {
 import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
+/**
+ * Fetches market snapshots near a location through the market-list socket contract.
+ */
 export class MarketService {
   private socketService = inject(SocketService);
 
+  /**
+   * Requests nearby markets and forwards the first response to the provided callback.
+   */
   listMarketsByLocation(
     request: MarketListByLocationRequest,
     onResponse: (response: MarketListByLocationResponse) => void,

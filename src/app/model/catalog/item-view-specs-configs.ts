@@ -1,3 +1,6 @@
+/**
+ * Item-to-specsheet configuration map used by item-view-specs UI rendering.
+ */
 import type { ShipItem } from '../ship-item';
 import type { ShipSummary } from '../ship-list';
 import { FieldGroupConfig, ItemViewSpecsConfig } from '../view/item-view-specs';

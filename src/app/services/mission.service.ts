@@ -15,6 +15,9 @@ import {
 } from '../model/mission-upsert.model';
 import { SocketService } from './socket.service';
 
+/**
+ * Input contract for ensuring a mission record exists for a character session.
+ */
 export interface EnsureMissionExistsRequest {
   playerName: string;
   characterId: string;
@@ -43,11 +46,17 @@ export interface ListMissionsResult {
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Mission workflow service that wraps list/add/upsert socket contracts with timeout handling.
+ */
 export class MissionService {
   private static readonly RESPONSE_TIMEOUT_MS = 5000;
 
   constructor(private socketService: SocketService) {}
 
+  /**
+   * Ensures a mission exists by listing first, then adding only when absent.
+   */
   async ensureMissionExists(request: EnsureMissionExistsRequest): Promise<EnsureMissionExistsResult> {
     const playerName = request.playerName.trim();
     const characterId = request.characterId.trim();
@@ -122,6 +131,9 @@ export class MissionService {
     });
   }
 
+  /**
+   * Loads missions for a player/character and returns structured status metadata.
+   */
   async listMissions(request: MissionListRequest): Promise<ListMissionsResult> {
     const playerName = request.playerName.trim();
     const characterId = request.characterId.trim();
@@ -183,6 +195,9 @@ export class MissionService {
     });
   }
 
+  /**
+   * Upserts mission status and optional status-detail payload for mission progress sync.
+   */
   async upsertMissionStatus(request: MissionUpsertRequest): Promise<UpsertMissionStatusResult> {
     const playerName = request.playerName.trim();
     const characterId = request.characterId.trim();
@@ -236,6 +251,9 @@ export class MissionService {
     });
   }
 
+  /**
+   * Ensures socket connectivity before mission requests proceed.
+   */
   private ensureConnected(): Promise<boolean> {
     if (this.socketService.getIsConnected()) {
       return Promise.resolve(true);

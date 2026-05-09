@@ -4,6 +4,9 @@ export interface JumpGateLink {
   gateId: string;
 }
 
+/**
+ * Default directed jump-gate network used by client-side route fallback logic.
+ */
 export const KNOWN_JUMP_GATE_LINKS: readonly JumpGateLink[] = [
   { fromSolarSystemId: 'sol', toSolarSystemId: 'alpha-centauri', gateId: 'sol-ac-g1' },
   { fromSolarSystemId: 'alpha-centauri', toSolarSystemId: 'sol', gateId: 'ac-sol-g1' },
@@ -16,6 +19,9 @@ interface TraversalNode {
   hops: number;
 }
 
+/**
+ * Computes minimum hop count between systems via bounded breadth-first traversal.
+ */
 export function resolveJumpGateHops(
   fromSolarSystemId: string,
   toSolarSystemId: string,
@@ -68,6 +74,9 @@ export function resolveJumpGateHops(
   return null;
 }
 
+/**
+ * Returns true when any route exists within the configured hop bound.
+ */
 export function canReachSolarSystemViaJumpGates(
   fromSolarSystemId: string,
   toSolarSystemId: string,

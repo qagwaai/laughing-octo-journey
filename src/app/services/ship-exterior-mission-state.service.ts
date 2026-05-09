@@ -1,6 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 
+/**
+ * Storage key identity used for mission gate-state persistence.
+ */
 export interface ShipExteriorMissionStateContext {
   missionId: string;
   playerName: string;
@@ -10,12 +13,18 @@ export interface ShipExteriorMissionStateContext {
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Persists and restores ship-exterior mission gate state from local storage.
+ */
 export class ShipExteriorMissionStateService {
   private static readonly STORAGE_PREFIX = 'ship-exterior-mission-state';
 
   private readonly _lastSaved = signal<ShipExteriorMissionGateState | null>(null);
   readonly lastSaved = this._lastSaved.asReadonly();
 
+  /**
+   * Loads mission state for the context, including fallback lookup by mission and character.
+   */
   loadState(context: ShipExteriorMissionStateContext): ShipExteriorMissionGateState | null {
     const key = this.buildStorageKey(context);
     if (!key || typeof window === 'undefined' || !window.localStorage) {
@@ -92,6 +101,9 @@ export class ShipExteriorMissionStateService {
     }
   }
 
+  /**
+   * Saves mission gate-state snapshot to local storage and updates the last-saved signal.
+   */
   saveState(context: ShipExteriorMissionStateContext, state: ShipExteriorMissionGateState): void {
     const key = this.buildStorageKey(context);
     if (!key || typeof window === 'undefined' || !window.localStorage) {
@@ -102,6 +114,9 @@ export class ShipExteriorMissionStateService {
     this._lastSaved.set(state);
   }
 
+  /**
+   * Removes persisted mission state for the given context.
+   */
   clearState(context: ShipExteriorMissionStateContext): void {
     const key = this.buildStorageKey(context);
     if (!key || typeof window === 'undefined' || !window.localStorage) {

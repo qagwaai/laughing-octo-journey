@@ -1,3 +1,6 @@
+/**
+ * Ship list socket contracts plus ship-domain coercion helpers for UI-safe consumption.
+ */
 import type { DriveProfileInput } from './drive-profile';
 import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 import { ShipItem, coerceShipItem } from './ship-item';

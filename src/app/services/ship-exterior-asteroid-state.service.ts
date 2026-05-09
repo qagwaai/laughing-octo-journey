@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 
+/**
+ * Storage key identity used for scan-sample persistence.
+ */
 export interface ShipExteriorAsteroidStateContext {
   missionId: string;
   playerName: string;
@@ -10,9 +13,15 @@ export interface ShipExteriorAsteroidStateContext {
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Persists ship-exterior asteroid scan samples in session storage.
+ */
 export class ShipExteriorAsteroidStateService {
   private static readonly STORAGE_PREFIX = 'ship-exterior:asteroids';
 
+  /**
+   * Restores asteroid scan samples for the active mission/player/character context.
+   */
   loadSamples(context: ShipExteriorAsteroidStateContext): AsteroidScanSample[] | null {
     const storageKey = this.resolveStorageKey(context);
     if (!storageKey) {
@@ -39,6 +48,9 @@ export class ShipExteriorAsteroidStateService {
     }
   }
 
+  /**
+   * Saves asteroid scan samples so scene reloads can resume prior scan state.
+   */
   saveSamples(context: ShipExteriorAsteroidStateContext, samples: readonly AsteroidScanSample[]): void {
     const storageKey = this.resolveStorageKey(context);
     if (!storageKey) {
@@ -52,6 +64,9 @@ export class ShipExteriorAsteroidStateService {
     }
   }
 
+  /**
+   * Clears persisted asteroid scan samples for the given context.
+   */
   clearSamples(context: ShipExteriorAsteroidStateContext): void {
     const storageKey = this.resolveStorageKey(context);
     if (!storageKey) {

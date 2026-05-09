@@ -1,6 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 import type { PrintableConsumedMaterial } from '../model/printable-item';
 
+/**
+ * Persisted print queue item shape used by the fabrication workflow.
+ */
 export interface PrintQueueItem {
   id: string;
   itemType: string;
@@ -13,11 +16,17 @@ export interface PrintQueueItem {
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Stores and persists per-character print queue state in local storage.
+ */
 export class PrinterStateService {
   private static readonly STORAGE_PREFIX = 'printer-queue';
   private readonly queueSignal = signal<PrintQueueItem[]>([]);
   readonly queue = this.queueSignal.asReadonly();
 
+  /**
+   * Loads queue entries for the provided player/character storage identity.
+   */
   loadQueue(playerName: string, characterId: string): void {
     const key = PrinterStateService.buildKey(playerName, characterId);
     if (!key || typeof window === 'undefined') {
@@ -33,6 +42,9 @@ export class PrinterStateService {
     }
   }
 
+  /**
+   * Appends a new queue entry and persists updated queue state.
+   */
   addToQueue(playerName: string, characterId: string, item: Omit<PrintQueueItem, 'id' | 'startedAt'>): PrintQueueItem {
     const newItem: PrintQueueItem = {
       ...item,
@@ -45,6 +57,9 @@ export class PrinterStateService {
     return newItem;
   }
 
+  /**
+   * Removes a queue entry by ID and persists updated queue state.
+   */
   removeFromQueue(playerName: string, characterId: string, itemId: string): void {
     const updated = this.queueSignal().filter((item) => item.id !== itemId);
     this.queueSignal.set(updated);

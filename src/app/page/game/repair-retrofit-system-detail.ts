@@ -25,6 +25,9 @@ import {
   styleUrls: ['./repair-retrofit-system-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Subsystem repair detail page for clearing a single damaged ship subsystem.
+ */
 export default class RepairRetrofitSystemDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -118,6 +121,9 @@ export default class RepairRetrofitSystemDetailPage {
     });
   }
 
+  /**
+   * Persists full repair for selected subsystem and recomputes overall damage state.
+   */
   protected fullyRepairSystem(): void {
     const profile = this.damageProfile();
     const ship = this.joinShip();

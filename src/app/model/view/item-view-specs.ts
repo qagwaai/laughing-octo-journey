@@ -1,3 +1,6 @@
+/**
+ * Item spec view rendering contracts and grouping/format helper utilities.
+ */
 export interface FieldConfig {
   label: string;
   getValue: (item: unknown) => unknown;

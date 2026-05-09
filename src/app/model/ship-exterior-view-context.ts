@@ -1,3 +1,6 @@
+/**
+ * Navigation/state context contracts for ship exterior view mission initialization.
+ */
 import type { MissionStatus } from './mission';
 import type { ShipDamagePreset } from './ship-damage';
 

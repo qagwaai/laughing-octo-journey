@@ -23,6 +23,9 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu],
 })
+/**
+ * Character hub page for listing, deleting, and launching into gameplay flows.
+ */
 export default class CharacterListPage implements OnDestroy {
   protected readonly t = locale;
   private characterService = inject(CharacterService);
@@ -56,6 +59,9 @@ export default class CharacterListPage implements OnDestroy {
     }
   }
 
+  /**
+   * Loads character summaries for the current player context.
+   */
   loadCharacters(): void {
     const playerName = this.playerName().trim();
     if (!playerName) {
@@ -79,6 +85,9 @@ export default class CharacterListPage implements OnDestroy {
     });
   }
 
+  /**
+   * Normalizes raw character payloads from backend variants into UI-safe summaries.
+   */
   private normalizeCharacters(characters: unknown): PlayerCharacterSummary[] {
     if (!Array.isArray(characters)) {
       return [];
@@ -120,6 +129,9 @@ export default class CharacterListPage implements OnDestroy {
     });
   }
 
+  /**
+   * Normalizes mission progress payloads into typed mission status entries.
+   */
   private normalizeMissionProgress(missions: unknown): CharacterMissionProgress[] | undefined {
     if (!Array.isArray(missions)) {
       return undefined;
@@ -212,6 +224,9 @@ export default class CharacterListPage implements OnDestroy {
     });
   }
 
+  /**
+   * Starts game join and routes either to mission resume or cold-boot intro path.
+   */
   navigateToGameJoin(character: PlayerCharacterSummary): void {
     const playerName = this.playerName().trim();
     if (!playerName) {

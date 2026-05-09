@@ -1,3 +1,6 @@
+/**
+ * Ship upsert socket contracts and payload shape for ship persistence updates.
+ */
 import { ShipDamageProfile } from './ship-damage';
 import { ShipItem } from './ship-item';
 import { ShipMotion } from './ship-list';

@@ -1,3 +1,6 @@
+/**
+ * Asteroid scan sample shape persisted and rendered by ship exterior view flows.
+ */
 import type { AsteroidKinematics } from './asteroid-kinematics';
 import type { AsteroidMaterialProfile } from './asteroid-materials';
 import type { CelestialBodyLocation } from './celestial-body-location';

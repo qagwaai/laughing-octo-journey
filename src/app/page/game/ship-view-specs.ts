@@ -19,6 +19,9 @@ interface ShipViewSpecsNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CharacterShipBadge],
 })
+/**
+ * Ship-specs detail page showing model/tier and summarized motion characteristics.
+ */
 export default class ShipViewSpecsPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -41,6 +44,9 @@ export default class ShipViewSpecsPage {
   protected shipModel = computed(() => coerceShipModel(this.joinShip()?.model));
   protected shipTier = computed(() => coerceShipTier(this.joinShip()?.tier));
 
+  /**
+   * Routes to character profile preserving player/character context.
+   */
   navigateToCharacterProfile(): void {
     this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
       preserveFragment: true,

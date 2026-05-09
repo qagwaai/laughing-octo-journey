@@ -27,6 +27,9 @@ extend({ Mesh, SphereGeometry, PointLight });
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [NgtArgs],
 })
+/**
+ * Lightweight loading scene rendering rotating logo and particle light.
+ */
 export class LoadingScene {
   protected Math = Math;
   private logoRef = viewChild<ElementRef<Object3D>>('logo');

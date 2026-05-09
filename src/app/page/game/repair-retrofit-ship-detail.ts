@@ -34,6 +34,9 @@ import {
   styleUrls: ['./repair-retrofit-ship-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Ship-level repair detail page that applies full hull restoration and consumes patch kit.
+ */
 export default class RepairRetrofitShipDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -133,6 +136,9 @@ export default class RepairRetrofitShipDetailPage {
     });
   }
 
+  /**
+   * Performs full ship repair and updates mission gate progress when applicable.
+   */
   protected fullyRepairShip(): void {
     const profile = this.damageProfile();
     const ship = this.joinShip();
@@ -264,6 +270,9 @@ export default class RepairRetrofitShipDetailPage {
     void this.syncMissionProgressToBackend(nextGateState);
   }
 
+  /**
+   * Syncs updated mission gate state to backend mission progress service.
+   */
   private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
     await this.missionProgressSyncService.syncGateState({
       playerName: this.playerName(),

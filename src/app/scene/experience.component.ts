@@ -21,6 +21,9 @@ import { BoxGeometry, GridHelper, Mesh, MeshBasicMaterial } from 'three';
     '(pointerout)': "document.body.style.cursor = 'default'",
   },
 })
+/**
+ * Pointer cursor helper for interactive mesh hover regions.
+ */
 export class CursorPointer {
   protected document = inject(DOCUMENT);
 }
@@ -50,6 +53,9 @@ export class CursorPointer {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CursorPointer, NgtsOrbitControls, NgtsPerspectiveCamera],
 })
+/**
+ * Interactive Three.js demo scene used for pointer and transform experiments.
+ */
 export class Experience {
   private meshRef = viewChild.required<ElementRef<Mesh>>('mesh');
 

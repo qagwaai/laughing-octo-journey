@@ -23,6 +23,9 @@ const DEFAULT_HOTKEY_SLOTS: ReadonlyArray<{
   imports: [NgtCanvas, ShipExteriorViewScene],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Host page for ship-exterior scan scene, exposing scene state to template bindings.
+ */
 export default class ColdBootScanPage {
   private shipExteriorView = viewChild(ShipExteriorViewScene);
 
@@ -64,6 +67,9 @@ export default class ColdBootScanPage {
     this.shipExteriorView()?.revealPropertiesPanel();
   }
 
+  /**
+   * Delegates launch command to scene hotkey slot action.
+   */
   protected launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
     this.shipExteriorView()?.launchFromHotkeySlot(hotkey);
   }

@@ -21,6 +21,9 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
   styleUrls: ['./cold-boot.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Cold-boot cinematic controller that sequences intro stages and mission start transition.
+ */
 export default class ColdBootOpeningPage implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -105,6 +108,9 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
     this.timers.push(window.setTimeout(() => this.advanceStage(3), OPENING_STAGE_TIMINGS_MS.aiReveal));
   }
 
+  /**
+   * Advances UI stage and triggers stage-specific audio cues when enabled.
+   */
   private advanceStage(nextStage: number): void {
     this.stage.set(nextStage);
     if (!this.audioEnabled()) {
@@ -123,6 +129,9 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Starts scanning flow by updating mission state and navigating to scan view.
+   */
   protected async startScanning(): Promise<void> {
     if (this.scanActionPending()) {
       return;
@@ -172,6 +181,9 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
     this.scanActionPending.set(false);
   }
 
+  /**
+   * Builds mission upsert payload from current navigation/session context.
+   */
   private buildMissionRequest() {
     const playerName = this.navigationState.playerName?.trim() ?? '';
     const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';

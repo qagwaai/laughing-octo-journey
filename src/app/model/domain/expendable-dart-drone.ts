@@ -1,3 +1,6 @@
+/**
+ * Expendable Dart Drone domain item constants and coercion helpers.
+ */
 import { ShipItem, coerceShipItem } from '../ship-item';
 
 export { ItemContainer, ItemDamageStatus, ItemKinematics, ItemState, ShipItem } from '../ship-item';

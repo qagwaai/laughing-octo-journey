@@ -21,6 +21,9 @@ interface ShipViewSpecsNavigationState {
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * 3D ship specification viewer scene fed by ship navigation context.
+ */
 export default class ShipViewSpecs {
   private router = inject(Router);
   private navigationState: ShipViewSpecsNavigationState =

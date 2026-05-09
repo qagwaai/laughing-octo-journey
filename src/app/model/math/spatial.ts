@@ -1,3 +1,6 @@
+/**
+ * Spatial frame/state contracts used by ship and market positioning.
+ */
 import { Triple } from '../shared/triple';
 
 export type SpatialFrame = 'barycentric';

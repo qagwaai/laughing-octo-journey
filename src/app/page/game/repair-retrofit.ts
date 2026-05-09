@@ -38,6 +38,9 @@ interface RepairRetrofitNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Repair/retrofit landing page that hydrates ship context and launches detail workflows.
+ */
 export default class RepairRetrofitPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -110,6 +113,9 @@ export default class RepairRetrofitPage {
     return null;
   }
 
+  /**
+   * Loads active ship context used by downstream repair/retrofit routes.
+   */
   private loadActiveShip(): void {
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
@@ -149,6 +155,9 @@ export default class RepairRetrofitPage {
     });
   }
 
+  /**
+   * Opens repair-items view carrying current filters, grouping, and ship state.
+   */
   protected openRepairItemsView(): void {
     const state: RepairDetailNavigationState = {
       playerName: this.playerName(),

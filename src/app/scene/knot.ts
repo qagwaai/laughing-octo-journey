@@ -18,4 +18,7 @@ import { CurrentRoute } from '../component/current';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Minimal torus-knot showcase scene with transmission material styling.
+ */
 export default class Knot {}

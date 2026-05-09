@@ -3,6 +3,9 @@ import type { CharacterMissionProgress, MissionStatus } from './mission';
 export const MISSION_UPSERT_REQUEST_EVENT = 'add-mission-request';
 export const MISSION_UPSERT_RESPONSE_EVENT = 'add-mission-response';
 
+/**
+ * Legacy compatibility upsert request contract mirroring mission-upsert.model.ts.
+ */
 export interface MissionUpsertRequest {
   playerName: string;
   characterId: string;
@@ -12,6 +15,9 @@ export interface MissionUpsertRequest {
   statusDetail?: string;
 }
 
+/**
+ * Legacy compatibility upsert response contract mirroring mission-upsert.model.ts.
+ */
 export interface MissionUpsertResponse {
   success: boolean;
   message: string;

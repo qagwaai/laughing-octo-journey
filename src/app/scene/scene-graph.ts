@@ -125,6 +125,9 @@ extend(THREE);
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Interactive sandbox scene for rendering, spawning, and raycast highlighting demos.
+ */
 export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
   protected readonly sphere = random.inSphere(new Float32Array(5000), { radius: 15.5 }) as Float32Array;
 
@@ -208,28 +211,46 @@ export default class SceneGraph implements AfterContentInit, OnInit, OnDestroy {
       instances.instanceMatrix.needsUpdate = true;
     });
   }
+  /**
+   * Subscribes to scene-graph socket messages and tears down transport on destroy.
+   */
   ngOnDestroy(): void {
     this.unsubscribeMessage?.();
     this.sceneGraphSocketService.disconnect();
   }
+  /**
+   * Initializes scene-graph socket subscription for inbound debug messages.
+   */
   ngOnInit(): void {
     this.unsubscribeMessage = this.sceneGraphSocketService.connectAndSubscribeMessages((data) => appLogger.log(data));
   }
 
+  /**
+   * Sends a raw scene-graph message through the socket service.
+   */
   sendMessage(msg: string) {
     this.sceneGraphSocketService.sendMessage(msg);
   }
 
+  /**
+   * Spawns a planet with randomized position/color when UI button is clicked.
+   */
   onPlanetClick() {
     appLogger.log('Planet Button clicked');
     this.addPlanet('darkblue', [3 * Math.random(), 3 * Math.random(), 3 * Math.random()]);
   }
 
+  /**
+   * Adds a block offset used by the demo cube collection.
+   */
   onBlockClick() {
     appLogger.log('Block Button clicked');
     this.positions.push(3 * Math.random() - 1.5);
   }
 
+  /**
+   * Creates and inserts a planet mesh in the planets group.
+   */
   addPlanet(color: string = 'blue', position: Triplet = [3, 3, 3]) {
     const planets = this.planetsRef()?.nativeElement;
     if (!planets) return;

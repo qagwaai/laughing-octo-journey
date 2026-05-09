@@ -22,6 +22,9 @@ interface ItemViewSpecsNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CharacterShipBadge],
 })
+/**
+ * Item specs page that maps item payloads into grouped blueprint/spec display data.
+ */
 export default class ItemViewSpecsPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -39,6 +42,9 @@ export default class ItemViewSpecsPage {
       .subscribe(() => this.applyNavigationState(this.readNavigationState()));
   }
 
+  /**
+   * Reads navigation state from current transition or browser history fallback.
+   */
   private readNavigationState(): ItemViewSpecsNavigationState {
     return (
       (this.router.getCurrentNavigation()?.extras.state as ItemViewSpecsNavigationState | undefined) ??
@@ -47,6 +53,9 @@ export default class ItemViewSpecsPage {
     );
   }
 
+  /**
+   * Applies partial navigation state updates into page signals.
+   */
   private applyNavigationState(state: ItemViewSpecsNavigationState): void {
     if (typeof state.playerName === 'string') {
       this.playerName.set(state.playerName);
@@ -107,6 +116,9 @@ export default class ItemViewSpecsPage {
     this.imageNotFound.set(true);
   }
 
+  /**
+   * Routes to character profile preserving current player/character context.
+   */
   navigateToCharacterProfile(): void {
     this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
       preserveFragment: true,

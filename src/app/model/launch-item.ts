@@ -1,3 +1,6 @@
+/**
+ * Socket contract for launch-item requests and responses in exterior scene flows.
+ */
 export const LAUNCH_ITEM_REQUEST_EVENT = 'launch-item-request';
 export const LAUNCH_ITEM_RESPONSE_EVENT = 'launch-item-response';
 

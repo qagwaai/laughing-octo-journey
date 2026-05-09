@@ -63,6 +63,9 @@ interface CharacterSetupNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, GuardedLeftMenu],
 })
+/**
+ * Character creation/edit page with starter-ship bootstrap for new characters.
+ */
 export default class CharacterSetupPage implements OnDestroy {
   protected readonly t = locale;
   private fb = inject(FormBuilder);
@@ -103,6 +106,9 @@ export default class CharacterSetupPage implements OnDestroy {
     });
   }
 
+  /**
+   * Validates form input and dispatches add/edit character request flow.
+   */
   saveCharacter(): void {
     if (this.characterForm.invalid) {
       this.characterForm.markAllAsTouched();
@@ -178,6 +184,9 @@ export default class CharacterSetupPage implements OnDestroy {
     });
   }
 
+  /**
+   * Resolves starter ship and applies deterministic starter configuration/items.
+   */
   private createStarterShipForCharacter(characterId?: string): void {
     const playerName = this.playerName().trim();
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
@@ -249,6 +258,9 @@ export default class CharacterSetupPage implements OnDestroy {
     });
   }
 
+  /**
+   * Checks whether a required starter inventory definition is already present.
+   */
   private hasStarterShipInventoryItem(
     inventory: ReadonlyArray<{ itemType?: string; tier?: number | undefined }> | undefined,
     definition: StarterShipInventoryItemDefinition,
@@ -261,6 +273,9 @@ export default class CharacterSetupPage implements OnDestroy {
     );
   }
 
+  /**
+   * Upserts missing starter inventory items sequentially to preserve deterministic order.
+   */
   private upsertStarterShipInventoryItems(
     items: readonly StarterShipInventoryItemDefinition[],
     playerName: string,

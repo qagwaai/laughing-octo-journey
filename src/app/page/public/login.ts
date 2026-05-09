@@ -24,6 +24,9 @@ interface LoginNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule],
 })
+/**
+ * Login page that authenticates user credentials and applies locale preference.
+ */
 export default class LoginPage implements OnDestroy {
   protected readonly t = locale;
   protected readonly supportedLocaleCodes = supportedLocaleCodes;
@@ -53,6 +56,9 @@ export default class LoginPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected canNavigateToRegister = signal(false);
 
+  /**
+   * Validates credentials, sends login request, and routes to character list on success.
+   */
   submit(): void {
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
@@ -118,6 +124,9 @@ export default class LoginPage implements OnDestroy {
     });
   }
 
+  /**
+   * Navigates to registration while preserving locale preference.
+   */
   navigateToRegistration(): void {
     const preferredLocale = this.loginForm.value.locale;
     this.router.navigate([{ outlets: { left: ['registration'] } }], {

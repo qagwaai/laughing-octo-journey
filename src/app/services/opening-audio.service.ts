@@ -3,6 +3,9 @@ import { Injectable, signal } from '@angular/core';
 @Injectable({
   providedIn: 'root',
 })
+/**
+ * Manages cold-boot audio arming, ambience layers, and short feedback effects.
+ */
 export class OpeningAudioService {
   private audioContext: AudioContext | null = null;
   private armed = signal(false);
@@ -22,6 +25,9 @@ export class OpeningAudioService {
     }
   };
 
+  /**
+   * Returns whether audio has been successfully armed by user gesture.
+   */
   isArmed(): boolean {
     return this.armed();
   }
@@ -42,6 +48,9 @@ export class OpeningAudioService {
     return this.audioHooksEnabled();
   }
 
+  /**
+   * Enables or disables gesture hooks and related audio side effects.
+   */
   setAudioHooksEnabled(enabled: boolean): void {
     this.audioHooksEnabled.set(enabled);
     if (!enabled) {
@@ -64,6 +73,9 @@ export class OpeningAudioService {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
 
+  /**
+   * Attempts to initialize and resume audio context in response to user input.
+   */
   async armFromUserGesture(): Promise<boolean> {
     if (this.armed()) {
       return true;
@@ -92,6 +104,9 @@ export class OpeningAudioService {
     return this.armed();
   }
 
+  /**
+   * Starts the cinematic ambience bed if audio is armed.
+   */
   startCinematicBed(): boolean {
     if (!this.armed() || !this.audioContext) {
       return false;
@@ -106,6 +121,9 @@ export class OpeningAudioService {
     return true;
   }
 
+  /**
+   * Stops ambient layers and clears any active looping timers.
+   */
   stopCinematicBed(): void {
     this.ambienceRunning.set(false);
 

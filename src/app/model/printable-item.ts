@@ -1,3 +1,6 @@
+/**
+ * Printable item definitions and helper utilities for fabrication/repair queues.
+ */
 import type { ShipItem } from './ship-item';
 
 export interface PrintableConsumedMaterial {

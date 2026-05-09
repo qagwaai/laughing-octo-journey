@@ -17,6 +17,9 @@ interface GameMainNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
+/**
+ * Main in-game shell page that carries player/character navigation context.
+ */
 export default class GameMainPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -28,6 +31,9 @@ export default class GameMainPage {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 
+  /**
+   * Opens the character profile panel using current navigation state.
+   */
   navigateToCharacterProfile(): void {
     this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
       preserveFragment: true,

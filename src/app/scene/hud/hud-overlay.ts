@@ -28,6 +28,9 @@ import { NgtsText } from 'angular-three-soba/abstractions';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgtsText],
 })
+/**
+ * Lightweight text overlay used for cold-boot HUD status and AI transmission lines.
+ */
 export class HudOverlay {
   title = input<string>('COLD BOOT // TIER 1 SCAVENGER POD');
   systemChecks = input<string[]>([]);

@@ -17,6 +17,9 @@ import {
   styleUrls: ['./repair-retrofit-item-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+/**
+ * Inventory-item repair detail page for restoring a damaged item to intact state.
+ */
 export default class RepairRetrofitItemDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -70,6 +73,9 @@ export default class RepairRetrofitItemDetailPage {
     });
   }
 
+  /**
+   * Persists full repair for selected inventory item via item upsert.
+   */
   protected fullyRepairItem(): void {
     const item = this.selectedItem();
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';

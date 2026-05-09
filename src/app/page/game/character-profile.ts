@@ -18,6 +18,9 @@ interface CharacterProfileNavigationState {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [GuardedLeftMenu, CharacterShipBadge, DatePipe],
 })
+/**
+ * Displays character profile details and links back to profile outlet flows.
+ */
 export default class CharacterProfilePage {
   protected readonly t = locale;
   private router = inject(Router);
@@ -29,6 +32,9 @@ export default class CharacterProfilePage {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
 
+  /**
+   * Re-opens character profile outlet while preserving current player context.
+   */
   navigateToCharacterProfile(): void {
     this.router.navigate([{ outlets: { left: ['character-profile'] } }], {
       preserveFragment: true,
