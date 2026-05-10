@@ -1,0 +1,26 @@
+<ngt-color *args="['#02060f']" attach="background" />
+<ngt-ambient-light [intensity]="0.15" />
+<ngt-point-light [position]="[0, 0, 0]" [intensity]="2.5" [distance]="120" [decay]="2" />
+<ngts-orbit-controls [options]="{ enableDamping: true, dampingFactor: 0.08 }" />
+
+@for (body of stars(); track body.id) {
+<ngt-mesh [position]="body.position" [name]="body.displayName"
+  (pointerover)="onBodyPointerOver(body.source)"
+  (pointerout)="onBodyPointerOut(body.id)"
+  input
+>
+  <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
+  <ngt-mesh-basic-material [color]="body.color" />
+</ngt-mesh>
+}
+
+@for (body of nonStars(); track body.id) {
+<ngt-mesh [position]="body.position" [name]="body.displayName"
+  (pointerover)="onBodyPointerOver(body.source)"
+  (pointerout)="onBodyPointerOut(body.id)"
+  input
+>
+  <ngt-sphere-geometry *args="[body.radius, 32, 32]" />
+  <ngt-mesh-standard-material [color]="body.color" [roughness]="0.8" [metalness]="0.05" />
+</ngt-mesh>
+}

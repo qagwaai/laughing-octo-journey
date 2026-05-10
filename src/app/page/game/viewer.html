@@ -1,0 +1,58 @@
+<div class="ops-page-container">
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.game.viewer.title }}</h1>
+        <p class="subtitle">{{ t.game.viewer.subtitle }}</p>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
+
+    <section class="ops-card">
+      <h2>{{ t.game.viewer.sectionTitle }}</h2>
+      <p>{{ t.game.viewer.sectionDescription }}</p>
+
+      @if (isLoading()) {
+      <p data-testid="viewer-loading">{{ t.game.viewer.listLoadingStatus }}</p>
+      } @else if (listError()) {
+      <p role="alert" data-testid="viewer-error">{{ listError() }}</p>
+      } @else if (!hasResults()) {
+      <p data-testid="viewer-empty">{{ t.game.viewer.listEmptyStatus }}</p>
+      } @else {
+      <ul class="solar-system-list" aria-label="Solar systems" data-testid="viewer-system-list">
+        @for (system of solarSystems(); track system.id) {
+        <li
+          class="solar-system-item"
+          [class.solar-system-item--selected]="selectedSystemId() === system.id"
+          [attr.data-system-id]="system.id"
+        >
+          <button type="button" class="solar-system-item__button" (click)="selectSystem(system)">
+            <span class="solar-system-item__name">{{ system.displayName }}</span>
+            <span class="solar-system-item__meta">
+              <span>
+                <strong>{{ t.game.viewer.distanceParsecLabel }}</strong>
+                {{ formatDistance(system.distanceParsec) }}
+              </span>
+              <span>
+                <strong>{{ t.game.viewer.starCountLabel }}</strong>
+                {{ system.starCount ?? 1 }}
+              </span>
+              @if (system.primaryStar) {
+              <span>
+                <strong>{{ t.game.viewer.primaryStarLabel }}</strong>
+                {{ system.primaryStar.spectralClass }}
+              </span>
+              }
+            </span>
+          </button>
+        </li>
+        }
+      </ul>
+      }
+    </section>
+  </div>
+</div>

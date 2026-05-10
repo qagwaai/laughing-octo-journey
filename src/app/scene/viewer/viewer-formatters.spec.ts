@@ -1,0 +1,95 @@
+import type { ViewerBody } from '../../model/solar-system-get';
+import {
+  VIEWER_SCENE_DEFAULT_PLANET_COLOR,
+  VIEWER_SCENE_DEFAULT_STAR_COLOR,
+  VIEWER_SCENE_PLANET_BASE_RADIUS,
+  VIEWER_SCENE_PLANET_MAX_RADIUS,
+  VIEWER_SCENE_PLANET_MIN_RADIUS,
+  VIEWER_SCENE_STAR_BASE_RADIUS,
+  VIEWER_SCENE_STAR_MAX_RADIUS,
+  VIEWER_SCENE_STAR_MIN_RADIUS,
+  isStarBody,
+  resolveBodyColor,
+  resolveBodySceneRadius,
+  resolveBodyScenePosition,
+  resolvePlanetSceneRadius,
+  resolveStarSceneRadius,
+} from './viewer-formatters';
+
+const baseSpatial = (x = 0, y = 0, z = 0) => ({
+  solarSystemId: 'sol',
+  frame: 'icrs',
+  positionKm: { x, y, z },
+  epochMs: 0,
+});
+
+const starBody: ViewerBody = {
+  id: 'star-1',
+  bodyType: 'star',
+  displayName: 'Sol',
+  spatial: baseSpatial(),
+  spectralClass: 'G2V',
+  luminositySolar: 1,
+  visualization: { colorHex: '#fff5b6' },
+};
+
+const planetBody: ViewerBody = {
+  id: 'planet-1',
+  bodyType: 'planet',
+  displayName: 'Earth',
+  spatial: baseSpatial(149_597_870),
+  physicalCatalog: { estimatedDiameterM: 12_742_000 },
+  visualization: { colorHex: '#3399ff' },
+};
+
+describe('viewer-formatters', () => {
+  it('detects star bodies', () => {
+    expect(isStarBody(starBody)).toBeTrue();
+    expect(isStarBody(planetBody)).toBeFalse();
+  });
+
+  it('uses explicit visualization colors when present', () => {
+    expect(resolveBodyColor(starBody)).toBe('#fff5b6');
+    expect(resolveBodyColor(planetBody)).toBe('#3399ff');
+  });
+
+  it('falls back to defaults when color is missing', () => {
+    const star = { ...starBody, visualization: undefined };
+    const planet = { ...planetBody, visualization: undefined };
+    expect(resolveBodyColor(star)).toBe(VIEWER_SCENE_DEFAULT_STAR_COLOR);
+    expect(resolveBodyColor(planet)).toBe(VIEWER_SCENE_DEFAULT_PLANET_COLOR);
+  });
+
+  it('clamps star radius using luminosity', () => {
+    expect(resolveStarSceneRadius(undefined)).toBe(VIEWER_SCENE_STAR_BASE_RADIUS);
+    expect(resolveStarSceneRadius(0)).toBe(VIEWER_SCENE_STAR_BASE_RADIUS);
+    expect(resolveStarSceneRadius(1)).toBe(VIEWER_SCENE_STAR_BASE_RADIUS);
+    expect(resolveStarSceneRadius(0.0001)).toBe(VIEWER_SCENE_STAR_MIN_RADIUS);
+    expect(resolveStarSceneRadius(10_000)).toBe(VIEWER_SCENE_STAR_MAX_RADIUS);
+  });
+
+  it('clamps planet radius using diameter', () => {
+    expect(resolvePlanetSceneRadius(undefined)).toBe(VIEWER_SCENE_PLANET_BASE_RADIUS);
+    expect(resolvePlanetSceneRadius(0)).toBe(VIEWER_SCENE_PLANET_BASE_RADIUS);
+    expect(resolvePlanetSceneRadius(1)).toBe(VIEWER_SCENE_PLANET_MIN_RADIUS);
+    expect(resolvePlanetSceneRadius(1e15)).toBe(VIEWER_SCENE_PLANET_MAX_RADIUS);
+  });
+
+  it('places stars at scene origin and planets along their direction vector', () => {
+    expect(resolveBodyScenePosition(starBody)).toEqual([0, 0, 0]);
+    const [px, py, pz] = resolveBodyScenePosition(planetBody);
+    expect(px).toBeGreaterThan(0);
+    expect(py).toBe(0);
+    expect(pz).toBe(0);
+  });
+
+  it('returns origin when planet position magnitude is zero', () => {
+    const placed: ViewerBody = { ...planetBody, spatial: baseSpatial(0, 0, 0) };
+    expect(resolveBodyScenePosition(placed)).toEqual([0, 0, 0]);
+  });
+
+  it('routes resolveBodySceneRadius to star/planet helpers', () => {
+    expect(resolveBodySceneRadius(starBody)).toBe(resolveStarSceneRadius(1));
+    expect(resolveBodySceneRadius(planetBody)).toBe(resolvePlanetSceneRadius(12_742_000));
+  });
+});

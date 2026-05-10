@@ -1,0 +1,101 @@
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
+import {
+  createMockSessionService,
+  createMockSocketService,
+  type MockSessionService,
+  type MockSocketService,
+} from '../../../testing';
+import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
+import { SessionService } from '../../services/session.service';
+import { SocketService } from '../../services/socket.service';
+import ViewerScenePage from './viewer-scene';
+
+function setup(navigationState?: Record<string, unknown>) {
+  const socketService: MockSocketService = createMockSocketService();
+  const sessionService: MockSessionService = createMockSessionService('test-session-key');
+
+  const mockRouter = {
+    getCurrentNavigation: () => (navigationState ? { extras: { state: navigationState } } : null),
+    navigate: jasmine.createSpy('navigate'),
+  };
+
+  TestBed.configureTestingModule({
+    imports: [ViewerScenePage],
+    providers: [
+      { provide: SocketService, useValue: socketService },
+      { provide: SessionService, useValue: sessionService },
+      { provide: Router, useValue: mockRouter },
+    ],
+    schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  });
+
+  const fixture = TestBed.createComponent(ViewerScenePage);
+  fixture.detectChanges();
+  return { fixture, component: fixture.componentInstance, socketService };
+}
+
+describe('ViewerScenePage', () => {
+  it('shows the empty state when no system was provided in navigation state', () => {
+    const { component } = setup();
+    expect(component['hasSystem']()).toBeFalse();
+    expect(component['bodies']()).toEqual([]);
+  });
+
+  it('emits solar-system-get-request when a system id is provided', () => {
+    const { socketService } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    expect(socketService.emittedEvents[0]?.event).toBe(SOLAR_SYSTEM_GET_REQUEST_EVENT);
+    expect(socketService.emittedEvents[0]?.data).toEqual(
+      jasmine.objectContaining({ playerName: 'Pioneer', sessionKey: 'test-session-key', solarSystemId: 'sol' }),
+    );
+  });
+
+  it('populates bodies on a successful response', () => {
+    const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      stars: [
+        {
+          id: 'sol-star',
+          bodyType: 'star',
+          displayName: 'Sol',
+          spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+          luminositySolar: 1,
+          visualization: { colorHex: '#ffe680' },
+        },
+      ],
+      bodies: [
+        {
+          id: 'earth',
+          bodyType: 'planet',
+          displayName: 'Earth',
+          spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
+          visualization: { colorHex: '#3399ff' },
+          physicalCatalog: { estimatedDiameterM: 12_742_000 },
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(component['bodies']().length).toBe(2);
+    expect(component['isLoading']()).toBeFalse();
+    expect(component['sceneError']()).toBeNull();
+  });
+
+  it('reports an error when the response indicates failure', () => {
+    const { component, socketService } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: false,
+      message: 'not-found',
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+
+    expect(component['sceneError']()).toContain('not-found');
+  });
+});

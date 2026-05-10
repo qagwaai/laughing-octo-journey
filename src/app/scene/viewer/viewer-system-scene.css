@@ -1,0 +1,40 @@
+.viewer-detail-pane {
+  position: absolute;
+  right: 2.5rem;
+  bottom: 2.5rem;
+  min-width: 320px;
+  max-width: 420px;
+  background: rgba(18, 24, 36, 0.98);
+  color: #e6f2ff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.32);
+  padding: 1.2rem 1.5rem 1.2rem 1.5rem;
+  z-index: 100;
+  font-size: 1rem;
+  pointer-events: none;
+  transition: opacity 0.18s;
+}
+
+.viewer-detail-pane__title {
+  font-size: 1.18rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.viewer-detail-pane__row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.viewer-detail-pane__label {
+  color: #b3c6e0;
+  font-weight: 500;
+  margin-right: 0.5rem;
+}
+
+.viewer-detail-pane__value {
+  color: #e6f2ff;
+  font-family: monospace;
+}

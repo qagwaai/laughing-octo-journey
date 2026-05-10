@@ -1,0 +1,50 @@
+<div class="viewer-scene-host">
+  @if (isLoading()) {
+  <p class="viewer-scene-status" data-testid="viewer-scene-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
+  } @else if (sceneError()) {
+  <p class="viewer-scene-status" role="alert" data-testid="viewer-scene-error">{{ sceneError() }}</p>
+  } @else if (!hasSystem()) {
+  <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
+  } @else {
+  <ngt-canvas shadows [camera]="{ position: [0, 6, 14], fov: 55 }" [lookAt]="[0, 0, 0]">
+    <app-viewer-system-scene
+      *canvasContent
+      [bodies]="sceneInputs().bodies"
+      [summary]="sceneInputs().summary"
+      (hoveredBodyChange)="onHoveredBodyChange($event)"
+    />
+  </ngt-canvas>
+
+  @if (hoveredBody(); as body) {
+  <div class="viewer-detail-pane">
+    <div class="viewer-detail-pane__title">
+      {{ body.displayName }}
+      <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
+    </div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">ID</span><span class="viewer-detail-pane__value">{{ body.id }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Spectral Class</span><span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Luminosity (Solar)</span><span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (Solar)</span><span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Planet Type</span><span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Color</span><span class="viewer-detail-pane__value">{{ body.visualization?.colorHex ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Texture</span><span class="viewer-detail-pane__value">{{ body.visualization?.textureKey ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Diameter (m)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (kg)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedMassKg ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Radius (km)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.radiusKm ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Anchor Body</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.anchorBodyId ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Semi-Major Axis (km)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Eccentricity</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Inclination (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Orbital Period (s)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.epoch ?? '—' }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Position (km)</span><span class="viewer-detail-pane__value">{{ body.spatial.positionKm.x }}, {{ body.spatial.positionKm.y }}, {{ body.spatial.positionKm.z }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Frame</span><span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch (ms)</span><span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span></div>
+    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Solar System</span><span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span></div>
+  </div>
+  }
+  }
+</div>

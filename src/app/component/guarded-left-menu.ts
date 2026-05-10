@@ -27,6 +27,7 @@ export class GuardedLeftMenu {
   protected readonly menuItems: GuardedMenuItem[] = [
     { route: 'stellar-initiation', label: 'Stellar Initiation', icon: 'SI' },
     { route: 'mission-board', label: 'Mission Board', icon: 'MB' },
+    { route: 'viewer', label: 'Viewer', icon: 'VW' },
     { route: 'character-profile', label: 'Character Profile', icon: 'CP' },
     { route: 'ship-hangar', label: 'Ship Hangar', icon: 'SH' },
     { route: 'repair-retrofit', label: 'Repair & Retrofit', icon: 'RR' },

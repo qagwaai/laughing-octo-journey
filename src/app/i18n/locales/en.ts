@@ -567,6 +567,23 @@ export const en = {
         loadMissionsRequiresSessionKey: 'Session key is required to load missions.',
       },
     },
+
+    viewer: {
+      title: 'Solar System Viewer',
+      subtitle: 'Browse curated and HYG-sourced star systems and inspect their celestial bodies.',
+      sectionTitle: 'Known Systems',
+      sectionDescription: 'Select a system to render it in the 3D viewer.',
+      listLoadingStatus: 'Loading systems...',
+      listEmptyStatus: 'No solar systems available.',
+      listErrorPrefix: 'Failed to load solar systems:',
+      systemNameLabel: 'System:',
+      starCountLabel: 'Stars:',
+      distanceParsecLabel: 'Distance (pc):',
+      primaryStarLabel: 'Primary:',
+      sceneLoadingStatus: 'Loading system...',
+      sceneEmptyStatus: 'Select a system from the list to begin.',
+      sceneErrorPrefix: 'Failed to load system:',
+    },
   },
 
   opening: {

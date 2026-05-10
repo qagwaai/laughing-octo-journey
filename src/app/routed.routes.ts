@@ -121,6 +121,12 @@ const leftOutletRoutes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'viewer',
+    outlet: 'left',
+    loadComponent: () => import('./page/game/viewer'),
+    canActivate: [authGuard],
+  },
+  {
     path: 'ship-hangar',
     outlet: 'left',
     loadComponent: () => import('./page/game/ship-hangar'),
@@ -218,6 +224,12 @@ const rightOutletRoutes: Routes = [
     path: 'print-queue',
     outlet: 'right',
     loadComponent: () => import('./page/game/print-queue'),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'viewer-scene/:solarSystemId',
+    outlet: 'right',
+    loadComponent: () => import('./page/game/viewer-scene'),
     canActivate: [authGuard],
   },
 ];

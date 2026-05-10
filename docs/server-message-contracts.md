@@ -2388,3 +2388,77 @@ Payload:
 - Error messages:
   - Several pages display server `message` directly.
   - Keep messages user-readable and non-sensitive.
+
+---
+
+## Solar System Viewer (HYG-backed)
+
+These contracts power the left-pane Viewer page and right-pane Viewer scene.
+They consume the upstream HYG-derived dataset described by the backend's
+`MESSAGE_CONTRACT.md` (see `solid-train` repository).
+
+### `solar-system-list-request`
+
+Client-emitted to fetch a paginated list of curated/procedural systems.
+
+```ts
+interface SolarSystemListRequest {
+  playerName: string;
+  sessionKey: string;
+  source?: 'curated' | 'procedural';
+  maxDistanceParsec?: number;
+  search?: string;
+  limit?: number;
+  requestId?: string;
+}
+```
+
+### `solar-system-list-response`
+
+```ts
+interface SolarSystemListResponse {
+  success: boolean;
+  message: string;
+  playerName?: string;
+  solarSystems: SolarSystemSummary[];
+  requestId?: string;
+}
+```
+
+`SolarSystemSummary` exposes display name, source, distance in parsecs,
+multi-star flag, and a `primaryStar` summary (`spectralClass`, `colorHex`,
+`luminositySolar`, `massSolar`). Models live in `src/app/model/solar-system-list.ts`.
+
+### `solar-system-get-request`
+
+Client-emitted when the user selects a system in the Viewer list.
+
+```ts
+interface SolarSystemGetRequest {
+  playerName: string;
+  sessionKey: string;
+  solarSystemId: string;
+  asOf?: string; // ISO timestamp; backend may compute orbital positions
+  requestId?: string;
+}
+```
+
+### `solar-system-get-response`
+
+```ts
+interface SolarSystemGetResponse {
+  success: boolean;
+  message: string;
+  playerName?: string;
+  solarSystemId?: string;
+  solarSystem?: SolarSystemSummary;
+  stars?: ViewerBody[]; // bodyType === 'star'
+  bodies: ViewerBody[]; // planets, moons, asteroids, stations, ...
+  requestId?: string;
+}
+```
+
+`ViewerBody` carries `spatial.positionKm` (canonical world frame),
+`visualization.colorHex`, `physicalCatalog.estimatedDiameterM`, optional
+`orbitalElements`, and (for stars) `spectralClass` + `luminositySolar`.
+Models live in `src/app/model/solar-system-get.ts`.

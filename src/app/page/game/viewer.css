@@ -1,0 +1,88 @@
+.ops-page-container {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
+}
+
+.page-main {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.subtitle {
+  margin: 0 0 1rem 0;
+  color: #b4cfff;
+}
+
+.ops-card {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(8, 20, 40, 0.7);
+  border: 1px solid rgba(140, 190, 255, 0.25);
+}
+
+.solar-system-list {
+  list-style: none;
+  margin: 1rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.solar-system-item__button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: rgba(20, 33, 56, 0.6);
+  border: 1px solid rgba(140, 190, 255, 0.2);
+  color: #e8f2ff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.solar-system-item__button:hover,
+.solar-system-item__button:focus-visible {
+  background: rgba(40, 64, 104, 0.85);
+  outline: none;
+}
+
+.solar-system-item--selected .solar-system-item__button {
+  border-color: #7ec1ff;
+  box-shadow: 0 0 0 1px #7ec1ff inset;
+}
+
+.solar-system-item__name {
+  font-weight: 600;
+}
+
+.solar-system-item__meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #b4cfff;
+  font-size: 0.9rem;
+}

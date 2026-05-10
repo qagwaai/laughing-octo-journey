@@ -1,0 +1,109 @@
+import { TestBed } from '@angular/core/testing';
+import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../model/solar-system-get';
+import { SOLAR_SYSTEM_LIST_REQUEST_EVENT, SOLAR_SYSTEM_LIST_RESPONSE_EVENT } from '../model/solar-system-list';
+import { SocketService } from './socket.service';
+import { SolarSystemService } from './solar-system.service';
+
+type Listener = (payload: unknown) => void;
+
+class MockSocketService {
+  emittedEvents: Array<{ event: string; data: unknown }> = [];
+  private listeners = new Map<string, Set<Listener>>();
+
+  emit(eventName: string, data?: unknown): void {
+    this.emittedEvents.push({ event: eventName, data });
+  }
+
+  on(eventName: string, callback: Listener): () => void {
+    const set = this.listeners.get(eventName) ?? new Set<Listener>();
+    set.add(callback);
+    this.listeners.set(eventName, set);
+    return () => set.delete(callback);
+  }
+
+  once(eventName: string, callback: Listener): void {
+    const unsubscribe = this.on(eventName, (payload) => {
+      unsubscribe();
+      callback(payload);
+    });
+  }
+
+  trigger(eventName: string, payload: unknown): void {
+    const set = this.listeners.get(eventName);
+    if (!set) {
+      return;
+    }
+    for (const listener of Array.from(set)) {
+      listener(payload);
+    }
+  }
+}
+
+describe('SolarSystemService', () => {
+  let socket: MockSocketService;
+  let service: SolarSystemService;
+
+  beforeEach(() => {
+    socket = new MockSocketService();
+    TestBed.configureTestingModule({
+      providers: [SolarSystemService, { provide: SocketService, useValue: socket }],
+    });
+    service = TestBed.inject(SolarSystemService);
+  });
+
+  it('emits solar-system-list-request and resolves callback once', () => {
+    const callback = jasmine.createSpy('listCallback');
+
+    service.listSolarSystems(
+      { playerName: 'Pilot', sessionKey: 'sk', limit: 50 },
+      callback as unknown as (response: import('../model/solar-system-list').SolarSystemListResponse) => void,
+    );
+
+    expect(socket.emittedEvents[0]).toEqual({
+      event: SOLAR_SYSTEM_LIST_REQUEST_EVENT,
+      data: { playerName: 'Pilot', sessionKey: 'sk', limit: 50 },
+    });
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: 'Pilot',
+      solarSystems: [],
+    });
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'late',
+      playerName: 'Pilot',
+      solarSystems: [],
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback.calls.first().args[0].message).toBe('ok');
+  });
+
+  it('emits solar-system-get-request and resolves callback once', () => {
+    const callback = jasmine.createSpy('getCallback');
+
+    service.getSolarSystem(
+      { playerName: 'Pilot', sessionKey: 'sk', solarSystemId: 'sol' },
+      callback as unknown as (response: import('../model/solar-system-get').SolarSystemGetResponse) => void,
+    );
+
+    expect(socket.emittedEvents[0].event).toBe(SOLAR_SYSTEM_GET_REQUEST_EVENT);
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'late',
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+});
