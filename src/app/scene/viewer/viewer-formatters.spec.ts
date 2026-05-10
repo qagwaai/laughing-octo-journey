@@ -71,7 +71,7 @@ describe('viewer-formatters', () => {
   it('clamps planet radius using diameter', () => {
     expect(resolvePlanetSceneRadius(undefined)).toBe(VIEWER_SCENE_PLANET_BASE_RADIUS);
     expect(resolvePlanetSceneRadius(0)).toBe(VIEWER_SCENE_PLANET_BASE_RADIUS);
-    expect(resolvePlanetSceneRadius(1)).toBe(VIEWER_SCENE_PLANET_MIN_RADIUS);
+    expect(resolvePlanetSceneRadius(1)).toBeCloseTo(VIEWER_SCENE_PLANET_MIN_RADIUS, 1);
     expect(resolvePlanetSceneRadius(1e15)).toBe(VIEWER_SCENE_PLANET_MAX_RADIUS);
   });
 

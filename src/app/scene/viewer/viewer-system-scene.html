@@ -3,6 +3,35 @@
 <ngt-point-light [position]="[0, 0, 0]" [intensity]="2.5" [distance]="120" [decay]="2" />
 <ngts-orbit-controls [options]="{ enableDamping: true, dampingFactor: 0.08 }" />
 
+<ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-2">
+  <ngt-circle-geometry *args="[28, 128]" />
+  <ngt-mesh-basic-material
+    [color]="'#7ea2c9'"
+    [transparent]="true"
+    [opacity]="0.05"
+    [side]="2"
+    [depthWrite]="false"
+  />
+</ngt-mesh>
+
+<ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-1">
+  <ngt-ring-geometry *args="[27.92, 28.08, 192]" />
+  <ngt-mesh-basic-material
+    [color]="'#ffffff'"
+    [transparent]="true"
+    [opacity]="0.3"
+    [side]="2"
+    [depthWrite]="false"
+  />
+</ngt-mesh>
+
+@for (orbit of orbitEllipses(); track orbit.id) {
+<ngt-mesh [position]="orbit.center" [rotation]="orbit.rotation" [scale]="[orbit.radiusX, orbit.radiusZ, 1]">
+  <ngt-ring-geometry *args="[0.996, 1.004, 192]" />
+  <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="orbit.opacity" [side]="2" />
+</ngt-mesh>
+}
+
 @for (body of stars(); track body.id) {
 <ngt-mesh [position]="body.position" [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"

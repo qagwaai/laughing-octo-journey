@@ -110,9 +110,9 @@ describe('ViewerPage', () => {
 
     expect(mockRouter.navigate).toHaveBeenCalled();
     const args = mockRouter.navigate.calls.mostRecent().args;
-    expect(args[0]).toEqual([{ outlets: { right: ['viewer-scene'] } }]);
+    expect(args[0]).toEqual([{ outlets: { right: ['viewer-scene', 'sol'] } }]);
     expect(args[1].state).toEqual(
-      jasmine.objectContaining({ solarSystemId: 'sol', solarSystem: system, playerName: 'Pioneer' }),
+      jasmine.objectContaining({ solarSystem: system, playerName: 'Pioneer' }),
     );
   });
 

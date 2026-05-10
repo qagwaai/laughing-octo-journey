@@ -1,6 +1,7 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
+import { of } from 'rxjs';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -21,12 +22,22 @@ function setup(navigationState?: Record<string, unknown>) {
     navigate: jasmine.createSpy('navigate'),
   };
 
+  const solarSystemIdParam = navigationState?.['solarSystemId'] as string | undefined;
+  const paramMapMock = {
+    get: (key: string) => (key === 'solarSystemId' ? solarSystemIdParam || null : null),
+  };
+
+  const mockActivatedRoute = {
+    paramMap: of(paramMapMock),
+  };
+
   TestBed.configureTestingModule({
     imports: [ViewerScenePage],
     providers: [
       { provide: SocketService, useValue: socketService },
       { provide: SessionService, useValue: sessionService },
       { provide: Router, useValue: mockRouter },
+      { provide: ActivatedRoute, useValue: mockActivatedRoute },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });

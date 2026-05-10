@@ -2462,3 +2462,41 @@ interface SolarSystemGetResponse {
 `visualization.colorHex`, `physicalCatalog.estimatedDiameterM`, optional
 `orbitalElements`, and (for stars) `spectralClass` + `luminositySolar`.
 Models live in `src/app/model/solar-system-get.ts`.
+
+#### `orbitalElements.anchorBodyId` — required for moons and sub-orbital bodies
+
+When a body's `orbitalElements.semiMajorAxisKm` is measured relative to a parent body
+(e.g. a moon orbiting a planet), the backend **must** include `anchorBodyId` set to the
+parent body's `id` (e.g. `"sol-earth"` for Luna).
+
+Without `anchorBodyId` the client cannot distinguish a planet-relative semi-major axis
+from a star-relative one, so the body falls back to its `spatial.positionKm` and loses
+accurate orbital-plane positioning. Planets that orbit the primary star directly do not
+need `anchorBodyId`.
+
+```jsonc
+// ✅ Correct — Luna specifies its parent planet
+{
+  "id": "sol-luna",
+  "bodyType": "moon",
+  "orbitalElements": {
+    "anchorBodyId": "sol-earth",   // <-- required for moons
+    "semiMajorAxisKm": 384400,
+    "eccentricity": 0.0549,
+    "inclinationDeg": 5.145,
+    "longitudeOfAscendingNodeDeg": 0,
+    "argumentOfPeriapsisDeg": 0,
+    "meanAnomalyAtEpochDeg": 0,
+    "orbitalPeriodSec": 2360591.5104
+  }
+}
+
+// ❌ Incorrect — missing anchorBodyId; client falls back to spatial position
+{
+  "id": "sol-luna",
+  "bodyType": "moon",
+  "orbitalElements": {
+    "semiMajorAxisKm": 384400   // interpreted as heliocentric — wrong
+  }
+}
+```
