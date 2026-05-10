@@ -46,6 +46,7 @@ export default class ViewerScenePage {
   protected solarSystemId = signal<string | null>(null);
   protected bodies = signal<ViewerBody[]>([]);
   protected hoveredBody = signal<ViewerBody | null>(null);
+  protected focusedPlanet = signal<ViewerBody | null>(null);
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
 
@@ -110,11 +111,16 @@ export default class ViewerScenePage {
         }
         this.bodies.set(dedupedBodies);
         this.hoveredBody.set(null);
+        this.focusedPlanet.set(null);
       },
     );
   }
 
   protected onHoveredBodyChange(body: ViewerBody | null): void {
     this.hoveredBody.set(body);
+  }
+
+  protected onFocusedPlanetChange(body: ViewerBody | null): void {
+    this.focusedPlanet.set(body);
   }
 }

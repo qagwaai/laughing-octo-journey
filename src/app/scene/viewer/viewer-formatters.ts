@@ -2,9 +2,9 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import type { ViewerBody } from '../../model/solar-system-get';
 
 /** Hybrid scaling constants for the Viewer system scene. */
-export const VIEWER_SCENE_STAR_BASE_RADIUS = 1.5;
-export const VIEWER_SCENE_STAR_MAX_RADIUS = 3.2;
-export const VIEWER_SCENE_STAR_MIN_RADIUS = 0.45;
+export const VIEWER_SCENE_STAR_BASE_RADIUS = 0.28;
+export const VIEWER_SCENE_STAR_MAX_RADIUS = 0.45;
+export const VIEWER_SCENE_STAR_MIN_RADIUS = 0.18;
 export const VIEWER_SCENE_PLANET_BASE_RADIUS = 0.14;
 export const VIEWER_SCENE_PLANET_MAX_RADIUS = 0.46;
 export const VIEWER_SCENE_PLANET_MIN_RADIUS = 0.05;
@@ -13,6 +13,11 @@ export const VIEWER_SCENE_DEFAULT_STAR_COLOR = '#ffedbc';
 export const VIEWER_SCENE_DISTANCE_LOG_BASE = 6;
 export const VIEWER_SCENE_DISTANCE_REFERENCE_KM = 1_000_000; // 1 Mkm reference for log scaling.
 export const VIEWER_SCENE_DISTANCE_UNIT = 5;
+export const VIEWER_SCENE_ANCHORED_ORBIT_SCALE = 0.24;
+export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X = 0.12;
+export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z = 0.1;
+export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X = 0.55;
+export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z = 0.45;
 
 /**
  * Converts a world-space distance in kilometers into the viewer scene distance scale.
@@ -143,18 +148,23 @@ export function resolveBodyOrbitalPositionRelativeToAnchor(body: ViewerBody, anc
   const eRaw = orbital?.eccentricity;
   const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
   
-  // Calculate semi-minor axis
-  const radiusX = Math.max(0.55, resolveSceneDistanceFromKm(semiMajorAxisKm));
-  const radiusZ = Math.max(0.45, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
+  // Child-body orbits (moons around planets) use a compressed scene scale.
+  const scaledOrbitRadius = resolveSceneDistanceFromKm(semiMajorAxisKm) * VIEWER_SCENE_ANCHORED_ORBIT_SCALE;
+  const radiusX = Math.max(VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X, +scaledOrbitRadius.toFixed(3));
+  const radiusZ = Math.max(
+    VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z,
+    +(radiusX * Math.sqrt(1 - e * e)).toFixed(3),
+  );
 
   // Get mean anomaly (default to 0 if not available)
   const meanAnomalyDeg = orbital?.meanAnomalyAtEpochDeg ?? 0;
   const meanAnomaly = (meanAnomalyDeg * Math.PI) / 180;
 
-  // Position on ellipse in orbital coordinates (before rotation)
+  // Position on ellipse in local XY. qBase later rotates XY -> XZ,
+  // matching the orbit ring mesh construction.
   const posX = radiusX * Math.cos(meanAnomaly);
-  const posY = 0; // Orbital plane is XZ in base frame
-  const posZ = radiusZ * Math.sin(meanAnomaly);
+  const posY = radiusZ * Math.sin(meanAnomaly);
+  const posZ = 0;
 
   // Construct orbital rotation (same as orbit ring)
   const ascendingNode = ((orbital?.longitudeOfAscendingNodeDeg ?? 0) * Math.PI) / 180;
@@ -213,17 +223,18 @@ function resolveBodyOrbitalPosition(body: ViewerBody, anchorPosition: [number, n
   const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
   
   // Calculate semi-minor axis
-  const radiusX = Math.max(0.55, resolveSceneDistanceFromKm(semiMajorAxisKm));
-  const radiusZ = Math.max(0.45, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
+  const radiusX = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X, resolveSceneDistanceFromKm(semiMajorAxisKm));
+  const radiusZ = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
 
   // Get mean anomaly (default to 0 if not available)
   const meanAnomalyDeg = orbital?.meanAnomalyAtEpochDeg ?? 0;
   const meanAnomaly = (meanAnomalyDeg * Math.PI) / 180;
 
-  // Position on ellipse in orbital coordinates (before rotation)
+  // Position on ellipse in local XY. qBase later rotates XY -> XZ,
+  // matching the orbit ring mesh construction.
   const posX = radiusX * Math.cos(meanAnomaly);
-  const posY = 0; // Orbital plane is XZ in base frame
-  const posZ = radiusZ * Math.sin(meanAnomaly);
+  const posY = radiusZ * Math.sin(meanAnomaly);
+  const posZ = 0;
 
   // Construct orbital rotation
   const ascendingNode = ((orbital?.longitudeOfAscendingNodeDeg ?? 0) * Math.PI) / 180;

@@ -1,7 +1,12 @@
 <ngt-color *args="['#02060f']" attach="background" />
 <ngt-ambient-light [intensity]="0.15" />
 <ngt-point-light [position]="[0, 0, 0]" [intensity]="2.5" [distance]="120" [decay]="2" />
-<ngts-orbit-controls [options]="{ enableDamping: true, dampingFactor: 0.08 }" />
+<ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08 }" />
+
+<ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
+  <ngt-sphere-geometry *args="[280, 16, 16]" />
+  <ngt-mesh-basic-material [transparent]="true" [opacity]="0" [side]="1" [depthWrite]="false" />
+</ngt-mesh>
 
 <ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-2">
   <ngt-circle-geometry *args="[28, 128]" />
@@ -27,8 +32,8 @@
 
 @for (orbit of orbitEllipses(); track orbit.id) {
 <ngt-mesh [position]="orbit.center" [rotation]="orbit.rotation" [scale]="[orbit.radiusX, orbit.radiusZ, 1]">
-  <ngt-ring-geometry *args="[0.996, 1.004, 192]" />
-  <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="orbit.opacity" [side]="2" />
+  <ngt-ring-geometry *args="[0.9985, 1.0015, 256]" />
+  <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="orbit.opacity" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 }
 
@@ -39,7 +44,7 @@
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
-  <ngt-mesh-basic-material [color]="body.color" />
+  <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : body.color" />
 </ngt-mesh>
 }
 
@@ -47,9 +52,16 @@
 <ngt-mesh [position]="body.position" [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
+  (pointerdown)="onBodyPointerDown($event, body.source)"
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 32, 32]" />
-  <ngt-mesh-standard-material [color]="body.color" [roughness]="0.8" [metalness]="0.05" />
+  <ngt-mesh-standard-material
+    [color]="hoveredBodyId() === body.id ? '#ff3b30' : (body.bodyType === 'planet' ? '#ffffff' : body.color)"
+    [roughness]="0.8"
+    [metalness]="0.05"
+    [emissive]="hoveredBodyId() === body.id ? '#8f0000' : (body.bodyType === 'planet' ? '#aab8d0' : '#000000')"
+    [emissiveIntensity]="hoveredBodyId() === body.id ? 0.4 : (body.bodyType === 'planet' ? 0.2 : 0)"
+  />
 </ngt-mesh>
 }

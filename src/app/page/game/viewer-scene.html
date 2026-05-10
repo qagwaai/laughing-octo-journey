@@ -6,14 +6,22 @@
   } @else if (!hasSystem()) {
   <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
   } @else {
-  <ngt-canvas shadows [camera]="{ position: [0, 6, 14], fov: 55 }" [lookAt]="[0, 0, 0]">
+  <ngt-canvas shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }" [lookAt]="[0, 0, 0]">
     <app-viewer-system-scene
       *canvasContent
       [bodies]="sceneInputs().bodies"
       [summary]="sceneInputs().summary"
       (hoveredBodyChange)="onHoveredBodyChange($event)"
+      (focusedPlanetChange)="onFocusedPlanetChange($event)"
     />
   </ngt-canvas>
+
+  @if (focusedPlanet(); as focused) {
+  <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
+    Focused: {{ focused.displayName }}
+    <span class="viewer-focus-pill__type">({{ focused.bodyType }})</span>
+  </div>
+  }
 
   @if (hoveredBody(); as body) {
   <div class="viewer-detail-pane">
