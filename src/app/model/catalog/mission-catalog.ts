@@ -38,6 +38,7 @@ export const MISSION_IDS = {
   sq02: 'sq-02',
   sq03: 'sq-03',
   sq04: 'sq-04',
+  sqSystemSurvey01: 'sq-system-survey-01',
 } as const;
 
 export type KnownMissionId = (typeof MISSION_IDS)[keyof typeof MISSION_IDS];
@@ -195,6 +196,21 @@ export const MISSION_CATALOG: readonly MissionDefinition[] = [
     ],
     prerequisites: [MISSION_IDS.m04],
     rewards: { credits: 0 },
+  },
+  {
+    id: MISSION_IDS.sqSystemSurvey01,
+    type: 'side',
+    act: 'act-1',
+    title: 'Local Survey Contract',
+    briefing:
+      'Station control is commissioning a fast telemetry sweep of the local system. Scan nearby bodies, check in at a market, and upload your data package.',
+    objectives: [
+      'Scan three distinct celestial bodies in the current system.',
+      'Reach one local market or outpost and establish contact.',
+      'Upload telemetry to complete the survey contract.',
+    ],
+    prerequisites: [MISSION_IDS.firstTarget],
+    rewards: { credits: 350, blueprints: ['Survey Scanner Tuning Kit'] },
   },
 ];
 

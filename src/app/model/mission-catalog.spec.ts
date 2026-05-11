@@ -8,7 +8,7 @@ import {
 } from './mission-catalog';
 
 describe('MISSION_CATALOG', () => {
-  it('should contain all 10 expected mission IDs', () => {
+  it('should contain all 11 expected mission IDs', () => {
     const ids = MISSION_CATALOG.map((m) => m.id);
     expect(ids).toContain(MISSION_IDS.firstTarget);
     expect(ids).toContain(MISSION_IDS.m01);
@@ -20,6 +20,7 @@ describe('MISSION_CATALOG', () => {
     expect(ids).toContain(MISSION_IDS.sq02);
     expect(ids).toContain(MISSION_IDS.sq03);
     expect(ids).toContain(MISSION_IDS.sq04);
+    expect(ids).toContain(MISSION_IDS.sqSystemSurvey01);
   });
 
   it('should have no duplicate mission IDs', () => {
@@ -51,9 +52,10 @@ describe('MISSION_CATALOG', () => {
     expect(mission!.prerequisites).toContain(MISSION_IDS.m02);
   });
 
-  it('should require first-target as prerequisite for SQ-02 and SQ-03', () => {
+  it('should require first-target as prerequisite for SQ-02, SQ-03, and Local Survey Contract', () => {
     expect(resolveMissionById(MISSION_IDS.sq02)!.prerequisites).toContain(MISSION_IDS.firstTarget);
     expect(resolveMissionById(MISSION_IDS.sq03)!.prerequisites).toContain(MISSION_IDS.firstTarget);
+    expect(resolveMissionById(MISSION_IDS.sqSystemSurvey01)!.prerequisites).toContain(MISSION_IDS.firstTarget);
   });
 
   it('should require M-04 as prerequisite for SQ-04', () => {
@@ -61,7 +63,13 @@ describe('MISSION_CATALOG', () => {
   });
 
   it('should classify all side quests as type side', () => {
-    const sideQuests = [MISSION_IDS.sq01, MISSION_IDS.sq02, MISSION_IDS.sq03, MISSION_IDS.sq04];
+    const sideQuests = [
+      MISSION_IDS.sq01,
+      MISSION_IDS.sq02,
+      MISSION_IDS.sq03,
+      MISSION_IDS.sq04,
+      MISSION_IDS.sqSystemSurvey01,
+    ];
     for (const id of sideQuests) {
       expect(resolveMissionById(id)!.type).toBe('side');
     }
@@ -99,13 +107,14 @@ describe('resolveVisibleMissions', () => {
     expect(visibleIds).not.toContain(MISSION_IDS.m01);
   });
 
-  it('should make M-01, SQ-02, SQ-03 visible once first-target is completed', () => {
+  it('should make M-01, SQ-02, SQ-03, and Local Survey Contract visible once first-target is completed', () => {
     const completed = new Set([MISSION_IDS.firstTarget]);
     const visible = resolveVisibleMissions(completed);
     const visibleIds = visible.map((m) => m.id);
     expect(visibleIds).toContain(MISSION_IDS.m01);
     expect(visibleIds).toContain(MISSION_IDS.sq02);
     expect(visibleIds).toContain(MISSION_IDS.sq03);
+    expect(visibleIds).toContain(MISSION_IDS.sqSystemSurvey01);
     expect(visibleIds).not.toContain(MISSION_IDS.m02);
   });
 
@@ -141,11 +150,12 @@ describe('resolveNewlyUnlockedMissionIds', () => {
     expect(unlocked).not.toContain(MISSION_IDS.sq01);
   });
 
-  it('should return SQ-02 and SQ-03 when first-target is just completed', () => {
+  it('should return SQ-02, SQ-03, and Local Survey Contract when first-target is just completed', () => {
     const alreadyCompleted = new Set<string>([]);
     const unlocked = resolveNewlyUnlockedMissionIds(MISSION_IDS.firstTarget, alreadyCompleted);
     expect(unlocked).toContain(MISSION_IDS.sq02);
     expect(unlocked).toContain(MISSION_IDS.sq03);
+    expect(unlocked).toContain(MISSION_IDS.sqSystemSurvey01);
   });
 
   it('should not include missions already in the alreadyCompleted set', () => {

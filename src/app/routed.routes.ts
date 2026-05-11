@@ -232,6 +232,12 @@ const rightOutletRoutes: Routes = [
     loadComponent: () => import('./page/game/viewer-scene'),
     canActivate: [authGuard],
   },
+  {
+    path: 'mission-board',
+    outlet: 'right',
+    loadComponent: () => import('./page/game/mission-board'),
+    canActivate: [authGuard],
+  },
 ];
 
 const routes: Routes = [

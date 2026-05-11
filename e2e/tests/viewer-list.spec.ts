@@ -85,8 +85,11 @@ async function setupViewerListTest(page: any, systems: any[] = []) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
-  await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
-  await expect(page).toHaveURL(/left:game-main/);
+  const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+  await expect(joinButton).toBeVisible({ timeout: 10000 });
+  await expect(joinButton).toBeEnabled({ timeout: 10000 });
+  await joinButton.click();
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',
@@ -164,8 +167,11 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
-    await expect(page).toHaveURL(/left:game-main/);
+    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    await expect(joinButton).toBeVisible({ timeout: 10000 });
+    await expect(joinButton).toBeEnabled({ timeout: 10000 });
+    await joinButton.click();
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register the response handler but delay the response to catch the loading state
     let resolveResponse: any;
@@ -238,8 +244,11 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
-    await expect(page).toHaveURL(/left:game-main/);
+    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    await expect(joinButton).toBeVisible({ timeout: 10000 });
+    await expect(joinButton).toBeEnabled({ timeout: 10000 });
+    await joinButton.click();
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     mock.on('solar-system-list-request', () => ({
       event: 'solar-system-list-response',
@@ -351,8 +360,11 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
-    await expect(page).toHaveURL(/left:game-main/);
+    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    await expect(joinButton).toBeVisible({ timeout: 10000 });
+    await expect(joinButton).toBeEnabled({ timeout: 10000 });
+    await joinButton.click();
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register solar system list handler
     mock.on('solar-system-list-request', () => ({

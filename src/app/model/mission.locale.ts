@@ -151,6 +151,19 @@ export const MISSION_LIBRARY: Record<string, MissionLocaleBundle> = {
           "Tag: Attach the tracker to the hostile miner's ship.",
         ],
       },
+      'sq-system-survey-01': {
+        title: 'Local Survey Contract',
+        briefing: [
+          'Station control flags your ship for a paid reconnaissance sweep after your first-target success.',
+          'Map nearby bodies, check in at a local market, and uplink telemetry to prove this system is chart-ready.',
+        ],
+        gameplayLoopTitle: 'Side Quest Objectives',
+        gameplayLoopSteps: [
+          'Scan three distinct bodies in the current system.',
+          'Reach one market or outpost and establish contact.',
+          'Upload telemetry to complete the survey contract.',
+        ],
+      },
     },
   },
   it: {
@@ -167,6 +180,19 @@ export const MISSION_LIBRARY: Record<string, MissionLocaleBundle> = {
           "Lancio: premi l'accensione. La Dart Expendable, come quella vista nell'hangar, schizza fuori dal tubo di lancio.",
           "L'impatto: la Dart non estrae, colpisce. Si schianta contro l'asteroide, frantumandolo in tre blocchi gestibili.",
           'Recupero manuale: senza una Tug Ship, devi pilotare manualmente lo Scavenger Pod per "catturare" i detriti fluttuanti nel tuo raccoglitore gravitazionale.',
+        ],
+      },
+      'sq-system-survey-01': {
+        title: 'Contratto di ricognizione locale',
+        briefing: [
+          'Il controllo stazione ti affida una rapida ricognizione del sistema dopo il successo del primo bersaglio.',
+          'Mappa i corpi vicini, raggiungi un mercato locale e invia la telemetria per certificare la zona.',
+        ],
+        gameplayLoopTitle: 'Obiettivi missione secondaria',
+        gameplayLoopSteps: [
+          'Scansiona tre corpi distinti nel sistema corrente.',
+          'Raggiungi un mercato o avamposto locale e stabilisci contatto.',
+          'Carica la telemetria per completare il contratto.',
         ],
       },
     },

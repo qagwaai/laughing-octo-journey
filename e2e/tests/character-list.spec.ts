@@ -19,6 +19,13 @@ const characterWithStartedMission = {
   missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
 };
 
+const characterWithCompletedMission = {
+  id: 'char-4',
+  characterName: 'Survey Veteran',
+  level: 8,
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' }],
+};
+
 function characterListResponse(characters: object[]) {
   return {
     success: true,
@@ -207,6 +214,14 @@ test.describe('Character List — join game label', () => {
 
     await expect(characterListPage.joinButton(0)).toHaveText('Join Game in Progress');
   });
+
+  test('shows "Join Game" for characters with a completed first-target mission', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: [characterWithCompletedMission],
+    });
+
+    await expect(characterListPage.joinButton(0)).toHaveText('Join Game');
+  });
 });
 
 // ── Tests: delete dialog ───────────────────────────────────────────────────────
@@ -328,5 +343,16 @@ test.describe('Character List — navigation', () => {
     await characterListPage.editButton(0).click();
 
     await expect(page).toHaveURL(/left:character-setup/);
+  });
+
+  test('routes completed first-target join to game-main and mission-board', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: [characterWithCompletedMission],
+    });
+
+    await characterListPage.joinButton(0).click();
+
+    await expect(page).toHaveURL(/left:game-main/);
+    await expect(page).toHaveURL(/right:mission-board/);
   });
 });

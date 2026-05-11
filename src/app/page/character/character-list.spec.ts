@@ -304,6 +304,18 @@ describe('CharacterListPage', () => {
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
+    it('should keep the standard join label when first-target is completed', () => {
+      const fixture = TestBed.createComponent(CharacterListPage);
+      const component = fixture.componentInstance;
+      const character = {
+        id: '1',
+        characterName: 'Nova',
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
+      };
+
+      expect(component['getJoinGameLabel'](character)).toBe('Join Game');
+    });
+
     it('should navigate directly to game-main and cold-boot-scan when first-target is already started', () => {
       const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
       const fixture = TestBed.createComponent(CharacterListPage);
@@ -348,6 +360,36 @@ describe('CharacterListPage', () => {
               shipDamagePreset: 'cold-boot-starter-damaged',
             },
             firstTargetMissionStatus: 'started',
+          },
+        },
+      );
+    });
+
+    it('should navigate to game-main and mission-board when first-target is completed', () => {
+      const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+      const fixture = TestBed.createComponent(CharacterListPage);
+      const component = fixture.componentInstance;
+      const character = {
+        id: '1',
+        characterName: 'Nova',
+        level: 5,
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
+      };
+      component.navigateToGameJoin(character);
+
+      expect(dispatchSpy).not.toHaveBeenCalled();
+
+      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
+        event: GAME_JOIN_REQUEST_EVENT,
+        data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
+      });
+      expect(router.navigate).toHaveBeenCalledWith(
+        [{ outlets: { right: ['mission-board'], left: ['game-main'] } }],
+        {
+          preserveFragment: true,
+          state: {
+            playerName: 'Pioneer',
+            joinCharacter: character,
           },
         },
       );

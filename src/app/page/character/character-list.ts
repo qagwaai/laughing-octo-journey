@@ -248,6 +248,8 @@ export default class CharacterListPage implements OnDestroy {
     const firstTargetStatus = this.getFirstTargetStatus(character);
     const isFirstTargetInProgress =
       firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
+    const isFirstTargetCompleted = firstTargetStatus === 'completed' || firstTargetStatus === 'turned-in';
+
     if (isFirstTargetInProgress) {
       this.sessionService.setActiveShip({
         id: `starter-pod-${character.id}`,
@@ -262,7 +264,10 @@ export default class CharacterListPage implements OnDestroy {
 
     const outlets = isFirstTargetInProgress
       ? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
-      : { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+      : isFirstTargetCompleted
+        ? { right: ['mission-board'], left: ['game-main'] }
+        : { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
+
     const missionContext = isFirstTargetInProgress
       ? ({
           missionId: FIRST_TARGET_MISSION_ID,
