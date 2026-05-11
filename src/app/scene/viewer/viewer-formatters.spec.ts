@@ -2,16 +2,21 @@ import type { ViewerBody } from '../../model/solar-system-get';
 import {
   VIEWER_SCENE_DEFAULT_PLANET_COLOR,
   VIEWER_SCENE_DEFAULT_STAR_COLOR,
+  VIEWER_SCENE_MARKET_ORBIT_COLOR,
+  VIEWER_SCENE_MARKET_STATION_COLOR,
   VIEWER_SCENE_PLANET_BASE_RADIUS,
   VIEWER_SCENE_PLANET_MAX_RADIUS,
   VIEWER_SCENE_PLANET_MIN_RADIUS,
   VIEWER_SCENE_STAR_BASE_RADIUS,
   VIEWER_SCENE_STAR_MAX_RADIUS,
   VIEWER_SCENE_STAR_MIN_RADIUS,
+  isMarketStationBody,
   isStarBody,
   resolveBodyColor,
   resolveBodySceneRadius,
   resolveBodyScenePosition,
+  resolveBodyOrbitalPositionRelativeToAnchor,
+  resolveOrbitColor,
   resolvePlanetSceneRadius,
   resolveStarSceneRadius,
 } from './viewer-formatters';
@@ -42,10 +47,23 @@ const planetBody: ViewerBody = {
   visualization: { colorHex: '#3399ff' },
 };
 
+const marketStationBody: ViewerBody = {
+  id: 'station-market-1',
+  bodyType: 'station',
+  stationKind: 'market',
+  displayName: 'Sol Market Alpha',
+  spatial: baseSpatial(160_000_000),
+};
+
 describe('viewer-formatters', () => {
   it('detects star bodies', () => {
     expect(isStarBody(starBody)).toBeTrue();
     expect(isStarBody(planetBody)).toBeFalse();
+  });
+
+  it('detects market station bodies', () => {
+    expect(isMarketStationBody(marketStationBody)).toBeTrue();
+    expect(isMarketStationBody(planetBody)).toBeFalse();
   });
 
   it('uses explicit visualization colors when present', () => {
@@ -56,8 +74,10 @@ describe('viewer-formatters', () => {
   it('falls back to defaults when color is missing', () => {
     const star = { ...starBody, visualization: undefined };
     const planet = { ...planetBody, visualization: undefined };
+    const marketStation = { ...marketStationBody, visualization: undefined };
     expect(resolveBodyColor(star)).toBe(VIEWER_SCENE_DEFAULT_STAR_COLOR);
     expect(resolveBodyColor(planet)).toBe(VIEWER_SCENE_DEFAULT_PLANET_COLOR);
+    expect(resolveBodyColor(marketStation)).toBe(VIEWER_SCENE_MARKET_STATION_COLOR);
   });
 
   it('clamps star radius using luminosity', () => {
@@ -91,5 +111,31 @@ describe('viewer-formatters', () => {
   it('routes resolveBodySceneRadius to star/planet helpers', () => {
     expect(resolveBodySceneRadius(starBody)).toBe(resolveStarSceneRadius(1));
     expect(resolveBodySceneRadius(planetBody)).toBe(resolvePlanetSceneRadius(12_742_000));
+  });
+
+  it('resolves market station orbit color as light green', () => {
+    expect(resolveOrbitColor(marketStationBody)).toBe(VIEWER_SCENE_MARKET_ORBIT_COLOR);
+    expect(resolveOrbitColor(planetBody)).toBe('#ffffff');
+  });
+
+  it('keeps market station orbit positions visible instead of compressing them like moons', () => {
+    const positioned = resolveBodyOrbitalPositionRelativeToAnchor(
+      {
+        ...marketStationBody,
+        orbitalElements: {
+          anchorBodyId: 'sol-asteroid-belt',
+          semiMajorAxisKm: 8_200,
+          eccentricity: 0.11,
+          inclinationDeg: 5.1,
+          longitudeOfAscendingNodeDeg: 0,
+          argumentOfPeriapsisDeg: 96,
+          meanAnomalyAtEpochDeg: 140,
+        },
+      },
+      [0, 0, 0],
+    );
+
+    expect(positioned).not.toBeNull();
+    expect(positioned![0]).toBeGreaterThan(0.5);
   });
 });

@@ -153,6 +153,29 @@ const BODIES_WITH_MOONS = [
       epoch: '2026-05-08T00:00:00.000Z',
     },
   },
+  {
+    id: 'market-sol-beta',
+    bodyType: 'station',
+    stationKind: 'market',
+    displayName: 'Sol Market Beta',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 170000000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    orbitalElements: {
+      anchorBodyId: 'sun',
+      semiMajorAxisKm: 170000000,
+      eccentricity: 0.02,
+      inclinationDeg: 0.4,
+      longitudeOfAscendingNodeDeg: 30,
+      argumentOfPeriapsisDeg: 90,
+      meanAnomalyAtEpochDeg: 120,
+      orbitalPeriodSec: 36000000,
+      epoch: '2026-05-08T00:00:00.000Z',
+    },
+  },
 ];
 
 async function setupViewerInteractionTest(page: any) {

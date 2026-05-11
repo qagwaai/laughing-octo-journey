@@ -8,6 +8,10 @@ import {
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
+import {
+  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
+} from '../../model/market-list';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -95,6 +99,78 @@ describe('ViewerScenePage', () => {
     expect(component['bodies']().length).toBe(2);
     expect(component['isLoading']()).toBeFalse();
     expect(component['sceneError']()).toBeNull();
+  });
+
+  it('hydrates market stations from market-list-by-location when solar-system-get has none', () => {
+    const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      stars: [
+        {
+          id: 'sol-star',
+          bodyType: 'star',
+          displayName: 'Sol',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+        },
+      ],
+      bodies: [
+        {
+          id: 'earth',
+          bodyType: 'planet',
+          displayName: 'Earth',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(socketService.emittedEvents.some((entry) => entry.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)).toBeTrue();
+
+    socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      markets: [
+        {
+          marketId: 'sol-ceres-exchange',
+          solarSystemId: 'sol',
+          marketName: 'Ceres Exchange',
+          siteType: 'station',
+          siteName: 'Ceres Exchange Station',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 4.2e8, y: 0, z: 0 }, epochMs: 0 },
+          priceMultiplier: 1,
+          driftPercentPerHour: 0,
+          restockIntervalMinutes: 15,
+          trajectory: {
+            kind: 'orbital-elements',
+            orbit: {
+              anchorBodyId: 'sol-star',
+              semiMajorAxisKm: 4.2e8,
+              eccentricity: 0.08,
+              inclinationDeg: 2.2,
+              longitudeOfAscendingNodeDeg: 45,
+              argumentOfPeriapsisDeg: 70,
+              meanAnomalyAtEpochDeg: 130,
+              orbitalPeriodSec: 16873920,
+              epoch: '2026-05-11T00:00:00.000Z',
+            },
+          },
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const marketBody = component['bodies']().find((body) => body.id === 'sol-ceres-exchange');
+    expect(marketBody).toEqual(
+      jasmine.objectContaining({
+        bodyType: 'station',
+        stationKind: 'market',
+        displayName: 'Ceres Exchange Station',
+      }),
+    );
   });
 
   it('reports an error when the response indicates failure', () => {

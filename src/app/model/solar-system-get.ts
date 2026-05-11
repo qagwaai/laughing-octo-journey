@@ -5,6 +5,7 @@ export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';
 
 export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'station' | string;
+export type ViewerStationKind = 'market' | string;
 
 export interface ViewerBodyVisualization {
   colorHex?: string;
@@ -39,6 +40,7 @@ export interface ViewerSpatial {
 export interface ViewerBody {
   id: string;
   bodyType: ViewerBodyType;
+  stationKind?: ViewerStationKind;
   displayName: string;
   spatial: ViewerSpatial;
   visualization?: ViewerBodyVisualization;

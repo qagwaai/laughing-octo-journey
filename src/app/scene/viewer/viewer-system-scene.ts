@@ -10,11 +10,14 @@ import {
   VIEWER_SCENE_ANCHORED_ORBIT_SCALE,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+  resolveAnchoredOrbitSceneProfile,
   isStarBody,
+  isMarketStationBody,
   resolveBodyColor,
   resolveBodySceneRadius,
   resolveBodyScenePosition,
   resolveBodyOrbitalPositionRelativeToAnchor,
+  resolveOrbitColor,
   resolveSceneDistanceFromKm,
 } from './viewer-formatters';
 
@@ -32,6 +35,7 @@ interface RenderedBody {
   radius: number;
   position: [number, number, number];
   isStar: boolean;
+  isMarketStation: boolean;
 }
 
 interface OrbitEllipse {
@@ -41,6 +45,8 @@ interface OrbitEllipse {
   radiusZ: number;
   rotation: [number, number, number];
   opacity: number;
+  color: string;
+  isMarketStation: boolean;
 }
 
 interface CameraTween {
@@ -136,6 +142,7 @@ export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
       radius: resolveBodySceneRadius(body),
       position,
       isStar: isStarBody(body),
+        isMarketStation: isMarketStationBody(body),
     };
   });
 }
@@ -241,15 +248,16 @@ export class ViewerSystemScene {
         const eccentricity = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.98) : 0;
         const anchorId = orbital?.anchorBodyId;
         const isAnchoredOrbit = typeof anchorId === 'string' && anchorId.length > 0;
+        const orbitProfile = isAnchoredOrbit ? resolveAnchoredOrbitSceneProfile(body.source) : null;
         const scaledRadius = isAnchoredOrbit
-          ? resolveSceneDistanceFromKm(semiMajorAxisKm) * VIEWER_SCENE_ANCHORED_ORBIT_SCALE
+          ? resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile!.scale
           : resolveSceneDistanceFromKm(semiMajorAxisKm);
         const radiusX = Math.max(
-          isAnchoredOrbit ? VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
+          isAnchoredOrbit ? orbitProfile!.minRadiusX : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
           +scaledRadius.toFixed(3),
         );
         const radiusZ = Math.max(
-          isAnchoredOrbit ? VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+          isAnchoredOrbit ? orbitProfile!.minRadiusZ : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
           +(radiusX * Math.sqrt(1 - eccentricity * eccentricity)).toFixed(3),
         );
 
@@ -268,13 +276,17 @@ export class ViewerSystemScene {
           opacity = 0.08; // unrelated orbits dimmed but still visible
         }
 
+        const orbitOpacity = body.isMarketStation ? Math.max(opacity, hoveredId === body.id ? 1 : 0.72) : opacity;
+
         return {
           id: body.id,
           center: [anchorPosition[0], anchorPosition[1], anchorPosition[2]],
           radiusX,
           radiusZ,
           rotation: resolveOrbitRotationEuler(orbital),
-          opacity,
+          opacity: orbitOpacity,
+            color: resolveOrbitColor(body.source),
+          isMarketStation: body.isMarketStation,
         };
       })
       .filter((orbit): orbit is OrbitEllipse => orbit !== null);

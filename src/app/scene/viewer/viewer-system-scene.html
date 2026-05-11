@@ -31,9 +31,9 @@
 </ngt-mesh>
 
 @for (orbit of orbitEllipses(); track orbit.id) {
-<ngt-mesh [position]="orbit.center" [rotation]="orbit.rotation" [scale]="[orbit.radiusX, orbit.radiusZ, 1]">
-  <ngt-ring-geometry *args="[0.9985, 1.0015, 256]" />
-  <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="orbit.opacity" [side]="2" [depthWrite]="false" />
+<ngt-mesh [position]="orbit.center" [rotation]="orbit.rotation" [scale]="[orbit.radiusX, orbit.radiusZ, 1]" [renderOrder]="orbit.isMarketStation ? 20 : 0">
+  <ngt-ring-geometry *args="orbit.isMarketStation ? [0.96, 1.04, 256] : [0.9995, 1.0005, 256]" />
+  <ngt-mesh-basic-material [color]="orbit.color" [transparent]="true" [opacity]="orbit.opacity" [side]="2" [depthWrite]="false" [depthTest]="orbit.isMarketStation ? false : true" />
 </ngt-mesh>
 }
 
@@ -57,11 +57,35 @@
 >
   <ngt-sphere-geometry *args="[body.radius, 32, 32]" />
   <ngt-mesh-standard-material
-    [color]="hoveredBodyId() === body.id ? '#ff3b30' : (body.bodyType === 'planet' ? '#ffffff' : body.color)"
+    [color]="
+      hoveredBodyId() === body.id
+        ? '#ff3b30'
+        : body.bodyType === 'planet'
+          ? '#ffffff'
+          : body.isMarketStation
+            ? '#22c55e'
+            : body.color
+    "
     [roughness]="0.8"
     [metalness]="0.05"
-    [emissive]="hoveredBodyId() === body.id ? '#8f0000' : (body.bodyType === 'planet' ? '#aab8d0' : '#000000')"
-    [emissiveIntensity]="hoveredBodyId() === body.id ? 0.4 : (body.bodyType === 'planet' ? 0.2 : 0)"
+    [emissive]="
+      hoveredBodyId() === body.id
+        ? '#8f0000'
+        : body.bodyType === 'planet'
+          ? '#aab8d0'
+          : body.isMarketStation
+            ? '#14532d'
+            : '#000000'
+    "
+    [emissiveIntensity]="
+      hoveredBodyId() === body.id
+        ? 0.4
+        : body.bodyType === 'planet'
+          ? 0.2
+          : body.isMarketStation
+            ? 0.2
+            : 0
+    "
   />
 </ngt-mesh>
 }

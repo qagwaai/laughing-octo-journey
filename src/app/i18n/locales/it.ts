@@ -424,6 +424,11 @@ export const it: DeepPartial<EnLocale> = {
       planetViewDistanceLabel: 'Semiasse maggiore',
       planetViewMoonsLabel: 'Lune',
       planetViewNoMoonsLabel: 'Nessuna luna collegata a questo corpo.',
+      legendTitle: 'Legenda',
+      legendPlanet: 'Pianeta',
+      legendPlanetOrbit: 'Orbita pianeta',
+      legendMarketStation: 'Stazione mercato',
+      legendMarketOrbit: 'Orbita mercato',
     },
     shipViewSpecs: {
       title: 'Specifiche nave',

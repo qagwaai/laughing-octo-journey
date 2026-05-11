@@ -2,8 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal, CUSTOM_EL
 import { Router, ActivatedRoute } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
+import {
+  type MarketListByLocationRequest,
+  type MarketListByLocationResponse,
+  type MarketSummary,
+} from '../../model/market-list';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
@@ -14,6 +20,13 @@ interface ViewerSceneNavigationState {
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;
 }
+
+function normalizeToken(value: string | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+const VIEWER_MARKET_DISCOVERY_DISTANCE_AU = 200;
+const VIEWER_MARKET_DISCOVERY_LIMIT = 250;
 
 @Component({
   selector: 'app-viewer-scene-page',
@@ -35,6 +48,7 @@ export default class ViewerScenePage {
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
+  private marketService = inject(MarketService);
 
   private navigationState: ViewerSceneNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ViewerSceneNavigationState | undefined) ??
@@ -62,6 +76,112 @@ export default class ViewerScenePage {
 
   private lastLoadedSystemId: string | null = null;
   private planetTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private mergeUniqueBodies(bodies: ViewerBody[]): ViewerBody[] {
+    const dedupedBodies: ViewerBody[] = [];
+    const seenBodyIds = new Set<string>();
+    for (const body of bodies) {
+      if (seenBodyIds.has(body.id)) {
+        continue;
+      }
+      seenBodyIds.add(body.id);
+      dedupedBodies.push(body);
+    }
+    return dedupedBodies;
+  }
+
+  private toViewerMarketStationBody(market: MarketSummary): ViewerBody {
+    const displayName = market.siteName?.trim() || market.marketName?.trim() || market.marketId;
+    return {
+      id: market.marketId,
+      bodyType: 'station',
+      stationKind: 'market',
+      displayName,
+      spatial: market.spatial,
+      orbitalElements: market.trajectory?.orbit,
+    };
+  }
+
+  private maybeHydrateMarketStations(
+    baseBodies: ViewerBody[],
+    playerName: string,
+    sessionKey: string,
+    solarSystemId: string,
+  ): void {
+    const hasStationBodies = baseBodies.some((body) => normalizeToken(body.bodyType) === 'station');
+    if (hasStationBodies) {
+      return;
+    }
+
+    const firstStar = baseBodies.find((body) => normalizeToken(body.bodyType) === 'star');
+    const positionKm = firstStar?.spatial.positionKm ?? { x: 0, y: 0, z: 0 };
+
+    const request: MarketListByLocationRequest = {
+      playerName,
+      sessionKey,
+      solarSystemId,
+      positionKm,
+      distanceAu: VIEWER_MARKET_DISCOVERY_DISTANCE_AU,
+      limit: VIEWER_MARKET_DISCOVERY_LIMIT,
+      locationTypes: ['station', 'free-floating'],
+    };
+
+    this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
+      if (!response.success || this.solarSystemId() !== solarSystemId) {
+        return;
+      }
+
+      const marketStations = (response.markets ?? []).map((market) => this.toViewerMarketStationBody(market));
+      if (marketStations.length === 0) {
+        return;
+      }
+
+      console.info('[viewer][market-orbits] Free-floating markets trajectory data', (response.markets ?? []).map((m) => ({
+        id: m.marketId,
+        siteName: m.siteName,
+        trajectoryKind: m.trajectory?.kind ?? '(missing)',
+        hasSemiMajorAxis: !!m.trajectory?.orbit?.semiMajorAxisKm,
+        semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
+        anchorBodyId: m.trajectory?.orbit?.anchorBodyId ?? null,
+      })));
+
+      const mergedBodies = this.mergeUniqueBodies([...this.bodies(), ...marketStations]);
+      this.logMarketPayloadSnapshot(mergedBodies);
+      this.bodies.set(mergedBodies);
+    });
+  }
+
+  private logMarketPayloadSnapshot(bodies: ViewerBody[]): void {
+    const stationBodies = bodies.filter((body) => normalizeToken(body.bodyType) === 'station');
+    const marketStations = stationBodies.filter((body) => normalizeToken(body.stationKind) === 'market');
+
+    const bodyTypeCounts = bodies.reduce<Record<string, number>>((acc, body) => {
+      const key = normalizeToken(body.bodyType) || 'unknown';
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    console.info('[viewer][market-debug] payload snapshot', {
+      solarSystemId: this.solarSystemId(),
+      totalBodies: bodies.length,
+      stationBodies: stationBodies.length,
+      marketStations: marketStations.length,
+      bodyTypeCounts,
+    });
+
+    if (stationBodies.length > 0) {
+      console.table(
+        stationBodies.map((body) => ({
+          id: body.id,
+          displayName: body.displayName,
+          bodyType: body.bodyType,
+          stationKind: body.stationKind ?? '(missing)',
+          semiMajorAxisKm: body.orbitalElements?.semiMajorAxisKm ?? '(missing)',
+          anchorBodyId: body.orbitalElements?.anchorBodyId ?? '(missing)',
+        })),
+      );
+    }
+  }
 
   ngOnInit(): void {
     // Subscribe to route param changes
@@ -102,16 +222,10 @@ export default class ViewerScenePage {
           this.solarSystem.set(response.solarSystem);
         }
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
-        const dedupedBodies: ViewerBody[] = [];
-        const seenBodyIds = new Set<string>();
-        for (const body of allBodies) {
-          if (seenBodyIds.has(body.id)) {
-            continue;
-          }
-          seenBodyIds.add(body.id);
-          dedupedBodies.push(body);
-        }
+        const dedupedBodies = this.mergeUniqueBodies(allBodies);
+        this.logMarketPayloadSnapshot(dedupedBodies);
         this.bodies.set(dedupedBodies);
+        this.maybeHydrateMarketStations(dedupedBodies, playerName, sessionKey, solarSystemId);
         this.hoveredBody.set(null);
         this.focusedPlanet.set(null);
       },

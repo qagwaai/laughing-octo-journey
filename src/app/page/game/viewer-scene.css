@@ -89,6 +89,51 @@
   text-align: right;
 }
 
+.viewer-legend {
+  position: absolute;
+  bottom: 1.2rem;
+  left: 1.2rem;
+  z-index: 9000;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(16, 29, 50, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e8f2ff;
+  font-size: 0.8rem;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+}
+
+.viewer-legend__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #8bacd8;
+  margin-bottom: 0.45rem;
+}
+
+.viewer-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
+.viewer-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.viewer-legend__swatch--orbit {
+  border-radius: 2px;
+  height: 3px;
+  width: 14px;
+}
+
 .viewer-scene-transition {
   position: absolute;
   inset: 0;

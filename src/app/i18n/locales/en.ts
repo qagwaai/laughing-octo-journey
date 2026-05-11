@@ -592,6 +592,11 @@ export const en = {
       planetViewDistanceLabel: 'Semi-major axis',
       planetViewMoonsLabel: 'Moons',
       planetViewNoMoonsLabel: 'No moons linked to this body.',
+      legendTitle: 'Legend',
+      legendPlanet: 'Planet',
+      legendPlanetOrbit: 'Planet Orbit',
+      legendMarketStation: 'Market Station',
+      legendMarketOrbit: 'Market Orbit',
     },
   },
 

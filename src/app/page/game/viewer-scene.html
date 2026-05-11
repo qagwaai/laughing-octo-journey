@@ -24,6 +24,26 @@
   </div>
   }
 
+  <div class="viewer-legend" data-testid="viewer-legend" aria-label="Map legend">
+    <div class="viewer-legend__title">{{ t.game.viewer.legendTitle }}</div>
+    <div class="viewer-legend__item">
+      <span class="viewer-legend__swatch" style="background:#ffffff"></span>
+      <span>{{ t.game.viewer.legendPlanet }}</span>
+    </div>
+    <div class="viewer-legend__item">
+      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#ffffff"></span>
+      <span>{{ t.game.viewer.legendPlanetOrbit }}</span>
+    </div>
+    <div class="viewer-legend__item">
+      <span class="viewer-legend__swatch" style="background:#22c55e"></span>
+      <span>{{ t.game.viewer.legendMarketStation }}</span>
+    </div>
+    <div class="viewer-legend__item">
+      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#86efac"></span>
+      <span>{{ t.game.viewer.legendMarketOrbit }}</span>
+    </div>
+  </div>
+
   @if (hoveredBody(); as body) {
   <div class="viewer-detail-pane">
     <div class="viewer-detail-pane__title">

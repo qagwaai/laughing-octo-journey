@@ -10,6 +10,8 @@ export const VIEWER_SCENE_PLANET_MAX_RADIUS = 0.46;
 export const VIEWER_SCENE_PLANET_MIN_RADIUS = 0.05;
 export const VIEWER_SCENE_DEFAULT_PLANET_COLOR = '#9bb1c9';
 export const VIEWER_SCENE_DEFAULT_STAR_COLOR = '#ffedbc';
+export const VIEWER_SCENE_MARKET_STATION_COLOR = '#22c55e';
+export const VIEWER_SCENE_MARKET_ORBIT_COLOR = '#86efac';
 export const VIEWER_SCENE_DISTANCE_LOG_BASE = 6;
 export const VIEWER_SCENE_DISTANCE_REFERENCE_KM = 1_000_000; // 1 Mkm reference for log scaling.
 export const VIEWER_SCENE_DISTANCE_UNIT = 5;
@@ -18,6 +20,16 @@ export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X = 0.12;
 export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z = 0.1;
 export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X = 0.55;
 export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z = 0.45;
+
+export interface AnchoredOrbitSceneProfile {
+  scale: number;
+  minRadiusX: number;
+  minRadiusZ: number;
+}
+
+function normalizeToken(value: string | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
 
 /**
  * Converts a world-space distance in kilometers into the viewer scene distance scale.
@@ -41,7 +53,14 @@ export function resolveSceneDistanceFromKm(distanceKm: number): number {
  * Returns true when the body should be rendered as a star (lit/glowing).
  */
 export function isStarBody(body: ViewerBody): boolean {
-  return body.bodyType === 'star';
+  return normalizeToken(body.bodyType) === 'star';
+}
+
+/**
+ * Returns true when the body is a station-backed market node.
+ */
+export function isMarketStationBody(body: ViewerBody): boolean {
+  return normalizeToken(body.bodyType) === 'station' && normalizeToken(body.stationKind) === 'market';
 }
 
 /**
@@ -52,7 +71,40 @@ export function resolveBodyColor(body: ViewerBody): string {
   if (explicit && explicit.length > 0) {
     return explicit;
   }
+  if (isMarketStationBody(body)) {
+    return VIEWER_SCENE_MARKET_STATION_COLOR;
+  }
   return isStarBody(body) ? VIEWER_SCENE_DEFAULT_STAR_COLOR : VIEWER_SCENE_DEFAULT_PLANET_COLOR;
+}
+
+/**
+ * Resolves orbit line color with market stations rendered in light green.
+ */
+export function resolveOrbitColor(body: ViewerBody): string {
+  if (isMarketStationBody(body)) {
+    return VIEWER_SCENE_MARKET_ORBIT_COLOR;
+  }
+  return '#ffffff';
+}
+
+/**
+ * Returns the scene-space orbit profile for anchored bodies.
+ * Market stations use the primary-orbit scale so their orbits remain visible.
+ */
+export function resolveAnchoredOrbitSceneProfile(body: ViewerBody): AnchoredOrbitSceneProfile {
+  if (isMarketStationBody(body)) {
+    return {
+      scale: 1,
+      minRadiusX: VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
+      minRadiusZ: VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+    };
+  }
+
+  return {
+    scale: VIEWER_SCENE_ANCHORED_ORBIT_SCALE,
+    minRadiusX: VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X,
+    minRadiusZ: VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z,
+  };
 }
 
 /**
@@ -148,11 +200,11 @@ export function resolveBodyOrbitalPositionRelativeToAnchor(body: ViewerBody, anc
   const eRaw = orbital?.eccentricity;
   const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
   
-  // Child-body orbits (moons around planets) use a compressed scene scale.
-  const scaledOrbitRadius = resolveSceneDistanceFromKm(semiMajorAxisKm) * VIEWER_SCENE_ANCHORED_ORBIT_SCALE;
-  const radiusX = Math.max(VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X, +scaledOrbitRadius.toFixed(3));
+  const orbitProfile = resolveAnchoredOrbitSceneProfile(body);
+  const scaledOrbitRadius = resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile.scale;
+  const radiusX = Math.max(orbitProfile.minRadiusX, +scaledOrbitRadius.toFixed(3));
   const radiusZ = Math.max(
-    VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z,
+    orbitProfile.minRadiusZ,
     +(radiusX * Math.sqrt(1 - e * e)).toFixed(3),
   );
 

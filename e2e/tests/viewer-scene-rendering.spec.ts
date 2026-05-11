@@ -126,6 +126,29 @@ const SOL_SYSTEM_BODIES: any[] = [
     },
     planetType: 'terrestrial',
   },
+  {
+    id: 'market-sol-alpha',
+    bodyType: 'station',
+    stationKind: 'market',
+    displayName: 'Sol Market Alpha',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 160000000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    orbitalElements: {
+      anchorBodyId: 'sun',
+      semiMajorAxisKm: 160000000,
+      eccentricity: 0.012,
+      inclinationDeg: 0.8,
+      longitudeOfAscendingNodeDeg: 20,
+      argumentOfPeriapsisDeg: 45,
+      meanAnomalyAtEpochDeg: 70,
+      orbitalPeriodSec: 33000000,
+      epoch: '2026-05-08T00:00:00.000Z',
+    },
+  },
 ];
 
 function solarSystemGetResponse(bodies: any[]) {
@@ -229,6 +252,15 @@ test.describe('Viewer — Scene Rendering', () => {
 
     // Verify system name is displayed (typically in header or HUD)
     await expect(page.locator('text=Sol').first()).toBeVisible();
+  });
+
+  test('accepts station market bodies in scene payload', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock);
+
+    await expect(page.locator('canvas').first()).toBeVisible();
+    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
   });
 
   test('handles scene load error gracefully', async ({ page }) => {
