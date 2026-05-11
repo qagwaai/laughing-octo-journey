@@ -16,6 +16,7 @@ import {
   supportedLocaleCodes,
   type SupportedLocaleCode,
 } from '../../i18n/locale';
+import { LoginRequest, LoginResponse } from '../../model/login';
 import { RegisterRequest, RegisterResponse } from '../../model/register';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
@@ -50,7 +51,8 @@ export default class RegistrationPage implements OnDestroy {
   private sessionService = inject(SessionService);
   private fb = inject(FormBuilder);
   private router = inject(Router);
-  private unsubscribeResponse?: () => void;
+  private unsubscribeRegisterResponse?: () => void;
+  private unsubscribeLoginResponse?: () => void;
   private navigationState: RegistrationNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as RegistrationNavigationState | undefined) ??
     (history.state as RegistrationNavigationState | undefined) ??
@@ -109,24 +111,46 @@ export default class RegistrationPage implements OnDestroy {
     this.isSubmitting.set(true);
     this.successMessage.set(null);
     this.errorMessage.set(null);
-    this.unsubscribeResponse?.();
+    this.unsubscribeRegisterResponse?.();
+    this.unsubscribeLoginResponse?.();
 
-    this.unsubscribeResponse = this.authService.register(request, (response: RegisterResponse) => {
-      this.isSubmitting.set(false);
+    this.unsubscribeRegisterResponse = this.authService.register(request, (response: RegisterResponse) => {
       if (response.success) {
-        if (response.sessionKey) {
-          this.sessionService.setSessionKey(response.sessionKey);
-        }
         this.successMessage.set(response.message);
-        this.router.navigate([{ outlets: { left: ['character-list'] } }], {
-          preserveFragment: true,
-          state: { playerName: request.playerName },
+
+        const loginRequest: LoginRequest = {
+          playerName: request.playerName,
+          password: request.password,
+          locale: request.locale,
+        };
+
+        this.unsubscribeLoginResponse?.();
+        this.unsubscribeLoginResponse = this.authService.login(loginRequest, (loginResponse: LoginResponse) => {
+          this.isSubmitting.set(false);
+
+          if (loginResponse.success) {
+            if (loginResponse.sessionKey) {
+              this.sessionService.setSessionKey(loginResponse.sessionKey);
+            }
+
+            this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+              preserveFragment: true,
+              state: { playerName: request.playerName },
+            });
+            this.registrationForm.reset();
+          } else {
+            this.successMessage.set(null);
+            this.errorMessage.set(loginResponse.message);
+          }
+
+          this.unsubscribeLoginResponse?.();
         });
-        this.registrationForm.reset();
       } else {
+        this.isSubmitting.set(false);
         this.errorMessage.set(response.message);
       }
-      this.unsubscribeResponse?.();
+
+      this.unsubscribeRegisterResponse?.();
     });
   }
 
@@ -147,6 +171,7 @@ export default class RegistrationPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.unsubscribeResponse?.();
+    this.unsubscribeRegisterResponse?.();
+    this.unsubscribeLoginResponse?.();
   }
 }

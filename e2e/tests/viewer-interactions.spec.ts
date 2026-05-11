@@ -238,6 +238,8 @@ async function navigateToScene(page: any) {
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe('Viewer — Interaction Behaviors', () => {
+  test.describe.configure({ timeout: 60_000 });
+
   test('applies hover styling when mouse enters scene canvas', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);

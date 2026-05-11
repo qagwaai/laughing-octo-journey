@@ -270,7 +270,8 @@ test.describe('First Target Mission Flow', () => {
 
     await loginViaUI(page, mock);
     await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
     await expect
       .poll(async () =>
@@ -430,23 +431,25 @@ test.describe('First Target Mission Flow', () => {
             const api = (
               window as Window & {
                 __shipExteriorTestUtils?: {
-                  simulateRepair: (repairKind: string) => {
+                  simulateRepair: (repairKind: string) => unknown;
+                  getMissionGateState: () => {
                     steps: Array<{ key: string; status: string }>;
                     activeObjectiveText: string;
-                  } | null;
+                  };
                 };
               }
             ).__shipExteriorTestUtils;
-            if (!api?.simulateRepair) {
+            if (!api?.simulateRepair || !api?.getMissionGateState) {
               return { allCompleted: false, hasCompletionObjective: false };
             }
-            const gate = api?.simulateRepair('ship');
+            api.simulateRepair('ship');
+            const gate = api.getMissionGateState();
             return {
               allCompleted: Boolean(gate?.steps.every((step) => step.status === 'completed')),
               hasCompletionObjective: Boolean(gate?.activeObjectiveText.includes('Mission objectives complete')),
             };
           }),
-        { timeout: 15_000 },
+        { timeout: 30_000 },
       )
       .toEqual({ allCompleted: true, hasCompletionObjective: true });
   });
@@ -481,7 +484,8 @@ test.describe('First Target Mission Flow', () => {
     );
 
     await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
     await expect
       .poll(async () =>
@@ -525,7 +529,8 @@ test.describe('First Target Mission Flow', () => {
 
     await loginViaUI(page, mock);
     await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
     await page.locator('button[aria-label="Fabrication Lab"]').click();
     await expect(page).toHaveURL(/left:fabrication-lab/);

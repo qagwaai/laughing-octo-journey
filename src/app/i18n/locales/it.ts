@@ -43,8 +43,8 @@ export const it: DeepPartial<EnLocale> = {
     registration: {
       title: 'Registrazione',
       localeLabel: 'Lingua',
-      submitLabel: 'Registrati',
-      submittingLabel: 'Registrazione in corso...',
+      submitLabel: 'Crea account e accedi',
+      submittingLabel: 'Creazione account e accesso in corso...',
       loginLink: 'Hai gia un account? Accedi qui.',
       messages: {
         requiredFields: 'Nome giocatore, email e password sono obbligatori.',

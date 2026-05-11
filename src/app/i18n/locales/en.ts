@@ -110,8 +110,8 @@ export const en = {
       passwordPlaceholder: 'Min. 8 characters',
       confirmPasswordLabel: 'Confirm Password',
       confirmPasswordPlaceholder: 'Repeat your password',
-      submitLabel: 'Register',
-      submittingLabel: 'Registering...',
+      submitLabel: 'Create Account and Login',
+      submittingLabel: 'Creating account and logging in...',
       loginLink: 'Already registered? Login here.',
       errors: {
         playerNameRequired: 'Player name is required.',

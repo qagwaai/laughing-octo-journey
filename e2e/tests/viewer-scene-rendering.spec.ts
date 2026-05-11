@@ -170,7 +170,8 @@ async function setupViewerSceneTest(page: any) {
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
   await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
-  await expect(page).toHaveURL(/left:game-main/);
+  await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 10_000 });
 
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',

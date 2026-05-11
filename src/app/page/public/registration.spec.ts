@@ -10,6 +10,7 @@ import {
   type MockSocketService,
 } from '../../../testing';
 import { setActiveLocaleCode } from '../../i18n/locale';
+import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, type LoginResponse } from '../../model/login';
 import type { RegisterResponse } from '../../model/register';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT } from '../../model/register';
 import { SessionService } from '../../services/session.service';
@@ -148,15 +149,28 @@ describe('RegistrationPage', () => {
       component.submit();
     }
 
-    it('should set successMessage and reset form on success response', () => {
+    it('should perform login after successful registration and then navigate to character list', () => {
       const { component, mockRouter } = setup({ socketService, sessionService });
       submitForm(component);
       socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
         success: true,
         message: 'Registration successful!',
         playerId: 'abc-123',
-        sessionKey: 'session-abc-123',
       } satisfies RegisterResponse);
+
+      expect(socketService.emittedEvents.length).toBe(2);
+      expect(socketService.emittedEvents[1].event).toBe(LOGIN_EVENT);
+      expect(socketService.emittedEvents[1].data).toEqual({
+        playerName: 'Pioneer',
+        password: 'password123',
+        locale: 'en',
+      });
+
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful!',
+        sessionKey: 'session-login-123',
+      } satisfies LoginResponse);
 
       expect(component['successMessage']()).toBe('Registration successful!');
       expect(component['errorMessage']()).toBeNull();
@@ -168,26 +182,36 @@ describe('RegistrationPage', () => {
       });
     });
 
-    it('should store the session key returned from registration', () => {
+    it('should store the session key returned from login after registration success', () => {
       const { component } = setup({ socketService, sessionService });
       submitForm(component);
       socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
         success: true,
         message: 'Registration successful!',
-        sessionKey: 'session-reg-456',
       } satisfies RegisterResponse);
 
-      expect(sessionService.storedKey).toBe('session-reg-456');
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful!',
+        sessionKey: 'session-login-456',
+      } satisfies LoginResponse);
+
+      expect(sessionService.storedKey).toBe('session-login-456');
       expect(sessionService.hasSession()).toBe(true);
     });
 
-    it('should not call setSessionKey when sessionKey is absent', () => {
+    it('should not call setSessionKey when login sessionKey is absent', () => {
       const { component } = setup({ socketService, sessionService });
       submitForm(component);
       socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
         success: true,
         message: 'Registration successful!',
       } satisfies RegisterResponse);
+
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful!',
+      } satisfies LoginResponse);
 
       expect(sessionService.storedKey).toBeNull();
     });
@@ -211,10 +235,35 @@ describe('RegistrationPage', () => {
       socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
         success: true,
         message: 'Registration successful!',
-        sessionKey: 'session-abc-123',
       } satisfies RegisterResponse);
 
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful!',
+      } satisfies LoginResponse);
+
       expect(socketService.registeredListeners.has(REGISTER_RESPONSE_EVENT)).toBe(false);
+      expect(socketService.registeredListeners.has(LOGIN_RESPONSE_EVENT)).toBe(false);
+    });
+
+    it('should stay on registration page and show error when auto-login fails', () => {
+      const { component, mockRouter } = setup({ socketService, sessionService });
+      submitForm(component);
+
+      socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+        success: true,
+        message: 'Registration successful!',
+      } satisfies RegisterResponse);
+
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: false,
+        message: 'Auto-login failed. Please try again.',
+      } satisfies LoginResponse);
+
+      expect(component['errorMessage']()).toBe('Auto-login failed. Please try again.');
+      expect(component['successMessage']()).toBeNull();
+      expect(component['isSubmitting']()).toBe(false);
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
   });
 
@@ -225,8 +274,15 @@ describe('RegistrationPage', () => {
       component.submit();
       expect(socketService.registeredListeners.has(REGISTER_RESPONSE_EVENT)).toBe(true);
 
+      socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+        success: true,
+        message: 'Registration successful!',
+      } satisfies RegisterResponse);
+      expect(socketService.registeredListeners.has(LOGIN_RESPONSE_EVENT)).toBe(true);
+
       fixture.destroy();
       expect(socketService.registeredListeners.has(REGISTER_RESPONSE_EVENT)).toBe(false);
+      expect(socketService.registeredListeners.has(LOGIN_RESPONSE_EVENT)).toBe(false);
     });
 
     it('should not throw when destroyed without a pending submission', () => {
