@@ -233,6 +233,12 @@ const rightOutletRoutes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'planet-view/:solarSystemId/:bodyId',
+    outlet: 'right',
+    loadComponent: () => import('./page/game/planet-view'),
+    canActivate: [authGuard],
+  },
+  {
     path: 'mission-board',
     outlet: 'right',
     loadComponent: () => import('./page/game/mission-board'),

@@ -1,5 +1,5 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
 import {
@@ -109,4 +109,37 @@ describe('ViewerScenePage', () => {
 
     expect(component['sceneError']()).toContain('not-found');
   });
+
+  it('navigates to planet-view route when planet focus transition is requested', fakeAsync(() => {
+    const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const router = TestBed.inject(Router);
+
+    component['bodies'].set([
+      {
+        id: 'earth',
+        bodyType: 'planet',
+        displayName: 'Earth',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
+      },
+    ]);
+    fixture.detectChanges();
+
+    component['onPlanetViewRequest']({
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
+    });
+
+    expect(component['isPlanetTransitioning']()).toBeTrue();
+    tick(150);
+
+    expect((router as unknown as { navigate: jasmine.Spy }).navigate).toHaveBeenCalledWith(
+      [{ outlets: { right: ['planet-view', 'sol', 'earth'] } }],
+      jasmine.objectContaining({
+        preserveFragment: true,
+        state: jasmine.objectContaining({ playerName: 'Pioneer' }),
+      }),
+    );
+  }));
 });

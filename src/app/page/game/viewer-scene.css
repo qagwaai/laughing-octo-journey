@@ -88,3 +88,21 @@
   font-family: monospace;
   text-align: right;
 }
+
+.viewer-scene-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 20000;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 52%, rgba(20, 40, 67, 0.28) 0%, rgba(5, 10, 18, 0.9) 70%, #020305 100%);
+  animation: viewer-scene-fade-out 180ms ease-out forwards;
+}
+
+@keyframes viewer-scene-fade-out {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

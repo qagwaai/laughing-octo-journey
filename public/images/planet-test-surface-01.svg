@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 512">
+  <defs>
+    <linearGradient id="ocean" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10325b"/>
+      <stop offset="52%" stop-color="#1c4f82"/>
+      <stop offset="100%" stop-color="#2f6b98"/>
+    </linearGradient>
+    <filter id="grain" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="17"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.16"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1024" height="512" fill="url(#ocean)"/>
+  <path d="M0 138 C120 120 210 160 330 146 C460 130 560 92 700 120 C860 152 930 102 1024 130 L1024 260 C920 280 820 250 710 270 C560 300 410 260 300 286 C176 314 88 256 0 282 Z" fill="#678f5f" opacity="0.75"/>
+  <path d="M0 276 C80 258 164 298 250 288 C330 278 410 236 500 244 C610 254 680 312 780 294 C872 278 958 232 1024 254 L1024 398 C920 422 844 388 750 406 C634 430 540 382 418 394 C308 408 208 432 96 416 C52 410 20 390 0 378 Z" fill="#4f7a4f" opacity="0.68"/>
+  <path d="M92 90 C152 64 242 66 312 96 C352 114 416 120 454 102 C520 70 604 52 690 72 C780 94 842 150 924 148 C960 146 990 134 1024 124 L1024 178 C980 194 944 206 900 212 C820 224 748 198 670 186 C578 172 498 180 410 202 C320 224 246 206 168 188 C128 178 96 164 64 144 Z" fill="#89a861" opacity="0.64"/>
+  <rect width="1024" height="512" filter="url(#grain)"/>
+</svg>

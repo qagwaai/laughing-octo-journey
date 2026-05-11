@@ -1,0 +1,85 @@
+<ngt-color *args="['#040a12']" attach="background" />
+<ngt-ambient-light [intensity]="0.42" />
+<ngt-hemisphere-light [args]="['#9ec8ff', '#1a2436', 0.58]" />
+<ngt-directional-light [position]="[16, 8, 12]" [intensity]="1.1" />
+<ngt-directional-light [position]="[-12, 2, -10]" [intensity]="0.46" />
+
+@let star = starMarker();
+@if (star) {
+<ngt-point-light [position]="star.position" [intensity]="3" [distance]="220" [decay]="1.7" />
+}
+
+<ngts-orbit-controls
+  #orbitControls
+  [options]="{
+    enableDamping: true,
+    dampingFactor: 0.09,
+    enablePan: false,
+    enableZoom: false
+  }"
+/>
+
+<ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
+  <ngt-sphere-geometry *args="[420, 18, 18]" />
+  <ngt-mesh-basic-material [transparent]="true" [opacity]="0" [side]="1" [depthWrite]="false" />
+</ngt-mesh>
+
+@let _textures = textures();
+@let selected = selectedBody();
+@if (selected) {
+<ngt-mesh
+  [position]="[0, 0, 0]"
+  [name]="selected.displayName"
+  (pointerover)="onBodyPointerOver(selected)"
+  (pointerout)="onBodyPointerOut(selected.id)"
+  (pointerdown)="onBodyPointerDown($event, selected)"
+  input
+>
+  <ngt-sphere-geometry *args="[selectedBodyRadiusUnits(), 72, 72]" />
+  <ngt-mesh-standard-material
+    [map]="_textures?.planet ?? null"
+    [color]="hoveredBodyId() === selected.id ? '#f2f8ff' : '#ffffff'"
+    [emissive]="hoveredBodyId() === selected.id ? '#27466a' : '#1a2638'"
+    [emissiveIntensity]="hoveredBodyId() === selected.id ? 0.4 : 0.18"
+    [roughness]="0.72"
+    [metalness]="0"
+  />
+</ngt-mesh>
+
+@for (moon of moons(); track moon.id) {
+<ngt-mesh [position]="[0, 0, 0]" [rotation]="[1.5708, 0, 0]" [renderOrder]="-1">
+  <ngt-ring-geometry *args="[moon.orbitRadius - 0.04, moon.orbitRadius + 0.04, 160]" />
+  <ngt-mesh-basic-material [color]="'#b9d6ff'" [transparent]="true" [opacity]="0.24" [side]="2" [depthWrite]="false" />
+</ngt-mesh>
+
+<ngt-mesh
+  [position]="moon.position"
+  [name]="moon.displayName"
+  (pointerover)="onBodyPointerOver(moon.body)"
+  (pointerout)="onBodyPointerOut(moon.id)"
+  (pointerdown)="onBodyPointerDown($event, moon.body)"
+  input
+>
+  <ngt-sphere-geometry *args="[moon.radius, 44, 44]" />
+  <ngt-mesh-standard-material
+    [map]="_textures?.moon ?? null"
+    [color]="hoveredBodyId() === moon.id ? '#f4f8ff' : '#ffffff'"
+    [emissive]="hoveredBodyId() === moon.id ? '#24415f' : '#151f2d'"
+    [emissiveIntensity]="hoveredBodyId() === moon.id ? 0.32 : 0.14"
+    [roughness]="0.78"
+    [metalness]="0"
+  />
+</ngt-mesh>
+}
+
+@if (star) {
+<ngt-sprite [position]="star.position" [name]="star.displayName" [scale]="[star.glowSize, star.glowSize, 1]">
+  <ngt-sprite-material
+    [map]="_textures?.starGlow ?? null"
+    [transparent]="true"
+    [depthWrite]="false"
+    [sizeAttenuation]="true"
+  />
+</ngt-sprite>
+}
+}

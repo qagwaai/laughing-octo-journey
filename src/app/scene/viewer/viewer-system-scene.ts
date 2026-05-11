@@ -160,11 +160,13 @@ export class ViewerSystemScene {
   private orbitControlsRef = viewChild<ElementRef<OrbitControlsLike>>('orbitControls');
 
   private cameraTween: CameraTween | null = null;
+  private planetViewRequestTimer: ReturnType<typeof setTimeout> | null = null;
 
   bodies = input<ViewerBody[]>([]);
   summary = input<SolarSystemSummary | null>(null);
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
+  @Output() planetViewRequest = new EventEmitter<ViewerBody>();
 
   protected readonly rendered = computed<RenderedBody[]>(() => mapBodiesToRendered(this.bodies()));
 
@@ -330,6 +332,14 @@ export class ViewerSystemScene {
     event.stopPropagation?.();
     event.nativeEvent?.preventDefault?.();
     this.focusPlanet(body.id);
+
+    if (this.planetViewRequestTimer) {
+      clearTimeout(this.planetViewRequestTimer);
+    }
+    this.planetViewRequestTimer = setTimeout(() => {
+      this.planetViewRequest.emit(body);
+      this.planetViewRequestTimer = null;
+    }, Math.round(VIEWER_CAMERA_TWEEN_DURATION_SEC * 1000));
   }
 
   onScenePointerDown(
@@ -436,5 +446,12 @@ export class ViewerSystemScene {
       fromTarget,
       toTarget,
     };
+  }
+
+  ngOnDestroy(): void {
+    if (this.planetViewRequestTimer) {
+      clearTimeout(this.planetViewRequestTimer);
+      this.planetViewRequestTimer = null;
+    }
   }
 }

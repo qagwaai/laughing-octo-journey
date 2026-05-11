@@ -13,6 +13,7 @@
       [summary]="sceneInputs().summary"
       (hoveredBodyChange)="onHoveredBodyChange($event)"
       (focusedPlanetChange)="onFocusedPlanetChange($event)"
+      (planetViewRequest)="onPlanetViewRequest($event)"
     />
   </ngt-canvas>
 
@@ -53,6 +54,10 @@
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch (ms)</span><span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Solar System</span><span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span></div>
   </div>
+  }
+
+  @if (isPlanetTransitioning()) {
+  <div class="viewer-scene-transition" data-testid="viewer-scene-transition"></div>
   }
   }
 </div>

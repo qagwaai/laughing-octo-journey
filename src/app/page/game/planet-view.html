@@ -1,0 +1,101 @@
+<div class="planet-view-host" (contextmenu)="onHostContextMenu($event)">
+  @if (isLoading()) {
+  <p class="planet-view-status" data-testid="planet-view-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
+  } @else if (sceneError()) {
+  <p class="planet-view-status" role="alert" data-testid="planet-view-error">{{ sceneError() }}</p>
+  } @else if (!selectedBody()) {
+  <p class="planet-view-status" data-testid="planet-view-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
+  } @else {
+  <ngt-canvas
+    shadows
+    [camera]="{ position: [3.5, 1.4, 8.5], fov: 48 }"
+    [lookAt]="[0, 0, 0]"
+    (contextmenu)="onSceneContextMenu($event)"
+    (pointerdown)="onScenePointerDown($event)"
+  >
+    <app-planet-view-scene
+      *canvasContent
+      [bodies]="bodies()"
+      [selectedBodyId]="selectedBodyId()"
+      [zoomLevel]="zoomLevel()"
+      (selectedBodyChange)="onSelectedBodyChange($event)"
+      (exitRequested)="exitToViewer()"
+    />
+  </ngt-canvas>
+
+  <div class="planet-view-header" data-testid="planet-view-header">
+    <div class="planet-view-header__title">{{ selectedBody()!.displayName }}</div>
+    <div class="planet-view-header__meta">
+      {{ selectedBody()!.bodyType }}
+      @if (moonCount() > 0) {
+      <span class="planet-view-header__badge">{{ moonCount() }} moons</span>
+      }
+    </div>
+  </div>
+
+  <aside class="planet-view-panel" data-testid="planet-view-panel">
+    <h3 class="planet-view-panel__title">{{ t.game.viewer.planetViewPanelTitle }}</h3>
+
+    <div class="planet-view-panel__row">
+      <span>{{ t.game.viewer.planetViewSelectedLabel }}</span>
+      <strong>{{ selectedBody()!.displayName }}</strong>
+    </div>
+    <div class="planet-view-panel__row">
+      <span>{{ t.game.viewer.planetViewZoomPercentLabel }}</span>
+      <strong>{{ zoomPercent() }}%</strong>
+    </div>
+    <div class="planet-view-panel__row">
+      <span>{{ t.game.viewer.planetViewRadiusLabel }}</span>
+      <strong>{{ formatNumber(selectedBody()!.physicalCatalog?.radiusKm) }} km</strong>
+    </div>
+    <div class="planet-view-panel__row">
+      <span>{{ t.game.viewer.planetViewDistanceLabel }}</span>
+      <strong>{{ formatNumber(selectedBody()!.orbitalElements?.semiMajorAxisKm) }} km</strong>
+    </div>
+
+    <div class="planet-view-panel__section-label">{{ t.game.viewer.planetViewMoonsLabel }}</div>
+    @if (moonBodies().length > 0) {
+    <div class="planet-view-panel__moon-list">
+      @for (moon of moonBodies(); track moon.id) {
+      <button
+        type="button"
+        class="planet-view-panel__moon-item"
+        (click)="selectBodyFromList(moon)"
+        [attr.aria-label]="'Focus ' + moon.displayName"
+      >
+        <span>{{ moon.displayName }}</span>
+        <small>{{ moon.bodyType }}</small>
+      </button>
+      }
+    </div>
+    } @else {
+    <p class="planet-view-panel__empty">{{ t.game.viewer.planetViewNoMoonsLabel }}</p>
+    }
+  </aside>
+
+  <div class="planet-view-zoom" data-testid="planet-view-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
+    <label class="planet-view-zoom__label" for="planet-view-zoom-input">{{ t.game.viewer.planetViewZoomLabel }}</label>
+    <input
+      id="planet-view-zoom-input"
+      type="range"
+      orient="vertical"
+      min="0"
+      max="100"
+      step="1"
+      [value]="zoomLevel()"
+      (contextmenu)="onZoomContextMenu($event)"
+      (pointerdown)="onZoomPointerDown($event)"
+      (pointerup)="onZoomPointerUp($event)"
+      (mousedown)="onZoomMouseDown($event)"
+      (mouseup)="onZoomMouseUp($event)"
+      (auxclick)="onZoomAuxClick($event)"
+      (input)="onZoomInput($event)"
+      aria-label="Planet zoom level"
+    />
+  </div>
+
+  <div class="planet-view-hint" data-testid="planet-view-exit-hint">{{ t.game.viewer.planetViewExitHint }}</div>
+
+  <div class="planet-view-entry-fade" [class.planet-view-entry-fade--hidden]="!showEntryFade()"></div>
+  }
+</div>

@@ -49,6 +49,7 @@ export default class ViewerScenePage {
   protected focusedPlanet = signal<ViewerBody | null>(null);
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
+  protected isPlanetTransitioning = signal(false);
 
   protected hasSystem = computed(() => this.solarSystemId() !== null);
 
@@ -60,6 +61,7 @@ export default class ViewerScenePage {
 
 
   private lastLoadedSystemId: string | null = null;
+  private planetTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     // Subscribe to route param changes
@@ -122,5 +124,32 @@ export default class ViewerScenePage {
 
   protected onFocusedPlanetChange(body: ViewerBody | null): void {
     this.focusedPlanet.set(body);
+  }
+
+  protected onPlanetViewRequest(body: ViewerBody): void {
+    const solarSystemId = this.solarSystemId();
+    if (!solarSystemId || this.isPlanetTransitioning()) {
+      return;
+    }
+
+    this.isPlanetTransitioning.set(true);
+    this.planetTransitionTimer = setTimeout(() => {
+      this.router.navigate([{ outlets: { right: ['planet-view', solarSystemId, body.id] } }], {
+        preserveFragment: true,
+        state: {
+          playerName: this.playerName(),
+          solarSystem: this.solarSystem(),
+          bodies: this.bodies(),
+        },
+      });
+      this.planetTransitionTimer = null;
+    }, 140);
+  }
+
+  ngOnDestroy(): void {
+    if (this.planetTransitionTimer) {
+      clearTimeout(this.planetTransitionTimer);
+      this.planetTransitionTimer = null;
+    }
   }
 }
