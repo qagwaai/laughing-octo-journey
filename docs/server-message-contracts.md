@@ -1608,11 +1608,11 @@ Canonical mission catalog IDs:
 
 - `first-target`
 - `m-01`, `m-02`, `m-03`, `m-04`, `m-05`
-- `sq-01`, `sq-02`, `sq-03`, `sq-04`
+- `sq-01`, `sq-02`, `sq-03`, `sq-04`, `sq-system-survey-01`
 
 Prerequisite graph (server auto-unlocks dependents on `completed`/`turned-in`):
 
-- `first-target` → `m-01`, `sq-02`, `sq-03`
+- `first-target` → `m-01`, `sq-02`, `sq-03`, `sq-system-survey-01`
 - `m-01` → `m-02`
 - `m-02` → `m-03`, `sq-01`
 - `m-03` → `m-04`
@@ -1907,9 +1907,11 @@ Edge cases:
 
 Client mission narrative text should be sourced from locale content rather than hard-coded in pages.
 
-Canonical mission ID:
+Canonical mission IDs include:
 
 - `first-target`
+- `m-01`, `m-02`, `m-03`, `m-04`, `m-05`
+- `sq-01`, `sq-02`, `sq-03`, `sq-04`, `sq-system-survey-01`
 
 English mission content:
 
@@ -1921,6 +1923,17 @@ English mission content:
 - Step 2: `Launching: You press the ignition. The Expendable "Dart" (like the one you saw in the hangar) screams out of your launch tube.`
 - Step 3: `The Impact: The Dart does not mine - it impacts. It slams into the asteroid, shattering it into three manageable chunks.`
 - Step 4: `The Manual Retrieval: Without a Tug Drone, you must manually pilot your Scavenger Pod to "catch" the floating debris in your gravity scoop.`
+
+English side mission content (post-tutorial parallel unlock):
+
+- Mission ID: `sq-system-survey-01`
+- Title: `Local Survey Contract`
+- Briefing line 1: `Station control flags your ship for a paid reconnaissance sweep after your first-target success.`
+- Briefing line 2: `Map nearby bodies, check in at a local market, and uplink telemetry to prove this system is chart-ready.`
+- Gameplay loop title: `Side Quest Objectives`
+- Step 1: `Scan three distinct bodies in the current system.`
+- Step 2: `Reach one market or outpost and establish contact.`
+- Step 3: `Upload telemetry to complete the survey contract.`
 
 ---
 

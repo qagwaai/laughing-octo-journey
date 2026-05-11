@@ -107,6 +107,7 @@ Track policy compliance items that are operational over time, not just code-stat
 - Regression tests added: 1
 - Mapping:
   - BUG-142 mission progressed out-of-order -> src/app/services/mission-flow.integration.spec.ts -> should not progress mission when launch happens before scan
+  - BUG-RESUME-FT-COMPLETED joined game replayed cold boot after tutorial completion -> e2e/tests/login-after-first-target-completed.spec.ts -> routes to game-main + mission-board and never enters opening-cold-boot
 - Any open gaps: none
 - Result: pass
 
