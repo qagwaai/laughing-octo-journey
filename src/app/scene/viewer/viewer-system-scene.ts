@@ -1,13 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, ElementRef, EventEmitter, input, Output, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, EventEmitter, input, Output, signal, viewChild } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Euler, Quaternion, Vector3 } from 'three';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import {
-  VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X,
-  VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z,
-  VIEWER_SCENE_ANCHORED_ORBIT_SCALE,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
   resolveAnchoredOrbitSceneProfile,
@@ -24,6 +21,7 @@ import {
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
   summary: SolarSystemSummary | null;
+  targetBodyId?: string | null;
 }
 
 interface RenderedBody {
@@ -50,6 +48,7 @@ interface OrbitEllipse {
 }
 
 interface CameraTween {
+  kind: 'default' | 'target-fly';
   elapsedSec: number;
   durationSec: number;
   fromPosition: Vector3;
@@ -59,12 +58,15 @@ interface CameraTween {
 }
 
 interface OrbitControlsLike {
+  enabled?: boolean;
   target: Vector3;
   update: () => void;
 }
 
 const VIEWER_DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 3.5, 28];
 const VIEWER_CAMERA_TWEEN_DURATION_SEC = 0.45;
+const VIEWER_TARGET_FLY_DURATION_SEC = 3.5;
+const VIEWER_TARGET_FLY_COMPLETION_T = 0.985;
 
 function degToRad(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -168,9 +170,13 @@ export class ViewerSystemScene {
 
   private cameraTween: CameraTween | null = null;
   private planetViewRequestTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastProcessedTargetBodyId: string | null = null;
+  private persistentLookTarget = new Vector3(0, 0, 0);
+  private settledCameraPosition: Vector3 | null = null;
 
   bodies = input<ViewerBody[]>([]);
   summary = input<SolarSystemSummary | null>(null);
+  targetBodyId = input<string | null>(null);
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
   @Output() planetViewRequest = new EventEmitter<ViewerBody>();
@@ -293,21 +299,61 @@ export class ViewerSystemScene {
   });
 
   // Hovered body tracking
+  protected readonly targetedBodyId = signal<string | null>(null);
+  protected readonly activeTargetFlightId = signal<string | null>(null);
   protected hoveredBodyId = signal<string | null>(null);
 
   constructor() {
+    effect(() => {
+      const id = this.targetBodyId();
+
+      // Only react to actual target-id transitions.
+      if (id === this.lastProcessedTargetBodyId) {
+        return;
+      }
+      this.lastProcessedTargetBodyId = id;
+
+      if (id) {
+        this.targetedBodyId.set(id);
+        this.flyToTargetBody(id);
+      } else {
+        this.activeTargetFlightId.set(null);
+        this.targetedBodyId.set(null);
+        // Clearing list-target state should not recenter the camera.
+        // Keep current camera pose and only stop any active target flight.
+        this.cameraTween = null;
+        this.settledCameraPosition = null;
+        this.setOrbitControlsEnabled(true);
+      }
+    });
+
     beforeRender(({ delta }) => {
+      const camera = this.store.camera();
+      const controls = this.orbitControlsRef()?.nativeElement;
+
+      this.syncOrbitControlsTarget();
+
+      if (camera && !this.cameraTween && this.targetedBodyId() && this.settledCameraPosition) {
+        const drift = camera.position.distanceTo(this.settledCameraPosition);
+        if (drift > 0.001) {
+          camera.position.copy(this.settledCameraPosition);
+        }
+
+        // When controls are unavailable, enforce stable orientation at target.
+        if (!controls?.target) {
+          camera.lookAt(this.persistentLookTarget);
+        }
+      }
+
       if (!this.cameraTween) {
         return;
       }
 
-      const camera = this.store.camera();
       if (!camera) {
         this.cameraTween = null;
         return;
       }
 
-      const controls = this.orbitControlsRef()?.nativeElement;
       this.cameraTween.elapsedSec += delta;
       const t = Math.min(1, this.cameraTween.elapsedSec / this.cameraTween.durationSec);
       const eased = t * t * (3 - 2 * t);
@@ -317,13 +363,22 @@ export class ViewerSystemScene {
       if (controls?.target) {
         controls.target.lerpVectors(this.cameraTween.fromTarget, this.cameraTween.toTarget, eased);
         controls.update();
+        this.persistentLookTarget.copy(controls.target);
       } else {
         const lookAtTarget = new Vector3().lerpVectors(this.cameraTween.fromTarget, this.cameraTween.toTarget, eased);
         camera.lookAt(lookAtTarget);
+        this.persistentLookTarget.copy(lookAtTarget);
+      }
+
+      // For cinematic target flights, finish slightly before the exact endpoint
+      // to avoid a visible final-frame perspective snap.
+      if (this.cameraTween.kind === 'target-fly' && t >= VIEWER_TARGET_FLY_COMPLETION_T) {
+        this.finalizeCameraTween();
+        return;
       }
 
       if (t >= 1) {
-        this.cameraTween = null;
+        this.finalizeCameraTween();
       }
     });
   }
@@ -357,6 +412,15 @@ export class ViewerSystemScene {
   onScenePointerDown(
     event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void } },
   ) {
+    if (this.isRightButton(event) && this.activeTargetFlightId()) {
+      event.nativeEvent?.preventDefault?.();
+      this.activeTargetFlightId.set(null);
+      this.cameraTween = null;
+      this.settledCameraPosition = null;
+      this.setOrbitControlsEnabled(true);
+      return;
+    }
+
     if (!this.isRightButton(event) || !this.focusedPlanetId()) {
       return;
     }
@@ -393,9 +457,22 @@ export class ViewerSystemScene {
     this.beginCameraTween(focused.position, focusDistance);
   }
 
+  private flyToTargetBody(targetBodyId: string): void {
+    const targetBody = this.rendered().find((body) => body.id === targetBodyId);
+    if (!targetBody) {
+      this.activeTargetFlightId.set(null);
+      return;
+    }
+
+    this.activeTargetFlightId.set(targetBodyId);
+    const flyDistance = Math.max(3.5, Math.min(14, targetBody.radius * 16));
+    this.beginCameraTween(targetBody.position, flyDistance, undefined, VIEWER_TARGET_FLY_DURATION_SEC, 'target-fly');
+  }
+
   private clearPlanetFocus(): void {
     this.focusedPlanetId.set(null);
     this.focusedPlanetChange.emit(null);
+    this.settledCameraPosition = null;
     this.beginCameraTween([0, 0, 0], undefined, VIEWER_DEFAULT_CAMERA_POSITION);
   }
 
@@ -427,6 +504,8 @@ export class ViewerSystemScene {
     target: [number, number, number],
     distance: number | undefined,
     explicitPosition?: [number, number, number],
+    durationSec: number = VIEWER_CAMERA_TWEEN_DURATION_SEC,
+    kind: CameraTween['kind'] = 'default',
   ): void {
     const camera = this.store.camera();
     if (!camera) {
@@ -435,8 +514,9 @@ export class ViewerSystemScene {
 
     const controls = this.orbitControlsRef()?.nativeElement;
     const fromPosition = camera.position.clone();
-    const fromTarget = controls?.target?.clone() ?? new Vector3(0, 0, 0);
+    const fromTarget = controls?.target?.clone() ?? this.persistentLookTarget.clone();
     const toTarget = new Vector3(target[0], target[1], target[2]);
+    this.persistentLookTarget.copy(fromTarget);
 
     let toPosition: Vector3;
     if (explicitPosition) {
@@ -450,14 +530,65 @@ export class ViewerSystemScene {
       toPosition = toTarget.clone().add(direction.multiplyScalar(distance ?? 6));
     }
 
+    if (kind === 'target-fly') {
+      this.setOrbitControlsEnabled(false);
+    }
+
     this.cameraTween = {
+      kind,
       elapsedSec: 0,
-      durationSec: VIEWER_CAMERA_TWEEN_DURATION_SEC,
+      durationSec,
       fromPosition,
       toPosition,
       fromTarget,
       toTarget,
     };
+  }
+
+  private finalizeCameraTween(): void {
+    const tween = this.cameraTween;
+    if (tween?.kind === 'target-fly') {
+      const controls = this.orbitControlsRef()?.nativeElement;
+      this.persistentLookTarget.copy(tween.toTarget);
+      if (controls?.target) {
+        // Ensure controls resume from the same target the flight finished on.
+        controls.target.copy(tween.toTarget);
+        controls.update();
+      }
+      this.setOrbitControlsEnabled(true);
+    }
+
+    const camera = this.store.camera();
+    if (camera && tween?.kind === 'target-fly') {
+      this.settledCameraPosition = camera.position.clone();
+    } else if (tween?.kind !== 'target-fly') {
+      this.settledCameraPosition = null;
+    }
+
+    this.activeTargetFlightId.set(null);
+    this.cameraTween = null;
+  }
+
+  private setOrbitControlsEnabled(enabled: boolean): void {
+    const controls = this.orbitControlsRef()?.nativeElement;
+    if (!controls) {
+      return;
+    }
+    controls.enabled = enabled;
+  }
+
+  private syncOrbitControlsTarget(): void {
+    const controls = this.orbitControlsRef()?.nativeElement;
+    if (!controls?.target) {
+      return;
+    }
+
+    if (controls.target.distanceToSquared(this.persistentLookTarget) <= 1e-6) {
+      return;
+    }
+
+    controls.target.copy(this.persistentLookTarget);
+    controls.update();
   }
 
   ngOnDestroy(): void {

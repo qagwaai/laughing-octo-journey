@@ -1,0 +1,64 @@
+<div class="ops-page-container">
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <button type="button" class="details-back-link" (click)="goBackToSystemList()">
+          {{ t.game.viewer.detailsBackLabel }}
+        </button>
+        <h1>{{ solarSystem()?.displayName ?? '…' }}</h1>
+      </div>
+      <app-character-ship-badge
+        [playerName]="playerName()"
+        [joinCharacter]="joinCharacter()"
+      ></app-character-ship-badge>
+    </div>
+
+    <section class="ops-card">
+      <h2>{{ t.game.viewer.detailsSectionTitle }}</h2>
+
+      @if (isLoading()) {
+      <p data-testid="details-loading">{{ t.game.viewer.detailsLoadingStatus }}</p>
+      } @else if (loadError()) {
+      <p role="alert" data-testid="details-error">{{ loadError() }}</p>
+      } @else if (!hasRows()) {
+      <p data-testid="details-empty">{{ t.game.viewer.detailsEmptyStatus }}</p>
+      } @else {
+      <div class="details-table-wrapper">
+        <table class="details-table" data-testid="details-table">
+          <thead>
+            <tr>
+              <th>{{ t.game.viewer.detailsColumnName }}</th>
+              <th>{{ t.game.viewer.detailsColumnType }}</th>
+              <th class="details-col-num">{{ t.game.viewer.detailsColumnDiameter }}</th>
+              <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbit }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+            <tr [class.details-row--targeted]="activeTargetId() === row.id">
+              <td class="details-col-name">{{ row.displayName }}</td>
+              <td class="details-col-type">{{ row.bodyType }}</td>
+              <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
+              <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
+              <td class="details-col-action">
+                <button
+                  type="button"
+                  class="details-target-btn"
+                  [class.details-target-btn--active]="activeTargetId() === row.id"
+                  (click)="targetBody(row.id)"
+                  [attr.aria-pressed]="activeTargetId() === row.id"
+                >
+                  {{ t.game.viewer.detailsTargetButton }}
+                </button>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+    </section>
+  </div>
+</div>

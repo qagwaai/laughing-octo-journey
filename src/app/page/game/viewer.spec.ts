@@ -98,7 +98,7 @@ describe('ViewerPage', () => {
     expect(component['solarSystems']().length).toBe(0);
   });
 
-  it('navigates to the right outlet viewer-scene route when a system is selected', () => {
+  it('navigates to details + scene outlets when a system is selected', () => {
     const { component, mockRouter } = setup({
       socketService,
       sessionService,
@@ -110,7 +110,7 @@ describe('ViewerPage', () => {
 
     expect(mockRouter.navigate).toHaveBeenCalled();
     const args = mockRouter.navigate.calls.mostRecent().args;
-    expect(args[0]).toEqual([{ outlets: { right: ['viewer-scene', 'sol'] } }]);
+    expect(args[0]).toEqual([{ outlets: { left: ['solar-system-details', 'sol'], right: ['viewer-scene', 'sol'] } }]);
     expect(args[1].state).toEqual(
       jasmine.objectContaining({ solarSystem: system, playerName: 'Pioneer' }),
     );

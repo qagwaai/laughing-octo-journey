@@ -7,6 +7,7 @@ import { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemListResponse, SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 
 interface ViewerNavigationState {
   playerName?: string;
@@ -37,6 +38,7 @@ export default class ViewerPage {
   private router = inject(Router);
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
+  private viewerTargetService = inject(ViewerTargetService);
 
   private navigationState: ViewerNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ViewerNavigationState | undefined) ??
@@ -102,14 +104,18 @@ export default class ViewerPage {
       return;
     }
     this.selectedSystemId.set(system.id);
-    this.router.navigate([{ outlets: { right: ['viewer-scene', system.id] } }], {
-      preserveFragment: true,
-      state: {
-        playerName: this.playerName(),
-        joinCharacter: this.joinCharacter(),
-        solarSystem: system,
+    this.viewerTargetService.clearTarget();
+    this.router.navigate(
+      [{ outlets: { left: ['solar-system-details', system.id], right: ['viewer-scene', system.id] } }],
+      {
+        preserveFragment: true,
+        state: {
+          playerName: this.playerName(),
+          joinCharacter: this.joinCharacter(),
+          solarSystem: system,
+        },
       },
-    });
+    );
   }
 
   protected formatDistance(parsecs: number | undefined): string {

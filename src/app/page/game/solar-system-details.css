@@ -1,0 +1,137 @@
+.ops-page-container {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
+}
+
+.page-main {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.details-back-link {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  background: none;
+  border: none;
+  color: #7ea2c9;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.details-back-link:hover {
+  color: #b4cfff;
+}
+
+.ops-card {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(8, 20, 40, 0.7);
+  border: 1px solid rgba(140, 190, 255, 0.25);
+  margin-top: 1rem;
+}
+
+.details-table-wrapper {
+  overflow-x: auto;
+}
+
+.details-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.details-table thead th {
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  color: #7ea2c9;
+  border-bottom: 1px solid rgba(140, 190, 255, 0.2);
+  white-space: nowrap;
+}
+
+.details-table tbody td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid rgba(140, 190, 255, 0.08);
+  vertical-align: middle;
+}
+
+.details-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.details-table tbody tr:hover td {
+  background: rgba(140, 190, 255, 0.05);
+}
+
+.details-row--targeted td {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.details-col-name {
+  font-weight: 500;
+  color: #e8f2ff;
+}
+
+.details-col-type {
+  color: #7ea2c9;
+  text-transform: capitalize;
+}
+
+.details-col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #b4cfff;
+}
+
+.details-col-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.details-target-btn {
+  background: rgba(30, 50, 90, 0.8);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #b4cfff;
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+
+.details-target-btn:hover {
+  background: rgba(50, 80, 140, 0.9);
+  border-color: rgba(140, 190, 255, 0.7);
+  color: #e8f2ff;
+}
+
+.details-target-btn--active {
+  background: rgba(146, 64, 14, 0.5);
+  border-color: #f59e0b;
+  color: #fcd34d;
+}
+
+.details-target-btn--active:hover {
+  background: rgba(180, 90, 20, 0.6);
+}

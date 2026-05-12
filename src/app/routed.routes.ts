@@ -133,6 +133,12 @@ const leftOutletRoutes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'solar-system-details/:solarSystemId',
+    outlet: 'left',
+    loadComponent: () => import('./page/game/solar-system-details'),
+    canActivate: [authGuard],
+  },
+  {
     path: 'ship-view-inventory',
     outlet: 'left',
     loadComponent: () => import('./page/game/ship-view-inventory'),

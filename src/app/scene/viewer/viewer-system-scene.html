@@ -44,7 +44,7 @@
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
-  <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : body.color" />
+  <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : body.color" />
 </ngt-mesh>
 }
 
@@ -60,22 +60,26 @@
     [color]="
       hoveredBodyId() === body.id
         ? '#ff3b30'
-        : body.bodyType === 'planet'
-          ? '#ffffff'
-          : body.isMarketStation
-            ? '#22c55e'
-            : body.color
+        : targetedBodyId() === body.id
+          ? '#f59e0b'
+          : body.bodyType === 'planet'
+            ? '#ffffff'
+            : body.isMarketStation
+              ? '#22c55e'
+              : body.color
     "
     [roughness]="0.8"
     [metalness]="0.05"
     [emissive]="
       hoveredBodyId() === body.id
         ? '#8f0000'
-        : body.bodyType === 'planet'
-          ? '#aab8d0'
-          : body.isMarketStation
-            ? '#14532d'
-            : '#000000'
+        : targetedBodyId() === body.id
+          ? '#92400e'
+          : body.bodyType === 'planet'
+            ? '#aab8d0'
+            : body.isMarketStation
+              ? '#14532d'
+              : '#000000'
     "
     [emissiveIntensity]="
       hoveredBodyId() === body.id

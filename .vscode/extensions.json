@@ -3,8 +3,7 @@
   "recommendations": [
     "angular.ng-template",
     "lucono.karma-test-explorer",
-    "ms-playwright.playwright",
-    "specstory.specstory-vscode"
+    "ms-playwright.playwright"
   ],
   "unwantedRecommendations": [
     "hbenl.vscode-jasmine-test-adapter"

@@ -12,6 +12,7 @@ import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 
@@ -68,9 +69,12 @@ export default class ViewerScenePage {
   protected hasSystem = computed(() => this.solarSystemId() !== null);
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
+  private viewerTargetService = inject(ViewerTargetService);
+
   protected sceneInputs = computed<ViewerSystemSceneInputs>(() => ({
     bodies: this.bodies(),
     summary: this.solarSystem(),
+    targetBodyId: this.viewerTargetService.targetBodyId(),
   }));
 
 
@@ -136,51 +140,9 @@ export default class ViewerScenePage {
         return;
       }
 
-      console.info('[viewer][market-orbits] Free-floating markets trajectory data', (response.markets ?? []).map((m) => ({
-        id: m.marketId,
-        siteName: m.siteName,
-        trajectoryKind: m.trajectory?.kind ?? '(missing)',
-        hasSemiMajorAxis: !!m.trajectory?.orbit?.semiMajorAxisKm,
-        semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
-        anchorBodyId: m.trajectory?.orbit?.anchorBodyId ?? null,
-      })));
-
       const mergedBodies = this.mergeUniqueBodies([...this.bodies(), ...marketStations]);
-      this.logMarketPayloadSnapshot(mergedBodies);
       this.bodies.set(mergedBodies);
     });
-  }
-
-  private logMarketPayloadSnapshot(bodies: ViewerBody[]): void {
-    const stationBodies = bodies.filter((body) => normalizeToken(body.bodyType) === 'station');
-    const marketStations = stationBodies.filter((body) => normalizeToken(body.stationKind) === 'market');
-
-    const bodyTypeCounts = bodies.reduce<Record<string, number>>((acc, body) => {
-      const key = normalizeToken(body.bodyType) || 'unknown';
-      acc[key] = (acc[key] ?? 0) + 1;
-      return acc;
-    }, {});
-
-    console.info('[viewer][market-debug] payload snapshot', {
-      solarSystemId: this.solarSystemId(),
-      totalBodies: bodies.length,
-      stationBodies: stationBodies.length,
-      marketStations: marketStations.length,
-      bodyTypeCounts,
-    });
-
-    if (stationBodies.length > 0) {
-      console.table(
-        stationBodies.map((body) => ({
-          id: body.id,
-          displayName: body.displayName,
-          bodyType: body.bodyType,
-          stationKind: body.stationKind ?? '(missing)',
-          semiMajorAxisKm: body.orbitalElements?.semiMajorAxisKm ?? '(missing)',
-          anchorBodyId: body.orbitalElements?.anchorBodyId ?? '(missing)',
-        })),
-      );
-    }
   }
 
   ngOnInit(): void {
@@ -223,7 +185,6 @@ export default class ViewerScenePage {
         }
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
         const dedupedBodies = this.mergeUniqueBodies(allBodies);
-        this.logMarketPayloadSnapshot(dedupedBodies);
         this.bodies.set(dedupedBodies);
         this.maybeHydrateMarketStations(dedupedBodies, playerName, sessionKey, solarSystemId);
         this.hoveredBody.set(null);

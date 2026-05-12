@@ -47,6 +47,22 @@
                 {{ system.primaryStar.spectralClass }}
               </span>
               }
+              <span>
+                <strong>{{ t.game.viewer.planetCountLabel }}</strong>
+                {{ system.planetCount !== undefined ? system.planetCount : '—' }}
+              </span>
+              <span>
+                <strong>{{ t.game.viewer.moonCountLabel }}</strong>
+                {{ system.moonCount !== undefined ? system.moonCount : '—' }}
+              </span>
+              <span>
+                <strong>{{ t.game.viewer.asteroidCountLabel }}</strong>
+                {{ system.asteroidCount !== undefined ? system.asteroidCount : '—' }}
+              </span>
+              <span>
+                <strong>{{ t.game.viewer.marketCountLabel }}</strong>
+                {{ system.marketCount !== undefined ? system.marketCount : '—' }}
+              </span>
             </span>
           </button>
         </li>

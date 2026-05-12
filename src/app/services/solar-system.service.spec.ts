@@ -59,10 +59,10 @@ describe('SolarSystemService', () => {
       callback as unknown as (response: import('../model/solar-system-list').SolarSystemListResponse) => void,
     );
 
-    expect(socket.emittedEvents[0]).toEqual({
-      event: SOLAR_SYSTEM_LIST_REQUEST_EVENT,
-      data: { playerName: 'Pilot', sessionKey: 'sk', limit: 50 },
-    });
+    expect(socket.emittedEvents[0].event).toBe(SOLAR_SYSTEM_LIST_REQUEST_EVENT);
+    expect(socket.emittedEvents[0].data).toEqual(
+      jasmine.objectContaining({ playerName: 'Pilot', sessionKey: 'sk', limit: 50 }),
+    );
 
     socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: true,
@@ -105,5 +105,38 @@ describe('SolarSystemService', () => {
     });
 
     expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores unmatched get responses when requestId differs', () => {
+    const callback = jasmine.createSpy('getCallback');
+
+    service.getSolarSystem(
+      { playerName: 'Pilot', sessionKey: 'sk', solarSystemId: 'sol' },
+      callback as unknown as (response: import('../model/solar-system-get').SolarSystemGetResponse) => void,
+    );
+
+    const requestPayload = socket.emittedEvents[0].data as { requestId?: string };
+    expect(typeof requestPayload.requestId).toBe('string');
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong',
+      requestId: 'other-request-id',
+      solarSystemId: 'sol',
+      bodies: [{ id: 'b-1' }],
+    });
+
+    expect(callback).not.toHaveBeenCalled();
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      requestId: requestPayload.requestId,
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback.calls.first().args[0].message).toBe('ok');
   });
 });

@@ -24,6 +24,10 @@ export interface SolarSystemSummary {
   distanceParsec?: number;
   positionPc?: Triple;
   primaryStar?: SolarSystemPrimaryStarSummary;
+  planetCount?: number;
+  moonCount?: number;
+  asteroidCount?: number;
+  marketCount?: number;
 }
 
 export interface SolarSystemListRequest {

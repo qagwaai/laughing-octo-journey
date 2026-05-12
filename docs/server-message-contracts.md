@@ -3,7 +3,7 @@
 This document describes the socket message contracts currently used by the application when talking to the server. This is the canonical specification; implementation must conform to this contract.
 
 **Contract Version**: 2.0.0 (canonical-only; no dual-key transition)  
-**Last Updated**: 2026-05-08
+**Last Updated**: 2026-05-11
 
 ## Scope
 
@@ -2439,8 +2439,10 @@ interface SolarSystemListResponse {
 ```
 
 `SolarSystemSummary` exposes display name, source, distance in parsecs,
-multi-star flag, and a `primaryStar` summary (`spectralClass`, `colorHex`,
-`luminositySolar`, `massSolar`). Models live in `src/app/model/solar-system-list.ts`.
+multi-star flag, a `primaryStar` summary (`spectralClass`, `colorHex`,
+`luminositySolar`, `massSolar`), and optional aggregate counts: `planetCount`,
+`moonCount`, `asteroidCount`, `marketCount`. All count fields are optional;
+omitted when data is unavailable. Models live in `src/app/model/solar-system-list.ts`.
 
 ### `solar-system-get-request`
 
