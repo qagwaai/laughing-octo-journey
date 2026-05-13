@@ -8,6 +8,9 @@ export const VIEWER_SCENE_STAR_MIN_RADIUS = 0.18;
 export const VIEWER_SCENE_PLANET_BASE_RADIUS = 0.14;
 export const VIEWER_SCENE_PLANET_MAX_RADIUS = 0.46;
 export const VIEWER_SCENE_PLANET_MIN_RADIUS = 0.05;
+export const VIEWER_SCENE_MOON_BASE_RADIUS = 0.055;
+export const VIEWER_SCENE_MOON_MAX_RADIUS = 0.2;
+export const VIEWER_SCENE_MOON_MIN_RADIUS = 0.03;
 export const VIEWER_SCENE_DEFAULT_PLANET_COLOR = '#9bb1c9';
 export const VIEWER_SCENE_DEFAULT_STAR_COLOR = '#ffedbc';
 export const VIEWER_SCENE_MARKET_STATION_COLOR = '#22c55e';
@@ -54,6 +57,13 @@ export function resolveSceneDistanceFromKm(distanceKm: number): number {
  */
 export function isStarBody(body: ViewerBody): boolean {
   return normalizeToken(body.bodyType) === 'star';
+}
+
+/**
+ * Returns true when the body is a moon.
+ */
+export function isMoonBody(body: ViewerBody): boolean {
+  return normalizeToken(body.bodyType) === 'moon';
 }
 
 /**
@@ -132,11 +142,29 @@ export function resolvePlanetSceneRadius(diameterM: number | undefined): number 
 }
 
 /**
+ * Hybrid moon radius from physical diameter (log-inflated, clamped).
+ * Uses Moon's diameter as the reference baseline to preserve moon-to-moon variance.
+ */
+export function resolveMoonSceneRadius(diameterM: number | undefined): number {
+  if (typeof diameterM !== 'number' || !Number.isFinite(diameterM) || diameterM <= 0) {
+    return VIEWER_SCENE_MOON_BASE_RADIUS;
+  }
+
+  const moonDiameterM = 3_474_800;
+  const ratio = diameterM / moonDiameterM;
+  const scaled = VIEWER_SCENE_MOON_BASE_RADIUS * Math.cbrt(Math.max(0.05, ratio));
+  return Math.max(VIEWER_SCENE_MOON_MIN_RADIUS, Math.min(VIEWER_SCENE_MOON_MAX_RADIUS, scaled));
+}
+
+/**
  * Resolves a body's render radius using star/planet rules.
  */
 export function resolveBodySceneRadius(body: ViewerBody): number {
   if (isStarBody(body)) {
     return resolveStarSceneRadius(body.luminositySolar);
+  }
+  if (isMoonBody(body)) {
+    return resolveMoonSceneRadius(body.physicalCatalog?.estimatedDiameterM);
   }
   return resolvePlanetSceneRadius(body.physicalCatalog?.estimatedDiameterM);
 }

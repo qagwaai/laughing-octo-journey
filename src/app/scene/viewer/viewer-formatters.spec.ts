@@ -4,9 +4,13 @@ import {
   VIEWER_SCENE_DEFAULT_STAR_COLOR,
   VIEWER_SCENE_MARKET_ORBIT_COLOR,
   VIEWER_SCENE_MARKET_STATION_COLOR,
+  VIEWER_SCENE_MOON_BASE_RADIUS,
+  VIEWER_SCENE_MOON_MAX_RADIUS,
+  VIEWER_SCENE_MOON_MIN_RADIUS,
   VIEWER_SCENE_PLANET_BASE_RADIUS,
   VIEWER_SCENE_PLANET_MAX_RADIUS,
   VIEWER_SCENE_PLANET_MIN_RADIUS,
+  isMoonBody,
   VIEWER_SCENE_STAR_BASE_RADIUS,
   VIEWER_SCENE_STAR_MAX_RADIUS,
   VIEWER_SCENE_STAR_MIN_RADIUS,
@@ -17,6 +21,7 @@ import {
   resolveBodyScenePosition,
   resolveBodyOrbitalPositionRelativeToAnchor,
   resolveOrbitColor,
+  resolveMoonSceneRadius,
   resolvePlanetSceneRadius,
   resolveStarSceneRadius,
 } from './viewer-formatters';
@@ -47,6 +52,15 @@ const planetBody: ViewerBody = {
   visualization: { colorHex: '#3399ff' },
 };
 
+const moonBody: ViewerBody = {
+  id: 'moon-1',
+  bodyType: 'moon',
+  displayName: 'Luna',
+  spatial: baseSpatial(149_982_270),
+  physicalCatalog: { estimatedDiameterM: 3_474_200 },
+  visualization: { colorHex: '#9bb1c9' },
+};
+
 const marketStationBody: ViewerBody = {
   id: 'station-market-1',
   bodyType: 'station',
@@ -59,6 +73,11 @@ describe('viewer-formatters', () => {
   it('detects star bodies', () => {
     expect(isStarBody(starBody)).toBeTrue();
     expect(isStarBody(planetBody)).toBeFalse();
+  });
+
+  it('detects moon bodies', () => {
+    expect(isMoonBody(moonBody)).toBeTrue();
+    expect(isMoonBody(planetBody)).toBeFalse();
   });
 
   it('detects market station bodies', () => {
@@ -93,6 +112,17 @@ describe('viewer-formatters', () => {
     expect(resolvePlanetSceneRadius(0)).toBe(VIEWER_SCENE_PLANET_BASE_RADIUS);
     expect(resolvePlanetSceneRadius(1)).toBeCloseTo(VIEWER_SCENE_PLANET_MIN_RADIUS, 1);
     expect(resolvePlanetSceneRadius(1e15)).toBe(VIEWER_SCENE_PLANET_MAX_RADIUS);
+  });
+
+  it('clamps moon radius using diameter', () => {
+    expect(resolveMoonSceneRadius(undefined)).toBe(VIEWER_SCENE_MOON_BASE_RADIUS);
+    expect(resolveMoonSceneRadius(0)).toBe(VIEWER_SCENE_MOON_BASE_RADIUS);
+    expect(resolveMoonSceneRadius(1)).toBeCloseTo(VIEWER_SCENE_MOON_MIN_RADIUS, 2);
+    expect(resolveMoonSceneRadius(1e15)).toBe(VIEWER_SCENE_MOON_MAX_RADIUS);
+  });
+
+  it('uses moon-specific scaling for moon bodies', () => {
+    expect(resolveBodySceneRadius(moonBody)).toBe(resolveMoonSceneRadius(3_474_200));
   });
 
   it('places stars at scene origin and planets along their direction vector', () => {
@@ -136,6 +166,7 @@ describe('viewer-formatters', () => {
     );
 
     expect(positioned).not.toBeNull();
-    expect(positioned![0]).toBeGreaterThan(0.5);
+    const orbitDistance = Math.hypot(positioned![0], positioned![1], positioned![2]);
+    expect(orbitDistance).toBeGreaterThan(0.5);
   });
 });

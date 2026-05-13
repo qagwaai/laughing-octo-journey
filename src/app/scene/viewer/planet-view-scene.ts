@@ -47,8 +47,77 @@ interface StarMarker {
 const PLANET_FOCUS_RADIUS_UNIT = 2.2;
 const PLANET_MIN_CAMERA_DISTANCE = 4.2;
 const PLANET_BASE_MOON_ORBIT = 4.5;
+const PLANET_VIEW_REFERENCE_DIAMETER_M = 12_742_000;
+const PLANET_VIEW_MAX_CAMERA_DISTANCE = 80;
+const PLANET_VIEW_MIN_DISTANCE_CLAMP_MIN = 3.2;
+const PLANET_VIEW_MIN_DISTANCE_CLAMP_MAX = 14;
+const PLANET_VIEW_MAX_DISTANCE_CLAMP_MIN = 40;
+const PLANET_VIEW_MAX_DISTANCE_CLAMP_MAX = 180;
+const PLANET_VIEW_MIN_MAX_GAP = 8;
+const PLANET_VIEW_MOON_FALLBACK_BASE_RADIUS_KM = 1150;
+const PLANET_VIEW_MOON_FALLBACK_DISTANCE_KM = 2_000_000;
+const PLANET_VIEW_MOON_FALLBACK_MIN_RADIUS_KM = 700;
+const PLANET_VIEW_MOON_FALLBACK_MAX_RADIUS_KM = 3200;
 
-function resolveBodyRadiusKm(body: ViewerBody): number {
+export interface PlanetViewCameraDistanceRange {
+  min: number;
+  max: number;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function resolveEstimatedDiameterM(body: ViewerBody | null): number | null {
+  const diameterM = body?.physicalCatalog?.estimatedDiameterM;
+  if (typeof diameterM !== 'number' || !Number.isFinite(diameterM) || diameterM <= 0) {
+    return null;
+  }
+  return diameterM;
+}
+
+function resolveStableHash(value: string): number {
+  return value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+}
+
+/**
+ * Resolves camera distance range for planet details scene from selected-body size.
+ * The range is clamped to preserve stable UX while remaining data-driven.
+ */
+export function resolvePlanetViewCameraDistanceRange(selectedBody: ViewerBody | null): PlanetViewCameraDistanceRange {
+  const diameterM = resolveEstimatedDiameterM(selectedBody);
+  if (!diameterM) {
+    return {
+      min: PLANET_MIN_CAMERA_DISTANCE,
+      max: PLANET_VIEW_MAX_CAMERA_DISTANCE,
+    };
+  }
+
+  const ratio = diameterM / PLANET_VIEW_REFERENCE_DIAMETER_M;
+  const scale = Math.cbrt(Math.max(0.05, ratio));
+
+  const minDistance = clamp(
+    PLANET_MIN_CAMERA_DISTANCE * scale,
+    PLANET_VIEW_MIN_DISTANCE_CLAMP_MIN,
+    PLANET_VIEW_MIN_DISTANCE_CLAMP_MAX,
+  );
+
+  let maxDistance = clamp(
+    PLANET_VIEW_MAX_CAMERA_DISTANCE * scale,
+    PLANET_VIEW_MAX_DISTANCE_CLAMP_MIN,
+    PLANET_VIEW_MAX_DISTANCE_CLAMP_MAX,
+  );
+  if (maxDistance < minDistance + PLANET_VIEW_MIN_MAX_GAP) {
+    maxDistance = minDistance + PLANET_VIEW_MIN_MAX_GAP;
+  }
+
+  return {
+    min: +minDistance.toFixed(3),
+    max: +maxDistance.toFixed(3),
+  };
+}
+
+export function resolvePlanetViewBodyRadiusKm(body: ViewerBody, relativeDistanceKm?: number): number {
   const explicitRadius = body.physicalCatalog?.radiusKm;
   if (typeof explicitRadius === 'number' && Number.isFinite(explicitRadius) && explicitRadius > 0) {
     return explicitRadius;
@@ -60,13 +129,36 @@ function resolveBodyRadiusKm(body: ViewerBody): number {
   }
 
   if (body.bodyType === 'moon') {
-    return 1200;
+    const orbitalDistanceKm =
+      typeof relativeDistanceKm === 'number' && Number.isFinite(relativeDistanceKm) && relativeDistanceKm > 0
+        ? relativeDistanceKm
+        : body.orbitalElements?.semiMajorAxisKm;
+
+    const normalizedDistance =
+      typeof orbitalDistanceKm === 'number' && Number.isFinite(orbitalDistanceKm) && orbitalDistanceKm > 0
+        ? clamp(
+            Math.log10(1 + orbitalDistanceKm) / Math.log10(1 + PLANET_VIEW_MOON_FALLBACK_DISTANCE_KM),
+            0,
+            1,
+          )
+        : 0.5;
+
+    const radiusFromDistanceKm =
+      PLANET_VIEW_MOON_FALLBACK_BASE_RADIUS_KM + normalizedDistance * 1200;
+
+    const jitter = ((resolveStableHash(body.id) % 23) - 11) / 100;
+    const variedRadiusKm = radiusFromDistanceKm * (1 + jitter);
+    return clamp(
+      variedRadiusKm,
+      PLANET_VIEW_MOON_FALLBACK_MIN_RADIUS_KM,
+      PLANET_VIEW_MOON_FALLBACK_MAX_RADIUS_KM,
+    );
   }
   return 6200;
 }
 
-function resolveBodyRadiusUnits(body: ViewerBody, referenceRadiusKm: number): number {
-  const ratio = resolveBodyRadiusKm(body) / Math.max(referenceRadiusKm, 1);
+function resolveBodyRadiusUnits(bodyRadiusKm: number, referenceRadiusKm: number): number {
+  const ratio = bodyRadiusKm / Math.max(referenceRadiusKm, 1);
   const scaled = PLANET_FOCUS_RADIUS_UNIT * Math.cbrt(Math.max(0.03, ratio));
   return Math.max(0.35, Math.min(3.8, scaled));
 }
@@ -96,7 +188,7 @@ function resolveOrbitAngleRad(body: ViewerBody): number {
     return (anomalyDeg * Math.PI) / 180;
   }
 
-  const hash = body.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const hash = resolveStableHash(body.id);
   return (hash % 360) * (Math.PI / 180);
 }
 
@@ -275,7 +367,8 @@ export class PlanetViewScene {
       return PLANET_FOCUS_RADIUS_UNIT;
     }
 
-    return resolveBodyRadiusUnits(selected, resolveBodyRadiusKm(selected));
+    const selectedRadiusKm = resolvePlanetViewBodyRadiusKm(selected);
+    return resolveBodyRadiusUnits(selectedRadiusKm, selectedRadiusKm);
   });
 
   protected moons = computed<LocalBody[]>(() => {
@@ -284,20 +377,21 @@ export class PlanetViewScene {
       return [];
     }
 
-    const selectedRadiusKm = resolveBodyRadiusKm(selected);
+    const selectedRadiusKm = resolvePlanetViewBodyRadiusKm(selected);
     return this.bodies()
       .filter((body) => body.orbitalElements?.anchorBodyId === selected.id && body.bodyType !== 'star')
       .map((body) => {
         const distanceKm = resolveRelativeDistanceKm(selected, body);
         const orbitRadius = resolveOrbitRadiusUnits(distanceKm);
         const angle = resolveOrbitAngleRad(body);
+        const bodyRadiusKm = resolvePlanetViewBodyRadiusKm(body, distanceKm);
         return {
           body,
           id: body.id,
           displayName: body.displayName || body.id,
           bodyType: body.bodyType,
           color: resolveBodyColor(body),
-          radius: resolveBodyRadiusUnits(body, selectedRadiusKm),
+          radius: resolveBodyRadiusUnits(bodyRadiusKm, selectedRadiusKm),
           position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
           orbitRadius,
         };
@@ -319,11 +413,10 @@ export class PlanetViewScene {
   });
 
   protected minCameraDistance = computed<number>(() => {
-    const selectedRadius = this.selectedBodyRadiusUnits();
-    return Math.max(PLANET_MIN_CAMERA_DISTANCE, selectedRadius * 1.85);
+    return resolvePlanetViewCameraDistanceRange(this.selectedBody()).min;
   });
 
-  protected maxCameraDistance = computed<number>(() => Math.max(this.maxOrbitRadius() * 3.5 + 40, 80));
+  protected maxCameraDistance = computed<number>(() => resolvePlanetViewCameraDistanceRange(this.selectedBody()).max);
 
   constructor() {
     effect(() => {

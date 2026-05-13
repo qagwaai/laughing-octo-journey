@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, effect, ElementRef, EventEmitter, input, Output, signal, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+  effect,
+  EventEmitter,
+  input,
+  Output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Euler, Quaternion, Vector3 } from 'three';
@@ -166,7 +177,7 @@ export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
  */
 export class ViewerSystemScene {
   private store = injectStore();
-  private orbitControlsRef = viewChild<ElementRef<OrbitControlsLike>>('orbitControls');
+  private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   private cameraTween: CameraTween | null = null;
   private planetViewRequestTimer: ReturnType<typeof setTimeout> | null = null;
@@ -329,18 +340,18 @@ export class ViewerSystemScene {
 
     beforeRender(({ delta }) => {
       const camera = this.store.camera();
-      const controls = this.orbitControlsRef()?.nativeElement;
+      const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
 
       this.syncOrbitControlsTarget();
 
       if (camera && !this.cameraTween && this.targetedBodyId() && this.settledCameraPosition) {
-        const drift = camera.position.distanceTo(this.settledCameraPosition);
-        if (drift > 0.001) {
-          camera.position.copy(this.settledCameraPosition);
-        }
-
-        // When controls are unavailable, enforce stable orientation at target.
+        // Preserve target composition only during brief handoffs where controls
+        // are unavailable; otherwise orbit interactions must remain user-driven.
         if (!controls?.target) {
+          const drift = camera.position.distanceTo(this.settledCameraPosition);
+          if (drift > 0.001) {
+            camera.position.copy(this.settledCameraPosition);
+          }
           camera.lookAt(this.persistentLookTarget);
         }
       }
@@ -512,7 +523,7 @@ export class ViewerSystemScene {
       return;
     }
 
-    const controls = this.orbitControlsRef()?.nativeElement;
+    const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
     const fromPosition = camera.position.clone();
     const fromTarget = controls?.target?.clone() ?? this.persistentLookTarget.clone();
     const toTarget = new Vector3(target[0], target[1], target[2]);
@@ -548,7 +559,7 @@ export class ViewerSystemScene {
   private finalizeCameraTween(): void {
     const tween = this.cameraTween;
     if (tween?.kind === 'target-fly') {
-      const controls = this.orbitControlsRef()?.nativeElement;
+      const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
       this.persistentLookTarget.copy(tween.toTarget);
       if (controls?.target) {
         // Ensure controls resume from the same target the flight finished on.
@@ -570,7 +581,7 @@ export class ViewerSystemScene {
   }
 
   private setOrbitControlsEnabled(enabled: boolean): void {
-    const controls = this.orbitControlsRef()?.nativeElement;
+    const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
     if (!controls) {
       return;
     }
@@ -578,7 +589,7 @@ export class ViewerSystemScene {
   }
 
   private syncOrbitControlsTarget(): void {
-    const controls = this.orbitControlsRef()?.nativeElement;
+    const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
     if (!controls?.target) {
       return;
     }
