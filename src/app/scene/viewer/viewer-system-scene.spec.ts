@@ -1,5 +1,5 @@
 import type { ViewerBody } from '../../model/solar-system-get';
-import { mapBodiesToRendered } from './viewer-system-scene';
+import { mapBodiesToRendered, resolveViewerSceneCameraDistanceRange } from './viewer-system-scene';
 
 const star: ViewerBody = {
   id: 'star-1',
@@ -35,6 +35,15 @@ const marketStation: ViewerBody = {
   },
 };
 
+const distantPlanet: ViewerBody = {
+  id: 'planet-2',
+  bodyType: 'planet',
+  displayName: 'Mars',
+  spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 227_923_661, y: 0, z: 0 }, epochMs: 0 },
+  visualization: { colorHex: '#c1440e' },
+  physicalCatalog: { estimatedDiameterM: 6_792_000 },
+};
+
 describe('ViewerSystemScene mapBodiesToRendered', () => {
   it('partitions stars and non-stars and assigns colors/positions', () => {
     const rendered = mapBodiesToRendered([star, planet, marketStation]);
@@ -57,5 +66,14 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
   it('returns an empty array when no bodies are provided', () => {
     expect(mapBodiesToRendered([])).toEqual([]);
+  });
+
+  it('derives a camera distance range from the scene extent', () => {
+    const nearRange = resolveViewerSceneCameraDistanceRange([star, planet]);
+    const farRange = resolveViewerSceneCameraDistanceRange([star, planet, distantPlanet, marketStation]);
+
+    expect(nearRange.min).toBeLessThan(nearRange.max);
+    expect(farRange.max).toBeGreaterThanOrEqual(nearRange.max);
+    expect(farRange.min).toBeGreaterThan(0);
   });
 });

@@ -65,6 +65,9 @@ export default class ViewerScenePage {
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
+  protected zoomLevel = signal<number>(18);
+
+  protected zoomPercent = computed<number>(() => Math.round(this.zoomLevel()));
 
   protected hasSystem = computed(() => this.solarSystemId() !== null);
 
@@ -219,6 +222,74 @@ export default class ViewerScenePage {
       });
       this.planetTransitionTimer = null;
     }, 140);
+  }
+
+  protected onZoomChange(value: string | number): void {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+
+    this.zoomLevel.set(Math.max(0, Math.min(100, parsed)));
+  }
+
+  protected onZoomInput(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.onZoomChange(target.value);
+  }
+
+  protected onZoomContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onZoomPointerDown(event: PointerEvent): void {
+    if (event.button !== 2) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onZoomPointerUp(event: PointerEvent): void {
+    if (event.button !== 2) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onZoomMouseDown(event: MouseEvent): void {
+    if (event.button !== 2) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onZoomMouseUp(event: MouseEvent): void {
+    if (event.button !== 2) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onZoomAuxClick(event: MouseEvent): void {
+    if (event.button !== 2) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   ngOnDestroy(): void {

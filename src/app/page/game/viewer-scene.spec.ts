@@ -218,4 +218,18 @@ describe('ViewerScenePage', () => {
       }),
     );
   }));
+
+  it('clamps stellar viewer zoom input into the expected range', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['onZoomChange'](-10);
+    expect(component['zoomLevel']()).toBe(0);
+
+    component['onZoomChange'](135);
+    expect(component['zoomLevel']()).toBe(100);
+
+    component['onZoomChange']('42');
+    expect(component['zoomLevel']()).toBe(42);
+    expect(component['zoomPercent']()).toBe(42);
+  });
 });

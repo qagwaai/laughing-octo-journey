@@ -12,11 +12,35 @@
       [bodies]="sceneInputs().bodies"
       [summary]="sceneInputs().summary"
       [targetBodyId]="sceneInputs().targetBodyId ?? null"
+      [zoomLevel]="zoomLevel()"
       (hoveredBodyChange)="onHoveredBodyChange($event)"
       (focusedPlanetChange)="onFocusedPlanetChange($event)"
       (planetViewRequest)="onPlanetViewRequest($event)"
+      (zoomLevelChange)="onZoomChange($event)"
     />
   </ngt-canvas>
+
+  <div class="viewer-scene-zoom" data-testid="viewer-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
+    <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">{{ t.game.viewer.planetViewZoomLabel }}</label>
+    <input
+      id="viewer-scene-zoom-input"
+      type="range"
+      orient="vertical"
+      min="0"
+      max="100"
+      step="1"
+      [value]="zoomLevel()"
+      (contextmenu)="onZoomContextMenu($event)"
+      (pointerdown)="onZoomPointerDown($event)"
+      (pointerup)="onZoomPointerUp($event)"
+      (mousedown)="onZoomMouseDown($event)"
+      (mouseup)="onZoomMouseUp($event)"
+      (auxclick)="onZoomAuxClick($event)"
+      (input)="onZoomInput($event)"
+      aria-label="Viewer zoom level"
+    />
+    <div class="viewer-scene-zoom__value">{{ zoomPercent() }}%</div>
+  </div>
 
   @if (focusedPlanet(); as focused) {
   <div class="viewer-focus-pill" data-testid="viewer-focus-pill">

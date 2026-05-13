@@ -70,20 +70,75 @@ interface CameraTween {
 
 interface OrbitControlsLike {
   enabled?: boolean;
+  minDistance?: number;
+  maxDistance?: number;
   target: Vector3;
   update: () => void;
+}
+
+export interface ViewerSceneCameraDistanceRange {
+  min: number;
+  max: number;
 }
 
 const VIEWER_DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 3.5, 28];
 const VIEWER_CAMERA_TWEEN_DURATION_SEC = 0.45;
 const VIEWER_TARGET_FLY_DURATION_SEC = 3.5;
 const VIEWER_TARGET_FLY_COMPLETION_T = 0.985;
+const VIEWER_CAMERA_DISTANCE_MIN_FLOOR = 14;
+const VIEWER_CAMERA_DISTANCE_MAX_FLOOR = 42;
+const VIEWER_CAMERA_DISTANCE_MAX_CEILING = 180;
+const VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP = 12;
 
 function degToRad(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return 0;
   }
   return (value * Math.PI) / 180;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function resolveRenderedExtent(rendered: RenderedBody[]): number {
+  let maxExtent = 0;
+  for (const body of rendered) {
+    const bodyDistance = Math.hypot(body.position[0], body.position[1], body.position[2]);
+    maxExtent = Math.max(maxExtent, bodyDistance + body.radius);
+  }
+
+  return Math.max(maxExtent, 24);
+}
+
+export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): ViewerSceneCameraDistanceRange {
+  const extent = resolveRenderedExtent(mapBodiesToRendered(bodies));
+  const minDistance = clamp(extent * 0.46, VIEWER_CAMERA_DISTANCE_MIN_FLOOR, 36);
+
+  let maxDistance = clamp(extent * 2.25 + 18, VIEWER_CAMERA_DISTANCE_MAX_FLOOR, VIEWER_CAMERA_DISTANCE_MAX_CEILING);
+  if (maxDistance < minDistance + VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP) {
+    maxDistance = minDistance + VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP;
+  }
+
+  return {
+    min: +minDistance.toFixed(3),
+    max: +maxDistance.toFixed(3),
+  };
+}
+
+function resolveZoomDistance(zoomLevel: number, bodies: ViewerBody[]): number {
+  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
+  const normalized = clamp(zoomLevel, 0, 100);
+  return min + ((max - min) * normalized) / 100;
+}
+
+function resolveZoomPercent(distance: number, bodies: ViewerBody[]): number {
+  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
+  if (max <= min) {
+    return 0;
+  }
+
+  return clamp(((distance - min) / (max - min)) * 100, 0, 100);
 }
 
 /**
@@ -188,9 +243,11 @@ export class ViewerSystemScene {
   bodies = input<ViewerBody[]>([]);
   summary = input<SolarSystemSummary | null>(null);
   targetBodyId = input<string | null>(null);
+  zoomLevel = input<number>(18);
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
   @Output() planetViewRequest = new EventEmitter<ViewerBody>();
+  @Output() zoomLevelChange = new EventEmitter<number>();
 
   protected readonly rendered = computed<RenderedBody[]>(() => mapBodiesToRendered(this.bodies()));
 
@@ -343,6 +400,13 @@ export class ViewerSystemScene {
       const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
 
       this.syncOrbitControlsTarget();
+
+      if (camera && controls && !this.cameraTween) {
+        const targetDistance = resolveZoomDistance(this.zoomLevel(), this.rendered().map((body) => body.source));
+        controls.minDistance = targetDistance;
+        controls.maxDistance = targetDistance;
+        controls.update();
+      }
 
       if (camera && !this.cameraTween && this.targetedBodyId() && this.settledCameraPosition) {
         // Preserve target composition only during brief handoffs where controls
@@ -570,6 +634,12 @@ export class ViewerSystemScene {
     }
 
     const camera = this.store.camera();
+    if (camera) {
+      const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
+      const distance = controls?.target ? camera.position.distanceTo(controls.target) : camera.position.length();
+      this.zoomLevelChange.emit(resolveZoomPercent(distance, this.rendered().map((body) => body.source)));
+    }
+
     if (camera && tween?.kind === 'target-fly') {
       this.settledCameraPosition = camera.position.clone();
     } else if (tween?.kind !== 'target-fly') {

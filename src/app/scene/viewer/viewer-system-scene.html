@@ -1,7 +1,7 @@
 <ngt-color *args="['#02060f']" attach="background" />
 <ngt-ambient-light [intensity]="0.15" />
 <ngt-point-light [position]="[0, 0, 0]" [intensity]="2.5" [distance]="120" [decay]="2" />
-<ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08 }" />
+<ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08, enableZoom: false }" />
 
 <ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
   <ngt-sphere-geometry *args="[280, 16, 16]" />
