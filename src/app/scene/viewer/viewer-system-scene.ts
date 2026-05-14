@@ -98,7 +98,7 @@ const VIEWER_DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 3.5, 28];
 const VIEWER_CAMERA_TWEEN_DURATION_SEC = 0.45;
 const VIEWER_TARGET_FLY_DURATION_SEC = 3.5;
 const VIEWER_TARGET_FLY_COMPLETION_T = 0.985;
-const VIEWER_CAMERA_DISTANCE_MIN_FLOOR = 14;
+const VIEWER_CAMERA_DISTANCE_MIN_FLOOR = 0.5;
 const VIEWER_CAMERA_DISTANCE_MAX_FLOOR = 42;
 const VIEWER_CAMERA_DISTANCE_MAX_CEILING = 180;
 const VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP = 12;
@@ -126,7 +126,8 @@ function resolveRenderedExtent(rendered: RenderedBody[]): number {
 
 export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): ViewerSceneCameraDistanceRange {
   const extent = resolveRenderedExtent(mapBodiesToRendered(bodies));
-  const minDistance = clamp(extent * 0.46, VIEWER_CAMERA_DISTANCE_MIN_FLOOR, 36);
+  // Min is always the planet-detail floor — allow zooming right up to bodies.
+  const minDistance = VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
 
   let maxDistance = clamp(extent * 2.25 + 18, VIEWER_CAMERA_DISTANCE_MAX_FLOOR, VIEWER_CAMERA_DISTANCE_MAX_CEILING);
   if (maxDistance < minDistance + VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP) {
@@ -141,17 +142,20 @@ export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): Vie
 
 function resolveZoomDistance(zoomLevel: number, bodies: ViewerBody[]): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
-  const normalized = clamp(zoomLevel, 0, 100);
-  return min + ((max - min) * normalized) / 100;
+  const normalized = clamp(zoomLevel, 0, 100) / 100;
+  // Logarithmic mapping: evenly distributes zoom across planet-detail to full-system scale.
+  return min * Math.pow(max / min, normalized);
 }
 
 function resolveZoomPercent(distance: number, bodies: ViewerBody[]): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
-  if (max <= min) {
+  if (max <= min || min <= 0) {
     return 0;
   }
 
-  return clamp(((distance - min) / (max - min)) * 100, 0, 100);
+  // Inverse log: normalized = log(distance/min) / log(max/min)
+  const ratio = Math.log(clamp(distance, min, max) / min) / Math.log(max / min);
+  return clamp(ratio * 100, 0, 100);
 }
 
 /**

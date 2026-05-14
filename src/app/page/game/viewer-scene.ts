@@ -69,7 +69,7 @@ export default class ViewerScenePage {
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
-  protected zoomLevel = signal<number>(18);
+  protected zoomLevel = signal<number>(78);
 
   protected zoomPercent = computed<number>(() => Math.round(this.zoomLevel()));
 
@@ -263,6 +263,23 @@ export default class ViewerScenePage {
     }
 
     this.zoomLevel.set(Math.max(0, Math.min(100, parsed)));
+  }
+
+  protected onWheel(event: WheelEvent): void {
+    if (!this.hasSystem()) {
+      return;
+    }
+
+    event.preventDefault();
+
+    // deltaMode 0 = pixels (~100 per notch), 1 = lines, 2 = pages.
+    // Scroll up (negative deltaY) decreases zoom level → camera moves closer.
+    const STEP_PER_LINE = 5;
+    const delta = event.deltaMode === 0
+      ? (event.deltaY / 100) * STEP_PER_LINE
+      : event.deltaY * STEP_PER_LINE;
+
+    this.onZoomChange(this.zoomLevel() + delta);
   }
 
   protected onZoomInput(event: Event): void {

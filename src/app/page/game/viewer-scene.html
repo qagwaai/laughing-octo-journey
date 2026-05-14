@@ -1,4 +1,4 @@
-<div class="viewer-scene-host">
+<div class="viewer-scene-host" (wheel)="onWheel($event)">
   @if (isLoading()) {
   <p class="viewer-scene-status" data-testid="viewer-scene-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
   } @else if (sceneError()) {
@@ -70,7 +70,7 @@
       <span>{{ t.game.viewer.legendMarketOrbit }}</span>
     </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#22c55e"></span>
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#fbbf24"></span>
       <span>{{ t.game.viewer.legendActiveShip }}</span>
     </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-inactive-ship">

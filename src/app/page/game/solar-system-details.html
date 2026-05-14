@@ -15,7 +15,27 @@
     </div>
 
     <section class="ops-card">
-      <h2>{{ t.game.viewer.detailsSectionTitle }}</h2>
+      <div class="details-section-header-row">
+        <h2>{{ t.game.viewer.detailsSectionTitle }}</h2>
+        @if (hasRows()) {
+        <div class="details-view-toggle" role="group" aria-label="View mode">
+          <button
+            type="button"
+            class="details-view-toggle__btn"
+            [class.details-view-toggle__btn--active]="viewMode() === 'type'"
+            (click)="setViewMode('type')"
+            [attr.aria-pressed]="viewMode() === 'type'"
+          >{{ t.game.viewer.detailsViewByType }}</button>
+          <button
+            type="button"
+            class="details-view-toggle__btn"
+            [class.details-view-toggle__btn--active]="viewMode() === 'distance'"
+            (click)="setViewMode('distance')"
+            [attr.aria-pressed]="viewMode() === 'distance'"
+          >{{ t.game.viewer.detailsViewByDistance }}</button>
+        </div>
+        }
+      </div>
 
       @if (isLoading()) {
       <p data-testid="details-loading">{{ t.game.viewer.detailsLoadingStatus }}</p>
@@ -23,24 +43,128 @@
       <p role="alert" data-testid="details-error">{{ loadError() }}</p>
       } @else if (!hasRows()) {
       <p data-testid="details-empty">{{ t.game.viewer.detailsEmptyStatus }}</p>
+      } @else if (viewMode() === 'type') {
+
+      <!-- TYPE VIEW: collapsible sections per body type -->
+      @for (group of typeGroups(); track group.type) {
+      <div class="details-type-section">
+        <button
+          type="button"
+          class="details-type-header"
+          [class.details-type-header--collapsed]="!isExpanded(group.type)"
+          (click)="toggleSection(group.type)"
+          [attr.aria-expanded]="isExpanded(group.type)"
+        >
+          <span class="details-type-header__label">{{ group.label }}</span>
+          <span class="details-type-header__count">{{ group.rows.length }}</span>
+          <span class="details-type-header__chevron">{{ isExpanded(group.type) ? '▾' : '▸' }}</span>
+        </button>
+
+        @if (isExpanded(group.type)) {
+        <div class="details-table-wrapper">
+          @if (group.type === 'ship') {
+          <!-- Ships table -->
+          <table class="details-table" [attr.data-testid]="'details-table-' + group.type">
+            <thead>
+              <tr>
+                <th>{{ t.game.viewer.detailsColumnName }}</th>
+                <th>{{ t.game.viewer.detailsColumnModelTier }}</th>
+                <th>{{ t.game.viewer.detailsColumnStatus }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of group.rows; track row.id) {
+              <tr
+                [class.details-row--targeted]="activeTargetId() === row.id"
+                [class.details-row--active-ship]="row.isActiveShip"
+              >
+                <td class="details-col-name">
+                  {{ row.displayName }}
+                  @if (row.isActiveShip) {
+                  <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
+                  }
+                </td>
+                <td class="details-col-ship-model">
+                  {{ row.shipModel ?? '—' }}
+                  @if (row.shipTier !== null) { T{{ row.shipTier }} }
+                </td>
+                <td class="details-col-ship-status">{{ row.shipStatus ?? '—' }}</td>
+                <td class="details-col-action">
+                  <button
+                    type="button"
+                    class="details-target-btn"
+                    [class.details-target-btn--active]="activeTargetId() === row.id"
+                    (click)="targetBody(row.id)"
+                    [attr.aria-pressed]="activeTargetId() === row.id"
+                  >{{ t.game.viewer.detailsTargetButton }}</button>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+          } @else {
+          <!-- Bodies / stations table -->
+          <table class="details-table" [attr.data-testid]="'details-table-' + group.type">
+            <thead>
+              <tr>
+                <th>{{ t.game.viewer.detailsColumnName }}</th>
+                <th class="details-col-num">{{ t.game.viewer.detailsColumnDiameter }}</th>
+                <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbitKm }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of group.rows; track row.id) {
+              <tr [class.details-row--targeted]="activeTargetId() === row.id">
+                <td class="details-col-name">{{ row.displayName }}</td>
+                <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
+                <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
+                <td class="details-col-action">
+                  <button
+                    type="button"
+                    class="details-target-btn"
+                    [class.details-target-btn--active]="activeTargetId() === row.id"
+                    (click)="targetBody(row.id)"
+                    [attr.aria-pressed]="activeTargetId() === row.id"
+                  >{{ t.game.viewer.detailsTargetButton }}</button>
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+          }
+        </div>
+        }
+      </div>
+      }
+
       } @else {
+
+      <!-- DISTANCE VIEW: flat table sorted by orbit distance -->
       <div class="details-table-wrapper">
         <table class="details-table" data-testid="details-table">
           <thead>
             <tr>
               <th>{{ t.game.viewer.detailsColumnName }}</th>
               <th>{{ t.game.viewer.detailsColumnType }}</th>
-              <th class="details-col-num">{{ t.game.viewer.detailsColumnDiameter }}</th>
-              <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbit }}</th>
+              <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbitKm }}</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            @for (row of rows(); track row.id) {
-            <tr [class.details-row--targeted]="activeTargetId() === row.id">
-              <td class="details-col-name">{{ row.displayName }}</td>
+            @for (row of sortedByDistance(); track row.id) {
+            <tr
+              [class.details-row--targeted]="activeTargetId() === row.id"
+              [class.details-row--active-ship]="row.isActiveShip"
+            >
+              <td class="details-col-name">
+                {{ row.displayName }}
+                @if (row.isActiveShip) {
+                <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
+                }
+              </td>
               <td class="details-col-type">{{ row.bodyType }}</td>
-              <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
               <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
               <td class="details-col-action">
                 <button
@@ -49,15 +173,14 @@
                   [class.details-target-btn--active]="activeTargetId() === row.id"
                   (click)="targetBody(row.id)"
                   [attr.aria-pressed]="activeTargetId() === row.id"
-                >
-                  {{ t.game.viewer.detailsTargetButton }}
-                </button>
+                >{{ t.game.viewer.detailsTargetButton }}</button>
               </td>
             </tr>
             }
           </tbody>
         </table>
       </div>
+
       }
     </section>
   </div>

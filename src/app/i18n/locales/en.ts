@@ -613,6 +613,13 @@ export const en = {
       detailsColumnType: 'Type',
       detailsColumnDiameter: 'Diameter (m)',
       detailsColumnOrbit: 'Semi-major axis (km)',
+      detailsViewByType: 'Group by Type',
+      detailsViewByDistance: 'Sort by Distance',
+      detailsColumnOrbitKm: 'Orbit (km)',
+      detailsColumnModelTier: 'Model / Tier',
+      detailsColumnStatus: 'Status',
+      detailsActiveShipBadge: 'Active',
+      detailsSectionShips: 'Ships',
     },
   },
 

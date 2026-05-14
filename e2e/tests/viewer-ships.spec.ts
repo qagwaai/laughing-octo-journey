@@ -167,12 +167,12 @@ test.describe('Viewer — Character Ships', () => {
     await expect(shipsPage.inactiveShipLegendItem).toContainText('Inactive Ships');
   });
 
-  test('active ship legend swatch uses green color (#22c55e)', async ({ page }) => {
+  test('active ship legend swatch uses amber color (#fbbf24)', async ({ page }) => {
     const { mock } = await setupViewerShipsTest(page);
     await navigateToScene(page, mock);
 
     const shipsPage = new ViewerShipsPage(page);
-    await shipsPage.assertActiveShipSwatchColor('#22c55e');
+    await shipsPage.assertActiveShipSwatchColor('#fbbf24');
   });
 
   test('inactive ship legend swatch uses blue color (#3b82f6)', async ({ page }) => {

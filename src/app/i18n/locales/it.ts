@@ -445,6 +445,13 @@ export const it: DeepPartial<EnLocale> = {
       detailsColumnType: 'Tipo',
       detailsColumnDiameter: 'Diametro (m)',
       detailsColumnOrbit: 'Semiasse maggiore (km)',
+      detailsViewByType: 'Raggruppa per tipo',
+      detailsViewByDistance: 'Ordina per distanza',
+      detailsColumnOrbitKm: 'Orbita (km)',
+      detailsColumnModelTier: 'Modello / Livello',
+      detailsColumnStatus: 'Stato',
+      detailsActiveShipBadge: 'Attiva',
+      detailsSectionShips: 'Navi',
     },
     shipViewSpecs: {
       title: 'Specifiche nave',
