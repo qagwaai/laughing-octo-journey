@@ -9,8 +9,10 @@ import {
 } from '../../model/market-list';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import type { ShipSummary, ShipListRequest, ShipListResponse } from '../../model/ship-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
@@ -50,6 +52,7 @@ export default class ViewerScenePage {
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
   private marketService = inject(MarketService);
+  private shipService = inject(ShipService);
 
   private navigationState: ViewerSceneNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ViewerSceneNavigationState | undefined) ??
@@ -60,6 +63,7 @@ export default class ViewerScenePage {
   protected solarSystem = signal<SolarSystemSummary | null>(this.navigationState.solarSystem ?? null);
   protected solarSystemId = signal<string | null>(null);
   protected bodies = signal<ViewerBody[]>([]);
+  protected ships = signal<ShipSummary[]>([]);
   protected hoveredBody = signal<ViewerBody | null>(null);
   protected focusedPlanet = signal<ViewerBody | null>(null);
   protected isLoading = signal(false);
@@ -78,6 +82,8 @@ export default class ViewerScenePage {
     bodies: this.bodies(),
     summary: this.solarSystem(),
     targetBodyId: this.viewerTargetService.targetBodyId(),
+    ships: this.ships(),
+    activeShipId: this.sessionService.activeShip()?.id ?? null,
   }));
 
 
@@ -192,8 +198,34 @@ export default class ViewerScenePage {
         this.maybeHydrateMarketStations(dedupedBodies, playerName, sessionKey, solarSystemId);
         this.hoveredBody.set(null);
         this.focusedPlanet.set(null);
+        this.loadShipsForSystem(playerName, sessionKey, solarSystemId);
       },
     );
+  }
+
+  private loadShipsForSystem(playerName: string, sessionKey: string, solarSystemId: string): void {
+    const character = this.sessionService.activeCharacter();
+    if (!character?.id) {
+      this.ships.set([]);
+      return;
+    }
+
+    const request: ShipListRequest = {
+      playerName,
+      characterId: character.id,
+      sessionKey,
+    };
+
+    this.shipService.listShips(request, (response: ShipListResponse) => {
+      if (!response.success || this.solarSystemId() !== solarSystemId) {
+        this.ships.set([]);
+        return;
+      }
+      const systemShips = (response.ships ?? []).filter(
+        (ship) => ship.spatial?.solarSystemId === solarSystemId,
+      );
+      this.ships.set(systemShips);
+    });
   }
 
   protected onHoveredBodyChange(body: ViewerBody | null): void {
