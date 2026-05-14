@@ -48,6 +48,19 @@
 </ngt-mesh>
 }
 
+@for (ship of renderedShips(); track ship.id) {
+<ngt-mesh [position]="ship.position" [name]="ship.displayName" input>
+  <ngt-box-geometry *args="[0.08, 0.08, 0.08]" />
+  <ngt-mesh-standard-material
+    [color]="ship.color"
+    [roughness]="0.5"
+    [metalness]="0.3"
+    [emissive]="ship.isActive ? '#14532d' : '#1e3a5f'"
+    [emissiveIntensity]="0.4"
+  />
+</ngt-mesh>
+}
+
 @for (body of nonStars(); track body.id) {
 <ngt-mesh [position]="body.position" [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"

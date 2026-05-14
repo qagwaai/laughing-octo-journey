@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { PlayerCharacterSummary } from '../model/character-list';
 import type { ShipSummary } from '../model/ship-list';
 
 @Injectable({
@@ -10,8 +11,10 @@ import type { ShipSummary } from '../model/ship-list';
 export class SessionService {
   private sessionKey = signal<string | null>(null);
   private activeShipSignal = signal<ShipSummary | null>(null);
+  private activeCharacterSignal = signal<PlayerCharacterSummary | null>(null);
 
   readonly activeShip = this.activeShipSignal.asReadonly();
+  readonly activeCharacter = this.activeCharacterSignal.asReadonly();
 
   /**
    * Persists the current authenticated session key.
@@ -33,6 +36,7 @@ export class SessionService {
   clearSession(): void {
     this.sessionKey.set(null);
     this.activeShipSignal.set(null);
+    this.activeCharacterSignal.set(null);
   }
 
   /**
@@ -54,5 +58,19 @@ export class SessionService {
    */
   clearActiveShip(): void {
     this.activeShipSignal.set(null);
+  }
+
+  /**
+   * Sets the active character for the current session.
+   */
+  setActiveCharacter(character: PlayerCharacterSummary): void {
+    this.activeCharacterSignal.set(character);
+  }
+
+  /**
+   * Clears active character state without affecting the session key.
+   */
+  clearActiveCharacter(): void {
+    this.activeCharacterSignal.set(null);
   }
 }
