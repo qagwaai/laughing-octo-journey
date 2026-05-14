@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -92,6 +92,11 @@ function makeSolarSystemGetResponse(bodies: any[] = SOL_BODIES) {
     solarSystem: SOL_SUMMARY,
     bodies,
   };
+}
+
+async function getCanvasFrameSignature(canvas: Locator): Promise<string> {
+  const image = await canvas.screenshot();
+  return image.toString('base64');
 }
 
 async function setupViewerShipsTest(page: any) {
@@ -277,5 +282,79 @@ test.describe('Viewer — Character Ships', () => {
       expect(capturedShipRequest).toHaveProperty('sessionKey', TEST_SESSION_KEY);
       expect(capturedShipRequest).toHaveProperty('characterId');
     }
+  });
+
+  test('target button flies camera to selected ship row target', async ({ page }) => {
+    const { mock } = await setupViewerShipsTest(page);
+    await navigateToScene(page, mock, [ACTIVE_SHIP, INACTIVE_SHIP]);
+
+    const viewerPage = new ViewerPage(page);
+    const canvas = viewerPage.sceneCanvas;
+    await expect(canvas).toBeVisible({ timeout: 10_000 });
+
+    const before = await getCanvasFrameSignature(canvas);
+    expect(before.length).toBeGreaterThan(500);
+
+    const targetShipButton = page
+      .locator('tr', { hasText: ACTIVE_SHIP.name })
+      .first()
+      .locator('button.details-target-btn')
+      .first();
+
+    await expect(targetShipButton).toBeVisible({ timeout: 10_000 });
+    await targetShipButton.click();
+    await expect(targetShipButton).toHaveAttribute('aria-pressed', 'true');
+
+    // Wait for target-fly tween to settle.
+    await page.waitForTimeout(4_200);
+
+    const after = await getCanvasFrameSignature(canvas);
+    expect(after).not.toBe(before);
+    await expect(viewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('renders unknown-spatial legend swatch and triggers lazy repair upsert', async ({ page }) => {
+    // A ship arriving with sun-origin spatial — the legacy synthetic placeholder
+    // case — should: (a) surface the unknown-location legend entry, and
+    // (b) cause the client to re-issue a deterministic ship upsert to repair it.
+    const { mock } = await setupViewerShipsTest(page);
+    const BROKEN_SHIP = {
+      id: 'ship-broken-1',
+      name: 'Wraith',
+      model: 'Scavenger Pod',
+      tier: 1,
+      status: null,
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+    };
+
+    let capturedShipUpsertRequest: any = null;
+    mock.on('ship-upsert-request', (data) => {
+      capturedShipUpsertRequest = data;
+      return {
+        event: 'ship-upsert-response',
+        data: { success: true, message: '', playerName: TEST_PLAYER, characterId: 'char-viewer-1' },
+      };
+    });
+
+    await navigateToScene(page, mock, [BROKEN_SHIP]);
+
+    const shipsPage = new ViewerShipsPage(page);
+    await expect(shipsPage.unknownShipLegendItem).toBeVisible({ timeout: 5_000 });
+    await expect(shipsPage.unknownShipLegendItem).toContainText('Unknown location');
+
+    // Lazy repair: the client re-issues the deterministic asteroid-belt upsert.
+    expect(capturedShipUpsertRequest).not.toBeNull();
+    expect(capturedShipUpsertRequest).toHaveProperty('playerName', TEST_PLAYER);
+    expect(capturedShipUpsertRequest).toHaveProperty('characterId', 'char-viewer-1');
+    expect(capturedShipUpsertRequest?.ship?.id).toBe('ship-broken-1');
+    const pos = capturedShipUpsertRequest?.ship?.spatial?.positionKm;
+    expect(pos).toBeTruthy();
+    const magnitude = Math.hypot(pos.x, pos.y, pos.z);
+    expect(magnitude).toBeGreaterThan(1e7);
   });
 });

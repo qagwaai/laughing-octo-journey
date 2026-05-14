@@ -77,6 +77,12 @@
       <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#3b82f6"></span>
       <span>{{ t.game.viewer.legendInactiveShip }}</span>
     </div>
+    @if (hasUnknownSpatialShip()) {
+      <div class="viewer-legend__item" data-testid="viewer-legend-unknown-ship">
+        <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#ef4444"></span>
+        <span>{{ t.game.viewer.legendUnknownShip }}</span>
+      </div>
+    }
   </div>
 
   @if (hoveredBody(); as body) {

@@ -55,8 +55,8 @@
     [color]="ship.color"
     [roughness]="0.5"
     [metalness]="0.3"
-    [emissive]="ship.isActive ? '#78350f' : '#1e3a5f'"
-    [emissiveIntensity]="0.4"
+    [emissive]="targetedBodyId() === ship.id ? '#92400e' : ship.isActive ? '#78350f' : '#1e3a5f'"
+    [emissiveIntensity]="targetedBodyId() === ship.id ? 0.65 : 0.4"
   />
 </ngt-mesh>
 }

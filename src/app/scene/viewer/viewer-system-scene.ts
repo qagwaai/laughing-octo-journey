@@ -13,6 +13,7 @@ import {
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Euler, Quaternion, Vector3 } from 'three';
+import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import type { ShipSummary } from '../../model/ship-list';
@@ -21,6 +22,8 @@ import {
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
   VIEWER_SCENE_ACTIVE_SHIP_COLOR,
   VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
   resolveAnchoredOrbitSceneProfile,
   isStarBody,
   isMarketStationBody,
@@ -58,6 +61,7 @@ interface RenderedShip {
   color: string;
   position: [number, number, number];
   isActive: boolean;
+  isUnknownSpatial: boolean;
 }
 
 interface OrbitEllipse {
@@ -232,6 +236,72 @@ export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
   });
 }
 
+/**
+ * Pure helper that maps ship summaries to viewer-ready render descriptors.
+ *
+ * - Ships with invalid spatial (null / malformed / sun-origin) are routed to a
+ *   synthetic offset and flagged via `isUnknownSpatial: true` with a distinct
+ *   color so they remain visible while lazy repair runs upstream.
+ * - Otherwise the position is projected from km to scene units along the unit
+ *   vector of the spatial position using the same log-distance scaling as the
+ *   bodies (see `resolveSceneDistanceFromKm`).
+ */
+export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | null): RenderedShip[] {
+  return ships.map((ship): RenderedShip => {
+    const isActive = activeShipId !== null && ship.id === activeShipId;
+    if (!isValidShipSpatial(ship.spatial)) {
+      return {
+        id: ship.id,
+        displayName: ship.name?.trim() || ship.id,
+        color: VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+        position: [...VIEWER_SCENE_UNKNOWN_SHIP_POSITION] as [number, number, number],
+        isActive,
+        isUnknownSpatial: true,
+      };
+    }
+    const pos = ship.spatial.positionKm;
+    const magnitudeKm = Math.hypot(pos.x, pos.y, pos.z);
+    const scaled = resolveSceneDistanceFromKm(magnitudeKm);
+    const scenePos: [number, number, number] = [
+      +((pos.x / magnitudeKm) * scaled).toFixed(3),
+      +((pos.y / magnitudeKm) * scaled).toFixed(3),
+      +((pos.z / magnitudeKm) * scaled).toFixed(3),
+    ];
+    return {
+      id: ship.id,
+      displayName: ship.name?.trim() || ship.id,
+      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+      position: scenePos,
+      isActive,
+      isUnknownSpatial: false,
+    };
+  });
+}
+
+/**
+ * Resolve a target id to a scene-space position.
+ *
+ * Target ids primarily refer to celestial bodies, but the details panel can
+ * also emit ship ids. This helper enables camera fly-to for both paths.
+ */
+export function resolveTargetScenePosition(
+  targetId: string,
+  renderedBodies: ReadonlyArray<{ id: string; position: [number, number, number] }>,
+  renderedShips: ReadonlyArray<{ id: string; position: [number, number, number] }>,
+): [number, number, number] | null {
+  const targetBody = renderedBodies.find((body) => body.id === targetId);
+  if (targetBody) {
+    return targetBody.position;
+  }
+
+  const targetShip = renderedShips.find((ship) => ship.id === targetId);
+  if (targetShip) {
+    return targetShip.position;
+  }
+
+  return null;
+}
+
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
@@ -270,32 +340,7 @@ export class ViewerSystemScene {
 
   protected readonly rendered = computed<RenderedBody[]>(() => mapBodiesToRendered(this.bodies()));
 
-  protected readonly renderedShips = computed<RenderedShip[]>(() => {
-    const activeId = this.activeShipId();
-    return this.ships().map((ship): RenderedShip => {
-      const pos = ship.spatial?.positionKm ?? { x: 0, y: 0, z: 0 };
-      const magnitudeKm = Math.hypot(pos.x, pos.y, pos.z);
-      let scenePos: [number, number, number];
-      if (magnitudeKm <= 0) {
-        scenePos = [0, 0, 0];
-      } else {
-        const scaled = resolveSceneDistanceFromKm(magnitudeKm);
-        scenePos = [
-          +((pos.x / magnitudeKm) * scaled).toFixed(3),
-          +((pos.y / magnitudeKm) * scaled).toFixed(3),
-          +((pos.z / magnitudeKm) * scaled).toFixed(3),
-        ];
-      }
-      const isActive = activeId !== null && ship.id === activeId;
-      return {
-        id: ship.id,
-        displayName: ship.name?.trim() || ship.id,
-        color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
-        position: scenePos,
-        isActive,
-      };
-    });
-  });
+  protected readonly renderedShips = computed<RenderedShip[]>(() => mapShipsToRendered(this.ships(), this.activeShipId()));
 
   protected readonly focusedPlanetId = signal<string | null>(null);
 
@@ -579,15 +624,17 @@ export class ViewerSystemScene {
   }
 
   private flyToTargetBody(targetBodyId: string): void {
-    const targetBody = this.rendered().find((body) => body.id === targetBodyId);
-    if (!targetBody) {
+    const targetPosition = resolveTargetScenePosition(targetBodyId, this.rendered(), this.renderedShips());
+    if (!targetPosition) {
       this.activeTargetFlightId.set(null);
       return;
     }
 
+    const targetBody = this.rendered().find((body) => body.id === targetBodyId);
+    const flyDistance = targetBody ? Math.max(3.5, Math.min(14, targetBody.radius * 16)) : 5;
+
     this.activeTargetFlightId.set(targetBodyId);
-    const flyDistance = Math.max(3.5, Math.min(14, targetBody.radius * 16));
-    this.beginCameraTween(targetBody.position, flyDistance, undefined, VIEWER_TARGET_FLY_DURATION_SEC, 'target-fly');
+    this.beginCameraTween(targetPosition, flyDistance, undefined, VIEWER_TARGET_FLY_DURATION_SEC, 'target-fly');
   }
 
   private clearPlanetFocus(): void {

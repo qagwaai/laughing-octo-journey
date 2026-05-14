@@ -27,6 +27,14 @@ export class ViewerShipsPage {
     return this.inactiveShipLegendItem.locator('.viewer-legend__swatch');
   }
 
+  get unknownShipLegendItem() {
+    return this.page.getByTestId('viewer-legend-unknown-ship');
+  }
+
+  get unknownShipLegendSwatch() {
+    return this.unknownShipLegendItem.locator('.viewer-legend__swatch');
+  }
+
   async assertLegendVisible() {
     await expect(this.legend).toBeVisible();
     await expect(this.activeShipLegendItem).toBeVisible();

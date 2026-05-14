@@ -17,6 +17,10 @@ export const VIEWER_SCENE_MARKET_STATION_COLOR = '#22c55e';
 export const VIEWER_SCENE_MARKET_ORBIT_COLOR = '#86efac';
 export const VIEWER_SCENE_ACTIVE_SHIP_COLOR = '#fbbf24';
 export const VIEWER_SCENE_INACTIVE_SHIP_COLOR = '#3b82f6';
+/** Color for ships whose spatial state is missing or invalid; rendered at a synthetic offset. */
+export const VIEWER_SCENE_UNKNOWN_SHIP_COLOR = '#ef4444';
+/** Scene-space offset used for ships with unknown/invalid spatial state, so they remain visible. */
+export const VIEWER_SCENE_UNKNOWN_SHIP_POSITION: [number, number, number] = [8, 0, 0];
 export const VIEWER_SCENE_DISTANCE_LOG_BASE = 6;
 export const VIEWER_SCENE_DISTANCE_REFERENCE_KM = 1_000_000; // 1 Mkm reference for log scaling.
 export const VIEWER_SCENE_DISTANCE_UNIT = 5;

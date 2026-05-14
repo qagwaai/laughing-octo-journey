@@ -7,12 +7,17 @@ import {
   type MarketListByLocationResponse,
   type MarketSummary,
 } from '../../model/market-list';
+import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
+import { isValidShipSpatial } from '../../model/math/spatial';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import type { ShipSummary, ShipListRequest, ShipListResponse } from '../../model/ship-list';
+import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
 import { MarketService } from '../../services/market.service';
+import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
+import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
@@ -53,6 +58,7 @@ export default class ViewerScenePage {
   private solarSystemService = inject(SolarSystemService);
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
+  private socketService = inject(SocketService);
 
   private navigationState: ViewerSceneNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ViewerSceneNavigationState | undefined) ??
@@ -74,6 +80,9 @@ export default class ViewerScenePage {
   protected zoomPercent = computed<number>(() => Math.round(this.zoomLevel()));
 
   protected hasSystem = computed(() => this.solarSystemId() !== null);
+
+  /** True when at least one ship in the active list has missing/invalid spatial state. */
+  protected hasUnknownSpatialShip = computed<boolean>(() => this.ships().some((s) => !isValidShipSpatial(s.spatial)));
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
@@ -221,11 +230,64 @@ export default class ViewerScenePage {
         this.ships.set([]);
         return;
       }
-      const systemShips = (response.ships ?? []).filter(
-        (ship) => ship.spatial?.solarSystemId === solarSystemId,
+      const allShips = response.ships ?? [];
+      const systemShips = allShips.filter(
+        (ship) => !ship.spatial || ship.spatial.solarSystemId === solarSystemId,
       );
       this.ships.set(systemShips);
+      this.maybeRepairInvalidShipSpatial(playerName, sessionKey, solarSystemId, allShips);
     });
+  }
+
+  /**
+   * If any ship for the active character has missing or sun-origin spatial, run
+   * the deterministic starter-ship upsert again to give it a real asteroid-belt
+   * position. Idempotent because the seed is derived from
+   * `(playerName, characterId, shipId)`. Called after `loadShipsForSystem` so
+   * legacy characters (or those whose initial upsert failed) self-heal on the
+   * first viewer load.
+   */
+  private repairedShipIds = new Set<string>();
+  private maybeRepairInvalidShipSpatial(
+    playerName: string,
+    sessionKey: string,
+    solarSystemId: string,
+    ships: ShipSummary[],
+  ): void {
+    const character = this.sessionService.activeCharacter();
+    if (!character?.id) {
+      return;
+    }
+    for (const ship of ships) {
+      if (!ship?.id || isValidShipSpatial(ship.spatial)) {
+        continue;
+      }
+      if (this.repairedShipIds.has(ship.id)) {
+        continue;
+      }
+      this.repairedShipIds.add(ship.id);
+      const update = generateDeterministicStarterShipUpdate(playerName, character.id, ship.id);
+      const upsertRequest: ShipUpsertRequest = {
+        playerName,
+        characterId: character.id,
+        sessionKey,
+        ship: update,
+      };
+      appLogger.warn(
+        `Repairing ship ${ship.id} with invalid spatial; re-running deterministic asteroid-belt upsert.`,
+      );
+      this.socketService.upsertShip(upsertRequest, (upsertResponse: ShipUpsertResponse) => {
+        if (!upsertResponse.success) {
+          appLogger.warn(`Ship spatial repair failed for ${ship.id}:`, upsertResponse.message);
+          return;
+        }
+        if (this.solarSystemId() !== solarSystemId) {
+          return;
+        }
+        // Refresh ship list so the viewer picks up the repaired spatial.
+        this.loadShipsForSystem(playerName, sessionKey, solarSystemId);
+      });
+    }
   }
 
   protected onHoveredBodyChange(body: ViewerBody | null): void {

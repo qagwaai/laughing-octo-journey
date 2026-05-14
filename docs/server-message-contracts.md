@@ -102,6 +102,31 @@ driveProfile?: {
 
 All numeric fields must be positive and finite; invalid profiles are silently dropped.
 
+### Ship Spatial Placement (Free Bodies)
+
+Ships are **free barycentric bodies**: they are NOT anchored to any celestial body and may
+occupy any position in the solar system, like a celestial body. The `spatial` field on a
+ship summary uses the same canonical `SpatialState` shape (`{ solarSystemId, frame:
+'barycentric', positionKm, epochMs }`) as celestial bodies.
+
+The client treats the following spatial values as **invalid** and will not render the ship
+at that position:
+
+- `spatial` is `null` or `undefined`
+- `frame` is not `'barycentric'`
+- `solarSystemId` is empty
+- `positionKm.{x,y,z}` contains `NaN` or `Infinity`
+- `positionKm` magnitude is less than 1 km (sun-origin / `(0,0,0)` placeholder)
+
+Invalid spatial triggers a **lazy client-side repair**: the client re-issues a
+deterministic `ship-upsert-request` seeded by `(playerName, characterId, shipId)` that
+places the ship in the asteroid belt (~3.29e8–4.79e8 km from the sun). While the repair
+is in flight, the viewer renders the ship at a fallback offset with the "Unknown location"
+legend swatch (red, `#ef4444`).
+
+Servers SHOULD always emit ships with valid non-origin spatial; the client repair path
+exists to recover from legacy or partially seeded data.
+
 ### Locale Handling
 
 - `register` and `login` accept optional `locale` parameter

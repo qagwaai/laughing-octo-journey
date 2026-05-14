@@ -603,6 +603,7 @@ export const en = {
       legendMarketOrbit: 'Market Orbit',
       legendActiveShip: 'Active Ship',
       legendInactiveShip: 'Inactive Ships',
+      legendUnknownShip: 'Unknown location',
       detailsBackLabel: '← Back to Systems',
       detailsSectionTitle: 'Bodies & Markets',
       detailsLoadingStatus: 'Loading bodies...',

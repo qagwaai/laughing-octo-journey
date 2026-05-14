@@ -2,6 +2,7 @@ import {
   assertSameSpatialFrame,
   distanceKm,
   distanceSquaredKm,
+  isValidShipSpatial,
   isWithinRange,
   relativePositionKm,
   type SpatialState,
@@ -43,5 +44,33 @@ describe('spatial helpers', () => {
     expect(() => assertSameSpatialFrame(origin, { ...target, solarSystemId: 'alpha-centauri' })).toThrowError(
       /matching solarSystemId/,
     );
+  });
+
+  describe('isValidShipSpatial', () => {
+    it('rejects null/undefined', () => {
+      expect(isValidShipSpatial(null)).toBe(false);
+      expect(isValidShipSpatial(undefined)).toBe(false);
+    });
+
+    it('rejects sun-origin (0,0,0) placeholders', () => {
+      expect(isValidShipSpatial(origin)).toBe(false);
+    });
+
+    it('accepts a real off-origin barycentric position', () => {
+      expect(isValidShipSpatial(target)).toBe(true);
+    });
+
+    it('rejects empty solarSystemId', () => {
+      expect(isValidShipSpatial({ ...target, solarSystemId: '' })).toBe(false);
+    });
+
+    it('rejects malformed positionKm', () => {
+      expect(
+        isValidShipSpatial({
+          ...target,
+          positionKm: { x: NaN as unknown as number, y: 0, z: 0 } as SpatialState['positionKm'],
+        }),
+      ).toBe(false);
+    });
   });
 });

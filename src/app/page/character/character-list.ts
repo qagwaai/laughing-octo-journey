@@ -8,10 +8,12 @@ import { GameJoinRequest } from '../../model/game-join';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
+import type { ShipListRequest, ShipListResponse, ShipSummary } from '../../model/ship-list';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
+import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
@@ -32,6 +34,7 @@ export default class CharacterListPage implements OnDestroy {
   private gameSessionService = inject(GameSessionService);
   private socketService = inject(SocketService);
   private sessionService = inject(SessionService);
+  private shipService = inject(ShipService);
   private router = inject(Router);
   private unsubscribeInvalidSession?: () => void;
 
@@ -251,18 +254,6 @@ export default class CharacterListPage implements OnDestroy {
       firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
     const isFirstTargetCompleted = firstTargetStatus === 'completed' || firstTargetStatus === 'turned-in';
 
-    if (isFirstTargetInProgress) {
-      this.sessionService.setActiveShip({
-        id: `starter-pod-${character.id}`,
-        name: DEFAULT_SHIP_MODEL,
-        model: DEFAULT_SHIP_MODEL,
-        tier: DEFAULT_SHIP_TIER,
-        status: 'ACTIVE',
-        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
-      });
-      window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
-    }
-
     const outlets = isFirstTargetInProgress
       ? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
       : isFirstTargetCompleted
@@ -278,14 +269,47 @@ export default class CharacterListPage implements OnDestroy {
         } satisfies ShipExteriorViewMissionContext)
       : undefined;
 
-    this.router.navigate([{ outlets }], {
-      preserveFragment: true,
-      state: {
-        playerName,
-        joinCharacter: character,
-        ...(missionContext ? { missionContext } : {}),
-        ...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
-      },
+    const navigateToOutlets = (joinShip?: ShipSummary): void => {
+      this.router.navigate([{ outlets }], {
+        preserveFragment: true,
+        state: {
+          playerName,
+          joinCharacter: character,
+          ...(joinShip ? { joinShip } : {}),
+          ...(missionContext ? { missionContext } : {}),
+          ...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
+        },
+      });
+    };
+
+    if (!isFirstTargetInProgress) {
+      navigateToOutlets();
+      return;
+    }
+
+    // First-target in progress: fetch the real ship before navigating so the
+    // cold-boot scan flow operates on a ship with a real spatial location
+    // (placed in the asteroid belt by `generateDeterministicStarterShipUpdate`).
+    // The previous synthetic `(0, 0, 0)` placeholder rendered the ship inside
+    // the sun in the stellar viewer; loading the real ship avoids that.
+    const shipListRequest: ShipListRequest = {
+      playerName,
+      characterId: character.id,
+      sessionKey: this.sessionService.getSessionKey()!,
+    };
+    this.shipService.listShips(shipListRequest, (response: ShipListResponse) => {
+      if (response.success) {
+        const resolved = (response.ships ?? [])[0];
+        if (resolved) {
+          this.sessionService.setActiveShip(resolved);
+        } else {
+          appLogger.warn('ship-list returned no ships during cold-boot join; proceeding without active ship.');
+        }
+      } else {
+        appLogger.warn('ship-list failed during cold-boot join; proceeding without active ship:', response.message);
+      }
+      window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+      navigateToOutlets(this.sessionService.activeShip() ?? undefined);
     });
   }
 

@@ -1,5 +1,17 @@
 import type { ViewerBody } from '../../model/solar-system-get';
-import { mapBodiesToRendered, resolveViewerSceneCameraDistanceRange } from './viewer-system-scene';
+import type { ShipSummary } from '../../model/ship-list';
+import {
+  mapBodiesToRendered,
+  mapShipsToRendered,
+  resolveTargetScenePosition,
+  resolveViewerSceneCameraDistanceRange,
+} from './viewer-system-scene';
+import {
+  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
+} from './viewer-formatters';
 
 const star: ViewerBody = {
   id: 'star-1',
@@ -75,5 +87,94 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(nearRange.min).toBeLessThan(nearRange.max);
     expect(farRange.max).toBeGreaterThanOrEqual(nearRange.max);
     expect(farRange.min).toBeGreaterThan(0);
+  });
+});
+
+describe('mapShipsToRendered', () => {
+  const beltShip: ShipSummary = {
+    id: 'ship-belt',
+    name: 'Nomad',
+    model: 'Scavenger Pod',
+    tier: 1,
+    status: 'ACTIVE',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 3.5e8, y: 0, z: 0 },
+      epochMs: 1700000000000,
+    },
+  };
+  const ghostShip = {
+    id: 'ship-ghost',
+    name: 'Wraith',
+    model: 'Scavenger Pod',
+    tier: 1,
+    status: 'ACTIVE',
+    spatial: null,
+  } as unknown as ShipSummary;
+  const sunOriginShip: ShipSummary = {
+    id: 'ship-origin',
+    name: 'Sunwreck',
+    model: 'Scavenger Pod',
+    tier: 1,
+    status: 'ACTIVE',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 0, y: 0, z: 0 },
+      epochMs: 0,
+    },
+  };
+
+  it('marks the matching active ship with the amber color', () => {
+    const rendered = mapShipsToRendered([beltShip], 'ship-belt');
+    expect(rendered).toHaveSize(1);
+    expect(rendered[0].isActive).toBeTrue();
+    expect(rendered[0].isUnknownSpatial).toBeFalse();
+    expect(rendered[0].color).toBe(VIEWER_SCENE_ACTIVE_SHIP_COLOR);
+    expect(rendered[0].position[0]).toBeGreaterThan(0);
+  });
+
+  it('colors non-active ships with the inactive color', () => {
+    const rendered = mapShipsToRendered([beltShip], 'someone-else');
+    expect(rendered[0].isActive).toBeFalse();
+    expect(rendered[0].color).toBe(VIEWER_SCENE_INACTIVE_SHIP_COLOR);
+  });
+
+  it('routes ships with null spatial to the unknown-offset fallback', () => {
+    const rendered = mapShipsToRendered([ghostShip], null);
+    expect(rendered[0].isUnknownSpatial).toBeTrue();
+    expect(rendered[0].color).toBe(VIEWER_SCENE_UNKNOWN_SHIP_COLOR);
+    expect(rendered[0].position).toEqual(VIEWER_SCENE_UNKNOWN_SHIP_POSITION);
+  });
+
+  it('routes ships sitting at the sun origin to the unknown-offset fallback', () => {
+    const rendered = mapShipsToRendered([sunOriginShip], null);
+    expect(rendered[0].isUnknownSpatial).toBeTrue();
+    expect(rendered[0].color).toBe(VIEWER_SCENE_UNKNOWN_SHIP_COLOR);
+    expect(rendered[0].position).toEqual(VIEWER_SCENE_UNKNOWN_SHIP_POSITION);
+  });
+});
+
+describe('resolveTargetScenePosition', () => {
+  it('resolves a body target id to the body position', () => {
+    const bodyPos: [number, number, number] = [1, 2, 3];
+    const shipPos: [number, number, number] = [8, 0, 0];
+    const result = resolveTargetScenePosition('earth', [{ id: 'earth', position: bodyPos }], [{ id: 'ship-1', position: shipPos }]);
+    expect(result).toEqual(bodyPos);
+  });
+
+  it('falls back to ship position when target id is a ship', () => {
+    const result = resolveTargetScenePosition(
+      'ship-1',
+      [{ id: 'earth', position: [1, 2, 3] }],
+      [{ id: 'ship-1', position: [8, 0, 0] }],
+    );
+    expect(result).toEqual([8, 0, 0]);
+  });
+
+  it('returns null when target id does not exist in bodies or ships', () => {
+    const result = resolveTargetScenePosition('missing', [{ id: 'earth', position: [1, 2, 3] }], [{ id: 'ship-1', position: [8, 0, 0] }]);
+    expect(result).toBeNull();
   });
 });

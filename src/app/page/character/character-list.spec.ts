@@ -20,7 +20,9 @@ import {
 import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { INVALID_SESSION_EVENT } from '../../model/session';
+import type { ShipListRequest, ShipListResponse, ShipSummary } from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import CharacterListPage from './character-list';
 
@@ -41,14 +43,30 @@ function setup(options: {
   socketService: MockSocketService;
   sessionService: MockSessionService;
   playerName?: string;
+  shipService?: { listShips: jasmine.Spy };
 }): { component: CharacterListPage; fixture: ComponentFixture<CharacterListPage> } {
   const router = makeMockRouter(options.playerName ?? 'Pioneer');
+  const shipService =
+    options.shipService ??
+    ({
+      listShips: jasmine.createSpy('listShips').and.callFake(
+        (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+          cb({
+            success: true,
+            message: 'ok',
+            playerName: req.playerName,
+            characterId: req.characterId,
+            ships: [],
+          }),
+      ),
+    } as { listShips: jasmine.Spy });
 
   TestBed.configureTestingModule({
     imports: [CharacterListPage],
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: ShipService, useValue: shipService },
       { provide: Router, useValue: router },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -231,14 +249,28 @@ describe('CharacterListPage', () => {
 
   describe('navigateToCharacterSetup()', () => {
     let router: ReturnType<typeof makeMockRouter>;
+    let shipServiceStub: { listShips: jasmine.Spy };
 
     beforeEach(() => {
       router = makeMockRouter('Pioneer');
+      shipServiceStub = {
+        listShips: jasmine.createSpy('listShips').and.callFake(
+          (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+            cb({
+              success: true,
+              message: 'ok',
+              playerName: req.playerName,
+              characterId: req.characterId,
+              ships: [],
+            }),
+        ),
+      };
       TestBed.configureTestingModule({
         imports: [CharacterListPage],
         providers: [
           { provide: SocketService, useValue: socketService },
           { provide: SessionService, useValue: sessionService },
+          { provide: ShipService, useValue: shipServiceStub },
           { provide: Router, useValue: router },
         ],
         schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -318,6 +350,35 @@ describe('CharacterListPage', () => {
 
     it('should navigate directly to game-main and cold-boot-scan when first-target is already started', () => {
       const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+      const realShip: ShipSummary = {
+        id: 'real-ship-1',
+        name: 'Nomad',
+        model: 'Scavenger Pod',
+        tier: 1,
+        status: 'ACTIVE',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 3.5e8, y: 0, z: 1e7 },
+          epochMs: 1700000000000,
+        },
+      };
+      shipServiceStub.listShips.and.callFake(
+        (req: ShipListRequest, cb: (resp: ShipListResponse) => void) => {
+          expect(req).toEqual({
+            playerName: 'Pioneer',
+            characterId: '1',
+            sessionKey: 'test-session-key',
+          });
+          cb({
+            success: true,
+            message: 'ok',
+            playerName: req.playerName,
+            characterId: req.characterId,
+            ships: [realShip],
+          });
+        },
+      );
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
@@ -328,15 +389,8 @@ describe('CharacterListPage', () => {
       };
       component.navigateToGameJoin(character);
 
-      expect(sessionService.activeShip()).toEqual(
-        jasmine.objectContaining({
-          id: 'starter-pod-1',
-          name: 'Scavenger Pod',
-          model: 'Scavenger Pod',
-          tier: 1,
-          status: 'ACTIVE',
-        }),
-      );
+      expect(shipServiceStub.listShips).toHaveBeenCalled();
+      expect(sessionService.activeShip()).toBe(realShip);
 
       expect(dispatchSpy).toHaveBeenCalled();
       const dispatchedEvent = dispatchSpy.calls.mostRecent().args[0] as Event;
@@ -353,6 +407,7 @@ describe('CharacterListPage', () => {
           state: {
             playerName: 'Pioneer',
             joinCharacter: character,
+            joinShip: realShip,
             missionContext: {
               missionId: FIRST_TARGET_MISSION_ID,
               missionStatusHint: 'started',
@@ -525,6 +580,21 @@ describe('CharacterListPage', () => {
         providers: [
           { provide: SocketService, useValue: socketService },
           { provide: SessionService, useValue: sessionService },
+          {
+            provide: ShipService,
+            useValue: {
+              listShips: jasmine.createSpy('listShips').and.callFake(
+                (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+                  cb({
+                    success: true,
+                    message: 'ok',
+                    playerName: req.playerName,
+                    characterId: req.characterId,
+                    ships: [],
+                  }),
+              ),
+            },
+          },
           { provide: Router, useValue: router },
         ],
         schemas: [CUSTOM_ELEMENTS_SCHEMA],

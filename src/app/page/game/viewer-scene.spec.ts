@@ -12,6 +12,8 @@ import {
   MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
   MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
 } from '../../model/market-list';
+import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT } from '../../model/ship-list';
+import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -231,5 +233,101 @@ describe('ViewerScenePage', () => {
     component['onZoomChange']('42');
     expect(component['zoomLevel']()).toBe(42);
     expect(component['zoomPercent']()).toBe(42);
+  });
+
+  it('lazy-repairs ships with invalid spatial by re-issuing the deterministic upsert', () => {
+    const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const sessionService = TestBed.inject(SessionService) as unknown as MockSessionService;
+    sessionService.setActiveCharacter({ id: 'char-1', characterName: 'Nova', level: 5 });
+
+    // Hand the SocketService mock an `upsertShip` spy so the production code's
+    // `socketService.upsertShip(...)` call is observable in this test.
+    (socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip = jasmine.createSpy('upsertShip');
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      stars: [],
+      bodies: [],
+    });
+    fixture.detectChanges();
+
+    expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_LIST_REQUEST_EVENT)).toBeTrue();
+
+    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 'ship-broken',
+          name: 'Wraith',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'ACTIVE',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    const upsertShipSpy = (socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip;
+    expect(upsertShipSpy).toHaveBeenCalledTimes(1);
+    const [request] = upsertShipSpy.calls.mostRecent().args as [
+      { playerName: string; characterId: string; ship: { id: string; spatial: { positionKm: { x: number } } } },
+    ];
+    expect(request.playerName).toBe('Pioneer');
+    expect(request.characterId).toBe('char-1');
+    expect(request.ship.id).toBe('ship-broken');
+    // Deterministic asteroid-belt placement: magnitude well above the sun-origin floor.
+    const { x, y, z } = request.ship.spatial.positionKm as { x: number; y: number; z: number };
+    expect(Math.hypot(x, y, z)).toBeGreaterThan(1e7);
+    // Ship is still surfaced to the viewer so the unknown-spatial fallback can render it.
+    expect(component['ships']().some((s) => s.id === 'ship-broken')).toBeTrue();
+    expect(component['hasUnknownSpatialShip']()).toBeTrue();
+  });
+
+  it('does not lazy-repair ships that already have valid spatial', () => {
+    const { socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const sessionService = TestBed.inject(SessionService) as unknown as MockSessionService;
+    sessionService.setActiveCharacter({ id: 'char-1', characterName: 'Nova', level: 5 });
+    (socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip = jasmine.createSpy('upsertShip');
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      solarSystemId: 'sol',
+      stars: [],
+      bodies: [],
+    });
+    fixture.detectChanges();
+
+    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 'ship-ok',
+          name: 'Nomad',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'ACTIVE',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 3.5e8, y: 0, z: 0 },
+            epochMs: 1700000000000,
+          },
+        },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect((socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip).not.toHaveBeenCalled();
+    expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_UPSERT_REQUEST_EVENT)).toBeFalse();
   });
 });
