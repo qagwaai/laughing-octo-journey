@@ -601,6 +601,8 @@ export const en = {
       legendPlanetOrbit: 'Planet Orbit',
       legendMarketStation: 'Market Station',
       legendMarketOrbit: 'Market Orbit',
+      legendActiveShip: 'Active Ship',
+      legendInactiveShip: 'Inactive Ships',
       detailsBackLabel: '← Back to Systems',
       detailsSectionTitle: 'Bodies & Markets',
       detailsLoadingStatus: 'Loading bodies...',
