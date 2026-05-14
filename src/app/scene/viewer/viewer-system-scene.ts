@@ -15,9 +15,12 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Euler, Quaternion, Vector3 } from 'three';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import type { ShipSummary } from '../../model/ship-list';
 import {
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
   resolveAnchoredOrbitSceneProfile,
   isStarBody,
   isMarketStationBody,
@@ -33,6 +36,8 @@ export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
   summary: SolarSystemSummary | null;
   targetBodyId?: string | null;
+  ships?: ShipSummary[];
+  activeShipId?: string | null;
 }
 
 interface RenderedBody {
@@ -45,6 +50,14 @@ interface RenderedBody {
   position: [number, number, number];
   isStar: boolean;
   isMarketStation: boolean;
+}
+
+interface RenderedShip {
+  id: string;
+  displayName: string;
+  color: string;
+  position: [number, number, number];
+  isActive: boolean;
 }
 
 interface OrbitEllipse {
@@ -244,12 +257,41 @@ export class ViewerSystemScene {
   summary = input<SolarSystemSummary | null>(null);
   targetBodyId = input<string | null>(null);
   zoomLevel = input<number>(18);
+  ships = input<ShipSummary[]>([]);
+  activeShipId = input<string | null>(null);
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
   @Output() planetViewRequest = new EventEmitter<ViewerBody>();
   @Output() zoomLevelChange = new EventEmitter<number>();
 
   protected readonly rendered = computed<RenderedBody[]>(() => mapBodiesToRendered(this.bodies()));
+
+  protected readonly renderedShips = computed<RenderedShip[]>(() => {
+    const activeId = this.activeShipId();
+    return this.ships().map((ship): RenderedShip => {
+      const pos = ship.spatial?.positionKm ?? { x: 0, y: 0, z: 0 };
+      const magnitudeKm = Math.hypot(pos.x, pos.y, pos.z);
+      let scenePos: [number, number, number];
+      if (magnitudeKm <= 0) {
+        scenePos = [0, 0, 0];
+      } else {
+        const scaled = resolveSceneDistanceFromKm(magnitudeKm);
+        scenePos = [
+          +((pos.x / magnitudeKm) * scaled).toFixed(3),
+          +((pos.y / magnitudeKm) * scaled).toFixed(3),
+          +((pos.z / magnitudeKm) * scaled).toFixed(3),
+        ];
+      }
+      const isActive = activeId !== null && ship.id === activeId;
+      return {
+        id: ship.id,
+        displayName: ship.name?.trim() || ship.id,
+        color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+        position: scenePos,
+        isActive,
+      };
+    });
+  });
 
   protected readonly focusedPlanetId = signal<string | null>(null);
 

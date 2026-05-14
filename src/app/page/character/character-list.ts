@@ -243,6 +243,7 @@ export default class CharacterListPage implements OnDestroy {
       characterId: character.id,
       sessionKey: this.sessionService.getSessionKey()!,
     };
+    this.sessionService.setActiveCharacter(character);
     this.gameSessionService.requestGameJoin(request);
 
     const firstTargetStatus = this.getFirstTargetStatus(character);

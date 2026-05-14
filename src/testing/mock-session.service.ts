@@ -1,3 +1,4 @@
+import type { PlayerCharacterSummary } from '../app/model/character-list';
 import type { ShipSummary } from '../app/model/ship-list';
 import { createSignal, WritableSignalLike } from './signal';
 
@@ -14,23 +15,28 @@ export interface MockSessionService {
   /** Direct read accessor — mirrors the storedKey getter used in some specs. */
   readonly storedKey: string | null;
   activeShip: WritableSignalLike<ShipSummary | null>;
+  activeCharacter: WritableSignalLike<PlayerCharacterSummary | null>;
   setSessionKey(key: string): void;
   getSessionKey(): string | null;
   clearSession(): void;
   hasSession(): boolean;
   setActiveShip(ship: ShipSummary): void;
   clearActiveShip(): void;
+  setActiveCharacter(character: PlayerCharacterSummary): void;
+  clearActiveCharacter(): void;
 }
 
 export function createMockSessionService(initialKey: string | null = null): MockSessionService {
   const state = { key: initialKey };
   const activeShip = createSignal<ShipSummary | null>(null);
+  const activeCharacter = createSignal<PlayerCharacterSummary | null>(null);
 
   return {
     get storedKey() {
       return state.key;
     },
     activeShip,
+    activeCharacter,
     setSessionKey(key: string) {
       state.key = key;
     },
@@ -40,6 +46,7 @@ export function createMockSessionService(initialKey: string | null = null): Mock
     clearSession() {
       state.key = null;
       activeShip.set(null);
+      activeCharacter.set(null);
     },
     hasSession() {
       return state.key !== null;
@@ -49,6 +56,12 @@ export function createMockSessionService(initialKey: string | null = null): Mock
     },
     clearActiveShip() {
       activeShip.set(null);
+    },
+    setActiveCharacter(character: PlayerCharacterSummary) {
+      activeCharacter.set(character);
+    },
+    clearActiveCharacter() {
+      activeCharacter.set(null);
     },
   };
 }

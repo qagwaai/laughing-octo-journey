@@ -433,6 +433,8 @@ export const it: DeepPartial<EnLocale> = {
       legendPlanetOrbit: 'Orbita pianeta',
       legendMarketStation: 'Stazione mercato',
       legendMarketOrbit: 'Orbita mercato',
+      legendActiveShip: 'Nave attiva',
+      legendInactiveShip: 'Navi inattive',
       detailsBackLabel: '← Torna ai sistemi',
       detailsSectionTitle: 'Corpi e mercati',
       detailsLoadingStatus: 'Caricamento corpi...',

@@ -89,6 +89,7 @@ export default class GameJoinPage {
       return;
     }
 
+    this.sessionService.setActiveCharacter(character);
     this.isLoadingShips.set(true);
     this.shipListError.set(null);
 
