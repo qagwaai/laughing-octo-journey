@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MissionBoardPage } from '../page-objects/mission-board.page';
 
 // ── Shared test data ───────────────────────────────────────────────────────────
 
@@ -56,6 +58,8 @@ async function setupMissionBoardTest(page: Page, characters: object[]) {
 test.describe('Mission Board — mission progress display', () => {
   test('shows completed mission status and stage on mission board after joining in-progress game', async ({ page }) => {
     const { mock } = await setupMissionBoardTest(page, [characterWithStartedMission]);
+    const gameShell = new GameShellPage(page);
+    const missionBoardPage = new MissionBoardPage(page);
 
     mock.on('game-join-request', () => null);
     mock.on('list-missions-request', () => ({
@@ -77,16 +81,15 @@ test.describe('Mission Board — mission progress display', () => {
       },
     }));
 
-    await page.locator('.character-item button[class*="join"]', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame();
     await expect(page).toHaveURL(/left:game-main/);
 
-    await page.locator('button[aria-label="Mission Board"]').click();
-    await expect(page).toHaveURL(/left:mission-board/);
+    await gameShell.openMissionBoard();
 
-    const missionItem = page.locator('.mission-item').first();
+    const missionItem = missionBoardPage.missionItem(0);
     await expect(missionItem).toContainText('Your First Target');
-    await expect(missionItem.locator('.mission-status')).toHaveText('completed');
-    await expect(missionItem.locator('.mission-status')).toHaveAttribute('data-status', 'completed');
+    await expect(missionBoardPage.missionStatus(0)).toHaveText('completed');
+    await expect(missionBoardPage.missionStatus(0)).toHaveAttribute('data-status', 'completed');
     await expect(missionItem).toContainText('Stage 4 of 4 — Complete');
     await expect(missionItem).toContainText('Mission objectives complete. Await further directives.');
   });

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MarketHubPage } from '../page-objects/market-hub.page';
 
 const CHARACTER = {
   id: 'char-market-2',
@@ -52,6 +54,7 @@ type MarketByLocationRequest = {
 
 async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLocationRequest) => void) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -137,23 +140,23 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-  await page.locator('button[aria-label="Market Hub"]').click();
-  await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+  await gameShell.openMarketHub();
 }
 
 test.describe('Market Hub docking and radius behavior', () => {
   test('shows in-system route badge for local non-docked market', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
+    const marketHubPage = new MarketHubPage(page);
     await setupAndOpenMarketHub(page, (request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           if (requests.length === 0) {
-            await page.locator('.reload-btn').click();
+            await marketHubPage.reloadButton.click();
           }
           return requests.length;
         },
@@ -161,7 +164,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBeGreaterThan(0);
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
     const remoteMarket = marketRows.nth(1);
 
     await expect(remoteMarket).toContainText('Remote Market');
@@ -172,6 +175,8 @@ test.describe('Market Hub docking and radius behavior', () => {
     page,
   }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const marketHubPage = new MarketHubPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -256,18 +261,17 @@ test.describe('Market Hub docking and radius behavior', () => {
 
     await loginViaUI(page, mock);
 
-    await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-    await page.locator('button[aria-label="Market Hub"]').click();
-    await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+    await gameShell.openMarketHub();
 
     await expect
       .poll(
         async () => {
-          const count = await page.locator('.market-item').count();
+          const count = await marketHubPage.marketItems.count();
           if (count === 0) {
-            await page.locator('.reload-btn').click();
+            await marketHubPage.reloadButton.click();
           }
           return count;
         },
@@ -275,7 +279,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBe(2);
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
 
     const dockedMarket = marketRows.nth(0);
     await expect(dockedMarket).toContainText('Ceres Exchange');
@@ -290,13 +294,14 @@ test.describe('Market Hub docking and radius behavior', () => {
 
   test('enables transact only for docked market and refreshes with selected radius', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
+    const marketHubPage = new MarketHubPage(page);
     await setupAndOpenMarketHub(page, (request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           if (requests.length === 0) {
-            await page.locator('.reload-btn').click();
+            await marketHubPage.reloadButton.click();
           }
           return requests.length;
         },
@@ -304,7 +309,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBeGreaterThan(0);
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
     await expect(marketRows).toHaveCount(2);
 
     const dockedMarket = marketRows.nth(0);

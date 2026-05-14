@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 
 // ── Shared test data ───────────────────────────────────────────────────────────
 
@@ -25,6 +27,7 @@ function characterListResponse(characters: object[]) {
 
 async function setupAndNavigateToShipHangar(page: Page) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -49,12 +52,11 @@ async function setupAndNavigateToShipHangar(page: Page) {
   await loginViaUI(page, mock);
 
   // Join in-progress game — goes directly to game-main
-  await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
   // Navigate to ship-hangar via the left outlet
-  await page.locator('button[aria-label="Ship Hangar"]').click();
-  await expect(page).toHaveURL(/left:ship-hangar/, { timeout: 10_000 });
+  await gameShell.openShipHangar();
 
   return { mock };
 }
@@ -64,25 +66,27 @@ async function setupAndNavigateToShipHangar(page: Page) {
 test.describe('Character ship badge', () => {
   test('ship badge defaults to "Scavenger Pod" when joining first-target in progress', async ({ page }) => {
     await setupAndNavigateToShipHangar(page);
+    const shipHangarPage = new ShipHangarPage(page);
 
     // first-target in-progress join seeds active ship to the starter pod
-    const badgeName = page.locator('app-character-ship-badge .ship-badge-name');
+    const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toBeVisible({ timeout: 10_000 });
     await expect(badgeName).toHaveText('Scavenger Pod');
   });
 
   test('ship badge shows active ship name after clicking "Set as Active Ship"', async ({ page }) => {
     await setupAndNavigateToShipHangar(page);
+    const shipHangarPage = new ShipHangarPage(page);
 
     // Wait for ship list to populate (headed mode can be slower to render rows)
-    await expect.poll(async () => page.locator('.ship-item').count(), { timeout: 20_000 }).toBeGreaterThan(0);
-    await expect(page.locator('.ship-item').first()).toBeVisible({ timeout: 20_000 });
+    await expect.poll(async () => shipHangarPage.shipItems.count(), { timeout: 20_000 }).toBeGreaterThan(0);
+    await expect(shipHangarPage.shipItem(0)).toBeVisible({ timeout: 20_000 });
 
     // Click the "Set as Active Ship" button for the first ship row
-    await page.locator('.ship-item').first().locator('button', { hasText: 'Set as Active Ship' }).click();
+    await shipHangarPage.setActiveShipButton(0).click();
 
     // Badge should now reflect the chosen ship name
-    const badgeName = page.locator('app-character-ship-badge .ship-badge-name');
+    const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toHaveText('Surveyor', { timeout: 10_000 });
   });
 });

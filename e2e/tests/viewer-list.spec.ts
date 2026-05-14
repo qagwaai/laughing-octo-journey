@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { LoginPage } from '../page-objects/login.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ function solarSystemListResponse(systems: any[]) {
 
 async function setupViewerListTest(page: any, systems: any[] = []) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -85,10 +89,10 @@ async function setupViewerListTest(page: any, systems: any[] = []) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
-  const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+  const joinButton = gameShell.joinButton();
   await expect(joinButton).toBeVisible({ timeout: 10000 });
   await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await joinButton.click();
+  await gameShell.joinGame('Join Game');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
   mock.on('solar-system-list-request', () => ({
@@ -104,13 +108,13 @@ async function setupViewerListTest(page: any, systems: any[] = []) {
 test.describe('Viewer — Solar System List', () => {
   test('loads and displays solar system list after navigation to viewer', async ({ page }) => {
     await setupViewerListTest(page, [SOL_SYSTEM, ALPHA_CENTAURI_SYSTEM, SIRIUS_SYSTEM]);
+    const viewerPage = new ViewerPage(page);
 
     // Navigate to Viewer from the left menu
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await new GameShellPage(page).openViewer();
 
     // Wait for the system list to render
-    const systemList = page.locator('[data-testid="viewer-system-list"]');
+    const systemList = viewerPage.systemList;
     await expect(systemList).toHaveCount(1);
 
     // Verify all systems are displayed
@@ -139,6 +143,8 @@ test.describe('Viewer — Solar System List', () => {
 
   test('displays loading state while fetching solar systems', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -167,10 +173,10 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await joinButton.click();
+    await gameShell.joinGame('Join Game');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register the response handler but delay the response to catch the loading state
@@ -188,11 +194,10 @@ test.describe('Viewer — Solar System List', () => {
     });
 
     // Navigate to Viewer and verify loading state is shown
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     // Confirm loading state before resolving the delayed response
-    const loadingState = page.locator('[data-testid="viewer-loading"]');
+    const loadingState = viewerPage.loadingState;
     await expect(loadingState).toHaveCount(1, { timeout: 5000 });
 
     // Resolve the delayed response
@@ -201,21 +206,24 @@ test.describe('Viewer — Solar System List', () => {
 
   test('displays empty state when no systems are returned', async ({ page }) => {
     await setupViewerListTest(page, []);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
 
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
-    const emptyState = page.locator('[data-testid="viewer-empty"]');
+    const emptyState = viewerPage.emptyState;
     await expect(emptyState).toBeVisible();
     // Match actual i18n string
     await expect(emptyState).toContainText('No solar systems available.');
 
-    const systemList = page.locator('[data-testid="viewer-system-list"]');
+    const systemList = viewerPage.systemList;
     await expect(systemList).not.toBeVisible();
   });
 
   test('displays error when system list request fails', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -244,10 +252,10 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await joinButton.click();
+    await gameShell.joinGame('Join Game');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     mock.on('solar-system-list-request', () => ({
@@ -260,22 +268,22 @@ test.describe('Viewer — Solar System List', () => {
       },
     }));
 
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     const errorState = page.locator('[data-testid="viewer-error"]');
     await expect(errorState).toBeVisible();
     await expect(errorState).toContainText('Database connection error');
 
-    const systemList = page.locator('[data-testid="viewer-system-list"]');
+    const systemList = viewerPage.systemList;
     await expect(systemList).not.toBeVisible();
   });
 
   test('navigates to scene view when system is selected', async ({ page }) => {
     const { mock } = await setupViewerListTest(page, [SOL_SYSTEM]);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
 
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     // Set up the scene response handler for when the user selects a system
     mock.on('solar-system-get-request', () => ({
@@ -291,8 +299,7 @@ test.describe('Viewer — Solar System List', () => {
     }));
 
     // Select the Sol system
-    const solButton = page.locator('.solar-system-item__button', { hasText: 'Sol' });
-    await solButton.click();
+    await viewerPage.selectSystem('Sol');
 
     // Verify navigation to the scene view
     await expect(page).toHaveURL(/right:viewer-scene/);
@@ -300,6 +307,9 @@ test.describe('Viewer — Solar System List', () => {
 
   test('[locale] displays viewer list in Italian locale', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const loginPage = new LoginPage(page);
+    const viewerPage = new ViewerPage(page);
     await mock.setup();
 
     // Register character-list handler
@@ -351,19 +361,19 @@ test.describe('Viewer — Solar System List', () => {
     await mock.connected;
     await socketConnectedInApp;
 
-    await page.locator('#playerName').fill(TEST_PLAYER);
-    await page.locator('#password').fill('testpassword123');
-    await page.locator('button[type="submit"]').click();
+    await loginPage.playerNameInput.fill(TEST_PLAYER);
+    await loginPage.passwordInput.fill('testpassword123');
+    await loginPage.submitButton.click();
 
     mock.push('login-response', loginResponse);
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
-    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await joinButton.click();
+    await gameShell.joinGame('Join Game');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register solar system list handler
@@ -373,11 +383,10 @@ test.describe('Viewer — Solar System List', () => {
     }));
 
     // Navigate to Viewer (use English label which is set first, more reliable)
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     // Verify system list displays
-    const systemList = page.locator('[data-testid="viewer-system-list"]');
+    const systemList = viewerPage.systemList;
     await expect(systemList).toBeVisible();
 
     // Check that system names are displayed (names are same in both locales)

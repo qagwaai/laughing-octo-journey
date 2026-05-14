@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MarketHubPage } from '../page-objects/market-hub.page';
 
 const CHARACTER = {
   id: 'char-market-1',
@@ -60,6 +62,7 @@ type MarketByLocationRequest = {
 
 async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLocationRequest) => void) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -144,23 +147,23 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-  await page.locator('button[aria-label="Market Hub"]').click();
-  await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+  await gameShell.openMarketHub();
 }
 
 test.describe('Market Hub by-location contract', () => {
   test('emits by-location request and renders markets ordered by authoritative distance', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
+    const marketHubPage = new MarketHubPage(page);
     await setupAndOpenMarketHub(page, (request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           if (requests.length === 0) {
-            await page.locator('.reload-btn').click();
+            await marketHubPage.reloadButton.click();
           }
           return requests.length;
         },
@@ -178,7 +181,7 @@ test.describe('Market Hub by-location contract', () => {
     expect(firstRequest.shipId).toBe(SHIP_WITH_POSITION.id);
     expect(firstRequest.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
     await expect(marketRows).toHaveCount(2);
     await expect(marketRows.nth(0)).toContainText('Ceres Exchange');
     await expect(marketRows.nth(0)).toContainText('In-system');

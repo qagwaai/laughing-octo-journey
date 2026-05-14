@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MarketHubPage } from '../page-objects/market-hub.page';
 
 const CHARACTER = {
   id: 'char-market-cross-1',
@@ -51,6 +53,8 @@ type MarketByLocationRequest = {
 
 async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocationRequest) => void) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  const marketHubPage = new MarketHubPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -174,14 +178,13 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-  await page.locator('button[aria-label="Market Hub"]').click();
-  await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+  await gameShell.openMarketHub();
 
   // Wait for the reachable section to fully render before the test body proceeds.
-  await expect(page.getByRole('heading', { name: 'Reachable Markets' })).toBeVisible({ timeout: 15_000 });
+  await expect(marketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe('Market Hub cross-system route badges', () => {
@@ -189,9 +192,10 @@ test.describe('Market Hub cross-system route badges', () => {
 
   test('renders in-system, gate-route, and no-route badges correctly', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
+    const marketHubPage = new MarketHubPage(page);
     await setupAndOpenMarketHub(page, (req) => requests.push(req));
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
     // Gate-route markets (alpha, barnards) are reachable; no-route (wolf) is behind the toggle.
     await expect(marketRows).toHaveCount(3);
 
@@ -213,9 +217,7 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(barnardsMarket).toContainText("Barnard's Depot, 2 gate hops away");
 
     // No-route market is hidden by default; reveal it via the toggle.
-    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
-    await toggleCheckbox.scrollIntoViewIfNeeded();
-    await toggleCheckbox.check();
+    await marketHubPage.enableOutOfRangeMarkets();
     await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
     const wolfMarket = marketRows.nth(3);
     await expect(wolfMarket).toContainText('Wolf-359 Outpost');
@@ -225,14 +227,13 @@ test.describe('Market Hub cross-system route badges', () => {
 
   test('gate-route markets have transact button disabled and no-route market is not transactable', async ({ page }) => {
     const requests: MarketByLocationRequest[] = [];
+    const marketHubPage = new MarketHubPage(page);
     await setupAndOpenMarketHub(page, (req) => requests.push(req));
 
-    const marketRows = page.locator('.market-item');
+    const marketRows = marketHubPage.marketItems;
 
     // Enable toggle so no-route market (wolf) is visible alongside gate-route markets.
-    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
-    await toggleCheckbox.scrollIntoViewIfNeeded();
-    await toggleCheckbox.check();
+    await marketHubPage.enableOutOfRangeMarkets();
     await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
 
     const alphaMarket = marketRows.nth(1);
@@ -249,6 +250,8 @@ test.describe('Market Hub cross-system route badges', () => {
 
   test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const marketHubPage = new MarketHubPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -334,22 +337,19 @@ test.describe('Market Hub cross-system route badges', () => {
 
     await loginViaUI(page, mock);
 
-    await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-    await page.locator('button[aria-label="Market Hub"]').click();
-    await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+    await gameShell.openMarketHub();
 
     // Wait for the reachable section to appear before checking the toggle.
-    await expect(page.getByRole('heading', { name: 'Reachable Markets' })).toBeVisible({ timeout: 15_000 });
+    await expect(marketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 
     // Alpha Centauri has server-declared no-route, so it is hidden behind the toggle.
-    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
-    await toggleCheckbox.scrollIntoViewIfNeeded();
-    await toggleCheckbox.check();
-    await expect(page.locator('.market-item')).toHaveCount(2, { timeout: 5_000 });
+    await marketHubPage.enableOutOfRangeMarkets();
+    await expect(marketHubPage.marketItems).toHaveCount(2, { timeout: 5_000 });
 
-    const alphaMarket = page.locator('.market-item').nth(1);
+    const alphaMarket = marketHubPage.marketItems.nth(1);
     await expect(alphaMarket).toContainText('Alpha Station');
     // Server says no-route — must NOT show '1 gate hop' even though BFS would reach it
     await expect(alphaMarket).toContainText('No route');

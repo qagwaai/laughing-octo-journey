@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -180,6 +182,7 @@ const BODIES_WITH_MOONS = [
 
 async function setupViewerInteractionTest(page: any) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -208,10 +211,10 @@ async function setupViewerInteractionTest(page: any) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
-  const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+  const joinButton = gameShell.joinButton();
   await expect(joinButton).toBeVisible({ timeout: 10000 });
   await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await joinButton.click();
+  await gameShell.joinGame('Join Game');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
   mock.on('solar-system-list-request', () => ({
@@ -240,19 +243,18 @@ async function setupViewerInteractionTest(page: any) {
 }
 
 async function navigateToScene(page: any) {
+  const gameShell = new GameShellPage(page);
+  const viewerPage = new ViewerPage(page);
   // Navigate to Viewer
-  const viewerButton = page.locator('button[aria-label="Viewer"]');
+  const viewerButton = gameShell.navButton('Viewer');
   await expect(viewerButton).toBeVisible({ timeout: 10000 });
   await expect(viewerButton).toBeEnabled({ timeout: 10000 });
-  await viewerButton.click();
-  await expect(page).toHaveURL(/left:viewer/, { timeout: 10000 });
+  await gameShell.openViewer();
 
   // Select the Sol system
-  const solButton = page.locator('.solar-system-item__button').filter({ hasText: 'Sol' }).first();
+  const solButton = viewerPage.systemButtonByName('Sol');
   await expect(solButton).toBeVisible({ timeout: 10000 });
-  await solButton.click();
-
-  await expect(page).toHaveURL(/right:viewer-scene/);
+  await viewerPage.selectSystem('Sol');
 
   // Wait for scene route to settle
   await expect(page).toHaveURL(/right:viewer-scene/);
@@ -268,7 +270,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
     await navigateToScene(page);
 
     // Get the canvas element
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
 
     // Hover over the canvas
     await canvas.hover();
@@ -294,7 +296,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // Scene should remain functional
     await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
   });
 
   test('scene responds to mouse move events', async ({ page }) => {
@@ -308,7 +310,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // Scene should continue to render without errors
     await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
   });
 
   test('displays planet orbital elements correctly', async ({ page }) => {
@@ -317,7 +319,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // The scene loads with Earth and Mars, both with orbital elements
     // The rendering validates that orbital elements are processed
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
     await expect(canvas).toBeVisible();
 
     // The scene should have successfully rendered both planets with their orbits
@@ -332,7 +334,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
     // Luna (anchored to Earth) and Phobos (anchored to Mars) should render
     // The anchorBodyId relationships are validated by the scene renderer
 
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
     await expect(canvas).toBeVisible();
 
     // Scene loaded successfully with all hierarchical relationships intact
@@ -351,7 +353,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // Scene should remain stable and responsive
     await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
   });
 
   test('scene renders without errors on rapid hover toggle', async ({ page }) => {

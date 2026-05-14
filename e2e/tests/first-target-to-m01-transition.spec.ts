@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 
 // ── Test data ─────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ async function setupMissionBoardTest(
   } = {},
 ) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   const missions = options.missions ?? [];
@@ -103,11 +105,10 @@ async function setupMissionBoardTest(
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button[class*="join"]').first().click();
+  await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main|left:opening-cold-boot/);
 
-  await page.locator('button[aria-label="Mission Board"]').click();
-  await expect(page).toHaveURL(/left:mission-board/);
+  await gameShell.openMissionBoard();
 
   return { mock };
 }

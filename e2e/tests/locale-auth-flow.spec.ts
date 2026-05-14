@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
+import { CharacterListPage } from '../page-objects/character-list.page';
+import { LoginPage } from '../page-objects/login.page';
 
 const TEST_PLAYER = 'localeplayer';
 const TEST_PASSWORD = 'testpassword123';
@@ -59,29 +61,32 @@ async function openLoginAndWaitForSocket(page: Page, mock: SocketIOMock) {
 test.describe('Locale auth flow', () => {
   test('applies selected Italian locale after login and keeps English fallback where missing', async ({ page }) => {
     const { mock, loginResponse } = await setupLoginSuccessMock(page);
+    const loginPage = new LoginPage(page);
+    const characterListPage = new CharacterListPage(page);
     await openLoginAndWaitForSocket(page, mock);
 
-    await page.locator('#locale').selectOption('it');
-    await page.locator('#playerName').fill(TEST_PLAYER);
-    await page.locator('#password').fill(TEST_PASSWORD);
-    await page.locator('button[type="submit"]').click();
+    await loginPage.localeSelect.selectOption('it');
+    await loginPage.playerNameInput.fill(TEST_PLAYER);
+    await loginPage.passwordInput.fill(TEST_PASSWORD);
+    await loginPage.submitButton.click();
 
     // Ensure deterministic delivery in case emit races with connect transition.
     mock.push('login-response', loginResponse);
 
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-    await expect(page.locator('.page-main h1')).toHaveText('Lista Personaggi');
-    await expect(page.locator('.page-main .subtitle')).toHaveText(
+    await expect(characterListPage.heading).toHaveText('Lista Personaggi');
+    await expect(characterListPage.subtitle).toHaveText(
       'Rivedi i personaggi creati per il tuo profilo giocatore.',
     );
-    await expect(page.locator('.character-item .join-link').first()).toHaveText('Entra nel gioco');
+    await expect(characterListPage.joinButton(0)).toHaveText('Entra nel gioco');
   });
 
   test('passes selected login locale into registration page default', async ({ page }) => {
+    const loginPage = new LoginPage(page);
     await page.goto('/(left:login)');
 
-    await page.locator('#locale').selectOption('it');
-    await page.locator('.register-link-text').last().click();
+    await loginPage.localeSelect.selectOption('it');
+    await loginPage.registerLink.click();
 
     await expect(page).toHaveURL(/left:registration/);
     await expect(page.locator('#locale')).toHaveValue('it');
@@ -89,18 +94,19 @@ test.describe('Locale auth flow', () => {
 
   test('uses persisted locale as login default after a successful Italian login', async ({ page }) => {
     const { mock, loginResponse } = await setupLoginSuccessMock(page);
+    const loginPage = new LoginPage(page);
     await openLoginAndWaitForSocket(page, mock);
 
-    await page.locator('#locale').selectOption('it');
-    await page.locator('#playerName').fill(TEST_PLAYER);
-    await page.locator('#password').fill(TEST_PASSWORD);
-    await page.locator('button[type="submit"]').click();
+    await loginPage.localeSelect.selectOption('it');
+    await loginPage.playerNameInput.fill(TEST_PLAYER);
+    await loginPage.passwordInput.fill(TEST_PASSWORD);
+    await loginPage.submitButton.click();
     mock.push('login-response', loginResponse);
 
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
 
     await page.goto('/(left:login)');
-    await expect(page.locator('#locale')).toHaveValue('it');
+    await expect(loginPage.localeSelect).toHaveValue('it');
     await expect(page.locator('.login-container h1')).toHaveText('Accesso');
   });
 });

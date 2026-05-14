@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -164,6 +166,7 @@ function solarSystemGetResponse(bodies: any[]) {
 
 async function setupViewerSceneTest(page: any) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -192,7 +195,7 @@ async function setupViewerSceneTest(page: any) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
-  await page.locator('.join-link', { hasText: 'Join Game' }).first().click();
+  await gameShell.joinGame('Join Game');
   await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 10_000 });
 
@@ -210,9 +213,10 @@ async function setupViewerSceneTest(page: any) {
 }
 
 async function navigateToSystemScene(page: any, mock: any, bodies: any[] = SOL_SYSTEM_BODIES) {
+  const gameShell = new GameShellPage(page);
+  const viewerPage = new ViewerPage(page);
   // Navigate to Viewer
-  await page.locator('button[aria-label="Viewer"]').click();
-  await expect(page).toHaveURL(/left:viewer/);
+  await gameShell.openViewer();
 
   // Set up the scene response handler
   mock.on('solar-system-get-request', () => ({
@@ -221,10 +225,7 @@ async function navigateToSystemScene(page: any, mock: any, bodies: any[] = SOL_S
   }));
 
   // Select the Sol system to navigate to scene
-  const solButton = page.locator('.solar-system-item__button', { hasText: 'Sol' });
-  await solButton.click();
-
-  await expect(page).toHaveURL(/right:viewer-scene/);
+  await viewerPage.selectSystem('Sol');
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -236,12 +237,12 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock);
 
     // Verify the scene container is visible
-    const sceneContainer = page.locator('app-viewer-scene-page');
+    const sceneContainer = new ViewerPage(page).sceneContainer;
        // Component exists in DOM (might be hidden with CSS)
        await expect(sceneContainer).toHaveCount(1);
 
     // Verify the canvas element exists (Angular Three renders to <ngt-canvas>)
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
     await expect(canvas).toBeVisible();
   });
 
@@ -259,15 +260,17 @@ test.describe('Viewer — Scene Rendering', () => {
 
     await navigateToSystemScene(page, mock);
 
-    await expect(page.locator('canvas').first()).toBeVisible();
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
   });
 
   test('handles scene load error gracefully', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
 
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     // Register a failed scene response
     mock.on('solar-system-get-request', () => ({
@@ -280,13 +283,10 @@ test.describe('Viewer — Scene Rendering', () => {
         bodies: [],
       },
     }));
-    const solButton = page.locator('.solar-system-item__button', { hasText: 'Sol' });
-    await solButton.click();
-
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.selectSystem('Sol');
 
     // Verify error state is displayed
-    const errorState = page.locator('[data-testid="viewer-scene-error"]');
+    const errorState = viewerPage.sceneError;
     await expect(errorState).toBeVisible({ timeout: 5000 });
   });
 
@@ -297,7 +297,7 @@ test.describe('Viewer — Scene Rendering', () => {
 
     // Verify scene component is loaded
        // Component exists in DOM 
-       await expect(page.locator('app-viewer-scene-page')).toHaveCount(1, { timeout: 5000 });
+      await expect(new ViewerPage(page).sceneContainer).toHaveCount(1, { timeout: 5000 });
 
     // For Three.js rendering, we can verify the response was processed
     // by checking that the page remains in the scene view without errors
@@ -310,7 +310,7 @@ test.describe('Viewer — Scene Rendering', () => {
     // Luna (moon) has anchorBodyId: 'earth', so moon orbits should be calculated relative to Earth
     await navigateToSystemScene(page, mock, SOL_SYSTEM_BODIES);
 
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
     await expect(canvas).toBeVisible();
 
     // Verify scene rendered without error (orbits are rendered in the Three.js scene)
@@ -319,9 +319,10 @@ test.describe('Viewer — Scene Rendering', () => {
 
   test('displays loading state while scene is loading', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
+    const gameShell = new GameShellPage(page);
+    const viewerPage = new ViewerPage(page);
 
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    await gameShell.openViewer();
 
     // Delay the scene response to catch loading state
     let resolveResponse: any;
@@ -337,13 +338,10 @@ test.describe('Viewer — Scene Rendering', () => {
       };
     });
 
-    const solButton = page.locator('.solar-system-item__button').filter({ hasText: 'Sol' }).first();
-    await solButton.click();
-
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.selectSystem('Sol');
 
       // Wait for the scene component to become visible
-      await expect(page.locator('app-viewer-scene-page')).toHaveCount(1, { timeout: 5000 });
+      await expect(viewerPage.sceneContainer).toHaveCount(1, { timeout: 5000 });
 
     // Resolve the delayed response
     resolveResponse();

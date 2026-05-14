@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { LoginPage } from '../page-objects/login.page';
+import { MissionBoardPage } from '../page-objects/mission-board.page';
 
 const TEST_PLAYER = 'localeplayer';
 const TEST_PASSWORD = 'testpassword123';
@@ -36,12 +39,13 @@ async function openLoginAndWaitForSocket(page: Page, mock: SocketIOMock) {
 
 async function loginWithItalianLocale(page: Page, mock: SocketIOMock) {
   const loginResponse = setupLoginHandlers(mock);
+  const loginPage = new LoginPage(page);
   await openLoginAndWaitForSocket(page, mock);
 
-  await page.locator('#locale').selectOption('it');
-  await page.locator('#playerName').fill(TEST_PLAYER);
-  await page.locator('#password').fill(TEST_PASSWORD);
-  await page.locator('button[type="submit"]').click();
+  await loginPage.localeSelect.selectOption('it');
+  await loginPage.playerNameInput.fill(TEST_PLAYER);
+  await loginPage.passwordInput.fill(TEST_PASSWORD);
+  await loginPage.submitButton.click();
 
   mock.push('login-response', loginResponse);
   await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
@@ -54,6 +58,7 @@ async function loginWithItalianLocale(page: Page, mock: SocketIOMock) {
 test.describe('Locale opening and mission flow', () => {
   test('shows Italian opening sequence text for a fresh mission join', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -75,7 +80,7 @@ test.describe('Locale opening and mission flow', () => {
 
     await loginWithItalianLocale(page, mock);
 
-    await page.locator('.character-item .join-link').first().click();
+    await gameShell.joinGame();
 
     await expect(page).toHaveURL(/left:opening-cold-boot/, { timeout: 10_000 });
     await expect(page.locator('.cold-boot-container h1')).toHaveText('Sequenza iniziale: Cold Boot');
@@ -91,6 +96,8 @@ test.describe('Locale opening and mission flow', () => {
 
   test('shows Italian mission board text after joining an in-progress mission', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const missionBoardPage = new MissionBoardPage(page);
     await mock.setup();
 
     mock.on('character-list-request', () => ({
@@ -130,14 +137,14 @@ test.describe('Locale opening and mission flow', () => {
 
     await loginWithItalianLocale(page, mock);
 
-    await page.locator('.character-item .join-link').first().click();
+    await gameShell.joinGame();
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
     await expect(page.locator('.page-main h1')).toHaveText('Principale gioco');
 
-    await page.locator('.ops-menu button[aria-label="Mission Board"]').click();
+    await gameShell.openMissionBoard();
 
     await expect(page).toHaveURL(/left:mission-board/, { timeout: 10_000 });
-    await expect(page.locator('.page-main h1')).toHaveText('Bacheca missioni');
+    await expect(missionBoardPage.heading).toHaveText('Bacheca missioni');
     await expect(page.locator('.page-main .subtitle')).toHaveText(
       'Missioni attive e completate per questo personaggio.',
     );

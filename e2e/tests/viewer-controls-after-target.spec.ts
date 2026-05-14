@@ -1,6 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 const CHARACTER = {
   id: 'char-vw-controls-1',
@@ -72,6 +74,8 @@ async function getCanvasFrameSignature(canvas: Locator): Promise<string> {
 
 async function setupViewer(page: Page): Promise<void> {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  const viewerPage = new ViewerPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -102,18 +106,17 @@ async function setupViewer(page: Page): Promise<void> {
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button.join-link').first().click();
+  await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main/);
 
-  const viewerButton = page.locator('button[aria-label="Viewer"]').first();
+  const viewerButton = gameShell.navButton('Viewer');
   await expect(viewerButton).toBeVisible({ timeout: 10_000 });
-  await viewerButton.click();
-  await expect(page).toHaveURL(/left:viewer/);
+  await gameShell.openViewer();
 
-  await page.locator('.solar-system-item__button', { hasText: 'Sol' }).first().click();
+  await viewerPage.selectSystem('Sol');
   await expect(page).toHaveURL(/left:solar-system-details/);
   await expect(page).toHaveURL(/right:viewer-scene/);
-  await expect(page.locator('canvas').first()).toBeVisible({ timeout: 10_000 });
+  await expect(viewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Viewer controls after target completion', () => {
@@ -130,7 +133,7 @@ test.describe('Viewer controls after target completion', () => {
     await expect(targetEarthButton).toHaveAttribute('aria-pressed', 'true');
     await page.waitForTimeout(4_200);
 
-    const canvas = page.locator('canvas').first();
+    const canvas = new ViewerPage(page).sceneCanvas;
     const initialFrame = await getCanvasFrameSignature(canvas);
     expect(initialFrame.length).toBeGreaterThan(500);
 
@@ -166,6 +169,6 @@ test.describe('Viewer controls after target completion', () => {
     expect(afterPanFrame).not.toBe(afterZoomFrame);
 
     await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
   });
 });

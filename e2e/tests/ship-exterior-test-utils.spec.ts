@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-ship-exterior';
@@ -161,7 +162,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     }));
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await new GameShellPage(page).joinGame('Join Game in Progress');
 
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
 
@@ -430,7 +431,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     });
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await new GameShellPage(page).joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
 
     await expect
@@ -748,7 +749,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
     );
 
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await new GameShellPage(page).joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
 
     await expect
@@ -977,7 +978,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
     );
 
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await new GameShellPage(page).joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
 
     await expect

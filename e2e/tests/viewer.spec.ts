@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 const characterWithJoin = {
   id: 'char-vw-1',
@@ -103,26 +105,26 @@ async function setupViewerTest(page: Page) {
 }
 
 async function navigateToViewer(page: Page) {
-  await page.locator('.character-item button.join-link').first().click();
+  const gameShell = new GameShellPage(page);
+  await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main/);
-  await page.locator('button[aria-label="Viewer"]').click();
-  await expect(page).toHaveURL(/left:viewer/);
+  await gameShell.openViewer();
 }
 
 test.describe('Viewer — solar system browser (en)', () => {
   test('lists solar systems and renders the scene host on selection', async ({ page }) => {
     await setupViewerTest(page);
     await navigateToViewer(page);
+    const viewerPage = new ViewerPage(page);
 
     await expect(page.getByRole('heading', { name: 'Solar System Viewer' })).toBeVisible();
-    const list = page.getByTestId('viewer-system-list');
+    const list = viewerPage.systemList;
     await expect(list).toBeVisible();
-    await expect(list.locator('[data-system-id="sol"]')).toContainText('Sol');
-    await expect(list.locator('[data-system-id="alpha-centauri"]')).toContainText('Alpha Centauri');
+    await expect(viewerPage.systemItemById('sol')).toContainText('Sol');
+    await expect(viewerPage.systemItemById('alpha-centauri')).toContainText('Alpha Centauri');
 
-    await list.locator('[data-system-id="sol"] button').click();
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('app-viewer-scene-page .viewer-scene-host')).toBeVisible();
+    await viewerPage.selectSystem('Sol');
+    await expect(viewerPage.sceneHost).toBeVisible();
   });
 });
 

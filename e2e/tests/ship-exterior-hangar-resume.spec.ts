@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-hangar-resume';
@@ -155,11 +157,13 @@ function configureShipExteriorResumeMock(mock: SocketIOMock): void {
 test.describe('Ship Exterior scan persistence via Hangar', () => {
   test('keeps scanned asteroid state after ship specs and View Exterior round-trip', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const shipHangarPage = new ShipHangarPage(page);
     await mock.setup();
     configureShipExteriorResumeMock(mock);
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
 
     await expect
@@ -212,10 +216,9 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
       )
       .toEqual({ scanned: true, scanProgress: 100 });
 
-    await page.locator('button[aria-label="Ship Hangar"]').click();
-    await expect(page).toHaveURL(/left:ship-hangar/);
+    await gameShell.openShipHangar();
 
-    const shipRow = page.locator('.ship-item').first();
+    const shipRow = shipHangarPage.shipItem(0);
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
 
     await shipRow.locator('button', { hasText: 'View Specs' }).click();

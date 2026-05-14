@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-first-target';
@@ -263,13 +264,14 @@ function configureFirstTargetFlowMock(
 test.describe('First Target Mission Flow', () => {
   test('validates all first-target mission gate steps in order', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
     await mock.setup();
     const missionUpsertRequests: Array<{ status?: string }> = [];
 
     configureFirstTargetFlowMock(mock, missionUpsertRequests);
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
@@ -456,6 +458,7 @@ test.describe('First Target Mission Flow', () => {
 
   test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
     await mock.setup();
     const missionUpsertRequests: Array<{ status?: string }> = [];
 
@@ -483,7 +486,7 @@ test.describe('First Target Mission Flow', () => {
       { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
     );
 
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
@@ -522,13 +525,14 @@ test.describe('First Target Mission Flow', () => {
     page,
   }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
     await mock.setup();
     const missionUpsertRequests: Array<{ status?: string }> = [];
 
     configureFirstTargetFlowMock(mock, missionUpsertRequests, { includeIronInShipInventory: true });
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item .join-link', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 

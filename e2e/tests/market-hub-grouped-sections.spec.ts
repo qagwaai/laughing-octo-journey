@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MarketHubPage } from '../page-objects/market-hub.page';
 
 const CHARACTER = {
   id: 'char-market-grouped',
@@ -87,6 +89,8 @@ type MarketByLocationRequest = { distanceAu: number };
 
 async function setupAndOpenMarketHub(page: Page) {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  const marketHubPage = new MarketHubPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -129,33 +133,33 @@ async function setupAndOpenMarketHub(page: Page) {
 
   await loginViaUI(page, mock);
 
-  await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
-  await page.locator('button[aria-label="Market Hub"]').click();
-  await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+  await gameShell.openMarketHub();
 
   // Wait for at least one rendered market row before returning.
-  await expect.poll(() => page.locator('.market-item').count(), { timeout: 15_000 }).toBeGreaterThan(0);
+  await expect.poll(() => marketHubPage.marketItems.count(), { timeout: 15_000 }).toBeGreaterThan(0);
 }
 
 test.describe('Market Hub grouped sections', () => {
   test('shows reachable markets section by default with in-range markets only', async ({ page }) => {
     await setupAndOpenMarketHub(page);
+    const marketHubPage = new MarketHubPage(page);
 
     // Reachable section heading is visible.
-    const reachableHeading = page.getByRole('heading', { name: 'Reachable Markets' });
+    const reachableHeading = marketHubPage.reachableHeading;
     await reachableHeading.scrollIntoViewIfNeeded();
     await expect(reachableHeading).toBeVisible();
 
     // Near Exchange is within drive range — shown in the reachable section.
-    const reachableItems = page.locator('.market-item');
+    const reachableItems = marketHubPage.marketItems;
     await expect(reachableItems).toHaveCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
     await expect(reachableItems.nth(0)).toContainText('In-system');
 
     // Beyond Current Drive section heading must NOT be visible yet.
-    await expect(page.getByRole('heading', { name: 'Beyond Current Drive' })).not.toBeVisible();
+    await expect(marketHubPage.beyondCurrentDriveHeading).not.toBeVisible();
 
     // Distant Exchange must not be visible.
     await expect(page.getByRole('heading', { name: 'Distant Exchange' })).not.toBeVisible();
@@ -163,38 +167,36 @@ test.describe('Market Hub grouped sections', () => {
 
   test('enabling the toggle reveals the Beyond Current Drive section', async ({ page }) => {
     await setupAndOpenMarketHub(page);
+    const marketHubPage = new MarketHubPage(page);
 
     // Toggle is unchecked by default.
-    await expect(page.locator('#showOutOfRangeMarkets')).not.toBeChecked();
+    await expect(marketHubPage.showOutOfRangeToggle).not.toBeChecked();
 
     // Enable the toggle.
-    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
-    await toggleCheckbox.scrollIntoViewIfNeeded();
-    await toggleCheckbox.check();
+    await marketHubPage.enableOutOfRangeMarkets();
 
     // Beyond Current Drive section heading appears.
-    await expect(page.getByRole('heading', { name: 'Beyond Current Drive' })).toBeVisible({ timeout: 5_000 });
+    await expect(marketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
 
     // Distant Exchange now visible with Out of range badge.
     await expect(page.getByRole('heading', { name: 'Distant Exchange' })).toBeVisible();
-    const outOfRangeItems = page.locator('.market-list').nth(1).locator('.market-item');
+    const outOfRangeItems = marketHubPage.marketList(1).locator('.market-item');
     await expect(outOfRangeItems).toHaveCount(1);
     await expect(outOfRangeItems.nth(0)).toContainText('Out of range');
 
     // Reachable section still shows Near Exchange.
-    const reachableItems = page.locator('.market-list').nth(0).locator('.market-item');
+    const reachableItems = marketHubPage.marketList(0).locator('.market-item');
     await expect(reachableItems).toHaveCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
   });
 
   test('out-of-range market shows required drive upgrade info', async ({ page }) => {
     await setupAndOpenMarketHub(page);
-    const toggleCheckbox = page.locator('#showOutOfRangeMarkets');
-    await toggleCheckbox.scrollIntoViewIfNeeded();
-    await toggleCheckbox.check();
-    await expect(page.getByRole('heading', { name: 'Beyond Current Drive' })).toBeVisible({ timeout: 5_000 });
+    const marketHubPage = new MarketHubPage(page);
+    await marketHubPage.enableOutOfRangeMarkets();
+    await expect(marketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
 
-    const distantMarket = page.locator('.market-list').nth(1).locator('.market-item').nth(0);
+    const distantMarket = marketHubPage.marketItemInList(1, 0);
     await expect(distantMarket).toContainText('Requires drive range upgrade.');
     await expect(distantMarket).toContainText('Rapid Transit Thruster');
 
@@ -204,6 +206,8 @@ test.describe('Market Hub grouped sections', () => {
 
   test('sends selected radius to server without clamping to drive range', async ({ page }) => {
     const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const marketHubPage = new MarketHubPage(page);
     await mock.setup();
 
     const requests: MarketByLocationRequest[] = [];
@@ -238,10 +242,9 @@ test.describe('Market Hub grouped sections', () => {
     });
 
     await loginViaUI(page, mock);
-    await page.locator('.character-item button', { hasText: 'Join Game in Progress' }).click();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-    await page.locator('button[aria-label="Market Hub"]').click();
-    await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
+    await gameShell.openMarketHub();
 
     // Wait for the initial request.
     await expect.poll(() => requests.length, { timeout: 15_000 }).toBeGreaterThan(0);
@@ -253,7 +256,7 @@ test.describe('Market Hub grouped sections', () => {
     expect(requests[requests.length - 1].distanceAu).toBe(5);
 
     // Enable the out-of-range toggle — should trigger the unlimited (1,000,000 AU) request.
-    await page.locator('#showOutOfRangeMarkets').check();
+    await marketHubPage.showOutOfRangeToggle.check();
     await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(2);
     expect(requests[requests.length - 1].distanceAu).toBe(1_000_000);
   });

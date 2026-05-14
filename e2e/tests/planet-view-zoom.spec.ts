@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { PlanetViewPage } from '../page-objects/planet-view.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 const SOL_SUMMARY = {
   id: 'sol',
@@ -145,6 +148,8 @@ const SOL_SYSTEM_BODIES = [
 
 async function setupViewer(page: Page): Promise<void> {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  const viewerPage = new ViewerPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -188,14 +193,12 @@ async function setupViewer(page: Page): Promise<void> {
   }));
 
   await loginViaUI(page, mock);
-  await page.locator('.character-item button.join-link').first().click();
+  await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main/);
 
-  await page.locator('button[aria-label="Viewer"]').first().click();
-  await expect(page).toHaveURL(/left:viewer/);
+  await gameShell.openViewer();
 
-  await page.locator('.solar-system-item__button', { hasText: 'Sol' }).first().click();
-  await expect(page).toHaveURL(/right:viewer-scene/);
+  await viewerPage.selectSystem('Sol');
 }
 
 async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
@@ -247,40 +250,42 @@ async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
   });
 
   await expect(page).toHaveURL(/right:planet-view\/sol\/earth/);
-  await expect(page.locator('[data-testid="planet-view-header"]')).toBeVisible({ timeout: 10_000 });
+  await expect(new PlanetViewPage(page).header).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Planet details zoom pattern', () => {
   test('supports focusing moons even when size metadata is missing', async ({ page }) => {
     await setupViewer(page);
     await enterPlanetViewViaSceneComponent(page);
+    const planetViewPage = new PlanetViewPage(page);
 
-    const focusMoonAlpha = page.getByRole('button', { name: 'Focus Moon Alpha' });
-    const focusMoonBeta = page.getByRole('button', { name: 'Focus Moon Beta' });
+    const focusMoonAlpha = planetViewPage.focusMoonButton('Moon Alpha');
+    const focusMoonBeta = planetViewPage.focusMoonButton('Moon Beta');
 
     await expect(focusMoonAlpha).toBeVisible({ timeout: 10_000 });
     await expect(focusMoonBeta).toBeVisible({ timeout: 10_000 });
 
     await focusMoonBeta.click();
-    await expect(page.locator('[data-testid="planet-view-header"]')).toContainText('Moon Beta');
-    await expect(page.locator('[data-testid="planet-view-panel"]')).toContainText('— km');
+    await expect(planetViewPage.header).toContainText('Moon Beta');
+    await expect(planetViewPage.panel).toContainText('— km');
   });
 
   test('preserves planet details interaction and right-click exit flow', async ({ page }) => {
     await setupViewer(page);
     await enterPlanetViewViaSceneComponent(page);
+    const planetViewPage = new PlanetViewPage(page);
 
-    await expect(page.locator('[data-testid="planet-view-header"]')).toContainText('Earth');
-    await expect(page.locator('[data-testid="planet-view-panel"]')).toContainText('Zoom');
+    await expect(planetViewPage.header).toContainText('Earth');
+    await expect(planetViewPage.panel).toContainText('Zoom');
 
-    const focusLunaButton = page.getByRole('button', { name: 'Focus Luna' });
+    const focusLunaButton = planetViewPage.focusMoonButton('Luna');
     await expect(focusLunaButton).toBeVisible({ timeout: 10_000 });
     await focusLunaButton.click();
 
-    await expect(page.locator('[data-testid="planet-view-header"]')).toContainText('Luna');
-    await expect(page.locator('[data-testid="planet-view-panel"]')).toContainText('18%');
+    await expect(planetViewPage.header).toContainText('Luna');
+    await expect(planetViewPage.panel).toContainText('18%');
 
-    const canvas = page.locator('canvas').first();
+    const canvas = planetViewPage.canvas;
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
 

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MissionBoardPage } from '../page-objects/mission-board.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 
@@ -59,17 +61,19 @@ async function setupCompletedFirstTargetLogin(page: Page) {
 test.describe('Login Resume — first-target completed', () => {
   test('routes to game-main + mission-board instead of cold boot after login and join', async ({ page }) => {
     await setupCompletedFirstTargetLogin(page);
+    const gameShell = new GameShellPage(page);
+    const missionBoardPage = new MissionBoardPage(page);
 
-    const joinButton = page.locator('.character-item button.join-link', { hasText: 'Join Game' }).first();
+    const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await joinButton.click();
+    await gameShell.joinGame();
 
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
     await expect(page).toHaveURL(/right:mission-board/, { timeout: 10000 });
     await expect(page).not.toHaveURL(/opening-cold-boot/);
 
-    const missionBoardHeading = page.locator('h1', { hasText: 'Mission Board' }).first();
+    const missionBoardHeading = missionBoardPage.heading;
     await expect(missionBoardHeading).toBeVisible({ timeout: 10000 });
   });
 });
