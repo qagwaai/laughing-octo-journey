@@ -13,6 +13,8 @@
       [summary]="sceneInputs().summary"
       [targetBodyId]="sceneInputs().targetBodyId ?? null"
       [zoomLevel]="zoomLevel()"
+      [ships]="sceneInputs().ships ?? []"
+      [activeShipId]="sceneInputs().activeShipId ?? null"
       (hoveredBodyChange)="onHoveredBodyChange($event)"
       (focusedPlanetChange)="onFocusedPlanetChange($event)"
       (planetViewRequest)="onPlanetViewRequest($event)"
@@ -66,6 +68,14 @@
     <div class="viewer-legend__item">
       <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#86efac"></span>
       <span>{{ t.game.viewer.legendMarketOrbit }}</span>
+    </div>
+    <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#22c55e"></span>
+      <span>{{ t.game.viewer.legendActiveShip }}</span>
+    </div>
+    <div class="viewer-legend__item" data-testid="viewer-legend-inactive-ship">
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#3b82f6"></span>
+      <span>{{ t.game.viewer.legendInactiveShip }}</span>
     </div>
   </div>
 
