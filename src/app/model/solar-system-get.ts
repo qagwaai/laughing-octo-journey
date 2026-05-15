@@ -43,6 +43,14 @@ export interface ViewerBody {
   stationKind?: ViewerStationKind;
   displayName: string;
   spatial: ViewerSpatial;
+  /** Optional stable mission cluster identifier for generated asteroid fields. */
+  clusterId?: string;
+  /** Optional barycentric center of the mission cluster. */
+  clusterCenterKm?: Triple;
+  /** Optional local offset from clusterCenterKm in kilometers. */
+  localOffsetKm?: Triple;
+  /** Optional convenience metric from cluster center to body position in km. */
+  distanceFromClusterCenterKm?: number;
   visualization?: ViewerBodyVisualization;
   physicalCatalog?: ViewerBodyPhysicalCatalog;
   orbitalElements?: ViewerBodyOrbitalElements;

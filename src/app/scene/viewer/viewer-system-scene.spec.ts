@@ -56,6 +56,36 @@ const distantPlanet: ViewerBody = {
   physicalCatalog: { estimatedDiameterM: 6_792_000 },
 };
 
+const asteroidA: ViewerBody = {
+  id: 'asteroid-a',
+  bodyType: 'asteroid',
+  displayName: 'Asteroid A',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 350_000_000, y: 0, z: 0 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 800 },
+};
+
+const asteroidB: ViewerBody = {
+  id: 'asteroid-b',
+  bodyType: 'asteroid',
+  displayName: 'Asteroid B',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 350_004_000, y: 500, z: -250 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 1200 },
+};
+
+const localProjectionShip: ShipSummary = {
+  id: 'ship-local-1',
+  name: 'Anchor Ship',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'ACTIVE',
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 350_000_500, y: 0, z: 0 },
+    epochMs: 1700000000000,
+  },
+};
+
 describe('ViewerSystemScene mapBodiesToRendered', () => {
   it('partitions stars and non-stars and assigns colors/positions', () => {
     const rendered = mapBodiesToRendered([star, planet, marketStation]);
@@ -87,6 +117,51 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(nearRange.min).toBeLessThan(nearRange.max);
     expect(farRange.max).toBeGreaterThanOrEqual(nearRange.max);
     expect(farRange.min).toBeGreaterThan(0);
+  });
+
+  it('reprojects nearby asteroids into local space when an asteroid is targeted at close zoom', () => {
+    const globalRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 0, null);
+    const localRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 0, 'asteroid-a');
+
+    const globalB = globalRendered.find((b) => b.id === 'asteroid-b');
+    const localB = localRendered.find((b) => b.id === 'asteroid-b');
+    const localA = localRendered.find((b) => b.id === 'asteroid-a');
+
+    expect(globalB).toBeDefined();
+    expect(localB).toBeDefined();
+    expect(localA).toBeDefined();
+    expect(localB!.position).not.toEqual(globalB!.position);
+
+    const localSeparation = Math.hypot(
+      localB!.position[0] - localA!.position[0],
+      localB!.position[1] - localA!.position[1],
+      localB!.position[2] - localA!.position[2],
+    );
+    expect(localSeparation).toBeGreaterThan(0.05);
+  });
+
+  it('reprojects nearby asteroids into local space when a ship is targeted at close zoom', () => {
+    const globalRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 0, null, [localProjectionShip]);
+    const localRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 0, 'ship-local-1', [localProjectionShip]);
+
+    const globalB = globalRendered.find((b) => b.id === 'asteroid-b');
+    const localB = localRendered.find((b) => b.id === 'asteroid-b');
+
+    expect(globalB).toBeDefined();
+    expect(localB).toBeDefined();
+    expect(localB!.position).not.toEqual(globalB!.position);
+  });
+
+  it('does not apply local asteroid projection above the zoom threshold', () => {
+    const globalRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 30, null);
+    const thresholdRendered = mapBodiesToRendered([star, asteroidA, asteroidB], 30, 'asteroid-a');
+
+    const globalB = globalRendered.find((b) => b.id === 'asteroid-b');
+    const thresholdB = thresholdRendered.find((b) => b.id === 'asteroid-b');
+
+    expect(globalB).toBeDefined();
+    expect(thresholdB).toBeDefined();
+    expect(thresholdB!.position).toEqual(globalB!.position);
   });
 });
 

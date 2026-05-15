@@ -106,6 +106,9 @@ const VIEWER_CAMERA_DISTANCE_MIN_FLOOR = 0.5;
 const VIEWER_CAMERA_DISTANCE_MAX_FLOOR = 42;
 const VIEWER_CAMERA_DISTANCE_MAX_CEILING = 180;
 const VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP = 12;
+const VIEWER_LOCAL_ASTEROID_VIEW_ZOOM_THRESHOLD = 22;
+const VIEWER_LOCAL_ASTEROID_VIEW_RANGE_KM = 30_000;
+const VIEWER_LOCAL_ASTEROID_VIEW_SCALE = 0.00006;
 
 function degToRad(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -116,6 +119,36 @@ function degToRad(value: number | undefined): number {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function isAsteroidBody(body: ViewerBody): boolean {
+  return body.bodyType?.trim().toLowerCase() === 'asteroid';
+}
+
+function resolveLocalAsteroidProjectionWeight(zoomLevel: number | undefined): number {
+  if (typeof zoomLevel !== 'number' || !Number.isFinite(zoomLevel)) {
+    return 0;
+  }
+
+  if (zoomLevel >= VIEWER_LOCAL_ASTEROID_VIEW_ZOOM_THRESHOLD) {
+    return 0;
+  }
+
+  return clamp(1 - zoomLevel / VIEWER_LOCAL_ASTEROID_VIEW_ZOOM_THRESHOLD, 0, 1);
+}
+
+function resolveScenePositionFromSpatialKm(positionKm: { x: number; y: number; z: number }): [number, number, number] {
+  const magnitudeKm = Math.hypot(positionKm.x, positionKm.y, positionKm.z);
+  if (magnitudeKm <= 0) {
+    return [0, 0, 0];
+  }
+
+  const scaled = resolveSceneDistanceFromKm(magnitudeKm);
+  return [
+    +((positionKm.x / magnitudeKm) * scaled).toFixed(3),
+    +((positionKm.y / magnitudeKm) * scaled).toFixed(3),
+    +((positionKm.z / magnitudeKm) * scaled).toFixed(3),
+  ];
 }
 
 function resolveRenderedExtent(rendered: RenderedBody[]): number {
@@ -194,8 +227,14 @@ function resolveOrbitRotationEuler(orbital: ViewerBody['orbitalElements']): [num
  *
  * Handles hierarchical positioning: first pass calculates star/primary positions,
  * second pass uses parent positions for anchored bodies (moons around planets, etc).
+ * @param zoomLevel Optional zoom level (0-100) for dynamic radius scaling
  */
-export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
+export function mapBodiesToRendered(
+  bodies: ViewerBody[],
+  zoomLevel?: number,
+  targetBodyId?: string | null,
+  ships: ShipSummary[] = [],
+): RenderedBody[] {
   const positionCache = new Map<string, [number, number, number]>();
 
   // First pass: calculate positions for stars and non-anchored bodies
@@ -206,7 +245,7 @@ export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
   });
 
   // Second pass: recalculate anchored bodies using parent positions
-  return bodies.map((body, idx) => {
+  const rendered = bodies.map((body, idx) => {
     let position = firstPass[idx];
 
     // If body has an anchor, recalculate position relative to anchor
@@ -228,10 +267,61 @@ export function mapBodiesToRendered(bodies: ViewerBody[]): RenderedBody[] {
       bodyType: body.bodyType,
       displayName: body.displayName || body.id,
       color: resolveBodyColor(body),
-      radius: resolveBodySceneRadius(body),
+      radius: resolveBodySceneRadius(body, zoomLevel),
       position,
       isStar: isStarBody(body),
         isMarketStation: isMarketStationBody(body),
+    };
+  });
+
+  const localProjectionWeight = resolveLocalAsteroidProjectionWeight(zoomLevel);
+  if (!targetBodyId || localProjectionWeight <= 0) {
+    return rendered;
+  }
+
+  const targetBody = bodies.find((body) => body.id === targetBodyId);
+  const targetRendered = rendered.find((body) => body.id === targetBodyId);
+  const targetShip = ships.find((ship) => ship.id === targetBodyId && isValidShipSpatial(ship.spatial));
+
+  let targetPositionKm: { x: number; y: number; z: number } | null = null;
+  let targetPositionScene: [number, number, number] | null = null;
+
+  if (targetBody && targetRendered && isAsteroidBody(targetBody)) {
+    targetPositionKm = targetBody.spatial.positionKm;
+    targetPositionScene = targetRendered.position;
+  } else if (targetShip && isValidShipSpatial(targetShip.spatial)) {
+    targetPositionKm = targetShip.spatial.positionKm;
+    targetPositionScene = resolveScenePositionFromSpatialKm(targetShip.spatial.positionKm);
+  }
+
+  if (!targetPositionKm || !targetPositionScene) {
+    return rendered;
+  }
+
+  return rendered.map((candidate) => {
+    if ((targetBody && candidate.id === targetBodyId) || !isAsteroidBody(candidate.source)) {
+      return candidate;
+    }
+
+    const candidatePosKm = candidate.source.spatial.positionKm;
+    const dxKm = candidatePosKm.x - targetPositionKm.x;
+    const dyKm = candidatePosKm.y - targetPositionKm.y;
+    const dzKm = candidatePosKm.z - targetPositionKm.z;
+    const localDistanceKm = Math.hypot(dxKm, dyKm, dzKm);
+    if (!Number.isFinite(localDistanceKm) || localDistanceKm <= 0 || localDistanceKm > VIEWER_LOCAL_ASTEROID_VIEW_RANGE_KM) {
+      return candidate;
+    }
+
+    const localScale = VIEWER_LOCAL_ASTEROID_VIEW_SCALE * localProjectionWeight;
+    const localPosition: [number, number, number] = [
+      +(targetPositionScene[0] + dxKm * localScale).toFixed(3),
+      +(targetPositionScene[1] + dyKm * localScale).toFixed(3),
+      +(targetPositionScene[2] + dzKm * localScale).toFixed(3),
+    ];
+
+    return {
+      ...candidate,
+      position: localPosition,
     };
   });
 }
@@ -338,7 +428,9 @@ export class ViewerSystemScene {
   @Output() planetViewRequest = new EventEmitter<ViewerBody>();
   @Output() zoomLevelChange = new EventEmitter<number>();
 
-  protected readonly rendered = computed<RenderedBody[]>(() => mapBodiesToRendered(this.bodies()));
+  protected readonly rendered = computed<RenderedBody[]>(() =>
+    mapBodiesToRendered(this.bodies(), this.zoomLevel(), this.targetBodyId(), this.ships()),
+  );
 
   protected readonly renderedShips = computed<RenderedShip[]>(() => mapShipsToRendered(this.ships(), this.activeShipId()));
 

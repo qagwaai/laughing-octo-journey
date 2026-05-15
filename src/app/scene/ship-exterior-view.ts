@@ -1670,6 +1670,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       const deterministicCatalogId = `sol-${createdByCharacterId}-${this.missionDefinition.missionId}-${sample.id}`;
       const requestedCelestialBodyId = sample.serverCelestialBodyId ?? deterministicId;
       const resolvedKinematics = item.revealedKinematics ?? sample.capturedKinematics;
+      const material = item.revealedMaterial ?? sample.revealedMaterial;
+      const estimatedMassKg = resolvedKinematics.estimatedMassKg;
+      const estimatedDiameterM = resolvedKinematics.estimatedDiameterM;
+      const radiusKm =
+        typeof estimatedDiameterM === 'number' && Number.isFinite(estimatedDiameterM) && estimatedDiameterM > 0
+          ? +(estimatedDiameterM / 2000).toFixed(3)
+          : undefined;
+      const displayNamePrefix = material?.material?.trim() || 'Asteroid';
+      const displayName = `${displayNamePrefix} ${sample.id}`;
       const request: CelestialBodyUpsertRequest = {
         sessionKey,
         playerName,
@@ -1679,6 +1688,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           catalogId: deterministicCatalogId,
           sourceScanId: sample.id,
           createdByCharacterId,
+          bodyType: 'asteroid',
+          displayName,
           missionId: this.missionDefinition.missionId,
           createdAt: nowIso,
           updatedAt: nowIso,
@@ -1693,10 +1704,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
             angularVelocityRadPerSec: resolvedKinematics.angularVelocityRadPerSec,
           },
           physical: {
-            estimatedMassKg: resolvedKinematics.estimatedMassKg,
-            estimatedDiameterM: resolvedKinematics.estimatedDiameterM,
+            estimatedMassKg,
+            estimatedDiameterM,
           },
-          composition: item.revealedMaterial ?? sample.revealedMaterial ?? undefined,
+          physicalCatalog: {
+            estimatedMassKg,
+            estimatedDiameterM,
+            radiusKm,
+          },
+          visualization: {
+            colorHex: material?.textureColor,
+            textureKey: null,
+          },
+          composition: material ?? undefined,
           observability: {
             visibility: 'visible',
             scanState: item.state === 'unscanned' ? 'unscanned' : 'scanned',

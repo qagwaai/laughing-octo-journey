@@ -75,7 +75,7 @@ Positive:
 Trade-offs:
 
 - Slightly larger navigation state payload.
-- Temporary dual support (`missionContext` plus legacy status fallback) until full migration is complete.
+- Historical migration phase included temporary dual support (`missionContext` plus legacy status fallback); canonical `missionContext` is now the expected path.
 
 ## Implementation Notes
 
@@ -92,7 +92,7 @@ Related unit tests were updated to assert mission context propagation and policy
 
 ## Follow-up Recommendations
 
-- Remove legacy `firstTargetMissionStatus` fallback after all callers use `missionContext`.
+- Keep legacy `firstTargetMissionStatus` fallback removal complete and prevent new call sites from reintroducing it.
 - Introduce mission strategy mapping by `missionId` if mission-specific seeding rules diverge.
 - Consider extending `auto` policy to fetch live mission status when hints are absent or stale.
 

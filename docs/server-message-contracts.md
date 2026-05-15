@@ -3,7 +3,7 @@
 This document describes the socket message contracts currently used by the application when talking to the server. This is the canonical specification; implementation must conform to this contract.
 
 **Contract Version**: 2.0.0 (canonical-only; no dual-key transition)  
-**Last Updated**: 2026-05-11
+**Last Updated**: 2026-05-15
 
 ## Scope
 
@@ -1706,6 +1706,12 @@ Required payload:
     "catalogId": "string",
     "sourceScanId": "string",
     "createdByCharacterId": "string",
+    "bodyType": "asteroid (optional)",
+    "displayName": "string (optional)",
+    "clusterId": "string (optional)",
+    "clusterCenterKm": { "x": 0, "y": 0, "z": 0 },
+    "localOffsetKm": { "x": 0, "y": 0, "z": 0 },
+    "distanceFromClusterCenterKm": 0,
     "createdAt": "ISO-8601 string",
     "updatedAt": "ISO-8601 string",
     "spatial": {
@@ -1721,6 +1727,15 @@ Required payload:
     "physical": {
       "estimatedMassKg": 0,
       "estimatedDiameterM": 0
+    },
+    "physicalCatalog": {
+      "estimatedMassKg": 0,
+      "estimatedDiameterM": 0,
+      "radiusKm": 0
+    },
+    "visualization": {
+      "colorHex": "#RRGGBB (optional)",
+      "textureKey": "string | null (optional)"
     },
     "observability": {
       "visibility": "visible | not-visible | cloaked",
@@ -1763,6 +1778,12 @@ Payload:
     "catalogId": "string",
     "sourceScanId": "string",
     "createdByCharacterId": "string",
+    "bodyType": "asteroid (optional)",
+    "displayName": "string (optional)",
+    "clusterId": "string (optional)",
+    "clusterCenterKm": { "x": 0, "y": 0, "z": 0 },
+    "localOffsetKm": { "x": 0, "y": 0, "z": 0 },
+    "distanceFromClusterCenterKm": 0,
     "createdAt": "ISO-8601 string",
     "updatedAt": "ISO-8601 string",
     "spatial": {
@@ -1778,6 +1799,15 @@ Payload:
     "physical": {
       "estimatedMassKg": 0,
       "estimatedDiameterM": 0
+    },
+    "physicalCatalog": {
+      "estimatedMassKg": 0,
+      "estimatedDiameterM": 0,
+      "radiusKm": 0
+    },
+    "visualization": {
+      "colorHex": "#RRGGBB (optional)",
+      "textureKey": "string | null (optional)"
     },
     "observability": {
       "visibility": "visible",
@@ -2501,6 +2531,9 @@ interface SolarSystemGetResponse {
 `ViewerBody` carries `spatial.positionKm` (canonical world frame),
 `visualization.colorHex`, `physicalCatalog.estimatedDiameterM`, optional
 `orbitalElements`, and (for stars) `spectralClass` + `luminositySolar`.
+Mission-generated asteroids also carry optional cluster metadata:
+`clusterId`, `clusterCenterKm`, `localOffsetKm`, and optional
+`distanceFromClusterCenterKm`.
 Models live in `src/app/model/solar-system-get.ts`.
 
 #### `orbitalElements.anchorBodyId` — required for moons and sub-orbital bodies

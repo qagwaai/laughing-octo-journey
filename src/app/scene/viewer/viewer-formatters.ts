@@ -29,6 +29,9 @@ export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X = 0.12;
 export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z = 0.1;
 export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X = 0.55;
 export const VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z = 0.45;
+/** Zoom-based scaling: scale factors for dynamic body radius adjustment. */
+export const VIEWER_SCENE_ZOOM_SCALE_MIN = 0.4; // At max zoom (0%): scale to 40% of base radius
+export const VIEWER_SCENE_ZOOM_SCALE_MAX = 1.0; // At min zoom (100%): keep 100% of base radius
 
 export interface AnchoredOrbitSceneProfile {
   scale: number;
@@ -38,6 +41,20 @@ export interface AnchoredOrbitSceneProfile {
 
 function normalizeToken(value: string | undefined): string {
   return value?.trim().toLowerCase() ?? '';
+}
+
+/**
+ * Calculates the zoom-based scale factor for body radii.
+ * Linear interpolation: at zoom 0% (max in), scale = 0.4; at zoom 100% (max out), scale = 1.0.
+ * @param zoomLevel 0-100, where 0 is maximum zoom (closest) and 100 is minimum zoom (farthest).
+ */
+export function resolveZoomScaleFactor(zoomLevel: number | undefined): number {
+  if (typeof zoomLevel !== 'number' || !Number.isFinite(zoomLevel)) {
+    return VIEWER_SCENE_ZOOM_SCALE_MAX;
+  }
+  const normalized = Math.max(0, Math.min(1, zoomLevel / 100));
+  // Linear interpolation: (1 - normalized) because zoom 0 = max in, zoom 100 = max out
+  return VIEWER_SCENE_ZOOM_SCALE_MIN + (1 - normalized) * (VIEWER_SCENE_ZOOM_SCALE_MAX - VIEWER_SCENE_ZOOM_SCALE_MIN);
 }
 
 /**
@@ -136,43 +153,52 @@ export function resolveStarSceneRadius(luminositySolar: number | undefined): num
 
 /**
  * Hybrid planet radius from physical diameter (log-inflated, clamped).
+ * If zoomLevel is provided, applies zoom-based scaling to shrink planets when zoomed in.
  */
-export function resolvePlanetSceneRadius(diameterM: number | undefined): number {
+export function resolvePlanetSceneRadius(diameterM: number | undefined, zoomLevel?: number): number {
   if (typeof diameterM !== 'number' || !Number.isFinite(diameterM) || diameterM <= 0) {
-    return VIEWER_SCENE_PLANET_BASE_RADIUS;
+    const base = VIEWER_SCENE_PLANET_BASE_RADIUS;
+    return base * resolveZoomScaleFactor(zoomLevel);
   }
   const earthDiameterM = 12_742_000;
   const ratio = diameterM / earthDiameterM;
   const scaled = VIEWER_SCENE_PLANET_BASE_RADIUS * Math.cbrt(Math.max(0.05, ratio));
-  return Math.max(VIEWER_SCENE_PLANET_MIN_RADIUS, Math.min(VIEWER_SCENE_PLANET_MAX_RADIUS, scaled));
+  const clamped = Math.max(VIEWER_SCENE_PLANET_MIN_RADIUS, Math.min(VIEWER_SCENE_PLANET_MAX_RADIUS, scaled));
+  return clamped * resolveZoomScaleFactor(zoomLevel);
 }
 
 /**
  * Hybrid moon radius from physical diameter (log-inflated, clamped).
  * Uses Moon's diameter as the reference baseline to preserve moon-to-moon variance.
+ * If zoomLevel is provided, applies zoom-based scaling to shrink moons when zoomed in.
  */
-export function resolveMoonSceneRadius(diameterM: number | undefined): number {
+export function resolveMoonSceneRadius(diameterM: number | undefined, zoomLevel?: number): number {
   if (typeof diameterM !== 'number' || !Number.isFinite(diameterM) || diameterM <= 0) {
-    return VIEWER_SCENE_MOON_BASE_RADIUS;
+    const base = VIEWER_SCENE_MOON_BASE_RADIUS;
+    return base * resolveZoomScaleFactor(zoomLevel);
   }
 
   const moonDiameterM = 3_474_800;
   const ratio = diameterM / moonDiameterM;
   const scaled = VIEWER_SCENE_MOON_BASE_RADIUS * Math.cbrt(Math.max(0.05, ratio));
-  return Math.max(VIEWER_SCENE_MOON_MIN_RADIUS, Math.min(VIEWER_SCENE_MOON_MAX_RADIUS, scaled));
+  const clamped = Math.max(VIEWER_SCENE_MOON_MIN_RADIUS, Math.min(VIEWER_SCENE_MOON_MAX_RADIUS, scaled));
+  return clamped * resolveZoomScaleFactor(zoomLevel);
 }
 
 /**
  * Resolves a body's render radius using star/planet rules.
+ * If zoomLevel is provided, applies zoom-based scaling for planets and moons.
+ * Stars are not scaled (they remain fixed to provide visual anchor).
  */
-export function resolveBodySceneRadius(body: ViewerBody): number {
+export function resolveBodySceneRadius(body: ViewerBody, zoomLevel?: number): number {
   if (isStarBody(body)) {
+    // Stars are not scaled by zoom—they provide a stable visual anchor
     return resolveStarSceneRadius(body.luminositySolar);
   }
   if (isMoonBody(body)) {
-    return resolveMoonSceneRadius(body.physicalCatalog?.estimatedDiameterM);
+    return resolveMoonSceneRadius(body.physicalCatalog?.estimatedDiameterM, zoomLevel);
   }
-  return resolvePlanetSceneRadius(body.physicalCatalog?.estimatedDiameterM);
+  return resolvePlanetSceneRadius(body.physicalCatalog?.estimatedDiameterM, zoomLevel);
 }
 
 /**

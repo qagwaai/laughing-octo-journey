@@ -69,10 +69,31 @@ https://github.com/qagwaai/solid-train/blob/main/MESSAGE_CONTRACT.md.
   vector from `spatial.positionKm` but their magnitude is
   `(1 + log10(km / 1e6 km)) * 4 scene units`. This keeps inner planets
   separable while still placing distant bodies in the same scene.
+- Close-range mission readability: when zoomed in (`zoomLevel < 22`) and the
+  current target is an asteroid or a ship, nearby asteroids are temporarily
+  reprojected in a **local cluster frame** around the target anchor (derived
+  from km offsets) before render. This avoids visual collapse of tightly packed
+  asteroid fields at belt-scale barycentric distances while preserving the
+  global projection model when zoomed out.
 - Color: prefers `visualization.colorHex`; falls back to `#fff5b6` for stars
   and `#9bb1c9` for other bodies.
 - All scaling helpers are isolated in
   `src/app/scene/viewer/viewer-formatters.ts` and unit-tested.
+
+### Local Cluster Projection Guardrails
+
+- Activation conditions:
+  - `zoomLevel < 22`
+  - `targetBodyId` resolves to either:
+    - an asteroid body in the current viewer payload, or
+    - a ship with valid spatial state.
+- Scope limit: only asteroid bodies within `30,000 km` of the target anchor
+  participate in local reprojection.
+- Transition behavior: the local projection weight is linearly faded by zoom,
+  reaching zero at the threshold to reduce visible popping.
+- Non-goals for this phase:
+  - No route/scene handoff yet (single-scene approach retained).
+  - No backend contract dependency; this is a client-side projection strategy.
 
 ### Internationalization
 

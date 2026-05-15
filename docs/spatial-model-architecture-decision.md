@@ -260,7 +260,7 @@ Positive:
 - Faster and simpler scene-range checks
 - Cleaner server contracts for nearby-object queries
 - Clear separation between location, motion, physical properties, and observability
-- Lower frontend complexity because fallback normalization logic can be removed
+- Lower frontend complexity because fallback normalization logic was removed once canonical spatial contracts landed
 
 Trade-offs:
 
