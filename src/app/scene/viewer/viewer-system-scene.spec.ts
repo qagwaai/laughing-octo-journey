@@ -6,6 +6,7 @@ import {
   resolveTargetScenePosition,
   resolveViewerSceneCameraDistanceRange,
 } from './viewer-system-scene';
+import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
   VIEWER_SCENE_ACTIVE_SHIP_COLOR,
   VIEWER_SCENE_INACTIVE_SHIP_COLOR,
@@ -206,6 +207,7 @@ describe('mapShipsToRendered', () => {
     expect(rendered).toHaveSize(1);
     expect(rendered[0].isActive).toBeTrue();
     expect(rendered[0].isUnknownSpatial).toBeFalse();
+    expect(rendered[0].model).toBe('Scavenger Pod');
     expect(rendered[0].color).toBe(VIEWER_SCENE_ACTIVE_SHIP_COLOR);
     expect(rendered[0].position[0]).toBeGreaterThan(0);
   });
@@ -228,6 +230,39 @@ describe('mapShipsToRendered', () => {
     expect(rendered[0].isUnknownSpatial).toBeTrue();
     expect(rendered[0].color).toBe(VIEWER_SCENE_UNKNOWN_SHIP_COLOR);
     expect(rendered[0].position).toEqual(VIEWER_SCENE_UNKNOWN_SHIP_POSITION);
+  });
+
+  it('defaults missing ship models through the shared ship-model coercion path', () => {
+    const rendered = mapShipsToRendered(
+      [
+        {
+          id: 'ship-missing-model',
+          name: 'Fallback',
+          model: '' as unknown as string,
+          tier: 1,
+          status: 'ACTIVE',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 3.5e8, y: 0, z: 0 },
+            epochMs: 1700000000000,
+          },
+        } as ShipSummary,
+      ],
+      null,
+    );
+
+    expect(rendered[0].model).toBe('Scavenger Pod');
+  });
+});
+
+describe('resolveViewerShipMeshKind', () => {
+  it('selects the GLB mesh for Scavenger Pod models (registered in asset catalog)', () => {
+    expect(resolveViewerShipMeshKind('Scavenger Pod')).toBe('glb');
+  });
+
+  it('falls back to the generic mesh for unknown ship models', () => {
+    expect(resolveViewerShipMeshKind('Courier Mk2')).toBe('generic');
   });
 });
 

@@ -49,16 +49,14 @@
 }
 
 @for (ship of renderedShips(); track ship.id) {
-<ngt-mesh [position]="ship.position" [name]="ship.displayName" input>
-  <ngt-box-geometry *args="[0.08, 0.08, 0.08]" />
-  <ngt-mesh-standard-material
+<ngt-group [position]="ship.position" [name]="ship.displayName">
+  <app-viewer-ship-mesh
+    [model]="ship.model"
     [color]="ship.color"
-    [roughness]="0.5"
-    [metalness]="0.3"
-    [emissive]="targetedBodyId() === ship.id ? '#92400e' : ship.isActive ? '#78350f' : '#1e3a5f'"
-    [emissiveIntensity]="targetedBodyId() === ship.id ? 0.65 : 0.4"
+    [targeted]="targetedBodyId() === ship.id"
+    [isActive]="ship.isActive"
   />
-</ngt-mesh>
+</ngt-group>
 }
 
 @for (body of nonStars(); track body.id) {

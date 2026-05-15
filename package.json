@@ -28,7 +28,8 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "e2e:report": "playwright show-report",
-    "e2e:install": "playwright install"
+    "e2e:install": "playwright install",
+    "export:ships": "node scripts/export-scavenger-pod-glb.mjs"
   },
   "private": true,
   "dependencies": {

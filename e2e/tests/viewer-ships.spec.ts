@@ -198,6 +198,20 @@ test.describe('Viewer — Character Ships', () => {
     await expect(page).toHaveURL(/right:viewer-scene/);
   });
 
+  test('viewer requests scavenger pod GLB asset when rendering ship meshes', async ({ page }) => {
+    const { mock } = await setupViewerShipsTest(page);
+
+    const glbResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
+    );
+
+    await navigateToScene(page, mock, [ACTIVE_SHIP]);
+
+    const glbResponse = await glbResponsePromise;
+    expect(glbResponse.ok()).toBeTruthy();
+  });
+
   test('scene renders without error when ship list is empty', async ({ page }) => {
     const { mock } = await setupViewerShipsTest(page);
     await navigateToScene(page, mock, []);

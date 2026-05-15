@@ -16,7 +16,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
-import type { ShipSummary } from '../../model/ship-list';
+import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import {
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
@@ -34,6 +34,7 @@ import {
   resolveOrbitColor,
   resolveSceneDistanceFromKm,
 } from './viewer-formatters';
+import { ViewerShipMesh } from './viewer-ship-mesh';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -57,6 +58,7 @@ interface RenderedBody {
 
 interface RenderedShip {
   id: string;
+  model: string;
   displayName: string;
   color: string;
   position: [number, number, number];
@@ -339,9 +341,11 @@ export function mapBodiesToRendered(
 export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | null): RenderedShip[] {
   return ships.map((ship): RenderedShip => {
     const isActive = activeShipId !== null && ship.id === activeShipId;
+    const model = coerceShipModel(ship.model);
     if (!isValidShipSpatial(ship.spatial)) {
       return {
         id: ship.id,
+        model,
         displayName: ship.name?.trim() || ship.id,
         color: VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
         position: [...VIEWER_SCENE_UNKNOWN_SHIP_POSITION] as [number, number, number],
@@ -359,6 +363,7 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
     ];
     return {
       id: ship.id,
+      model,
       displayName: ship.name?.trim() || ship.id,
       color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
       position: scenePos,
@@ -395,7 +400,7 @@ export function resolveTargetScenePosition(
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls],
+  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
