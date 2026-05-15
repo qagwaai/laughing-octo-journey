@@ -1,5 +1,7 @@
 <div class="ops-page-container">
-  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  @if (showGuardedMenu()) {
+    <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  }
   <div class="page-main">
     <div class="page-header">
       <div>

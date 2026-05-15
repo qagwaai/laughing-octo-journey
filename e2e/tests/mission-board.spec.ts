@@ -15,6 +15,13 @@ const characterWithStartedMission = {
   missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
 };
 
+const characterWithCompletedMission = {
+  id: 'char-4',
+  characterName: 'Scout Beta',
+  level: 2,
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' }],
+};
+
 const completedMissionGateState = {
   missionId: FIRST_TARGET_MISSION_ID,
   characterId: 'char-3',
@@ -62,6 +69,30 @@ test.describe('Mission Board — mission progress display', () => {
     const missionBoardPage = new MissionBoardPage(page);
 
     mock.on('game-join-request', () => null);
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-3',
+        ships: [
+          {
+            id: 'ship-1',
+            name: 'Nomad',
+            model: 'Scavenger Pod',
+            tier: 1,
+            status: 'ACTIVE',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 350000000, y: 0, z: 10000000 },
+              epochMs: 1715000000000,
+            },
+          },
+        ],
+      },
+    }));
     mock.on('list-missions-request', () => ({
       event: 'list-missions-response',
       data: {
@@ -81,10 +112,13 @@ test.describe('Mission Board — mission progress display', () => {
       },
     }));
 
-    await gameShell.joinGame();
+    await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/);
 
     await gameShell.openMissionBoard();
+
+    const leftMissionBoard = page.locator('app-mission-board-page .ops-page-container').first();
+    await expect(leftMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(1);
 
     const missionItem = missionBoardPage.missionItem(0);
     await expect(missionItem).toContainText('Your First Target');
@@ -92,5 +126,39 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(missionBoardPage.missionStatus(0)).toHaveAttribute('data-status', 'completed');
     await expect(missionItem).toContainText('Stage 4 of 4 — Complete');
     await expect(missionItem).toContainText('Mission objectives complete. Await further directives.');
+  });
+
+  test('right mission-board does not render guarded menu items after first-target completion', async ({ page }) => {
+    const { mock } = await setupMissionBoardTest(page, [characterWithCompletedMission]);
+    const gameShell = new GameShellPage(page);
+
+    mock.on('game-join-request', () => null);
+    mock.on('list-missions-request', () => ({
+      event: 'list-missions-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-4',
+        missions: [
+          {
+            missionId: FIRST_TARGET_MISSION_ID,
+            status: 'completed',
+            statusDetail: JSON.stringify(completedMissionGateState),
+            startedAt: '2026-04-01T10:00:00.000Z',
+            updatedAt: '2026-04-30T00:00:00.000Z',
+          },
+        ],
+      },
+    }));
+
+    await gameShell.joinGame();
+    await expect(page).toHaveURL(/right:mission-board/);
+
+    const rightMissionBoard = page.locator('app-mission-board-page .ops-page-container').first();
+    await expect(rightMissionBoard).toBeVisible();
+    await expect(rightMissionBoard.locator('app-guarded-left-menu')).toHaveCount(0);
+    await expect(rightMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(0);
+    await expect(rightMissionBoard.locator('button[aria-label="Viewer"]')).toHaveCount(0);
   });
 });

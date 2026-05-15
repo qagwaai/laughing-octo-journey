@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
@@ -39,6 +39,7 @@ interface MissionBoardNavigationState {
 export default class MissionBoardPage {
   protected readonly t = locale;
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private missionBoardService = inject(MissionBoardService);
   private socketService = inject(SocketService);
   private sessionService = inject(SessionService);
@@ -51,6 +52,7 @@ export default class MissionBoardPage {
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
+  protected showGuardedMenu = computed(() => this.route.outlet !== 'right');
   protected missions = signal<CharacterMissionProgress[]>([]);
   protected isLoadingMissions = signal(false);
   protected missionListError = signal<string | null>(null);

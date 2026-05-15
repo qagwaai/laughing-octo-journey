@@ -1,6 +1,6 @@
 import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -29,6 +29,7 @@ function setup(options: {
   sessionService: MockSessionService;
   navigationState?: Record<string, unknown>;
   connected?: boolean;
+  outlet?: string;
 }) {
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
@@ -43,6 +44,7 @@ function setup(options: {
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
       { provide: Router, useValue: mockRouter },
+      { provide: ActivatedRoute, useValue: { outlet: options.outlet ?? 'left' } },
       { provide: ShipExteriorMissionStateService, useValue: createMockMissionStateService() },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -488,6 +490,22 @@ describe('MissionBoardPage', () => {
       fixture.detectChanges();
       const el: HTMLElement = fixture.nativeElement;
       expect(el.querySelector('.ops-page-container')).toBeTruthy();
+    });
+
+    it('should render guarded left menu in left mission board outlet', () => {
+      const { fixture } = setup({ socketService, sessionService });
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('app-guarded-left-menu')).not.toBeNull();
+    });
+
+    it('should not render guarded left menu in right mission board outlet', () => {
+      const { fixture } = setup({ socketService, sessionService, outlet: 'right' });
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelector('app-guarded-left-menu')).toBeNull();
     });
 
     it('should show error message when mission load fails', () => {

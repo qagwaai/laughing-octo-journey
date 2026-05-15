@@ -100,7 +100,7 @@ export default class SolarSystemDetailsPage {
   protected activeTargetId = signal<string | null>(null);
 
   protected viewMode = signal<'type' | 'distance'>('type');
-  protected expandedTypes = signal<Set<string>>(new Set(TYPE_GROUP_ORDER));
+  protected expandedTypes = signal<Set<string>>(new Set());
 
   protected readonly hasRows = computed(() => this.rows().length > 0);
 
