@@ -135,6 +135,32 @@ test.describe('Locale opening and mission flow', () => {
       },
     }));
 
+    // In-progress join now fetches active ship before navigating away from character-list.
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-it-2',
+        ships: [
+          {
+            id: 'ship-it-2',
+            name: 'Astra Pod',
+            model: 'Scavenger Pod',
+            tier: 1,
+            status: 'ACTIVE',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 350000000, y: 0, z: 0 },
+              epochMs: 1715000000000,
+            },
+          },
+        ],
+      },
+    }));
+
     await loginWithItalianLocale(page, mock);
 
     await gameShell.joinGame();

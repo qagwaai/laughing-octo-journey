@@ -9,6 +9,19 @@ const FIRST_TARGET_MISSION_ID = 'first-target';
 const M01_MISSION_ID = 'm-01';
 
 const TEST_CHARACTER = { id: 'char-mission-test', characterName: 'Pioneer One', level: 1 };
+const STARTER_SHIP = {
+  id: 'ship-starter-1',
+  name: 'Scavenger Pod',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'ACTIVE',
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 350000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
+};
 
 function missionListResponseWith(missions: object[]) {
   return {
@@ -77,6 +90,18 @@ async function setupMissionBoardTest(
 
   mock.on('game-join-request', () => null);
 
+  // In-progress join path now resolves active ship before routing.
+  mock.on('ship-list-request', () => ({
+    event: 'ship-list-response',
+    data: {
+      success: true,
+      message: '',
+      playerName: TEST_PLAYER,
+      characterId: TEST_CHARACTER.id,
+      ships: [STARTER_SHIP],
+    },
+  }));
+
   mock.on('mission-list-request', () => ({
     event: 'mission-list-response',
     data: missionListResponseWith(missions),
@@ -105,7 +130,7 @@ async function setupMissionBoardTest(
 
   await loginViaUI(page, mock);
 
-  await gameShell.joinGame();
+  await gameShell.joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/left:game-main|left:opening-cold-boot/);
 
   await gameShell.openMissionBoard();

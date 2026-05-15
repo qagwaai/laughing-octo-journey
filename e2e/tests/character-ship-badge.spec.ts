@@ -64,14 +64,14 @@ async function setupAndNavigateToShipHangar(page: Page) {
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 test.describe('Character ship badge', () => {
-  test('ship badge defaults to "Scavenger Pod" when joining first-target in progress', async ({ page }) => {
+  test('ship badge shows hydrated active ship after joining first-target in progress', async ({ page }) => {
     await setupAndNavigateToShipHangar(page);
     const shipHangarPage = new ShipHangarPage(page);
 
-    // first-target in-progress join seeds active ship to the starter pod
+    // Started-mission join hydrates active ship from ship-list before routing.
     const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toBeVisible({ timeout: 10_000 });
-    await expect(badgeName).toHaveText('Scavenger Pod');
+    await expect(badgeName).toHaveText('Surveyor');
   });
 
   test('ship badge shows active ship name after clicking "Set as Active Ship"', async ({ page }) => {

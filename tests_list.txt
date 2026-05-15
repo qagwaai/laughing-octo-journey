@@ -1,0 +1,118 @@
+Listing tests:
+  [chromium] › tests\character-add.spec.ts:45:7 › Character Add — from character list › adds a character, runs starter-ship chain, and shows the new character in list
+  [chromium] › tests\character-add.spec.ts:182:7 › Character Add — from character list › shows character-name validation errors in setup form
+  [chromium] › tests\character-add.spec.ts:199:7 › Character Add — from character list › shows error and does not trigger starter-ship chain when add fails
+  [chromium] › tests\character-edit.spec.ts:40:7 › Character Edit — setup save redirect › redirects to character list and shows updated character after successful edit save
+  [chromium] › tests\character-list.spec.ts:83:7 › Character List — page structure › renders heading and subtitle
+  [chromium] › tests\character-list.spec.ts:90:7 › Character List — page structure › shows logged-in player name
+  [chromium] › tests\character-list.spec.ts:96:7 › Character List — page structure › renders Load Characters and Create / Edit Character buttons
+  [chromium] › tests\character-list.spec.ts:108:7 › Character List — loading characters › shows empty state when no characters exist
+  [chromium] › tests\character-list.spec.ts:118:7 › Character List — loading characters › renders character names from the server response
+  [chromium] › tests\character-list.spec.ts:128:7 › Character List — loading characters › renders character level when present
+  [chromium] › tests\character-list.spec.ts:137:7 › Character List — loading characters › shows error message when load fails
+  [chromium] › tests\character-list.spec.ts:158:7 › Character List — loading characters › load button is disabled while loading
+  [chromium] › tests\character-list.spec.ts:178:7 › Character List — loading characters › reloading replaces existing character list
+  [chromium] › tests\character-list.spec.ts:201:7 › Character List — join game label › shows "Join Game" for characters without a started mission
+  [chromium] › tests\character-list.spec.ts:210:7 › Character List — join game label › shows "Join Game in Progress" for characters with a started mission
+  [chromium] › tests\character-list.spec.ts:218:7 › Character List — join game label › shows "Join Game" for characters with a completed first-target mission
+  [chromium] › tests\character-list.spec.ts:230:7 › Character List — delete dialog › opens delete dialog on delete button click
+  [chromium] › tests\character-list.spec.ts:243:7 › Character List — delete dialog › delete dialog shows character name in confirmation text
+  [chromium] › tests\character-list.spec.ts:253:7 › Character List — delete dialog › cancel closes the delete dialog without removing the character
+  [chromium] › tests\character-list.spec.ts:267:7 › Character List — delete dialog › confirms delete and removes the character from the list
+  [chromium] › tests\character-list.spec.ts:285:7 › Character List — delete dialog › confirm delete button is disabled while deletion is in progress
+  [chromium] › tests\character-list.spec.ts:304:7 › Character List — delete dialog › shows error and keeps dialog closed when delete fails
+  [chromium] › tests\character-list.spec.ts:330:7 › Character List — navigation › navigates to character setup on "Create / Edit Character" click
+  [chromium] › tests\character-list.spec.ts:338:7 › Character List — navigation › navigates to character setup on "Edit" button click
+  [chromium] › tests\character-list.spec.ts:348:7 › Character List — navigation › routes completed first-target join to game-main and mission-board
+  [chromium] › tests\character-ship-badge.spec.ts:67:7 › Character ship badge › ship badge defaults to "Scavenger Pod" when joining first-target in progress
+  [chromium] › tests\character-ship-badge.spec.ts:77:7 › Character ship badge › ship badge shows active ship name after clicking "Set as Active Ship"
+  [chromium] › tests\first-target-full-mission-flow.spec.ts:265:7 › First Target Mission Flow › validates all first-target mission gate steps in order
+  [chromium] › tests\first-target-full-mission-flow.spec.ts:459:7 › First Target Mission Flow › normalizes legacy 3-step persisted gate into active repair step
+  [chromium] › tests\first-target-full-mission-flow.spec.ts:524:7 › First Target Mission Flow › shows Hull Patch Kit print button from Fabrication Lab print queue when iron exists in inventory
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:119:7 › Mission Board — first-target in progress › shows first-target mission in the active mission list when started
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:127:7 › Mission Board — first-target in progress › shows locked catalog missions when first-target is only started
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:141:7 › Mission Board — after first-target completion › shows M-01 in available missions section when first-target is completed
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:156:7 › Mission Board — after first-target completion › shows SQ-02 and SQ-03 as available after first-target completes
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:169:7 › Mission Board — after first-target completion › still-locked missions do not appear in available section
+  [chromium] › tests\first-target-to-m01-transition.spec.ts:191:7 › Mission Board — mission title display › renders mission titles from catalog instead of raw IDs
+  [chromium] › tests\locale-auth-flow.spec.ts:62:7 › Locale auth flow › applies selected Italian locale after login and keeps English fallback where missing
+  [chromium] › tests\locale-auth-flow.spec.ts:84:7 › Locale auth flow › passes selected login locale into registration page default
+  [chromium] › tests\locale-auth-flow.spec.ts:95:7 › Locale auth flow › uses persisted locale as login default after a successful Italian login
+  [chromium] › tests\locale-opening-mission-flow.spec.ts:59:7 › Locale opening and mission flow › shows Italian opening sequence text for a fresh mission join
+  [chromium] › tests\locale-opening-mission-flow.spec.ts:97:7 › Locale opening and mission flow › shows Italian mission board text after joining an in-progress mission
+  [chromium] › tests\login-after-first-target-completed.spec.ts:62:7 › Login Resume — first-target completed › routes to game-main + mission-board instead of cold boot after login and join
+  [chromium] › tests\login.spec.ts:12:7 › Login › renders login form
+  [chromium] › tests\login.spec.ts:19:7 › Login › locale selector defaults to current app locale
+  [chromium] › tests\login.spec.ts:23:7 › Login › submit button is disabled when form is empty
+  [chromium] › tests\login.spec.ts:27:7 › Login › submit button is disabled when player name is too short
+  [chromium] › tests\login.spec.ts:33:7 › Login › submit button enables when form is valid
+  [chromium] › tests\login.spec.ts:39:7 › Login › shows validation error when player name is touched and cleared
+  [chromium] › tests\login.spec.ts:46:7 › Login › register link navigates to registration
+  [chromium] › tests\market-hub-by-location.spec.ts:157:7 › Market Hub by-location contract › emits by-location request and renders markets ordered by authoritative distance
+  [chromium] › tests\market-hub-cross-system.spec.ts:193:7 › Market Hub cross-system route badges › renders in-system, gate-route, and no-route badges correctly
+  [chromium] › tests\market-hub-cross-system.spec.ts:228:7 › Market Hub cross-system route badges › gate-route markets have transact button disabled and no-route market is not transactable
+  [chromium] › tests\market-hub-cross-system.spec.ts:251:7 › Market Hub cross-system route badges › server no-route overrides client BFS — alpha-centauri shows No route when server says so
+  [chromium] › tests\market-hub-docking.spec.ts:150:7 › Market Hub docking and radius behavior › shows in-system route badge for local non-docked market
+  [chromium] › tests\market-hub-docking.spec.ts:174:7 › Market Hub docking and radius behavior › docked cross-system market: gate-route badge shown, transact disabled when not docked there
+  [chromium] › tests\market-hub-docking.spec.ts:295:7 › Market Hub docking and radius behavior › enables transact only for docked market and refreshes with selected radius
+  [chromium] › tests\market-hub-grouped-sections.spec.ts:146:7 › Market Hub grouped sections › shows reachable markets section by default with in-range markets only
+  [chromium] › tests\market-hub-grouped-sections.spec.ts:168:7 › Market Hub grouped sections › enabling the toggle reveals the Beyond Current Drive section
+  [chromium] › tests\market-hub-grouped-sections.spec.ts:193:7 › Market Hub grouped sections › out-of-range market shows required drive upgrade info
+  [chromium] › tests\market-hub-grouped-sections.spec.ts:207:7 › Market Hub grouped sections › sends selected radius to server without clamping to drive range
+  [chromium] › tests\mission-board.spec.ts:66:7 › Mission Board — mission progress display › shows completed mission status and stage on mission board after joining in-progress game
+  [chromium] › tests\mission-board.spec.ts:131:7 › Mission Board — mission progress display › right mission-board does not render guarded menu items after first-target completion
+  [chromium] › tests\planet-view-zoom.spec.ts:257:7 › Planet details zoom pattern › supports focusing moons even when size metadata is missing
+  [chromium] › tests\planet-view-zoom.spec.ts:273:7 › Planet details zoom pattern › preserves planet details interaction and right-click exit flow
+  [chromium] › tests\registration-auto-login-failure.spec.ts:6:7 › Registration auto-login failure › stays on registration and shows error when login fails after successful registration
+  [chromium] › tests\registration.spec.ts:13:7 › Registration › renders registration form
+  [chromium] › tests\registration.spec.ts:22:7 › Registration › submit button is disabled when form is empty
+  [chromium] › tests\registration.spec.ts:26:7 › Registration › submit button is disabled when passwords do not match
+  [chromium] › tests\registration.spec.ts:35:7 › Registration › shows password mismatch error
+  [chromium] › tests\registration.spec.ts:44:7 › Registration › submit button enables when form is valid
+  [chromium] › tests\registration.spec.ts:52:7 › Registration › submit button uses create-account-and-login copy
+  [chromium] › tests\registration.spec.ts:56:7 › Registration › auto-logs in and redirects to character list after successful registration
+  [chromium] › tests\ship-exterior-hangar-resume.spec.ts:158:7 › Ship Exterior scan persistence via Hangar › keeps scanned asteroid state after ship specs and View Exterior round-trip
+  [chromium] › tests\ship-exterior-test-utils.spec.ts:10:7 › Ship Exterior Test Utilities › supports deterministic mission progression without real 3D pointer raycast
+  [chromium] › tests\ship-exterior-test-utils.spec.ts:244:7 › Ship Exterior Test Utilities › completes deterministic mission flow and emits completed mission status
+  [chromium] › tests\ship-exterior-test-utils.spec.ts:574:7 › Ship Exterior Test Utilities › resets stale local completed gate state when backend reports started without statusDetail
+  [chromium] › tests\ship-exterior-test-utils.spec.ts:803:7 › Ship Exterior Test Utilities › reopens final step when backend reports in-progress without statusDetail and local gate is fully completed
+  [chromium] › tests\viewer-controls-after-target.spec.ts:123:7 › Viewer controls after target completion › keeps rotate, zoom, and pan usable after target-fly settles
+  [chromium] › tests\viewer-interactions.spec.ts:268:7 › Viewer — Interaction Behaviors › applies hover styling when mouse enters scene canvas
+  [chromium] › tests\viewer-interactions.spec.ts:289:7 › Viewer — Interaction Behaviors › canvas remains interactive after hover
+  [chromium] › tests\viewer-interactions.spec.ts:302:7 › Viewer — Interaction Behaviors › scene responds to mouse move events
+  [chromium] › tests\viewer-interactions.spec.ts:316:7 › Viewer — Interaction Behaviors › displays planet orbital elements correctly
+  [chromium] › tests\viewer-interactions.spec.ts:330:7 › Viewer — Interaction Behaviors › handles moon orbital elements relative to planet anchor
+  [chromium] › tests\viewer-interactions.spec.ts:344:7 › Viewer — Interaction Behaviors › maintains scene state during multiple interactions
+  [chromium] › tests\viewer-interactions.spec.ts:359:7 › Viewer — Interaction Behaviors › scene renders without errors on rapid hover toggle
+  [chromium] › tests\viewer-interactions.spec.ts:378:7 › Viewer — Interaction Behaviors › preserves scene context across view interactions
+  [chromium] › tests\viewer-interactions.spec.ts:393:7 › Viewer — Interaction Behaviors › [edge case] scene remains stable with zero-mass bodies
+  [chromium] › tests\viewer-list.spec.ts:109:7 › Viewer — Solar System List › loads and displays solar system list after navigation to viewer
+  [chromium] › tests\viewer-list.spec.ts:144:7 › Viewer — Solar System List › displays loading state while fetching solar systems
+  [chromium] › tests\viewer-list.spec.ts:207:7 › Viewer — Solar System List › displays empty state when no systems are returned
+  [chromium] › tests\viewer-list.spec.ts:223:7 › Viewer — Solar System List › displays error when system list request fails
+  [chromium] › tests\viewer-list.spec.ts:281:7 › Viewer — Solar System List › navigates to scene view when system is selected
+  [chromium] › tests\viewer-list.spec.ts:308:7 › Viewer — Solar System List › [locale] displays viewer list in Italian locale
+  [chromium] › tests\viewer-scene-rendering.spec.ts:234:7 › Viewer — Scene Rendering › renders viewer scene after selecting a solar system
+  [chromium] › tests\viewer-scene-rendering.spec.ts:249:7 › Viewer — Scene Rendering › displays system name in the scene view
+  [chromium] › tests\viewer-scene-rendering.spec.ts:258:7 › Viewer — Scene Rendering › accepts station market bodies in scene payload
+  [chromium] › tests\viewer-scene-rendering.spec.ts:268:7 › Viewer — Scene Rendering › handles scene load error gracefully
+  [chromium] › tests\viewer-scene-rendering.spec.ts:293:7 › Viewer — Scene Rendering › renders multiple bodies with different types (star, planet, moon)
+  [chromium] › tests\viewer-scene-rendering.spec.ts:307:7 › Viewer — Scene Rendering › renders orbits for planet-anchored bodies
+  [chromium] › tests\viewer-scene-rendering.spec.ts:320:7 › Viewer — Scene Rendering › displays loading state while scene is loading
+  [chromium] › tests\viewer-scene-rendering.spec.ts:354:7 › Viewer — Scene Rendering › maintains system summary across scene navigation
+  [chromium] › tests\viewer-scene-rendering.spec.ts:364:7 › Viewer — Scene Rendering › [locale] renders scene content in Italian locale
+  [chromium] › tests\viewer-ships.spec.ts:165:7 › Viewer — Character Ships › legend shows active ship and inactive ships entries
+  [chromium] › tests\viewer-ships.spec.ts:175:7 › Viewer — Character Ships › active ship legend swatch uses amber color (#fbbf24)
+  [chromium] › tests\viewer-ships.spec.ts:183:7 › Viewer — Character Ships › inactive ship legend swatch uses blue color (#3b82f6)
+  [chromium] › tests\viewer-ships.spec.ts:191:7 › Viewer — Character Ships › scene renders without error when ships are present in current solar system
+  [chromium] › tests\viewer-ships.spec.ts:201:7 › Viewer — Character Ships › viewer requests scavenger pod GLB asset when rendering ship meshes
+  [chromium] › tests\viewer-ships.spec.ts:215:7 › Viewer — Character Ships › scene renders without error when ship list is empty
+  [chromium] › tests\viewer-ships.spec.ts:224:7 › Viewer — Character Ships › ships in other solar systems are excluded from scene
+  [chromium] › tests\viewer-ships.spec.ts:237:7 › Viewer — Character Ships › scene handles ship-list failure gracefully (no scene error shown)
+  [chromium] › tests\viewer-ships.spec.ts:258:7 › Viewer — Character Ships › legend is always visible regardless of ship availability
+  [chromium] › tests\viewer-ships.spec.ts:268:7 › Viewer — Character Ships › session key is used in ship-list request alongside player and character
+  [chromium] › tests\viewer-ships.spec.ts:301:7 › Viewer — Character Ships › target button flies camera to selected ship row target
+  [chromium] › tests\viewer-ships.spec.ts:330:7 › Viewer — Character Ships › renders unknown-spatial legend swatch and triggers lazy repair upsert
+  [chromium] › tests\viewer.spec.ts:115:7 › Viewer — solar system browser (en) › lists solar systems and renders the scene host on selection
+  [chromium] › tests\viewer.spec.ts:132:7 › Viewer — locale strings (it) › renders Italian labels when locale is set to it
+Total: 116 tests in 26 files

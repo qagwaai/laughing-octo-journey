@@ -40,6 +40,20 @@ const alphaCenSummary = {
   primaryStar: { hygId: '71456', spectralClass: 'G2V', colorHex: '#ffe7a8', luminositySolar: 1.5, massSolar: 1.1 },
 };
 
+const ACTIVE_SHIP = {
+  id: 'ship-vw-1',
+  name: 'Scout Pod',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'ACTIVE',
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 350000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
+};
+
 const solGetResponse = {
   success: true,
   message: 'ok',
@@ -86,6 +100,16 @@ async function setupViewerTest(page: Page) {
     data: characterListResponse([characterWithJoin]),
   }));
   mock.on('game-join-request', () => null);
+  mock.on('ship-list-request', () => ({
+    event: 'ship-list-response',
+    data: {
+      success: true,
+      message: 'ok',
+      playerName: TEST_PLAYER,
+      characterId: characterWithJoin.id,
+      ships: [ACTIVE_SHIP],
+    },
+  }));
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',
     data: {

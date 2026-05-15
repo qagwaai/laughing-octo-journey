@@ -49,6 +49,20 @@ const SIRIUS_SYSTEM: Partial<any> = {
   },
 };
 
+const ACTIVE_SHIP = {
+  id: 'ship-viewer-list-1',
+  name: 'Scout Pod',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'ACTIVE',
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 350000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
+};
+
 function solarSystemListResponse(systems: any[]) {
   return {
     success: true,
@@ -89,10 +103,20 @@ async function setupViewerListTest(page: any, systems: any[] = []) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
+  mock.on('ship-list-request', () => ({
+    event: 'ship-list-response',
+    data: {
+      success: true,
+      message: '',
+      playerName: TEST_PLAYER,
+      characterId: 'char-viewer-1',
+      ships: [ACTIVE_SHIP],
+    },
+  }));
   const joinButton = gameShell.joinButton();
   await expect(joinButton).toBeVisible({ timeout: 10000 });
   await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await gameShell.joinGame('Join Game');
+  await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
   mock.on('solar-system-list-request', () => ({
@@ -173,10 +197,20 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-viewer-1',
+        ships: [ACTIVE_SHIP],
+      },
+    }));
     const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await gameShell.joinGame('Join Game');
+    await gameShell.joinGame();
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register the response handler but delay the response to catch the loading state
@@ -252,10 +286,20 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-viewer-1',
+        ships: [ACTIVE_SHIP],
+      },
+    }));
     const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await gameShell.joinGame('Join Game');
+    await gameShell.joinGame();
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     mock.on('solar-system-list-request', () => ({
@@ -370,10 +414,20 @@ test.describe('Viewer — Solar System List', () => {
 
     // Must join a game before viewer menu is enabled
     mock.on('game-join-request', () => null);
+    mock.on('ship-list-request', () => ({
+      event: 'ship-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-viewer-1',
+        ships: [ACTIVE_SHIP],
+      },
+    }));
     const joinButton = gameShell.joinButton();
     await expect(joinButton).toBeVisible({ timeout: 10000 });
     await expect(joinButton).toBeEnabled({ timeout: 10000 });
-    await gameShell.joinGame('Join Game');
+    await gameShell.joinGame();
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register solar system list handler
