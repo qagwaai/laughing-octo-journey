@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemListResponse, SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
@@ -40,10 +41,7 @@ export default class ViewerPage {
   private solarSystemService = inject(SolarSystemService);
   private viewerTargetService = inject(ViewerTargetService);
 
-  private navigationState: ViewerNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as ViewerNavigationState | undefined) ??
-    (history.state as ViewerNavigationState | undefined) ??
-    {};
+  private navigationState: ViewerNavigationState = resolveNavigationState<ViewerNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 
 interface CharacterProfileNavigationState {
@@ -25,9 +26,7 @@ export default class CharacterProfilePage {
   protected readonly t = locale;
   private router = inject(Router);
   private navigationState: CharacterProfileNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as CharacterProfileNavigationState | undefined) ??
-    (history.state as CharacterProfileNavigationState | undefined) ??
-    {};
+    resolveNavigationState<CharacterProfileNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

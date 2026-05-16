@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -77,10 +78,9 @@ export default class CharacterSetupPage implements OnDestroy {
   private sessionService = inject(SessionService);
   private unsubscribeAddResponse?: () => void;
   private unsubscribeInvalidSession?: () => void;
-  private setupState: CharacterSetupNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as CharacterSetupNavigationState | undefined) ??
-    (history.state as CharacterSetupNavigationState | undefined) ??
-    {};
+  private setupState: CharacterSetupNavigationState = resolveNavigationState<CharacterSetupNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.setupState.playerName ?? '');
   protected editCharacter = signal<PlayerCharacterSummary | null>(this.setupState.editCharacter ?? null);

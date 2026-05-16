@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { getActiveLocaleCode, locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
@@ -32,10 +33,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
   private sessionService = inject(SessionService);
   private timers: number[] = [];
   private didStartBedForCurrentEnablement = false;
-  private navigationState: ColdBootNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as ColdBootNavigationState | undefined) ??
-    (history.state as ColdBootNavigationState | undefined) ??
-    {};
+  private navigationState: ColdBootNavigationState = resolveNavigationState<ColdBootNavigationState>(this.router);
 
   protected readonly t = locale;
   protected stage = signal(0);

@@ -5,6 +5,8 @@ import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { type ShipItem } from '../../model/ship-item';
 import { type ShipSummary } from '../../model/ship-list';
 import { SessionService, SocketService } from '../../services';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 import {
   type RepairAssetFilter,
   type RepairAssetGrouping,
@@ -24,11 +26,11 @@ export default class RepairRetrofitItemDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
-  private navigationState: RepairDetailNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as RepairDetailNavigationState | undefined) ??
-    (history.state as RepairDetailNavigationState | undefined) ??
-    {};
+  private navigationState: RepairDetailNavigationState = resolveNavigationState<RepairDetailNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal(this.navigationState.joinCharacter ?? null);
@@ -53,7 +55,7 @@ export default class RepairRetrofitItemDetailPage {
   protected canFullyRepair = computed(() => this.selectedItem()?.damageStatus !== 'intact');
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
+    this.socketLifecycleService.ensureConnected();
   }
 
   protected navigateBackToRepairItems(): void {

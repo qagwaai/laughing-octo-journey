@@ -8,6 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
+import { resolveNavigationState } from '../navigation-state';
 import {
   currentLocaleCode,
   isSupportedLocaleCode,
@@ -54,9 +55,7 @@ export default class RegistrationPage implements OnDestroy {
   private unsubscribeRegisterResponse?: () => void;
   private unsubscribeLoginResponse?: () => void;
   private navigationState: RegistrationNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as RegistrationNavigationState | undefined) ??
-    (history.state as RegistrationNavigationState | undefined) ??
-    {};
+    resolveNavigationState<RegistrationNavigationState>(this.router);
   private defaultLocale: SupportedLocaleCode =
     typeof this.navigationState.preferredLocale === 'string' &&
     isSupportedLocaleCode(this.navigationState.preferredLocale)

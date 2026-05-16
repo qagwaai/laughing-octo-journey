@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 
 interface GameMainNavigationState {
@@ -23,10 +24,7 @@ interface GameMainNavigationState {
 export default class GameMainPage {
   protected readonly t = locale;
   private router = inject(Router);
-  private navigationState: GameMainNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as GameMainNavigationState | undefined) ??
-    (history.state as GameMainNavigationState | undefined) ??
-    {};
+  private navigationState: GameMainNavigationState = resolveNavigationState<GameMainNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

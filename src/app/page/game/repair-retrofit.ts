@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
@@ -17,6 +18,7 @@ import {
   type ShipSummary,
 } from '../../model/ship-list';
 import { SessionService, ShipService, SocketService } from '../../services';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import {
   type RepairAssetFilter,
   type RepairAssetGrouping,
@@ -45,12 +47,10 @@ export default class RepairRetrofitPage {
   protected readonly t = locale;
   private router = inject(Router);
   private shipService = inject(ShipService);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private navigationState: RepairRetrofitNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as RepairRetrofitNavigationState | undefined) ??
-    (history.state as RepairRetrofitNavigationState | undefined) ??
-    {};
+    resolveNavigationState<RepairRetrofitNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -64,17 +64,11 @@ export default class RepairRetrofitPage {
   protected canOpenRepairItems = computed(() => !!this.activeShip());
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
     if (this.activeShip()) {
       return;
     }
 
-    if (this.socketService.getIsConnected()) {
-      this.loadActiveShip();
-    } else {
-      this.socketService.once('connect', () => this.loadActiveShip());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadActiveShip());
   }
 
   private isFirstTargetInProgress(): boolean {

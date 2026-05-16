@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import {
   createInitialMissionGateState,
   parseMissionGateState,
@@ -21,8 +22,8 @@ import type { CharacterMissionProgress } from '../../model/mission';
 import { type MissionListRequest, type MissionListResponse } from '../../model/mission-list';
 import { MissionBoardService } from '../../services/mission-board.service';
 import { SessionService } from '../../services/session.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
-import { SocketService } from '../../services/socket.service';
 
 interface MissionBoardNavigationState {
   playerName?: string;
@@ -41,14 +42,12 @@ export default class MissionBoardPage {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private missionBoardService = inject(MissionBoardService);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private unsubscribeMissionListResponse?: () => void;
   private navigationState: MissionBoardNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as MissionBoardNavigationState | undefined) ??
-    (history.state as MissionBoardNavigationState | undefined) ??
-    {};
+    resolveNavigationState<MissionBoardNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -123,13 +122,7 @@ export default class MissionBoardPage {
   });
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
-    if (this.socketService.getIsConnected()) {
-      this.loadMissionsForCharacter();
-    } else {
-      this.socketService.once('connect', () => this.loadMissionsForCharacter());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadMissionsForCharacter());
   }
 
   loadMissionsForCharacter(): void {

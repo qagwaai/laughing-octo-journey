@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
   EXPENDABLE_DART_DRONE_DISPLAY_NAME,
@@ -23,6 +24,7 @@ import {
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
 
 interface ShipViewInventoryNavigationState {
@@ -52,25 +54,18 @@ export default class ShipViewInventoryPage implements OnDestroy {
   protected readonly t = locale;
   private router = inject(Router);
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
   private navigationState: ShipViewInventoryNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as ShipViewInventoryNavigationState | undefined) ??
-    (history.state as ShipViewInventoryNavigationState | undefined) ??
-    {};
+    resolveNavigationState<ShipViewInventoryNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
   protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
-    if (this.socketService.getIsConnected()) {
-      this.refreshShipFromServer();
-    } else {
-      this.socketService.once('connect', () => this.refreshShipFromServer());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
   }
 
   protected inventoryGroups = computed<InventoryGroup[]>(() => {

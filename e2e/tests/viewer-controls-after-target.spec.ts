@@ -117,6 +117,7 @@ async function setupViewer(page: Page): Promise<void> {
   await expect(page).toHaveURL(/left:solar-system-details/);
   await expect(page).toHaveURL(/right:viewer-scene/);
   await expect(viewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+  await viewerPage.switchToDistanceView();
 }
 
 test.describe('Viewer controls after target completion', () => {

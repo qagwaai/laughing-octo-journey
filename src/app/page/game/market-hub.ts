@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { MISSION_IDS, resolveMissionById } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
@@ -22,8 +23,8 @@ import type { Triple } from '../../model/shared/triple';
 import { type ShipListRequest, type ShipListResponse, type ShipSummary } from '../../model/ship-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 const DEFAULT_MARKET_RADIUS_AU = 0.5;
@@ -67,12 +68,9 @@ export default class MarketHubPage {
   private router = inject(Router);
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
-  private navigationState: MarketHubNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as MarketHubNavigationState | undefined) ??
-    (history.state as MarketHubNavigationState | undefined) ??
-    {};
+  private navigationState: MarketHubNavigationState = resolveNavigationState<MarketHubNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -140,17 +138,10 @@ export default class MarketHubPage {
   protected readonly m01Definition = resolveMissionById(MISSION_IDS.m01);
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
-    if (this.socketService.getIsConnected()) {
+    this.socketLifecycleService.runWhenConnected(() => {
       this.ensureActiveShipPosition();
       this.loadNearbyMarkets();
-    } else {
-      this.socketService.once('connect', () => {
-        this.ensureActiveShipPosition();
-        this.loadNearbyMarkets();
-      });
-    }
+    });
   }
 
   ngOnDestroy(): void {

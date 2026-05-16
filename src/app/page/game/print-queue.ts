@@ -9,6 +9,7 @@ import {
 } from '../../mission/ship-exterior-mission';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { resolveNavigationState } from '../navigation-state';
 import {
   describePrintableMaterials,
   findConsumableMaterialsForPrintableItem,
@@ -31,6 +32,7 @@ import { SessionService, ShipService, SocketService } from '../../services';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import { PrinterStateService } from '../../services/printer-state.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { type PrintQueueNavigationState } from './repair-retrofit-state';
 
@@ -48,16 +50,16 @@ export default class PrintQueuePage {
   private router = inject(Router);
   private shipService = inject(ShipService);
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private missionProgressSyncService = inject(MissionProgressSyncService);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private printerService = inject(PrinterStateService);
   private destroyRef = inject(DestroyRef);
   private collectingItemIds = new Set<string>();
-  private navigationState: PrintQueueNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as PrintQueueNavigationState | undefined) ??
-    (history.state as PrintQueueNavigationState | undefined) ??
-    {};
+  private navigationState: PrintQueueNavigationState = resolveNavigationState<PrintQueueNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -82,19 +84,13 @@ export default class PrintQueuePage {
   });
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
     if (playerName && characterId) {
       this.printerService.loadQueue(playerName, characterId);
     }
 
-    if (this.socketService.getIsConnected()) {
-      this.loadActiveShip();
-    } else {
-      this.socketService.once('connect', () => this.loadActiveShip());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadActiveShip());
 
     const intervalId = setInterval(() => {
       this.currentTime.set(Date.now());

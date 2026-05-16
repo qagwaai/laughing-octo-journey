@@ -19,7 +19,9 @@ import { type ShipSummary } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { resolveNavigationState } from '../navigation-state';
 import {
   describeSummaryForSystems,
   mapOverallStatusToShipStatus,
@@ -41,13 +43,13 @@ export default class RepairRetrofitShipDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private missionProgressSyncService = inject(MissionProgressSyncService);
   private missionStateService = inject(ShipExteriorMissionStateService);
-  private navigationState: RepairDetailNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as RepairDetailNavigationState | undefined) ??
-    (history.state as RepairDetailNavigationState | undefined) ??
-    {};
+  private navigationState: RepairDetailNavigationState = resolveNavigationState<RepairDetailNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal(this.navigationState.joinCharacter ?? null);
@@ -72,7 +74,7 @@ export default class RepairRetrofitShipDetailPage {
   });
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
+    this.socketLifecycleService.ensureConnected();
   }
 
   private isFirstTargetMissionContext(): boolean {

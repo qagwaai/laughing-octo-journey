@@ -14,7 +14,8 @@ import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -32,17 +33,14 @@ export default class CharacterListPage implements OnDestroy {
   protected readonly t = locale;
   private characterService = inject(CharacterService);
   private gameSessionService = inject(GameSessionService);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private shipService = inject(ShipService);
   private router = inject(Router);
   private unsubscribeInvalidSession?: () => void;
+  private navigationState: { playerName?: string } = resolveNavigationState<{ playerName?: string }>(this.router);
 
-  protected playerName = signal<string>(
-    (this.router.getCurrentNavigation()?.extras.state?.['playerName'] as string | undefined) ??
-      (history.state?.playerName as string | undefined) ??
-      '',
-  );
+  protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected characters = signal<PlayerCharacterSummary[]>([]);
   protected isLoading = signal(false);
   protected errorMessage = signal<string | null>(null);
@@ -55,11 +53,7 @@ export default class CharacterListPage implements OnDestroy {
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
     });
 
-    if (this.socketService.getIsConnected()) {
-      this.loadCharacters();
-    } else {
-      this.socketService.once('connect', () => this.loadCharacters());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadCharacters());
   }
 
   /**

@@ -305,6 +305,7 @@ test.describe('Viewer — Character Ships', () => {
     const viewerPage = new ViewerPage(page);
     const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible({ timeout: 10_000 });
+    await viewerPage.switchToDistanceView();
 
     const before = await getCanvasFrameSignature(canvas);
     expect(before.length).toBeGreaterThan(500);

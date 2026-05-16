@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { summarizeShipMotion } from '../../model/math/kinematics';
 import { type SpatialState } from '../../model/math/spatial';
@@ -20,7 +21,7 @@ import {
 import { GameSessionService } from '../../services/game-session.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 
 interface GameJoinNavigationState {
   playerName?: string;
@@ -41,14 +42,11 @@ export default class GameJoinPage {
   protected readonly t = locale;
   private router = inject(Router);
   private gameSessionService = inject(GameSessionService);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
   private unsubscribeInvalidSession?: () => void;
-  private navigationState: GameJoinNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as GameJoinNavigationState | undefined) ??
-    (history.state as GameJoinNavigationState | undefined) ??
-    {};
+  private navigationState: GameJoinNavigationState = resolveNavigationState<GameJoinNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -63,11 +61,7 @@ export default class GameJoinPage {
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
     });
 
-    if (this.socketService.getIsConnected()) {
-      this.loadShipsForCharacter();
-    } else {
-      this.socketService.once('connect', () => this.loadShipsForCharacter());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadShipsForCharacter());
   }
 
   /**

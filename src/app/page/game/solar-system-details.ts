@@ -4,29 +4,14 @@ import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import type { PlayerCharacterSummary } from '../../model/character-list';
-import type { ViewerBody } from '../../model/solar-system-get';
-import type { SolarSystemGetResponse } from '../../model/solar-system-get';
-import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
-import type { ShipListRequest, ShipListResponse } from '../../model/ship-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
-
-interface DetailsRow {
-  id: string;
-  displayName: string;
-  bodyType: string;
-  diameterM: number | null;
-  semiMajorAxisKm: number | null;
-  isShip: boolean;
-  isActiveShip: boolean;
-  shipModel: string | null;
-  shipTier: number | null;
-  shipStatus: string | null;
-}
+import { SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
+import { resolveNavigationState } from '../navigation-state';
 
 interface TypeGroup {
   type: string;
@@ -39,9 +24,6 @@ interface SolarSystemDetailsNavigationState {
   joinCharacter?: PlayerCharacterSummary;
   solarSystem?: SolarSystemSummary;
 }
-
-const DETAILS_MARKET_DISTANCE_AU = 200;
-const DETAILS_MARKET_LIMIT = 250;
 
 const BODY_TYPE_SORT_ORDER: Record<string, number> = {
   star: 0,
@@ -81,10 +63,23 @@ export default class SolarSystemDetailsPage {
   private shipService = inject(ShipService);
   private viewerTargetService = inject(ViewerTargetService);
 
+  private readonly detailsFacade = new SolarSystemDetailsFacade({
+    solarSystemService: this.solarSystemService,
+    marketService: this.marketService,
+    shipService: this.shipService,
+    getPlayerName: () => this.playerName(),
+    getSessionKey: () => this.sessionService.getSessionKey(),
+    getActiveCharacterId: () => this.sessionService.activeCharacter()?.id ?? null,
+    getActiveShipId: () => this.sessionService.activeShip()?.id ?? null,
+    setSolarSystem: (solarSystem: SolarSystemSummary | null) => this.solarSystem.set(solarSystem),
+    setBodyRows: (rows: DetailsRow[]) => this.bodyRows.set(rows),
+    setShipRows: (rows: DetailsRow[]) => this.shipRows.set(rows),
+    setIsLoading: (value: boolean) => this.isLoading.set(value),
+    setLoadError: (value: string | null) => this.loadError.set(value),
+  });
+
   private navigationState: SolarSystemDetailsNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as SolarSystemDetailsNavigationState | undefined) ??
-    (history.state as SolarSystemDetailsNavigationState | undefined) ??
-    {};
+    resolveNavigationState<SolarSystemDetailsNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -144,138 +139,9 @@ export default class SolarSystemDetailsPage {
   }
 
   private loadDetails(solarSystemId: string): void {
-    const playerName = this.playerName();
-    const sessionKey = this.sessionService.getSessionKey();
-    if (!playerName || !sessionKey) {
-      this.loadError.set(this.t.game.viewer.detailsErrorPrefix + ' missing-session');
-      return;
-    }
-
-    this.isLoading.set(true);
-    this.loadError.set(null);
-    this.bodyRows.set([]);
-    this.shipRows.set([]);
     this.viewerTargetService.clearTarget();
     this.activeTargetId.set(null);
-
-    this.solarSystemService.getSolarSystem(
-      { playerName, sessionKey, solarSystemId },
-      (response: SolarSystemGetResponse) => {
-        this.isLoading.set(false);
-        if (!response.success) {
-          this.loadError.set(this.t.game.viewer.detailsErrorPrefix + ' ' + (response.message ?? 'unknown-error'));
-          return;
-        }
-        if (response.solarSystem) {
-          this.solarSystem.set(response.solarSystem);
-        }
-        const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
-        const bodyRows = this.bodiesToRows(allBodies);
-        bodyRows.sort((a, b) => sortOrder(a.bodyType) - sortOrder(b.bodyType));
-        this.bodyRows.set(bodyRows);
-        this.hydrateMarkets(bodyRows, allBodies, playerName, sessionKey, solarSystemId);
-        this.loadShipsForSystem(playerName, sessionKey, solarSystemId);
-      },
-    );
-  }
-
-  private bodiesToRows(bodies: ViewerBody[]): DetailsRow[] {
-    return bodies.map((b) => ({
-      id: b.id,
-      displayName: b.displayName,
-      bodyType: typeof b.bodyType === 'string' && b.bodyType.trim() ? b.bodyType : 'unknown',
-      diameterM: b.physicalCatalog?.estimatedDiameterM ?? null,
-      semiMajorAxisKm: b.orbitalElements?.semiMajorAxisKm ?? null,
-      isShip: false,
-      isActiveShip: false,
-      shipModel: null,
-      shipTier: null,
-      shipStatus: null,
-    }));
-  }
-
-  private hydrateMarkets(
-    existingRows: DetailsRow[],
-    allBodies: ViewerBody[],
-    playerName: string,
-    sessionKey: string,
-    solarSystemId: string,
-  ): void {
-    const hasStation = allBodies.some((b) => typeof b.bodyType === 'string' && b.bodyType.toLowerCase() === 'station');
-    if (hasStation) {
-      return;
-    }
-
-    const firstStar = allBodies.find((b) => typeof b.bodyType === 'string' && b.bodyType.toLowerCase() === 'star');
-    const positionKm = firstStar?.spatial.positionKm ?? { x: 0, y: 0, z: 0 };
-
-    const request: MarketListByLocationRequest = {
-      playerName,
-      sessionKey,
-      solarSystemId,
-      positionKm,
-      distanceAu: DETAILS_MARKET_DISTANCE_AU,
-      limit: DETAILS_MARKET_LIMIT,
-      locationTypes: ['station', 'free-floating'],
-    };
-
-    this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
-      if (!response.success) {
-        return;
-      }
-      const marketRows = (response.markets ?? []).map((m: MarketSummary): DetailsRow => ({
-        id: m.marketId,
-        displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
-        bodyType: 'station',
-        diameterM: null,
-        semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
-        isShip: false,
-        isActiveShip: false,
-        shipModel: null,
-        shipTier: null,
-        shipStatus: null,
-      }));
-      const merged = [...existingRows, ...marketRows];
-      merged.sort((a, b) => sortOrder(a.bodyType) - sortOrder(b.bodyType));
-      this.bodyRows.set(merged);
-    });
-  }
-
-  private loadShipsForSystem(playerName: string, sessionKey: string, solarSystemId: string): void {
-    const character = this.sessionService.activeCharacter();
-    if (!character?.id) {
-      this.shipRows.set([]);
-      return;
-    }
-
-    const request: ShipListRequest = {
-      playerName,
-      characterId: character.id,
-      sessionKey,
-    };
-
-    this.shipService.listShips(request, (response: ShipListResponse) => {
-      if (!response.success) {
-        this.shipRows.set([]);
-        return;
-      }
-      const activeShipId = this.sessionService.activeShip()?.id ?? null;
-      const systemShips = (response.ships ?? []).filter(
-        (ship) => ship.spatial?.solarSystemId === solarSystemId,
-      );
-      this.shipRows.set(systemShips.map((ship) => ({
-        id: ship.id,
-        displayName: ship.name,
-        bodyType: 'ship',
-        diameterM: null,
-        semiMajorAxisKm: null,
-        isShip: true,
-        isActiveShip: ship.id === activeShipId,
-        shipModel: ship.model ?? null,
-        shipTier: ship.tier ?? null,
-        shipStatus: ship.status ?? null,
-      })));
-    });
+    this.detailsFacade.loadDetails(solarSystemId, this.t.game.viewer.detailsErrorPrefix);
   }
 
   protected setViewMode(mode: 'type' | 'distance'): void {

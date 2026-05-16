@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -19,7 +20,7 @@ import {
 } from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 
 interface ShipHangarNavigationState {
   playerName?: string;
@@ -39,13 +40,10 @@ interface ShipHangarNavigationState {
 export default class ShipHangarPage {
   protected readonly t = locale;
   private router = inject(Router);
-  private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
-  private navigationState: ShipHangarNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as ShipHangarNavigationState | undefined) ??
-    (history.state as ShipHangarNavigationState | undefined) ??
-    {};
+  private navigationState: ShipHangarNavigationState = resolveNavigationState<ShipHangarNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -54,13 +52,7 @@ export default class ShipHangarPage {
   protected shipListError = signal<string | null>(null);
 
   constructor() {
-    this.socketService.connect(this.socketService.serverUrl);
-
-    if (this.socketService.getIsConnected()) {
-      this.loadShipsForCharacter();
-    } else {
-      this.socketService.once('connect', () => this.loadShipsForCharacter());
-    }
+    this.socketLifecycleService.runWhenConnected(() => this.loadShipsForCharacter());
   }
 
   /**

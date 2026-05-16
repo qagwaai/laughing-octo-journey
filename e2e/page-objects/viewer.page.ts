@@ -19,6 +19,14 @@ export class ViewerPage {
     return this.page.locator('.solar-system-item__button', { hasText: name }).first();
   }
 
+  get detailsViewToggleButtons() {
+    return this.page.locator('.details-view-toggle__btn');
+  }
+
+  get detailsViewByDistanceButton() {
+    return this.detailsViewToggleButtons.nth(1);
+  }
+
   get loadingState() {
     return this.page.getByTestId('viewer-loading');
   }
@@ -46,5 +54,10 @@ export class ViewerPage {
   async selectSystem(name: string) {
     await this.systemButtonByName(name).click();
     await expect(this.page).toHaveURL(/right:viewer-scene/);
+  }
+
+  async switchToDistanceView() {
+    await this.detailsViewByDistanceButton.click();
+    await expect(this.detailsViewByDistanceButton).toHaveAttribute('aria-pressed', 'true');
   }
 }

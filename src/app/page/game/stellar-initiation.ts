@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 
 interface StellarInitiationNavigationState {
@@ -24,9 +25,7 @@ export default class StellarInitiationPage {
   protected readonly t = locale;
   private router = inject(Router);
   private navigationState: StellarInitiationNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as StellarInitiationNavigationState | undefined) ??
-    (history.state as StellarInitiationNavigationState | undefined) ??
-    {};
+    resolveNavigationState<StellarInitiationNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

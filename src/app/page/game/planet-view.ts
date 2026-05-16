@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, H
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
@@ -29,10 +30,9 @@ export default class PlanetViewPage {
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
 
-  private navigationState: PlanetViewNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as PlanetViewNavigationState | undefined) ??
-    (history.state as PlanetViewNavigationState | undefined) ??
-    {};
+  private navigationState: PlanetViewNavigationState = resolveNavigationState<PlanetViewNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected solarSystem = signal<SolarSystemSummary | null>(this.navigationState.solarSystem ?? null);

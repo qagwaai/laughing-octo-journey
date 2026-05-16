@@ -138,3 +138,40 @@ Additional candidate files for started/in-progress join-path audit (heuristic):
 3. Move solar-system-details data orchestration into a dedicated facade/service.
 4. Introduce a shared typed navigation-state reader utility to remove repeated boilerplate.
 5. Continue reducing direct `SocketService` lifecycle handling in page components.
+
+## Completion Update (2026-05-16)
+
+This review task has been completed end-to-end in the current workspace session. The items above are retained as the original review baseline; final implementation status is tracked below.
+
+### Final Status vs Recommended Sequence
+
+1. Completed: extracted ship-exterior orchestration into dedicated controllers and reduced god-component pressure in `ship-exterior-view.ts`.
+2. Completed: moved viewer hydration/repair policy into `ViewerDataFacade` and simplified page orchestration.
+3. Completed: moved solar-system-details data orchestration into `SolarSystemDetailsFacade`.
+4. Completed: introduced shared typed helper `src/app/page/navigation-state.ts` and migrated page consumers to it.
+5. Completed: introduced `SocketLifecycleService` and removed page-level direct socket lifecycle wiring.
+
+### Architecture Artifacts Added
+
+- `src/app/scene/ship-exterior/ship-exterior-session-controller.ts`
+- `src/app/scene/ship-exterior/ship-exterior-mission-progress-controller.ts`
+- `src/app/scene/ship-exterior/ship-exterior-celestial-body-controller.ts`
+- `src/app/scene/ship-exterior/ship-exterior-launch-controller.ts`
+- `src/app/scene/ship-exterior/ship-exterior-bootstrap-controller.ts`
+- `src/app/page/game/viewer-data-facade.ts`
+- `src/app/page/game/solar-system-details-facade.ts`
+- `src/app/page/navigation-state.ts`
+- `src/app/services/socket-lifecycle.service.ts`
+
+### Test and Validation Summary
+
+- Full Playwright suite reached green baseline in-session (`116/116`) after viewer-focused fixes.
+- Multiple focused Angular/Jasmine spec slices were run during each refactor wave (mission-board, repair-retrofit, market-hub, print-queue, ship-hangar, game-join, character-list, ship-view-inventory, repair-retrofit detail pages, viewer and related game pages, public/character/opening pages).
+- New helper regression tests were added and passed:
+  - `src/app/services/socket-lifecycle.service.spec.ts` (`3/3`)
+  - `src/app/page/navigation-state.spec.ts` (`3/3`)
+
+### Residual Checks
+
+- Page-level direct socket lifecycle pattern is eliminated (`SocketService.connect/getIsConnected/once('connect')` no longer appears under `src/app/page/**/*.ts`).
+- Navigation-state hydration duplication is eliminated at page call sites; only the helper implementation itself contains the fallback expression.

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { resolveNavigationState } from '../navigation-state';
 import {
   currentLocaleCode,
   isSupportedLocaleCode,
@@ -35,10 +36,7 @@ export default class LoginPage implements OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private unsubscribeResponse?: () => void;
-  private navigationState: LoginNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as LoginNavigationState | undefined) ??
-    (history.state as LoginNavigationState | undefined) ??
-    {};
+  private navigationState: LoginNavigationState = resolveNavigationState<LoginNavigationState>(this.router);
   private defaultLocale: SupportedLocaleCode =
     typeof this.navigationState.preferredLocale === 'string' &&
     isSupportedLocaleCode(this.navigationState.preferredLocale)

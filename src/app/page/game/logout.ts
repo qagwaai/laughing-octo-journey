@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { Router } from '@angular/router';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { SessionService } from '../../services/session.service';
 
@@ -24,10 +25,7 @@ export default class LogoutPage {
   protected readonly t = locale;
   private router = inject(Router);
   private sessionService = inject(SessionService);
-  private navigationState: LogoutNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as LogoutNavigationState | undefined) ??
-    (history.state as LogoutNavigationState | undefined) ??
-    {};
+  private navigationState: LogoutNavigationState = resolveNavigationState<LogoutNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

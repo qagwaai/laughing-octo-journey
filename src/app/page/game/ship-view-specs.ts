@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
+import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { summarizeShipMotion } from '../../model/math/kinematics';
 import { coerceShipModel, coerceShipTier, ShipSummary } from '../../model/ship-list';
@@ -26,9 +27,7 @@ export default class ShipViewSpecsPage {
   protected readonly t = locale;
   private router = inject(Router);
   private navigationState: ShipViewSpecsNavigationState =
-    (this.router.getCurrentNavigation()?.extras.state as ShipViewSpecsNavigationState | undefined) ??
-    (history.state as ShipViewSpecsNavigationState | undefined) ??
-    {};
+    resolveNavigationState<ShipViewSpecsNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

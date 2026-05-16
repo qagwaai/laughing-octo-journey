@@ -7,6 +7,7 @@ import { locale } from '../../i18n/locale';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { getSpecsImagePath, ItemViewSpecsConfig, ResolvedGroup, resolveGroups } from '../../model/view/item-view-specs';
+import { resolveNavigationState } from '../navigation-state';
 
 interface ItemViewSpecsNavigationState {
   playerName?: string;
@@ -46,11 +47,7 @@ export default class ItemViewSpecsPage {
    * Reads navigation state from current transition or browser history fallback.
    */
   private readNavigationState(): ItemViewSpecsNavigationState {
-    return (
-      (this.router.getCurrentNavigation()?.extras.state as ItemViewSpecsNavigationState | undefined) ??
-      (history.state as ItemViewSpecsNavigationState | undefined) ??
-      {}
-    );
+    return resolveNavigationState<ItemViewSpecsNavigationState>(this.router);
   }
 
   /**
