@@ -1,19 +1,34 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { GuardedLeftMenu } from './guarded-left-menu';
 
 describe('GuardedLeftMenu', () => {
   let component: GuardedLeftMenu;
   let fixture: ComponentFixture<GuardedLeftMenu>;
   let navigateSpy: jasmine.Spy;
+  let missionStateService: jasmine.SpyObj<ShipExteriorMissionStateService> & { lastSaved: () => unknown };
+
+  const missionStateServiceSpy = () => {
+    const spy = jasmine.createSpyObj<ShipExteriorMissionStateService>('ShipExteriorMissionStateService', ['loadState']);
+    (spy as unknown as { lastSaved: jasmine.Spy }).lastSaved = jasmine.createSpy('lastSaved').and.returnValue(null);
+    return spy as jasmine.SpyObj<ShipExteriorMissionStateService> & { lastSaved: () => unknown };
+  };
 
   beforeEach(async () => {
     sessionStorage.clear();
+    localStorage.clear();
     navigateSpy = jasmine.createSpy('navigate');
+    missionStateService = missionStateServiceSpy();
+    missionStateService.loadState.and.returnValue(null);
 
     await TestBed.configureTestingModule({
       imports: [GuardedLeftMenu],
-      providers: [{ provide: Router, useValue: { navigate: navigateSpy } }],
+      providers: [
+        { provide: Router, useValue: { navigate: navigateSpy } },
+        { provide: ShipExteriorMissionStateService, useValue: missionStateService },
+      ],
     })
       .overrideComponent(GuardedLeftMenu, {
         set: {
@@ -28,6 +43,8 @@ describe('GuardedLeftMenu', () => {
 
   afterEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
+    component.ngOnDestroy();
   });
 
   it('should default to minimized and unpinned', () => {
@@ -86,5 +103,105 @@ describe('GuardedLeftMenu', () => {
   it('should accept disableNonLogout as true', () => {
     component.disableNonLogout = true;
     expect(component.disableNonLogout).toBeTrue();
+  });
+
+  it('should enable fabrication guidance when first-target manufacture step is active', () => {
+    missionStateService.loadState.and.returnValue({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
+      updatedAt: new Date().toISOString(),
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'active' },
+      ],
+    } as any);
+
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: null,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect((component as any).showFabricationCue()).toBeTrue();
+    expect((component as any).showFabricationCoachmark()).toBeTrue();
+    expect((component as any).isFabricationLabGuidanceActiveForItem('fabrication-lab')).toBeTrue();
+    expect((component as any).isFabricationLabGuidanceActiveForItem('market-hub')).toBeFalse();
+  });
+
+  it('should auto-expand temporarily while fabrication coachmark is active', fakeAsync(() => {
+    missionStateService.loadState.and.returnValue({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
+      updatedAt: new Date().toISOString(),
+      steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
+    } as any);
+
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: null,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect((component as any).forceExpanded()).toBeTrue();
+    expect((component as any).isExpanded()).toBeTrue();
+
+    tick(8100);
+
+    expect((component as any).forceExpanded()).toBeFalse();
+  }));
+
+  it('should persist dismissal and hide coachmark for the same character', () => {
+    missionStateService.loadState.and.returnValue({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
+      updatedAt: new Date().toISOString(),
+      steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
+    } as any);
+
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: null,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect((component as any).showFabricationCoachmark()).toBeTrue();
+
+    (component as any).dismissFabricationLabCoachmark();
+    expect((component as any).showFabricationCoachmark()).toBeFalse();
+
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: 'Pioneer', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: { id: 'c-1', characterName: 'Nova' },
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect((component as any).showFabricationCue()).toBeTrue();
+    expect((component as any).showFabricationCoachmark()).toBeFalse();
   });
 });

@@ -21,6 +21,7 @@
     type="button"
     (click)="navigateLeft(item.route)"
     [class.logout]="item.logout"
+    [class.is-guided-target]="isFabricationLabGuidanceActiveForItem(item.route)"
     [class.is-disabled]="disableNonLogout && !item.logout"
     [disabled]="disableNonLogout && !item.logout"
     [attr.aria-label]="item.label"
@@ -28,6 +29,23 @@
   >
     <span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
     <span class="menu-label">{{ item.label }}</span>
+    @if (isFabricationLabGuidanceActiveForItem(item.route)) {
+    <span class="menu-badge" aria-hidden="true">NEXT</span>
+    }
   </button>
+  }
+
+  @if (showFabricationCoachmark()) {
+  <section class="menu-coachmark" aria-live="polite">
+    <p class="menu-coachmark-text">Mission objective updated. Open Fabrication Lab to continue first-target.</p>
+    <div class="menu-coachmark-actions">
+      <button type="button" class="menu-coachmark-open" (click)="openFabricationLabFromCoachmark()">
+        Open
+      </button>
+      <button type="button" class="menu-coachmark-dismiss" (click)="dismissFabricationLabCoachmark()">
+        Dismiss
+      </button>
+    </div>
+  </section>
   }
 </nav>
