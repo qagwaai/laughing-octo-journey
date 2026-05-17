@@ -17,8 +17,30 @@ import { ShipExteriorMissionStateService } from '../services/ship-exterior-missi
 
 const MENU_PIN_STORAGE_KEY = 'guarded-left-menu:pinned';
 const FAB_LAB_HINT_DISMISS_PREFIX = 'first-target:fabrication-lab-hint-dismissed';
-const FAB_LAB_STEP_KEY = 'manufacture_hull_patch_kit';
+const REPAIR_HINT_DISMISS_PREFIX = 'first-target:repair-retrofit-hint-dismissed';
 const AUTO_EXPAND_DURATION_MS = 8000;
+
+interface GuidedMissionCue {
+  route: 'fabrication-lab' | 'repair-retrofit';
+  stepKey: 'manufacture_hull_patch_kit' | 'repair_scavenger_pod';
+  dismissPrefix: string;
+  coachmarkText: string;
+}
+
+const GUIDED_MISSION_CUES: readonly GuidedMissionCue[] = [
+  {
+    route: 'repair-retrofit',
+    stepKey: 'repair_scavenger_pod',
+    dismissPrefix: REPAIR_HINT_DISMISS_PREFIX,
+    coachmarkText: 'Mission objective updated. Open Repair & Retrofit to continue first-target.',
+  },
+  {
+    route: 'fabrication-lab',
+    stepKey: 'manufacture_hull_patch_kit',
+    dismissPrefix: FAB_LAB_HINT_DISMISS_PREFIX,
+    coachmarkText: 'Mission objective updated. Open Fabrication Lab to continue first-target.',
+  },
+];
 
 interface GuardedMenuItem {
   route: string;
@@ -65,8 +87,9 @@ export class GuardedLeftMenu implements OnChanges, OnDestroy {
   protected isPinned = signal(this.readPinnedState());
   protected isHovered = signal(false);
   protected forceExpanded = signal(false);
-  protected showFabricationCue = signal(false);
-  protected showFabricationCoachmark = signal(false);
+  protected activeGuidedRoute = signal<'fabrication-lab' | 'repair-retrofit' | null>(null);
+  protected coachmarkText = signal('');
+  protected showGuidanceCoachmark = signal(false);
   protected isExpanded = computed(() => this.isPinned() || this.isHovered() || this.forceExpanded());
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -88,8 +111,8 @@ export class GuardedLeftMenu implements OnChanges, OnDestroy {
       },
     });
 
-    if (route === 'fabrication-lab') {
-      this.dismissFabricationLabCoachmark();
+    if (route === this.activeGuidedRoute()) {
+      this.dismissGuidanceCoachmark();
     }
   }
 
@@ -107,28 +130,33 @@ export class GuardedLeftMenu implements OnChanges, OnDestroy {
     this.writePinnedState(nextPinned);
   }
 
-  protected isFabricationLabGuidanceActiveForItem(route: string): boolean {
-    return route === 'fabrication-lab' && this.showFabricationCue();
+  protected isGuidanceActiveForItem(route: string): boolean {
+    return route === this.activeGuidedRoute();
   }
 
-  protected openFabricationLabFromCoachmark(): void {
-    this.navigateLeft('fabrication-lab');
+  protected openGuidedRouteFromCoachmark(): void {
+    const route = this.activeGuidedRoute();
+    if (!route) {
+      return;
+    }
+    this.navigateLeft(route);
   }
 
-  protected dismissFabricationLabCoachmark(): void {
-    const dismissalKey = this.buildFabricationHintDismissalKey();
+  protected dismissGuidanceCoachmark(): void {
+    const dismissalKey = this.buildActiveCueDismissalKey();
     if (dismissalKey) {
       this.writeDismissalState(dismissalKey, true);
     }
-    this.showFabricationCoachmark.set(false);
+    this.showGuidanceCoachmark.set(false);
   }
 
   private refreshFirstTargetGuidance(): void {
     const playerName = this.playerName.trim();
     const characterId = this.joinCharacter?.id?.trim() ?? '';
     if (!playerName || !characterId) {
-      this.showFabricationCue.set(false);
-      this.showFabricationCoachmark.set(false);
+      this.activeGuidedRoute.set(null);
+      this.coachmarkText.set('');
+      this.showGuidanceCoachmark.set(false);
       this.forceExpanded.set(false);
       this.clearAutoExpandTimer();
       return;
@@ -140,15 +168,17 @@ export class GuardedLeftMenu implements OnChanges, OnDestroy {
       characterId,
     });
 
-    const manufactureStep = state?.steps?.find((step) => step.key === FAB_LAB_STEP_KEY);
-    const isManufactureStepActive = manufactureStep?.status === 'active';
-    this.showFabricationCue.set(isManufactureStepActive);
+    const activeCue = GUIDED_MISSION_CUES.find((cue) =>
+      state?.steps?.some((step) => step.key === cue.stepKey && step.status === 'active'),
+    );
+    this.activeGuidedRoute.set(activeCue?.route ?? null);
+    this.coachmarkText.set(activeCue?.coachmarkText ?? '');
 
-    const dismissalKey = this.buildFabricationHintDismissalKey();
+    const dismissalKey = activeCue ? this.buildCueDismissalKey(activeCue.dismissPrefix) : null;
     const wasDismissed = dismissalKey ? this.readDismissalState(dismissalKey) : false;
-    this.showFabricationCoachmark.set(isManufactureStepActive && !wasDismissed);
+    this.showGuidanceCoachmark.set(!!activeCue && !wasDismissed);
 
-    if (isManufactureStepActive && !wasDismissed) {
+    if (activeCue && !wasDismissed) {
       this.forceExpanded.set(true);
       this.clearAutoExpandTimer();
       this.autoExpandTimer = setTimeout(() => {
@@ -169,14 +199,23 @@ export class GuardedLeftMenu implements OnChanges, OnDestroy {
     }
   }
 
-  private buildFabricationHintDismissalKey(): string | null {
+  private buildActiveCueDismissalKey(): string | null {
+    const cue = GUIDED_MISSION_CUES.find((entry) => entry.route === this.activeGuidedRoute());
+    if (!cue) {
+      return null;
+    }
+
+    return this.buildCueDismissalKey(cue.dismissPrefix);
+  }
+
+  private buildCueDismissalKey(prefix: string): string | null {
     const playerName = this.playerName.trim();
     const characterId = this.joinCharacter?.id?.trim() ?? '';
     if (!playerName || !characterId) {
       return null;
     }
 
-    return `${FAB_LAB_HINT_DISMISS_PREFIX}::${playerName}::${characterId}`;
+    return `${prefix}::${playerName}::${characterId}`;
   }
 
   private readDismissalState(key: string): boolean {

@@ -183,6 +183,48 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
       characterId: TEST_CHARACTER_ID,
     },
   }));
+
+  mock.on('upsert-item-request', (request) => {
+    const payload = request as {
+      item?: {
+        id?: string;
+        itemType?: string;
+        displayName?: string;
+        launchable?: boolean;
+        state?: string;
+        damageStatus?: string;
+        container?: { containerType: 'ship'; containerId: string } | null;
+        owningPlayerId?: string;
+        owningCharacterId?: string;
+      };
+    };
+    const item = payload.item ?? {};
+    return {
+      event: 'upsert-item-response',
+      data: {
+        success: true,
+        message: '',
+        item: {
+          id: item.id ?? `itm-${Date.now()}`,
+          itemType: item.itemType ?? 'hull-patch-kit',
+          displayName: item.displayName ?? 'Hull Patch Kit',
+          launchable: item.launchable ?? false,
+          state: item.state ?? 'contained',
+          damageStatus: item.damageStatus ?? 'intact',
+          container: item.container ?? { containerType: 'ship', containerId: 'ship-cue-1' },
+          owningPlayerId: item.owningPlayerId ?? TEST_PLAYER,
+          owningCharacterId: item.owningCharacterId ?? TEST_CHARACTER_ID,
+          kinematics: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      },
+    };
+  });
 }
 
 async function waitForShipExteriorTestApi(page: Page): Promise<void> {
@@ -203,18 +245,7 @@ async function waitForShipExteriorTestApi(page: Page): Promise<void> {
     .toBe(true);
 }
 
-test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ page }) => {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-  configureFirstTargetCueMock(mock);
-
-  await loginViaUI(page, mock);
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
-
-  await waitForShipExteriorTestApi(page);
-
+async function advanceMissionToManufactureStep(page: Page): Promise<void> {
   await page.evaluate(() => {
     const api = (
       window as Window & {
@@ -226,7 +257,6 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
             revealedMaterial?: { material?: string } | null;
           }>;
           forceTargetAsteroid?: (sampleId: string) => boolean;
-          launchFromHotkey?: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
         };
       }
     ).__shipExteriorTestUtils;
@@ -292,6 +322,20 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
       }),
     )
     .toBe('active');
+}
+
+test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ page }) => {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+  configureFirstTargetCueMock(mock);
+
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+
+  await waitForShipExteriorTestApi(page);
+  await advanceMissionToManufactureStep(page);
 
   const fabricationLabButton = page.locator('button[aria-label="Fabrication Lab"]');
   await expect(fabricationLabButton).toHaveClass(/is-guided-target/);
@@ -300,4 +344,56 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
 
   await page.locator('button.menu-coachmark-open', { hasText: 'Open' }).click();
   await expect(page).toHaveURL(/left:fabrication-lab/);
+});
+
+test('shows repair & retrofit menu cue after manufacture unlocks repair step', async ({ page }) => {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+  configureFirstTargetCueMock(mock);
+
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+
+  await waitForShipExteriorTestApi(page);
+  await advanceMissionToManufactureStep(page);
+
+  await page.evaluate(() => {
+    const api = (
+      window as Window & {
+        __shipExteriorTestUtils?: {
+          simulateManufacture?: (itemType: string) => unknown;
+        };
+      }
+    ).__shipExteriorTestUtils;
+    api?.simulateManufacture?.('hull-patch-kit');
+  });
+
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const api = (
+          window as Window & {
+            __shipExteriorTestUtils?: {
+              getMissionGateState?: () => {
+                steps?: Array<{ key?: string; status?: string }>;
+              } | null;
+            };
+          }
+        ).__shipExteriorTestUtils;
+        const gateState = api?.getMissionGateState?.();
+        const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
+        return repairStep?.status ?? null;
+      }),
+    )
+    .toBe('active');
+
+  const repairRetrofitButton = page.locator('button[aria-label="Repair & Retrofit"]');
+  await expect(repairRetrofitButton).toHaveClass(/is-guided-target/);
+  await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT');
+  await expect(page.getByText('Mission objective updated. Open Repair & Retrofit to continue first-target.')).toBeVisible();
+
+  await page.locator('button.menu-coachmark-open', { hasText: 'Open' }).click();
+  await expect(page).toHaveURL(/left:repair-retrofit/);
 });

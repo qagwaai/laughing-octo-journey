@@ -130,13 +130,41 @@ describe('GuardedLeftMenu', () => {
       },
     });
 
-    expect((component as any).showFabricationCue()).toBeTrue();
-    expect((component as any).showFabricationCoachmark()).toBeTrue();
-    expect((component as any).isFabricationLabGuidanceActiveForItem('fabrication-lab')).toBeTrue();
-    expect((component as any).isFabricationLabGuidanceActiveForItem('market-hub')).toBeFalse();
+    expect((component as any).activeGuidedRoute()).toBe('fabrication-lab');
+    expect((component as any).showGuidanceCoachmark()).toBeTrue();
+    expect((component as any).isGuidanceActiveForItem('fabrication-lab')).toBeTrue();
+    expect((component as any).isGuidanceActiveForItem('market-hub')).toBeFalse();
   });
 
-  it('should auto-expand temporarily while fabrication coachmark is active', fakeAsync(() => {
+  it('should enable repair guidance when first-target repair step is active', () => {
+    missionStateService.loadState.and.returnValue({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+      updatedAt: new Date().toISOString(),
+      steps: [{ key: 'repair_scavenger_pod', status: 'active' }],
+    } as any);
+
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: null,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect((component as any).activeGuidedRoute()).toBe('repair-retrofit');
+    expect((component as any).showGuidanceCoachmark()).toBeTrue();
+    expect((component as any).isGuidanceActiveForItem('repair-retrofit')).toBeTrue();
+    expect((component as any).isGuidanceActiveForItem('fabrication-lab')).toBeFalse();
+    expect((component as any).coachmarkText()).toContain('Repair & Retrofit');
+  });
+
+  it('should auto-expand temporarily while guidance coachmark is active', fakeAsync(() => {
     missionStateService.loadState.and.returnValue({
       missionId: FIRST_TARGET_MISSION_ID,
       characterId: 'c-1',
@@ -186,10 +214,10 @@ describe('GuardedLeftMenu', () => {
       },
     });
 
-    expect((component as any).showFabricationCoachmark()).toBeTrue();
+    expect((component as any).showGuidanceCoachmark()).toBeTrue();
 
-    (component as any).dismissFabricationLabCoachmark();
-    expect((component as any).showFabricationCoachmark()).toBeFalse();
+    (component as any).dismissGuidanceCoachmark();
+    expect((component as any).showGuidanceCoachmark()).toBeFalse();
 
     component.ngOnChanges({
       playerName: { currentValue: 'Pioneer', previousValue: 'Pioneer', firstChange: false, isFirstChange: () => false },
@@ -201,7 +229,7 @@ describe('GuardedLeftMenu', () => {
       },
     });
 
-    expect((component as any).showFabricationCue()).toBeTrue();
-    expect((component as any).showFabricationCoachmark()).toBeFalse();
+    expect((component as any).activeGuidedRoute()).toBe('fabrication-lab');
+    expect((component as any).showGuidanceCoachmark()).toBeFalse();
   });
 });

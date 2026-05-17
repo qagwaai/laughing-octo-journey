@@ -21,7 +21,7 @@
     type="button"
     (click)="navigateLeft(item.route)"
     [class.logout]="item.logout"
-    [class.is-guided-target]="isFabricationLabGuidanceActiveForItem(item.route)"
+    [class.is-guided-target]="isGuidanceActiveForItem(item.route)"
     [class.is-disabled]="disableNonLogout && !item.logout"
     [disabled]="disableNonLogout && !item.logout"
     [attr.aria-label]="item.label"
@@ -29,20 +29,20 @@
   >
     <span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
     <span class="menu-label">{{ item.label }}</span>
-    @if (isFabricationLabGuidanceActiveForItem(item.route)) {
+    @if (isGuidanceActiveForItem(item.route)) {
     <span class="menu-badge" aria-hidden="true">NEXT</span>
     }
   </button>
   }
 
-  @if (showFabricationCoachmark()) {
+  @if (showGuidanceCoachmark()) {
   <section class="menu-coachmark" aria-live="polite">
-    <p class="menu-coachmark-text">Mission objective updated. Open Fabrication Lab to continue first-target.</p>
+    <p class="menu-coachmark-text">{{ coachmarkText() }}</p>
     <div class="menu-coachmark-actions">
-      <button type="button" class="menu-coachmark-open" (click)="openFabricationLabFromCoachmark()">
+      <button type="button" class="menu-coachmark-open" (click)="openGuidedRouteFromCoachmark()">
         Open
       </button>
-      <button type="button" class="menu-coachmark-dismiss" (click)="dismissFabricationLabCoachmark()">
+      <button type="button" class="menu-coachmark-dismiss" (click)="dismissGuidanceCoachmark()">
         Dismiss
       </button>
     </div>
