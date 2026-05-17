@@ -2,6 +2,7 @@
  * Expendable Dart Drone domain item constants and coercion helpers.
  */
 import { ShipItem, coerceShipItem } from '../ship-item';
+import { getItemOrToast } from '../../services/item-catalog-util';
 
 export { ItemContainer, ItemDamageStatus, ItemKinematics, ItemState, ShipItem } from '../ship-item';
 
@@ -18,11 +19,13 @@ export function isExpendableDartDrone(item: ShipItem): item is ExpendableDartDro
 
 export function createExpendableDartDrone(): ExpendableDartDrone {
   const now = new Date().toISOString();
+  const catalogItem = tryGetCatalogItem(EXPENDABLE_DART_DRONE_ITEM_TYPE);
+
   return {
     id: crypto.randomUUID(),
     itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-    displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-    launchable: true,
+    displayName: catalogItem?.displayName ?? EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+    launchable: catalogItem?.launchable ?? true,
     state: 'contained',
     damageStatus: 'intact',
     container: null,
@@ -36,6 +39,14 @@ export function createExpendableDartDrone(): ExpendableDartDrone {
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function tryGetCatalogItem(itemType: string): ReturnType<typeof getItemOrToast> {
+  try {
+    return getItemOrToast(itemType);
+  } catch {
+    return undefined;
+  }
 }
 
 export function coerceExpendableDartDrone(raw: unknown): ExpendableDartDrone | null {

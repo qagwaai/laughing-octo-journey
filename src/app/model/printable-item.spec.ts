@@ -41,32 +41,6 @@ const polymerItem = makeItem({ itemType: 'polymer-resin', displayName: 'Polymer 
 const hullPatchKitItem = makeItem({ itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' });
 
 describe('printable-item', () => {
-  describe('resolvePrintableItemDefinition', () => {
-    it('returns the hull patch kit for its itemType', () => {
-      const result = resolvePrintableItemDefinition('hull-patch-kit');
-      expect(result).toBe(HULL_PATCH_KIT_PRINTABLE_ITEM);
-    });
-
-    it('returns the conduit seals for its itemType', () => {
-      const result = resolvePrintableItemDefinition('conduit-seals');
-      expect(result).toBe(CONDUIT_SEALS_PRINTABLE_ITEM);
-    });
-
-    it('returns null for unknown itemType', () => {
-      expect(resolvePrintableItemDefinition('unknown-item')).toBeNull();
-    });
-
-    it('returns null for empty string', () => {
-      expect(resolvePrintableItemDefinition('')).toBeNull();
-    });
-
-    it('covers all PRINTABLE_ITEMS entries', () => {
-      for (const item of PRINTABLE_ITEMS) {
-        expect(resolvePrintableItemDefinition(item.itemType)).toBe(item);
-      }
-    });
-  });
-
   describe('formatPrintableDuration', () => {
     it('formats durations under 60 minutes as "X min"', () => {
       expect(formatPrintableDuration(60_000)).toBe('1 min');

@@ -2,6 +2,7 @@
  * 3D printer domain item constants and coercion helpers.
  */
 import { ShipItem, coerceShipItem } from '../ship-item';
+import { getItemOrToast } from '../../services/item-catalog-util';
 
 export { ItemContainer, ItemDamageStatus, ItemKinematics, ItemState, ShipItem } from '../ship-item';
 
@@ -20,12 +21,14 @@ export function isThreeDPrinter(item: ShipItem): item is ThreeDPrinter {
 
 export function create3DPrinter(): ThreeDPrinter {
   const now = new Date().toISOString();
+  const catalogItem = tryGetCatalogItem(THREE_D_PRINTER_ITEM_TYPE);
+
   return {
     id: crypto.randomUUID(),
     itemType: THREE_D_PRINTER_ITEM_TYPE,
-    displayName: THREE_D_PRINTER_DISPLAY_NAME,
+    displayName: catalogItem?.displayName ?? THREE_D_PRINTER_DISPLAY_NAME,
     tier: THREE_D_PRINTER_TIER,
-    launchable: false,
+    launchable: catalogItem?.launchable ?? false,
     state: 'contained',
     damageStatus: 'intact',
     container: null,
@@ -39,6 +42,14 @@ export function create3DPrinter(): ThreeDPrinter {
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function tryGetCatalogItem(itemType: string): ReturnType<typeof getItemOrToast> {
+  try {
+    return getItemOrToast(itemType);
+  } catch {
+    return undefined;
+  }
 }
 
 export function coerce3DPrinter(raw: unknown): ThreeDPrinter | null {

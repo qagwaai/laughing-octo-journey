@@ -2,6 +2,11 @@
 
 This is a template to get started with Angular Three.
 
+## OpenAPI Integration (2026-05)
+
+- All in-game item definitions (raw, manufactured, ship, etc.) are now sourced from the backend using the canonical OpenAPI contract.
+- See [docs/openapi-integration.md](docs/openapi-integration.md) for migration details and developer notes.
+
 ## AI Guide
 
 - For AI assistant context, commands, and project conventions, see [AGENTS.md](AGENTS.md).

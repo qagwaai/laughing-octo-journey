@@ -2,6 +2,7 @@
  * Printable item definitions and helper utilities for fabrication/repair queues.
  */
 import type { ShipItem } from './ship-item';
+import { getItemOrToast } from '../services/item-catalog-util';
 
 export interface PrintableConsumedMaterial {
   id: string;
@@ -75,7 +76,8 @@ export const PRINTABLE_ITEMS: readonly PrintableItemDefinition[] = [
 ];
 
 export function resolvePrintableItemDefinition(itemType: string): PrintableItemDefinition | null {
-  return PRINTABLE_ITEMS.find((item) => item.itemType === itemType) ?? null;
+  const normalizedType = itemType.trim().toLowerCase();
+  return PRINTABLE_ITEMS.find((item) => item.itemType === normalizedType) ?? null;
 }
 
 export function formatPrintableDuration(durationMs: number): string {
