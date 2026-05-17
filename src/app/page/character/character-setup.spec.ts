@@ -20,17 +20,6 @@ import {
   type CharacterEditResponse,
 } from '../../model/character-edit';
 import {
-  THREE_D_PRINTER_DISPLAY_NAME,
-  THREE_D_PRINTER_ITEM_TYPE,
-  THREE_D_PRINTER_TIER,
-  create3DPrinter,
-} from '../../model/domain/3d-printer';
-import {
-  EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-  EXPENDABLE_DART_DRONE_ITEM_TYPE,
-  createExpendableDartDrone,
-} from '../../model/domain/expendable-dart-drone';
-import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT, type ShipListResponse } from '../../model/ship-list';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
@@ -40,7 +29,6 @@ import CharacterSetupPage from './character-setup';
 
 type MockSocketServiceWithUpsert = MockSocketService & {
   upsertShip(request: any, onResponse?: (r: any) => void): void;
-  upsertItem(request: any, onResponse?: (r: any) => void): void;
 };
 
 function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
@@ -51,12 +39,6 @@ function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
         base.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
       }
       base.emit(SHIP_UPSERT_REQUEST_EVENT, request);
-    },
-    upsertItem(request: any, onResponse?: (r: any) => void) {
-      if (onResponse) {
-        base.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
-      }
-      base.emit(ITEM_UPSERT_REQUEST_EVENT, request);
     },
   });
 }
@@ -443,201 +425,9 @@ describe('CharacterSetupPage', () => {
       });
 
       expect(component['warningMessage']()).toBe('Character created, but starter ship position update failed.');
-      const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
-      expect(itemEmit).toBeUndefined();
     });
 
-    it('should emit item-upsert-request with drone payload after successful ship upsert', () => {
-      const { component } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-
-      const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
-      expect(itemEmit).toBeDefined();
-      expect(itemEmit!.data).toEqual({
-        playerName: 'Pioneer',
-        sessionKey: 'test-session-key',
-        item: {
-          itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
-          displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
-          launchable: true,
-          state: 'contained',
-          damageStatus: 'intact',
-          container: { containerType: 'ship', containerId: 'ship-1' },
-          owningPlayerId: 'Pioneer',
-          owningCharacterId: 'c-1',
-        },
-      });
-    });
-
-    it('should emit second item-upsert-request with 3D printer payload after drone creation succeeds', () => {
-      const { component } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'Drone created.',
-        playerName: 'Pioneer',
-      });
-
-      const itemEmits = socketService.emittedEvents.filter((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
-      expect(itemEmits.length).toBe(2);
-      expect(itemEmits[1].data).toEqual({
-        playerName: 'Pioneer',
-        sessionKey: 'test-session-key',
-        item: {
-          itemType: THREE_D_PRINTER_ITEM_TYPE,
-          displayName: THREE_D_PRINTER_DISPLAY_NAME,
-          tier: THREE_D_PRINTER_TIER,
-          launchable: false,
-          state: 'contained',
-          damageStatus: 'intact',
-          container: { containerType: 'ship', containerId: 'ship-1' },
-          owningPlayerId: 'Pioneer',
-          owningCharacterId: 'c-1',
-        },
-      });
-    });
-
-    it('should skip 3D printer provisioning when the starter ship already has one in inventory', () => {
-      const { component } = setup({ socketService, sessionService });
-      const existingPrinter = create3DPrinter();
-      existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
-      existingPrinter.owningPlayerId = 'Pioneer';
-      existingPrinter.owningCharacterId = 'c-1';
-
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      socketService.triggerOnce(
-        SHIP_LIST_RESPONSE_EVENT,
-        createShipListResponse({
-          ships: [
-            {
-              id: 'ship-1',
-              model: 'Scavenger Pod',
-              tier: 1,
-              name: "Pioneer's Ship",
-              inventory: [existingPrinter],
-              spatial: {
-                solarSystemId: 'sol',
-                frame: 'barycentric',
-                positionKm: { x: 0, y: 0, z: 0 },
-                epochMs: 1,
-              },
-            },
-          ],
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-
-      const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
-      expect(itemEmit).toBeDefined();
-      expect(itemEmit!.data.item.itemType).toBe(EXPENDABLE_DART_DRONE_ITEM_TYPE);
-    });
-
-    it('should skip item-upsert when starter ship already has both default items in inventory', () => {
-      const { component } = setup({ socketService, sessionService });
-      const existingDrone = createExpendableDartDrone();
-      existingDrone.container = { containerType: 'ship', containerId: 'ship-1' };
-      existingDrone.owningPlayerId = 'Pioneer';
-      existingDrone.owningCharacterId = 'c-1';
-
-      const existingPrinter = create3DPrinter();
-      existingPrinter.container = { containerType: 'ship', containerId: 'ship-1' };
-      existingPrinter.owningPlayerId = 'Pioneer';
-      existingPrinter.owningCharacterId = 'c-1';
-
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-      socketService.triggerOnce(
-        SHIP_LIST_RESPONSE_EVENT,
-        createShipListResponse({
-          ships: [
-            {
-              id: 'ship-1',
-              model: 'Scavenger Pod',
-              tier: 1,
-              name: "Pioneer's Ship",
-              inventory: [existingDrone, existingPrinter],
-              spatial: {
-                solarSystemId: 'sol',
-                frame: 'barycentric',
-                positionKm: { x: 0, y: 0, z: 0 },
-                epochMs: 1,
-              },
-            },
-          ],
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-
-      const itemEmit = socketService.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
-      expect(itemEmit).toBeUndefined();
-      expect(component['warningMessage']()).toBeNull();
-    });
-
-    it('should set warningMessage when drone item-upsert-response fails', () => {
-      const { component } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: false,
-        message: 'Item creation failed.',
-        playerName: 'Pioneer',
-      });
-
-      expect(component['warningMessage']()).toBe('Ship updated, but starter drone could not be created.');
-    });
-
-    it('should set warningMessage when 3D printer item-upsert-response fails', () => {
-      const { component } = setup({ socketService, sessionService });
-      triggerSuccessfulCharacterAdd(component, 'c-1');
-
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'Drone created.',
-        playerName: 'Pioneer',
-      });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: false,
-        message: 'Printer creation failed.',
-        playerName: 'Pioneer',
-      });
-
-      expect(component['warningMessage']()).toBe('Ship updated, but starter 3D printer could not be created.');
-    });
-
-    it('should clear warningMessage after full successful provisioning flow', () => {
+    it('should clear warningMessage after successful ship upsert', () => {
       const { component } = setup({ socketService, sessionService });
       component['warningMessage'].set('Previous warning');
       triggerSuccessfulCharacterAdd(component, 'c-1');
@@ -648,18 +438,9 @@ describe('CharacterSetupPage', () => {
         message: 'ok',
         playerName: 'Pioneer',
       });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'Drone created.',
-        playerName: 'Pioneer',
-      });
-      socketService.triggerOnce(ITEM_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: '3D printer created.',
-        playerName: 'Pioneer',
-      });
 
       expect(component['warningMessage']()).toBeNull();
+      expect(socketService.emittedEvents.some((e) => e.event === 'item-upsert-request')).toBeFalse();
     });
 
     it('should not trigger ship provisioning on character-edit success', () => {
