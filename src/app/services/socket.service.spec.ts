@@ -252,21 +252,23 @@ describe('SocketService', () => {
   });
 
   describe('upsertItem', () => {
-    it('should register a once listener for item-upsert-response and emit item-upsert-request', () => {
-      let emittedEvent: string | null = null;
-      let emittedPayload: unknown;
-      let onceEvent: string | null = null;
-      let responseCallback: ((data: unknown) => void) | undefined;
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+
+    it('should register once listeners for both item-upsert responses and emit canonical request only when response arrives', () => {
+      jasmine.clock().install();
+
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onceEvents: Array<{ event: string; callback: (data: unknown) => void }> = [];
 
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: unknown) => {
-          emittedEvent = event;
-          emittedPayload = data;
+          emittedEvents.push({ event, payload: data });
         },
         once: (event: string, callback: (data: unknown) => void) => {
-          onceEvent = event;
-          responseCallback = callback;
+          onceEvents.push({ event, callback });
         },
         on: (event: string, callback: Function) => {},
         off: (event: string, callback?: Function) => {},
@@ -292,11 +294,19 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).not.toBeNull();
-      expect(onceEvent!).toBe(ITEM_UPSERT_RESPONSE_EVENT);
-      expect(emittedEvent).not.toBeNull();
-      expect(emittedEvent!).toBe(ITEM_UPSERT_REQUEST_EVENT);
-      expect(emittedPayload).toEqual(request);
+      const onceEventNames = onceEvents.map((entry) => entry.event);
+      const emittedEventNames = emittedEvents.map((entry) => entry.event);
+
+      expect(onceEventNames).toContain(ITEM_UPSERT_RESPONSE_EVENT);
+      expect(onceEventNames).toContain('upsert-item-response');
+      expect(emittedEventNames).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
+      expect(emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.upsertItem',
+        }),
+      );
 
       const fakeResponse = {
         success: true,
@@ -304,8 +314,113 @@ describe('SocketService', () => {
         playerName: 'Pioneer',
         item: { ...request.item, id: 'item-1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       };
-      responseCallback?.(fakeResponse);
+
+      const canonicalCallback = onceEvents.find((entry) => entry.event === ITEM_UPSERT_RESPONSE_EVENT)?.callback;
+      const aliasCallback = onceEvents.find((entry) => entry.event === 'upsert-item-response')?.callback;
+      canonicalCallback?.(fakeResponse);
+      jasmine.clock().tick(1000);
+      aliasCallback?.({ success: true, message: 'duplicate', playerName: 'Pioneer' });
+
       expect(callbackResponse).toEqual(fakeResponse);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
+    });
+
+    it('should emit alias request as fallback when canonical response does not arrive in time', () => {
+      jasmine.clock().install();
+
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvents.push({ event, payload: data });
+        },
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {},
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: ItemUpsertRequest = {
+        playerName: 'Pioneer',
+        sessionKey: 'session-123',
+        item: {
+          itemType: 'hull-patch-kit',
+          displayName: 'Hull Patch Kit',
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: 'ship-1' },
+          owningCharacterId: 'char-1',
+        },
+      };
+
+      service.upsertItem(request, () => {});
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.upsertItem',
+        }),
+      );
+
+      jasmine.clock().tick(1000);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([
+        ITEM_UPSERT_REQUEST_EVENT,
+        'upsert-item-request',
+      ]);
+    });
+
+    it('should use canonical-first then fallback for existing item updates when no response arrives', () => {
+      jasmine.clock().install();
+
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvents.push({ event, payload: data });
+        },
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: Function) => {},
+        off: (event: string, callback?: Function) => {},
+        disconnect: () => {},
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: ItemUpsertRequest = {
+        playerName: 'Pioneer',
+        sessionKey: 'session-123',
+        item: {
+          id: 'item-1',
+          itemType: 'hull-patch-kit',
+          displayName: 'Hull Patch Kit',
+          launchable: false,
+          state: 'destroyed',
+          damageStatus: 'destroyed',
+          container: null,
+          destroyedAt: '2026-05-18T00:00:00.000Z',
+          destroyedReason: 'Consumed by repair',
+        },
+      };
+
+      service.upsertItem(request, () => {});
+
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.upsertItem',
+        }),
+      );
+
+      jasmine.clock().tick(1000);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([
+        ITEM_UPSERT_REQUEST_EVENT,
+        'upsert-item-request',
+      ]);
     });
   });
 

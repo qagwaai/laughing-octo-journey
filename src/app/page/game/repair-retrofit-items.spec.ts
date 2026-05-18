@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { createMockPrinterStateService, createMockSessionService, createMockSocketService } from '../../../testing';
+import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { DEFAULT_SHIP_MODEL } from '../../model/ship-list';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
@@ -190,6 +191,73 @@ describe('RepairRetrofitItemsPage - allAssets', () => {
     expect(itemEntries.find((a: RepairAssetEntry) => a.itemId === 'item-2')?.severity).toBe('damaged');
   });
 
+  it('should not duplicate subsystem entries when matching inventory subsystem items exist', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        name: '',
+        model: '',
+        inventory: [
+          {
+            id: 'sub-1',
+            itemType: 'propulsion-manifold',
+            displayName: 'Propulsion Manifold',
+            damageStatus: 'damaged',
+            state: 'contained',
+          },
+          {
+            id: 'sub-2',
+            itemType: 'sensor-array',
+            displayName: 'Sensor Array',
+            damageStatus: 'damaged',
+            state: 'contained',
+          },
+          {
+            id: 'sub-3',
+            itemType: 'power-distribution-bus',
+            displayName: 'Power Distribution Bus',
+            damageStatus: 'damaged',
+            state: 'contained',
+          },
+        ],
+      },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Core systems damaged.',
+        systems: [
+          {
+            code: 'propulsion-manifold',
+            label: 'Propulsion Manifold',
+            severity: 'critical',
+            summary: 'Main thrust line rupture.',
+            repairPriority: 1,
+          },
+          {
+            code: 'sensor-array',
+            label: 'Sensor Array',
+            severity: 'major',
+            summary: 'Long-range scatter.',
+            repairPriority: 2,
+          },
+          {
+            code: 'power-distribution',
+            label: 'Power Distribution Bus',
+            severity: 'major',
+            summary: 'Load balancing unstable.',
+            repairPriority: 3,
+          },
+        ],
+      },
+    });
+
+    const assets = component['allAssets']();
+    const shipSystemEntries = assets.filter((a: RepairAssetEntry) => a.kind === 'ship-system');
+    const inventoryEntries = assets.filter((a: RepairAssetEntry) => a.kind === 'inventory-item');
+
+    expect(shipSystemEntries.length).toBe(3);
+    expect(inventoryEntries.length).toBe(0);
+  });
+
   it('should assign repairPriority 100 to inventory items', () => {
     const { component } = setup({
       joinShip: {
@@ -202,6 +270,36 @@ describe('RepairRetrofitItemsPage - allAssets', () => {
 
     const itemEntry = component['allAssets']().find((a: RepairAssetEntry) => a.kind === 'inventory-item');
     expect(itemEntry?.repairPriority).toBe(100);
+  });
+
+  it('should exclude destroyed inventory items from repair asset entries', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        name: '',
+        model: '',
+        inventory: [
+          {
+            id: 'kit-destroyed',
+            itemType: 'hull-patch-kit',
+            displayName: 'Hull Patch Kit',
+            damageStatus: 'destroyed',
+            state: 'destroyed',
+          },
+          {
+            id: 'iron-1',
+            itemType: 'iron',
+            displayName: 'Iron',
+            damageStatus: 'intact',
+            state: 'contained',
+          },
+        ],
+      },
+    });
+
+    const inventoryEntries = component['allAssets']().filter((a: RepairAssetEntry) => a.kind === 'inventory-item');
+    expect(inventoryEntries.length).toBe(1);
+    expect(inventoryEntries[0].itemId).toBe('iron-1');
   });
 });
 
@@ -456,9 +554,11 @@ describe('RepairRetrofitItemsPage - action helpers', () => {
     expect(component['canOpenDetail'](intactEntry)).toBe(false);
   });
 
-  it('should allow repair when severity is not intact', () => {
+  it('should allow repair only for damaged ship entry', () => {
     const { component } = setup();
     expect(component['canRepairAsset'](shipEntry)).toBe(true);
+    expect(component['canRepairAsset'](systemCritical)).toBe(false);
+    expect(component['canRepairAsset'](itemEntry)).toBe(false);
     expect(component['canRepairAsset'](intactEntry)).toBe(false);
   });
 
@@ -518,14 +618,26 @@ describe('RepairRetrofitItemsPage - action helpers', () => {
     expect(component['getEstimatedCost'](intactEntry)).toBe('0 CR');
   });
 
-  it('should show "Ready" availability for damaged assets', () => {
+  it('should show "Ready" availability for damaged ship assets', () => {
     const { component } = setup();
     expect(component['getActionAvailability'](shipEntry)).toBe('Ready');
+  });
+
+  it('should show blocked availability for non-ship damaged assets', () => {
+    const { component } = setup();
+    expect(component['getActionAvailability'](systemCritical)).toBe('Blocked - pending mission content');
+    expect(component['getActionAvailability'](itemEntry)).toBe('Blocked - pending mission content');
   });
 
   it('should show "No action needed" for intact assets', () => {
     const { component } = setup();
     expect(component['getActionAvailability'](intactEntry)).toBe('No action needed');
+  });
+
+  it('should show explicit blocked reason for non-ship damaged assets', () => {
+    const { component } = setup();
+    expect(component['getBlockedReason'](systemCritical)).toBe('Requires mission salvage parts not yet available');
+    expect(component['getBlockedReason'](itemEntry)).toBe('Requires mission salvage parts not yet available');
   });
 
   it('should track the active repair key per asset', () => {
@@ -558,6 +670,47 @@ describe('RepairRetrofitItemsPage - filter / grouping / search controls', () => 
     const { component } = setup();
     component['setSearchQuery']('hull');
     expect(component['searchQuery']()).toBe('hull');
+  });
+});
+
+describe('RepairRetrofitItemsPage - full ship repair emits inventory patch', () => {
+  it('should send ship-upsert inventory without hull patch kit for full ship repair', () => {
+    const shipAsset: RepairAssetEntry = {
+      key: 'ship:s-1',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'damaged',
+      summary: 'Breach.',
+      repairPriority: 0,
+      shipId: 's-1',
+    };
+
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [
+          { id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' },
+          { id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' },
+        ],
+      },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+      },
+    });
+
+    component['repairAsset'](shipAsset);
+
+    const shipUpsertEmit = mockSocket.emittedEvents.find((event) => event.event === SHIP_UPSERT_REQUEST_EVENT);
+    expect(shipUpsertEmit).toBeDefined();
+    expect(shipUpsertEmit?.data?.ship?.inventory).toBeDefined();
+    expect(shipUpsertEmit?.data?.ship?.inventory.map((item: any) => item.id)).toEqual(['iron-1']);
   });
 });
 

@@ -9,16 +9,19 @@ import {
 } from '../../mission/ship-exterior-mission';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { HULL_PATCH_KIT_PRINTABLE_ITEM, hasPrintableItemInInventory } from '../../model/printable-item';
+import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
 import {
   coerceShipDamageProfile,
   createColdBootStarterShipDamageProfile,
   type ShipDamageProfile,
 } from '../../model/ship-damage';
-import { type ShipSummary } from '../../model/ship-list';
+import { type ShipItem } from '../../model/ship-item';
+import { type ShipListRequest, type ShipSummary } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { resolveNavigationState } from '../navigation-state';
@@ -44,6 +47,8 @@ export default class RepairRetrofitShipDetailPage {
   private router = inject(Router);
   private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
+  private shipService = inject(ShipService);
+  private consumedItemShadowService = inject(ConsumedItemShadowService);
   private sessionService = inject(SessionService);
   private missionProgressSyncService = inject(MissionProgressSyncService);
   private missionStateService = inject(ShipExteriorMissionStateService);
@@ -64,9 +69,7 @@ export default class RepairRetrofitShipDetailPage {
   protected persistError = signal<string | null>(null);
   protected persistSuccess = signal<string | null>(null);
 
-  protected hasHullPatchKit = computed(() =>
-    hasPrintableItemInInventory(this.joinShip()?.inventory, HULL_PATCH_KIT_PRINTABLE_ITEM),
-  );
+  protected hasHullPatchKit = computed(() => this.resolveHullPatchKitItem(this.joinShip()) !== null);
 
   protected canFullyRepair = computed(() => {
     const profile = this.damageProfile();
@@ -110,6 +113,30 @@ export default class RepairRetrofitShipDetailPage {
     }
 
     return null;
+  }
+
+  private resolveHullPatchKitItem(ship: ShipSummary | null): ShipItem | null {
+    const inventory = ship?.inventory ?? [];
+    const normalizedKitType = HULL_PATCH_KIT_PRINTABLE_ITEM.itemType.trim().toLowerCase();
+    const normalizedKitName = HULL_PATCH_KIT_PRINTABLE_ITEM.displayName.trim().toLowerCase();
+
+    return (
+      inventory.find((item) => {
+        const normalizedItemType = item.itemType.trim().toLowerCase();
+        const normalizedDisplayName = (item.displayName || '').trim().toLowerCase();
+        const usableState = item.state === 'contained' && item.damageStatus !== 'destroyed';
+        const notDestroyed = item.destroyedAt == null && item.destroyedReason == null;
+
+        return (
+          usableState &&
+          notDestroyed &&
+          (normalizedItemType === normalizedKitType ||
+            normalizedItemType.includes(normalizedKitType) ||
+            normalizedDisplayName === normalizedKitName ||
+            normalizedDisplayName.includes(normalizedKitName))
+        );
+      }) ?? null
+    );
   }
 
   protected getShipName(): string {
@@ -165,17 +192,34 @@ export default class RepairRetrofitShipDetailPage {
     this.persistError.set(null);
     this.persistSuccess.set(null);
 
-    const kitItem = (ship.inventory ?? []).find((item) => item.itemType === HULL_PATCH_KIT_PRINTABLE_ITEM.itemType);
+    const kitItem = this.resolveHullPatchKitItem(ship);
+
+    if (!kitItem) {
+      this.isPersisting.set(false);
+      this.persistError.set(this.t.game.repairRetrofitShipDetail.hullPatchKitRequiredLabel);
+      return;
+    }
+
+    const nextInventory = kitItem
+      ? (ship.inventory ?? []).filter((item) => item.id !== kitItem.id)
+      : (ship.inventory ?? []);
+
+    const correlationId = `repair:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 
     this.socketService.upsertShip(
       {
         playerName,
         characterId,
         sessionKey,
+        correlationId,
         ship: {
           id: ship.id,
           status: mapOverallStatusToShipStatus(nextProfile.overallStatus),
+          model: ship.model,
+          tier: ship.tier,
+          launchable: ship.launchable,
           damageProfile: nextProfile,
+          inventory: nextInventory,
           spatial: ship.spatial,
         },
       },
@@ -188,49 +232,124 @@ export default class RepairRetrofitShipDetailPage {
 
         this.damageProfile.set(nextProfile);
 
-        if (!kitItem) {
-          this.isPersisting.set(false);
-          this.persistSuccess.set(this.t.game.repairRetrofitShipDetail.successLabel);
-          this.advanceMissionGateOnRepair(characterId);
+        // Optimistically remove the kit from local state immediately so downstream
+        // navigation (back to items list, ship inventory) never sees a stale kit,
+        // regardless of when or whether the backend item-upsert response arrives.
+        if (kitItem) {
+          this.consumedItemShadowService.markConsumed(playerName, characterId, kitItem.id);
+          this.joinShip.update((current) => {
+            if (!current) {
+              return current;
+            }
+
+            return {
+              ...current,
+              inventory: (current.inventory ?? []).filter((item) => item.id !== kitItem.id),
+            };
+          });
+        }
+
+        this.isPersisting.set(false);
+        this.persistSuccess.set(
+          kitItem
+            ? this.t.game.repairRetrofitShipDetail.kitConsumedLabel
+            : this.t.game.repairRetrofitShipDetail.successLabel,
+        );
+        this.advanceMissionGateOnRepair(characterId);
+
+        const refreshSnapshot = () =>
+          this.forceRefreshActiveShip({
+            playerName,
+            characterId,
+            sessionKey,
+            shipId: ship.id,
+            fallbackProfile: nextProfile,
+            consumedKitId: kitItem?.id ?? null,
+          });
+
+        // Fire-and-forget backend persistence for the kit destruction.
+        if (kitItem) {
+          this.socketService.upsertItem(
+            {
+              playerName,
+              sessionKey,
+              correlationSource: 'repair-retrofit-ship-detail.consume-hull-patch-kit',
+              item: {
+                id: kitItem.id,
+                state: 'destroyed',
+                damageStatus: 'destroyed',
+                container: null,
+                spatial: null,
+                motion: null,
+                owningPlayerId: kitItem.owningPlayerId ?? this.playerName(),
+                owningCharacterId: kitItem.owningCharacterId ?? this.joinCharacter()?.id ?? null,
+                destroyedAt: new Date().toISOString(),
+                destroyedReason: this.t.game.repairRetrofitShipDetail.kitDestroyedReason,
+              },
+            },
+            (itemResponse: ItemUpsertResponse) => {
+              if (!itemResponse.success) {
+                this.persistError.set(
+                  itemResponse.message || this.t.game.repairRetrofitShipDetail.persistFailedLabel,
+                );
+              }
+
+              refreshSnapshot();
+            },
+          );
           return;
         }
 
-        this.socketService.upsertItem(
-          {
-            playerName,
-            sessionKey,
-            item: {
-              id: kitItem.id,
-              state: 'destroyed',
-              damageStatus: 'destroyed',
-              container: null,
-              destroyedAt: new Date().toISOString(),
-              destroyedReason: this.t.game.repairRetrofitShipDetail.kitDestroyedReason,
-            },
-          },
-          (itemResponse: ItemUpsertResponse) => {
-            this.isPersisting.set(false);
-            if (!itemResponse.success) {
-              this.persistError.set(itemResponse.message || this.t.game.repairRetrofitShipDetail.kitRemovalFailedLabel);
-              return;
-            }
-
-            this.joinShip.update((current) => {
-              if (!current) {
-                return current;
-              }
-
-              return {
-                ...current,
-                inventory: (current.inventory ?? []).filter((item) => item.id !== kitItem.id),
-              };
-            });
-            this.persistSuccess.set(this.t.game.repairRetrofitShipDetail.kitConsumedLabel);
-            this.advanceMissionGateOnRepair(characterId);
-          },
-        );
+        refreshSnapshot();
       },
     );
+  }
+
+  /**
+   * Refreshes active ship snapshot from backend after repair writes to avoid stale
+   * local state due to event ordering between ship/item upserts.
+   */
+  private forceRefreshActiveShip(params: {
+    playerName: string;
+    characterId: string;
+    sessionKey: string;
+    shipId: string;
+    fallbackProfile: ShipDamageProfile;
+    consumedKitId: string | null;
+  }): void {
+    const request: ShipListRequest = {
+      playerName: params.playerName,
+      characterId: params.characterId,
+      sessionKey: params.sessionKey,
+    };
+
+    this.shipService.listShips(request, (response) => {
+      if (!response.success) {
+        return;
+      }
+
+      const matchingShip = (response.ships ?? []).find((candidate) => candidate.id === params.shipId);
+      if (!matchingShip) {
+        return;
+      }
+
+      const inventoryWithErrorLogging = this.consumedItemShadowService.filterInventory(
+        params.playerName,
+        params.characterId,
+        matchingShip.inventory,
+      );
+      const inventory = params.consumedKitId
+        ? inventoryWithErrorLogging.filter((item) => item.id !== params.consumedKitId)
+        : inventoryWithErrorLogging;
+      const refreshedProfile = coerceShipDamageProfile(matchingShip.damageProfile);
+
+      this.joinShip.set({
+        ...matchingShip,
+        inventory,
+        damageProfile: refreshedProfile ?? params.fallbackProfile,
+      });
+      this.damageProfile.set(refreshedProfile ?? params.fallbackProfile);
+    });
   }
 
   private advanceMissionGateOnRepair(characterId: string): void {

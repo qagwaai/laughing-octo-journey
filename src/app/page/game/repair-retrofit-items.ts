@@ -29,6 +29,7 @@ import { type ShipItem } from '../../model/ship-item';
 import { DEFAULT_SHIP_MODEL, type ShipSummary } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
@@ -66,6 +67,7 @@ export default class RepairRetrofitItemsPage {
   private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
+  private consumedItemShadowService = inject(ConsumedItemShadowService);
   private missionProgressSyncService = inject(MissionProgressSyncService);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private printerService = inject(PrinterStateService);
@@ -84,6 +86,7 @@ export default class RepairRetrofitItemsPage {
   protected activeRepairKey = signal<string | null>(null);
   protected persistError = signal<string | null>(null);
   protected persistSuccess = signal<string | null>(null);
+  private isQueueingHullPatchKit = signal(false);
   private hullPatchKitPrintableItem: PrintableItemDefinition = resolvePrintableItemDefinition('hull-patch-kit')!;
 
   protected shipName = computed(
@@ -91,7 +94,7 @@ export default class RepairRetrofitItemsPage {
   );
 
   protected hasHullPatchKit = computed(() =>
-    hasPrintableItemInInventory(this.joinShip()?.inventory, this.hullPatchKitPrintableItem),
+    hasPrintableItemInInventory(this.resolveVisibleInventory(this.joinShip()), this.hullPatchKitPrintableItem),
   );
 
   protected isHullPatchKitQueued = computed(() =>
@@ -102,8 +105,16 @@ export default class RepairRetrofitItemsPage {
     () =>
       !this.hasHullPatchKit() &&
       !this.isHullPatchKitQueued() &&
-      !!findConsumableMaterialsForPrintableItem(this.joinShip()?.inventory, this.hullPatchKitPrintableItem),
+      !!findConsumableMaterialsForPrintableItem(this.resolveVisibleInventory(this.joinShip()), this.hullPatchKitPrintableItem),
   );
+
+  private resolveVisibleInventory(ship: ShipSummary | null): ShipItem[] {
+    return this.consumedItemShadowService.filterInventory(
+      this.playerName(),
+      this.joinCharacter()?.id ?? '',
+      ship?.inventory,
+    );
+  }
 
   constructor() {
     this.socketLifecycleService.runWhenConnected(() => {
@@ -150,6 +161,40 @@ export default class RepairRetrofitItemsPage {
     return null;
   }
 
+  private normalizeSubsystemToken(value: string | null | undefined): string {
+    return (value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  }
+
+  private isDuplicateSubsystemInventoryItem(item: ShipItem, profile: ShipDamageProfile | null): boolean {
+    const systems = profile?.systems ?? [];
+    if (systems.length === 0) {
+      return false;
+    }
+
+    const normalizedItemType = this.normalizeSubsystemToken(item.itemType);
+    const normalizedDisplayName = this.normalizeSubsystemToken(item.displayName);
+
+    return systems.some((system) => {
+      const normalizedCode = this.normalizeSubsystemToken(system.code);
+      const normalizedLabel = this.normalizeSubsystemToken(system.label);
+
+      if (!normalizedCode && !normalizedLabel) {
+        return false;
+      }
+
+      return (
+        (normalizedCode.length > 0 &&
+          (normalizedItemType === normalizedCode || normalizedItemType.startsWith(`${normalizedCode}-`))) ||
+        (normalizedLabel.length > 0 &&
+          (normalizedDisplayName === normalizedLabel || normalizedItemType === normalizedLabel))
+      );
+    });
+  }
+
   protected allAssets = computed<RepairAssetEntry[]>(() => {
     const entries: RepairAssetEntry[] = [];
     const ship = this.joinShip();
@@ -182,7 +227,15 @@ export default class RepairRetrofitItemsPage {
       });
     }
 
-    for (const item of ship?.inventory ?? []) {
+    for (const item of this.resolveVisibleInventory(ship)) {
+      if (item.state === 'destroyed' || item.damageStatus === 'destroyed') {
+        continue;
+      }
+
+      if (this.isDuplicateSubsystemInventoryItem(item, shipProfile)) {
+        continue;
+      }
+
       entries.push({
         key: `inventory-item:${item.id}`,
         kind: 'inventory-item',
@@ -326,6 +379,10 @@ export default class RepairRetrofitItemsPage {
       return this.t.game.repairRetrofitItems.blockedReasonNoAction;
     }
 
+    if (asset.kind !== 'ship') {
+      return this.t.game.repairRetrofitItems.blockedReasonMissionPartsUnavailable;
+    }
+
     if (
       asset.kind === 'ship' &&
       (asset.severity === 'critical' || asset.severity === 'disabled' || asset.severity === 'destroyed')
@@ -341,6 +398,10 @@ export default class RepairRetrofitItemsPage {
       return this.t.game.repairRetrofitItems.actionAvailabilityNoAction;
     }
 
+    if (asset.kind !== 'ship') {
+      return this.t.game.repairRetrofitItems.actionAvailabilityBlocked;
+    }
+
     return this.t.game.repairRetrofitItems.actionAvailabilityReady;
   }
 
@@ -349,7 +410,7 @@ export default class RepairRetrofitItemsPage {
   }
 
   protected canRepairAsset(asset: RepairAssetEntry): boolean {
-    return asset.severity !== 'intact';
+    return asset.severity !== 'intact' && asset.kind === 'ship';
   }
 
   protected isRepairing(asset: RepairAssetEntry): boolean {
@@ -393,6 +454,10 @@ export default class RepairRetrofitItemsPage {
    * Queues hull patch kit printing after verifying required consumable materials.
    */
   protected queueForPrinting(): void {
+    if (this.isQueueingHullPatchKit()) {
+      return;
+    }
+
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
@@ -405,8 +470,13 @@ export default class RepairRetrofitItemsPage {
 
     this.persistError.set(null);
     this.persistSuccess.set(null);
+    this.isQueueingHullPatchKit.set(true);
 
-    this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, 0, () => {
+    const actionCorrelationId = `repair-retrofit-items.queue-hull-patch-kit:${Date.now().toString(36)}:${Math.random()
+      .toString(36)
+      .slice(2)}`;
+
+    this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, 0, actionCorrelationId, () => {
       this.joinShip.update((current) => {
         if (!current) {
           return current;
@@ -425,6 +495,7 @@ export default class RepairRetrofitItemsPage {
         durationMs: this.hullPatchKitPrintableItem.durationMs,
         consumedMaterials,
       });
+      this.isQueueingHullPatchKit.set(false);
       this.persistSuccess.set(
         `${this.hullPatchKitPrintableItem.displayName} ${this.t.game.repairRetrofitItems.printQueuedPrefix} ${formatPrintableDuration(this.hullPatchKitPrintableItem.durationMs)}. ${this.t.game.repairRetrofitItems.printQueuedSuffix}`,
       );
@@ -476,16 +547,33 @@ export default class RepairRetrofitItemsPage {
       updatedAt: new Date().toISOString(),
     };
 
+    // When repairing ship to fully intact, consume a hull patch kit if present
+    const isFullRepair = profile.overallStatus !== 'intact';
+    let kitItem: ShipItem | null = null;
+    let nextInventory = ship.inventory ?? [];
+
+    if (isFullRepair) {
+      kitItem = this.resolveHullPatchKitItem(ship);
+      if (kitItem) {
+        const kitId = kitItem.id;
+        nextInventory = nextInventory.filter((item) => item.id !== kitId);
+      }
+    }
+
+    const correlationId = `repair:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+
     this.startPersistForAsset(asset.key);
     this.socketService.upsertShip(
       {
         playerName,
         characterId,
         sessionKey,
+        correlationId,
         ship: {
           id: ship.id,
           status: mapOverallStatusToShipStatus(nextProfile.overallStatus),
           damageProfile: nextProfile,
+          inventory: nextInventory,
           spatial: ship.spatial,
         },
       },
@@ -498,8 +586,42 @@ export default class RepairRetrofitItemsPage {
 
         this.damageProfile.set(nextProfile);
         this.joinShip.update((current) => (current ? { ...current, damageProfile: nextProfile } : current));
+
+        // Optimistically mark kit as consumed in shadow service
+        if (kitItem) {
+          this.consumedItemShadowService.markConsumed(playerName, characterId, kitItem.id);
+          this.joinShip.update((current) => {
+            if (!current) {
+              return current;
+            }
+            return {
+              ...current,
+              inventory: (current.inventory ?? []).filter((item) => item.id !== kitItem.id),
+            };
+          });
+        }
+
         this.persistSuccess.set(`${asset.label} ${this.t.game.repairRetrofitItems.shipRepairedSuffix}`);
         this.advanceMissionGateOnRepair(characterId, 'ship');
+
+        // Fire-and-forget item upsert for kit destruction
+        if (kitItem) {
+          this.socketService.upsertItem(
+            {
+              playerName,
+              sessionKey,
+              correlationSource: 'repair-retrofit-items.repair-ship-asset',
+              item: {
+                id: kitItem.id,
+                state: 'destroyed',
+                damageStatus: 'destroyed',
+                container: null,
+                spatial: null,
+                motion: null,
+              },
+            },
+          );
+        }
       },
     );
   }
@@ -654,6 +776,7 @@ export default class RepairRetrofitItemsPage {
     sessionKey: string,
     consumedMaterials: readonly PrintableConsumedMaterial[],
     index: number,
+    actionCorrelationId: string,
     onComplete: () => void,
   ): void {
     const nextMaterial = consumedMaterials[index];
@@ -666,6 +789,8 @@ export default class RepairRetrofitItemsPage {
       {
         playerName,
         sessionKey,
+        correlationId: actionCorrelationId,
+        correlationSource: `repair-retrofit-items.consume-print-material.step-${index}`,
         item: {
           id: nextMaterial.id,
           state: 'destroyed',
@@ -677,6 +802,7 @@ export default class RepairRetrofitItemsPage {
       },
       (response) => {
         if (!response.success) {
+          this.isQueueingHullPatchKit.set(false);
           this.persistError.set(
             response.message ||
               `${this.t.game.repairRetrofitItems.consumeMaterialFailedPrefix} ${nextMaterial.label} ${this.t.game.repairRetrofitItems.consumeMaterialFailedSuffix}`,
@@ -684,7 +810,14 @@ export default class RepairRetrofitItemsPage {
           return;
         }
 
-        this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, index + 1, onComplete);
+        this.consumePrintableMaterials(
+          playerName,
+          sessionKey,
+          consumedMaterials,
+          index + 1,
+          actionCorrelationId,
+          onComplete,
+        );
       },
     );
   }
@@ -712,6 +845,40 @@ export default class RepairRetrofitItemsPage {
 
   private finishPersist(): void {
     this.activeRepairKey.set(null);
+  }
+
+  private resolveHullPatchKitItem(ship: ShipSummary | null): ShipItem | null {
+    if (!ship?.inventory) {
+      return null;
+    }
+
+    for (const item of ship.inventory) {
+      if (!item) continue;
+
+      const itemTypeNorm = item.itemType?.toLowerCase() ?? '';
+      const displayNameNorm = item.displayName?.toLowerCase() ?? '';
+
+      // Resolve by itemType or displayName using exact match or substring inclusion
+      const isTypeMatch =
+        itemTypeNorm === 'hull-patch-kit' ||
+        itemTypeNorm.includes('hull-patch-kit') ||
+        displayNameNorm === 'hull patch kit' ||
+        displayNameNorm.includes('hull patch kit');
+
+      if (!isTypeMatch) {
+        continue;
+      }
+
+      // Check if item is usable (contained and not destroyed)
+      const isUsableState = item.state === 'contained' || item.state === null;
+      const isNotDestroyed = (item.destroyedAt == null && item.destroyedReason == null);
+
+      if (isUsableState && isNotDestroyed) {
+        return item;
+      }
+    }
+
+    return null;
   }
 
   private resolveGroupName(asset: RepairAssetEntry, grouping: RepairAssetGrouping): string {

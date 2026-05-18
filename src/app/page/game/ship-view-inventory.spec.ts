@@ -16,12 +16,33 @@ interface ItemStub {
   id: string;
   itemType: string;
   displayName: string;
+  state?: 'contained' | 'deployed' | 'destroyed';
+  damageStatus?: 'intact' | 'damaged' | 'disabled' | 'destroyed';
 }
 
 interface NavigationState {
   playerName?: string;
   joinCharacter?: { id: string; characterName: string };
-  joinShip?: { id: string; name: string; model?: string; tier?: number; inventory?: ItemStub[] };
+  joinShip?: {
+    id: string;
+    name: string;
+    model?: string;
+    tier?: number;
+    inventory?: ItemStub[];
+    damageProfile?: {
+      overallStatus: 'intact' | 'damaged' | 'disabled' | 'destroyed';
+      summary: string;
+      origin: 'cold-boot-scripted' | 'combat' | 'wear' | 'unknown';
+      updatedAt: string;
+      systems: Array<{
+        code: string;
+        label: string;
+        severity: 'minor' | 'major' | 'critical';
+        summary: string;
+        repairPriority: number;
+      }>;
+    };
+  };
 }
 
 interface InventoryGroup {
@@ -166,6 +187,124 @@ describe('ShipViewInventoryPage', () => {
     const { component } = setup({ socketService, sessionService });
 
     expect(component['inventoryGroups']()).toEqual([]);
+  });
+
+  it('should not show destroyed inventory items', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({
+              id: 'kit-destroyed',
+              itemType: 'hull-patch-kit',
+              displayName: 'Hull Patch Kit',
+              state: 'destroyed',
+              damageStatus: 'destroyed',
+            }),
+            makeItem({ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' }),
+          ],
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    const itemTypes = groups.map((g) => g.itemType);
+    expect(itemTypes).toContain('iron');
+    expect(itemTypes).not.toContain('hull-patch-kit');
+  });
+
+  it('should include damage-profile subsystem items when missing from inventory', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [makeItem()],
+          damageProfile: {
+            overallStatus: 'damaged',
+            summary: 'Cold boot systems damaged',
+            origin: 'cold-boot-scripted',
+            updatedAt: '2026-05-17T00:00:00.000Z',
+            systems: [
+              {
+                code: 'propulsion-manifold',
+                label: 'Propulsion Manifold',
+                severity: 'critical',
+                summary: 'Main thrust line rupture',
+                repairPriority: 1,
+              },
+              {
+                code: 'sensor-array',
+                label: 'Sensor Array',
+                severity: 'major',
+                summary: 'Long-range scatter',
+                repairPriority: 2,
+              },
+              {
+                code: 'power-distribution',
+                label: 'Power Distribution Bus',
+                severity: 'major',
+                summary: 'Load balancing unstable',
+                repairPriority: 3,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    const names = groups.map((g) => g.name);
+
+    expect(names).toContain('Propulsion Manifold');
+    expect(names).toContain('Sensor Array');
+    expect(names).toContain('Power Distribution Bus');
+  });
+
+  it('should not duplicate subsystem item when inventory already contains matching backend item', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'item-1', itemType: 'power-distribution-bus', displayName: 'Power Distribution Bus' }),
+          ],
+          damageProfile: {
+            overallStatus: 'damaged',
+            summary: 'Cold boot systems damaged',
+            origin: 'cold-boot-scripted',
+            updatedAt: '2026-05-17T00:00:00.000Z',
+            systems: [
+              {
+                code: 'power-distribution',
+                label: 'Power Distribution Bus',
+                severity: 'major',
+                summary: 'Load balancing unstable',
+                repairPriority: 3,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    const powerDistributionEntries = groups.filter((g) => g.name === 'Power Distribution Bus');
+    expect(powerDistributionEntries.length).toBe(1);
+    expect(powerDistributionEntries[0].quantity).toBe(1);
   });
 
   it('should navigate back to ship-hangar with player and character state', () => {

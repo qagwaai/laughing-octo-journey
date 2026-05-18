@@ -21,8 +21,9 @@ import {
   type ShipListResponse,
   ShipSummary,
 } from '../../model/ship-list';
-import { appLogger } from '../../services/logger';
+import type { ShipSubsystemDamage } from '../../model/ship-damage';
 import { SessionService } from '../../services/session.service';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
@@ -56,6 +57,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
   private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
+  private consumedItemShadowService = inject(ConsumedItemShadowService);
   private sessionService = inject(SessionService);
   private navigationState: ShipViewInventoryNavigationState =
     resolveNavigationState<ShipViewInventoryNavigationState>(this.router);
@@ -68,8 +70,81 @@ export default class ShipViewInventoryPage implements OnDestroy {
     this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
   }
 
+  private coerceSubsystemItemType(system: ShipSubsystemDamage): string {
+    const fromCode = system.code.trim().toLowerCase();
+    if (fromCode.length > 0) {
+      return fromCode;
+    }
+
+    return system.label
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  }
+
+  private hasInventoryMatchForSubsystem(system: ShipSubsystemDamage, inventory: readonly ShipItem[]): boolean {
+    const expectedTypeFromCode = this.coerceSubsystemItemType(system);
+    const expectedTypeFromLabel = system.label
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+    const expectedLabel = system.label.trim().toLowerCase();
+
+    return inventory.some((item) => {
+      const itemType = item.itemType?.trim().toLowerCase() ?? '';
+      const itemLabel = item.displayName?.trim().toLowerCase() ?? '';
+      return itemType === expectedTypeFromCode || itemType === expectedTypeFromLabel || itemLabel === expectedLabel;
+    });
+  }
+
+  private resolveDisplayInventory(ship: ShipSummary | null): ShipItem[] {
+    if (!ship) {
+      return [];
+    }
+
+    const visibleInventory = this.consumedItemShadowService.filterInventory(
+      this.playerName(),
+      this.joinCharacter()?.id ?? '',
+      ship.inventory,
+    );
+    const inventory = [...visibleInventory].filter(
+      (item) => item.state !== 'destroyed' && item.damageStatus !== 'destroyed',
+    );
+    const systems = ship.damageProfile?.systems ?? [];
+    for (const system of systems) {
+      if (this.hasInventoryMatchForSubsystem(system, inventory)) {
+        continue;
+      }
+
+      const now = new Date().toISOString();
+      const itemType = this.coerceSubsystemItemType(system) || 'unknown-subsystem';
+      inventory.push({
+        id: `damage-system:${ship.id}:${itemType}`,
+        itemType,
+        displayName: system.label,
+        launchable: false,
+        state: 'contained',
+        damageStatus: 'damaged',
+        container: { containerType: 'ship', containerId: ship.id },
+        owningPlayerId: this.playerName() || null,
+        owningCharacterId: this.joinCharacter()?.id ?? null,
+        spatial: null,
+        destroyedAt: null,
+        destroyedReason: null,
+        discoveredAt: null,
+        discoveredByCharacterId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return inventory;
+  }
+
   protected inventoryGroups = computed<InventoryGroup[]>(() => {
-    const inventory = this.joinShip()?.inventory ?? [];
+    const inventory = this.resolveDisplayInventory(this.joinShip());
     const counts = new Map<string, InventoryGroup>();
     for (const item of inventory) {
       const existing = counts.get(item.itemType);
@@ -157,7 +232,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
       },
       (response: ItemUpsertResponse) => {
         if (!response.success || !response.item) {
-          appLogger.warn('Add drone failed:', response.message);
+          console.log('Add drone failed:', response.message);
           return;
         }
 

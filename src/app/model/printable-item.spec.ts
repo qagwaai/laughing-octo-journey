@@ -82,6 +82,18 @@ describe('printable-item', () => {
     it('returns false for undefined inventory', () => {
       expect(hasPrintableItemInInventory(undefined, HULL_PATCH_KIT_PRINTABLE_ITEM)).toBeFalse();
     });
+
+    it('returns false when matching item is destroyed', () => {
+      const destroyedKit = makeItem({
+        itemType: 'hull-patch-kit',
+        displayName: 'Hull Patch Kit',
+        state: 'destroyed',
+        damageStatus: 'destroyed',
+        destroyedAt: '2026-01-01T00:00:00.000Z',
+        destroyedReason: 'Consumed',
+      });
+      expect(hasPrintableItemInInventory([destroyedKit], HULL_PATCH_KIT_PRINTABLE_ITEM)).toBeFalse();
+    });
   });
 
   describe('isPrintableItemQueued', () => {
@@ -133,6 +145,20 @@ describe('printable-item', () => {
 
     it('returns null when inventory lacks required materials', () => {
       expect(findConsumableMaterialsForPrintableItem([], HULL_PATCH_KIT_PRINTABLE_ITEM)).toBeNull();
+    });
+
+    it('ignores destroyed items when resolving consumables', () => {
+      const destroyedIron = makeItem({
+        id: 'iron-destroyed',
+        itemType: 'iron',
+        displayName: 'Iron',
+        state: 'destroyed',
+        damageStatus: 'destroyed',
+        destroyedAt: '2026-01-01T00:00:00.000Z',
+        destroyedReason: 'Consumed',
+      });
+
+      expect(findConsumableMaterialsForPrintableItem([destroyedIron], HULL_PATCH_KIT_PRINTABLE_ITEM)).toBeNull();
     });
 
     it('returns null when only partially satisfying multi-material item', () => {

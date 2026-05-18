@@ -32,6 +32,20 @@ import {
 } from '../model/ship-upsert';
 import { appLogger } from './logger';
 
+const ITEM_UPSERT_REQUEST_EVENT_ALIAS = 'upsert-item-request';
+const ITEM_UPSERT_RESPONSE_EVENT_ALIAS = 'upsert-item-response';
+const ITEM_UPSERT_ALIAS_FALLBACK_DELAY_MS = 750;
+const ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
+
+function createCorrelationId(): string {
+  const ts = Date.now().toString(36);
+  const randomPart =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `item-upsert:${ts}:${randomPart}`;
+}
+
 /**
  * Socket.IO Service
  *
@@ -145,22 +159,86 @@ export class SocketService {
    * Emit a ship upsert request and optionally handle a one-time response.
    */
   upsertShip(request: ShipUpsertRequest, onResponse?: (response: ShipUpsertResponse) => void): void {
+    const correlationId = request.correlationId?.trim() || `auto-${Date.now()}`;
+    const shipUpsertWithCorrelation: ShipUpsertRequest = {
+      ...request,
+      correlationId,
+      correlationSource: request.correlationSource?.trim() || 'socket.upsertShip',
+    };
+
     if (onResponse) {
       this.once(SHIP_UPSERT_RESPONSE_EVENT, onResponse);
     }
 
-    this.emit(SHIP_UPSERT_REQUEST_EVENT, request);
+    this.emit(SHIP_UPSERT_REQUEST_EVENT, shipUpsertWithCorrelation);
   }
 
   /**
    * Emit an item upsert request and optionally handle a one-time response.
    */
   upsertItem(request: ItemUpsertRequest, onResponse?: (response: ItemUpsertResponse) => void): void {
+    const correlationId = request.correlationId?.trim() || createCorrelationId();
+    const requestWithCorrelation: ItemUpsertRequest = {
+      ...request,
+      correlationId,
+      correlationSource: request.correlationSource?.trim() || 'socket.upsertItem',
+    };
+
+    let handled = false;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearTimers = () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+
+      if (noResponseTimer) {
+        clearTimeout(noResponseTimer);
+        noResponseTimer = null;
+      }
+    };
+
     if (onResponse) {
-      this.once(ITEM_UPSERT_RESPONSE_EVENT, onResponse);
+      const handleResponse = (response: ItemUpsertResponse) => {
+        if (handled) {
+          return;
+        }
+
+        handled = true;
+        clearTimers();
+        onResponse(response);
+      };
+
+      // Compatibility: support both legacy and canonical response event names.
+      this.once(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
+      this.once(ITEM_UPSERT_RESPONSE_EVENT_ALIAS, handleResponse);
+
+      // Emit legacy alias only if canonical request appears unsupported.
+      fallbackTimer = setTimeout(() => {
+        if (handled) {
+          return;
+        }
+
+        appLogger.warn(
+          `No response for ${ITEM_UPSERT_REQUEST_EVENT}; retrying with ${ITEM_UPSERT_REQUEST_EVENT_ALIAS}. correlationId=${correlationId} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+        this.emit(ITEM_UPSERT_REQUEST_EVENT_ALIAS, requestWithCorrelation);
+      }, ITEM_UPSERT_ALIAS_FALLBACK_DELAY_MS);
+
+      noResponseTimer = setTimeout(() => {
+        if (handled) {
+          return;
+        }
+
+        appLogger.error(
+          `No item-upsert response received on either alias. correlationId=${correlationId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+      }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
     }
 
-    this.emit(ITEM_UPSERT_REQUEST_EVENT, request);
+    this.emit(ITEM_UPSERT_REQUEST_EVENT, requestWithCorrelation);
   }
 
   /**

@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
-import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { type ShipItem } from '../../model/ship-item';
 import { type ShipSummary } from '../../model/ship-list';
-import { SessionService, SocketService } from '../../services';
+import { SessionService } from '../../services';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
 import {
@@ -25,7 +24,6 @@ import {
 export default class RepairRetrofitItemDetailPage {
   protected readonly t = locale;
   private router = inject(Router);
-  private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
   private navigationState: RepairDetailNavigationState = resolveNavigationState<RepairDetailNavigationState>(
@@ -52,7 +50,8 @@ export default class RepairRetrofitItemDetailPage {
     return this.joinShip()?.inventory?.find((item) => item.id === itemId) ?? null;
   });
 
-  protected canFullyRepair = computed(() => this.selectedItem()?.damageStatus !== 'intact');
+  protected canFullyRepair = computed(() => false);
+  protected blockedReason = computed(() => this.t.game.repairRetrofitItemDetail.blockedReasonMissionPartsUnavailable);
 
   constructor() {
     this.socketLifecycleService.ensureConnected();
@@ -76,52 +75,10 @@ export default class RepairRetrofitItemDetailPage {
   }
 
   /**
-   * Persists full repair for selected inventory item via item upsert.
+   * Inventory-item repair is mission-locked until salvage-part systems are implemented.
    */
   protected fullyRepairItem(): void {
-    const item = this.selectedItem();
-    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-    const playerName = this.playerName().trim();
-
-    if (!item || !sessionKey || !playerName) {
-      this.persistError.set(this.t.game.repairRetrofitItemDetail.missingContextError);
-      return;
-    }
-
-    this.isPersisting.set(true);
-    this.persistError.set(null);
     this.persistSuccess.set(null);
-
-    this.socketService.upsertItem(
-      {
-        playerName,
-        sessionKey,
-        item: {
-          id: item.id,
-          damageStatus: 'intact',
-        },
-      },
-      (response: ItemUpsertResponse) => {
-        this.isPersisting.set(false);
-        if (!response.success || !response.item) {
-          this.persistError.set(response.message || this.t.game.repairRetrofitItemDetail.persistFailedLabel);
-          return;
-        }
-
-        this.joinShip.update((current) => {
-          if (!current) {
-            return current;
-          }
-
-          return {
-            ...current,
-            inventory: (current.inventory ?? []).map((entry) =>
-              entry.id === response.item!.id ? response.item! : entry,
-            ),
-          };
-        });
-        this.persistSuccess.set(this.t.game.repairRetrofitItemDetail.successLabel);
-      },
-    );
+    this.persistError.set(this.t.game.repairRetrofitItemDetail.blockedReasonMissionPartsUnavailable);
   }
 }

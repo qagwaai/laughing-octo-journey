@@ -48,6 +48,60 @@ Track policy compliance items that are operational over time, not just code-stat
 - Policy-compliant this cycle: yes / no
 - If no, top 1-3 actions before next cycle:
 
+## Fast Incident Runbook - Repair Consumes Item But Item Reappears
+
+Use this when a consumed item (for example Hull Patch Kit) reappears after ship repair.
+
+### 1) 60-second classification
+- Confirm which UI action path was used (repair list page vs detail page).
+- Capture one correlationId from the client repair action.
+- Check backend ship-upsert diagnostics for the same correlationId.
+
+### 2) Branch decision table
+- Client hasInventory=true and backend hasInventoryPatch=true:
+  - Treat as backend persistence/projection issue.
+  - Validate pre-persist and persisted inventory ids differ as expected.
+- Client hasInventory=true and backend hasInventoryPatch=false:
+  - Treat as transport/request-shape issue.
+  - Verify message handler reads the same request field names and payload nesting.
+- Client hasInventory=false:
+  - Treat as client code path issue.
+  - Find the specific upsertShip caller used by this UI action and patch that path.
+
+### 3) Required diagnostics (minimum)
+- Client repair log: correlationId, hasInventory, inventoryLength, consumedItemId.
+- Socket emit log: correlationId, hasInventory, inventoryLength.
+- Backend incoming ship-upsert log: correlationId, hasInventoryPatch, incoming inventory ids.
+- Backend pre-persist log: correlationId, previous inventory ids, pre-persist inventory ids.
+- Backend persisted log: correlationId, persisted inventory ids.
+- Ship-list projection log: correlationId, inventoryRefIds, projectedItemIds, backfilledItemIds.
+
+### 4) Validation criteria before closing
+- Persisted ship inventory refs exclude the consumed item id.
+- Projected ship-list excludes the consumed item id.
+- Item record is destroyed (or otherwise marked not contained) after repair.
+- Refresh and relogin both keep the item absent.
+
+### 5) Defense-in-depth policy
+- Client remains the primary source of explicit inventory patch on repair.
+- Backend safeguard may auto-consume one kit only when:
+  - damage transitions to intact
+  - inventory patch is omitted
+- Safeguard must emit explicit diagnostic logs when triggered.
+- Treat safeguard activations as warning events to investigate client path drift.
+
+### 6) Regression guardrails to add
+- Unit/integration: repair action sends ship-upsert with inventory patch containing kit removed.
+- Integration: backend ship-upsert persists patched inventory refs when inventory is supplied.
+- Integration: safeguard path consumes exactly one kit when patch is omitted.
+- E2E: fully repair ship, refresh, relogin, verify kit remains absent.
+
+### 7) Known high-signal root causes from this incident
+- Different UI repair entry points used different upsertShip payload shapes.
+- Ship-upsert patch semantics preserve inventory when inventory is omitted.
+- Missing correlation ids slowed multi-hop diagnosis across client and backend logs.
+- Local consumed-item shadow filtering can hide symptoms but not fix persistence.
+
 ---
 
 ## Cycle 1 — 2026-05-07

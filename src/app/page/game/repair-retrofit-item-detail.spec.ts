@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 
 import { createMockSessionService, createMockSocketService, type MockSocketService } from '../../../testing';
-import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import RepairRetrofitItemDetailPage from './repair-retrofit-item-detail';
@@ -16,19 +15,11 @@ interface NavigationState {
 }
 
 type MockSocketWithUpsert = MockSocketService & {
-  upsertItem(request: any, cb?: (r: any) => void): void;
+  upsertItem?: (request: any, cb?: (r: any) => void) => void;
 };
 
 function createSocketWithUpsert(): MockSocketWithUpsert {
-  const base = createMockSocketService();
-  return Object.assign(base, {
-    upsertItem(request: any, cb?: (r: any) => void) {
-      if (cb) {
-        base.once(ITEM_UPSERT_RESPONSE_EVENT, cb);
-      }
-      base.emit(ITEM_UPSERT_REQUEST_EVENT, request);
-    },
-  });
+  return createMockSocketService() as MockSocketWithUpsert;
 }
 
 function setup(state?: NavigationState) {
@@ -144,12 +135,12 @@ describe('RepairRetrofitItemDetailPage - selectedItem', () => {
 // ---------------------------------------------------------------------------
 
 describe('RepairRetrofitItemDetailPage - canFullyRepair', () => {
-  it('should be true when selected item is damaged', () => {
+  it('should be false when selected item is damaged (mission-locked)', () => {
     const { component } = setup({
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
       asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
     });
-    expect(component['canFullyRepair']()).toBe(true);
+    expect(component['canFullyRepair']()).toBe(false);
   });
 
   it('should be false when selected item is intact', () => {
@@ -160,19 +151,17 @@ describe('RepairRetrofitItemDetailPage - canFullyRepair', () => {
     expect(component['canFullyRepair']()).toBe(false);
   });
 
-  it('should be true when selected item is critical', () => {
+  it('should be false when selected item is critical (mission-locked)', () => {
     const { component } = setup({
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'critical' }] },
       asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
     });
-    expect(component['canFullyRepair']()).toBe(true);
+    expect(component['canFullyRepair']()).toBe(false);
   });
 
-  it('should be true when no item is selected (undefined damageStatus !== "intact")', () => {
-    // When selectedItem() returns null, null?.damageStatus is undefined, and undefined !== 'intact' is true.
-    // This mirrors the actual computed in the component, and the template guards the repair button separately.
+  it('should be false when no item is selected', () => {
     const { component } = setup();
-    expect(component['canFullyRepair']()).toBe(true);
+    expect(component['canFullyRepair']()).toBe(false);
   });
 });
 
@@ -181,28 +170,28 @@ describe('RepairRetrofitItemDetailPage - canFullyRepair', () => {
 // ---------------------------------------------------------------------------
 
 describe('RepairRetrofitItemDetailPage - fullyRepairItem guard', () => {
-  it('should allow repair when all context is present', () => {
+  it('should return mission-lock blocked message when invoked', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1' },
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
       asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
     });
-    // With all context, fullyRepairItem() proceeds to socket call without setting persistError
+
     component['fullyRepairItem']();
-    expect(component['persistError']()).toBeNull();
+    expect(component['persistError']()).toBe('Requires mission salvage parts not yet available');
   });
 
-  it('should report error when no item is selected', () => {
+  it('should return the same mission-lock blocked message when no item is selected', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinShip: { id: 's-1', inventory: [] },
     });
     component['fullyRepairItem']();
-    expect(component['persistError']()).not.toBeNull();
+    expect(component['persistError']()).toBe('Requires mission salvage parts not yet available');
   });
 
-  it('should report error when sessionKey is empty', () => {
+  it('should return the same mission-lock blocked message when sessionKey is empty', () => {
     const { component, mockSession } = setup({
       playerName: 'Pioneer',
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
@@ -210,10 +199,10 @@ describe('RepairRetrofitItemDetailPage - fullyRepairItem guard', () => {
     });
     mockSession.setSessionKey('');
     component['fullyRepairItem']();
-    expect(component['persistError']()).not.toBeNull();
+    expect(component['persistError']()).toBe('Requires mission salvage parts not yet available');
   });
 
-  it('should report error when sessionKey is only whitespace', () => {
+  it('should return the same mission-lock blocked message when sessionKey is only whitespace', () => {
     const { component, mockSession } = setup({
       playerName: 'Pioneer',
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
@@ -221,16 +210,16 @@ describe('RepairRetrofitItemDetailPage - fullyRepairItem guard', () => {
     });
     mockSession.setSessionKey('   ');
     component['fullyRepairItem']();
-    expect(component['persistError']()).not.toBeNull();
+    expect(component['persistError']()).toBe('Requires mission salvage parts not yet available');
   });
 
-  it('should report error when playerName is empty', () => {
+  it('should return the same mission-lock blocked message when playerName is empty', () => {
     const { component } = setup({
       playerName: '',
       joinShip: { id: 's-1', inventory: [{ id: 'i-1', itemType: 'iron', damageStatus: 'damaged' }] },
       asset: { key: 'inventory-item:i-1', kind: 'inventory-item', itemId: 'i-1' },
     });
     component['fullyRepairItem']();
-    expect(component['persistError']()).not.toBeNull();
+    expect(component['persistError']()).toBe('Requires mission salvage parts not yet available');
   });
 });

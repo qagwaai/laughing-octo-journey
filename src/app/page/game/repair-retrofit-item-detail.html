@@ -20,6 +20,10 @@
         <strong>{{ t.game.repairRetrofitItemDetail.summaryLabel }}</strong>
         {{ selectedAsset()?.summary || t.game.repairRetrofitItemDetail.noSummaryLabel }}
       </p>
+      <p>
+        <strong>{{ t.game.repairRetrofitItems.blockedReasonLabel }}</strong>
+        {{ blockedReason() }}
+      </p>
 
       <button type="button" class="repair-action" (click)="navigateBackToRepairItems()">
         {{ t.game.repairRetrofitItemDetail.backLabel }}

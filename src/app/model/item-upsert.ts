@@ -30,6 +30,8 @@ export interface ItemUpsertPayload {
 export interface ItemUpsertRequest {
   playerName: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
   item: ItemUpsertPayload;
 }
 

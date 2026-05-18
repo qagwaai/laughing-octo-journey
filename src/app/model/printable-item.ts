@@ -95,7 +95,7 @@ export function hasPrintableItemInInventory(
   inventory: readonly ShipItem[] | undefined,
   printableItem: PrintableItemDefinition,
 ): boolean {
-  return (inventory ?? []).some((item) => item.itemType === printableItem.itemType);
+  return (inventory ?? []).some((item) => isUsableContainedInventoryItem(item) && item.itemType === printableItem.itemType);
 }
 
 export function isPrintableItemQueued(
@@ -109,14 +109,16 @@ export function countAvailablePrintableMaterial(
   inventory: readonly ShipItem[] | undefined,
   requirement: PrintableMaterialRequirement,
 ): number {
-  return (inventory ?? []).filter((item) => doesItemMatchPrintableRequirement(item, requirement)).length;
+  return (inventory ?? [])
+    .filter((item) => isUsableContainedInventoryItem(item))
+    .filter((item) => doesItemMatchPrintableRequirement(item, requirement)).length;
 }
 
 export function findConsumableMaterialsForPrintableItem(
   inventory: readonly ShipItem[] | undefined,
   printableItem: PrintableItemDefinition,
 ): PrintableConsumedMaterial[] | null {
-  const availableInventory = [...(inventory ?? [])];
+  const availableInventory = [...(inventory ?? [])].filter((item) => isUsableContainedInventoryItem(item));
   const consumedMaterials: PrintableConsumedMaterial[] = [];
 
   for (const requirement of printableItem.requiredMaterials) {
@@ -158,4 +160,20 @@ function doesItemMatchPrintableRequirement(item: ShipItem, requirement: Printabl
     requirement.acceptedItemTypes.some((value) => normalizedType.includes(value.toLowerCase())) ||
     requirement.acceptedDisplayNames.some((value) => normalizedName.includes(value.toLowerCase()))
   );
+}
+
+function isUsableContainedInventoryItem(item: ShipItem): boolean {
+  if (item.state !== 'contained') {
+    return false;
+  }
+
+  if (item.damageStatus === 'destroyed') {
+    return false;
+  }
+
+  if (item.destroyedAt !== null || item.destroyedReason !== null) {
+    return false;
+  }
+
+  return true;
 }

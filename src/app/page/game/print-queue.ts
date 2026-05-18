@@ -71,6 +71,7 @@ export default class PrintQueuePage {
   protected currentTime = signal(Date.now());
   protected printerError = signal<string | null>(null);
   protected printerSuccess = signal<string | null>(null);
+  private isQueueingPrintableItem = signal(false);
   protected printableItems = signal<readonly PrintableItemDefinition[]>(PRINTABLE_ITEMS);
 
   protected printerStatus = computed(() => (this.printerQueue().length > 0 ? 'printing' : 'idle'));
@@ -143,6 +144,10 @@ export default class PrintQueuePage {
    * Queues a printable item after validating inventory requirements and consuming materials.
    */
   protected queuePrintableItem(printableItem: PrintableItemDefinition): void {
+    if (this.isQueueingPrintableItem()) {
+      return;
+    }
+
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
@@ -155,8 +160,20 @@ export default class PrintQueuePage {
 
     this.printerError.set(null);
     this.printerSuccess.set(null);
+  this.isQueueingPrintableItem.set(true);
 
-    this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, printableItem, 0, () => {
+    const actionCorrelationId = `print-queue.queue-printable-item:${printableItem.itemType}:${Date.now().toString(36)}:${Math.random()
+      .toString(36)
+      .slice(2)}`;
+
+    this.consumePrintableMaterials(
+      playerName,
+      sessionKey,
+      consumedMaterials,
+      printableItem,
+      0,
+      actionCorrelationId,
+      () => {
       this.activeShip.update((current) => {
         if (!current) {
           return current;
@@ -175,10 +192,12 @@ export default class PrintQueuePage {
         durationMs: printableItem.durationMs,
         consumedMaterials,
       });
+      this.isQueueingPrintableItem.set(false);
       this.printerSuccess.set(
         `${printableItem.displayName} queued for printing. ${this.describeConsumedMaterials(consumedMaterials)} consumed. Estimated time: ${formatPrintableDuration(printableItem.durationMs)}.`,
       );
-    });
+      },
+    );
   }
 
   /**
@@ -250,6 +269,7 @@ export default class PrintQueuePage {
 
   protected canQueuePrintableItem(printableItem: PrintableItemDefinition): boolean {
     return (
+      !this.isQueueingPrintableItem() &&
       !this.hasPrintableItem(printableItem) &&
       !this.isPrintableItemPrinting(printableItem) &&
       !!findConsumableMaterialsForPrintableItem(this.activeShip()?.inventory, printableItem) &&
@@ -303,10 +323,14 @@ export default class PrintQueuePage {
       return;
     }
 
+    const correlationId = `print-queue.collect-completed-job:${item.itemType}:${item.id}:${Date.now().toString(36)}`;
+
     this.socketService.upsertItem(
       {
         playerName,
         sessionKey,
+        correlationId,
+        correlationSource: 'print-queue.collect-completed-job',
         item: {
           itemType: item.itemType,
           displayName: item.label,
@@ -404,6 +428,7 @@ export default class PrintQueuePage {
     consumedMaterials: readonly PrintableConsumedMaterial[],
     printableItem: PrintableItemDefinition,
     index: number,
+    actionCorrelationId: string,
     onComplete: () => void,
   ): void {
     const nextMaterial = consumedMaterials[index];
@@ -416,6 +441,8 @@ export default class PrintQueuePage {
       {
         playerName,
         sessionKey,
+        correlationId: actionCorrelationId,
+        correlationSource: `print-queue.consume-print-material.step-${index}`,
         item: {
           id: nextMaterial.id,
           state: 'destroyed',
@@ -427,11 +454,20 @@ export default class PrintQueuePage {
       },
       (response) => {
         if (!response.success) {
+          this.isQueueingPrintableItem.set(false);
           this.printerError.set(response.message || `Unable to consume ${nextMaterial.label} for print job.`);
           return;
         }
 
-        this.consumePrintableMaterials(playerName, sessionKey, consumedMaterials, printableItem, index + 1, onComplete);
+        this.consumePrintableMaterials(
+          playerName,
+          sessionKey,
+          consumedMaterials,
+          printableItem,
+          index + 1,
+          actionCorrelationId,
+          onComplete,
+        );
       },
     );
   }
@@ -456,6 +492,7 @@ export default class PrintQueuePage {
       {
         playerName,
         sessionKey,
+        correlationSource: 'print-queue.restore-print-material',
         item: {
           id: nextMaterial.id,
           itemType: nextMaterial.itemType,

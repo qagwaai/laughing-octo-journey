@@ -15,6 +15,7 @@ export interface ShipUpsertPayload {
   model?: string;
   tier?: number;
   launchable?: boolean;
+  inventory?: ShipItem[];
   damageProfile?: ShipDamageProfile | null;
   spatial: SpatialState;
   motion?: ShipMotion;
@@ -37,6 +38,8 @@ export interface ShipUpsertRequest {
   playerName: string;
   characterId: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
   ship: ShipUpsertPayload;
 }
 
