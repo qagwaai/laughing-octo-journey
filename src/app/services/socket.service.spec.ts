@@ -237,7 +237,13 @@ describe('SocketService', () => {
       expect(onceEvent!).toBe(SHIP_UPSERT_RESPONSE_EVENT);
       expect(emittedEvent).not.toBeNull();
       expect(emittedEvent!).toBe(SHIP_UPSERT_REQUEST_EVENT);
-      expect(emittedPayload).toEqual(request);
+      expect(emittedPayload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.upsertShip',
+        }),
+      );
 
       const fakeResponse = {
         success: true,

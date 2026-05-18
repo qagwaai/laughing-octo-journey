@@ -18,6 +18,8 @@ interface ItemStub {
   displayName: string;
   state?: 'contained' | 'deployed' | 'destroyed';
   damageStatus?: 'intact' | 'damaged' | 'disabled' | 'destroyed';
+  destroyedAt?: string | null;
+  destroyedReason?: string | null;
 }
 
 interface NavigationState {
@@ -57,6 +59,8 @@ function makeItem(overrides?: Partial<ItemStub>): ItemStub {
     id: overrides?.id ?? 'item-1',
     itemType: overrides?.itemType ?? 'expendable-dart-drone',
     displayName: overrides?.displayName ?? 'Expendable Dart Drone',
+    state: overrides?.state,
+    damageStatus: overrides?.damageStatus,
   };
 }
 
@@ -204,6 +208,8 @@ describe('ShipViewInventoryPage', () => {
               displayName: 'Hull Patch Kit',
               state: 'destroyed',
               damageStatus: 'destroyed',
+              destroyedAt: '2026-05-18T00:00:00.000Z',
+              destroyedReason: 'scrapped',
             }),
             makeItem({ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' }),
           ],

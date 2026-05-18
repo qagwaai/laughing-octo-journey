@@ -49,8 +49,11 @@ for (const rel of specFiles) {
   const specPath = path.join(root, rel);
   const content = fs.readFileSync(specPath, 'utf8');
 
-  // Derive the expected SUT base name (strip .spec.ts → e.g. 'market-hub')
-  const baseName = path.basename(rel, '.spec.ts');
+  // Derive the expected SUT base name from the nearest existing sibling source.
+  // This keeps conventional specs strict while allowing disambiguated test
+  // stems such as `planet-view-scene.zoom.spec.ts` to map back to
+  // `planet-view-scene.ts` when no `planet-view-scene.zoom.ts` exists.
+  const baseName = resolveSutBaseName(rel);
 
   // A spec is considered valid if it imports from './<baseName>' (any quotes,
   // any extension, any members). We allow both single and double quotes.
@@ -68,6 +71,22 @@ for (const rel of specFiles) {
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function resolveSutBaseName(rel) {
+  const specDir = path.dirname(rel);
+  const specStem = path.basename(rel, '.spec.ts');
+  const stemParts = specStem.split('.');
+
+  for (let i = stemParts.length; i >= 1; i -= 1) {
+    const candidateBaseName = stemParts.slice(0, i).join('.');
+    const candidatePath = path.join(root, specDir, `${candidateBaseName}.ts`);
+    if (fs.existsSync(candidatePath)) {
+      return candidateBaseName;
+    }
+  }
+
+  return specStem;
 }
 
 // ---------------------------------------------------------------------------

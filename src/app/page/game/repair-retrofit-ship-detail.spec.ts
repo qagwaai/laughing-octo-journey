@@ -53,9 +53,44 @@ const mockMissionStateService = {
   saveState: () => undefined,
 };
 
+function normalizeInventoryItem(item: any): any {
+  if (!item || typeof item !== 'object') {
+    return item;
+  }
+
+  if (item.itemType !== 'hull-patch-kit' && item.itemType !== 'iron') {
+    return item;
+  }
+
+  if (item.state === 'destroyed' || item.damageStatus === 'destroyed') {
+    return item;
+  }
+
+  return {
+    ...item,
+    state: item.state ?? 'contained',
+    destroyedAt: item.destroyedAt ?? null,
+    destroyedReason: item.destroyedReason ?? null,
+  };
+}
+
 function setup(state?: NavigationState) {
+  const normalizedState = state
+    ? {
+        ...state,
+        joinShip: state.joinShip
+          ? {
+              ...state.joinShip,
+              inventory: Array.isArray(state.joinShip.inventory)
+                ? state.joinShip.inventory.map(normalizeInventoryItem)
+                : state.joinShip.inventory,
+            }
+          : state.joinShip,
+      }
+    : state;
+
   const mockRouter = {
-    getCurrentNavigation: () => (state ? { extras: { state } } : null),
+    getCurrentNavigation: () => (normalizedState ? { extras: { state: normalizedState } } : null),
     navigate: jasmine.createSpy('navigate'),
   };
   const mockSocket = createSocketWithUpsert();
@@ -136,7 +171,7 @@ describe('RepairRetrofitShipDetailPage - hasHullPatchKit', () => {
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
       } as any,
     });
     expect(component['hasHullPatchKit']()).toBe(true);
@@ -164,7 +199,7 @@ describe('RepairRetrofitShipDetailPage - canFullyRepair', () => {
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', state: 'contained' }],
       } as any,
     });
     expect(component['canFullyRepair']()).toBe(false);
@@ -175,7 +210,7 @@ describe('RepairRetrofitShipDetailPage - canFullyRepair', () => {
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', state: 'contained' }],
       } as any,
       damageProfile: {
         overallStatus: 'intact',
@@ -359,7 +394,12 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip guard', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1' },
-      joinShip: { id: 's-1', model: 'Scavenger Pod', spatial: mockSpatial } as any,
+      joinShip: {
+        id: 's-1',
+        model: 'Scavenger Pod',
+        spatial: mockSpatial,
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', state: 'contained' }],
+      } as any,
       damageProfile: {
         overallStatus: 'damaged',
         summary: 'Breach.',
@@ -400,7 +440,7 @@ describe('RepairRetrofitShipDetailPage - buildRepairedProfile', () => {
         id: 's-1',
         model: 'Scavenger Pod',
         spatial: mockSpatial,
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', state: 'contained' }],
       } as any,
       damageProfile: {
         overallStatus: 'damaged',
@@ -434,8 +474,8 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
         model: 'Scavenger Pod',
         spatial: mockSpatial,
         inventory: [
-          { id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' },
-          { id: 'iron-1', itemType: 'iron', displayName: 'Iron' },
+          { id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' },
+          { id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' },
         ],
       } as any,
       damageProfile: {
@@ -463,7 +503,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
         id: 's-1',
         model: 'Scavenger Pod',
         spatial: mockSpatial,
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
       } as any,
       damageProfile: {
         overallStatus: 'damaged',
@@ -488,7 +528,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
         id: 's-1',
         model: 'Scavenger Pod',
         spatial: mockSpatial,
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
       } as any,
       damageProfile: {
         overallStatus: 'damaged',
@@ -506,7 +546,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     expect(component['isPersisting']()).toBe(false);
   });
 
-  it('should set persistSuccess to successLabel after ship-upsert success with no kit', () => {
+  it('should set persistError when ship-upsert is attempted without a hull patch kit', () => {
     const { component, mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1' },
@@ -526,9 +566,10 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     });
 
     component['fullyRepairShip']();
-    mockSocket.triggerOnceEvent(SHIP_UPSERT_RESPONSE_EVENT, { success: true });
+    expect(component['persistError']()).toBe(component['t'].game.repairRetrofitShipDetail.hullPatchKitRequiredLabel);
+    expect(mockSocket.emittedEvents.find((event) => event.event === SHIP_UPSERT_REQUEST_EVENT)).toBeUndefined();
 
-    expect(component['persistSuccess']()).toBe(component['t'].game.repairRetrofitShipDetail.successLabel);
+    expect(component['persistSuccess']()).toBeNull();
     expect(component['isPersisting']()).toBe(false);
   });
 
@@ -540,7 +581,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
         id: 's-1',
         model: 'Scavenger Pod',
         spatial: mockSpatial,
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
       } as any,
       damageProfile: {
         overallStatus: 'damaged',

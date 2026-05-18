@@ -19,7 +19,6 @@ import {
   CHARACTER_EDIT_RESPONSE_EVENT,
   type CharacterEditResponse,
 } from '../../model/character-edit';
-import {
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT, type ShipListResponse } from '../../model/ship-list';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';

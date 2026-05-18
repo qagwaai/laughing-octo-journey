@@ -48,6 +48,8 @@ export class AsyncSerialQueue<T> {
     this.inFlightFlag = true;
     try {
       await this.processor(item);
+    } catch (error) {
+      console.error('[AsyncSerialQueue] Processor failed:', error);
     } finally {
       this.inFlightFlag = false;
       if (this.queue.length > 0) {

@@ -34,13 +34,71 @@ const mockMissionStateService = {
   saveState: () => undefined,
 };
 
+type MockSocketWithUpsert = ReturnType<typeof createMockSocketService> & {
+  upsertShip(request: any, cb?: (r: any) => void): void;
+  upsertItem(request: any, cb?: (r: any) => void): void;
+};
+
+function createSocketWithUpsert(): MockSocketWithUpsert {
+  const base = createMockSocketService();
+  return Object.assign(base, {
+    upsertShip(request: any, cb?: (r: any) => void) {
+      if (cb) {
+        base.once('ship-upsert-response', cb);
+      }
+      base.emit(SHIP_UPSERT_REQUEST_EVENT, request);
+    },
+    upsertItem(request: any, cb?: (r: any) => void) {
+      if (cb) {
+        base.once('item-upsert-response', cb);
+      }
+      base.emit('item-upsert-request', request);
+    },
+  });
+}
+
+function normalizeInventoryItem(item: any): any {
+  if (!item || typeof item !== 'object') {
+    return item;
+  }
+
+  if (item.itemType !== 'hull-patch-kit' && item.itemType !== 'iron') {
+    return item;
+  }
+
+  if (item.state === 'destroyed' || item.damageStatus === 'destroyed') {
+    return item;
+  }
+
+  return {
+    ...item,
+    state: item.state ?? 'contained',
+    destroyedAt: item.destroyedAt ?? null,
+    destroyedReason: item.destroyedReason ?? null,
+  };
+}
+
 function setup(state?: NavigationState) {
+  const normalizedState = state
+    ? {
+        ...state,
+        joinShip: state.joinShip
+          ? {
+              ...state.joinShip,
+              inventory: Array.isArray(state.joinShip.inventory)
+                ? state.joinShip.inventory.map(normalizeInventoryItem)
+                : state.joinShip.inventory,
+            }
+          : state.joinShip,
+      }
+    : state;
+
   const mockRouter = {
-    getCurrentNavigation: () => (state ? { extras: { state } } : null),
+    getCurrentNavigation: () => (normalizedState ? { extras: { state: normalizedState } } : null),
     navigate: jasmine.createSpy('navigate'),
   };
-  const mockSocket = createMockSocketService();
-  const mockSession = createMockSessionService();
+  const mockSocket = createSocketWithUpsert();
+  const mockSession = createMockSessionService('test-session-key');
   const mockPrinter = createMockPrinterStateService();
 
   TestBed.configureTestingModule({
@@ -459,7 +517,7 @@ describe('RepairRetrofitItemsPage - hull patch kit state', () => {
         id: 's-1',
         name: '',
         model: '',
-        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit' }],
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
       },
     });
     expect(component['hasHullPatchKit']()).toBe(true);
@@ -471,7 +529,7 @@ describe('RepairRetrofitItemsPage - hull patch kit state', () => {
         id: 's-1',
         name: '',
         model: '',
-        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron' }],
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
       },
     });
     expect(component['canQueueHullPatchKit']()).toBe(true);
