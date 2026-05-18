@@ -106,6 +106,7 @@ Remaining uncovered branches in locale.ts (10/34) are primarily global object gu
 
 - [ ] Record the first real cycle in [docs/operational-testing-checklist.md](docs/operational-testing-checklist.md): flake rate, CI runtime, escaped-bug mapping, coverage snapshot.
 - [ ] Add a CODEOWNERS / PR template note pointing at [docs/testing-policy.md](docs/testing-policy.md) PR checklist.
+- [x] Add Playwright smoke coverage for external ship flight mode (enable flight, pointer lock acquisition, WASD movement telemetry change, clean unlock on disable).
 
 ---
 

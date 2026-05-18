@@ -10,7 +10,8 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { NgtArgs } from 'angular-three';
+import { Euler, Quaternion, Vector3 } from 'three';
+import { NgtArgs, injectStore } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { environment } from '../../environments/environment';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
@@ -94,6 +95,13 @@ import {
   resolveHotkeyNumber,
   resolveSunConfigForSolarSystem,
 } from './ship-exterior/ship-exterior-formatters';
+import {
+  applyMouseLook,
+  integrateFlightStep,
+  quantizeCoordinate,
+  resolveMovementInput,
+  type FlightOrientation,
+} from './ship-exterior/ship-exterior-flight-controls';
 import { AsyncSerialQueue } from './ship-exterior/async-serial-queue';
 import { HotkeyFlashController } from './ship-exterior/hotkey-flash-controller';
 import { LaunchToastController, type LaunchFeedbackToast } from './ship-exterior/launch-toast-controller';
@@ -177,6 +185,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly SOLAR_DISTANCE_SCENE_SCALE_KM = 5_500_000;
   private static readonly SUN_DISTANCE_MIN_SCENE_UNITS = 56;
   private static readonly SUN_DISTANCE_MAX_SCENE_UNITS = 120;
+  private static readonly FLIGHT_TICK_MS = 16;
+  private static readonly FLIGHT_TRACKING_CHECKPOINT_MS = 50;
+  private static readonly FLIGHT_TRACKING_QUANTIZE_KM = 10;
+  private static readonly FLIGHT_SCENE_UNIT_TO_KM = 1200;
+  private static readonly FLIGHT_BASE_SPEED_SCENE_UNITS_PER_SEC = 2.2;
+  private static readonly FLIGHT_BOOST_MULTIPLIER = 2.15;
+  private static readonly FLIGHT_ROLL_SPEED_RAD_PER_SEC = 1.8;
+  private static readonly FLIGHT_DEFAULT_MOUSE_SENSITIVITY = 0.0023;
+  private static readonly FLIGHT_MOUSE_SENSITIVITY_MIN = 0.001;
+  private static readonly FLIGHT_MOUSE_SENSITIVITY_MAX = 0.007;
+  private static readonly FLIGHT_MAX_PITCH_RAD = Math.PI * 0.48;
 
   private router = inject(Router);
   private socketService = inject(SocketService);
@@ -185,10 +204,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private missionService = inject(MissionService);
   private asteroidStateService = inject(ShipExteriorAsteroidStateService);
   private missionStateService = inject(ShipExteriorMissionStateService);
+  private store: ReturnType<typeof injectStore> | null = (() => {
+    try {
+      return injectStore();
+    } catch {
+      // Test environments may not provide NgtStore — that's OK; flight camera reset will no-op.
+      return null;
+    }
+  })();
   private readonly sessionController = new ShipExteriorSessionController();
   protected readonly targetHoldCandidateId = this.sessionController.targetHoldCandidateId;
   private sceneElapsedSeconds = 0;
   private pendingActiveStateUpserts = new Set<string>();
+  private flightTickIntervalId: number | null = null;
+  private flightTrackingAccumulatorMs = 0;
+  private readonly flightPressedKeys = new Set<string>();
+  private flightOrientation = signal<FlightOrientation>({ yawRad: 0, pitchRad: 0, rollRad: 0 });
+  // Camera orientation polled from the live Three.js camera each tick. Used for VIEW/MOVE
+  // displays when flight mode is OFF (so they reflect OrbitControls rotation).
+  private cameraOrientation = signal<FlightOrientation>({ yawRad: 0, pitchRad: 0, rollRad: 0 });
+  private flightDisplacementScene: Triple = { x: 0, y: 0, z: 0 };
+  private flightCurrentLocationKm: Triple = { x: 0, y: 0, z: 0 };
   private unsubscribeShipListResponse?: () => void;
   private unsubscribeCelestialBodyListResponse?: () => void;
   private unsubscribeLaunchItemResponse?: () => void;
@@ -357,6 +393,53 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   });
   protected Math = Math;
   private propertiesPanelHidden = signal(false);
+  readonly flightModeEnabled = signal(false);
+  readonly flightPointerLocked = signal(false);
+  readonly flightInvertY = signal(false);
+  readonly flightMouseSensitivity = signal(ShipExteriorViewScene.FLIGHT_DEFAULT_MOUSE_SENSITIVITY);
+  readonly flightSpeedKmPerSec = signal(0);
+  readonly flightWorldOffset = signal<[number, number, number]>([0, 0, 0]);
+  readonly flightWorldRotation = signal<[number, number, number]>([0, 0, 0]);
+  readonly flightStatusLine = computed(() => {
+    if (!this.flightModeEnabled()) {
+      return 'FLIGHT // OFF';
+    }
+
+    const lockLabel = this.flightPointerLocked() ? 'LOCKED' : 'CLICK VIEW TO LOCK';
+    return `FLIGHT // ACTIVE // MOUSE ${lockLabel}`;
+  });
+  readonly flightCoordsLine = computed(() => {
+    const location = this.activeShipLocationKm();
+    if (!location) {
+      return 'COORD KM // ---';
+    }
+
+    return `COORD KM // X ${Math.round(location.x)} Y ${Math.round(location.y)} Z ${Math.round(location.z)}`;
+  });
+  readonly flightSpeedLine = computed(() => `SPD // ${Math.round(this.flightSpeedKmPerSec())} km/s`);
+  readonly flightControlLine = computed(
+    () => 'W/S FWD-BACK | A/D STRAFE | SPACE/CTRL VERT | Q/E ROLL | SHIFT BOOST',
+  );
+  readonly flightViewDirectionLine = computed(() => {
+    const orientation = this.flightModeEnabled() ? this.flightOrientation() : this.cameraOrientation();
+    const yawDeg = (orientation.yawRad * 180) / Math.PI;
+    const pitchDeg = (orientation.pitchRad * 180) / Math.PI;
+    const rollDeg = (orientation.rollRad * 180) / Math.PI;
+    return `VIEW // YAW ${yawDeg.toFixed(1)}° PITCH ${pitchDeg.toFixed(1)}° ROLL ${rollDeg.toFixed(1)}°`;
+  });
+    readonly flightMovementVectorsLine = computed(() => {
+      const orientation = this.flightModeEnabled() ? this.flightOrientation() : this.cameraOrientation();
+      // Calculate forward, right, and up vectors in world space by applying the flight orientation.
+      // Local vectors: forward=(0,0,-1), right=(1,0,0), up=(0,1,0)
+      const forwardLocal = new Vector3(0, 0, -1);
+      const rightLocal = new Vector3(1, 0, 0);
+      const upLocal = new Vector3(0, 1, 0);
+      const euler = new Euler(orientation.pitchRad, orientation.yawRad, orientation.rollRad, 'YXZ');
+      forwardLocal.applyEuler(euler);
+      rightLocal.applyEuler(euler);
+      upLocal.applyEuler(euler);
+      return `MOVE // FWD(${forwardLocal.x.toFixed(2)},${forwardLocal.y.toFixed(2)},${forwardLocal.z.toFixed(2)}) RIGHT(${rightLocal.x.toFixed(2)},${rightLocal.y.toFixed(2)},${rightLocal.z.toFixed(2)}) UP(${upLocal.x.toFixed(2)},${upLocal.y.toFixed(2)},${upLocal.z.toFixed(2)})`;
+    });
   protected activeScanAsteroidId = signal<string | null>(null);
   protected targetedAsteroidId = signal<string | null>(null);
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
@@ -518,6 +601,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
+    this.flightCurrentLocationKm = this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 };
     this.socketService.connect(this.socketService.serverUrl);
     this.initializeMissionGateState();
     this.refreshMissionGateStateFromBackend();
@@ -541,10 +625,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.bootstrapController.seedAsteroidsAroundStarterShip();
     }
     this.sessionController.startScanLoop(() => this.tickScene(), ShipExteriorViewScene.SCAN_TICK_MS);
+    this.startFlightLoop();
     window.addEventListener('pointerdown', this.onWindowPointerDown);
     window.addEventListener('pointerup', this.onWindowPointerUp);
     window.addEventListener('contextmenu', this.onWindowContextMenu);
     window.addEventListener('keydown', this.onWindowKeyDown);
+    window.addEventListener('keyup', this.onWindowKeyUp);
+    window.addEventListener('mousemove', this.onWindowMouseMove);
+    document.addEventListener('pointerlockchange', this.onPointerLockChange);
   }
 
   private resolveSeedPolicy(): 'new' | 'resume' {
@@ -831,15 +919,105 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeLaunchItemResponse?.();
     this.bootstrapController.dispose();
     this.sessionController.dispose();
+    this.stopFlightLoop();
     window.removeEventListener('pointerdown', this.onWindowPointerDown);
     window.removeEventListener('pointerup', this.onWindowPointerUp);
     window.removeEventListener('contextmenu', this.onWindowContextMenu);
     window.removeEventListener('keydown', this.onWindowKeyDown);
+    window.removeEventListener('keyup', this.onWindowKeyUp);
+    window.removeEventListener('mousemove', this.onWindowMouseMove);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.hotkeyFlashController.dispose();
     this.launchToastController.dispose();
   }
 
+  setFlightModeEnabled(enabled: boolean): void {
+    this.flightModeEnabled.set(enabled);
+    this.flightPressedKeys.clear();
+    this.flightTrackingAccumulatorMs = 0;
+    this.flightSpeedKmPerSec.set(0);
+    this.clearTargetHoldTimer();
+    this.activeScanAsteroidId.set(null);
+    if (enabled) {
+      // Reset camera to a canonical orientation facing -Z so flight math aligns with the camera view.
+      this.resetCameraForFlight();
+      // Reset flight orientation and displacement so we start from a clean slate.
+      this.flightOrientation.set({ yawRad: 0, pitchRad: 0, rollRad: 0 });
+      this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
+      this.syncFlightWorldTransform();
+    } else {
+      this.exitPointerLockIfHeld();
+    }
+  }
+
+  private resetCameraForFlight(): void {
+    const camera = this.store?.snapshot.camera;
+    if (!camera) {
+      return;
+    }
+    // Position the camera so its forward direction is exactly -Z.
+    camera.position.set(0, 0, 6.6);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+  }
+
+  // Polls the live Three.js camera and pushes its yaw/pitch/roll into `cameraOrientation`.
+  // Used to drive the VIEW / MOVE diagnostic lines when flight mode is OFF (OrbitControls active).
+  private pollCameraOrientation(): void {
+    const camera = this.store?.snapshot.camera;
+    if (!camera) {
+      return;
+    }
+    const euler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
+    const current = this.cameraOrientation();
+    const next: FlightOrientation = {
+      yawRad: euler.y,
+      pitchRad: euler.x,
+      rollRad: euler.z,
+    };
+    // Avoid pointless signal churn when nothing changed (sub-milliradian threshold).
+    if (
+      Math.abs(next.yawRad - current.yawRad) < 1e-4 &&
+      Math.abs(next.pitchRad - current.pitchRad) < 1e-4 &&
+      Math.abs(next.rollRad - current.rollRad) < 1e-4
+    ) {
+      return;
+    }
+    this.cameraOrientation.set(next);
+  }
+
+  toggleFlightMode(): void {
+    this.setFlightModeEnabled(!this.flightModeEnabled());
+  }
+
+  setFlightInvertY(enabled: boolean): void {
+    this.flightInvertY.set(enabled);
+  }
+
+  setFlightMouseSensitivity(rawValue: number): void {
+    const clamped = Math.max(
+      ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MIN,
+      Math.min(ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MAX, rawValue),
+    );
+    this.flightMouseSensitivity.set(clamped);
+  }
+
+  getFlightMouseSensitivitySliderValue(): number {
+    return Math.round(this.flightMouseSensitivity() * 10000);
+  }
+
+  setFlightMouseSensitivityFromSliderValue(rawValue: number): void {
+    this.setFlightMouseSensitivity(rawValue / 10000);
+  }
+
   private onWindowPointerDown = (event: PointerEvent): void => {
+    if (this.flightModeEnabled()) {
+      if (event.button === 0) {
+        this.requestPointerLock();
+      }
+      return;
+    }
+
     if (event.button !== 2) {
       return;
     }
@@ -866,6 +1044,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   };
 
   private onWindowContextMenu = (event: MouseEvent): void => {
+    if (this.flightModeEnabled()) {
+      event.preventDefault();
+      return;
+    }
+
     if (!this.canTargetAsteroids()) {
       return;
     }
@@ -874,6 +1057,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   };
 
   private onWindowKeyDown = (event: KeyboardEvent): void => {
+    if (this.flightModeEnabled()) {
+      if (this.captureFlightMovementKey(event.code)) {
+        event.preventDefault();
+        return;
+      }
+    }
+
     const hotkey = resolveHotkeyNumber(event);
     if (!hotkey) {
       return;
@@ -887,6 +1077,194 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.launchFromHotkeySlot(hotkey);
   };
 
+  private onWindowKeyUp = (event: KeyboardEvent): void => {
+    if (!this.flightModeEnabled()) {
+      return;
+    }
+
+    if (this.flightPressedKeys.delete(event.code)) {
+      event.preventDefault();
+    }
+  };
+
+  private onWindowMouseMove = (event: MouseEvent): void => {
+    if (!this.flightModeEnabled() || !this.flightPointerLocked()) {
+      return;
+    }
+
+    this.flightOrientation.set(applyMouseLook(this.flightOrientation(), event.movementX, event.movementY, {
+      sensitivity: this.flightMouseSensitivity(),
+      invertY: this.flightInvertY(),
+      maxPitchRad: ShipExteriorViewScene.FLIGHT_MAX_PITCH_RAD,
+    }));
+    this.syncFlightWorldTransform();
+  };
+
+  private onPointerLockChange = (): void => {
+    const locked = document.pointerLockElement === document.body;
+    this.flightPointerLocked.set(locked);
+    // Pointer lock acquisition is asynchronous: a pointerdown that triggers
+    // requestPointerLock() while disabling flight can resolve *after* the
+    // click handler has already toggled flight off. Release immediately so
+    // the cursor doesn't stay captured outside flight mode.
+    if (locked && !this.flightModeEnabled()) {
+      document.exitPointerLock();
+    }
+  };
+
+  private captureFlightMovementKey(code: string): boolean {
+    if (
+      code === 'KeyW' ||
+      code === 'KeyA' ||
+      code === 'KeyS' ||
+      code === 'KeyD' ||
+      code === 'Space' ||
+      code === 'ControlLeft' ||
+      code === 'ControlRight' ||
+      code === 'KeyC' ||
+      code === 'ShiftLeft' ||
+      code === 'ShiftRight' ||
+      code === 'KeyQ' ||
+      code === 'KeyE'
+    ) {
+      this.flightPressedKeys.add(code);
+      return true;
+    }
+
+    return false;
+  }
+
+  private requestPointerLock(): void {
+    if (!this.flightModeEnabled() || this.flightPointerLocked()) {
+      return;
+    }
+
+    void document.body.requestPointerLock();
+  }
+
+  private exitPointerLockIfHeld(): void {
+    if (document.pointerLockElement === document.body) {
+      document.exitPointerLock();
+    }
+  }
+
+  private startFlightLoop(): void {
+    this.stopFlightLoop();
+    this.flightTickIntervalId = window.setInterval(() => this.tickFlight(), ShipExteriorViewScene.FLIGHT_TICK_MS);
+  }
+
+  private stopFlightLoop(): void {
+    if (this.flightTickIntervalId !== null) {
+      clearInterval(this.flightTickIntervalId);
+      this.flightTickIntervalId = null;
+    }
+  }
+
+  private tickFlight(): void {
+    if (!this.flightModeEnabled()) {
+      this.pollCameraOrientation();
+      return;
+    }
+
+    const step = integrateFlightStep(
+      this.flightOrientation(),
+      resolveMovementInput(this.flightPressedKeys),
+      {
+        deltaSeconds: ShipExteriorViewScene.FLIGHT_TICK_MS / 1000,
+        baseSpeedSceneUnitsPerSec: ShipExteriorViewScene.FLIGHT_BASE_SPEED_SCENE_UNITS_PER_SEC,
+        boostMultiplier: ShipExteriorViewScene.FLIGHT_BOOST_MULTIPLIER,
+        rollSpeedRadPerSec: ShipExteriorViewScene.FLIGHT_ROLL_SPEED_RAD_PER_SEC,
+      },
+    );
+    this.flightOrientation.set(step.orientation);
+    this.flightSpeedKmPerSec.set(step.speedSceneUnitsPerSec * ShipExteriorViewScene.FLIGHT_SCENE_UNIT_TO_KM);
+
+    if (step.speedSceneUnitsPerSec <= 0) {
+      this.syncFlightWorldTransform();
+      return;
+    }
+
+    this.flightDisplacementScene = {
+      x: this.flightDisplacementScene.x + step.worldDelta.x,
+      y: this.flightDisplacementScene.y + step.worldDelta.y,
+      z: this.flightDisplacementScene.z + step.worldDelta.z,
+    };
+
+    const kmScale = ShipExteriorViewScene.FLIGHT_SCENE_UNIT_TO_KM;
+    this.flightCurrentLocationKm = {
+      x: this.flightCurrentLocationKm.x + step.worldDelta.x * kmScale,
+      y: this.flightCurrentLocationKm.y + step.worldDelta.y * kmScale,
+      z: this.flightCurrentLocationKm.z + step.worldDelta.z * kmScale,
+    };
+
+    this.flightTrackingAccumulatorMs += ShipExteriorViewScene.FLIGHT_TICK_MS;
+    if (this.flightTrackingAccumulatorMs >= ShipExteriorViewScene.FLIGHT_TRACKING_CHECKPOINT_MS) {
+      this.commitFlightTrackingCheckpoint();
+      this.flightTrackingAccumulatorMs = 0;
+    }
+
+    this.syncFlightWorldTransform();
+  }
+
+  private commitFlightTrackingCheckpoint(): void {
+    const nextLocation: Triple = {
+      x: quantizeCoordinate(this.flightCurrentLocationKm.x, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
+      y: quantizeCoordinate(this.flightCurrentLocationKm.y, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
+      z: quantizeCoordinate(this.flightCurrentLocationKm.z, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
+    };
+
+    this.activeShipLocationKm.set(nextLocation);
+
+    const activeShip = this.sessionService.activeShip();
+    const shipId = this.activeShipId();
+    if (!activeShip || activeShip.id !== shipId) {
+      return;
+    }
+
+    this.sessionService.setActiveShip({
+      ...activeShip,
+      spatial: {
+        ...(activeShip.spatial ?? {
+          solarSystemId: this.activeSolarSystemId(),
+          frame: 'icrs',
+          epochMs: Date.now(),
+          velocityKmPerSec: { x: 0, y: 0, z: 0 },
+          heading: { x: 0, y: 0, z: -1 },
+        }),
+        solarSystemId: this.activeSolarSystemId(),
+        positionKm: nextLocation,
+        epochMs: Date.now(),
+      },
+    });
+  }
+
+  private syncFlightWorldTransform(): void {
+    const orientation = this.flightOrientation();
+    this.flightWorldOffset.set([
+      +(-this.flightDisplacementScene.x).toFixed(3),
+      +(-this.flightDisplacementScene.y).toFixed(3),
+      +(-this.flightDisplacementScene.z).toFixed(3),
+    ]);
+    // Convert flight orientation (YXZ Euler) to world rotation (XYZ Euler via Quaternion).
+    // Movement is calculated using YXZ order, but ngt-group expects XYZ order.
+    // Use Quaternion as the common representation to avoid order confusion.
+    const orientationQuaternion = new Quaternion().setFromEuler(
+      new Euler(
+        orientation.pitchRad,
+        orientation.yawRad,
+        orientation.rollRad,
+        'YXZ',
+      ),
+    );
+    // Convert the quaternion back to Euler angles, negated and in XYZ order (which ngt-group uses).
+    const sceneEuler = new Euler().setFromQuaternion(orientationQuaternion.invert(), 'XYZ');
+    this.flightWorldRotation.set([
+      +(sceneEuler.x).toFixed(4),
+      +(sceneEuler.y).toFixed(4),
+      +(sceneEuler.z).toFixed(4),
+    ]);
+  }
+
   private updateTargetingCapabilityFromShipList(ships: ShipSummary[] | undefined): void {
     if (!Array.isArray(ships) || ships.length === 0) {
       return;
@@ -898,6 +1276,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.hasExpendableDartDrone.set(nextHasDrone);
     this.activeShipId.set(matchingShip?.id?.trim() ?? '');
     this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
+    if (!this.flightModeEnabled()) {
+      this.flightCurrentLocationKm = matchingShip?.spatial?.positionKm ?? { x: 0, y: 0, z: 0 };
+    }
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
     this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
     this.shipDamageController.resolveFromShipSummary(matchingShip);
@@ -1334,6 +1715,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   protected onAsteroidHoverChange(event: AsteroidHoverEvent): void {
+    if (this.flightModeEnabled()) {
+      return;
+    }
+
     if (event.hovering) {
       const previousActiveId = this.activeScanAsteroidId();
       if (previousActiveId && previousActiveId !== event.id) {
@@ -1351,6 +1736,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   protected onAsteroidRightPointerDown(event: { id: string; button: number }): void {
+    if (this.flightModeEnabled()) {
+      return;
+    }
+
     if (event.button !== 2 || !this.canTargetAsteroids()) {
       return;
     }
@@ -1359,6 +1748,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   protected onAsteroidRightPointerUp(event: { id: string; button: number }): void {
+    if (this.flightModeEnabled()) {
+      return;
+    }
+
     if (event.button !== 2) {
       return;
     }

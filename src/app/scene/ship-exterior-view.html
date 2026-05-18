@@ -8,12 +8,13 @@
 />
 <ngt-point-light [position]="[-2.5, 0.5, 1.5]" [intensity]="1.9" [color]="'#5ad9ff'" />
 
-<ngts-orbit-controls [options]="{ minDistance: 3, maxDistance: 14, enablePan: false }" />
+<ngts-orbit-controls [options]="{ minDistance: 3, maxDistance: 14, enablePan: false, enabled: !flightModeEnabled() }" />
 
-<app-background-stars [count]="512" [seed]="70411" [radiusMin]="18" [radiusMax]="44"></app-background-stars>
-<app-sol [position]="sunScenePosition()" [sunColor]="sunConfig().color" [radius]="sunConfig().radius" />
+<ngt-group [position]="flightWorldOffset()" [rotation]="flightWorldRotation()">
+  <app-background-stars [count]="512" [seed]="70411" [radiusMin]="18" [radiusMax]="44"></app-background-stars>
+  <app-sol [position]="sunScenePosition()" [sunColor]="sunConfig().color" [radius]="sunConfig().radius" />
 
-<ngt-group [position]="[0, 0, -1.5]">
+  <ngt-group [position]="[0, 0, -1.5]">
   @for (sample of asteroidSamples(); track sample.id) {
   <app-asteroid
     [asteroidId]="sample.id"
@@ -48,4 +49,5 @@
     </ngt-mesh>
   </ngt-group>
   }
+  </ngt-group>
 </ngt-group>

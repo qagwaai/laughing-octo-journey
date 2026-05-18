@@ -8,6 +8,47 @@
     <p>{{ missionObjectiveText() }}</p>
   </section>
 
+  <section class="ship-exterior-flight-panel" aria-live="polite">
+    <header class="ship-exterior-flight-panel__header">
+      <p>{{ flightStatusLine() }}</p>
+      <button
+        type="button"
+        class="ship-exterior-flight-panel__toggle"
+        [class.ship-exterior-flight-panel__toggle--active]="flightModeEnabled()"
+        [title]="flightModeEnabled() ? 'Press ESC to release the mouse, then click DISABLE FLIGHT' : 'Click to enable flight; click view to lock mouse'"
+        (click)="toggleFlightMode()"
+      >
+        {{ flightModeEnabled() ? 'DISABLE FLIGHT' : 'ENABLE FLIGHT' }}
+      </button>
+    </header>
+    <p>{{ flightCoordsLine() }}</p>
+    <p>{{ flightViewDirectionLine() }}</p>
+      <p>{{ flightMovementVectorsLine() }}</p>
+    <p>{{ flightSpeedLine() }}</p>
+    <p>{{ flightControlLine() }}</p>
+    @if (flightModeEnabled()) {
+    <p class="ship-exterior-flight-panel__hint">ESC RELEASES MOUSE // THEN CLICK DISABLE FLIGHT</p>
+    }
+
+    <div class="ship-exterior-flight-panel__settings">
+      <label class="ship-exterior-flight-panel__checkbox">
+        <input type="checkbox" [checked]="flightInvertY()" (change)="onFlightInvertYChange($event)" />
+        INVERT Y
+      </label>
+      <label class="ship-exterior-flight-panel__slider">
+        SENS
+        <input
+          type="range"
+          min="10"
+          max="70"
+          [value]="flightMouseSensitivitySlider()"
+          (input)="onFlightSensitivityInput($event)"
+        />
+      </label>
+      <span class="ship-exterior-flight-panel__lock">{{ flightPointerLocked() ? 'MOUSE LOCKED' : 'MOUSE FREE' }}</span>
+    </div>
+  </section>
+
   <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
     @for (slot of launchHotkeySlots(); track slot.hotkey) {
     <button

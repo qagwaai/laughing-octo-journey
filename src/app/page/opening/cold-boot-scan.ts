@@ -58,6 +58,24 @@ export default class ColdBootScanPage {
   protected shipConditionLine = computed(
     () => this.shipExteriorView()?.shipConditionLine() ?? 'SHIP CONDITION // UNKNOWN',
   );
+  protected flightModeEnabled = computed(() => this.shipExteriorView()?.flightModeEnabled() ?? false);
+  protected flightPointerLocked = computed(() => this.shipExteriorView()?.flightPointerLocked() ?? false);
+  protected flightInvertY = computed(() => this.shipExteriorView()?.flightInvertY() ?? false);
+  protected flightMouseSensitivitySlider = computed(
+    () => this.shipExteriorView()?.getFlightMouseSensitivitySliderValue() ?? 23,
+  );
+  protected flightStatusLine = computed(() => this.shipExteriorView()?.flightStatusLine() ?? 'FLIGHT // OFF');
+  protected flightCoordsLine = computed(() => this.shipExteriorView()?.flightCoordsLine() ?? 'COORD KM // ---');
+  protected flightSpeedLine = computed(() => this.shipExteriorView()?.flightSpeedLine() ?? 'SPD // 0 km/s');
+  protected flightControlLine = computed(
+    () => this.shipExteriorView()?.flightControlLine() ?? 'W/S FWD-BACK | A/D STRAFE | SPACE/CTRL VERT | Q/E ROLL',
+  );
+  protected flightViewDirectionLine = computed(
+    () => this.shipExteriorView()?.flightViewDirectionLine() ?? 'VIEW // YAW 0.0° PITCH 0.0° ROLL 0.0°',
+  );
+    protected flightMovementVectorsLine = computed(
+      () => this.shipExteriorView()?.flightMovementVectorsLine() ?? 'MOVE // FWD(0.00,0.00,-1.00) RIGHT(1.00,0.00,0.00) UP(0.00,1.00,0.00)',
+    );
 
   protected hidePropertiesPanel(): void {
     this.shipExteriorView()?.hidePropertiesPanel();
@@ -76,5 +94,27 @@ export default class ColdBootScanPage {
 
   protected quickTargetIronAsteroidForTest(): void {
     this.shipExteriorView()?.selectFirstScannedIronTargetForTest();
+  }
+
+  protected toggleFlightMode(): void {
+    this.shipExteriorView()?.toggleFlightMode();
+  }
+
+  protected onFlightInvertYChange(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.shipExteriorView()?.setFlightInvertY(target.checked);
+  }
+
+  protected onFlightSensitivityInput(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.shipExteriorView()?.setFlightMouseSensitivityFromSliderValue(Number(target.value));
   }
 }

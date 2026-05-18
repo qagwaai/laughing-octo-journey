@@ -583,6 +583,43 @@ describe('ShipExteriorViewScene', () => {
 
     expect(component['scanStatusLine']()).toBe('SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED');
   });
+
+  it('should suppress hover scanning while flight mode is enabled', () => {
+    const { component, fixture } = setup();
+
+    component['asteroidSamples'].set([makeSample('sample-a1')]);
+    fixture.detectChanges();
+
+    component.setFlightModeEnabled(true);
+
+    const api = (window as any).__shipExteriorTestUtils;
+    api.hoverAsteroid('sample-a1');
+    api.tickScanTicks(8);
+
+    expect(component['activeScanAsteroidId']()).toBeNull();
+    expect(component['asteroidSamples']()[0].scanProgress).toBe(0);
+  });
+
+  it('should update ship location using quantized flight checkpoints', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    component.setFlightModeEnabled(true);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    for (let index = 0; index < 6; index += 1) {
+      component['tickFlight']();
+    }
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
+
+    const location = component['activeShipLocationKm']();
+    expect(location).not.toBeNull();
+    expect(Math.abs(location!.z)).toBeGreaterThan(0);
+    expect(Math.abs(location!.z % 10)).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
