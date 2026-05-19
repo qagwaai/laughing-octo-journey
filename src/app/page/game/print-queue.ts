@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
 import {
   evaluateMissionGateOnManufacture,
@@ -75,6 +76,8 @@ export default class PrintQueuePage {
   protected printableItems = signal<readonly PrintableItemDefinition[]>(PRINTABLE_ITEMS);
 
   protected printerStatus = computed(() => (this.printerQueue().length > 0 ? 'printing' : 'idle'));
+
+  protected readonly isDevBuild = !environment.production;
 
   protected printerQueueWithStatus = computed(() => {
     const now = this.currentTime();
@@ -198,6 +201,25 @@ export default class PrintQueuePage {
       );
       },
     );
+  }
+
+  /**
+   * Dev-only: fast-forwards a queued print job so the existing collect flow runs immediately.
+   */
+  protected finishPrintJob(item: PrintQueueItem): void {
+    if (environment.production) {
+      return;
+    }
+
+    const playerName = this.playerName().trim();
+    const characterId = this.joinCharacter()?.id?.trim() ?? '';
+    if (!playerName || !characterId) {
+      return;
+    }
+
+    this.printerService.expireQueueItem(playerName, characterId, item.id);
+    this.currentTime.set(Date.now());
+    this.checkPrintCompletion();
   }
 
   /**

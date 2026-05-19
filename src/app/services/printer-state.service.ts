@@ -66,6 +66,20 @@ export class PrinterStateService {
     this.saveToStorage(playerName, characterId, updated);
   }
 
+  /**
+   * Fast-forwards a queue entry so its elapsed time meets/exceeds its duration.
+   * Dev-only helper for forcing print completion.
+   */
+  expireQueueItem(playerName: string, characterId: string, itemId: string): void {
+    const updated = this.queueSignal().map((item) =>
+      item.id === itemId
+        ? { ...item, startedAt: new Date(Date.now() - item.durationMs - 1000).toISOString() }
+        : item,
+    );
+    this.queueSignal.set(updated);
+    this.saveToStorage(playerName, characterId, updated);
+  }
+
   private saveToStorage(playerName: string, characterId: string, items: PrintQueueItem[]): void {
     const key = PrinterStateService.buildKey(playerName, characterId);
     if (!key || typeof window === 'undefined') {

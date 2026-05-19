@@ -115,4 +115,55 @@ describe('PrintQueuePage', () => {
       expect(fixture.nativeElement).toBeTruthy();
     });
   });
+
+  describe('finishPrintJob() (dev-only)', () => {
+    const navigationState = {
+      playerName: 'tester',
+      joinCharacter: { id: 'char-1' },
+    };
+
+    it('should expose isDevBuild as true in non-production builds', () => {
+      const { component } = setup({ socketService, sessionService, printerService, navigationState });
+      expect(component['isDevBuild']).toBeTrue();
+    });
+
+    it('should fast-forward the queue item so elapsed >= durationMs', () => {
+      const { component } = setup({ socketService, sessionService, printerService, navigationState });
+      const job = {
+        id: 'job-finish',
+        itemType: 'hull-patch-kit',
+        label: 'Hull Patch Kit',
+        startedAt: new Date().toISOString(),
+        durationMs: 60_000,
+      };
+      printerService.queue.set([job]);
+
+      component['finishPrintJob'](job);
+
+      const updated = printerService.queue().find((i) => i.id === 'job-finish');
+      expect(updated).toBeTruthy();
+      const elapsed = Date.now() - new Date(updated!.startedAt).getTime();
+      expect(elapsed).toBeGreaterThanOrEqual(updated!.durationMs);
+    });
+
+    it('should render a Finish (dev) button on active job rows when dev build', () => {
+      const { fixture } = setup({ socketService, sessionService, printerService, navigationState });
+      printerService.queue.set([
+        {
+          id: 'job-render',
+          itemType: 'hull-patch-kit',
+          label: 'Hull Patch Kit',
+          startedAt: new Date().toISOString(),
+          durationMs: 60_000,
+        },
+      ]);
+      fixture.detectChanges();
+
+      const buttons: HTMLButtonElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('button.repair-action--finish-dev'),
+      );
+      expect(buttons.length).toBe(1);
+      expect(buttons[0].textContent?.toLowerCase()).toContain('finish');
+    });
+  });
 });

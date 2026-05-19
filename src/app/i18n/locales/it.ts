@@ -138,6 +138,7 @@ export const it: DeepPartial<EnLocale> = {
       activeJobsTitle: 'Lavori di stampa attivi',
       collectingFromPrinterLabel: 'Raccolta dalla stampante...',
       cancelPrintJobLabel: 'Annulla',
+      finishPrintJobLabel: 'Termina (dev)',
       availableRecipesTitle: 'Ricette disponibili',
       tierLabel: 'Livello',
       alreadyInInventorySuffix: "gia nell'inventario.",

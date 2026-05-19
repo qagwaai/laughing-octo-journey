@@ -246,6 +246,7 @@ export const en = {
       activeJobsTitle: 'Active Print Jobs',
       collectingFromPrinterLabel: 'Collecting from printer...',
       cancelPrintJobLabel: 'Cancel',
+      finishPrintJobLabel: 'Finish (dev)',
       availableRecipesTitle: 'Available Recipes',
       tierLabel: 'Tier',
       alreadyInInventorySuffix: 'already in inventory.',

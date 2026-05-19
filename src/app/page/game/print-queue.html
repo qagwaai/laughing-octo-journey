@@ -39,6 +39,11 @@
         <button type="button" class="repair-action repair-action--cancel" (click)="cancelPrintJob(job)">
           {{ t.game.printQueue.cancelPrintJobLabel }}
         </button>
+        @if (isDevBuild) {
+        <button type="button" class="repair-action repair-action--finish-dev" (click)="finishPrintJob(job)">
+          {{ t.game.printQueue.finishPrintJobLabel }}
+        </button>
+        }
         }
       </div>
       }

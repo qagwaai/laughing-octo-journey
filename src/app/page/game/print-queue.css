@@ -217,6 +217,19 @@
   border-color: rgba(200, 200, 255, 0.6);
 }
 
+.repair-action--finish-dev {
+  background: linear-gradient(180deg, rgba(120, 80, 30, 0.85), rgba(90, 55, 20, 0.92));
+  border-color: rgba(255, 200, 120, 0.5);
+  color: #ffe0b0;
+  font-size: 0.82rem;
+  padding: 0.3rem 0.55rem;
+  margin-left: 0.4rem;
+}
+
+.repair-action--finish-dev:hover {
+  border-color: rgba(255, 220, 150, 0.85);
+}
+
 .back-action {
   display: inline-block;
   margin-top: 1rem;

@@ -15,6 +15,7 @@ export interface MockPrinterStateService {
   loadQueue(playerName: string, characterId: string): void;
   addToQueue(playerName: string, characterId: string, item: Omit<PrintQueueItem, 'id' | 'startedAt'>): PrintQueueItem;
   removeFromQueue(playerName: string, characterId: string, itemId: string): void;
+  expireQueueItem(playerName: string, characterId: string, itemId: string): void;
 }
 
 export function createMockPrinterStateService(): MockPrinterStateService {
@@ -36,6 +37,15 @@ export function createMockPrinterStateService(): MockPrinterStateService {
     },
     removeFromQueue(_playerName: string, _characterId: string, itemId: string) {
       queue.set(queue().filter((i) => i.id !== itemId));
+    },
+    expireQueueItem(_playerName: string, _characterId: string, itemId: string) {
+      queue.set(
+        queue().map((i) =>
+          i.id === itemId
+            ? { ...i, startedAt: new Date(Date.now() - i.durationMs - 1000).toISOString() }
+            : i,
+        ),
+      );
     },
   };
 }
