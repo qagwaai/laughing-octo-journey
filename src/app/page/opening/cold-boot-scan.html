@@ -15,7 +15,7 @@
         type="button"
         class="ship-exterior-flight-panel__toggle"
         [class.ship-exterior-flight-panel__toggle--active]="flightModeEnabled()"
-        [title]="flightModeEnabled() ? 'Press ESC to release the mouse, then click DISABLE FLIGHT' : 'Click to enable flight; click view to lock mouse'"
+        [title]="flightModeEnabled() ? 'Press ESC to exit flight mode and release the mouse' : 'Click to enable flight; click view to lock mouse'"
         (click)="toggleFlightMode()"
       >
         {{ flightModeEnabled() ? 'DISABLE FLIGHT' : 'ENABLE FLIGHT' }}
@@ -27,7 +27,7 @@
     <p>{{ flightSpeedLine() }}</p>
     <p>{{ flightControlLine() }}</p>
     @if (flightModeEnabled()) {
-    <p class="ship-exterior-flight-panel__hint">ESC RELEASES MOUSE // THEN CLICK DISABLE FLIGHT</p>
+    <p class="ship-exterior-flight-panel__hint">ESC EXITS FLIGHT MODE // RELEASES MOUSE</p>
     }
 
     <div class="ship-exterior-flight-panel__settings">

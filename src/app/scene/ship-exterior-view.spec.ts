@@ -620,6 +620,26 @@ describe('ShipExteriorViewScene', () => {
     expect(Math.abs(location!.z)).toBeGreaterThan(0);
     expect(Math.abs(location!.z % 10)).toBe(0);
   });
+
+  it('should disable flight mode when pointer lock is released', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    component.setFlightModeEnabled(true);
+
+    Object.defineProperty(document, 'pointerLockElement', {
+      configurable: true,
+      value: null,
+    });
+    document.dispatchEvent(new Event('pointerlockchange'));
+
+    expect(component['flightModeEnabled']()).toBeFalse();
+    expect(component['flightPointerLocked']()).toBeFalse();
+  });
 });
 
 // ---------------------------------------------------------------------------

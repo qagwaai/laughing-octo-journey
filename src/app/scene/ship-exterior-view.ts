@@ -1058,6 +1058,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private onWindowKeyDown = (event: KeyboardEvent): void => {
     if (this.flightModeEnabled()) {
+      if (event.code === 'Escape') {
+        event.preventDefault();
+        this.setFlightModeEnabled(false);
+        return;
+      }
+
       if (this.captureFlightMovementKey(event.code)) {
         event.preventDefault();
         return;
@@ -1103,6 +1109,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private onPointerLockChange = (): void => {
     const locked = document.pointerLockElement === document.body;
     this.flightPointerLocked.set(locked);
+    if (!locked && this.flightModeEnabled()) {
+      this.setFlightModeEnabled(false);
+      return;
+    }
+
     // Pointer lock acquisition is asynchronous: a pointerdown that triggers
     // requestPointerLock() while disabling flight can resolve *after* the
     // click handler has already toggled flight off. Release immediately so

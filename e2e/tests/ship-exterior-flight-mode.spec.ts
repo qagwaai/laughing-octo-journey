@@ -162,4 +162,34 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       )
       .toBe(false);
   });
+
+  test('esc exits flight mode and releases pointer lock', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    await mock.setup();
+    configureFlightModeMock(mock);
+
+    await loginViaUI(page, mock);
+    await gameShell.joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+
+    const panel = flightPanel(page);
+    const toggle = flightToggle(page);
+    await expect(panel).toBeVisible();
+
+    await toggle.click();
+    await expect(toggle).toHaveText(/DISABLE FLIGHT/);
+
+    await page.keyboard.press('Escape');
+
+    await expect(toggle).toHaveText(/ENABLE FLIGHT/);
+    await expect(toggle).not.toHaveClass(/ship-exterior-flight-panel__toggle--active/);
+
+    await expect
+      .poll(
+        () => page.evaluate(() => document.pointerLockElement === document.body),
+        { timeout: 5_000 },
+      )
+      .toBe(false);
+  });
 });
