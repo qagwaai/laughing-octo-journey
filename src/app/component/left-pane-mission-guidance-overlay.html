@@ -1,0 +1,28 @@
+@if (visible()) {
+<section class="left-pane-mission-guidance-overlay" aria-live="polite">
+  <header class="overlay-header">
+    <h2>{{ title() }}</h2>
+    <button
+      type="button"
+      class="overlay-dismiss"
+      (click)="dismiss()"
+      [attr.aria-label]="t.game.firstTargetNavGuidance.dismissAriaLabel"
+    >
+      x
+    </button>
+  </header>
+
+  <p class="overlay-instruction">{{ instruction() }}</p>
+
+  <p class="overlay-target">
+    <span class="overlay-target-label">{{ t.game.firstTargetNavGuidance.nextLabel }}</span>
+    <strong>{{ targetLabel() }}</strong>
+  </p>
+
+  <div class="overlay-actions">
+    <button type="button" class="overlay-open" (click)="openGuidedRoute()">
+      {{ t.game.firstTargetNavGuidance.openLabel }}
+    </button>
+  </div>
+</section>
+}

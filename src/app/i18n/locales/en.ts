@@ -255,6 +255,17 @@ export const en = {
       backLabel: 'Back to Repair & Retrofit',
     },
 
+    firstTargetNavGuidance: {
+      title: 'Mission Navigation Hint',
+      fabricationInstruction: 'Continue first-target by opening Fabrication Lab.',
+      repairInstruction: 'Continue first-target by opening Repair & Retrofit.',
+      fabricationTargetLabel: 'Fabrication Lab',
+      repairTargetLabel: 'Repair & Retrofit',
+      nextLabel: 'Next:',
+      openLabel: 'Open',
+      dismissAriaLabel: 'Dismiss mission navigation hint',
+    },
+
     repairRetrofitItems: {
       title: 'Repair Items',
       subtitlePrefix: 'Detailed review of all repairable assets for',

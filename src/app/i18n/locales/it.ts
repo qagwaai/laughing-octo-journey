@@ -146,6 +146,16 @@ export const it: DeepPartial<EnLocale> = {
       printLabelPrefix: 'Stampa',
       backLabel: 'Torna a Riparazione e Retrofit',
     },
+    firstTargetNavGuidance: {
+      title: 'Suggerimento navigazione missione',
+      fabricationInstruction: 'Continua first-target aprendo il Laboratorio di Fabbricazione.',
+      repairInstruction: 'Continua first-target aprendo Riparazione e retrofit.',
+      fabricationTargetLabel: 'Laboratorio di Fabbricazione',
+      repairTargetLabel: 'Riparazione e retrofit',
+      nextLabel: 'Prossimo:',
+      openLabel: 'Apri',
+      dismissAriaLabel: 'Nascondi suggerimento navigazione missione',
+    },
     logout: {
       title: 'Disconnessione',
       subtitle: 'Esci dalla sessione autenticata corrente.',

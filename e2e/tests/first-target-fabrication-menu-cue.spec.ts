@@ -338,11 +338,14 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
   await advanceMissionToManufactureStep(page);
 
   const fabricationLabButton = page.locator('button[aria-label="Fabrication Lab"]');
+  const overlay = page.locator('.left-pane-mission-guidance-overlay');
   await expect(fabricationLabButton).toHaveClass(/is-guided-target/);
   await expect(fabricationLabButton.locator('.menu-badge')).toHaveText('NEXT');
-  await expect(page.getByText('Mission objective updated. Open Fabrication Lab to continue first-target.')).toBeVisible();
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByText('Continue first-target by opening Fabrication Lab.')).toBeVisible();
+  await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
 
-  await page.locator('button.menu-coachmark-open', { hasText: 'Open' }).click();
+  await overlay.locator('button.overlay-open').click();
   await expect(page).toHaveURL(/left:fabrication-lab/);
 });
 
@@ -359,16 +362,68 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await waitForShipExteriorTestApi(page);
   await advanceMissionToManufactureStep(page);
 
-  await page.evaluate(() => {
-    const api = (
-      window as Window & {
-        __shipExteriorTestUtils?: {
-          simulateManufacture?: (itemType: string) => unknown;
-        };
-      }
-    ).__shipExteriorTestUtils;
-    api?.simulateManufacture?.('hull-patch-kit');
-  });
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const api = (
+          window as Window & {
+            __shipExteriorTestUtils?: {
+              simulateManufacture?: (itemType: string) => unknown;
+              getMissionGateState?: () => {
+                steps?: Array<{ key?: string; status?: string }>;
+              } | null;
+            };
+          }
+        ).__shipExteriorTestUtils;
+        api?.simulateManufacture?.('hull-patch-kit');
+        const gateState = api?.getMissionGateState?.();
+        const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
+        return repairStep?.status ?? null;
+      }),
+      { timeout: 10000 },
+    )
+    .toBe('active');
+
+  const repairRetrofitButton = page.locator('button[aria-label="Repair & Retrofit"]');
+  const overlay = page.locator('.left-pane-mission-guidance-overlay');
+  await expect(repairRetrofitButton).toHaveClass(/is-guided-target/);
+  await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByText('Continue first-target by opening Repair & Retrofit.')).toBeVisible();
+  await expect(overlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
+
+  await overlay.locator('button.overlay-open').click();
+  await expect(page).toHaveURL(/left:repair-retrofit/);
+});
+
+test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({ page }) => {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+  configureFirstTargetCueMock(mock);
+
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+
+  await waitForShipExteriorTestApi(page);
+  await advanceMissionToManufactureStep(page);
+
+  const overlay = page.locator('.left-pane-mission-guidance-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
+
+  await overlay.locator('button.overlay-dismiss').click();
+  await expect(overlay).toHaveCount(0);
+
+  await page.reload();
+  await page.goto('/(left:login)');
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+  await waitForShipExteriorTestApi(page);
+  await expect(page.locator('.left-pane-mission-guidance-overlay')).toHaveCount(0);
 
   await expect
     .poll(async () =>
@@ -376,24 +431,23 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
         const api = (
           window as Window & {
             __shipExteriorTestUtils?: {
+              simulateManufacture?: (itemType: string) => unknown;
               getMissionGateState?: () => {
                 steps?: Array<{ key?: string; status?: string }>;
               } | null;
             };
           }
         ).__shipExteriorTestUtils;
+        api?.simulateManufacture?.('hull-patch-kit');
         const gateState = api?.getMissionGateState?.();
         const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
         return repairStep?.status ?? null;
       }),
+      { timeout: 10000 },
     )
     .toBe('active');
 
-  const repairRetrofitButton = page.locator('button[aria-label="Repair & Retrofit"]');
-  await expect(repairRetrofitButton).toHaveClass(/is-guided-target/);
-  await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT');
-  await expect(page.getByText('Mission objective updated. Open Repair & Retrofit to continue first-target.')).toBeVisible();
-
-  await page.locator('button.menu-coachmark-open', { hasText: 'Open' }).click();
-  await expect(page).toHaveURL(/left:repair-retrofit/);
+  const repairOverlay = page.locator('.left-pane-mission-guidance-overlay');
+  await expect(repairOverlay).toBeVisible();
+  await expect(repairOverlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
 });

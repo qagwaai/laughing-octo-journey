@@ -1,0 +1,89 @@
+.left-pane-mission-guidance-overlay {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: min(20rem, calc(100% - 2rem));
+  padding: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 210, 120, 0.58);
+  background: rgba(66, 47, 10, 0.88);
+  color: #fff0cd;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+.overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.overlay-header h2 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffd78f;
+}
+
+.overlay-dismiss {
+  border: 1px solid rgba(255, 245, 220, 0.35);
+  background: rgba(35, 35, 35, 0.55);
+  color: #f8e2b8;
+  border-radius: 6px;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.overlay-instruction {
+  margin: 0.5rem 0 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.overlay-target {
+  margin: 0;
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 225, 166, 0.55);
+  background: rgba(120, 85, 22, 0.65);
+  font-size: 0.78rem;
+}
+
+.overlay-target-label {
+  color: #f0dcb2;
+}
+
+.overlay-actions {
+  margin-top: 0.62rem;
+}
+
+.overlay-open {
+  border: 1px solid rgba(255, 223, 150, 0.82);
+  background: rgba(151, 104, 25, 0.94);
+  color: #fff8eb;
+  border-radius: 7px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.77rem;
+  cursor: pointer;
+}
+
+.overlay-open:hover,
+.overlay-dismiss:hover {
+  filter: brightness(1.07);
+}
+
+@media (max-width: 900px) {
+  .left-pane-mission-guidance-overlay {
+    position: static;
+    width: 100%;
+    margin-top: 0.7rem;
+  }
+}

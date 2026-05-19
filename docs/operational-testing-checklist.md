@@ -182,3 +182,46 @@ Use this when a consumed item (for example Hull Patch Kit) reappears after ship 
 ### 5) Decision
 - Policy-compliant this cycle: yes
 - If no, top 1-3 actions before next cycle:
+
+---
+
+## Cycle 3 - 2026-05-19
+
+### Cycle
+- Date range: 2026-05-19
+- Owner: AI-assisted review (GitHub Copilot)
+- Scope: First-target mission navigation guidance UX
+
+### 1) Flake Rate (< 2% for 2 consecutive weeks)
+- CI jobs evaluated: focused local regression runs only
+- Total automated test runs: 8 focused tests (unit + e2e)
+- Flaky failures observed (rerun-pass or non-deterministic): 0
+- Calculated flake rate: 0%
+- Result: pass
+- Notes: focused validation only; not a full-cycle CI sample.
+
+### 2) Escaped Bug -> Regression Test Mapping
+- Escaped bugs found this cycle: 1
+- Regression tests added: 1
+- Mapping:
+  - BUG-FT-NAV-OVERLAY-DISMISS-STEP mouse-hover-dependent menu coachmark created clunky mission guidance; guidance now extracted to persistent left-pane overlay with dismiss-per-step behavior -> e2e/tests/first-target-fabrication-menu-cue.spec.ts -> keeps overlay dismissed for the same step across refresh, then shows again when step changes
+- Any open gaps: none for the two guided first-target nav steps (fabrication-lab, repair-retrofit)
+- Result: pass
+
+### 3) CI Runtime Acceptable for Team Cadence
+- Main test job average runtime: not sampled in this focused cycle
+- Playwright job average runtime: not sampled in this focused cycle
+- Team threshold: <= 12m total
+- Result: N/A
+- Notes: cycle used focused regression execution only.
+
+### 4) Coverage Floor Snapshot
+- Statements: not sampled in this focused cycle
+- Branches: not sampled in this focused cycle
+- Functions: not sampled in this focused cycle
+- Lines: not sampled in this focused cycle
+- Result: N/A
+
+### 5) Decision
+- Policy-compliant this cycle: yes (feature-scope regression criteria met)
+- If no, top 1-3 actions before next cycle:

@@ -18,6 +18,7 @@ import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } fro
 import { NgtCanvas } from 'angular-three/dom';
 import { filter, map, startWith, Subscription } from 'rxjs';
 import { RoutedScene } from './routed-scene';
+import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
 import { OpeningAudioService } from './services';
 import { appLogger } from './services/logger';
 
@@ -54,6 +55,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
     TweakpaneButton,
     NgtsStats,
     RoutedScene,
+    LeftPaneMissionGuidanceOverlay,
     RouterOutlet,
   ],
 })

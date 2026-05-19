@@ -34,18 +34,4 @@
     }
   </button>
   }
-
-  @if (showGuidanceCoachmark()) {
-  <section class="menu-coachmark" aria-live="polite">
-    <p class="menu-coachmark-text">{{ coachmarkText() }}</p>
-    <div class="menu-coachmark-actions">
-      <button type="button" class="menu-coachmark-open" (click)="openGuidedRouteFromCoachmark()">
-        Open
-      </button>
-      <button type="button" class="menu-coachmark-dismiss" (click)="dismissGuidanceCoachmark()">
-        Dismiss
-      </button>
-    </div>
-  </section>
-  }
 </nav>

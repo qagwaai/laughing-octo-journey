@@ -32,3 +32,12 @@ The player is tasked with their first survival action: targeting a nearby **Leve
 4. **Manual Retrieval:** Pilot the Scavenger Pod to collect the floating debris using the gravity scoop.
 
 *Conclusion:* Upon securing the material, the **Level 5 Steel Plating** recipe is unlocked, marking the transition from scavenger to fabricator.
+
+## **5. Left Pane Mission Navigation Guidance**
+
+During the first-target navigation steps, the UI now shows a persistent guidance overlay in the lower-right of the **left pane**.
+
+1. **Manufacture Step Active:** Overlay points to **Fabrication Lab**.
+2. **Repair Step Active:** Overlay points to **Repair & Retrofit**.
+3. **Menu Glow:** The corresponding left-menu button still pulses with the `NEXT` badge.
+4. **Dismissal Behavior:** Dismissing the overlay hides it for the current step and character, and it reappears when the mission advances to the next guided step.

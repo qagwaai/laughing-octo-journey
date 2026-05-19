@@ -1,6 +1,7 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { GuardedLeftMenu } from './guarded-left-menu';
 
@@ -8,6 +9,7 @@ describe('GuardedLeftMenu', () => {
   let component: GuardedLeftMenu;
   let fixture: ComponentFixture<GuardedLeftMenu>;
   let navigateSpy: jasmine.Spy;
+  let contextService: LeftPanelNavigationContextService;
   let missionStateService: jasmine.SpyObj<ShipExteriorMissionStateService> & { lastSaved: () => unknown };
 
   const missionStateServiceSpy = () => {
@@ -28,6 +30,7 @@ describe('GuardedLeftMenu', () => {
       providers: [
         { provide: Router, useValue: { navigate: navigateSpy } },
         { provide: ShipExteriorMissionStateService, useValue: missionStateService },
+        LeftPanelNavigationContextService,
       ],
     })
       .overrideComponent(GuardedLeftMenu, {
@@ -39,12 +42,12 @@ describe('GuardedLeftMenu', () => {
 
     fixture = TestBed.createComponent(GuardedLeftMenu);
     component = fixture.componentInstance;
+    contextService = TestBed.inject(LeftPanelNavigationContextService);
   });
 
   afterEach(() => {
     sessionStorage.clear();
     localStorage.clear();
-    component.ngOnDestroy();
   });
 
   it('should default to minimized and unpinned', () => {
@@ -96,6 +99,24 @@ describe('GuardedLeftMenu', () => {
     });
   });
 
+  it('should publish left-panel navigation context when inputs change', () => {
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+
+    component.ngOnChanges({
+      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
+      joinCharacter: {
+        currentValue: { id: 'c-1', characterName: 'Nova' },
+        previousValue: null,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(contextService.playerName()).toBe('Pioneer');
+    expect(contextService.joinCharacter()?.id).toBe('c-1');
+  });
+
   it('should default disableNonLogout to false', () => {
     expect(component.disableNonLogout).toBeFalse();
   });
@@ -131,7 +152,6 @@ describe('GuardedLeftMenu', () => {
     });
 
     expect((component as any).activeGuidedRoute()).toBe('fabrication-lab');
-    expect((component as any).showGuidanceCoachmark()).toBeTrue();
     expect((component as any).isGuidanceActiveForItem('fabrication-lab')).toBeTrue();
     expect((component as any).isGuidanceActiveForItem('market-hub')).toBeFalse();
   });
@@ -158,78 +178,7 @@ describe('GuardedLeftMenu', () => {
     });
 
     expect((component as any).activeGuidedRoute()).toBe('repair-retrofit');
-    expect((component as any).showGuidanceCoachmark()).toBeTrue();
     expect((component as any).isGuidanceActiveForItem('repair-retrofit')).toBeTrue();
     expect((component as any).isGuidanceActiveForItem('fabrication-lab')).toBeFalse();
-    expect((component as any).coachmarkText()).toContain('Repair & Retrofit');
-  });
-
-  it('should auto-expand temporarily while guidance coachmark is active', fakeAsync(() => {
-    missionStateService.loadState.and.returnValue({
-      missionId: FIRST_TARGET_MISSION_ID,
-      characterId: 'c-1',
-      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
-      updatedAt: new Date().toISOString(),
-      steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
-    } as any);
-
-    component.playerName = 'Pioneer';
-    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
-    component.ngOnChanges({
-      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
-      joinCharacter: {
-        currentValue: { id: 'c-1', characterName: 'Nova' },
-        previousValue: null,
-        firstChange: false,
-        isFirstChange: () => false,
-      },
-    });
-
-    expect((component as any).forceExpanded()).toBeTrue();
-    expect((component as any).isExpanded()).toBeTrue();
-
-    tick(8100);
-
-    expect((component as any).forceExpanded()).toBeFalse();
-  }));
-
-  it('should persist dismissal and hide coachmark for the same character', () => {
-    missionStateService.loadState.and.returnValue({
-      missionId: FIRST_TARGET_MISSION_ID,
-      characterId: 'c-1',
-      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
-      updatedAt: new Date().toISOString(),
-      steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
-    } as any);
-
-    component.playerName = 'Pioneer';
-    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
-    component.ngOnChanges({
-      playerName: { currentValue: 'Pioneer', previousValue: '', firstChange: false, isFirstChange: () => false },
-      joinCharacter: {
-        currentValue: { id: 'c-1', characterName: 'Nova' },
-        previousValue: null,
-        firstChange: false,
-        isFirstChange: () => false,
-      },
-    });
-
-    expect((component as any).showGuidanceCoachmark()).toBeTrue();
-
-    (component as any).dismissGuidanceCoachmark();
-    expect((component as any).showGuidanceCoachmark()).toBeFalse();
-
-    component.ngOnChanges({
-      playerName: { currentValue: 'Pioneer', previousValue: 'Pioneer', firstChange: false, isFirstChange: () => false },
-      joinCharacter: {
-        currentValue: { id: 'c-1', characterName: 'Nova' },
-        previousValue: { id: 'c-1', characterName: 'Nova' },
-        firstChange: false,
-        isFirstChange: () => false,
-      },
-    });
-
-    expect((component as any).activeGuidedRoute()).toBe('fabrication-lab');
-    expect((component as any).showGuidanceCoachmark()).toBeFalse();
   });
 });

@@ -1,7 +1,8 @@
 <div class="flex h-dvh w-full" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
   <!-- Left Content Area with Router Outlet -->
-  <div class="flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
+  <div class="relative flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
     <router-outlet name="left" />
+    <app-left-pane-mission-guidance-overlay />
     <div class="p-4">
       <tweakpane-pane title="Options" [container]="host">
         <tweakpane-checkbox [(value)]="stats" label="Show Stats" (valueChange)="onStatsChange($event)" />
