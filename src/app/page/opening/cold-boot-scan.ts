@@ -73,9 +73,25 @@ export default class ColdBootScanPage {
   protected flightViewDirectionLine = computed(
     () => this.shipExteriorView()?.flightViewDirectionLine() ?? 'VIEW // YAW 0.0° PITCH 0.0° ROLL 0.0°',
   );
-    protected flightMovementVectorsLine = computed(
-      () => this.shipExteriorView()?.flightMovementVectorsLine() ?? 'MOVE // FWD(0.00,0.00,-1.00) RIGHT(1.00,0.00,0.00) UP(0.00,1.00,0.00)',
-    );
+  protected flightMovementVectorsLine = computed(
+    () =>
+      this.shipExteriorView()?.flightMovementVectorsLine() ??
+      'MOVE // FWD(0.00,0.00,-1.00) RIGHT(1.00,0.00,0.00) UP(0.00,1.00,0.00)',
+  );
+  protected showAsteroidDebugTag = computed(() => this.shipExteriorView()?.showAsteroidDebugTag() ?? false);
+  protected asteroidDebugHeaderText = computed(
+    () => this.shipExteriorView()?.asteroidDebugHeaderText() ?? 'ASTEROID DEBUG // NO SAMPLE',
+  );
+  protected asteroidDebugMaterialText = computed(
+    () => this.shipExteriorView()?.asteroidDebugMaterialText() ?? 'MAT // ---',
+  );
+  protected asteroidDebugPbrText = computed(() => this.shipExteriorView()?.asteroidDebugPbrText() ?? 'PBR // ---');
+  protected asteroidDebugDetailRuleText = computed(
+    () => this.shipExteriorView()?.asteroidDebugDetailRuleText() ?? 'DETAIL // ---',
+  );
+  protected asteroidDebugTierText = computed(
+    () => this.shipExteriorView()?.asteroidDebugTierText() ?? 'TIER // ---',
+  );
 
   protected hidePropertiesPanel(): void {
     this.shipExteriorView()?.hidePropertiesPanel();

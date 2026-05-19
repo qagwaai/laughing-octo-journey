@@ -114,6 +114,37 @@
   width: 7.5rem;
 }
 
+.ship-exterior-asteroid-debug {
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  top: calc(var(--ship-hotkey-offset-y) + 9.75rem);
+  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.45rem;
+  border: 1px dashed rgba(252, 193, 93, 0.62);
+  background: linear-gradient(165deg, rgba(42, 28, 8, 0.88), rgba(25, 17, 6, 0.92));
+  color: #ffe9bc;
+  box-shadow:
+    0 8px 16px rgba(0, 7, 15, 0.4),
+    inset 0 0 0 1px rgba(255, 233, 188, 0.08);
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  z-index: 19;
+  pointer-events: none;
+  display: grid;
+  gap: 0.16rem;
+}
+
+.ship-exterior-asteroid-debug p {
+  margin: 0;
+  line-height: 1.15;
+}
+
+.ship-exterior-asteroid-debug p:first-child {
+  color: #ffd27d;
+  font-weight: 700;
+}
+
 .ship-exterior-hotkey-row {
   position: absolute;
   left: var(--ship-hotkey-offset-x);

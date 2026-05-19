@@ -19,8 +19,10 @@
     }
     <ngt-mesh-standard-material
       [color]="materialColor()"
+      [roughness]="pbrRoughness()"
+      [metalness]="pbrMetalness()"
       [emissive]="scanned() ? revealedMaterialColor() : hovered() ? '#16404a' : '#0f141d'"
-      [emissiveIntensity]="scanned() ? 0.8 : hovered() ? 0.5 : 0.25"
+      [emissiveIntensity]="resolvedEmissiveIntensity()"
     />
   </ngt-mesh>
 </ngt-group>

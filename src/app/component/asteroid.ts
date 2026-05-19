@@ -18,6 +18,7 @@ import { AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
 import { AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { CelestialBodyLocation } from '../model/math/celestial-body-location';
 import { Triple } from '../model/shared/triple';
+import type { AsteroidRenderTier } from '../scene/ship-exterior/asteroid-tier-selection';
 
 export interface AsteroidHoverEvent {
   id: string;
@@ -100,6 +101,56 @@ export function generateRandomAsteroidRevealProfile(random: () => number = Math.
   };
 }
 
+export function resolveAsteroidGeometryDetail(
+  geometry: AsteroidGeometryKind,
+  baseDetail: number,
+  scanned: boolean,
+  detailOverride: number | null = null,
+): number {
+  if (!scanned) {
+    return Math.max(0, Math.min(1, baseDetail));
+  }
+
+  const scannedDefault = geometry === 'octahedron' ? 0 : 2;
+  if (detailOverride === null) {
+    return scannedDefault;
+  }
+
+  if (geometry === 'octahedron') {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(scannedDefault, detailOverride));
+}
+
+export function resolveAsteroidPbrRoughness(scanned: boolean, revealedMaterial: AsteroidMaterialProfile | null): number {
+  if (!scanned) {
+    return 0.92;
+  }
+
+  return revealedMaterial?.roughness ?? 0.6;
+}
+
+export function resolveAsteroidPbrMetalness(scanned: boolean, revealedMaterial: AsteroidMaterialProfile | null): number {
+  if (!scanned) {
+    return 0.03;
+  }
+
+  return revealedMaterial?.metalness ?? 0.25;
+}
+
+export function resolveAsteroidEmissiveIntensity(
+  scanned: boolean,
+  hovered: boolean,
+  revealedMaterial: AsteroidMaterialProfile | null,
+): number {
+  if (!scanned) {
+    return hovered ? 0.5 : 0.25;
+  }
+
+  return 0.8 + (revealedMaterial?.emissiveBoost ?? 0);
+}
+
 @Component({
   selector: 'app-asteroid',
   templateUrl: './asteroid.html',
@@ -117,13 +168,15 @@ export class Asteroid {
   revealedKinematics = input<AsteroidKinematics | null>(null);
   revealedLocation = input<CelestialBodyLocation | null>(null);
   revealedClusterCenterKm = input<Triple | null>(null);
+  renderTier = input<AsteroidRenderTier>('near');
+  detailOverride = input<number | null>(null);
 
   @Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
   @Output() pointerButtonDown = new EventEmitter<AsteroidPointerButtonEvent>();
   @Output() pointerButtonUp = new EventEmitter<AsteroidPointerButtonEvent>();
 
   private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('mesh');
-  private revealProfile = signal<AsteroidRevealProfile | null>(null);
+  private revealProfile = signal<AsteroidRevealProfile>(generateRandomAsteroidRevealProfile());
   private completionEdgePrimed = false;
   private morphPulseElapsedSeconds = signal(MORPH_PULSE_DURATION_SECONDS);
   protected hovered = signal(false);
@@ -138,11 +191,18 @@ export class Asteroid {
     const progress = elapsed / MORPH_PULSE_DURATION_SECONDS;
     return Math.sin(progress * Math.PI);
   });
-  protected activeGeometry = computed(() => this.revealProfile()?.geometry ?? 'dodecahedron');
-  protected activeDetail = computed(() => this.revealProfile()?.detail ?? 0);
+  protected activeGeometry = computed(() => this.revealProfile().geometry);
+  protected activeDetail = computed(() =>
+    resolveAsteroidGeometryDetail(
+      this.activeGeometry(),
+      this.revealProfile().detail,
+      this.scanned(),
+      this.detailOverride(),
+    ),
+  );
   protected meshScale = computed<[number, number, number]>(() => {
     const base = this.scanned() ? 1.08 : this.hovered() ? 1.03 : 1;
-    const profileScale = this.revealProfile()?.scale ?? [1, 1, 1];
+    const profileScale = this.revealProfile().scale;
     const morph = this.morphPulse();
     const x = (1 + morph * 0.14) * profileScale[0];
     const y = (1 - morph * 0.08) * profileScale[1];
@@ -154,6 +214,11 @@ export class Asteroid {
   protected morphTiltX = computed(() => Math.sin(this.pulsePhase() * 2.3) * this.morphPulse() * 0.16);
   protected morphTiltZ = computed(() => Math.cos(this.pulsePhase() * 1.9) * this.morphPulse() * 0.12);
   protected revealedMaterialColor = computed(() => this.revealedMaterial()?.textureColor ?? '#8df7b2');
+  protected pbrRoughness = computed(() => resolveAsteroidPbrRoughness(this.scanned(), this.revealedMaterial()));
+  protected pbrMetalness = computed(() => resolveAsteroidPbrMetalness(this.scanned(), this.revealedMaterial()));
+  protected resolvedEmissiveIntensity = computed(() =>
+    resolveAsteroidEmissiveIntensity(this.scanned(), this.hovered(), this.revealedMaterial()),
+  );
   protected showResultDialog = computed(() => this.scanned() && this.hovered() && !!this.revealedMaterial());
   protected resultDialogMaterialText = computed(() => `MATERIAL: ${this.revealedMaterial()?.material ?? 'UNKNOWN'}`);
   protected resultDialogRarityText = computed(() => `RARITY: ${this.revealedMaterial()?.rarity ?? 'UNKNOWN'}`);
@@ -269,15 +334,6 @@ export class Asteroid {
       }
 
       this.completionEdgePrimed = scanComplete;
-    });
-
-    effect(() => {
-      if (!this.scanned() || this.revealProfile()) {
-        return;
-      }
-
-      this.morphPulseElapsedSeconds.set(0);
-      this.revealProfile.set(generateRandomAsteroidRevealProfile());
     });
 
     beforeRender(({ delta }) => {

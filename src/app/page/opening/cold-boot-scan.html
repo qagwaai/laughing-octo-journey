@@ -49,6 +49,16 @@
     </div>
   </section>
 
+  @if (showAsteroidDebugTag()) {
+  <section class="ship-exterior-asteroid-debug" aria-live="polite">
+    <p>{{ asteroidDebugHeaderText() }}</p>
+    <p>{{ asteroidDebugMaterialText() }}</p>
+    <p>{{ asteroidDebugPbrText() }}</p>
+    <p>{{ asteroidDebugDetailRuleText() }}</p>
+    <p>{{ asteroidDebugTierText() }}</p>
+  </section>
+  }
+
   <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
     @for (slot of launchHotkeySlots(); track slot.hotkey) {
     <button

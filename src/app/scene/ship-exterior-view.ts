@@ -10,7 +10,8 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { Euler, Quaternion, Vector3 } from 'three';
+import { Euler, PMREMGenerator, Quaternion, Vector3 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { NgtArgs, injectStore } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { environment } from '../../environments/environment';
@@ -59,6 +60,13 @@ import {
   type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
 import type { ShipItem } from '../model/ship-item';
+import {
+  assignAsteroidRenderTiers,
+  DEFAULT_ASTEROID_TIER_CAPS,
+  DEFAULT_ASTEROID_TIER_DISTANCES,
+  resolveAsteroidTierDetailOverride,
+  type AsteroidRenderTier,
+} from './ship-exterior/asteroid-tier-selection';
 import {
   coerceShipInventory,
   coerceShipModel,
@@ -196,6 +204,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly FLIGHT_MOUSE_SENSITIVITY_MIN = 0.001;
   private static readonly FLIGHT_MOUSE_SENSITIVITY_MAX = 0.007;
   private static readonly FLIGHT_MAX_PITCH_RAD = Math.PI * 0.48;
+  private static readonly SCENE_ENVIRONMENT_INTENSITY = 0.35;
 
   private router = inject(Router);
   private socketService = inject(SocketService);
@@ -212,6 +221,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return null;
     }
   })();
+  private sceneEnvironmentInstalled = false;
+  private pmremGenerator: PMREMGenerator | null = null;
+  private generatedEnvironmentTexture: import('three').Texture | null = null;
   private readonly sessionController = new ShipExteriorSessionController();
   protected readonly targetHoldCandidateId = this.sessionController.targetHoldCandidateId;
   private sceneElapsedSeconds = 0;
@@ -483,6 +495,83 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
     return sample;
   });
+  readonly asteroidDebugSample = computed<AsteroidScanSample | null>(() => {
+    const focusId = this.activeScanAsteroidId() ?? this.targetedAsteroidId();
+    if (!focusId) {
+      return null;
+    }
+
+    return this.asteroidSamples().find((candidate) => candidate.id === focusId) ?? null;
+  });
+  readonly showAsteroidDebugTag = computed(() => !environment.production && !!this.asteroidDebugSample());
+  readonly asteroidDebugHeaderText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    if (!sample) {
+      return 'ASTEROID DEBUG // NO SAMPLE';
+    }
+
+    return `ASTEROID DEBUG // ${sample.id.toUpperCase()} // ${sample.scanned ? 'SCANNED' : 'UNSCANNED'}`;
+  });
+  readonly asteroidDebugMaterialText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    if (!sample?.revealedMaterial) {
+      return 'MAT // --- (scan to reveal PBR profile)';
+    }
+
+    return `MAT // ${sample.revealedMaterial.material.toUpperCase()} ${sample.revealedMaterial.rarity.toUpperCase()}`;
+  });
+  readonly asteroidDebugPbrText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    if (!sample?.revealedMaterial || !sample.scanned) {
+      return 'PBR // rough 0.92 metal 0.03 emissive base';
+    }
+
+    const roughness = (sample.revealedMaterial.roughness ?? 0.6).toFixed(2);
+    const metalness = (sample.revealedMaterial.metalness ?? 0.25).toFixed(2);
+    const emissive = (0.8 + (sample.revealedMaterial.emissiveBoost ?? 0)).toFixed(2);
+    return `PBR // rough ${roughness} metal ${metalness} emissive ${emissive}`;
+  });
+  readonly asteroidDebugDetailRuleText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    if (!sample?.scanned) {
+      return 'DETAIL // pre-scan low (0-1)';
+    }
+
+    return 'DETAIL // post-scan high (2) except octahedron(0)';
+  });
+  readonly asteroidRenderTiers = computed<Map<string, AsteroidRenderTier>>(() => {
+    const camera = this.store?.snapshot.camera;
+    const cameraPosition: [number, number, number] = camera
+      ? [camera.position.x, camera.position.y, camera.position.z]
+      : [0, 0, 6.6];
+
+    return assignAsteroidRenderTiers(
+      this.asteroidSamples(),
+      {
+        cameraPosition,
+        targetedAsteroidId: this.targetedAsteroidId(),
+        activeScanAsteroidId: this.activeScanAsteroidId(),
+        scannedOnlyHero: true,
+      },
+      DEFAULT_ASTEROID_TIER_CAPS,
+      DEFAULT_ASTEROID_TIER_DISTANCES,
+    );
+  });
+  readonly asteroidDebugTierText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    if (!sample) {
+      return 'TIER // ---';
+    }
+    const tier = this.asteroidRenderTiers().get(sample.id) ?? 'background';
+    return `TIER // ${tier.toUpperCase()}`;
+  });
+  resolveAsteroidRenderTier(sampleId: string): AsteroidRenderTier {
+    return this.asteroidRenderTiers().get(sampleId) ?? 'background';
+  }
+  resolveAsteroidDetailOverride(sample: AsteroidScanSample): number | null {
+    const tier = this.resolveAsteroidRenderTier(sample.id);
+    return resolveAsteroidTierDetailOverride(tier, sample.scanned);
+  }
   readonly showPropertiesPanel = computed(() => !!this.hoveredScannedAsteroid() && !this.propertiesPanelHidden());
   readonly showPropertiesPanelReveal = computed(() => !!this.hoveredScannedAsteroid() && this.propertiesPanelHidden());
   readonly propertiesPanelTitle = computed(() => {
@@ -603,6 +692,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.flightCurrentLocationKm = this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 };
     this.socketService.connect(this.socketService.serverUrl);
+    this.installSceneEnvironment();
     this.initializeMissionGateState();
     this.refreshMissionGateStateFromBackend();
     this.registerTestUtils();
@@ -920,6 +1010,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.bootstrapController.dispose();
     this.sessionController.dispose();
     this.stopFlightLoop();
+    this.disposeSceneEnvironment();
     window.removeEventListener('pointerdown', this.onWindowPointerDown);
     window.removeEventListener('pointerup', this.onWindowPointerUp);
     window.removeEventListener('contextmenu', this.onWindowContextMenu);
@@ -959,6 +1050,49 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     camera.position.set(0, 0, 6.6);
     camera.lookAt(0, 0, 0);
     camera.updateMatrixWorld();
+  }
+
+  private installSceneEnvironment(): void {
+    if (this.sceneEnvironmentInstalled || !this.store) {
+      return;
+    }
+
+    const snapshot = this.store.snapshot;
+    const renderer = snapshot.gl;
+    const scene = snapshot.scene;
+    if (!renderer || !scene) {
+      return;
+    }
+
+    try {
+      const pmrem = new PMREMGenerator(renderer);
+      pmrem.compileEquirectangularShader();
+      const roomScene = new RoomEnvironment();
+      const envTexture = pmrem.fromScene(roomScene, 0.04).texture;
+      scene.environment = envTexture;
+      scene.environmentIntensity = ShipExteriorViewScene.SCENE_ENVIRONMENT_INTENSITY;
+      this.pmremGenerator = pmrem;
+      this.generatedEnvironmentTexture = envTexture;
+      this.sceneEnvironmentInstalled = true;
+    } catch (error) {
+      appLogger.warn('Failed to install scene environment map.', error);
+    }
+  }
+
+  private disposeSceneEnvironment(): void {
+    if (!this.sceneEnvironmentInstalled) {
+      return;
+    }
+
+    const scene = this.store?.snapshot.scene ?? null;
+    if (scene && scene.environment === this.generatedEnvironmentTexture) {
+      scene.environment = null;
+    }
+    this.generatedEnvironmentTexture?.dispose();
+    this.pmremGenerator?.dispose();
+    this.generatedEnvironmentTexture = null;
+    this.pmremGenerator = null;
+    this.sceneEnvironmentInstalled = false;
   }
 
   // Polls the live Three.js camera and pushes its yaw/pitch/roll into `cameraOrientation`.
@@ -1784,6 +1918,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private tickScene(): void {
     this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
+    if (!this.sceneEnvironmentInstalled) {
+      this.installSceneEnvironment();
+    }
     const activeId = this.activeScanAsteroidId();
     let completedScanThisTick = false;
     const completedSampleIds: string[] = [];

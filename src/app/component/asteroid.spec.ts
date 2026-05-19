@@ -7,7 +7,11 @@ import {
   ASTEROID_INJECT_STORE_FN,
   generateRandomAsteroidRevealProfile,
   resolveAsteroidBeamOpacity,
+  resolveAsteroidEmissiveIntensity,
+  resolveAsteroidGeometryDetail,
   resolveAsteroidMaterialColor,
+  resolveAsteroidPbrMetalness,
+  resolveAsteroidPbrRoughness,
   resolveAsteroidSweepOpacity,
   type AsteroidHoverEvent,
 } from './asteroid';
@@ -142,6 +146,8 @@ describe('Asteroid', () => {
       rarity: 'Rare',
       material: 'Silver',
       textureColor: '#cad5e3',
+      roughness: 0.3,
+      metalness: 0.9,
     });
     fixture.componentRef.setInput('scanned', true);
     fixture.detectChanges();
@@ -311,6 +317,50 @@ describe('Asteroid', () => {
     expect(mockMesh.rotation.y).toBeCloseTo(2, 5);
     expect(mockMesh.rotation.z).toBeCloseTo(3, 5);
   });
+
+  it('should switch to higher geometry detail after scan for non-octahedron shapes', () => {
+    (component as any).revealProfile.set({ geometry: 'dodecahedron', detail: 1, scale: [1, 1, 1] });
+
+    fixture.componentRef.setInput('scanned', false);
+    fixture.detectChanges();
+    expect((component as any).activeDetail()).toBe(1);
+
+    fixture.componentRef.setInput('scanned', true);
+    fixture.detectChanges();
+    expect((component as any).activeDetail()).toBe(2);
+  });
+
+  it('should keep octahedron detail low after scan', () => {
+    (component as any).revealProfile.set({ geometry: 'octahedron', detail: 1, scale: [1, 1, 1] });
+    fixture.componentRef.setInput('scanned', true);
+    fixture.detectChanges();
+
+    expect((component as any).activeDetail()).toBe(0);
+  });
+
+  it('should resolve PBR values from revealed material only after scan', () => {
+    fixture.componentRef.setInput('revealedMaterial', {
+      rarity: 'Exotic',
+      material: 'Unobtainium',
+      textureColor: '#7deaff',
+      roughness: 0.28,
+      metalness: 0.64,
+      emissiveBoost: 0.45,
+    });
+    fixture.componentRef.setInput('scanned', false);
+    fixture.detectChanges();
+
+    expect((component as any).pbrRoughness()).toBeCloseTo(0.92);
+    expect((component as any).pbrMetalness()).toBeCloseTo(0.03);
+    expect((component as any).resolvedEmissiveIntensity()).toBeCloseTo(0.25);
+
+    fixture.componentRef.setInput('scanned', true);
+    fixture.detectChanges();
+
+    expect((component as any).pbrRoughness()).toBeCloseTo(0.28);
+    expect((component as any).pbrMetalness()).toBeCloseTo(0.64);
+    expect((component as any).resolvedEmissiveIntensity()).toBeCloseTo(1.25);
+  });
 });
 
 describe('resolveAsteroidMaterialColor', () => {
@@ -393,5 +443,77 @@ describe('generateRandomAsteroidRevealProfile', () => {
     if (profile.geometry === 'octahedron') {
       expect(profile.detail).toBe(0);
     }
+  });
+});
+
+describe('resolveAsteroidGeometryDetail', () => {
+  it('should keep low detail before scan', () => {
+    expect(resolveAsteroidGeometryDetail('dodecahedron', 1, false)).toBe(1);
+    expect(resolveAsteroidGeometryDetail('icosahedron', 0, false)).toBe(0);
+  });
+
+  it('should clamp octahedron to zero even after scan', () => {
+    expect(resolveAsteroidGeometryDetail('octahedron', 1, true)).toBe(0);
+  });
+
+  it('should promote non-octahedron to detail 2 when scanned', () => {
+    expect(resolveAsteroidGeometryDetail('dodecahedron', 0, true)).toBe(2);
+    expect(resolveAsteroidGeometryDetail('icosahedron', 1, true)).toBe(2);
+  });
+});
+
+describe('resolveAsteroidPbrRoughness', () => {
+  it('should use matte fallback before scan', () => {
+    expect(resolveAsteroidPbrRoughness(false, null)).toBeCloseTo(0.92);
+  });
+
+  it('should use revealed roughness after scan', () => {
+    expect(
+      resolveAsteroidPbrRoughness(true, {
+        rarity: 'Rare',
+        material: 'Silver',
+        textureColor: '#cad5e3',
+        roughness: 0.28,
+        metalness: 0.92,
+      }),
+    ).toBeCloseTo(0.28);
+  });
+});
+
+describe('resolveAsteroidPbrMetalness', () => {
+  it('should keep metalness low before scan', () => {
+    expect(resolveAsteroidPbrMetalness(false, null)).toBeCloseTo(0.03);
+  });
+
+  it('should use revealed metalness after scan', () => {
+    expect(
+      resolveAsteroidPbrMetalness(true, {
+        rarity: 'Rare',
+        material: 'Silver',
+        textureColor: '#cad5e3',
+        roughness: 0.28,
+        metalness: 0.92,
+      }),
+    ).toBeCloseTo(0.92);
+  });
+});
+
+describe('resolveAsteroidEmissiveIntensity', () => {
+  it('should use hover-dependent intensity before scan', () => {
+    expect(resolveAsteroidEmissiveIntensity(false, false, null)).toBeCloseTo(0.25);
+    expect(resolveAsteroidEmissiveIntensity(false, true, null)).toBeCloseTo(0.5);
+  });
+
+  it('should include emissive boost after scan', () => {
+    expect(
+      resolveAsteroidEmissiveIntensity(true, false, {
+        rarity: 'Exotic',
+        material: 'Unobtainium',
+        textureColor: '#7deaff',
+        roughness: 0.28,
+        metalness: 0.64,
+        emissiveBoost: 0.45,
+      }),
+    ).toBeCloseTo(1.25);
   });
 });
