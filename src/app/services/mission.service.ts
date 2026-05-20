@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import type { MissionStatus } from '../model/mission';
+import type { ShipDamagePreset } from '../model/ship-damage';
+import { resolveMissionInitializationStrategy } from './mission-navigation/mission-initialization-strategy';
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT, MissionAddResponse } from '../model/mission-add';
 import {
   MISSION_LIST_REQUEST_EVENT,
@@ -279,5 +281,23 @@ export class MissionService {
         resolve(true);
       });
     });
+  }
+
+  /**
+   * Returns true when the supplied mission status represents an active (in-progress) mission.
+   */
+  isMissionInProgress(status: MissionStatus | undefined | null): boolean {
+    return status === 'started' || status === 'in-progress' || status === 'paused';
+  }
+
+  /**
+   * Resolves the damage preset for a mission from its registered initialization strategy.
+   */
+  getMissionDamagePreset(
+    missionId: string,
+    status?: MissionStatus | null,
+  ): ShipDamagePreset | undefined {
+    const strategy = resolveMissionInitializationStrategy(missionId);
+    return strategy.resolveDamagePreset?.({ missionId, missionStatus: status ?? null });
   }
 }

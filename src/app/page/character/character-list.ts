@@ -7,13 +7,11 @@ import { CharacterListRequest, CharacterListResponse, PlayerCharacterSummary } f
 import { GameJoinRequest } from '../../model/game-join';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import type { ShipListRequest, ShipListResponse, ShipSummary } from '../../model/ship-list';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
-import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
-import { ShipService } from '../../services/ship.service';
+import { MissionService } from '../../services/mission.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
 
@@ -35,7 +33,8 @@ export default class CharacterListPage implements OnDestroy {
   private gameSessionService = inject(GameSessionService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
-  private shipService = inject(ShipService);
+  private missionService = inject(MissionService);
+  private missionNavigationService = inject(MissionNavigationService);
   private router = inject(Router);
   private unsubscribeInvalidSession?: () => void;
   private navigationState: { playerName?: string } = resolveNavigationState<{ playerName?: string }>(this.router);
@@ -244,8 +243,7 @@ export default class CharacterListPage implements OnDestroy {
     this.gameSessionService.requestGameJoin(request);
 
     const firstTargetStatus = this.getFirstTargetStatus(character);
-    const isFirstTargetInProgress =
-      firstTargetStatus === 'started' || firstTargetStatus === 'in-progress' || firstTargetStatus === 'paused';
+    const isFirstTargetInProgress = this.missionService.isMissionInProgress(firstTargetStatus);
     const isFirstTargetCompleted = firstTargetStatus === 'completed' || firstTargetStatus === 'turned-in';
 
     const outlets = isFirstTargetInProgress
@@ -254,57 +252,40 @@ export default class CharacterListPage implements OnDestroy {
         ? { right: ['mission-board'], left: ['game-main'] }
         : { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
 
-    const missionContext = isFirstTargetInProgress
-      ? ({
-          missionId: FIRST_TARGET_MISSION_ID,
-          missionStatusHint: firstTargetStatus,
-          seedPolicy: 'auto',
-          shipDamagePreset: 'cold-boot-starter-damaged',
-        } satisfies ShipExteriorViewMissionContext)
-      : undefined;
-
-    const navigateToOutlets = (joinShip?: ShipSummary): void => {
+    if (!isFirstTargetInProgress) {
       this.router.navigate([{ outlets }], {
         preserveFragment: true,
-        state: {
-          playerName,
-          joinCharacter: character,
-          ...(joinShip ? { joinShip } : {}),
-          ...(missionContext ? { missionContext } : {}),
-          ...(isFirstTargetInProgress ? { firstTargetMissionStatus: firstTargetStatus } : {}),
-        },
+        state: { playerName, joinCharacter: character },
       });
-    };
-
-    if (!isFirstTargetInProgress) {
-      navigateToOutlets();
       return;
     }
 
-    // First-target in progress: fetch the real ship before navigating so the
-    // cold-boot scan flow operates on a ship with a real spatial location
-    // (placed in the asteroid belt by `generateDeterministicStarterShipUpdate`).
-    // The previous synthetic `(0, 0, 0)` placeholder rendered the ship inside
-    // the sun in the stellar viewer; loading the real ship avoids that.
-    const shipListRequest: ShipListRequest = {
-      playerName,
-      characterId: character.id,
-      sessionKey: this.sessionService.getSessionKey()!,
-    };
-    this.shipService.listShips(shipListRequest, (response: ShipListResponse) => {
-      if (response.success) {
-        const resolved = (response.ships ?? [])[0];
-        if (resolved) {
-          this.sessionService.setActiveShip(resolved);
-        } else {
-          appLogger.warn('ship-list returned no ships during cold-boot join; proceeding without active ship.');
-        }
-      } else {
-        appLogger.warn('ship-list failed during cold-boot join; proceeding without active ship:', response.message);
-      }
-      window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
-      navigateToOutlets(this.sessionService.activeShip() ?? undefined);
-    });
+    // First-target in progress: delegate to MissionNavigationService to fetch
+    // the real ship and build the mission context. This ensures the ship is
+    // placed at its real spatial location (not a synthetic (0,0,0) placeholder).
+    this.missionNavigationService
+      .prepareNavigation({
+        missionId: FIRST_TARGET_MISSION_ID,
+        playerName,
+        joinCharacter: character,
+        sessionKey: this.sessionService.getSessionKey()!,
+        missionStatus: firstTargetStatus ?? undefined,
+      })
+      .then((prepared) => {
+        window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+        this.router.navigate([{ outlets }], {
+          preserveFragment: true,
+          state: {
+            playerName: prepared.playerName,
+            joinCharacter: prepared.joinCharacter,
+            ...(prepared.joinShip ? { joinShip: prepared.joinShip } : {}),
+            missionContext: prepared.missionContext,
+            ...(prepared.firstTargetMissionStatus
+              ? { firstTargetMissionStatus: prepared.firstTargetMissionStatus }
+              : {}),
+          },
+        });
+      });
   }
 
   ngOnDestroy(): void {

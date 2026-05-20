@@ -21,6 +21,10 @@ import {
   type ShipExteriorMissionGateState,
   type ShipExteriorMissionGateStepDefinition,
 } from './ship-exterior-mission';
+  import {
+    registerMissionInitializationStrategy,
+    type MissionInitializationStrategy,
+  } from '../services/mission-navigation/mission-initialization-strategy';
 
 function normalizeInventoryToken(value: unknown): string {
   if (typeof value !== 'string') {
@@ -322,3 +326,24 @@ export function createFirstTargetMissionInitialGateState(characterId: string): S
 }
 
 export { DEFAULT_CLUSTER_SPREAD_KM };
+
+/**
+ * Initialize first-target mission context for ship-exterior-view entry points.
+ *
+ * First-target is a scripted cold-boot onboarding mission that:
+ * - Always applies the 'cold-boot-starter-damaged' damage preset
+ * - Uses 'auto' seed policy (infers 'new' vs 'resume' from status hint)
+ */
+const FIRST_TARGET_INITIALIZATION_STRATEGY: MissionInitializationStrategy = {
+  getMissionId: () => FIRST_TARGET_MISSION_ID,
+  buildMissionContext: (params) => ({
+    missionId: FIRST_TARGET_MISSION_ID,
+    seedPolicy: 'auto',
+    shipDamagePreset: 'cold-boot-starter-damaged',
+    ...(params.missionStatus ? { missionStatusHint: params.missionStatus } : {}),
+  }),
+  resolveDamagePreset: () => 'cold-boot-starter-damaged',
+};
+
+// Register the strategy at module load time
+registerMissionInitializationStrategy(FIRST_TARGET_MISSION_ID, FIRST_TARGET_INITIALIZATION_STRATEGY);

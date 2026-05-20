@@ -5,9 +5,8 @@ import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
-import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER } from '../../model/ship-list';
 import { MissionService, OpeningAudioService, SessionService } from '../../services';
+import { MissionNavigationService } from '../../services/mission-navigation';
 
 interface ColdBootNavigationState {
   playerName?: string;
@@ -31,6 +30,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
   private openingAudio = inject(OpeningAudioService);
   private missionService = inject(MissionService);
   private sessionService = inject(SessionService);
+  private missionNavigationService = inject(MissionNavigationService);
   private timers: number[] = [];
   private didStartBedForCurrentEnablement = false;
   private navigationState: ColdBootNavigationState = resolveNavigationState<ColdBootNavigationState>(this.router);
@@ -152,28 +152,25 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
       return;
     }
 
-    const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
-    if (characterId) {
-      this.sessionService.setActiveShip({
-        id: `starter-pod-${characterId}`,
-        name: DEFAULT_SHIP_MODEL,
-        model: DEFAULT_SHIP_MODEL,
-        tier: DEFAULT_SHIP_TIER,
-        status: 'ACTIVE',
-        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
-      });
-    }
+    const playerName = this.navigationState.playerName?.trim() ?? '';
+    const joinCharacter = this.navigationState.joinCharacter;
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+    const prepared = joinCharacter
+      ? await this.missionNavigationService.prepareNavigation({
+          missionId: FIRST_TARGET_MISSION_ID,
+          playerName,
+          joinCharacter,
+          sessionKey,
+          missionStatus: 'started',
+        })
+      : null;
 
     await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {
       preserveFragment: true,
       state: {
         ...this.navigationState,
-        missionContext: {
-          missionId: FIRST_TARGET_MISSION_ID,
-          missionStatusHint: 'started',
-          seedPolicy: 'new',
-          shipDamagePreset: 'cold-boot-starter-damaged',
-        } satisfies ShipExteriorViewMissionContext,
+        ...(prepared ? { joinShip: prepared.joinShip, missionContext: prepared.missionContext } : {}),
       },
     });
     this.scanActionPending.set(false);

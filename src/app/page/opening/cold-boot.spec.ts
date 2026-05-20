@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { createMockMissionService, createMockSessionService } from '../../../testing';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { MissionService } from '../../services/mission.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
 import { OpeningAudioService } from '../../services/opening-audio.service';
 import { SessionService } from '../../services/session.service';
 import ColdBootOpeningPage from './cold-boot';
@@ -36,6 +37,19 @@ function setup(state?: NavigationState) {
   };
   const mockMission = createMockMissionService();
   const mockSession = createMockSessionService('session-key');
+  const mockMissionNavigation = {
+    prepareNavigation: jasmine.createSpy('prepareNavigation').and.callFake(async (context: any) => ({
+      playerName: context.playerName,
+      joinCharacter: context.joinCharacter,
+      joinShip: { id: 'real-ship-1', name: 'Nomad', model: 'Scavenger Pod', tier: 1, status: 'ACTIVE' },
+      missionContext: {
+        missionId: FIRST_TARGET_MISSION_ID,
+        ...(context.missionStatus ? { missionStatusHint: context.missionStatus } : {}),
+        seedPolicy: 'auto',
+        shipDamagePreset: 'cold-boot-starter-damaged',
+      },
+    })),
+  };
 
   TestBed.configureTestingModule({
     imports: [ColdBootOpeningPage],
@@ -44,6 +58,7 @@ function setup(state?: NavigationState) {
       { provide: ActivatedRoute, useValue: mockActivatedRoute },
       { provide: OpeningAudioService, useValue: mockOpeningAudio },
       { provide: MissionService, useValue: mockMission },
+      { provide: MissionNavigationService, useValue: mockMissionNavigation },
       { provide: SessionService, useValue: mockSession },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -51,7 +66,7 @@ function setup(state?: NavigationState) {
 
   const fixture = TestBed.createComponent(ColdBootOpeningPage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter, mockMission, mockSession };
+  return { component: fixture.componentInstance, fixture, mockRouter, mockMission, mockSession, mockMissionNavigation };
 }
 
 describe('ColdBootOpeningPage', () => {
@@ -105,7 +120,7 @@ describe('ColdBootOpeningPage', () => {
   });
 
   it('should start first mission and navigate to scanning pane when requested', async () => {
-    const { component, mockMission, mockSession, mockRouter } = setup({
+    const { component, mockMission, mockSession, mockRouter, mockMissionNavigation } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1', characterName: 'Nova' },
     });
@@ -119,15 +134,13 @@ describe('ColdBootOpeningPage', () => {
       missionId: FIRST_TARGET_MISSION_ID,
       status: 'started',
     });
-    expect(mockSession.activeShip()).toEqual(
-      jasmine.objectContaining({
-        id: 'starter-pod-char-1',
-        name: 'Scavenger Pod',
-        model: 'Scavenger Pod',
-        tier: 1,
-        status: 'ACTIVE',
-      }),
-    );
+    expect(mockMissionNavigation.prepareNavigation).toHaveBeenCalledWith({
+      missionId: FIRST_TARGET_MISSION_ID,
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1', characterName: 'Nova' },
+      sessionKey: 'session-key',
+      missionStatus: 'started',
+    });
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
       jasmine.objectContaining({
@@ -135,10 +148,11 @@ describe('ColdBootOpeningPage', () => {
         state: jasmine.objectContaining({
           playerName: 'Pioneer',
           joinCharacter: { id: 'char-1', characterName: 'Nova' },
+          joinShip: jasmine.objectContaining({ id: 'real-ship-1' }),
           missionContext: {
             missionId: FIRST_TARGET_MISSION_ID,
             missionStatusHint: 'started',
-            seedPolicy: 'new',
+            seedPolicy: 'auto',
             shipDamagePreset: 'cold-boot-starter-damaged',
           },
         }),

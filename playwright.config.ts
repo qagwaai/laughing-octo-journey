@@ -5,11 +5,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
-  workers: 6, // process.env['CI'] ? 1 : undefined
+  workers: 2, // process.env['CI'] ? 1 : undefined
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4200',
     trace: 'on-first-retry',
+    video: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
   projects: [

@@ -29,7 +29,8 @@ module.exports = function (config) {
         flags: ['--no-sandbox'],
       },
     },
-    singleRun: true,
-    restartOnFileChange: false,
+    singleRun: false, // Prevents server exit on completion
+    autoWatch: false, // Prevents automatic re-runs on file changes
+    restartOnFileChange: false, // Prevents server restart on file changes
   });
 };

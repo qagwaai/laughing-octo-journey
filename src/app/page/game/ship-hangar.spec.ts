@@ -10,6 +10,8 @@ import {
 } from '../../../testing';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { MissionService } from '../../services/mission.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
 import ShipHangarPage from './ship-hangar';
 
 const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
@@ -29,11 +31,36 @@ function setup(options: {
 
   options.socketService.connected = options.connected ?? false;
 
+  const missionService = {
+    isMissionInProgress: jasmine
+      .createSpy('isMissionInProgress')
+      .and.callFake((status: string | undefined | null) =>
+        status === 'started' || status === 'in-progress' || status === 'paused',
+      ),
+    getMissionDamagePreset: jasmine
+      .createSpy('getMissionDamagePreset')
+      .and.returnValue('cold-boot-starter-damaged'),
+  };
+
+  const missionNavigationService = {
+    prepareNavigation: jasmine.createSpy('prepareNavigation').and.callFake(async (context: any) => ({
+      playerName: context.playerName,
+      joinCharacter: context.joinCharacter,
+      missionContext: {
+        missionId: FIRST_TARGET_MISSION_ID,
+        seedPolicy: 'resume',
+        ...(context.missionStatus ? { missionStatusHint: context.missionStatus } : {}),
+      },
+    })),
+  };
+
   TestBed.configureTestingModule({
     imports: [ShipHangarPage],
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: MissionService, useValue: missionService },
+      { provide: MissionNavigationService, useValue: missionNavigationService },
       { provide: Router, useValue: mockRouter },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -259,7 +286,7 @@ describe('ShipHangarPage', () => {
     });
   });
 
-  it('should navigate to ship-exterior-view with full ship payload', () => {
+  it('should navigate to ship-exterior-view with full ship payload', async () => {
     const character = { id: 'c-1', characterName: 'Nova' };
     const { component, mockRouter } = setup({
       socketService,
@@ -281,7 +308,7 @@ describe('ShipHangarPage', () => {
       ],
     };
 
-    component.navigateToExteriorView(ship as any);
+    await component.navigateToExteriorView(ship as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
@@ -300,7 +327,7 @@ describe('ShipHangarPage', () => {
     );
   });
 
-  it('should include cold-boot ship damage preset for in-progress first-target mission', () => {
+  it('should include cold-boot ship damage preset for in-progress first-target mission', async () => {
     const character = {
       id: 'c-1',
       characterName: 'Nova',
@@ -317,7 +344,7 @@ describe('ShipHangarPage', () => {
       model: 'Scavenger Pod',
     };
 
-    component.navigateToExteriorView(ship as any);
+    await component.navigateToExteriorView(ship as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],

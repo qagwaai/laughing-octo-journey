@@ -161,6 +161,27 @@ registerShipExteriorMission(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION);
 registerMissionScenePlugin(GENERIC_EXPLORATION_MISSION_ID, createGenericExplorationPlugin);
 
 /**
+ * Register initialization strategy for generic exploration mission.
+ * Uses 'resume' seed policy by default and no damage preset.
+ */
+import {
+  registerMissionInitializationStrategy,
+  type MissionInitializationStrategy,
+} from '../services/mission-navigation/mission-initialization-strategy';
+
+const GENERIC_EXPLORATION_INITIALIZATION_STRATEGY: MissionInitializationStrategy = {
+  getMissionId: () => GENERIC_EXPLORATION_MISSION_ID,
+  buildMissionContext: (params) => ({
+    missionId: GENERIC_EXPLORATION_MISSION_ID,
+    seedPolicy: 'resume',
+    ...(params.missionStatus ? { missionStatusHint: params.missionStatus } : {}),
+  }),
+  resolveDamagePreset: () => undefined,
+};
+
+registerMissionInitializationStrategy(GENERIC_EXPLORATION_MISSION_ID, GENERIC_EXPLORATION_INITIALIZATION_STRATEGY);
+
+/**
  * Test-only helper for clearing the scan-count cache between test runs.
  * @internal
  */

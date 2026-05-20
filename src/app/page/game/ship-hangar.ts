@@ -7,7 +7,6 @@ import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { type ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -20,6 +19,8 @@ import {
 } from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
+import { MissionService } from '../../services/mission.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 
 interface ShipHangarNavigationState {
@@ -43,6 +44,8 @@ export default class ShipHangarPage {
   private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
+  private missionService = inject(MissionService);
+  private missionNavigationService = inject(MissionNavigationService);
   private navigationState: ShipHangarNavigationState = resolveNavigationState<ShipHangarNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
@@ -140,15 +143,6 @@ export default class ShipHangarPage {
     return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
   }
 
-  private isFirstTargetInProgress(status: MissionStatus | undefined): boolean {
-    if (!status) {
-      return false;
-    }
-
-    const normalized = status.toLowerCase();
-    return normalized === 'started' || normalized === 'in-progress' || normalized === 'paused';
-  }
-
   navigateToShipInventory(ship: ShipSummary): void {
     this.router.navigate([{ outlets: { left: ['ship-view-inventory'] } }], {
       preserveFragment: true,
@@ -162,16 +156,44 @@ export default class ShipHangarPage {
 
   /**
    * Opens exterior view with mission context derived from first-target mission status.
+   * Delegates to MissionNavigationService to build the mission context from the
+   * registered initialization strategy.
    */
-  navigateToExteriorView(ship: ShipSummary): void {
+  async navigateToExteriorView(ship: ShipSummary): Promise<void> {
     const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
-    const includeDamagePreset = this.isFirstTargetInProgress(firstTargetMissionStatus);
-    const missionContext: ShipExteriorViewMissionContext = {
-      missionId: FIRST_TARGET_MISSION_ID,
-      seedPolicy: 'resume',
-      ...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
-      ...(includeDamagePreset ? { shipDamagePreset: 'cold-boot-starter-damaged' as const } : {}),
-    };
+    const joinCharacter = this.joinCharacter();
+    const playerName = this.playerName();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+    let missionContext;
+    if (joinCharacter && playerName) {
+      const prepared = await this.missionNavigationService.prepareNavigation({
+        missionId: FIRST_TARGET_MISSION_ID,
+        playerName,
+        joinCharacter,
+        sessionKey,
+        missionStatus: firstTargetMissionStatus ?? null,
+      });
+      missionContext = prepared.missionContext;
+    } else {
+      missionContext = {
+        missionId: FIRST_TARGET_MISSION_ID,
+        seedPolicy: 'resume' as const,
+        ...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
+      };
+    }
+
+    // For active in-progress first-target missions, surface the damage preset on
+    // the mission context so the cold-boot scan view applies starter damage.
+    if (this.missionService.isMissionInProgress(firstTargetMissionStatus)) {
+      const damagePreset = this.missionService.getMissionDamagePreset(
+        FIRST_TARGET_MISSION_ID,
+        firstTargetMissionStatus ?? null,
+      );
+      if (damagePreset) {
+        missionContext = { ...missionContext, shipDamagePreset: damagePreset };
+      }
+    }
 
     this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
       preserveFragment: true,
