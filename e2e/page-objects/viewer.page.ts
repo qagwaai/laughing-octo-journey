@@ -44,7 +44,7 @@ export class ViewerPage {
   }
 
   get sceneCanvas() {
-    return this.page.locator('canvas').first();
+    return this.page.locator('.viewer-scene-host canvas').first();
   }
 
   get sceneError() {

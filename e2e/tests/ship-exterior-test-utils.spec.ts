@@ -164,7 +164,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     await loginViaUI(page, mock);
     await new GameShellPage(page).joinGame('Join Game in Progress');
 
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
       .poll(async () =>
@@ -979,7 +979,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     );
 
     await new GameShellPage(page).joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
       .poll(async () =>

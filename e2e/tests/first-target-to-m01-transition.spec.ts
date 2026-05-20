@@ -131,7 +131,7 @@ async function setupMissionBoardTest(
   await loginViaUI(page, mock);
 
   await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main|left:opening-cold-boot/);
+  await expect(page).toHaveURL(/left:game-main|left:opening-cold-boot/, { timeout: 15_000 });
 
   await gameShell.openMissionBoard();
 

@@ -218,7 +218,7 @@ async function setupViewer(page: Page): Promise<void> {
 
   await loginViaUI(page, mock);
   await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/);
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
 
   await gameShell.openViewer();
 

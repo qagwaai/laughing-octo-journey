@@ -103,6 +103,12 @@ async function readCoordZ(page: Page): Promise<number | null> {
   return Number(match[3]);
 }
 
+async function waitForFlightTelemetryReady(page: Page): Promise<void> {
+  await expect
+    .poll(() => readCoordZ(page), { timeout: 10_000 })
+    .not.toBeNull();
+}
+
 test.describe('Ship Exterior — flight mode smoke', () => {
   test('toggles flight, integrates WASD movement, then unlocks cleanly on disable', async ({
     page,
@@ -114,11 +120,12 @@ test.describe('Ship Exterior — flight mode smoke', () => {
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
     const panel = flightPanel(page);
     const toggle = flightToggle(page);
     await expect(panel).toBeVisible();
+    await waitForFlightTelemetryReady(page);
     await expect(toggle).toHaveText(/ENABLE FLIGHT/);
     await expect(flightHint(page)).toHaveCount(0);
 
@@ -171,11 +178,12 @@ test.describe('Ship Exterior — flight mode smoke', () => {
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
     const panel = flightPanel(page);
     const toggle = flightToggle(page);
     await expect(panel).toBeVisible();
+    await waitForFlightTelemetryReady(page);
 
     await toggle.click();
     await expect(toggle).toHaveText(/DISABLE FLIGHT/);

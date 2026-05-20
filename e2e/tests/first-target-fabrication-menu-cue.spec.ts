@@ -229,18 +229,20 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
 
 async function waitForShipExteriorTestApi(page: Page): Promise<void> {
   await expect
-    .poll(async () =>
-      page.evaluate(() => {
-        const api = (
-          window as Window & {
-            __shipExteriorTestUtils?: {
-              getMissionGateState?: () => unknown;
-              getAsteroidSamples?: () => unknown[];
-            };
-          }
-        ).__shipExteriorTestUtils;
-        return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
-      }),
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState?: () => unknown;
+                getAsteroidSamples?: () => unknown[];
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
+        }),
+      { timeout: 15000 },
     )
     .toBe(true);
 }

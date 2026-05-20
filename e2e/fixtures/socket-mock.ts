@@ -105,6 +105,11 @@ export class SocketIOMock {
 
       // ── Initial Engine.IO handshake (no sid yet) ────────────────────────
       if (method === 'GET' && !hasSid) {
+        // Clear stale polling state from any prior connection (e.g. page.reload()).
+        // Without this, the stale pendingGetResolve would consume the new namespace-
+        // connect '40' packet, leaving the new socket in a disconnected state.
+        this.responseQueue.length = 0;
+        this.pendingGetResolve = null;
         await route.fulfill({
           status: 200,
           headers: { 'Content-Type': 'text/plain; charset=UTF-8' },

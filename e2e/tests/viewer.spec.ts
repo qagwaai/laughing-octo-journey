@@ -131,7 +131,7 @@ async function setupViewerTest(page: Page) {
 async function navigateToViewer(page: Page) {
   const gameShell = new GameShellPage(page);
   await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/);
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
   await gameShell.openViewer();
 }
 

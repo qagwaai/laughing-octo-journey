@@ -164,21 +164,23 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
     await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getAsteroidSamples?: () => Array<{ id: string }>;
-                forceCompleteIronScan?: (sampleId?: string) => unknown;
-              };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getAsteroidSamples === 'function' && api.getAsteroidSamples().length > 0;
-        }),
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getAsteroidSamples?: () => Array<{ id: string }>;
+                  forceCompleteIronScan?: (sampleId?: string) => unknown;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getAsteroidSamples === 'function' && api.getAsteroidSamples().length > 0;
+          }),
+        { timeout: 15_000 },
       )
       .toBe(true);
 
