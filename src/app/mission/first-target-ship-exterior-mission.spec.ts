@@ -116,6 +116,7 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     const destroyed = samples.find((sample) => sample.serverCelestialBodyId === 'cb-destroyed');
 
     expect(restored?.serverCelestialBodyId).toBe('cb-1');
+    expect(restored?.meshProfileKey).toBeTruthy();
     expect(restored?.scanned).toBe(true);
     expect(restored?.revealedMaterial).toEqual({
       material: 'Silicate',
@@ -268,6 +269,17 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     for (const sample of samples) {
       expect(sample.revealedMaterial).not.toBeNull();
     }
+  });
+
+  it('should assign a mesh profile key to newly generated asteroid samples', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 1_000, y: 2_000, z: 3_000 },
+      launchSeedHint: 42,
+    });
+
+    expect(samples.every((sample) => !!sample.meshProfileKey)).toBe(true);
   });
 
   it('should refresh but not remove samples for succeeded but non-destroyed launch', () => {
@@ -426,6 +438,51 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
 
     // The first sample should use the existing body at index 0 via fallback
     expect(samples[0].serverCelestialBodyId).toBe('cb-no-scan-id');
+  });
+
+  it('should keep a stored meshProfileKey when resuming a celestial body', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createResumedAsteroidSamples({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 10_000, y: 0, z: -10_000 },
+      existingBodies: [
+        {
+          id: 'cb-3',
+          catalogId: 'cat-3',
+          sourceScanId: 'sample-a1',
+          createdByCharacterId: 'char-1',
+          meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.00,1.00',
+          createdAt: '2026-04-28T00:00:00.000Z',
+          updatedAt: '2026-04-28T00:00:00.000Z',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1, y: 2, z: 3 },
+            epochMs: 1,
+          },
+          motion: {
+            velocityKmPerSec: { x: 1, y: 2, z: 3 },
+            angularVelocityRadPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+          },
+          physical: {
+            estimatedMassKg: 10,
+            estimatedDiameterM: 20,
+          },
+          observability: {
+            visibility: 'visible',
+            scanState: 'scanned',
+          },
+          composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
+          distanceKm: 12,
+          state: 'active',
+        },
+      ],
+      launchSeedHint: 99,
+    });
+
+    expect(samples.find((sample) => sample.id === 'sample-a1')?.meshProfileKey).toBe(
+      'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.00,1.00',
+    );
   });
 
   it('createFirstTargetMissionInitialGateState creates gate state for a given characterId', () => {

@@ -109,6 +109,24 @@ describe('assignAsteroidRenderTiers', () => {
     expect(nearCount).toBeLessThanOrEqual(DEFAULT_ASTEROID_TIER_CAPS.nearMax);
     expect(DEFAULT_ASTEROID_TIER_DISTANCES.heroMaxDistance).toBeGreaterThan(0);
   });
+
+  it('reduces near tier capacity when capMultiplier drops below 1', () => {
+    const samples = Array.from({ length: 12 }, (_, i) => makeSample(`a${i}`, [0, 0, i + 1]));
+    const fullTiers = assignAsteroidRenderTiers(samples, baseContext(), DEFAULT_ASTEROID_TIER_CAPS, DEFAULT_ASTEROID_TIER_DISTANCES, {
+      capMultiplier: 1,
+    });
+    const reducedTiers = assignAsteroidRenderTiers(samples, baseContext(), DEFAULT_ASTEROID_TIER_CAPS, DEFAULT_ASTEROID_TIER_DISTANCES, {
+      capMultiplier: 0.25,
+    });
+
+    const fullNearCount = Array.from(fullTiers.values()).filter((tier) => tier === 'near').length;
+    const reducedNearCount = Array.from(reducedTiers.values()).filter((tier) => tier === 'near').length;
+
+    expect(reducedNearCount).toBeLessThan(fullNearCount);
+    expect(Array.from(reducedTiers.values()).filter((tier) => tier === 'hero').length).toBe(
+      Array.from(fullTiers.values()).filter((tier) => tier === 'hero').length,
+    );
+  });
 });
 
 describe('resolveAsteroidTierDetailOverride', () => {
@@ -126,7 +144,7 @@ describe('resolveAsteroidTierDetailOverride', () => {
     expect(resolveAsteroidTierDetailOverride('near', true)).toBe(1);
   });
 
-  it('returns 0 for background tier when scanned', () => {
-    expect(resolveAsteroidTierDetailOverride('background', true)).toBe(0);
+  it('returns 1 for background tier when scanned', () => {
+    expect(resolveAsteroidTierDetailOverride('background', true)).toBe(1);
   });
 });

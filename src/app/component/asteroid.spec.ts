@@ -318,8 +318,15 @@ describe('Asteroid', () => {
     expect(mockMesh.rotation.z).toBeCloseTo(3, 5);
   });
 
-  it('should switch to higher geometry detail after scan for non-octahedron shapes', () => {
-    (component as any).revealProfile.set({ geometry: 'dodecahedron', detail: 1, scale: [1, 1, 1] });
+  it('should switch to revealed rock detail policy after scan', () => {
+    (component as any).revealProfile.set({
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.00,1.00',
+      geometry: 'dodecahedron',
+      detail: 1,
+      revealGeometry: 'rock',
+      revealDetail: 2,
+      scale: [1, 1, 1],
+    });
 
     fixture.componentRef.setInput('scanned', false);
     fixture.detectChanges();
@@ -327,15 +334,22 @@ describe('Asteroid', () => {
 
     fixture.componentRef.setInput('scanned', true);
     fixture.detectChanges();
-    expect((component as any).activeDetail()).toBe(2);
+    expect((component as any).activeDetail()).toBe(0);
   });
 
-  it('should keep octahedron detail low after scan', () => {
-    (component as any).revealProfile.set({ geometry: 'octahedron', detail: 1, scale: [1, 1, 1] });
+  it('should swap to the revealed rock mesh after scan', () => {
+    (component as any).revealProfile.set({
+      meshProfileKey: 'v1|pv=octahedron:0|rv=rock:2|s=1.00,1.00,1.00',
+      geometry: 'octahedron',
+      detail: 0,
+      revealGeometry: 'rock',
+      revealDetail: 2,
+      scale: [1, 1, 1],
+    });
     fixture.componentRef.setInput('scanned', true);
     fixture.detectChanges();
 
-    expect((component as any).activeDetail()).toBe(0);
+    expect((component as any).activeGeometry()).toBe('rock');
   });
 
   it('should resolve PBR values from revealed material only after scan', () => {
@@ -430,6 +444,8 @@ describe('generateRandomAsteroidRevealProfile', () => {
     });
 
     expect(['dodecahedron', 'icosahedron', 'octahedron']).toContain(profile.geometry);
+    expect(profile.revealGeometry).toBe('rock');
+    expect(profile.meshProfileKey).toContain('v1|pv=');
     expect(profile.detail).toBeGreaterThanOrEqual(0);
     expect(profile.detail).toBeLessThanOrEqual(1);
     expect(profile.scale.length).toBe(3);

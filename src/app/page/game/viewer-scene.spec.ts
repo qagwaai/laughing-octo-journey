@@ -17,6 +17,7 @@ import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 import ViewerScenePage from './viewer-scene';
 
 function setup(navigationState?: Record<string, unknown>) {
@@ -58,6 +59,14 @@ describe('ViewerScenePage', () => {
     const { component } = setup();
     expect(component['hasSystem']()).toBeFalse();
     expect(component['bodies']()).toEqual([]);
+  });
+
+  it('sets missing-session scene error when loadSystem runs without solar system id', () => {
+    const { component } = setup();
+
+    component['loadSystem']();
+
+    expect(component['sceneError']()).toContain('missing-session');
   });
 
   it('emits solar-system-get-request when a system id is provided', () => {
@@ -235,6 +244,15 @@ describe('ViewerScenePage', () => {
     expect(component['zoomPercent']()).toBe(42);
   });
 
+  it('ignores non-finite zoom input values', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['onZoomChange']('not-a-number');
+    component['onZoomChange'](Number.POSITIVE_INFINITY);
+
+    expect(component['zoomLevel']()).toBe(78);
+  });
+
   it('lazy-repairs ships with invalid spatial by re-issuing the deterministic upsert', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
     const sessionService = TestBed.inject(SessionService) as unknown as MockSessionService;
@@ -330,4 +348,161 @@ describe('ViewerScenePage', () => {
     expect((socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip).not.toHaveBeenCalled();
     expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_UPSERT_REQUEST_EVENT)).toBeFalse();
   });
+
+  it('ignores wheel zoom input when no system is loaded', () => {
+    const { component } = setup();
+    const preventDefault = jasmine.createSpy('preventDefault');
+
+    component['onWheel']({ deltaY: 100, deltaMode: 0, preventDefault } as unknown as WheelEvent);
+
+    expect(component['zoomLevel']()).toBe(78);
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('applies wheel zoom when a system is loaded', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+
+    component['onWheel']({ deltaY: -100, deltaMode: 0, preventDefault } as unknown as WheelEvent);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(component['zoomLevel']()).toBeLessThan(78);
+  });
+
+  it('ignores zoom input events when target is not an input element', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['onZoomInput']({ target: {} } as unknown as Event);
+
+    expect(component['zoomLevel']()).toBe(78);
+  });
+
+  it('always suppresses zoom context menu interactions', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+    const stopPropagation = jasmine.createSpy('stopPropagation');
+
+    component['onZoomContextMenu']({ preventDefault, stopPropagation } as unknown as MouseEvent);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(stopPropagation).toHaveBeenCalled();
+  });
+
+  it('blocks right-click interactions on zoom controls only for secondary button', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+    const stopPropagation = jasmine.createSpy('stopPropagation');
+
+    component['onZoomPointerDown']({ button: 0, preventDefault, stopPropagation } as unknown as PointerEvent);
+    component['onZoomPointerDown']({ button: 2, preventDefault, stopPropagation } as unknown as PointerEvent);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks right-button pointer up and mouse up interactions', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+    const stopPropagation = jasmine.createSpy('stopPropagation');
+
+    component['onZoomPointerUp']({ button: 2, preventDefault, stopPropagation } as unknown as PointerEvent);
+    component['onZoomMouseUp']({ button: 2, preventDefault, stopPropagation } as unknown as MouseEvent);
+
+    expect(preventDefault).toHaveBeenCalledTimes(2);
+    expect(stopPropagation).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not block non-right button pointer and mouse interactions', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+    const stopPropagation = jasmine.createSpy('stopPropagation');
+
+    component['onZoomPointerUp']({ button: 0, preventDefault, stopPropagation } as unknown as PointerEvent);
+    component['onZoomMouseDown']({ button: 0, preventDefault, stopPropagation } as unknown as MouseEvent);
+    component['onZoomMouseUp']({ button: 0, preventDefault, stopPropagation } as unknown as MouseEvent);
+    component['onZoomAuxClick']({ button: 0, preventDefault, stopPropagation } as unknown as MouseEvent);
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(stopPropagation).not.toHaveBeenCalled();
+  });
+
+  it('updates hovered and focused body signals from scene callbacks', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const earth = {
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+    } as any;
+
+    component['onHoveredBodyChange'](earth);
+    component['onFocusedPlanetChange'](earth);
+
+    expect(component['hoveredBody']()).toBe(earth);
+    expect(component['focusedPlanet']()).toBe(earth);
+  });
+
+  it('feeds target and active ship ids into scene inputs', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const sessionService = TestBed.inject(SessionService) as unknown as MockSessionService;
+    const viewerTargetService = TestBed.inject(ViewerTargetService);
+
+    sessionService.setActiveShip({
+      id: 'ship-active-1',
+      name: 'Scout',
+      model: 'Scavenger Pod',
+      tier: 1,
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 2, y: 0, z: 0 }, epochMs: 0 },
+    } as any);
+    viewerTargetService.target('earth');
+
+    const inputs = component['sceneInputs']();
+    expect(inputs.targetBodyId).toBe('earth');
+    expect(inputs.activeShipId).toBe('ship-active-1');
+  });
+
+  it('blocks right-button mouse down and auxclick interactions', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const preventDefault = jasmine.createSpy('preventDefault');
+    const stopPropagation = jasmine.createSpy('stopPropagation');
+
+    component['onZoomMouseDown']({ button: 2, preventDefault, stopPropagation } as unknown as MouseEvent);
+    component['onZoomAuxClick']({ button: 2, preventDefault, stopPropagation } as unknown as MouseEvent);
+
+    expect(preventDefault).toHaveBeenCalledTimes(2);
+    expect(stopPropagation).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not start planet transition when already transitioning', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const router = TestBed.inject(Router);
+    component['isPlanetTransitioning'].set(true);
+
+    component['onPlanetViewRequest']({
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+    });
+
+    expect((router as unknown as { navigate: jasmine.Spy }).navigate).not.toHaveBeenCalled();
+  });
+
+  it('cancels pending transition timer on destroy', fakeAsync(() => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const router = TestBed.inject(Router);
+
+    component['onPlanetViewRequest']({
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+    });
+
+    component.ngOnDestroy();
+    tick(200);
+
+    expect((router as unknown as { navigate: jasmine.Spy }).navigate).not.toHaveBeenCalled();
+    expect(component['planetTransitionTimer']).toBeNull();
+  }));
 });

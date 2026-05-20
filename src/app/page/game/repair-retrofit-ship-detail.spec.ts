@@ -6,7 +6,10 @@ import { createMockSessionService, createMockSocketService, type MockSocketServi
 import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { SocketService } from '../../services/socket.service';
 import RepairRetrofitShipDetailPage from './repair-retrofit-ship-detail';
@@ -95,12 +98,27 @@ function setup(state?: NavigationState) {
   };
   const mockSocket = createSocketWithUpsert();
   const mockSession = createMockSessionService('session-key');
+  const mockSocketLifecycle = {
+    ensureConnected: jasmine.createSpy('ensureConnected'),
+  };
+  const mockShipService = {
+    listShips: jasmine.createSpy('listShips'),
+  };
+  const mockConsumedItemShadowService = {
+    markConsumed: jasmine.createSpy('markConsumed'),
+    filterInventory: jasmine.createSpy('filterInventory').and.callFake(
+      (_playerName: string, _characterId: string, inventory: any[] | undefined) => [...(inventory ?? [])],
+    ),
+  };
 
   TestBed.configureTestingModule({
     imports: [RepairRetrofitShipDetailPage],
     providers: [
       { provide: Router, useValue: mockRouter },
       { provide: SocketService, useValue: mockSocket },
+      { provide: SocketLifecycleService, useValue: mockSocketLifecycle },
+      { provide: ShipService, useValue: mockShipService },
+      { provide: ConsumedItemShadowService, useValue: mockConsumedItemShadowService },
       { provide: SessionService, useValue: mockSession },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSyncService },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionStateService },
@@ -110,7 +128,16 @@ function setup(state?: NavigationState) {
 
   const fixture = TestBed.createComponent(RepairRetrofitShipDetailPage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter, mockSocket, mockSession };
+  return {
+    component: fixture.componentInstance,
+    fixture,
+    mockRouter,
+    mockSocket,
+    mockSession,
+    mockSocketLifecycle,
+    mockShipService,
+    mockConsumedItemShadowService,
+  };
 }
 
 const mockSpatial = { solarSystemId: 'sol', frame: 'barycentric' as const, positionKm: [0, 0, 0] as any, epochMs: 0 };
@@ -120,6 +147,11 @@ const mockSpatial = { solarSystemId: 'sol', frame: 'barycentric' as const, posit
 // ---------------------------------------------------------------------------
 
 describe('RepairRetrofitShipDetailPage - initialization', () => {
+  it('ensures socket connection on construction', () => {
+    const { mockSocketLifecycle } = setup();
+    expect(mockSocketLifecycle.ensureConnected).toHaveBeenCalled();
+  });
+
   it('should initialize signals from navigation state', () => {
     const { component } = setup({
       playerName: 'Pioneer',
@@ -140,6 +172,31 @@ describe('RepairRetrofitShipDetailPage - initialization', () => {
     expect(component['joinShip']()).toBeNull();
     expect(component['damageProfile']()).toBeNull();
     expect(component['missionId']()).toBe('first-target');
+  });
+
+  it('creates a cold-boot damage profile when first-target mission is active and profile missing', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: {
+        id: 'c-1',
+        missions: [{ missionId: 'first-target', status: 'in-progress' }],
+      } as any,
+      joinShip: { id: 's-1', model: 'Scavenger Pod', status: 'intact' } as any,
+    });
+
+    expect(component['damageProfile']()).not.toBeNull();
+    expect(component['damageProfile']()?.overallStatus).toBe('damaged');
+  });
+
+  it('creates a cold-boot damage profile when ship status is damaged and profile missing', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1' },
+      joinShip: { id: 's-1', model: 'Scavenger Pod', status: 'damaged' } as any,
+    });
+
+    expect(component['damageProfile']()).not.toBeNull();
+    expect(component['damageProfile']()?.overallStatus).toBe('damaged');
   });
 
   describe('DOM smoke tests', () => {
@@ -465,6 +522,32 @@ describe('RepairRetrofitShipDetailPage - buildRepairedProfile', () => {
 // ---------------------------------------------------------------------------
 
 describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', () => {
+  it('sets persistError and clears persisting when ship-upsert fails', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1' },
+      joinShip: {
+        id: 's-1',
+        model: 'Scavenger Pod',
+        spatial: mockSpatial,
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
+      } as any,
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+        origin: 'unknown',
+        updatedAt: '',
+      } as any,
+    });
+
+    component['fullyRepairShip']();
+    mockSocket.triggerOnceEvent(SHIP_UPSERT_RESPONSE_EVENT, { success: false, message: 'ship write failed' });
+
+    expect(component['persistError']()).toBe('ship write failed');
+    expect(component['isPersisting']()).toBeFalse();
+  });
+
   it('should remove kit from inventory immediately after ship-upsert success', () => {
     const { component, mockSocket } = setup({
       playerName: 'Pioneer',
@@ -639,6 +722,123 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     const itemUpsertEmit = mockSocket.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
     expect(itemUpsertEmit).toBeDefined();
     expect(itemUpsertEmit?.data?.item?.id).toBe('kit-1');
+  });
+
+  it('refreshes ship snapshot after successful item-upsert and keeps kit removed', () => {
+    const { component, mockSocket, mockShipService } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1' },
+      joinShip: {
+        id: 's-1',
+        model: 'Scavenger Pod',
+        spatial: mockSpatial,
+        inventory: [
+          { id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' },
+          { id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' },
+        ],
+      } as any,
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+        origin: 'unknown',
+        updatedAt: '',
+      } as any,
+    });
+
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            model: 'Scavenger Pod',
+            tier: 1,
+            spatial: mockSpatial,
+            inventory: [
+              { id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' },
+              { id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' },
+            ],
+            damageProfile: null,
+          },
+        ],
+      });
+    });
+
+    component['fullyRepairShip']();
+    mockSocket.triggerOnceEvent(SHIP_UPSERT_RESPONSE_EVENT, { success: true });
+    mockSocket.triggerOnceEvent(ITEM_UPSERT_RESPONSE_EVENT, { success: true, item: { id: 'kit-1' } });
+
+    const inventory = component['joinShip']()?.inventory ?? [];
+    expect(inventory.some((item: any) => item.id === 'kit-1')).toBeFalse();
+    expect(inventory.some((item: any) => item.id === 'iron-1')).toBeTrue();
+    expect(component['damageProfile']()?.overallStatus).toBe('intact');
+  });
+
+  it('surfaces item-upsert failure but still attempts ship refresh', () => {
+    const { component, mockSocket, mockShipService } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1' },
+      joinShip: {
+        id: 's-1',
+        model: 'Scavenger Pod',
+        spatial: mockSpatial,
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
+      } as any,
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+        origin: 'unknown',
+        updatedAt: '',
+      } as any,
+    });
+
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({ success: false, ships: [] });
+    });
+
+    component['fullyRepairShip']();
+    mockSocket.triggerOnceEvent(SHIP_UPSERT_RESPONSE_EVENT, { success: true });
+    mockSocket.triggerOnceEvent(ITEM_UPSERT_RESPONSE_EVENT, { success: false, message: 'item write failed' });
+
+    expect(component['persistError']()).toBe('item write failed');
+    expect(mockShipService.listShips).toHaveBeenCalled();
+  });
+
+  it('does not replace ship when refresh response has no matching ship id', () => {
+    const { component, mockSocket, mockShipService } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1' },
+      joinShip: {
+        id: 's-1',
+        name: 'Old Name',
+        model: 'Scavenger Pod',
+        spatial: mockSpatial,
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
+      } as any,
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+        origin: 'unknown',
+        updatedAt: '',
+      } as any,
+    });
+
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [{ id: 'other-ship', name: 'Other', model: 'Scavenger Pod', tier: 1, spatial: mockSpatial, inventory: [] }],
+      });
+    });
+
+    component['fullyRepairShip']();
+    mockSocket.triggerOnceEvent(SHIP_UPSERT_RESPONSE_EVENT, { success: true });
+    mockSocket.triggerOnceEvent(ITEM_UPSERT_RESPONSE_EVENT, { success: true, item: { id: 'kit-1' } });
+
+    expect(component['joinShip']()?.id).toBe('s-1');
+    expect(component['joinShip']()?.name).toBe('Old Name');
   });
 
   it('should fail with hull patch required message and not emit item-upsert request when no kit is present', () => {

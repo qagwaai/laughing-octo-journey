@@ -9,6 +9,9 @@ import {
   type MockSocketService,
 } from '../../../testing';
 import { SessionService } from '../../services/session.service';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { ShipService } from '../../services/ship.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
 import ShipViewInventoryPage from './ship-view-inventory';
 
@@ -69,6 +72,18 @@ function setup(options: {
   sessionService: MockSessionService;
   navigationState?: NavigationState;
 }) {
+  const mockShipService = {
+    listShips: jasmine.createSpy('listShips'),
+  };
+  const mockSocketLifecycle = {
+    runWhenConnected: jasmine.createSpy('runWhenConnected').and.callFake((callback: () => void) => callback()),
+  };
+  const mockConsumedItemShadowService = {
+    filterInventory: jasmine
+      .createSpy('filterInventory')
+      .and.callFake((_playerName: string, _characterId: string, inventory: any[]) => inventory ?? []),
+  };
+
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: jasmine.createSpy('navigate'),
@@ -79,6 +94,9 @@ function setup(options: {
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: ShipService, useValue: mockShipService },
+      { provide: SocketLifecycleService, useValue: mockSocketLifecycle },
+      { provide: ConsumedItemShadowService, useValue: mockConsumedItemShadowService },
       { provide: Router, useValue: mockRouter },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -86,7 +104,14 @@ function setup(options: {
 
   const fixture = TestBed.createComponent(ShipViewInventoryPage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter };
+  return {
+    component: fixture.componentInstance,
+    fixture,
+    mockRouter,
+    mockShipService,
+    mockSocketLifecycle,
+    mockConsumedItemShadowService,
+  };
 }
 
 describe('ShipViewInventoryPage', () => {
@@ -358,6 +383,216 @@ describe('ShipViewInventoryPage', () => {
     });
 
     expect(component['getShipDisplayName']()).toBe('s-3');
+  });
+
+  it('should return empty display name when no ship is selected', () => {
+    const { component } = setup({ socketService, sessionService });
+
+    expect(component['getShipDisplayName']()).toBe('');
+  });
+
+  it('should navigate to character-profile with player and character state', () => {
+    const character = { id: 'c-1', characterName: 'Nova' };
+    const { component, mockRouter } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: character,
+      },
+    });
+
+    component.navigateToCharacterProfile();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-profile'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: 'Pioneer',
+        joinCharacter: character,
+      },
+    });
+  });
+
+  it('builds synthetic subsystem itemType from label when subsystem code is empty', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [],
+          damageProfile: {
+            overallStatus: 'damaged',
+            summary: 'Damaged systems',
+            origin: 'cold-boot-scripted',
+            updatedAt: '2026-05-17T00:00:00.000Z',
+            systems: [
+              {
+                code: '   ',
+                label: 'Power Distribution Bus',
+                severity: 'major',
+                summary: 'Load balancing unstable',
+                repairPriority: 1,
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    const synthetic = groups.find((group) => group.name === 'Power Distribution Bus');
+    expect(synthetic?.itemType).toBe('power-distribution-bus');
+  });
+
+  it('does not call upsertItem when ship context or session is missing', () => {
+    const noSession = createMockSessionService(null);
+    const { component } = setup({
+      socketService,
+      sessionService: noSession,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+    const upsertSpy = jasmine.createSpy('upsertItem');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = upsertSpy;
+
+    component.addDroneToInventory();
+
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it('adds drone item into ship inventory on successful upsert', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb: (response: any) => void) => {
+        cb({
+          success: true,
+          item: {
+            id: 'drone-1',
+            itemType: 'expendable-dart-drone',
+            displayName: 'Expendable Dart Drone',
+            state: 'contained',
+            damageStatus: 'intact',
+          },
+        });
+      });
+
+    component.addDroneToInventory();
+
+    expect(component['joinShip']()?.inventory?.some((item: any) => item.id === 'drone-1')).toBeTrue();
+  });
+
+  it('does not mutate inventory when drone upsert fails', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb: (response: any) => void) => {
+        cb({ success: false, message: 'upsert failed' });
+      });
+
+    component.addDroneToInventory();
+
+    expect(component['joinShip']()?.inventory?.length ?? 0).toBe(0);
+  });
+
+  it('does not request ship refresh when required context is missing', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: '',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+    mockShipService.listShips.calls.reset();
+
+    component['refreshShipFromServer']();
+
+    expect(mockShipService.listShips).not.toHaveBeenCalled();
+  });
+
+  it('does not replace ship when refresh response has no matching ship', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+    mockShipService.listShips.calls.reset();
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({ success: true, ships: [{ id: 'different-ship', name: 'Other', model: 'X', tier: 1, spatial: null }] });
+    });
+
+    component['refreshShipFromServer']();
+
+    expect(component['joinShip']()?.id).toBe('s-1');
+    expect(component['joinShip']()?.name).toBe('Scavenger I');
+  });
+
+  it('normalizes and replaces joinShip from a successful refresh match', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+    mockShipService.listShips.calls.reset();
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger II',
+            status: ' ACTIVE ',
+            modelName: '  ',
+            tierLevel: 99,
+            inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron' }],
+            spatial: null,
+          },
+        ],
+      });
+    });
+
+    component['refreshShipFromServer']();
+
+    expect(component['joinShip']()?.name).toBe('Scavenger II');
+    expect(component['joinShip']()?.status).toBe('ACTIVE');
+    expect(component['joinShip']()?.model).toBe('Scavenger Pod');
+    expect(component['joinShip']()?.tier).toBe(1);
+    expect(component['joinShip']()?.inventory?.length).toBe(1);
+    expect(component['joinShip']()?.inventory?.[0].itemType).toBe('iron');
   });
 
   describe('DOM smoke tests', () => {

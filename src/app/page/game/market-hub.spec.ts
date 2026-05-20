@@ -9,6 +9,7 @@ import {
 } from '../../../testing';
 import type { MarketSummary } from '../../model/market-list';
 import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE_EVENT } from '../../model/market-list';
+import { estimateTravelHours } from '../../model/math/drive-profile';
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
 import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT } from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
@@ -196,6 +197,100 @@ describe('MarketHubPage', () => {
     });
   });
 
+  it('should hydrate active ship using first ship with usable position when current ship is missing', () => {
+    sessionService.activeShip.set(null as any);
+
+    setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      ships: [
+        {
+          id: 'ship-origin',
+          name: 'Origin Placeholder',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'docked',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+        },
+        {
+          id: 'ship-usable',
+          name: 'Usable Position Ship',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'docked',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 25, y: 0, z: 0 }, epochMs: 0 },
+        },
+      ],
+    });
+
+    expect(sessionService.activeShip()?.id).toBe('ship-usable');
+  });
+
+  it('should fallback to first ship when ship-list has no usable positions', () => {
+    sessionService.activeShip.set(null as any);
+
+    setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      ships: [
+        {
+          id: 'first-ship',
+          name: 'Fallback First Ship',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'docked',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+        },
+        {
+          id: 'second-ship',
+          name: 'Second Ship',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'docked',
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+        },
+      ],
+    });
+
+    expect(sessionService.activeShip()?.id).toBe('first-ship');
+  });
+
+  it('should ignore successful ship-list response when ships payload is omitted', () => {
+    sessionService.activeShip.set({
+      id: 'starter-pod-c-1',
+      name: 'Pod',
+      model: 'M',
+      tier: 1,
+      status: 'ACTIVE',
+      spatial: { solarSystemId: 'sol', frame: 'barycentric' as const, positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+    });
+
+    setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+    } as any);
+
+    expect(sessionService.activeShip()?.id).toBe('starter-pod-c-1');
+  });
+
   it('should set an error when session key is missing', () => {
     const noKeySession = createMockSessionService(null);
     const { component } = setup({
@@ -254,6 +349,33 @@ describe('MarketHubPage', () => {
     expect(component['marketListError']()).toBeNull();
     expect(component['markets']().length).toBe(1);
     expect(component['markets']()[0].marketId).toBe('sol-ceres-exchange');
+  });
+
+  it('should default successful market response to empty array when markets payload is omitted', () => {
+    sessionService.activeShip.set({
+      id: 'pod-1',
+      name: 'Pod',
+      model: 'M',
+      tier: 1,
+      status: 'docked',
+      spatial: SPATIAL_SOL_DOCKED,
+    });
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      isDocked: false,
+      dockedMarketId: null,
+    } as any);
+
+    expect(component['markets']()).toEqual([]);
+    expect(component['marketListError']()).toBeNull();
   });
 
   it('should sort markets by authoritative distance from response', () => {
@@ -354,6 +476,53 @@ describe('MarketHubPage', () => {
     const request = socketService.emittedEvents[socketService.emittedEvents.length - 1];
     expect(request.event).toBe(MARKET_LIST_BY_LOCATION_REQUEST_EVENT);
     expect(request.data.distanceAu).toBe(10);
+  });
+
+  it('should request markets with unlimited radius when out-of-range toggle is enabled', () => {
+    sessionService.activeShip.set({
+      id: 'pod-1',
+      name: 'Pod',
+      model: 'Scavenger Pod',
+      tier: 1,
+      status: 'docked',
+      spatial: SPATIAL_SOL,
+    });
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    component['showOutOfRangeMarkets'].set(true);
+    component.loadNearbyMarkets();
+
+    const request = socketService.emittedEvents[socketService.emittedEvents.length - 1];
+    expect(request.event).toBe(MARKET_LIST_BY_LOCATION_REQUEST_EVENT);
+    expect(request.data.distanceAu).toBe(1_000_000);
+  });
+
+  it('should omit characterId in market request when joinCharacter is absent', () => {
+    sessionService.activeShip.set({
+      id: 'pod-1',
+      name: 'Pod',
+      model: 'Scavenger Pod',
+      tier: 1,
+      status: 'docked',
+      spatial: SPATIAL_SOL,
+    });
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer' },
+    });
+
+    component.loadNearbyMarkets();
+
+    const request = socketService.emittedEvents[socketService.emittedEvents.length - 1];
+    expect(request.event).toBe(MARKET_LIST_BY_LOCATION_REQUEST_EVENT);
+    expect(request.data.characterId).toBeUndefined();
   });
 
   it('should allow sending an empty market type filter to the backend', () => {
@@ -728,6 +897,145 @@ describe('MarketHubPage', () => {
 
       expect(component['marketRouteStatus'](market)).toBe('in-system');
       expect(component['marketRouteLabel'](market)).toBe('In-system');
+    });
+  });
+
+  describe('helper formatting and edge branches', () => {
+    let component: MarketHubPage;
+
+    beforeEach(() => {
+      sessionService.activeShip.set({
+        id: 'pod-1',
+        name: 'Pod',
+        model: 'Scavenger Pod',
+        tier: 1,
+        status: 'docked',
+        spatial: SPATIAL_SOL,
+      } as any);
+
+      ({ component } = setup({
+        socketService,
+        sessionService,
+        navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+      }));
+    });
+
+    it('formats unlimited radius label', () => {
+      expect(component['formatRadiusOptionLabel'](1_000_000)).toContain('Unlimited');
+    });
+
+    it('formats unknown distance labels for null and non-finite values', () => {
+      expect(component['formatMarketDistanceAu'](null)).toBe('Unknown distance');
+      expect(component['formatMarketDistanceAu'](Number.POSITIVE_INFINITY)).toBe('Unknown distance');
+      expect(component['formatMarketDistanceKmTooltip'](Number.POSITIVE_INFINITY)).toBe('Unknown distance');
+      expect(component['formatMarketTravelEstimate'](Number.NaN)).toBe('Unknown distance');
+    });
+
+    it('formats km tooltip using K and M suffixes', () => {
+      const oneThousandKmInAu = 1000 / 149_597_870.7;
+      const twoMillionKmInAu = 2_000_000 / 149_597_870.7;
+
+      expect(component['formatMarketDistanceKmTooltip'](oneThousandKmInAu)).toContain('K km');
+      expect(component['formatMarketDistanceKmTooltip'](twoMillionKmInAu)).toContain('M km');
+    });
+
+    it('formats travel estimate for sub-hour and multi-hour travel', () => {
+      expect(component['formatMarketTravelEstimate'](0.01).toLowerCase()).toContain('less than 1 hour');
+      expect(component['formatMarketTravelEstimate'](0.5)).toContain('hours');
+    });
+
+    it('formats singular hour label when rounded travel time equals one hour', () => {
+      let oneHourDistanceAu: number | null = null;
+      for (let distance = 0.01; distance <= 2; distance += 0.01) {
+        const hours = estimateTravelHours(distance, component['activeDriveProfile']());
+        if (hours >= 1 && Math.round(hours) === 1) {
+          oneHourDistanceAu = distance;
+          break;
+        }
+      }
+
+      expect(oneHourDistanceAu).not.toBeNull();
+      expect(component['formatMarketTravelEstimate'](oneHourDistanceAu!)).toContain('1 hour');
+    });
+
+    it('returns no-route label when cross-system market has no gate route', () => {
+      const market: MarketSummary = {
+        marketId: 'wolf-outpost',
+        solarSystemId: 'wolf-359',
+        marketName: 'Wolf Outpost',
+        siteType: 'station',
+        siteName: 'Wolf Hub',
+        spatial: { solarSystemId: 'wolf-359', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+        isDocked: false,
+        priceMultiplier: 1,
+        driftPercentPerHour: 6,
+        restockIntervalMinutes: 60,
+        route: { kind: 'no-route' },
+      };
+
+      expect(component['requiredDriveNameForMarket'](market)).toBe('no known gate route');
+      expect(component['marketRouteLabel'](market)).toBe('No route');
+    });
+
+    it('classifies cross-system market as no-route when server route is absent and BFS finds no path', () => {
+      const market: MarketSummary = {
+        marketId: 'kepler-outpost',
+        solarSystemId: 'kepler-442',
+        marketName: 'Kepler Outpost',
+        siteType: 'station',
+        siteName: 'Kepler Hub',
+        spatial: { solarSystemId: 'kepler-442', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+        isDocked: false,
+        priceMultiplier: 1,
+        driftPercentPerHour: 6,
+        restockIntervalMinutes: 60,
+      };
+
+      expect(component['marketRouteStatus'](market)).toBe('no-route');
+      expect(component['marketRouteLabel'](market)).toBe('No route');
+    });
+
+    it('returns unknown distance required-drive label for invalid in-system distance', () => {
+      const market: MarketSummary = {
+        marketId: 'sol-unknown',
+        solarSystemId: 'sol',
+        marketName: 'Unknown Range Market',
+        siteType: 'station',
+        siteName: 'Unknown Ring',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1 },
+        distanceAu: Number.NaN,
+        isDocked: false,
+        priceMultiplier: 1,
+        driftPercentPerHour: 6,
+        restockIntervalMinutes: 60,
+      };
+
+      expect(component['requiredDriveNameForMarket'](market)).toBe('Unknown distance');
+      expect(component['isMarketWithinDriveRange'](market)).toBeFalse();
+    });
+
+    it('allows transact when response marks market itself as docked', () => {
+      const market: MarketSummary = {
+        marketId: 'sol-ceres-exchange',
+        solarSystemId: 'sol',
+        marketName: 'Ceres Exchange',
+        siteType: 'station',
+        siteName: 'Ceres Belt Trade Ring',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 1 },
+        distanceAu: 0.01,
+        isDocked: true,
+        priceMultiplier: 1,
+        driftPercentPerHour: 6,
+        restockIntervalMinutes: 60,
+      };
+
+      expect(component['canTransactAtMarket'](market)).toBeTrue();
+    });
+
+    it('resolves active drive profile when active ship is missing', () => {
+      sessionService.activeShip.set(null as any);
+      expect(component['activeDriveProfile']().name.length).toBeGreaterThan(0);
+      expect(component['activeDriveRangeAu']()).toBeGreaterThan(0);
     });
   });
 

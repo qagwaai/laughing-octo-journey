@@ -18,6 +18,7 @@ import { environment } from '../../environments/environment';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
 import { Sol } from '../component/sol';
+import { FramePressureSampler } from './ship-exterior/frame-pressure-sampler';
 import {
   clearMissionGatePendingRetry,
   createInitialMissionGateState,
@@ -182,6 +183,12 @@ declare global {
  * Real-time ship-exterior scene controller for scanning, mission gating, and launch actions.
  */
 export default class ShipExteriorViewScene implements OnInit, OnDestroy {
+  // --- Phase 3: Frame-pressure & Quality Scaler ---
+  private readonly framePressureSampler = new FramePressureSampler(30); // Configurable window size
+  private lastTickTimestamp: number | null = null;
+  private readonly _qualityScaler = signal(1); // [0,1], 1 = best quality
+  private readonly qualityScaler = this._qualityScaler;
+  private readonly framePressureAvg = computed(() => this.framePressureSampler.getAverage());
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SCAN_TOTAL_MS = 10000;
   private static readonly SCAN_STEP = 100 / (ShipExteriorViewScene.SCAN_TOTAL_MS / ShipExteriorViewScene.SCAN_TICK_MS);
@@ -205,6 +212,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly FLIGHT_MOUSE_SENSITIVITY_MAX = 0.007;
   private static readonly FLIGHT_MAX_PITCH_RAD = Math.PI * 0.48;
   private static readonly SCENE_ENVIRONMENT_INTENSITY = 0.35;
+  private static readonly QUALITY_SCALER_CAP_MULTIPLIER_THRESHOLD = 0.9;
 
   private router = inject(Router);
   private socketService = inject(SocketService);
@@ -537,7 +545,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return 'DETAIL // pre-scan low (0-1)';
     }
 
-    return 'DETAIL // post-scan high (2) except octahedron(0)';
+      return 'DETAIL // post-scan mesh swap (rock profile)';
   });
   readonly asteroidRenderTiers = computed<Map<string, AsteroidRenderTier>>(() => {
     const camera = this.store?.snapshot.camera;
@@ -545,6 +553,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       ? [camera.position.x, camera.position.y, camera.position.z]
       : [0, 0, 6.6];
 
+    // Phase 3: Plumb qualityScaler as capMultiplier for dynamic LOD
     return assignAsteroidRenderTiers(
       this.asteroidSamples(),
       {
@@ -555,6 +564,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       },
       DEFAULT_ASTEROID_TIER_CAPS,
       DEFAULT_ASTEROID_TIER_DISTANCES,
+      this.resolveAsteroidCapMultiplier(),
     );
   });
   readonly asteroidDebugTierText = computed(() => {
@@ -565,6 +575,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const tier = this.asteroidRenderTiers().get(sample.id) ?? 'background';
     return `TIER // ${tier.toUpperCase()}`;
   });
+
+  // --- Phase 3: Debug HUD lines ---
+  readonly framePressureLine = computed(() => `FRAME PRESSURE // ${this.framePressureAvg().toFixed(2)} ms`);
+  readonly qualityScalerLine = computed(() => `QUALITY SCALER // ${(this.qualityScaler() * 100).toFixed(0)}%`);
+
+  private resolveAsteroidCapMultiplier(): { capMultiplier?: number } | undefined {
+    const qualityScaler = this.qualityScaler();
+    if (qualityScaler >= ShipExteriorViewScene.QUALITY_SCALER_CAP_MULTIPLIER_THRESHOLD) {
+      return undefined;
+    }
+
+    return { capMultiplier: qualityScaler };
+  }
+
   resolveAsteroidRenderTier(sampleId: string): AsteroidRenderTier {
     return this.asteroidRenderTiers().get(sampleId) ?? 'background';
   }
@@ -1917,6 +1941,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private tickScene(): void {
+    // --- Phase 3: Frame-pressure sampling ---
+    const now = performance.now();
+    if (this.lastTickTimestamp !== null) {
+      const delta = now - this.lastTickTimestamp;
+      this.framePressureSampler.addSample(delta);
+      // Best guess: 16.7ms (60fps) = 1.0, 33ms (30fps) = 0.5, 50ms+ = 0.2
+      let scaler = 1;
+      if (delta > 50) scaler = 0.2;
+      else if (delta > 33) scaler = 0.5;
+      else if (delta > 20) scaler = 0.8;
+      else scaler = 1;
+      // Rolling average for stability
+      const avg = this.framePressureSampler.getAverage();
+      if (avg > 50) scaler = 0.2;
+      else if (avg > 33) scaler = 0.5;
+      else if (avg > 20) scaler = 0.8;
+      else scaler = 1;
+      this._qualityScaler.set(scaler);
+    }
+    this.lastTickTimestamp = now;
+
     this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
     if (!this.sceneEnvironmentInstalled) {
       this.installSceneEnvironment();

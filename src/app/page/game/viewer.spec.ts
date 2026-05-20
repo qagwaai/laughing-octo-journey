@@ -10,6 +10,7 @@ import {
 import { SOLAR_SYSTEM_LIST_REQUEST_EVENT, SOLAR_SYSTEM_LIST_RESPONSE_EVENT } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 import ViewerPage from './viewer';
 
 function setup(options: {
@@ -17,6 +18,10 @@ function setup(options: {
   sessionService: MockSessionService;
   navigationState?: Record<string, unknown>;
 }) {
+  const viewerTargetService = {
+    clearTarget: jasmine.createSpy('clearTarget'),
+  };
+
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: jasmine.createSpy('navigate'),
@@ -27,6 +32,7 @@ function setup(options: {
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: ViewerTargetService, useValue: viewerTargetService },
       { provide: Router, useValue: mockRouter },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -34,7 +40,7 @@ function setup(options: {
 
   const fixture = TestBed.createComponent(ViewerPage);
   fixture.detectChanges();
-  return { fixture, component: fixture.componentInstance, mockRouter };
+  return { fixture, component: fixture.componentInstance, mockRouter, viewerTargetService };
 }
 
 describe('ViewerPage', () => {
@@ -98,8 +104,49 @@ describe('ViewerPage', () => {
     expect(component['solarSystems']().length).toBe(0);
   });
 
+  it('sets missing-session error when session key is absent', () => {
+    const { component } = setup({
+      socketService,
+      sessionService: createMockSessionService(null),
+      navigationState: { playerName: 'Pioneer' },
+    });
+
+    expect(component['listError']()).toContain('missing-session');
+    expect(component['solarSystems']()).toEqual([]);
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
+
+  it('sets missing-session error when player name is absent', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {},
+    });
+
+    expect(component['listError']()).toContain('missing-session');
+    expect(component['solarSystems']()).toEqual([]);
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
+
+  it('falls back to an empty list when successful response omits solarSystems', () => {
+    const { component, fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer' },
+    });
+
+    socketService.triggerOnceEvent(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+    });
+    fixture.detectChanges();
+
+    expect(component['solarSystems']()).toEqual([]);
+    expect(component['listError']()).toBeNull();
+  });
+
   it('navigates to details + scene outlets when a system is selected', () => {
-    const { component, mockRouter } = setup({
+    const { component, mockRouter, viewerTargetService } = setup({
       socketService,
       sessionService,
       navigationState: { playerName: 'Pioneer' },
@@ -109,11 +156,25 @@ describe('ViewerPage', () => {
     component['selectSystem'](system);
 
     expect(mockRouter.navigate).toHaveBeenCalled();
+    expect(viewerTargetService.clearTarget).toHaveBeenCalled();
+    expect(component['selectedSystemId']()).toBe('sol');
     const args = mockRouter.navigate.calls.mostRecent().args;
     expect(args[0]).toEqual([{ outlets: { left: ['solar-system-details', 'sol'], right: ['viewer-scene', 'sol'] } }]);
     expect(args[1].state).toEqual(
       jasmine.objectContaining({ solarSystem: system, playerName: 'Pioneer' }),
     );
+  });
+
+  it('formats non-finite and finite distances', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer' },
+    });
+
+    expect(component['formatDistance'](undefined)).toBe('—');
+    expect(component['formatDistance'](Number.NaN)).toBe('—');
+    expect(component['formatDistance'](1.236)).toBe('1.24');
   });
 
   it('reports unlock predicate as true for all characters in the MVP', () => {

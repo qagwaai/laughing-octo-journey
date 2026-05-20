@@ -9,6 +9,7 @@ import {
   generateRandomAsteroidBeltClusterCenterKm,
   generateRandomCelestialBodyLocationNear,
 } from '../model/math/celestial-body-location';
+import { generateRandomAsteroidMeshProfile } from '../model/catalog/asteroid-mesh-profiles';
 import type { MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import type { Triple } from '../model/shared/triple';
@@ -159,6 +160,7 @@ function generateAsteroidSamples(
     samples.push({
       id: `sample-a${i + 1}`,
       serverCelestialBodyId: null,
+      meshProfileKey: generateRandomAsteroidMeshProfile(random).meshProfileKey,
       position: basePosition,
       basePosition,
       scanProgress: 0,
@@ -264,6 +266,7 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
       return {
         ...sample,
         serverCelestialBodyId: existingBody.id,
+        meshProfileKey: existingBody.meshProfileKey ?? sample.meshProfileKey,
         scanProgress: shouldTreatAsScanned ? 100 : 0,
         scanned: shouldTreatAsScanned,
         revealedMaterial: resolvedMaterial,

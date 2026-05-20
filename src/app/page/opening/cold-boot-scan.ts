@@ -78,6 +78,8 @@ export default class ColdBootScanPage {
       this.shipExteriorView()?.flightMovementVectorsLine() ??
       'MOVE // FWD(0.00,0.00,-1.00) RIGHT(1.00,0.00,0.00) UP(0.00,1.00,0.00)',
   );
+  protected framePressureLine = computed(() => this.shipExteriorView()?.framePressureLine() ?? 'FRAME PRESSURE // 0.00 ms');
+  protected qualityScalerLine = computed(() => this.shipExteriorView()?.qualityScalerLine() ?? 'QUALITY SCALER // 100%');
   protected showAsteroidDebugTag = computed(() => this.shipExteriorView()?.showAsteroidDebugTag() ?? false);
   protected asteroidDebugHeaderText = computed(
     () => this.shipExteriorView()?.asteroidDebugHeaderText() ?? 'ASTEROID DEBUG // NO SAMPLE',

@@ -9,6 +9,7 @@ import type { Triple } from './triple';
 export interface AsteroidScanSample {
   id: string;
   serverCelestialBodyId: string | null;
+  meshProfileKey?: string | null;
   position: [number, number, number];
   basePosition: [number, number, number];
   scanProgress: number;

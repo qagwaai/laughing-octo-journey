@@ -14,6 +14,8 @@
     <ngt-icosahedron-geometry *args="[0.55, activeDetail()]" />
     } @else if (activeGeometry() === 'octahedron') {
     <ngt-octahedron-geometry *args="[0.55, activeDetail()]" />
+    } @else if (activeGeometry() === 'rock') {
+    <ngt-sphere-geometry *args="[0.55, 20, 20]" />
     } @else {
     <ngt-dodecahedron-geometry *args="[0.55, activeDetail()]" />
     }

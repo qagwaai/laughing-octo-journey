@@ -285,6 +285,68 @@ describe('MissionBoardPage', () => {
     expect(socketService.registeredListeners.has(MISSION_LIST_RESPONSE_EVENT)).toBe(false);
   });
 
+  it('computes available and locked catalog missions from completed prerequisites', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    component['missions'].set([{ missionId: 'first-target', status: 'completed' } as any]);
+
+    const availableIds = component['availableCatalogMissions']().map((mission) => mission.id);
+    const lockedIds = component['lockedCatalogMissions']().map((mission) => mission.id);
+
+    expect(availableIds).toContain('m-01');
+    expect(lockedIds).toContain('m-02');
+  });
+
+  it('returns mission status directly for non-ship mission types', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    const displayStatus = component.getMissionDisplayStatus({
+      missionId: 'm-01',
+      status: 'available',
+    } as any);
+
+    expect(displayStatus).toBe('available');
+  });
+
+  it('returns mission title fallback when mission id is unknown', () => {
+    const { component } = setup({ socketService, sessionService });
+
+    expect(component.getMissionTitle('unknown-mission')).toBe('unknown-mission');
+  });
+
+  it('returns mission type labels for main and side missions', () => {
+    const { component } = setup({ socketService, sessionService });
+
+    expect(component.getMissionTypeLabel('main')).toBe('Main');
+    expect(component.getMissionTypeLabel('side')).toBe('Side Quest');
+  });
+
+  it('showGuardedMenu is true for left outlet', () => {
+    const { component } = setup({ socketService, sessionService, outlet: 'left' });
+
+    expect(component['showGuardedMenu']()).toBeTrue();
+  });
+
+  it('showGuardedMenu is false for right outlet', () => {
+    const { component } = setup({ socketService, sessionService, outlet: 'right' });
+
+    expect(component['showGuardedMenu']()).toBeFalse();
+  });
+
   describe('getMissionStageInfo', () => {
     it('should return initial stage when statusDetail is absent', () => {
       const { component } = setup({

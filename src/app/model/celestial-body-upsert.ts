@@ -11,6 +11,10 @@ export interface CelestialBodyUpsertVisualization {
   textureKey?: string | null;
 }
 
+export interface CelestialBodyMeshProfile {
+  meshProfileKey?: string | null;
+}
+
 export interface CelestialBodyUpsertPhysicalCatalog {
   estimatedDiameterM?: number;
   estimatedMassKg?: number;
@@ -53,6 +57,8 @@ export interface CelestialBodyUpsertEntity {
   physicalCatalog?: CelestialBodyUpsertPhysicalCatalog;
   /** Optional viewer-native visualization hint (color/texture). */
   visualization?: CelestialBodyUpsertVisualization;
+  /** Optional viewer-native asteroid mesh profile hint. */
+  meshProfileKey?: string | null;
   composition?: AsteroidMaterialProfile;
   observability: ObservabilityState;
   /** Lifecycle state: unscanned | active | destroyed. Defaults to 'active'. */

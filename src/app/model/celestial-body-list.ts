@@ -22,6 +22,7 @@ export interface CelestialBodyListItem {
   catalogId: string;
   sourceScanId: string;
   createdByCharacterId: string;
+  meshProfileKey?: string | null;
   missionId?: string;
   missionInstanceId?: string | null;
   createdAt: string;

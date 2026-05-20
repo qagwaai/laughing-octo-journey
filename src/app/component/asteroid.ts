@@ -15,6 +15,12 @@ import {
 import { beforeRender as _beforeRender, injectStore, NgtArgs } from 'angular-three';
 import * as THREE from 'three';
 import { AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
+import {
+  generateRandomAsteroidMeshProfile,
+  resolveAsteroidMeshProfile,
+  type AsteroidMeshGeometryKind,
+  type AsteroidMeshProfile,
+} from '../model/catalog/asteroid-mesh-profiles';
 import { AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { CelestialBodyLocation } from '../model/math/celestial-body-location';
 import { Triple } from '../model/shared/triple';
@@ -30,13 +36,9 @@ export interface AsteroidPointerButtonEvent {
   button: number;
 }
 
-export type AsteroidGeometryKind = 'dodecahedron' | 'icosahedron' | 'octahedron';
+export type AsteroidGeometryKind = AsteroidMeshGeometryKind;
 
-export interface AsteroidRevealProfile {
-  geometry: AsteroidGeometryKind;
-  detail: number;
-  scale: [number, number, number];
-}
+export interface AsteroidRevealProfile extends AsteroidMeshProfile {}
 
 const MORPH_PULSE_DURATION_SECONDS = 0.28;
 
@@ -86,19 +88,7 @@ export function resolveAsteroidSweepOpacity(hovered: boolean): number {
 }
 
 export function generateRandomAsteroidRevealProfile(random: () => number = Math.random): AsteroidRevealProfile {
-  const geometryPool: AsteroidGeometryKind[] = ['dodecahedron', 'icosahedron', 'octahedron'];
-  const geometry = geometryPool[Math.floor(random() * geometryPool.length)] ?? 'dodecahedron';
-  const detail = geometry === 'octahedron' ? 0 : random() > 0.5 ? 1 : 0;
-
-  const scaleX = 0.86 + random() * 0.42;
-  const scaleY = 0.78 + random() * 0.58;
-  const scaleZ = 0.84 + random() * 0.44;
-
-  return {
-    geometry,
-    detail,
-    scale: [Number(scaleX.toFixed(2)), Number(scaleY.toFixed(2)), Number(scaleZ.toFixed(2))],
-  };
+  return generateRandomAsteroidMeshProfile(random);
 }
 
 export function resolveAsteroidGeometryDetail(
@@ -109,6 +99,10 @@ export function resolveAsteroidGeometryDetail(
 ): number {
   if (!scanned) {
     return Math.max(0, Math.min(1, baseDetail));
+  }
+
+  if (geometry === 'rock') {
+    return 0;
   }
 
   const scannedDefault = geometry === 'octahedron' ? 0 : 2;
@@ -170,6 +164,7 @@ export class Asteroid {
   revealedClusterCenterKm = input<Triple | null>(null);
   renderTier = input<AsteroidRenderTier>('near');
   detailOverride = input<number | null>(null);
+  meshProfileKey = input<string | null>(null);
 
   @Output() hoverChange = new EventEmitter<AsteroidHoverEvent>();
   @Output() pointerButtonDown = new EventEmitter<AsteroidPointerButtonEvent>();
@@ -191,11 +186,14 @@ export class Asteroid {
     const progress = elapsed / MORPH_PULSE_DURATION_SECONDS;
     return Math.sin(progress * Math.PI);
   });
-  protected activeGeometry = computed(() => this.revealProfile().geometry);
+  protected activeGeometry = computed(() => {
+    const profile = this.revealProfile();
+    return this.scanned() ? profile.revealGeometry : profile.geometry;
+  });
   protected activeDetail = computed(() =>
     resolveAsteroidGeometryDetail(
       this.activeGeometry(),
-      this.revealProfile().detail,
+      this.scanned() ? this.revealProfile().revealDetail : this.revealProfile().detail,
       this.scanned(),
       this.detailOverride(),
     ),
@@ -320,6 +318,15 @@ export class Asteroid {
   protected sweepOpacity = computed(() => resolveAsteroidSweepOpacity(this.hovered()));
   protected targetHoldRingOpacity = computed(() => (this.targetingHold() ? 0.95 : 0));
   protected targetedRingOpacity = computed(() => (this.targeted() ? 0.9 : 0));
+
+  private readonly meshProfileSync = effect(() => {
+    const parsed = resolveAsteroidMeshProfile(this.meshProfileKey(), this.revealProfile());
+    if (parsed.meshProfileKey === this.revealProfile().meshProfileKey) {
+      return;
+    }
+
+    this.revealProfile.set(parsed);
+  });
 
   constructor() {
     const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);

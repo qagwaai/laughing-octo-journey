@@ -125,6 +125,7 @@ export class ShipExteriorCelestialBodyController {
             colorHex: material?.textureColor,
             textureKey: null,
           },
+          meshProfileKey: sample.meshProfileKey ?? null,
           composition: material ?? undefined,
           observability: {
             visibility: 'visible',

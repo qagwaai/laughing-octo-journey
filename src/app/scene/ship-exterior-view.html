@@ -25,6 +25,7 @@
     [scanned]="sample.scanned"
     [revealedMaterial]="sample.revealedMaterial"
     [revealedKinematics]="sample.revealedKinematics"
+    [meshProfileKey]="sample.meshProfileKey ?? null"
     [revealedLocation]="sample.scanned ? sample.solarSystemLocation : null"
     [revealedClusterCenterKm]="sample.scanned ? sample.clusterCenterKm : null"
     [renderTier]="resolveAsteroidRenderTier(sample.id)"

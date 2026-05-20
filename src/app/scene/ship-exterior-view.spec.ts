@@ -46,6 +46,7 @@ function makeSample(id: string, overrides: Partial<AsteroidScanSample> = {}): As
   return {
     id,
     serverCelestialBodyId: null,
+    meshProfileKey: null,
     position: [0, 0, 0],
     basePosition: [0, 0, 0],
     scanProgress: 0,

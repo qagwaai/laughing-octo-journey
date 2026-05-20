@@ -7,7 +7,9 @@ import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { DEFAULT_SHIP_MODEL } from '../../model/ship-list';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { SessionService } from '../../services/session.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { SocketService } from '../../services/socket.service';
 import RepairRetrofitItemsPage from './repair-retrofit-items';
@@ -100,12 +102,24 @@ function setup(state?: NavigationState) {
   const mockSocket = createSocketWithUpsert();
   const mockSession = createMockSessionService('test-session-key');
   const mockPrinter = createMockPrinterStateService();
+  const loadQueueSpy = spyOn(mockPrinter, 'loadQueue').and.callThrough();
+  const mockSocketLifecycle = {
+    runWhenConnected: jasmine.createSpy('runWhenConnected').and.callFake((action: () => void) => action()),
+  };
+  const mockConsumedItemShadowService = {
+    markConsumed: jasmine.createSpy('markConsumed'),
+    filterInventory: jasmine.createSpy('filterInventory').and.callFake(
+      (_playerName: string, _characterId: string, inventory: any[] | undefined) => [...(inventory ?? [])],
+    ),
+  };
 
   TestBed.configureTestingModule({
     imports: [RepairRetrofitItemsPage],
     providers: [
       { provide: Router, useValue: mockRouter },
       { provide: SocketService, useValue: mockSocket },
+      { provide: SocketLifecycleService, useValue: mockSocketLifecycle },
+      { provide: ConsumedItemShadowService, useValue: mockConsumedItemShadowService },
       { provide: SessionService, useValue: mockSession },
       { provide: PrinterStateService, useValue: mockPrinter },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSyncService },
@@ -116,10 +130,38 @@ function setup(state?: NavigationState) {
 
   const fixture = TestBed.createComponent(RepairRetrofitItemsPage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter, mockSocket, mockSession, mockPrinter };
+  return {
+    component: fixture.componentInstance,
+    fixture,
+    mockRouter,
+    mockSocket,
+    mockSession,
+    mockPrinter,
+    loadQueueSpy,
+    mockSocketLifecycle,
+    mockConsumedItemShadowService,
+  };
 }
 
 describe('RepairRetrofitItemsPage - initialization', () => {
+  it('loads printer queue on connected lifecycle when player and character are present', () => {
+    const { loadQueueSpy } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+    });
+
+    expect(loadQueueSpy).toHaveBeenCalledWith('Pioneer', 'c-1');
+  });
+
+  it('does not load printer queue when lifecycle runs without required context', () => {
+    const { loadQueueSpy } = setup({
+      playerName: ' ',
+      joinCharacter: { id: '', characterName: 'Nova' },
+    });
+
+    expect(loadQueueSpy).not.toHaveBeenCalled();
+  });
+
   it('should initialize signals from navigation state', () => {
     const { component } = setup({
       playerName: 'Pioneer',
@@ -222,6 +264,36 @@ describe('RepairRetrofitItemsPage - allAssets', () => {
     expect(shipSystemEntries.length).toBe(2);
     expect(shipSystemEntries[0].systemCode).toBe('propulsion');
     expect(shipSystemEntries[1].systemCode).toBe('navigation');
+  });
+
+  it('normalizes ship systems even when repairPriority is omitted in raw profile', () => {
+    const { component } = setup({
+      joinShip: { id: 's-1', name: '', model: '' },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Systems damaged.',
+        systems: [
+          {
+            code: 'nav',
+            label: 'Navigation',
+            severity: 'critical',
+            summary: 'Failed.',
+            repairPriority: 1,
+          },
+          {
+            code: 'life-support',
+            label: 'Life Support',
+            severity: 'major',
+            summary: 'Intermittent.',
+          },
+        ],
+      },
+    });
+
+    const systemEntries = component['allAssets']().filter((a: RepairAssetEntry) => a.kind === 'ship-system');
+    expect(systemEntries.map((entry: RepairAssetEntry) => entry.systemCode)).toContain('nav');
+    expect(systemEntries.map((entry: RepairAssetEntry) => entry.systemCode)).toContain('life-support');
+    expect(systemEntries.every((entry: RepairAssetEntry) => typeof entry.repairPriority === 'number')).toBe(true);
   });
 
   it('should include inventory-item entries for each inventory item', () => {
@@ -499,6 +571,28 @@ describe('RepairRetrofitItemsPage - groupedAssets', () => {
     const sorted = [...names].sort((a: string, b: string) => a.localeCompare(b));
     expect(names).toEqual(sorted);
   });
+
+  it('groups normalized assets by priority-band without errors', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        name: '',
+        model: '',
+      },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [
+          { code: 'nav', label: 'Navigation', severity: 'critical', summary: 'Failed.' },
+        ],
+      },
+    });
+
+    component['setGrouping']('priority-band');
+    const groupNames = component['groupedAssets']().map((g: any) => g.group);
+    expect(groupNames.length).toBeGreaterThan(0);
+    expect(groupNames.every((name: string) => name.startsWith('Priority'))).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -698,6 +792,25 @@ describe('RepairRetrofitItemsPage - action helpers', () => {
     expect(component['getBlockedReason'](itemEntry)).toBe('Requires mission salvage parts not yet available');
   });
 
+  it('should show dock-lock blocked reason for critical ship assets', () => {
+    const { component } = setup();
+    const criticalShip: RepairAssetEntry = { ...shipEntry, severity: 'critical' };
+    expect(component['getBlockedReason'](criticalShip)).toBe('Dock lock and bay supervisor authorization required');
+  });
+
+  it('returns grouping label text for each grouping mode', () => {
+    const { component } = setup();
+
+    component['setGrouping']('asset-type');
+    expect(component['getGroupingLabel']()).toBe('Asset Type');
+
+    component['setGrouping']('severity');
+    expect(component['getGroupingLabel']()).toBe('Severity');
+
+    component['setGrouping']('priority-band');
+    expect(component['getGroupingLabel']()).toBe('Priority');
+  });
+
   it('should track the active repair key per asset', () => {
     const { component } = setup();
     expect(component['isRepairing'](shipEntry)).toBe(false);
@@ -769,6 +882,394 @@ describe('RepairRetrofitItemsPage - full ship repair emits inventory patch', () 
     expect(shipUpsertEmit).toBeDefined();
     expect(shipUpsertEmit?.data?.ship?.inventory).toBeDefined();
     expect(shipUpsertEmit?.data?.ship?.inventory.map((item: any) => item.id)).toEqual(['iron-1']);
+  });
+});
+
+describe('RepairRetrofitItemsPage - queue and detail routing branches', () => {
+  it('queues hull patch kit when required consumables are available', () => {
+    const { component, mockSocket, mockPrinter } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
+      },
+    });
+    const addSpy = spyOn(mockPrinter, 'addToQueue').and.callThrough();
+
+    // Simulate successful consume-material upsert callback chain.
+    (mockSocket as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb?: (r: any) => void) => cb?.({ success: true }));
+
+    component['queueForPrinting']();
+
+    expect(addSpy).toHaveBeenCalled();
+    expect(component['persistSuccess']()).toContain('sent to the 3D Fabricator');
+  });
+
+  it('shows consume error and stops queue flow when material consume fails', () => {
+    const { component, mockSocket, mockPrinter } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
+      },
+    });
+    const addSpy = spyOn(mockPrinter, 'addToQueue').and.callThrough();
+
+    (mockSocket as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb?: (r: any) => void) => cb?.({ success: false, message: 'consume failed' }));
+
+    component['queueForPrinting']();
+
+    expect(addSpy).not.toHaveBeenCalled();
+    expect(component['persistError']()).toContain('consume failed');
+  });
+
+  it('uses default consume error text when backend message is absent', () => {
+    const { component, mockSocket, mockPrinter } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
+      },
+    });
+    const addSpy = spyOn(mockPrinter, 'addToQueue').and.callThrough();
+
+    (mockSocket as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb?: (r: any) => void) => cb?.({ success: false }));
+
+    component['queueForPrinting']();
+
+    expect(addSpy).not.toHaveBeenCalled();
+    expect(component['persistError']()).toContain('Unable to consume');
+  });
+
+  it('uses requirement fallback text when no materials are missing', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
+      },
+    });
+
+    const message = component['getHullPatchKitRequirementMessage']();
+    expect(message).toContain('required in ship inventory');
+  });
+
+  it('requires full queue context when character and session are missing', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: null,
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained' }],
+      },
+    });
+
+    component['queueForPrinting']();
+
+    expect(component['persistError']()).toContain('required in ship inventory');
+  });
+
+  it('resolves hull patch kit by display name and nullable state', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        inventory: [
+          {
+            id: 'kit-display',
+            itemType: null,
+            displayName: 'Standard Hull Patch Kit Mk I',
+            state: null,
+            destroyedAt: null,
+            destroyedReason: null,
+          },
+        ],
+      },
+    });
+
+    const kit = component['resolveHullPatchKitItem'](component['joinShip']());
+    expect(kit?.id).toBe('kit-display');
+  });
+
+  it('navigates to the expected detail routes by asset kind', () => {
+    const { component, mockRouter } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+    });
+
+    component['navigateToRepairDetail']({
+      key: 'ship:s-1',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'damaged',
+      summary: 'breach',
+      shipId: 's-1',
+    });
+    component['navigateToRepairDetail']({
+      key: 'ship-system:nav',
+      kind: 'ship-system',
+      label: 'Navigation',
+      severity: 'critical',
+      summary: 'down',
+      shipId: 's-1',
+      systemCode: 'nav',
+    });
+    component['navigateToRepairDetail']({
+      key: 'inventory-item:i-1',
+      kind: 'inventory-item',
+      label: 'Iron',
+      severity: 'damaged',
+      summary: 'dent',
+      shipId: 's-1',
+      itemId: 'i-1',
+    });
+
+    const routes = mockRouter.navigate.calls.allArgs().map((args) => args[0][0].outlets.right[0]);
+    expect(routes).toContain('repair-retrofit-ship-detail');
+    expect(routes).toContain('repair-retrofit-system-detail');
+    expect(routes).toContain('repair-retrofit-item-detail');
+  });
+});
+
+describe('RepairRetrofitItemsPage - repair path edge cases', () => {
+  it('does not attempt repair when asset is intact', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+    });
+
+    component['repairAsset']({
+      key: 'ship:s-1',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'intact',
+      summary: 'ok',
+      shipId: 's-1',
+    });
+
+    expect(mockSocket.emittedEvents.length).toBe(0);
+  });
+
+  it('reports missing context when attempting system repair without profile', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: null,
+      damageProfile: null,
+    });
+
+    component['repairAsset']({
+      key: 'ship-system:nav',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'damaged',
+      summary: 'broken',
+      shipId: 's-1',
+      systemCode: 'nav',
+    });
+
+    expect(component['persistError']()).toContain('ship or session context');
+  });
+
+  it('handles inventory item repair success and updates item status', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [
+          { id: 'item-1', itemType: 'iron', displayName: 'Iron', damageStatus: 'damaged', state: 'contained' },
+        ],
+      },
+    });
+
+    (mockSocket as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb?: (r: any) => void) =>
+        cb?.({
+          success: true,
+          item: {
+            id: 'item-1',
+            itemType: 'iron',
+            displayName: 'Iron',
+            damageStatus: 'intact',
+            state: 'contained',
+          },
+        }),
+      );
+
+    component['repairInventoryAsset']({
+      key: 'inventory-item:item-1',
+      kind: 'inventory-item',
+      label: 'Iron',
+      severity: 'damaged',
+      summary: 'dent',
+      shipId: 's-1',
+      itemId: 'item-1',
+    });
+
+    expect(component['joinShip']()?.inventory?.[0]?.damageStatus).toBe('intact');
+    expect(component['persistSuccess']()).toContain('repaired');
+  });
+
+  it('sets ship repair persist error when upsert response fails', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
+      },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+      },
+    });
+
+    component['repairShipAsset']({
+      key: 'ship:s-1',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'damaged',
+      summary: 'Breach.',
+      shipId: 's-1',
+    });
+
+    mockSocket.triggerOnceEvent('ship-upsert-response', { success: false, message: 'ship write failed' });
+
+    expect(component['persistError']()).toBe('ship write failed');
+    expect(component['activeRepairKey']()).toBeNull();
+  });
+
+  it('falls back to localized ship repair persist error when backend omits message', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [{ id: 'kit-1', itemType: 'hull-patch-kit', displayName: 'Hull Patch Kit', state: 'contained' }],
+      },
+      damageProfile: {
+        overallStatus: 'damaged',
+        summary: 'Breach.',
+        systems: [],
+      },
+    });
+
+    component['repairShipAsset']({
+      key: 'ship:s-1',
+      kind: 'ship',
+      label: 'Scavenger Pod',
+      severity: 'damaged',
+      summary: 'Breach.',
+      shipId: 's-1',
+    });
+
+    mockSocket.triggerOnceEvent('ship-upsert-response', { success: false });
+
+    expect(component['persistError']()).toBe(component['t'].game.repairRetrofitItems.shipRepairPersistFailed);
+  });
+
+  it('sets item repair missing-context error when item lookup fails', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        inventory: [],
+      },
+    });
+
+    component['repairInventoryAsset']({
+      key: 'inventory-item:item-404',
+      kind: 'inventory-item',
+      label: 'Unknown Item',
+      severity: 'damaged',
+      summary: 'missing',
+      shipId: 's-1',
+      itemId: 'item-404',
+    });
+
+    expect(component['persistError']()).toBe('Missing item or session context for repair operation.');
+  });
+
+  it('preserves unrelated inventory entries during successful item repair update', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      joinShip: {
+        id: 's-1',
+        name: 'Scavenger Pod',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+        inventory: [
+          { id: 'item-1', itemType: 'iron', displayName: 'Iron', damageStatus: 'damaged', state: 'contained' },
+          { id: 'item-2', itemType: 'copper', displayName: 'Copper', damageStatus: 'intact', state: 'contained' },
+        ],
+      },
+    });
+
+    (mockSocket as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb?: (r: any) => void) =>
+        cb?.({
+          success: true,
+          item: {
+            id: 'item-1',
+            itemType: 'iron',
+            displayName: 'Iron',
+            damageStatus: 'intact',
+            state: 'contained',
+          },
+        }),
+      );
+
+    component['repairInventoryAsset']({
+      key: 'inventory-item:item-1',
+      kind: 'inventory-item',
+      label: 'Iron',
+      severity: 'damaged',
+      summary: 'dent',
+      shipId: 's-1',
+      itemId: 'item-1',
+    });
+
+    const inventory = component['joinShip']()?.inventory ?? [];
+    expect(inventory.find((item: any) => item.id === 'item-2')?.itemType).toBe('copper');
   });
 });
 

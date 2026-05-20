@@ -15,11 +15,13 @@ export class GameShellPage {
   }
 
   navButton(label: string) {
-    return this.page.locator(`button[aria-label="${label}"]`).first();
+    return this.page.locator(`app-guarded-left-menu button[aria-label="${label}"]`).last();
   }
 
   async openNav(label: string) {
-    await this.navButton(label).click();
+    const button = this.navButton(label);
+    await button.scrollIntoViewIfNeeded();
+    await button.click();
   }
 
   async openViewer() {

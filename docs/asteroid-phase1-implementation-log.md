@@ -187,3 +187,75 @@ Files most relevant to continue from:
 - [src/app/scene/ship-exterior-view.ts](src/app/scene/ship-exterior-view.ts) - env map install + per-frame hook would live here.
 - [src/app/component/asteroid.ts](src/app/component/asteroid.ts) - `renderTier` / `detailOverride` inputs already in place.
 - [docs/asteroid-visual-fidelity-research.md](docs/asteroid-visual-fidelity-research.md) - scene-wide budget policy reference.
+
+## Change Set 4 - Phase 3
+
+### Updated [src/app/scene/ship-exterior/frame-pressure-sampler.ts](src/app/scene/ship-exterior/frame-pressure-sampler.ts)
+
+- Added a lightweight rolling-average frame-pressure sampler with fixed window size and reset support.
+
+### Updated [src/app/scene/ship-exterior-view.ts](src/app/scene/ship-exterior-view.ts)
+
+- Added a private frame-pressure sampler and private `qualityScaler` signal.
+- Sampled frame delta from the scene tick loop and converted it into a rolling quality scaler in `[0, 1]`.
+- Kept `RoomEnvironment` + PMREM scene environment unchanged.
+- Routed asteroid tier assignment through a thresholded cap-multiplier helper so quality reduction only applies after the scaler drops below the best-quality threshold.
+
+### Updated [src/app/scene/ship-exterior/asteroid-tier-selection.ts](src/app/scene/ship-exterior/asteroid-tier-selection.ts)
+
+- Extended `assignAsteroidRenderTiers` with an optional cap-multiplier path.
+- Preserved hero priority while allowing lower-quality conditions to reduce near-tier capacity first.
+
+### Updated [src/app/page/opening/cold-boot-scan.ts](src/app/page/opening/cold-boot-scan.ts)
+### Updated [src/app/page/opening/cold-boot-scan.html](src/app/page/opening/cold-boot-scan.html)
+
+- Exposed frame-pressure and quality-scaler lines in the existing debug HUD panel.
+
+### Updated [src/app/scene/ship-exterior/asteroid-tier-selection.spec.ts](src/app/scene/ship-exterior/asteroid-tier-selection.spec.ts)
+### Added [src/app/scene/ship-exterior/frame-pressure-sampler.spec.ts](src/app/scene/ship-exterior/frame-pressure-sampler.spec.ts)
+
+- Added focused coverage for the cap-multiplier path and the rolling frame-pressure sampler.
+
+### Validation
+
+- Focused Karma run for the new tier-helper and frame-pressure specs: 15 SUCCESS.
+- `npm run test:ci`: 1306 SUCCESS, 0 failures.
+- `npm run build 2>&1 | grep -E "error TS|Error"`: clean (no output, exit code 1 from grep).
+
+## Change Set 5 - Phase 4
+
+### Added [src/app/model/catalog/asteroid-mesh-profiles.ts](src/app/model/catalog/asteroid-mesh-profiles.ts)
+
+- Added a dedicated asteroid mesh profile helper with a persisted `meshProfileKey` and deterministic parse/resolve helpers.
+- Profiles now encode the preview mesh, revealed mesh, and seeded scale so the scanned body can swap to a distinct mesh family while still falling back to deterministic local derivation when no key is present.
+
+### Updated [src/app/model/ship-exterior-asteroid-sample.ts](src/app/model/ship-exterior-asteroid-sample.ts)
+### Updated [src/app/model/celestial-body-upsert.ts](src/app/model/celestial-body-upsert.ts)
+### Updated [src/app/model/celestial-body-list.ts](src/app/model/celestial-body-list.ts)
+
+- Added dedicated `meshProfileKey` fields so the profile can round-trip through seeding, persistence, and resume hydration.
+
+### Updated [src/app/mission/first-target-ship-exterior-mission.ts](src/app/mission/first-target-ship-exterior-mission.ts)
+
+- New and resumed asteroid samples now carry deterministic mesh profile keys.
+- Resumed bodies keep a stored key when present and still fall back to local derivation when it is absent.
+
+### Updated [src/app/scene/ship-exterior/ship-exterior-celestial-body-controller.ts](src/app/scene/ship-exterior/ship-exterior-celestial-body-controller.ts)
+### Updated [src/app/scene/ship-exterior-view.html](src/app/scene/ship-exterior-view.html)
+### Updated [src/app/component/asteroid.ts](src/app/component/asteroid.ts)
+### Updated [src/app/component/asteroid.html](src/app/component/asteroid.html)
+
+- Plumbed `meshProfileKey` through the upsert flow and down into each asteroid instance.
+- Scan completion now swaps the asteroid from the low-poly preview mesh to a separate revealed mesh profile (`rock`/sphere-style reveal family) rather than only increasing detail on the same primitive.
+
+### Updated [src/app/model/catalog/asteroid-mesh-profiles.spec.ts](src/app/model/catalog/asteroid-mesh-profiles.spec.ts)
+### Updated [src/app/component/asteroid.spec.ts](src/app/component/asteroid.spec.ts)
+### Updated [src/app/mission/first-target-ship-exterior-mission.spec.ts](src/app/mission/first-target-ship-exterior-mission.spec.ts)
+
+- Added focused coverage for mesh profile generation/parsing, scan-time mesh swapping, and resume persistence of `meshProfileKey`.
+
+### Validation
+
+- Focused specs for mesh profiles, asteroid swap behavior, and mission hydration: 68 SUCCESS.
+- `npm run test:ci`: 1311 SUCCESS, 0 failures.
+- `npm run build 2>&1 | grep -E "error TS|Error"`: clean (no output, exit code 1 from grep).
