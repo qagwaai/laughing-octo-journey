@@ -666,6 +666,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     return target?.position ?? null;
   });
 
+  protected targetedDebrisPosition = computed<[number, number, number] | null>(() => {
+    const targetedId = this.targetedDebrisId();
+    if (!targetedId) {
+      return null;
+    }
+    const target = this.floatingDebrisItems().find((debris) => debris.id === targetedId);
+    return target ? this.debrisScenePosition(target) : null;
+  });
+
   private resolveAsteroidPosition(
     sample: AsteroidScanSample,
     elapsedSeconds: number,

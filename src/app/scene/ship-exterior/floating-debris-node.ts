@@ -45,17 +45,6 @@ export interface FloatingDebrisPointerEvent {
           [roughness]="0.35"
         />
       </ngt-mesh>
-      @if (targeted()) {
-      <ngt-mesh>
-        <ngt-box-geometry *args="[0.9, 0.9, 0.9]" />
-        <ngt-mesh-basic-material
-          [color]="'#5ad9ff'"
-          [wireframe]="true"
-          [transparent]="true"
-          [opacity]="0.65"
-        />
-      </ngt-mesh>
-      }
     </ngt-group>
   `,
   imports: [NgtArgs],
