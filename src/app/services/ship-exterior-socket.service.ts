@@ -5,6 +5,12 @@ import {
   type CelestialBodyListRequest,
   type CelestialBodyListResponse,
 } from '../model/celestial-body-list';
+import {
+  ITEM_LIST_BY_LOCATION_REQUEST_EVENT,
+  ITEM_LIST_BY_LOCATION_RESPONSE_EVENT,
+  type ItemListByLocationRequest,
+  type ItemListByLocationResponse,
+} from '../model/item-list-by-location';
 import { LAUNCH_ITEM_RESPONSE_EVENT, type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
 import {
   SHIP_LIST_REQUEST_EVENT,
@@ -59,6 +65,25 @@ export class ShipExteriorSocketService {
     );
 
     this.socketService.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, request);
+    return unsubscribe;
+  }
+
+  /**
+   * Requests deployed items around the provided ship position and resolves once.
+   */
+  listNearbyDeployedItems(
+    request: ItemListByLocationRequest,
+    onResponse: (response: ItemListByLocationResponse) => void,
+  ): () => void {
+    const unsubscribe = this.socketService.on(
+      ITEM_LIST_BY_LOCATION_RESPONSE_EVENT,
+      (response: ItemListByLocationResponse) => {
+        unsubscribe();
+        onResponse(response);
+      },
+    );
+
+    this.socketService.emit(ITEM_LIST_BY_LOCATION_REQUEST_EVENT, request);
     return unsubscribe;
   }
 
