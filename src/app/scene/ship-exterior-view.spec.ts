@@ -1078,7 +1078,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   function seedDebris(component: any, id: string, positionKm: { x: number; y: number; z: number }, displayName = 'Sensor Array') {
     const stateService = component['floatingDebrisStateService'] as FloatingDebrisStateService;
     stateService.upsertLocal([
-      { id, itemType: 'sensor_array', displayName, positionKm },
+      { id, itemType: 'sensor-array', displayName, positionKm },
     ]);
     return stateService;
   }
@@ -1165,8 +1165,12 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(mockSocket.upsertItem).toHaveBeenCalledTimes(1);
     const [request, callback] = mockSocket.upsertItem.calls.mostRecent().args;
     expect(request.item.id).toBe('debris-near');
+    expect(request.item.itemType).toBe('sensor-array');
+    expect(request.item.displayName).toBe('Sensor Array');
     expect(request.item.state).toBe('contained');
     expect(request.item.container).toEqual({ containerType: 'ship', containerId: 'ship-1' });
+    expect(request.item.owningPlayerId).toBe('Pilot');
+    expect(request.item.owningCharacterId).toBe('char-1');
     expect(request.correlationSource).toBe('ship-exterior.tractor-beam');
 
     // Optimistic removal happened before the response arrived.
@@ -1237,7 +1241,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     service.upsertLocal([
       {
         id: 'debris-props',
-        itemType: 'sensor_array',
+        itemType: 'sensor-array',
         displayName: 'Sensor Array',
         positionKm: { x: 3, y: 4, z: 0 },
         state: 'deployed',
@@ -1245,7 +1249,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
       },
     ]);
     component['onDebrisHoverChange']({ id: 'debris-props', hovering: true });
-    expect(component['debrisPropertiesItemTypeText']()).toBe('ITEM TYPE: SENSOR_ARRAY');
+    expect(component['debrisPropertiesItemTypeText']()).toBe('ITEM TYPE: SENSOR-ARRAY');
     expect(component['debrisPropertiesNameText']()).toBe('NAME: Sensor Array');
     expect(component['debrisPropertiesPositionText']()).toBe('POS KM: X 3.0 Y 4.0 Z 0.0');
     expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: 5.0');

@@ -97,7 +97,7 @@ describe('FloatingDebrisController', () => {
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
-    expect(all[0].itemType).toBe('sensor_array');
+    expect(all[0].itemType).toBe('sensor-array');
     expect(all[0].displayName).toBe('Sensor Array');
     expect(all[0].positionKm).toEqual({ x: 6, y: 2, z: 8 });
   });

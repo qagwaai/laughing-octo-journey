@@ -10,7 +10,7 @@ import type { Triple } from '../../model/triple';
 export const FLOATING_DEBRIS_RADIUS_KM = 50;
 export const FLOATING_DEBRIS_POLL_INTERVAL_MS = 5_000;
 
-const SENSOR_ARRAY_ITEM_TYPE = 'sensor_array';
+const SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
 const SENSOR_ARRAY_DISPLAY_NAME = 'Sensor Array';
 
 export interface FloatingDebrisControllerDeps {

@@ -2167,7 +2167,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
     const playerName = this.playerName().trim();
     const shipId = this.activeShipId().trim();
-    if (!sessionKey || !playerName || !shipId) {
+    const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+    if (!sessionKey || !playerName || !shipId || !characterId) {
       this.setLaunchToast('Missing player/ship context. Cannot fire tractor beam.', 'error', null);
       return;
     }
@@ -2185,10 +2186,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         item: {
           id: debris.id,
           itemType: debris.itemType,
+          displayName: debris.displayName,
           state: 'contained',
           container: { containerType: 'ship', containerId: shipId },
           spatial: null,
           motion: null,
+          owningPlayerId: playerName,
+          owningCharacterId: characterId,
         },
       },
       (response: ItemUpsertResponse) => {
