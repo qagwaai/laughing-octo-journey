@@ -49,6 +49,24 @@ export default class ColdBootScanPage {
     () => this.shipExteriorView()?.propertiesClusterText() ?? 'CLUSTER(Mkm): ---',
   );
   protected propertiesOffsetText = computed(() => this.shipExteriorView()?.propertiesOffsetText() ?? 'OFFSET(km): ---');
+
+  protected showAsteroidProperties = computed(() => this.shipExteriorView()?.showAsteroidProperties() ?? false);
+  protected showDebrisProperties = computed(() => this.shipExteriorView()?.showDebrisProperties() ?? false);
+  protected debrisPropertiesItemTypeText = computed(
+    () => this.shipExteriorView()?.debrisPropertiesItemTypeText() ?? 'ITEM TYPE: UNKNOWN',
+  );
+  protected debrisPropertiesNameText = computed(
+    () => this.shipExteriorView()?.debrisPropertiesNameText() ?? 'NAME: UNKNOWN',
+  );
+  protected debrisPropertiesPositionText = computed(
+    () => this.shipExteriorView()?.debrisPropertiesPositionText() ?? 'POS KM: ---',
+  );
+  protected debrisPropertiesDistanceText = computed(
+    () => this.shipExteriorView()?.debrisPropertiesDistanceText() ?? 'DIST KM: ---',
+  );
+  protected debrisPropertiesStateText = computed(
+    () => this.shipExteriorView()?.debrisPropertiesStateText() ?? 'STATE: ---',
+  );
   protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
   protected showQuickTargetIronControl = computed(() => this.shipExteriorView()?.showQuickTargetIronControl() ?? false);
   protected activeLaunchToast = computed(() => this.shipExteriorView()?.activeLaunchToast() ?? null);

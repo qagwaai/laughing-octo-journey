@@ -91,6 +91,7 @@ import { FloatingDebrisStateService } from '../services/floating-debris-state.se
 import { FloatingDebrisController } from './ship-exterior/floating-debris-controller';
 import {
   FloatingDebrisNode,
+  type FloatingDebrisHoverEvent,
   type FloatingDebrisPointerEvent,
 } from './ship-exterior/floating-debris-node';
 import type { FloatingDebrisItem } from '../model/floating-debris-item';
@@ -484,6 +485,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected activeScanAsteroidId = signal<string | null>(null);
   protected targetedAsteroidId = signal<string | null>(null);
   protected targetedDebrisId = signal<string | null>(null);
+  protected hoveredDebrisId = signal<string | null>(null);
   protected activeTarget = signal<{ kind: 'asteroid' | 'debris'; id: string } | null>(null);
   protected floatingDebrisItems = computed<FloatingDebrisItem[]>(() => this.floatingDebrisStateService.items());
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
@@ -649,9 +651,67 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const tier = this.resolveAsteroidRenderTier(sample.id);
     return resolveAsteroidTierDetailOverride(tier, sample.scanned);
   }
-  readonly showPropertiesPanel = computed(() => !!this.hoveredScannedAsteroid() && !this.propertiesPanelHidden());
-  readonly showPropertiesPanelReveal = computed(() => !!this.hoveredScannedAsteroid() && this.propertiesPanelHidden());
+  readonly showPropertiesPanel = computed(
+    () => (!!this.hoveredScannedAsteroid() || !!this.hoveredDebrisItem()) && !this.propertiesPanelHidden(),
+  );
+  readonly showPropertiesPanelReveal = computed(
+    () => (!!this.hoveredScannedAsteroid() || !!this.hoveredDebrisItem()) && this.propertiesPanelHidden(),
+  );
+  readonly hoveredDebrisItem = computed<FloatingDebrisItem | null>(() => {
+    const id = this.hoveredDebrisId();
+    if (!id) {
+      return null;
+    }
+    return this.floatingDebrisItems().find((debris) => debris.id === id) ?? null;
+  });
+  readonly showAsteroidProperties = computed(() => !!this.hoveredScannedAsteroid());
+  readonly showDebrisProperties = computed(
+    () => !this.hoveredScannedAsteroid() && !!this.hoveredDebrisItem(),
+  );
+  readonly debrisPropertiesPanelTitle = computed(() => {
+    const debris = this.hoveredDebrisItem();
+    return debris ? `${debris.displayName.toUpperCase()} // PROPERTIES` : 'DEBRIS // PROPERTIES';
+  });
+  readonly debrisPropertiesItemTypeText = computed(
+    () => `ITEM TYPE: ${this.hoveredDebrisItem()?.itemType?.toUpperCase() ?? 'UNKNOWN'}`,
+  );
+  readonly debrisPropertiesNameText = computed(
+    () => `NAME: ${this.hoveredDebrisItem()?.displayName ?? 'UNKNOWN'}`,
+  );
+  readonly debrisPropertiesPositionText = computed(() => {
+    const debris = this.hoveredDebrisItem();
+    if (!debris) {
+      return 'POS KM: ---';
+    }
+    const { x, y, z } = debris.positionKm;
+    return `POS KM: X ${x.toFixed(1)} Y ${y.toFixed(1)} Z ${z.toFixed(1)}`;
+  });
+  readonly debrisPropertiesDistanceText = computed(() => {
+    const debris = this.hoveredDebrisItem();
+    const ship = this.activeShipLocationKm();
+    if (!debris || !ship) {
+      return 'DIST KM: ---';
+    }
+    const dx = debris.positionKm.x - ship.x;
+    const dy = debris.positionKm.y - ship.y;
+    const dz = debris.positionKm.z - ship.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    return `DIST KM: ${distance.toFixed(1)}`;
+  });
+  readonly debrisPropertiesStateText = computed(() => {
+    const debris = this.hoveredDebrisItem();
+    if (!debris) {
+      return 'STATE: ---';
+    }
+    const state = debris.state ? debris.state.toUpperCase() : '---';
+    const damage = debris.damageStatus ? debris.damageStatus.toUpperCase() : '---';
+    return `STATE: ${state} // DAMAGE: ${damage}`;
+  });
   readonly propertiesPanelTitle = computed(() => {
+    const debris = this.hoveredDebrisItem();
+    if (debris && !this.hoveredScannedAsteroid()) {
+      return this.debrisPropertiesPanelTitle();
+    }
     const sample = this.hoveredScannedAsteroid();
     return sample ? `ASTEROID ${sample.id.toUpperCase()} // PROPERTIES` : 'ASTEROID // PROPERTIES';
   });
@@ -2016,6 +2076,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
     this.clearTargetHoldTimer();
+  }
+
+  protected onDebrisHoverChange(event: FloatingDebrisHoverEvent): void {
+    if (event.hovering) {
+      this.hoveredDebrisId.set(event.id);
+      return;
+    }
+    if (this.hoveredDebrisId() === event.id) {
+      this.hoveredDebrisId.set(null);
+    }
   }
 
   private beginTargetHold(asteroidId: string): void {

@@ -79,6 +79,8 @@ export class FloatingDebrisStateService {
             z: item.motion.velocityKmPerSec.z,
           }
         : undefined,
+      state: item.state ?? undefined,
+      damageStatus: item.damageStatus ?? undefined,
     };
   }
 }

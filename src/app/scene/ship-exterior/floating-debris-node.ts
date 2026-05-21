@@ -7,6 +7,7 @@ import {
   InjectionToken,
   input,
   Output,
+  signal,
   viewChild,
 } from '@angular/core';
 import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
@@ -26,13 +27,20 @@ export interface FloatingDebrisPointerEvent {
   button: number;
 }
 
+export interface FloatingDebrisHoverEvent {
+  id: string;
+  hovering: boolean;
+}
+
 @Component({
   selector: 'app-floating-debris-node',
   template: `
-    <ngt-group [position]="position()">
+    <ngt-group [position]="position()" [scale]="hovered() ? 1.15 : 1">
       <ngt-mesh
         #mesh
         name="floating-debris"
+        (pointerover)="emitHover(true)"
+        (pointerout)="emitHover(false)"
         (pointerdown)="onPointerDown($event)"
         (pointerup)="onPointerUp($event)"
       >
@@ -40,7 +48,7 @@ export interface FloatingDebrisPointerEvent {
         <ngt-mesh-standard-material
           [color]="'#5ad9ff'"
           [emissive]="'#5ad9ff'"
-          [emissiveIntensity]="targeted() ? 3.2 : 1.8"
+          [emissiveIntensity]="resolveEmissiveIntensity()"
           [metalness]="0.4"
           [roughness]="0.35"
         />
@@ -55,10 +63,13 @@ export class FloatingDebrisNode {
   position = input.required<[number, number, number]>();
   targeted = input<boolean>(false);
 
+  protected hovered = signal(false);
+
   private meshRef = viewChild<ElementRef<THREE.Mesh>>('mesh');
 
   @Output() pointerButtonDown = new EventEmitter<FloatingDebrisPointerEvent>();
   @Output() pointerButtonUp = new EventEmitter<FloatingDebrisPointerEvent>();
+  @Output() hoverChange = new EventEmitter<FloatingDebrisHoverEvent>();
 
   constructor() {
     const beforeRender = inject(FLOATING_DEBRIS_BEFORE_RENDER_FN);
@@ -71,6 +82,18 @@ export class FloatingDebrisNode {
       mesh.rotation.y += delta * 0.55;
       mesh.rotation.z += delta * 0.25;
     });
+  }
+
+  protected emitHover(hovering: boolean): void {
+    this.hovered.set(hovering);
+    this.hoverChange.emit({ id: this.item().id, hovering });
+  }
+
+  protected resolveEmissiveIntensity(): number {
+    if (this.targeted()) {
+      return 3.2;
+    }
+    return this.hovered() ? 2.6 : 1.8;
   }
 
   protected onPointerDown(event: {

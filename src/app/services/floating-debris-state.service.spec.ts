@@ -53,6 +53,8 @@ describe('FloatingDebrisStateService', () => {
         displayName: 'Debris Scrap',
         positionKm: { x: 10, y: 20, z: 30 },
         velocityKmPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+        state: 'deployed',
+        damageStatus: 'intact',
       },
     ]);
   });
@@ -78,6 +80,8 @@ describe('FloatingDebrisStateService', () => {
         displayName: 'Updated Debris',
         positionKm: { x: 100, y: 200, z: 300 },
         velocityKmPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+        state: 'deployed',
+        damageStatus: 'intact',
       },
     ]);
   });

@@ -12,4 +12,6 @@ export interface FloatingDebrisItem {
     y: number;
     z: number;
   };
+  state?: string;
+  damageStatus?: string;
 }

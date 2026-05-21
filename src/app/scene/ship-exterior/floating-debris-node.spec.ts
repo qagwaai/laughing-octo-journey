@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   FloatingDebrisNode,
   FLOATING_DEBRIS_BEFORE_RENDER_FN,
+  type FloatingDebrisHoverEvent,
   type FloatingDebrisPointerEvent,
 } from './floating-debris-node';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
@@ -15,6 +16,7 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
       [targeted]="targeted"
       (pointerButtonDown)="downEvents.push($event)"
       (pointerButtonUp)="upEvents.push($event)"
+      (hoverChange)="hoverEvents.push($event)"
     />
   `,
   imports: [FloatingDebrisNode],
@@ -31,6 +33,7 @@ class HostComponent {
   targeted = false;
   downEvents: FloatingDebrisPointerEvent[] = [];
   upEvents: FloatingDebrisPointerEvent[] = [];
+  hoverEvents: FloatingDebrisHoverEvent[] = [];
 
   @ViewChild(FloatingDebrisNode) node!: FloatingDebrisNode;
 }
@@ -79,5 +82,20 @@ describe('FloatingDebrisNode', () => {
     const host = fixture.componentInstance;
     (host.node as unknown as { onPointerDown(e: unknown): void }).onPointerDown({ nativeEvent: { button: 2 } });
     expect(host.downEvents).toEqual([{ id: 'debris-1', button: 2 }]);
+  });
+
+  it('emits hoverChange true on emitHover(true) and false on emitHover(false)', () => {
+    const fixture = makeFixture();
+    const host = fixture.componentInstance;
+    const node = host.node as unknown as { emitHover(h: boolean): void; hovered: () => boolean };
+    node.emitHover(true);
+    expect(node.hovered()).toBeTrue();
+    expect(host.hoverEvents).toEqual([{ id: 'debris-1', hovering: true }]);
+    node.emitHover(false);
+    expect(node.hovered()).toBeFalse();
+    expect(host.hoverEvents).toEqual([
+      { id: 'debris-1', hovering: true },
+      { id: 'debris-1', hovering: false },
+    ]);
   });
 });

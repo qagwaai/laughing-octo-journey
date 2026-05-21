@@ -120,15 +120,23 @@
     </header>
 
     <div class="ship-exterior-properties-panel__body">
-      <p>{{ propertiesMaterialText() }}</p>
-      <p>{{ propertiesRarityText() }}</p>
-      <p>{{ propertiesVelocityText() }}</p>
-      <p>{{ propertiesSpinText() }}</p>
-      <p>{{ propertiesMassText() }}</p>
-      <p>{{ propertiesDiameterText() }}</p>
-      <p>{{ propertiesLocationText() }}</p>
-      <p>{{ propertiesClusterText() }}</p>
-      <p>{{ propertiesOffsetText() }}</p>
+      @if (showAsteroidProperties()) {
+        <p>{{ propertiesMaterialText() }}</p>
+        <p>{{ propertiesRarityText() }}</p>
+        <p>{{ propertiesVelocityText() }}</p>
+        <p>{{ propertiesSpinText() }}</p>
+        <p>{{ propertiesMassText() }}</p>
+        <p>{{ propertiesDiameterText() }}</p>
+        <p>{{ propertiesLocationText() }}</p>
+        <p>{{ propertiesClusterText() }}</p>
+        <p>{{ propertiesOffsetText() }}</p>
+      } @else if (showDebrisProperties()) {
+        <p>{{ debrisPropertiesItemTypeText() }}</p>
+        <p>{{ debrisPropertiesNameText() }}</p>
+        <p>{{ debrisPropertiesPositionText() }}</p>
+        <p>{{ debrisPropertiesDistanceText() }}</p>
+        <p>{{ debrisPropertiesStateText() }}</p>
+      }
     </div>
   </section>
   } @else if (showPropertiesPanelReveal()) {

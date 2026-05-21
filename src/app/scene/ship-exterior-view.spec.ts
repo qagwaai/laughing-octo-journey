@@ -1212,4 +1212,53 @@ describe('ShipExteriorViewScene - tractor beam', () => {
 
     expect(mockSocket.upsertItem).not.toHaveBeenCalled();
   });
+
+  it('onDebrisHoverChange sets hoveredDebrisId on hovering=true', () => {
+    const { component } = setup(shipNavState());
+    seedDebris(component, 'debris-h', { x: 2, y: 0, z: 0 });
+    component['onDebrisHoverChange']({ id: 'debris-h', hovering: true });
+    expect(component['hoveredDebrisId']()).toBe('debris-h');
+    expect(component['showPropertiesPanel']()).toBeTrue();
+    expect(component['showDebrisProperties']()).toBeTrue();
+  });
+
+  it('onDebrisHoverChange clears hoveredDebrisId only for the matching id', () => {
+    const { component } = setup(shipNavState());
+    component['hoveredDebrisId'].set('debris-a');
+    component['onDebrisHoverChange']({ id: 'debris-b', hovering: false });
+    expect(component['hoveredDebrisId']()).toBe('debris-a');
+    component['onDebrisHoverChange']({ id: 'debris-a', hovering: false });
+    expect(component['hoveredDebrisId']()).toBeNull();
+  });
+
+  it('debris properties text computeds reflect the hovered debris', () => {
+    const { component } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    const service = component['floatingDebrisStateService'] as FloatingDebrisStateService;
+    service.upsertLocal([
+      {
+        id: 'debris-props',
+        itemType: 'sensor_array',
+        displayName: 'Sensor Array',
+        positionKm: { x: 3, y: 4, z: 0 },
+        state: 'deployed',
+        damageStatus: 'intact',
+      },
+    ]);
+    component['onDebrisHoverChange']({ id: 'debris-props', hovering: true });
+    expect(component['debrisPropertiesItemTypeText']()).toBe('ITEM TYPE: SENSOR_ARRAY');
+    expect(component['debrisPropertiesNameText']()).toBe('NAME: Sensor Array');
+    expect(component['debrisPropertiesPositionText']()).toBe('POS KM: X 3.0 Y 4.0 Z 0.0');
+    expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: 5.0');
+    expect(component['debrisPropertiesStateText']()).toBe('STATE: DEPLOYED // DAMAGE: INTACT');
+    expect(component['propertiesPanelTitle']()).toBe('SENSOR ARRAY // PROPERTIES');
+  });
+
+  it('debris properties fall back to --- when state/damage absent or ship pos unknown', () => {
+    const { component } = setup(shipNavState());
+    seedDebris(component, 'debris-fallback', { x: 1, y: 0, z: 0 });
+    component['activeShipLocationKm'].set(null);
+    component['onDebrisHoverChange']({ id: 'debris-fallback', hovering: true });
+    expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: ---');
+    expect(component['debrisPropertiesStateText']()).toBe('STATE: --- // DAMAGE: ---');
+  });
 });

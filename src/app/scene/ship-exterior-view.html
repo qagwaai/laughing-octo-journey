@@ -57,6 +57,7 @@
     [item]="debris"
     [position]="debrisScenePosition(debris)"
     [targeted]="isDebrisTargeted(debris.id)"
+    (hoverChange)="onDebrisHoverChange($event)"
     (pointerButtonDown)="onDebrisRightPointerDown($event)"
     (pointerButtonUp)="onDebrisRightPointerUp($event)"
   />
