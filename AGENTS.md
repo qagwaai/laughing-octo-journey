@@ -229,6 +229,36 @@ Recovery recipe:
    only reliably show up at the Angular compiler, not via lightweight error
    probes.
 
+## Single-Replace Anchor Sizing (Windows / CRLF)
+
+When `replace_string_in_file` fails with "Could not find matching text to
+replace" but a fresh read of the file shows byte-identical content, the cause
+is almost always a line-ending mismatch: workspace files are CRLF on Windows
+while the tool input is normalized to LF. Long multi-line `oldString` anchors
+amplify the chance of an invisible `\r` mismatch.
+
+Recipe:
+
+1. Do **not** re-read and resubmit the same long anchor — it will fail again.
+2. Shrink `oldString` to the smallest unique snippet (a few lines, ideally a
+   single distinctive line plus minimal surrounding context).
+3. Re-run with the shorter anchor against the same file.
+
+## get_errors False Positives on Angular Components
+
+The Angular Language Service surfaced through `get_errors` can lag behind edits
+in two known ways:
+
+- **"X is not used within the template"** immediately after adding component
+  `X` to a parent component's `imports: [...]` array and a matching selector to
+  its template. `ngc` (via `npm run build`) is clean in this case.
+- **Duplicate class members** (e.g. two `inject(...)` fields with the same
+  name) are tolerated by the LSP but rejected by `ngc` at build/test time.
+
+In both cases, **trust `npm run build` / `npm run test:ci` over `get_errors`**.
+Do not undo an edit based solely on a `get_errors` report for an Angular
+component — confirm with a real build first.
+
 ## TypeScript vs Angular Template Errors
 
 `npx tsc --noEmit` only checks `.ts` files — it will **not** catch errors in Angular HTML

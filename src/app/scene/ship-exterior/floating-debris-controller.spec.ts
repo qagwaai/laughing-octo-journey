@@ -199,7 +199,11 @@ describe('FloatingDebrisController', () => {
   it('ignores list responses that report failure (negative)', () => {
     const { controller, calls, stateService } = createDeps();
     controller.start();
+    // Proactive cold-boot seed runs immediately on start(), so the local
+    // Sensor Array is already present. A failed list response must not add
+    // or remove anything beyond that seed.
+    const seededIds = stateService.getAll().map((d) => d.id);
     calls[0].onResponse({ success: false, message: 'boom' });
-    expect(stateService.getAll()).toEqual([]);
+    expect(stateService.getAll().map((d) => d.id)).toEqual(seededIds);
   });
 });

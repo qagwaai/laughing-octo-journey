@@ -89,6 +89,12 @@ import {
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
 import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import { FloatingDebrisController } from './ship-exterior/floating-debris-controller';
+import {
+  FloatingDebrisNode,
+  type FloatingDebrisPointerEvent,
+} from './ship-exterior/floating-debris-node';
+import type { FloatingDebrisItem } from '../model/floating-debris-item';
+import { ITEM_UPSERT_RESPONSE_EVENT, type ItemUpsertResponse } from '../model/item-upsert';
 import { SocketService } from '../services/socket.service';
 import {
   ASTRONOMICAL_UNIT_KM,
@@ -177,7 +183,7 @@ declare global {
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
-  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol],
+  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -195,6 +201,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly SCAN_TOTAL_MS = 10000;
   private static readonly SCAN_STEP = 100 / (ShipExteriorViewScene.SCAN_TOTAL_MS / ShipExteriorViewScene.SCAN_TICK_MS);
   private static readonly TARGET_HOLD_MS = 250;
+  private static readonly TRACTOR_BEAM_RANGE_KM = 10;
+  private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
   private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
   private static readonly SCANNED_MOTION_DAMPING = 0.65;
   private static readonly HOTKEY_SLOT_COUNT = 5;
@@ -475,6 +483,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     });
   protected activeScanAsteroidId = signal<string | null>(null);
   protected targetedAsteroidId = signal<string | null>(null);
+  protected targetedDebrisId = signal<string | null>(null);
+  protected activeTarget = signal<{ kind: 'asteroid' | 'debris'; id: string } | null>(null);
+  protected floatingDebrisItems = computed<FloatingDebrisItem[]>(() => this.floatingDebrisStateService.items());
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
   readonly launchHotkeysEnabled = computed(() => {
     const targetedId = this.targetedAsteroidId();
@@ -1243,6 +1254,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       }
     }
 
+    if (event.code === 'KeyE' && !this.flightModeEnabled()) {
+      event.preventDefault();
+      this.tryActivateTractorBeam();
+      return;
+    }
+
     const hotkey = resolveHotkeyNumber(event);
     if (!hotkey) {
       return;
@@ -1943,16 +1960,146 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.clearTargetHoldTimer();
   }
 
+  protected onDebrisRightPointerDown(event: FloatingDebrisPointerEvent): void {
+    if (this.flightModeEnabled()) {
+      return;
+    }
+    if (event.button !== 2) {
+      return;
+    }
+    this.beginDebrisTargetHold(event.id);
+  }
+
+  protected onDebrisRightPointerUp(event: FloatingDebrisPointerEvent): void {
+    if (this.flightModeEnabled()) {
+      return;
+    }
+    if (event.button !== 2) {
+      return;
+    }
+    this.clearTargetHoldTimer();
+  }
+
   private beginTargetHold(asteroidId: string): void {
     this.sessionController.beginTargetHold(
       asteroidId,
-      () => this.targetedAsteroidId.set(asteroidId),
+      () => {
+        this.targetedAsteroidId.set(asteroidId);
+        this.targetedDebrisId.set(null);
+        this.activeTarget.set({ kind: 'asteroid', id: asteroidId });
+      },
+      ShipExteriorViewScene.TARGET_HOLD_MS,
+    );
+  }
+
+  private beginDebrisTargetHold(debrisId: string): void {
+    this.sessionController.beginTargetHold(
+      debrisId,
+      () => {
+        this.targetedDebrisId.set(debrisId);
+        this.targetedAsteroidId.set(null);
+        this.activeTarget.set({ kind: 'debris', id: debrisId });
+      },
       ShipExteriorViewScene.TARGET_HOLD_MS,
     );
   }
 
   private clearTargetHoldTimer(): void {
     this.sessionController.clearTargetHoldTimer();
+  }
+
+  protected debrisScenePosition(item: FloatingDebrisItem): [number, number, number] {
+    const ship = this.activeShipLocationKm() ?? { x: 0, y: 0, z: 0 };
+    const scale = ShipExteriorViewScene.DEBRIS_KM_TO_SCENE_UNITS;
+    return [
+      (item.positionKm.x - ship.x) * scale,
+      (item.positionKm.y - ship.y) * scale,
+      (item.positionKm.z - ship.z) * scale,
+    ];
+  }
+
+  protected isDebrisTargeted(debrisId: string): boolean {
+    const target = this.activeTarget();
+    return !!target && target.kind === 'debris' && target.id === debrisId;
+  }
+
+  private tryActivateTractorBeam(): void {
+    const target = this.activeTarget();
+    if (!target || target.kind !== 'debris') {
+      this.setLaunchToast('Lock a debris target before activating the tractor beam.', 'error', null);
+      return;
+    }
+
+    const debris = this.floatingDebrisItems().find((item) => item.id === target.id);
+    if (!debris) {
+      this.setLaunchToast('Targeted debris is no longer in range.', 'error', null);
+      this.clearDebrisTarget();
+      return;
+    }
+
+    const shipPosKm = this.activeShipLocationKm();
+    if (!shipPosKm) {
+      this.setLaunchToast('Ship location unknown. Cannot fire tractor beam.', 'error', null);
+      return;
+    }
+
+    const dx = debris.positionKm.x - shipPosKm.x;
+    const dy = debris.positionKm.y - shipPosKm.y;
+    const dz = debris.positionKm.z - shipPosKm.z;
+    const distanceKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (distanceKm > ShipExteriorViewScene.TRACTOR_BEAM_RANGE_KM) {
+      this.setLaunchToast(
+        `Out of tractor range (${distanceKm.toFixed(1)} km > ${ShipExteriorViewScene.TRACTOR_BEAM_RANGE_KM} km).`,
+        'error',
+        null,
+      );
+      return;
+    }
+
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const playerName = this.playerName().trim();
+    const shipId = this.activeShipId().trim();
+    if (!sessionKey || !playerName || !shipId) {
+      this.setLaunchToast('Missing player/ship context. Cannot fire tractor beam.', 'error', null);
+      return;
+    }
+
+    // Optimistic remove so the UI reflects immediately; restore on failure.
+    const removedDebris = debris;
+    this.floatingDebrisStateService.removeById(debris.id);
+    this.clearDebrisTarget();
+
+    this.socketService.upsertItem(
+      {
+        playerName,
+        sessionKey,
+        correlationSource: 'ship-exterior.tractor-beam',
+        item: {
+          id: debris.id,
+          itemType: debris.itemType,
+          state: 'contained',
+          container: { containerType: 'ship', containerId: shipId },
+          spatial: null,
+          motion: null,
+        },
+      },
+      (response: ItemUpsertResponse) => {
+        if (response.success) {
+          this.setLaunchToast(`Tractor beam collected: ${debris.displayName}.`, 'success', null);
+          return;
+        }
+        // Roll back optimistic removal on failure.
+        this.floatingDebrisStateService.upsertLocal([removedDebris]);
+        this.setLaunchToast(`Tractor beam failed: ${response.message || 'unknown error'}.`, 'error', null);
+      },
+    );
+  }
+
+  private clearDebrisTarget(): void {
+    this.targetedDebrisId.set(null);
+    if (this.activeTarget()?.kind === 'debris') {
+      this.activeTarget.set(null);
+    }
   }
 
   private tickScene(): void {

@@ -13,6 +13,7 @@ import { SessionService } from '../services/session.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { SocketService } from '../services/socket.service';
+import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import ShipExteriorViewScene from './ship-exterior-view';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,8 @@ function createSocketMock() {
     ...createMockSocketService(),
     launchItem: jasmine.createSpy('launchItem'),
     upsertCelestialBody: jasmine.createSpy('upsertCelestialBody'),
+    upsertItem: jasmine.createSpy('upsertItem'),
+    listNearbyDeployedItems: jasmine.createSpy('listNearbyDeployedItems').and.returnValue(() => undefined),
   };
 }
 
@@ -1059,5 +1062,154 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
     const updated = component['missionGateState']();
     expect(updated?.steps[0].status).toBe('active');
     expect(updated?.steps[1].status).toBe('locked');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// describe('ShipExteriorViewScene - tractor beam')
+// ---------------------------------------------------------------------------
+
+describe('ShipExteriorViewScene - tractor beam', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    delete (window as any).__shipExteriorTestUtils;
+  });
+
+  function seedDebris(component: any, id: string, positionKm: { x: number; y: number; z: number }, displayName = 'Sensor Array') {
+    const stateService = component['floatingDebrisStateService'] as FloatingDebrisStateService;
+    stateService.upsertLocal([
+      { id, itemType: 'sensor_array', displayName, positionKm },
+    ]);
+    return stateService;
+  }
+
+  function shipNavState(positionKm = { x: 0, y: 0, z: 0 }): NavigationState {
+    return {
+      playerName: 'Pilot',
+      joinCharacter: { id: 'char-1', characterName: 'Nova' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm },
+      },
+    };
+  }
+
+  it('beginTargetHold (asteroid path) syncs activeTarget and clears debris target', () => {
+    const { component } = setup(shipNavState());
+    component['targetedDebrisId'].set('debris-x');
+
+    // Force the session controller's hold callback to run synchronously.
+    spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
+      (_id: string, onConfirm: () => void) => {
+        onConfirm();
+      },
+    );
+
+    component['beginTargetHold']('asteroid-1');
+
+    expect(component['targetedAsteroidId']()).toBe('asteroid-1');
+    expect(component['targetedDebrisId']()).toBeNull();
+    expect(component['activeTarget']()).toEqual({ kind: 'asteroid', id: 'asteroid-1' });
+  });
+
+  it('beginDebrisTargetHold syncs activeTarget and clears asteroid target', () => {
+    const { component } = setup(shipNavState());
+    component['targetedAsteroidId'].set('asteroid-x');
+
+    spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
+      (_id: string, onConfirm: () => void) => {
+        onConfirm();
+      },
+    );
+
+    component['beginDebrisTargetHold']('debris-1');
+
+    expect(component['targetedDebrisId']()).toBe('debris-1');
+    expect(component['targetedAsteroidId']()).toBeNull();
+    expect(component['activeTarget']()).toEqual({ kind: 'debris', id: 'debris-1' });
+  });
+
+  it('tryActivateTractorBeam toasts and exits when no debris is targeted', () => {
+    const { component, mockSocket } = setup(shipNavState());
+    component['activeTarget'].set(null);
+
+    component['tryActivateTractorBeam']();
+
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
+    expect(component['activeLaunchToast']()?.message).toContain('Lock a debris target');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
+  });
+
+  it('tryActivateTractorBeam refuses targets beyond 10 km range', () => {
+    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    seedDebris(component, 'debris-far', { x: 50, y: 0, z: 0 });
+    component['targetedDebrisId'].set('debris-far');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-far' });
+
+    component['tryActivateTractorBeam']();
+
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
+    expect(component['activeLaunchToast']()?.message).toContain('Out of tractor range');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
+  });
+
+  it('tryActivateTractorBeam emits upsertItem and removes debris on success', () => {
+    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    const stateService = seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 }, 'Sensor Array');
+    component['targetedDebrisId'].set('debris-near');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-near' });
+
+    component['tryActivateTractorBeam']();
+
+    expect(mockSocket.upsertItem).toHaveBeenCalledTimes(1);
+    const [request, callback] = mockSocket.upsertItem.calls.mostRecent().args;
+    expect(request.item.id).toBe('debris-near');
+    expect(request.item.state).toBe('contained');
+    expect(request.item.container).toEqual({ containerType: 'ship', containerId: 'ship-1' });
+    expect(request.correlationSource).toBe('ship-exterior.tractor-beam');
+
+    // Optimistic removal happened before the response arrived.
+    expect(stateService.getAll().find((d) => d.id === 'debris-near')).toBeUndefined();
+    expect(component['targetedDebrisId']()).toBeNull();
+    expect(component['activeTarget']()).toBeNull();
+
+    callback({ success: true, message: 'ok', correlationId: 'c-1' });
+    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam collected: Sensor Array');
+    expect(component['activeLaunchToast']()?.tone).toBe('success');
+  });
+
+  it('tryActivateTractorBeam rolls back the optimistic removal when the server rejects', () => {
+    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    const stateService = seedDebris(component, 'debris-rb', { x: 3, y: 0, z: 0 }, 'Sensor Array');
+    component['targetedDebrisId'].set('debris-rb');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-rb' });
+
+    component['tryActivateTractorBeam']();
+    const [, callback] = mockSocket.upsertItem.calls.mostRecent().args;
+    callback({ success: false, message: 'item not found', correlationId: 'c-2' });
+
+    expect(stateService.getAll().find((d) => d.id === 'debris-rb')).toBeDefined();
+    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam failed: item not found');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
+  });
+
+  it('onDebrisRightPointerDown ignores left-button events', () => {
+    const { component } = setup(shipNavState());
+    component['onDebrisRightPointerDown']({ id: 'debris-1', button: 0 });
+    expect(component['activeTarget']()).toBeNull();
+  });
+
+  it('KeyE in flight mode does not trigger the tractor beam', () => {
+    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    seedDebris(component, 'debris-flight', { x: 1, y: 0, z: 0 });
+    component['targetedDebrisId'].set('debris-flight');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-flight' });
+    component['flightModeEnabled'].set(true);
+
+    const event = new KeyboardEvent('keydown', { code: 'KeyE' });
+    component['onWindowKeyDown'](event);
+
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
   });
 });

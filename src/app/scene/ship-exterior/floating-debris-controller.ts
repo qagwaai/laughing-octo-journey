@@ -41,6 +41,8 @@ export class FloatingDebrisController {
   private pollHandle: number | null = null;
   private started = false;
   private hasIngestedAnyResponse = false;
+  private hasSeededColdBoot = false;
+  private static readonly COLD_BOOT_SENSOR_ARRAY_ID = 'local-cold-boot-sensor-array';
 
   constructor(private readonly deps: FloatingDebrisControllerDeps) {}
 
@@ -61,6 +63,8 @@ export class FloatingDebrisController {
       return;
     }
     this.started = false;
+    this.hasIngestedAnyResponse = false;
+    this.hasSeededColdBoot = false;
     this.unsubscribeListResponse?.();
     this.unsubscribeListResponse = undefined;
     if (this.pollHandle !== null) {
@@ -77,6 +81,14 @@ export class FloatingDebrisController {
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
     const positionKm = this.deps.getShipPositionKm();
     const solarSystemId = this.deps.getSolarSystemId().trim() || DEFAULT_SOLAR_SYSTEM_ID;
+
+    // Proactive cold-boot seed: as soon as we have a ship position, drop a
+    // local Sensor Array into the scene so the player has something to
+    // tractor-beam regardless of backend availability. Real server items will
+    // replace it via handleListResponse when they arrive.
+    if (positionKm && !this.hasSeededColdBoot && !this.hasIngestedAnyResponse) {
+      this.seedColdBootSensorArray(positionKm);
+    }
 
     if (!playerName || !shipId || !sessionKey || !positionKm) {
       appLogger.debug?.('FloatingDebrisController skipped request (missing context)', {
@@ -116,20 +128,27 @@ export class FloatingDebrisController {
 
     const items = response.items ?? [];
     if (items.length > 0) {
+      // Real server items take over; drop the local cold-boot seed if it's still around.
+      if (this.hasSeededColdBoot) {
+        this.deps.stateService.removeById(FloatingDebrisController.COLD_BOOT_SENSOR_ARRAY_ID);
+      }
       this.deps.stateService.upsertFromShipItems(items);
       this.hasIngestedAnyResponse = true;
       return;
     }
 
-    if (!this.hasIngestedAnyResponse && this.deps.stateService.getAll().length === 0) {
-      this.seedColdBootSensorArray(shipPositionKm, solarSystemId);
+    if (!this.hasSeededColdBoot && this.deps.stateService.getAll().length === 0) {
+      this.seedColdBootSensorArray(shipPositionKm);
     }
     this.hasIngestedAnyResponse = true;
   }
 
-  private seedColdBootSensorArray(shipPositionKm: Triple, _solarSystemId: string): void {
+  private seedColdBootSensorArray(shipPositionKm: Triple): void {
+    if (this.hasSeededColdBoot) {
+      return;
+    }
     const sensorArray: FloatingDebrisItem = {
-      id: `local-sensor-array-${Date.now()}`,
+      id: FloatingDebrisController.COLD_BOOT_SENSOR_ARRAY_ID,
       itemType: SENSOR_ARRAY_ITEM_TYPE,
       displayName: SENSOR_ARRAY_DISPLAY_NAME,
       positionKm: {
@@ -139,6 +158,7 @@ export class FloatingDebrisController {
       },
     };
     this.deps.stateService.upsertLocal([sensorArray]);
+    this.hasSeededColdBoot = true;
     appLogger.info('FloatingDebrisController seeded cold-boot Sensor Array', { id: sensorArray.id });
   }
 }

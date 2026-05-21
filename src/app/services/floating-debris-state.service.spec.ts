@@ -144,4 +144,32 @@ describe('FloatingDebrisStateService', () => {
 
     expect(service.getAll()).toEqual([]);
   });
+
+  it('exposes a reactive items() signal that reflects upserts and clears', () => {
+    expect(service.items()).toEqual([]);
+
+    service.upsertFromShipItems([createShipItem()]);
+    expect(service.items().length).toBe(1);
+    expect(service.items()[0].id).toBe('item-1');
+
+    service.upsertLocal([
+      { id: 'local-1', itemType: 'sensor_array', displayName: 'Sensor', positionKm: { x: 0, y: 0, z: 0 } },
+    ]);
+    expect(service.items().length).toBe(2);
+
+    service.clear();
+    expect(service.items()).toEqual([]);
+  });
+
+  it('removeById deletes the entry and returns true (positive)', () => {
+    service.upsertFromShipItems([createShipItem()]);
+    expect(service.removeById('item-1')).toBe(true);
+    expect(service.getAll()).toEqual([]);
+    expect(service.items()).toEqual([]);
+  });
+
+  it('removeById returns false when id is unknown (negative)', () => {
+    expect(service.removeById('does-not-exist')).toBe(false);
+  });
 });
+

@@ -52,5 +52,14 @@
     </ngt-mesh>
   </ngt-group>
   }
+  @for (debris of floatingDebrisItems(); track debris.id) {
+  <app-floating-debris-node
+    [item]="debris"
+    [position]="debrisScenePosition(debris)"
+    [targeted]="isDebrisTargeted(debris.id)"
+    (pointerButtonDown)="onDebrisRightPointerDown($event)"
+    (pointerButtonUp)="onDebrisRightPointerUp($event)"
+  />
+  }
   </ngt-group>
 </ngt-group>
