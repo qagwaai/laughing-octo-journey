@@ -49,17 +49,35 @@
       </label>
       <span class="ship-exterior-flight-panel__lock">{{ flightPointerLocked() ? 'MOUSE LOCKED' : 'MOUSE FREE' }}</span>
     </div>
-  </section>
 
-  @if (showAsteroidDebugTag()) {
-  <section class="ship-exterior-asteroid-debug" aria-live="polite">
-    <p>{{ asteroidDebugHeaderText() }}</p>
-    <p>{{ asteroidDebugMaterialText() }}</p>
-    <p>{{ asteroidDebugPbrText() }}</p>
-    <p>{{ asteroidDebugDetailRuleText() }}</p>
-    <p>{{ asteroidDebugTierText() }}</p>
+    @if (showAnyDebugTag()) {
+    <section class="ship-exterior-asteroid-debug" aria-live="polite">
+      <header class="ship-exterior-asteroid-debug__header">
+        <span class="ship-exterior-asteroid-debug__title">
+          {{ showAsteroidDebugTag() ? asteroidDebugHeaderText() : debrisDebugHeaderText() }}
+        </span>
+        <button
+          type="button"
+          class="ship-exterior-asteroid-debug__toggle"
+          (click)="toggleDebugCollapsed()"
+        >
+          {{ debugCollapsed() ? 'SHOW' : 'HIDE' }}
+        </button>
+      </header>
+      @if (!debugCollapsed()) {
+        @if (showAsteroidDebugTag()) {
+          <p>{{ asteroidDebugMaterialText() }}</p>
+          <p>{{ asteroidDebugPbrText() }}</p>
+          <p>{{ asteroidDebugDetailRuleText() }}</p>
+          <p>{{ asteroidDebugTierText() }}</p>
+        } @else {
+          <p>{{ debrisDebugDisplayNameText() }}</p>
+          <p>{{ debrisDebugPositionText() }}</p>
+        }
+      }
+    </section>
+    }
   </section>
-  }
 
   <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
     @for (slot of launchHotkeySlots(); track slot.hotkey) {

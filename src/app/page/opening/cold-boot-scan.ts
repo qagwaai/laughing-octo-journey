@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
 import ShipExteriorViewScene from '../../scene/ship-exterior-view';
 
@@ -94,6 +94,24 @@ export default class ColdBootScanPage {
   protected asteroidDebugTierText = computed(
     () => this.shipExteriorView()?.asteroidDebugTierText() ?? 'TIER // ---',
   );
+
+  protected showDebrisDebugTag = computed(() => this.shipExteriorView()?.showDebrisDebugTag() ?? false);
+  protected debrisDebugHeaderText = computed(
+    () => this.shipExteriorView()?.debrisDebugHeaderText() ?? 'DEBRIS DEBUG // NO SAMPLE',
+  );
+  protected debrisDebugDisplayNameText = computed(
+    () => this.shipExteriorView()?.debrisDebugDisplayNameText() ?? 'NAME // ---',
+  );
+  protected debrisDebugPositionText = computed(
+    () => this.shipExteriorView()?.debrisDebugPositionText() ?? 'POS KM // ---',
+  );
+  protected showAnyDebugTag = computed(() => this.shipExteriorView()?.showAnyDebugTag() ?? false);
+
+  private readonly debugCollapsedState = signal(false);
+  protected debugCollapsed = this.debugCollapsedState.asReadonly();
+  protected toggleDebugCollapsed(): void {
+    this.debugCollapsedState.update((v) => !v);
+  }
 
   protected hidePropertiesPanel(): void {
     this.shipExteriorView()?.hidePropertiesPanel();

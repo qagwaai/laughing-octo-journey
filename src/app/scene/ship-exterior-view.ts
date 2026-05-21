@@ -600,6 +600,35 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     return `TIER // ${tier.toUpperCase()}`;
   });
 
+  readonly debrisDebugSample = computed<FloatingDebrisItem | null>(() => {
+    const targetedId = this.targetedDebrisId();
+    if (!targetedId) {
+      return null;
+    }
+    return this.floatingDebrisItems().find((debris) => debris.id === targetedId) ?? null;
+  });
+  readonly showDebrisDebugTag = computed(() => !environment.production && !!this.debrisDebugSample());
+  readonly debrisDebugHeaderText = computed(() => {
+    const sample = this.debrisDebugSample();
+    if (!sample) {
+      return 'DEBRIS DEBUG // NO SAMPLE';
+    }
+    return `DEBRIS DEBUG // ${sample.id.toUpperCase()} // ${sample.itemType.toUpperCase()}`;
+  });
+  readonly debrisDebugDisplayNameText = computed(() => {
+    const sample = this.debrisDebugSample();
+    return sample ? `NAME // ${sample.displayName}` : 'NAME // ---';
+  });
+  readonly debrisDebugPositionText = computed(() => {
+    const sample = this.debrisDebugSample();
+    if (!sample) {
+      return 'POS KM // ---';
+    }
+    const { x, y, z } = sample.positionKm;
+    return `POS KM // X ${x.toFixed(1)} Y ${y.toFixed(1)} Z ${z.toFixed(1)}`;
+  });
+  readonly showAnyDebugTag = computed(() => this.showAsteroidDebugTag() || this.showDebrisDebugTag());
+
   // --- Phase 3: Debug HUD lines ---
   readonly framePressureLine = computed(() => `FRAME PRESSURE // ${this.framePressureAvg().toFixed(2)} ms`);
   readonly qualityScalerLine = computed(() => `QUALITY SCALER // ${(this.qualityScaler() * 100).toFixed(0)}%`);
