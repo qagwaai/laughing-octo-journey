@@ -87,6 +87,8 @@ import {
   type ShipExteriorMissionStateContext,
 } from '../services/ship-exterior-mission-state.service';
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
+import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
+import { FloatingDebrisController } from './ship-exterior/floating-debris-controller';
 import { SocketService } from '../services/socket.service';
 import {
   ASTRONOMICAL_UNIT_KM,
@@ -221,6 +223,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private missionService = inject(MissionService);
   private asteroidStateService = inject(ShipExteriorAsteroidStateService);
   private missionStateService = inject(ShipExteriorMissionStateService);
+  private floatingDebrisStateService = inject(FloatingDebrisStateService);
   private store: ReturnType<typeof injectStore> | null = (() => {
     try {
       return injectStore();
@@ -334,6 +337,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     setAsteroidSamples: (samples) => this.setAsteroidSamples(samples),
     persistSeededAsteroidsAsUnscanned: (samples) => this.persistSeededAsteroidsAsUnscanned(samples),
     updateTargetingCapabilityFromShipList: (ships) => this.updateTargetingCapabilityFromShipList(ships),
+  });
+  private readonly floatingDebrisController = new FloatingDebrisController({
+    socketService: this.shipExteriorSocketService,
+    sessionService: this.sessionService,
+    stateService: this.floatingDebrisStateService,
+    getPlayerName: () => this.playerName(),
+    getCharacterId: () => this.navigationState.joinCharacter?.id?.trim() ?? null,
+    getActiveShipId: () => this.activeShipId() || null,
+    getShipPositionKm: () => this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm(),
+    getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
   });
   private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
   private readonly missionGateStateSync = effect(() => {
@@ -723,6 +736,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
       (response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
     );
+    this.floatingDebrisController.start();
     const seedPolicy = this.resolveSeedPolicy();
     if (seedPolicy === 'new') {
       this.clearPersistedAsteroidSamples();
@@ -1031,6 +1045,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeShipListResponse?.();
     this.unsubscribeCelestialBodyListResponse?.();
     this.unsubscribeLaunchItemResponse?.();
+    this.floatingDebrisController.stop();
     this.bootstrapController.dispose();
     this.sessionController.dispose();
     this.stopFlightLoop();

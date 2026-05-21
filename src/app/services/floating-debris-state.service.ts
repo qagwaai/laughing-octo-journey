@@ -26,6 +26,16 @@ export class FloatingDebrisStateService {
     }
   }
 
+  /** Inserts client-synthesised debris (e.g. cold-boot Sensor Array fallback). */
+  upsertLocal(items: readonly FloatingDebrisItem[]): void {
+    for (const item of items) {
+      if (!item.id || !item.itemType || !item.positionKm) {
+        continue;
+      }
+      this.itemsById.set(item.id, item);
+    }
+  }
+
   private mapFromShipItem(item: ShipItem): FloatingDebrisItem | null {
     if (!item.id || !item.itemType || !item.spatial?.positionKm) {
       return null;

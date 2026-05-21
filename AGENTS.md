@@ -212,6 +212,23 @@ PLAYWRIGHT_HTML_OPEN=never npx playwright test e2e/tests/market-hub-by-location.
 - When changing i18n-driven UI text, update both `en.ts` and `it.ts`.
 - Prefer minimal, targeted edits over broad refactors.
 
+## Multi-Replace Edit Safety
+
+When using a batched multi-replace tool, per-item failure messages (e.g. "Input
+and output are identical") are **per-item, not transactional**. Other items in
+the same batch may have already applied. Do not blindly retry the whole batch —
+that can introduce duplicate edits (for example, the same `inject(...)` field
+declared twice, producing TS2300 at `ngc` build time but not always surfaced by
+the editor language service).
+
+Recovery recipe:
+
+1. Grep for the newly introduced symbol/line to confirm what landed.
+2. Retry only the items that did not apply.
+3. Validate with `npm run build` or `npm run test:ci` — duplicate-member errors
+   only reliably show up at the Angular compiler, not via lightweight error
+   probes.
+
 ## TypeScript vs Angular Template Errors
 
 `npx tsc --noEmit` only checks `.ts` files — it will **not** catch errors in Angular HTML

@@ -1,0 +1,205 @@
+import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import type {
+  ItemListByLocationRequest,
+  ItemListByLocationResponse,
+} from '../../model/item-list-by-location';
+import type { ShipItem } from '../../model/ship-item';
+import type { Triple } from '../../model/triple';
+import { FloatingDebrisController, FLOATING_DEBRIS_POLL_INTERVAL_MS } from './floating-debris-controller';
+
+interface CapturedRequest {
+  request: ItemListByLocationRequest;
+  onResponse: (response: ItemListByLocationResponse) => void;
+  unsubscribe: jasmine.Spy;
+}
+
+function createDeps(overrides: Partial<{
+  playerName: string;
+  shipId: string | null;
+  sessionKey: string | null;
+  positionKm: Triple | null;
+  solarSystemId: string;
+}> = {}) {
+  const calls: CapturedRequest[] = [];
+  const intervals: Array<{ handler: () => void; intervalMs: number; handle: number }> = [];
+  let nextHandle = 1;
+  const cleared: number[] = [];
+  const stateService = new FloatingDebrisStateService();
+
+  const socketService = {
+    listNearbyDeployedItems: jasmine
+      .createSpy('listNearbyDeployedItems')
+      .and.callFake(
+        (request: ItemListByLocationRequest, onResponse: (response: ItemListByLocationResponse) => void) => {
+          const unsubscribe = jasmine.createSpy('unsubscribe');
+          calls.push({ request, onResponse, unsubscribe });
+          return unsubscribe;
+        },
+      ),
+  };
+
+  const sessionService = {
+    getSessionKey: () => overrides.sessionKey ?? 'session-abc',
+  };
+
+  const controller = new FloatingDebrisController({
+    socketService: socketService as never,
+    sessionService: sessionService as never,
+    stateService,
+    getPlayerName: () => overrides.playerName ?? 'Pilot',
+    getCharacterId: () => 'char-1',
+    getActiveShipId: () => (overrides.shipId === undefined ? 'ship-1' : overrides.shipId),
+    getShipPositionKm: () => (overrides.positionKm === undefined ? { x: 1, y: 2, z: 3 } : overrides.positionKm),
+    getSolarSystemId: () => overrides.solarSystemId ?? 'sol-1',
+    setInterval: (handler, intervalMs) => {
+      const handle = nextHandle++;
+      intervals.push({ handler, intervalMs, handle });
+      return handle;
+    },
+    clearInterval: (handle) => {
+      cleared.push(handle);
+    },
+  });
+
+  return { controller, stateService, socketService, calls, intervals, cleared };
+}
+
+describe('FloatingDebrisController', () => {
+  it('emits one location request on start with the supplied ship context', () => {
+    const { controller, calls } = createDeps();
+
+    controller.start();
+
+    expect(calls.length).toBe(1);
+    expect(calls[0].request).toEqual({
+      sessionKey: 'session-abc',
+      playerName: 'Pilot',
+      shipId: 'ship-1',
+      location: {
+        solarSystemId: 'sol-1',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+      maxDistanceKm: 50,
+    });
+  });
+
+  it('schedules a poll at the configured interval', () => {
+    const { controller, intervals } = createDeps();
+    controller.start();
+    expect(intervals.length).toBe(1);
+    expect(intervals[0].intervalMs).toBe(FLOATING_DEBRIS_POLL_INTERVAL_MS);
+  });
+
+  it('seeds a Sensor Array when the first response is empty', () => {
+    const { controller, calls, stateService } = createDeps();
+    controller.start();
+    calls[0].onResponse({ success: true, items: [] });
+
+    const all = stateService.getAll();
+    expect(all.length).toBe(1);
+    expect(all[0].itemType).toBe('sensor_array');
+    expect(all[0].displayName).toBe('Sensor Array');
+    expect(all[0].positionKm).toEqual({ x: 6, y: 2, z: 8 });
+  });
+
+  it('does not seed when the response contains items', () => {
+    const { controller, calls, stateService } = createDeps();
+    controller.start();
+    const item: ShipItem = {
+      id: 'server-1',
+      itemType: 'crate',
+      displayName: 'Crate',
+      launchable: false,
+      state: 'deployed',
+      damageStatus: 'intact',
+      container: null,
+      owningPlayerId: null,
+      owningCharacterId: null,
+      spatial: {
+        solarSystemId: 'sol-1',
+        frame: 'barycentric',
+        positionKm: { x: 9, y: 8, z: 7 },
+        epochMs: Date.now(),
+      },
+      motion: null,
+      destroyedAt: null,
+      destroyedReason: null,
+      discoveredAt: null,
+      discoveredByCharacterId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    calls[0].onResponse({ success: true, items: [item] });
+
+    const all = stateService.getAll();
+    expect(all.length).toBe(1);
+    expect(all[0].id).toBe('server-1');
+  });
+
+  it('does not seed again on a subsequent empty response', () => {
+    const { controller, intervals, calls, stateService } = createDeps();
+    controller.start();
+    calls[0].onResponse({ success: true, items: [] });
+    expect(stateService.getAll().length).toBe(1);
+
+    // Simulate the timer tick that fires another request.
+    intervals[0].handler();
+    expect(calls.length).toBe(2);
+    calls[1].onResponse({ success: true, items: [] });
+
+    expect(stateService.getAll().length).toBe(1);
+  });
+
+  it('does not emit a request when sessionKey is missing (negative)', () => {
+    const { controller, calls } = createDeps({ sessionKey: '' });
+    controller.start();
+    expect(calls.length).toBe(0);
+  });
+
+  it('does not emit a request when shipId is missing (negative)', () => {
+    const { controller, calls } = createDeps({ shipId: '' });
+    controller.start();
+    expect(calls.length).toBe(0);
+  });
+
+  it('does not emit a request when ship position is unknown (negative)', () => {
+    const { controller, calls } = createDeps({ positionKm: null });
+    controller.start();
+    expect(calls.length).toBe(0);
+  });
+
+  it('unsubscribes the previous listener when a new poll fires', () => {
+    const { controller, intervals, calls } = createDeps();
+    controller.start();
+    expect(calls[0].unsubscribe).not.toHaveBeenCalled();
+
+    intervals[0].handler();
+    expect(calls.length).toBe(2);
+    expect(calls[0].unsubscribe).toHaveBeenCalled();
+  });
+
+  it('stop() clears the interval and unsubscribes the active listener', () => {
+    const { controller, intervals, calls, cleared } = createDeps();
+    controller.start();
+    expect(intervals.length).toBe(1);
+
+    controller.stop();
+    expect(cleared).toEqual([intervals[0].handle]);
+    expect(calls[0].unsubscribe).toHaveBeenCalled();
+  });
+
+  it('start() is idempotent', () => {
+    const { controller, calls, intervals } = createDeps();
+    controller.start();
+    controller.start();
+    expect(calls.length).toBe(1);
+    expect(intervals.length).toBe(1);
+  });
+
+  it('ignores list responses that report failure (negative)', () => {
+    const { controller, calls, stateService } = createDeps();
+    controller.start();
+    calls[0].onResponse({ success: false, message: 'boom' });
+    expect(stateService.getAll()).toEqual([]);
+  });
+});

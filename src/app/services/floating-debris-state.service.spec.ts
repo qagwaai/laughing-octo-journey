@@ -110,4 +110,38 @@ describe('FloatingDebrisStateService', () => {
     service.clear();
     expect(service.getAll()).toEqual([]);
   });
+
+  it('should upsert client-synthesised debris via upsertLocal', () => {
+    service.upsertLocal([
+      {
+        id: 'local-1',
+        itemType: 'sensor_array',
+        displayName: 'Sensor Array',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+
+    expect(service.getAll()).toEqual([
+      {
+        id: 'local-1',
+        itemType: 'sensor_array',
+        displayName: 'Sensor Array',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+  });
+
+  it('should ignore invalid local debris missing id or itemType (negative)', () => {
+    service.upsertLocal([
+      { id: '', itemType: 'sensor_array', displayName: 'X', positionKm: { x: 0, y: 0, z: 0 } },
+      {
+        id: 'no-type',
+        itemType: '' as unknown as string,
+        displayName: 'X',
+        positionKm: { x: 0, y: 0, z: 0 },
+      },
+    ]);
+
+    expect(service.getAll()).toEqual([]);
+  });
 });
