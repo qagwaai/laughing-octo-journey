@@ -1136,10 +1136,10 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     delete (window as any).__shipExteriorTestUtils;
   });
 
-  function seedDebris(component: any, id: string, positionKm: { x: number; y: number; z: number }, displayName = 'Sensor Array') {
+  function seedDebris(component: any, id: string, positionKm: { x: number; y: number; z: number }, displayName = 'Tractor Beam') {
     const stateService = component['floatingDebrisStateService'] as FloatingDebrisStateService;
     stateService.upsertLocal([
-      { id, itemType: 'sensor-array', displayName, positionKm },
+      { id, itemType: 'ship-tractor-beam', displayName, positionKm },
     ]);
     return stateService;
   }
@@ -1217,7 +1217,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
 
   it('tryActivateTractorBeam waits for pull duration before committing upsertItem', () => {
     const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
-    const stateService = seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 }, 'Sensor Array');
+    const stateService = seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 }, 'Tractor Beam');
     component['targetedDebrisId'].set('debris-near');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-near' });
 
@@ -1237,8 +1237,8 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(mockSocket.upsertItem).toHaveBeenCalledTimes(1);
     const [request, callback] = mockSocket.upsertItem.calls.mostRecent().args;
     expect(request.item.id).toBe('debris-near');
-    expect(request.item.itemType).toBe('sensor-array');
-    expect(request.item.displayName).toBe('Sensor Array');
+    expect(request.item.itemType).toBe('ship-tractor-beam');
+    expect(request.item.displayName).toBe('Tractor Beam');
     expect(request.item.state).toBe('contained');
     expect(request.item.container).toEqual({ containerType: 'ship', containerId: 'ship-1' });
     expect(request.item.owningPlayerId).toBe('Pilot');
@@ -1250,13 +1250,13 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(stateService.getAll().find((d) => d.id === 'debris-near')).toBeUndefined();
     expect(component['targetedDebrisId']()).toBeNull();
     expect(component['activeTarget']()).toBeNull();
-    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam collected: Sensor Array');
+    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam collected: Tractor Beam');
     expect(component['activeLaunchToast']()?.tone).toBe('success');
   });
 
   it('tryActivateTractorBeam reverses pull and keeps debris when the server rejects', () => {
     const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
-    const stateService = seedDebris(component, 'debris-rb', { x: 3, y: 0, z: 0 }, 'Sensor Array');
+    const stateService = seedDebris(component, 'debris-rb', { x: 3, y: 0, z: 0 }, 'Tractor Beam');
     component['targetedDebrisId'].set('debris-rb');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-rb' });
 
@@ -1325,20 +1325,20 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     service.upsertLocal([
       {
         id: 'debris-props',
-        itemType: 'sensor-array',
-        displayName: 'Sensor Array',
+        itemType: 'ship-tractor-beam',
+        displayName: 'Tractor Beam',
         positionKm: { x: 3, y: 4, z: 0 },
         state: 'deployed',
         damageStatus: 'intact',
       },
     ]);
     component['onDebrisHoverChange']({ id: 'debris-props', hovering: true });
-    expect(component['debrisPropertiesItemTypeText']()).toBe('ITEM TYPE: SENSOR-ARRAY');
-    expect(component['debrisPropertiesNameText']()).toBe('NAME: Sensor Array');
+    expect(component['debrisPropertiesItemTypeText']()).toBe('ITEM TYPE: SHIP-TRACTOR-BEAM');
+    expect(component['debrisPropertiesNameText']()).toBe('NAME: Tractor Beam');
     expect(component['debrisPropertiesPositionText']()).toBe('POS KM: X 3.0 Y 4.0 Z 0.0');
     expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: 5.0');
     expect(component['debrisPropertiesStateText']()).toBe('STATE: DEPLOYED // DAMAGE: INTACT');
-    expect(component['propertiesPanelTitle']()).toBe('SENSOR ARRAY // PROPERTIES');
+    expect(component['propertiesPanelTitle']()).toBe('TRACTOR BEAM // PROPERTIES');
   });
 
   it('debris properties fall back to --- when state/damage absent or ship pos unknown', () => {

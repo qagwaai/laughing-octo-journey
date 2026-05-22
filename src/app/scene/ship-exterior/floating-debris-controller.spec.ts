@@ -90,15 +90,15 @@ describe('FloatingDebrisController', () => {
     expect(intervals[0].intervalMs).toBe(FLOATING_DEBRIS_POLL_INTERVAL_MS);
   });
 
-  it('seeds a Sensor Array when the first response is empty', () => {
+  it('seeds a Tractor Beam when the first response is empty', () => {
     const { controller, calls, stateService } = createDeps();
     controller.start();
     calls[0].onResponse({ success: true, items: [] });
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
-    expect(all[0].itemType).toBe('sensor-array');
-    expect(all[0].displayName).toBe('Sensor Array');
+    expect(all[0].itemType).toBe('ship-tractor-beam');
+    expect(all[0].displayName).toBe('Tractor Beam');
     expect(all[0].positionKm).toEqual({ x: 6, y: 2, z: 8 });
   });
 
@@ -200,7 +200,7 @@ describe('FloatingDebrisController', () => {
     const { controller, calls, stateService } = createDeps();
     controller.start();
     // Proactive cold-boot seed runs immediately on start(), so the local
-    // Sensor Array is already present. A failed list response must not add
+    // Tractor Beam is already present. A failed list response must not add
     // or remove anything beyond that seed.
     const seededIds = stateService.getAll().map((d) => d.id);
     calls[0].onResponse({ success: false, message: 'boom' });

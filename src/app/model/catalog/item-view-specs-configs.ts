@@ -263,6 +263,7 @@ const ALL_CONFIGS: ItemViewSpecsConfig[] = [
   buildShipSummaryConfig('Expendable Dart Ship', 'Expendable Dart Ship'),
   // ShipItem configs (keyed by itemType)
   buildShipItemConfig('expendable-dart-drone', 'Expendable Dart Drone'),
+  buildShipItemConfig('ship-tractor-beam', 'Tractor Beam'),
   buildShipItemConfig('3d-printer', '3D Printer'),
   buildShipItemConfig('basic-mining-laser', 'Basic Mining Laser'),
   buildShipItemConfig('structural-frames', 'Structural Frames'),

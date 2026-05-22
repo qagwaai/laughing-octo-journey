@@ -181,6 +181,30 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Expendable Dart Drone (ShipItem)', () => {
   });
 });
 
+describe('ITEM_VIEW_SPECS_CONFIGS — Tractor Beam (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('ship-tractor-beam');
+
+  it('config exists and has no blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeUndefined();
+  });
+
+  it('resolves Identity fields for ship-tractor-beam itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'ship-tractor-beam',
+        displayName: 'Tractor Beam',
+        tier: 1,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Tractor Beam');
+    expect(fields.get('Type')).toBe('ship-tractor-beam');
+    expect(fields.get('Tier')).toBe('1');
+  });
+});
+
 describe('ITEM_VIEW_SPECS_CONFIGS — basic-mining-laser (ShipItem)', () => {
   const config = ITEM_VIEW_SPECS_CONFIGS.get('basic-mining-laser');
 

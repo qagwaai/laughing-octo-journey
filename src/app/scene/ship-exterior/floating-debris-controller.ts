@@ -10,8 +10,8 @@ import type { Triple } from '../../model/triple';
 export const FLOATING_DEBRIS_RADIUS_KM = 50;
 export const FLOATING_DEBRIS_POLL_INTERVAL_MS = 5_000;
 
-const SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
-const SENSOR_ARRAY_DISPLAY_NAME = 'Sensor Array';
+const TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
+const TRACTOR_BEAM_DISPLAY_NAME = 'Tractor Beam';
 
 export interface FloatingDebrisControllerDeps {
   socketService: ShipExteriorSocketService;
@@ -33,7 +33,7 @@ export interface FloatingDebrisControllerDeps {
  * Phase 2 scope (only this mechanism is wired):
  *  - On scene enter, issue one `item-list-by-location` request around the ship.
  *  - Re-issue the same request on a low-frequency timer.
- *  - If a response returns no items, seed a single client-side Sensor Array so
+ *  - If a response returns no items, seed a single client-side Tractor Beam so
  *    cold-boot scenes always have one floating item available.
  */
 export class FloatingDebrisController {
@@ -42,7 +42,7 @@ export class FloatingDebrisController {
   private started = false;
   private hasIngestedAnyResponse = false;
   private hasSeededColdBoot = false;
-  private static readonly COLD_BOOT_SENSOR_ARRAY_ID = 'local-cold-boot-sensor-array';
+  private static readonly COLD_BOOT_TRACTOR_BEAM_ID = 'local-cold-boot-ship-tractor-beam';
 
   constructor(private readonly deps: FloatingDebrisControllerDeps) {}
 
@@ -83,11 +83,11 @@ export class FloatingDebrisController {
     const solarSystemId = this.deps.getSolarSystemId().trim() || DEFAULT_SOLAR_SYSTEM_ID;
 
     // Proactive cold-boot seed: as soon as we have a ship position, drop a
-    // local Sensor Array into the scene so the player has something to
+    // local Tractor Beam into the scene so the player has something to
     // tractor-beam regardless of backend availability. Real server items will
     // replace it via handleListResponse when they arrive.
     if (positionKm && !this.hasSeededColdBoot && !this.hasIngestedAnyResponse) {
-      this.seedColdBootSensorArray(positionKm);
+      this.seedColdBootTractorBeam(positionKm);
     }
 
     if (!playerName || !shipId || !sessionKey || !positionKm) {
@@ -130,7 +130,7 @@ export class FloatingDebrisController {
     if (items.length > 0) {
       // Real server items take over; drop the local cold-boot seed if it's still around.
       if (this.hasSeededColdBoot) {
-        this.deps.stateService.removeById(FloatingDebrisController.COLD_BOOT_SENSOR_ARRAY_ID);
+        this.deps.stateService.removeById(FloatingDebrisController.COLD_BOOT_TRACTOR_BEAM_ID);
       }
       this.deps.stateService.upsertFromShipItems(items);
       this.hasIngestedAnyResponse = true;
@@ -138,27 +138,27 @@ export class FloatingDebrisController {
     }
 
     if (!this.hasSeededColdBoot && this.deps.stateService.getAll().length === 0) {
-      this.seedColdBootSensorArray(shipPositionKm);
+      this.seedColdBootTractorBeam(shipPositionKm);
     }
     this.hasIngestedAnyResponse = true;
   }
 
-  private seedColdBootSensorArray(shipPositionKm: Triple): void {
+  private seedColdBootTractorBeam(shipPositionKm: Triple): void {
     if (this.hasSeededColdBoot) {
       return;
     }
-    const sensorArray: FloatingDebrisItem = {
-      id: FloatingDebrisController.COLD_BOOT_SENSOR_ARRAY_ID,
-      itemType: SENSOR_ARRAY_ITEM_TYPE,
-      displayName: SENSOR_ARRAY_DISPLAY_NAME,
+    const tractorBeam: FloatingDebrisItem = {
+      id: FloatingDebrisController.COLD_BOOT_TRACTOR_BEAM_ID,
+      itemType: TRACTOR_BEAM_ITEM_TYPE,
+      displayName: TRACTOR_BEAM_DISPLAY_NAME,
       positionKm: {
         x: shipPositionKm.x + 5,
         y: shipPositionKm.y,
         z: shipPositionKm.z + 5,
       },
     };
-    this.deps.stateService.upsertLocal([sensorArray]);
+    this.deps.stateService.upsertLocal([tractorBeam]);
     this.hasSeededColdBoot = true;
-    appLogger.info('FloatingDebrisController seeded cold-boot Sensor Array', { id: sensorArray.id });
+    appLogger.info('FloatingDebrisController seeded cold-boot Tractor Beam', { id: tractorBeam.id });
   }
 }
