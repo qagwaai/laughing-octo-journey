@@ -1,4 +1,4 @@
-<div class="flex h-dvh w-full" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
+<div class="flex h-dvh w-full overflow-hidden" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
   <!-- Left Content Area with Router Outlet -->
   <div class="relative flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
     <router-outlet name="left" />
@@ -50,7 +50,7 @@
   </div>
 
   <!-- Right Canvas Area -->
-  <div class="relative flex-1" #rightPanel>
+  <div class="relative min-w-0 max-h-dvh max-w-full flex-1 overflow-hidden" #rightPanel>
     @if (rightOutletActive()) {
       <div class="h-full overflow-auto bg-gray-950 text-white">
         <router-outlet name="right" />

@@ -62,6 +62,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 export class AppComponent implements AfterViewInit, OnDestroy {
   private static readonly LOOK_HINT_HIDE_DELAY_MS = 2000;
   private static readonly START_SCANNING_LEFT_WIDTH = 33;
+  private static readonly DIVIDER_WIDTH_PX = 20;
   private static readonly PANEL_SPLIT_DURATION_MS = 700;
   private static readonly PANEL_SPLIT_TRANSITION = `width ${AppComponent.PANEL_SPLIT_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
   protected host = inject(ElementRef);
@@ -163,8 +164,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     if (leftPanel && rightPanel) {
       leftPanel.style.width = '50%';
       leftPanel.style.flex = 'none';
-      rightPanel.style.width = '50%';
-      rightPanel.style.flex = 'none';
+      rightPanel.style.width = '';
+      rightPanel.style.flex = '1 1 auto';
     }
 
     window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
@@ -222,8 +223,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     if (leftPanel && rightPanel) {
       leftPanel.style.width = '50%';
       leftPanel.style.flex = 'none';
-      rightPanel.style.width = '50%';
-      rightPanel.style.flex = 'none';
+      rightPanel.style.width = '';
+      rightPanel.style.flex = '1 1 auto';
 
       // Force a reflow to trigger layout recalculation
       void leftPanel.offsetHeight;
@@ -240,7 +241,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
         const container = this.host.nativeElement;
         const deltaX = event.clientX - this.startX;
         const containerWidth = container.offsetWidth;
-        const newWidth = this.leftPanelWidth() + (deltaX / containerWidth) * 100;
+        const usableWidth = Math.max(1, containerWidth - AppComponent.DIVIDER_WIDTH_PX);
+        const newWidth = this.leftPanelWidth() + (deltaX / usableWidth) * 100;
 
         // Constrain width between 20% and 80%
         if (newWidth >= 20 && newWidth <= 80) {
@@ -250,11 +252,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           const leftPanel = this.leftPanelRef().nativeElement;
           const rightPanel = this.rightPanelRef().nativeElement;
           if (leftPanel && rightPanel) {
-            const rightWidth = 100 - newWidth;
             leftPanel.style.width = newWidth + '%';
             leftPanel.style.flex = 'none';
-            rightPanel.style.width = rightWidth + '%';
-            rightPanel.style.flex = 'none';
+            rightPanel.style.width = '';
+            rightPanel.style.flex = '1 1 auto';
           }
         }
       });
@@ -308,12 +309,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private applyPanelSplit(leftWidth: number, leftPanel: HTMLElement, rightPanel: HTMLElement): void {
-    const rightWidth = 100 - leftWidth;
     this.leftPanelWidth.set(leftWidth);
     leftPanel.style.width = `${leftWidth}%`;
     leftPanel.style.flex = 'none';
-    rightPanel.style.width = `${rightWidth}%`;
-    rightPanel.style.flex = 'none';
+    rightPanel.style.width = '';
+    rightPanel.style.flex = '1 1 auto';
   }
 
   private clearSplitTransitionTimer(): void {
