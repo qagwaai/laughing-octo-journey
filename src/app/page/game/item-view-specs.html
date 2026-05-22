@@ -13,6 +13,14 @@
   @if (item()) {
   <section class="blueprint-body">
     <div class="blueprint-stage">
+      @if (blueprintTopMetaLabels().length > 0) {
+      <div class="blueprint-meta-top">
+        @for (metaLabel of blueprintTopMetaLabels(); track metaLabel) {
+        <div class="blueprint-meta-chip">{{ metaLabel }}</div>
+        }
+      </div>
+      }
+
       @if (imageNotFound()) {
       <p class="image-not-found">{{ t.game.itemViewSpecs.imageNotFoundPrefix }} {{ blueprintImagePath() }}</p>
       } @else {
@@ -20,6 +28,7 @@
         [src]="blueprintImagePath()"
         [alt]="displayTitle() + ' ' + t.game.itemViewSpecs.blueprintImageAltSuffix"
         class="blueprint-image"
+        (load)="onImageLoad()"
         (error)="onImageError()"
       />
       } @for (label of blueprintLabels(); track label.label) {

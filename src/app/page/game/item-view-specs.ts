@@ -6,7 +6,13 @@ import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { locale } from '../../i18n/locale';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import { getSpecsImagePath, ItemViewSpecsConfig, ResolvedGroup, resolveGroups } from '../../model/view/item-view-specs';
+import {
+  getBlueprintOverlayImagePath,
+  getSpecsImagePath,
+  ItemViewSpecsConfig,
+  ResolvedGroup,
+  resolveGroups,
+} from '../../model/view/item-view-specs';
 import { resolveNavigationState } from '../navigation-state';
 
 interface ItemViewSpecsNavigationState {
@@ -34,6 +40,7 @@ export default class ItemViewSpecsPage {
   protected joinCharacter = signal<PlayerCharacterSummary | null>(null);
   protected itemType = signal<string>('');
   protected item = signal<unknown>(null);
+  protected blueprintImagePathIndex = signal(0);
 
   constructor() {
     this.applyNavigationState(this.readNavigationState());
@@ -69,6 +76,13 @@ export default class ItemViewSpecsPage {
     if ('item' in state) {
       this.item.set(state.item ?? null);
     }
+
+    // Route reuse can preserve component state across transitions.
+    // Clear any prior image error whenever navigation state updates this page.
+    if ('item' in state || 'itemType' in state) {
+      this.imageNotFound.set(false);
+      this.blueprintImagePathIndex.set(0);
+    }
   }
 
   protected config = computed<ItemViewSpecsConfig | null>(() => {
@@ -93,9 +107,26 @@ export default class ItemViewSpecsPage {
   protected footerTag = computed(
     () => this.config()?.blueprint?.footerTag ?? this.t.game.itemViewSpecs.defaultFooterTag,
   );
-  protected blueprintImagePath = computed(
-    () => this.config()?.blueprint?.blueprintImagePath ?? getSpecsImagePath(this.itemType()),
-  );
+  protected blueprintImagePathCandidates = computed(() => {
+    const configuredPath = this.config()?.blueprint?.blueprintImagePath;
+    const itemType = this.itemType();
+    const candidates = configuredPath
+      ? [configuredPath]
+      : [getBlueprintOverlayImagePath(itemType), getSpecsImagePath(itemType)];
+
+    const normalized = candidates.map((path) => this.toRootRelativeAssetPath(path));
+    return normalized.filter((path, index) => normalized.indexOf(path) === index);
+  });
+  protected blueprintImagePath = computed(() => {
+    const candidates = this.blueprintImagePathCandidates();
+    if (candidates.length === 0) {
+      return '';
+    }
+
+    const index = Math.min(this.blueprintImagePathIndex(), candidates.length - 1);
+    return candidates[index];
+  });
+  protected blueprintTopMetaLabels = computed(() => this.config()?.blueprint?.topMetaLabels ?? []);
   protected blueprintLabels = computed(() => this.config()?.blueprint?.labels ?? []);
   protected shellBackgroundStyle = computed(() => {
     const backgroundImagePath = this.config()?.blueprint?.backgroundImagePath;
@@ -109,8 +140,34 @@ export default class ItemViewSpecsPage {
   protected specImagePath = computed(() => getSpecsImagePath(this.itemType()));
   protected imageNotFound = signal(false);
 
+  private toRootRelativeAssetPath(path: string): string {
+    if (!path) {
+      return path;
+    }
+
+    if (/^(https?:|data:|blob:|\/)/i.test(path)) {
+      return path;
+    }
+
+    const normalized = path.replace(/^\.\//, '');
+    return `/${normalized}`;
+  }
+
   onImageError(): void {
+    const candidates = this.blueprintImagePathCandidates();
+    const currentIndex = this.blueprintImagePathIndex();
+
+    if (currentIndex + 1 < candidates.length) {
+      this.blueprintImagePathIndex.set(currentIndex + 1);
+      this.imageNotFound.set(false);
+      return;
+    }
+
     this.imageNotFound.set(true);
+  }
+
+  onImageLoad(): void {
+    this.imageNotFound.set(false);
   }
 
   /**

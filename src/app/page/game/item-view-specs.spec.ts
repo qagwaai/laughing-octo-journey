@@ -6,6 +6,7 @@ import { Subject } from 'rxjs';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import type { ShipItem } from '../../model/ship-item';
 import {
+  getBlueprintOverlayImagePath,
   getSpecsImagePath,
   normalizeItemTypeForImage,
   resolveGroups,
@@ -96,6 +97,18 @@ describe('getSpecsImagePath', () => {
 
   it('returns the correct path for a multi-word itemType', () => {
     expect(getSpecsImagePath('Basic Mining Laser')).toBe('images/basic_mining_laser_specs.png');
+  });
+});
+
+describe('getBlueprintOverlayImagePath', () => {
+  it('returns the correct path for a display name itemType', () => {
+    expect(getBlueprintOverlayImagePath('Scavenger Pod')).toBe('images/scavenger_pod_blueprint_overlay.svg');
+  });
+
+  it('returns the correct path for a kebab-case itemType', () => {
+    expect(getBlueprintOverlayImagePath('expendable-dart-drone')).toBe(
+      'images/expendable_dart_drone_blueprint_overlay.svg',
+    );
   });
 });
 
@@ -280,6 +293,80 @@ describe('ItemViewSpecsPage', () => {
   it('should set imageNotFound to true on image error', () => {
     const { component } = setup();
     expect(component['imageNotFound']()).toBeFalse();
+    component.onImageError();
+    expect(component['imageNotFound']()).toBeTrue();
+  });
+
+  it('should clear imageNotFound on image load', () => {
+    const { component } = setup();
+    component.onImageError();
+    expect(component['imageNotFound']()).toBeTrue();
+    component.onImageLoad();
+    expect(component['imageNotFound']()).toBeFalse();
+  });
+
+  it('should normalize blueprint image path to root-relative', () => {
+    const { component } = setup({ itemType: 'expendable-dart-drone' });
+    expect(component['blueprintImagePath']()).toBe('/images/expendable_dart_drone_blueprint_overlay.svg');
+  });
+
+  it('should reset imageNotFound on navigation state update', () => {
+    const { component } = setup({ itemType: 'expendable-dart-drone', item: makeDroneItem() });
+    component.onImageError();
+    expect(component['imageNotFound']()).toBeTrue();
+
+    component['applyNavigationState']({ itemType: 'expendable-dart-drone', item: makeDroneItem() });
+    expect(component['imageNotFound']()).toBeFalse();
+  });
+
+  it('should use configured blueprint image path for propulsion-manifold', () => {
+    const { component } = setup({ itemType: 'propulsion-manifold' });
+    expect(component['blueprintImagePath']()).toBe('/images/propulsion_manifold_blueprint_overlay.svg');
+  });
+
+  it('should expose propulsion-manifold top meta rail labels', () => {
+    const { component } = setup({ itemType: 'propulsion-manifold' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['OVERALL LENGTH: 2.86 M', 'BODY DIAMETER: 0.46 M']);
+  });
+
+  it('should expose power-distribution-bus top meta rail labels', () => {
+    const { component } = setup({ itemType: 'power-distribution-bus' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['BUS LENGTH: 2.94 M', 'TRUNK HEIGHT: 0.41 M']);
+  });
+
+  it('should expose ship-tractor-beam top meta rail labels', () => {
+    const { component } = setup({ itemType: 'ship-tractor-beam' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['BARREL LENGTH: 2.61 M', 'FIELD APERTURE: 0.52 M']);
+  });
+
+  it('should expose basic-mining-laser top meta rail labels', () => {
+    const { component } = setup({ itemType: 'basic-mining-laser' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['BARREL LENGTH: 2.48 M', 'EMITTER DIAMETER: 0.36 M']);
+  });
+
+  it('should expose structural-frames top meta rail labels', () => {
+    const { component } = setup({ itemType: 'structural-frames' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['FRAME LENGTH: 3.08 M', 'FRAME HEIGHT: 1.12 M']);
+  });
+
+  it('should expose basic-plating top meta rail labels', () => {
+    const { component } = setup({ itemType: 'basic-plating' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['PLATE LENGTH: 2.92 M', 'PLATE HEIGHT: 1.06 M']);
+  });
+
+  it('should expose scavenger pod top meta rail labels', () => {
+    const { component } = setup({ itemType: 'Scavenger Pod' });
+    expect(component['blueprintTopMetaLabels']()).toEqual(['OVERALL LENGTH: 3.85 M', 'POD WIDTH: 2.10 M']);
+  });
+
+  it('should prefer SVG blueprint path then fallback to legacy PNG specs path for unknown items', () => {
+    const { component } = setup({ itemType: 'unknown-manifold' });
+    expect(component['blueprintImagePath']()).toBe('/images/unknown_manifold_blueprint_overlay.svg');
+
+    component.onImageError();
+    expect(component['imageNotFound']()).toBeFalse();
+    expect(component['blueprintImagePath']()).toBe('/images/unknown_manifold_specs.png');
+
     component.onImageError();
     expect(component['imageNotFound']()).toBeTrue();
   });

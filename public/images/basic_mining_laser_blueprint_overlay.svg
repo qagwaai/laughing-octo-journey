@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 840" role="img" aria-label="Basic Mining Laser blueprint overlay">
+  <defs>
+    <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.45" />
+      <stop offset="50%" stop-color="#d6f2ff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#7cc9ff" stop-opacity="0.45" />
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="url(#lineGlow)" filter="url(#softGlow)">
+    <!-- Main beam barrel -->
+    <rect x="224" y="364" width="930" height="112" rx="50" stroke-width="2.6" />
+    <rect x="296" y="394" width="784" height="52" rx="24" stroke-width="1.4" />
+
+    <!-- Forward emitter cone and nozzle -->
+    <polygon points="1154,364 1270,392 1270,448 1154,476" stroke-width="2.2" />
+    <ellipse cx="1270" cy="420" rx="26" ry="42" stroke-width="1.6" />
+    <ellipse cx="1258" cy="420" rx="16" ry="28" stroke-width="1.2" />
+
+    <!-- Rear power coupler -->
+    <ellipse cx="224" cy="420" rx="56" ry="74" stroke-width="2.2" />
+    <ellipse cx="224" cy="420" rx="34" ry="46" stroke-width="1.4" />
+
+    <!-- Lens chamber -->
+    <ellipse cx="878" cy="420" rx="118" ry="84" stroke-width="2.2" />
+    <ellipse cx="878" cy="420" rx="74" ry="54" stroke-width="1.4" />
+
+    <!-- Cooling manifold fins -->
+    <line x1="558" y1="364" x2="558" y2="300" stroke-width="1.6" />
+    <line x1="610" y1="364" x2="610" y2="292" stroke-width="1.6" />
+    <line x1="662" y1="364" x2="662" y2="300" stroke-width="1.6" />
+    <line x1="558" y1="476" x2="558" y2="540" stroke-width="1.6" />
+    <line x1="610" y1="476" x2="610" y2="548" stroke-width="1.6" />
+    <line x1="662" y1="476" x2="662" y2="540" stroke-width="1.6" />
+
+    <!-- Mounting cradle -->
+    <rect x="510" y="566" width="260" height="54" rx="22" stroke-width="1.8" />
+    <line x1="532" y1="593" x2="748" y2="593" stroke-width="1.2" stroke-dasharray="6 6" />
+
+    <!-- Dimension lines -->
+    <line x1="224" y1="670" x2="1270" y2="670" stroke-width="1.6" />
+    <line x1="224" y1="664" x2="224" y2="684" stroke-width="1.6" />
+    <line x1="1270" y1="664" x2="1270" y2="684" stroke-width="1.6" />
+
+    <line x1="128" y1="364" x2="128" y2="476" stroke-width="1.6" />
+    <line x1="122" y1="364" x2="142" y2="364" stroke-width="1.6" />
+    <line x1="122" y1="476" x2="142" y2="476" stroke-width="1.6" />
+
+    <!-- Technical callouts -->
+    <line x1="878" y1="336" x2="978" y2="220" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="878" cy="336" r="4" stroke-width="1.4" />
+
+    <line x1="1258" y1="392" x2="1340" y2="292" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="1258" cy="392" r="4" stroke-width="1.4" />
+
+    <line x1="662" y1="548" x2="786" y2="700" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="662" cy="548" r="4" stroke-width="1.4" />
+  </g>
+
+  <g fill="#c8f0ff" font-size="24" font-family="monospace" letter-spacing="1.2">
+    <text x="988" y="212">FOCUS LENS CHAMBER</text>
+    <text x="1346" y="284">EMITTER NOZZLE</text>
+    <text x="794" y="710">COOLING FIN STACK</text>
+  </g>
+</svg>

@@ -65,7 +65,8 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Scavenger Pod (ShipSummary)', () => {
   it('config exists and has a blueprint', () => {
     expect(config).toBeDefined();
     expect(config!.blueprint).toBeDefined();
-    expect(config!.blueprint!.blueprintImagePath).toContain('scavenger_pod');
+    expect(config!.blueprint!.blueprintImagePath).toContain('scavenger_pod_blueprint_overlay.png');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['OVERALL LENGTH: 3.85 M', 'POD WIDTH: 2.10 M']);
   });
 
   it('resolves Identity fields from a ShipSummary', () => {
@@ -179,14 +180,25 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Expendable Dart Drone (ShipItem)', () => {
     expect(config!.blueprint).toBeDefined();
     expect(config!.blueprint!.blueprintImagePath).toContain('expendable_dart_drone');
   });
+
+  it('positions top labels inward so text does not clip at the stage edge', () => {
+    const labels = config!.blueprint?.labels ?? [];
+    const overallLength = labels.find((entry) => entry.label === 'OVERALL LENGTH: 1.14 M');
+    const diameter = labels.find((entry) => entry.label === 'DIAMETER: 0.18 M');
+
+    expect(overallLength?.leftPercent).toBe(24);
+    expect(diameter?.leftPercent).toBe(74);
+  });
 });
 
 describe('ITEM_VIEW_SPECS_CONFIGS — Tractor Beam (ShipItem)', () => {
   const config = ITEM_VIEW_SPECS_CONFIGS.get('ship-tractor-beam');
 
-  it('config exists and has no blueprint', () => {
+  it('config exists and has a blueprint', () => {
     expect(config).toBeDefined();
-    expect(config!.blueprint).toBeUndefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('ship_tractor_beam_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['BARREL LENGTH: 2.61 M', 'FIELD APERTURE: 0.52 M']);
   });
 
   it('resolves Identity fields for ship-tractor-beam itemType', () => {
@@ -205,12 +217,159 @@ describe('ITEM_VIEW_SPECS_CONFIGS — Tractor Beam (ShipItem)', () => {
   });
 });
 
+describe('ITEM_VIEW_SPECS_CONFIGS — Propulsion Manifold (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('propulsion-manifold');
+
+  it('config exists and has a blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('propulsion_manifold_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['OVERALL LENGTH: 2.86 M', 'BODY DIAMETER: 0.46 M']);
+  });
+
+  it('resolves Identity fields for propulsion-manifold itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'propulsion-manifold',
+        displayName: 'Propulsion Manifold',
+        tier: 2,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Propulsion Manifold');
+    expect(fields.get('Type')).toBe('propulsion-manifold');
+    expect(fields.get('Tier')).toBe('2');
+  });
+});
+
+describe('ITEM_VIEW_SPECS_CONFIGS — Sensor Array (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('sensor-array');
+
+  it('config exists and has a blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('sensor_array_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['ARRAY SPAN: 2.72 M', 'DISH DIAMETER: 0.88 M']);
+  });
+
+  it('resolves Identity fields for sensor-array itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'sensor-array',
+        displayName: 'Sensor Array',
+        tier: 2,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Sensor Array');
+    expect(fields.get('Type')).toBe('sensor-array');
+    expect(fields.get('Tier')).toBe('2');
+  });
+});
+
+describe('ITEM_VIEW_SPECS_CONFIGS — Power Distribution Bus (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('power-distribution-bus');
+
+  it('config exists and has a blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('power_distribution_bus_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['BUS LENGTH: 2.94 M', 'TRUNK HEIGHT: 0.41 M']);
+  });
+
+  it('resolves Identity fields for power-distribution-bus itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'power-distribution-bus',
+        displayName: 'Power Distribution Bus',
+        tier: 2,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Power Distribution Bus');
+    expect(fields.get('Type')).toBe('power-distribution-bus');
+    expect(fields.get('Tier')).toBe('2');
+  });
+});
+
 describe('ITEM_VIEW_SPECS_CONFIGS — basic-mining-laser (ShipItem)', () => {
   const config = ITEM_VIEW_SPECS_CONFIGS.get('basic-mining-laser');
 
-  it('config exists and has no blueprint', () => {
+  it('config exists and has a blueprint', () => {
     expect(config).toBeDefined();
-    expect(config!.blueprint).toBeUndefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('basic_mining_laser_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['BARREL LENGTH: 2.48 M', 'EMITTER DIAMETER: 0.36 M']);
+  });
+
+  it('resolves Identity fields for basic-mining-laser itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'basic-mining-laser',
+        displayName: 'Basic Mining Laser',
+        tier: 1,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Basic Mining Laser');
+    expect(fields.get('Type')).toBe('basic-mining-laser');
+    expect(fields.get('Tier')).toBe('1');
+  });
+});
+
+describe('ITEM_VIEW_SPECS_CONFIGS — structural-frames (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('structural-frames');
+
+  it('config exists and has a blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('structural_frames_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['FRAME LENGTH: 3.08 M', 'FRAME HEIGHT: 1.12 M']);
+  });
+
+  it('resolves Identity fields for structural-frames itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'structural-frames',
+        displayName: 'Structural Frames',
+        tier: 1,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Structural Frames');
+    expect(fields.get('Type')).toBe('structural-frames');
+    expect(fields.get('Tier')).toBe('1');
+  });
+});
+
+describe('ITEM_VIEW_SPECS_CONFIGS — basic-plating (ShipItem)', () => {
+  const config = ITEM_VIEW_SPECS_CONFIGS.get('basic-plating');
+
+  it('config exists and has a blueprint', () => {
+    expect(config).toBeDefined();
+    expect(config!.blueprint).toBeDefined();
+    expect(config!.blueprint!.blueprintImagePath).toContain('basic_plating_blueprint_overlay.svg');
+    expect(config!.blueprint!.topMetaLabels).toEqual(['PLATE LENGTH: 2.92 M', 'PLATE HEIGHT: 1.06 M']);
+  });
+
+  it('resolves Identity fields for basic-plating itemType', () => {
+    const fields = fieldMap(
+      config,
+      makeShipItem({
+        itemType: 'basic-plating',
+        displayName: 'Basic Plating',
+        tier: 1,
+      }),
+    );
+
+    expect(fields.get('Name')).toBe('Basic Plating');
+    expect(fields.get('Type')).toBe('basic-plating');
+    expect(fields.get('Tier')).toBe('1');
   });
 });
 

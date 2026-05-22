@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 840" role="img" aria-label="Propulsion Manifold blueprint overlay">
+  <defs>
+    <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.45" />
+      <stop offset="50%" stop-color="#d6f2ff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#7cc9ff" stop-opacity="0.45" />
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Isometric manifold assembly with central pressure chamber and branch conduits -->
+  <g fill="none" stroke="url(#lineGlow)" filter="url(#softGlow)">
+    <!-- Main horizontal conduit spine -->
+    <rect x="220" y="340" width="960" height="160" rx="78" stroke-width="2.8" />
+    <rect x="274" y="374" width="852" height="92" rx="45" stroke-width="1.4" />
+
+    <!-- Central pressure chamber -->
+    <ellipse cx="700" cy="420" rx="176" ry="132" stroke-width="2.8" />
+    <ellipse cx="700" cy="420" rx="122" ry="88" stroke-width="1.8" />
+    <line x1="700" y1="288" x2="700" y2="552" stroke-width="1.4" stroke-dasharray="8 6" />
+    <line x1="524" y1="420" x2="876" y2="420" stroke-width="1.4" stroke-dasharray="8 6" />
+
+    <!-- Upper manifold branches -->
+    <path d="M 430 340 C 430 246, 520 212, 612 228" stroke-width="2.2" />
+    <path d="M 700 340 C 700 234, 780 200, 876 218" stroke-width="2.2" />
+    <path d="M 970 340 C 970 252, 1060 226, 1140 258" stroke-width="2.2" />
+
+    <!-- Lower manifold branches -->
+    <path d="M 430 500 C 430 596, 520 628, 612 612" stroke-width="2.2" />
+    <path d="M 700 500 C 700 606, 780 640, 876 622" stroke-width="2.2" />
+    <path d="M 970 500 C 970 586, 1060 614, 1140 586" stroke-width="2.2" />
+
+    <!-- Branch flange rings -->
+    <ellipse cx="612" cy="228" rx="34" ry="20" stroke-width="1.8" />
+    <ellipse cx="876" cy="218" rx="36" ry="22" stroke-width="1.8" />
+    <ellipse cx="1140" cy="258" rx="30" ry="18" stroke-width="1.8" />
+    <ellipse cx="612" cy="612" rx="34" ry="20" stroke-width="1.8" />
+    <ellipse cx="876" cy="622" rx="36" ry="22" stroke-width="1.8" />
+    <ellipse cx="1140" cy="586" rx="30" ry="18" stroke-width="1.8" />
+
+    <!-- Left and right coupler housings -->
+    <ellipse cx="240" cy="420" rx="52" ry="72" stroke-width="2.2" />
+    <ellipse cx="1160" cy="420" rx="52" ry="72" stroke-width="2.2" />
+    <ellipse cx="240" cy="420" rx="28" ry="40" stroke-width="1.4" />
+    <ellipse cx="1160" cy="420" rx="28" ry="40" stroke-width="1.4" />
+
+    <!-- Overall length dimension line -->
+    <line x1="220" y1="660" x2="1180" y2="660" stroke-width="1.6" />
+    <line x1="220" y1="654" x2="220" y2="674" stroke-width="1.6" />
+    <line x1="1180" y1="654" x2="1180" y2="674" stroke-width="1.6" />
+
+    <!-- Main body diameter dimension line -->
+    <line x1="140" y1="340" x2="140" y2="500" stroke-width="1.6" />
+    <line x1="134" y1="340" x2="154" y2="340" stroke-width="1.6" />
+    <line x1="134" y1="500" x2="154" y2="500" stroke-width="1.6" />
+
+    <!-- Chamber envelope dimension line -->
+    <line x1="964" y1="288" x2="964" y2="552" stroke-width="1.4" />
+    <line x1="958" y1="288" x2="978" y2="288" stroke-width="1.4" />
+    <line x1="958" y1="552" x2="978" y2="552" stroke-width="1.4" />
+
+    <!-- Technical callouts -->
+    <line x1="700" y1="288" x2="700" y2="144" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="700" cy="288" r="4" stroke-width="1.6" />
+
+    <line x1="876" y1="218" x2="1016" y2="124" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="876" cy="218" r="4" stroke-width="1.6" />
+
+    <line x1="612" y1="612" x2="462" y2="716" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="612" cy="612" r="4" stroke-width="1.6" />
+
+    <!-- Top-view compact inset -->
+    <rect x="500" y="710" width="400" height="68" rx="32" stroke-width="1.8" />
+    <ellipse cx="700" cy="744" rx="92" ry="26" stroke-width="1.4" />
+    <line x1="500" y1="744" x2="900" y2="744" stroke-width="1.2" stroke-dasharray="6 6" />
+  </g>
+
+  <!-- Labels -->
+  <g fill="#c8f0ff" font-size="24" font-family="monospace" letter-spacing="1.2">
+    <text x="392" y="96">PRESSURE REGULATION CHAMBER</text>
+    <text x="878" y="96">HIGH-FLOW DISTRIBUTION BRANCH</text>
+    <text x="980" y="734">THERMAL ISOLATION FLANGE</text>
+  </g>
+</svg>

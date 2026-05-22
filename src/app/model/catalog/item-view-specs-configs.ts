@@ -186,10 +186,8 @@ function buildShipSummaryConfig(itemType: string, title: string): ItemViewSpecsC
       footerTag: '[ L-BRACKET_SYSTEM_READY ]',
       backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
       blueprintImagePath: 'images/scavenger_pod_blueprint_overlay.png',
-      labels: [
-        { label: 'OVERALL LENGTH: 3.85 M', topPercent: 11, leftPercent: 12 },
-        { label: 'POD WIDTH: 2.10 M', topPercent: 11, leftPercent: 74 },
-      ],
+      topMetaLabels: ['OVERALL LENGTH: 3.85 M', 'POD WIDTH: 2.10 M'],
+      labels: [],
     };
   }
 
@@ -246,9 +244,93 @@ function buildShipItemConfig(itemType: string, title: string): ItemViewSpecsConf
       backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
       blueprintImagePath: 'images/expendable_dart_drone_blueprint_overlay.svg',
       labels: [
-        { label: 'OVERALL LENGTH: 1.14 M', topPercent: 11, leftPercent: 10 },
-        { label: 'DIAMETER: 0.18 M', topPercent: 11, leftPercent: 67 },
+        { label: 'OVERALL LENGTH: 1.14 M', topPercent: 11, leftPercent: 24 },
+        { label: 'DIAMETER: 0.18 M', topPercent: 11, leftPercent: 74 },
       ],
+    };
+  }
+
+  if (itemType === 'propulsion-manifold') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // PROPULSION FLOW REGULATION MODULE',
+      classificationLine: 'DRIVE TRAIN BLUEPRINT PROFILE',
+      footerTag: '[ THERMAL_LOOP_BALANCED ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/propulsion_manifold_blueprint_overlay.svg',
+      topMetaLabels: ['OVERALL LENGTH: 2.86 M', 'BODY DIAMETER: 0.46 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'sensor-array') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // MULTI-SPECTRAL SENSOR CLUSTER',
+      classificationLine: 'TELEMETRY BLUEPRINT PROFILE',
+      footerTag: '[ SIGNAL_LOCK_STABLE ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/sensor_array_blueprint_overlay.svg',
+      topMetaLabels: ['ARRAY SPAN: 2.72 M', 'DISH DIAMETER: 0.88 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'power-distribution-bus') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // SHIPBOARD POWER ROUTING MODULE',
+      classificationLine: 'ENERGY GRID BLUEPRINT PROFILE',
+      footerTag: '[ LOAD_BALANCER_SYNCED ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/power_distribution_bus_blueprint_overlay.svg',
+      topMetaLabels: ['BUS LENGTH: 2.94 M', 'TRUNK HEIGHT: 0.41 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'ship-tractor-beam') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // VECTOR-LOCK MATERIAL HANDLING ARRAY',
+      classificationLine: 'TRACTOR FIELD BLUEPRINT PROFILE',
+      footerTag: '[ BEAM_ENVELOPE_STABLE ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/ship_tractor_beam_blueprint_overlay.svg',
+      topMetaLabels: ['BARREL LENGTH: 2.61 M', 'FIELD APERTURE: 0.52 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'basic-mining-laser') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // ENTRY-GRADE MATERIAL EXTRACTION LASER',
+      classificationLine: 'MINING SYSTEM BLUEPRINT PROFILE',
+      footerTag: '[ LENS_CALIBRATION_READY ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/basic_mining_laser_blueprint_overlay.svg',
+      topMetaLabels: ['BARREL LENGTH: 2.48 M', 'EMITTER DIAMETER: 0.36 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'structural-frames') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // REINFORCED HULL SUBSTRUCTURE KIT',
+      classificationLine: 'CHASSIS BLUEPRINT PROFILE',
+      footerTag: '[ FRAME_STRESS_NORMALIZED ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/structural_frames_blueprint_overlay.svg',
+      topMetaLabels: ['FRAME LENGTH: 3.08 M', 'FRAME HEIGHT: 1.12 M'],
+      labels: [],
+    };
+  }
+
+  if (itemType === 'basic-plating') {
+    config.blueprint = {
+      unitLine: 'PROJECT STELLAR // STANDARD HULL PLATING MODULE',
+      classificationLine: 'ARMOR BLUEPRINT PROFILE',
+      footerTag: '[ IMPACT_LAYER_ALIGNED ]',
+      backgroundImagePath: 'images/scavenger_pod_blueprint_bg.png',
+      blueprintImagePath: 'images/basic_plating_blueprint_overlay.svg',
+      topMetaLabels: ['PLATE LENGTH: 2.92 M', 'PLATE HEIGHT: 1.06 M'],
+      labels: [],
     };
   }
 
@@ -263,6 +345,9 @@ const ALL_CONFIGS: ItemViewSpecsConfig[] = [
   buildShipSummaryConfig('Expendable Dart Ship', 'Expendable Dart Ship'),
   // ShipItem configs (keyed by itemType)
   buildShipItemConfig('expendable-dart-drone', 'Expendable Dart Drone'),
+  buildShipItemConfig('propulsion-manifold', 'Propulsion Manifold'),
+  buildShipItemConfig('sensor-array', 'Sensor Array'),
+  buildShipItemConfig('power-distribution-bus', 'Power Distribution Bus'),
   buildShipItemConfig('ship-tractor-beam', 'Tractor Beam'),
   buildShipItemConfig('3d-printer', '3D Printer'),
   buildShipItemConfig('basic-mining-laser', 'Basic Mining Laser'),

@@ -31,6 +31,7 @@ export interface ItemBlueprintConfig {
   footerTag?: string;
   backgroundImagePath?: string;
   blueprintImagePath?: string;
+  topMetaLabels?: string[];
   labels?: ItemBlueprintLabelConfig[];
 }
 
@@ -73,4 +74,8 @@ export function normalizeItemTypeForImage(itemType: string): string {
 
 export function getSpecsImagePath(itemType: string): string {
   return `images/${normalizeItemTypeForImage(itemType)}_specs.png`;
+}
+
+export function getBlueprintOverlayImagePath(itemType: string): string {
+  return `images/${normalizeItemTypeForImage(itemType)}_blueprint_overlay.svg`;
 }

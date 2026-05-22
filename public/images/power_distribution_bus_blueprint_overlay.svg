@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 840" role="img" aria-label="Power Distribution Bus blueprint overlay">
+  <defs>
+    <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.45" />
+      <stop offset="50%" stop-color="#d6f2ff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#7cc9ff" stop-opacity="0.45" />
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="url(#lineGlow)" filter="url(#softGlow)">
+    <!-- Main bus trunk -->
+    <rect x="210" y="352" width="980" height="136" rx="22" stroke-width="2.6" />
+    <rect x="262" y="384" width="876" height="72" rx="14" stroke-width="1.6" />
+
+    <!-- Core switching chamber -->
+    <rect x="580" y="284" width="240" height="272" rx="28" stroke-width="2.2" />
+    <rect x="626" y="336" width="148" height="168" rx="18" stroke-width="1.4" />
+    <line x1="700" y1="284" x2="700" y2="556" stroke-width="1.2" stroke-dasharray="7 6" />
+
+    <!-- Left coupler cluster -->
+    <rect x="126" y="372" width="84" height="96" rx="20" stroke-width="2" />
+    <line x1="126" y1="420" x2="210" y2="420" stroke-width="1.8" />
+    <circle cx="148" cy="406" r="7" stroke-width="1.4" />
+    <circle cx="148" cy="434" r="7" stroke-width="1.4" />
+    <circle cx="176" cy="406" r="7" stroke-width="1.4" />
+    <circle cx="176" cy="434" r="7" stroke-width="1.4" />
+
+    <!-- Right coupler cluster -->
+    <rect x="1190" y="372" width="84" height="96" rx="20" stroke-width="2" />
+    <line x1="1190" y1="420" x2="1138" y2="420" stroke-width="1.8" />
+    <circle cx="1212" cy="406" r="7" stroke-width="1.4" />
+    <circle cx="1212" cy="434" r="7" stroke-width="1.4" />
+    <circle cx="1240" cy="406" r="7" stroke-width="1.4" />
+    <circle cx="1240" cy="434" r="7" stroke-width="1.4" />
+
+    <!-- Top distribution nodes -->
+    <line x1="360" y1="352" x2="360" y2="236" stroke-width="1.6" />
+    <line x1="520" y1="352" x2="520" y2="220" stroke-width="1.6" />
+    <line x1="880" y1="352" x2="880" y2="220" stroke-width="1.6" />
+    <line x1="1040" y1="352" x2="1040" y2="236" stroke-width="1.6" />
+    <rect x="334" y="214" width="52" height="24" rx="5" stroke-width="1.2" />
+    <rect x="494" y="198" width="52" height="24" rx="5" stroke-width="1.2" />
+    <rect x="854" y="198" width="52" height="24" rx="5" stroke-width="1.2" />
+    <rect x="1014" y="214" width="52" height="24" rx="5" stroke-width="1.2" />
+
+    <!-- Bottom breaker modules -->
+    <rect x="328" y="586" width="128" height="42" rx="10" stroke-width="1.6" />
+    <rect x="502" y="586" width="128" height="42" rx="10" stroke-width="1.6" />
+    <rect x="770" y="586" width="128" height="42" rx="10" stroke-width="1.6" />
+    <rect x="944" y="586" width="128" height="42" rx="10" stroke-width="1.6" />
+
+    <!-- Dimension lines -->
+    <line x1="210" y1="674" x2="1190" y2="674" stroke-width="1.6" />
+    <line x1="210" y1="668" x2="210" y2="688" stroke-width="1.6" />
+    <line x1="1190" y1="668" x2="1190" y2="688" stroke-width="1.6" />
+
+    <line x1="86" y1="352" x2="86" y2="488" stroke-width="1.6" />
+    <line x1="80" y1="352" x2="100" y2="352" stroke-width="1.6" />
+    <line x1="80" y1="488" x2="100" y2="488" stroke-width="1.6" />
+
+    <!-- Technical callouts -->
+    <line x1="700" y1="284" x2="700" y2="146" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="700" cy="284" r="4" stroke-width="1.4" />
+
+    <line x1="1040" y1="214" x2="1166" y2="142" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="1040" cy="214" r="4" stroke-width="1.4" />
+
+    <line x1="944" y1="607" x2="1078" y2="716" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="944" cy="607" r="4" stroke-width="1.4" />
+  </g>
+
+  <g fill="#c8f0ff" font-size="24" font-family="monospace" letter-spacing="1.2">
+    <text x="570" y="132">SWITCHING MATRIX CORE</text>
+    <text x="1178" y="132">HIGH-LOAD FEED NODE</text>
+    <text x="1088" y="726">BREAKER BANK MODULE</text>
+  </g>
+</svg>

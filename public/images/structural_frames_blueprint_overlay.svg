@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 840" role="img" aria-label="Structural Frames blueprint overlay">
+  <defs>
+    <linearGradient id="lineGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7cc9ff" stop-opacity="0.45" />
+      <stop offset="50%" stop-color="#d6f2ff" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#7cc9ff" stop-opacity="0.45" />
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g fill="none" stroke="url(#lineGlow)" filter="url(#softGlow)">
+    <!-- Outer chassis frame -->
+    <rect x="212" y="238" width="976" height="364" rx="26" stroke-width="2.6" />
+    <rect x="256" y="282" width="888" height="276" rx="18" stroke-width="1.6" />
+
+    <!-- Longitudinal beams -->
+    <line x1="308" y1="314" x2="1092" y2="314" stroke-width="2" />
+    <line x1="308" y1="526" x2="1092" y2="526" stroke-width="2" />
+    <line x1="308" y1="420" x2="1092" y2="420" stroke-width="1.4" stroke-dasharray="8 6" />
+
+    <!-- Vertical ribs -->
+    <line x1="372" y1="282" x2="372" y2="558" stroke-width="1.6" />
+    <line x1="532" y1="282" x2="532" y2="558" stroke-width="1.6" />
+    <line x1="700" y1="282" x2="700" y2="558" stroke-width="1.6" />
+    <line x1="868" y1="282" x2="868" y2="558" stroke-width="1.6" />
+    <line x1="1028" y1="282" x2="1028" y2="558" stroke-width="1.6" />
+
+    <!-- Truss braces -->
+    <line x1="372" y1="314" x2="532" y2="526" stroke-width="1.2" />
+    <line x1="532" y1="314" x2="700" y2="526" stroke-width="1.2" />
+    <line x1="700" y1="314" x2="868" y2="526" stroke-width="1.2" />
+    <line x1="868" y1="314" x2="1028" y2="526" stroke-width="1.2" />
+    <line x1="532" y1="314" x2="372" y2="526" stroke-width="1.2" />
+    <line x1="700" y1="314" x2="532" y2="526" stroke-width="1.2" />
+    <line x1="868" y1="314" x2="700" y2="526" stroke-width="1.2" />
+    <line x1="1028" y1="314" x2="868" y2="526" stroke-width="1.2" />
+
+    <!-- Anchor hardpoints -->
+    <circle cx="256" cy="282" r="16" stroke-width="1.4" />
+    <circle cx="1144" cy="282" r="16" stroke-width="1.4" />
+    <circle cx="256" cy="558" r="16" stroke-width="1.4" />
+    <circle cx="1144" cy="558" r="16" stroke-width="1.4" />
+
+    <!-- Bottom cross-member pack -->
+    <rect x="518" y="614" width="364" height="52" rx="18" stroke-width="1.6" />
+    <line x1="548" y1="640" x2="852" y2="640" stroke-width="1.2" stroke-dasharray="6 6" />
+
+    <!-- Dimension lines -->
+    <line x1="212" y1="692" x2="1188" y2="692" stroke-width="1.6" />
+    <line x1="212" y1="686" x2="212" y2="706" stroke-width="1.6" />
+    <line x1="1188" y1="686" x2="1188" y2="706" stroke-width="1.6" />
+
+    <line x1="128" y1="238" x2="128" y2="602" stroke-width="1.6" />
+    <line x1="122" y1="238" x2="142" y2="238" stroke-width="1.6" />
+    <line x1="122" y1="602" x2="142" y2="602" stroke-width="1.6" />
+
+    <!-- Technical callouts -->
+    <line x1="700" y1="314" x2="804" y2="176" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="700" cy="314" r="4" stroke-width="1.4" />
+
+    <line x1="1028" y1="314" x2="1166" y2="214" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="1028" cy="314" r="4" stroke-width="1.4" />
+
+    <line x1="852" y1="640" x2="972" y2="746" stroke-width="1.4" stroke-dasharray="8 7" />
+    <circle cx="852" cy="640" r="4" stroke-width="1.4" />
+  </g>
+
+  <g fill="#c8f0ff" font-size="24" font-family="monospace" letter-spacing="1.2">
+    <text x="814" y="168">PRIMARY LOAD SPAR</text>
+    <text x="1174" y="208">ANCHOR HARDPOINT</text>
+    <text x="980" y="752">CROSS-MEMBER ARRAY</text>
+  </g>
+</svg>
