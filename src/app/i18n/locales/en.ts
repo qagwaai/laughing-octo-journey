@@ -104,6 +104,8 @@ export const en = {
       localeLabel: 'Language',
       playerNameLabel: 'Player Name',
       playerNamePlaceholder: 'Choose your callsign',
+      rememberHandleLabel: 'Remember my handle on this device',
+      rememberHandleHint: 'Stored locally on this device. You can change this anytime by re-registering.',
       emailLabel: 'Email',
       emailPlaceholder: 'your@email.com',
       passwordLabel: 'Password',

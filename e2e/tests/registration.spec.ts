@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
+import { LoginPage } from '../page-objects/login.page';
 import { RegistrationPage } from '../page-objects/registration.page';
 
 test.describe('Registration', () => {
   let registrationPage: RegistrationPage;
+  let loginPage: LoginPage;
 
   test.beforeEach(async ({ page }) => {
     registrationPage = new RegistrationPage(page);
+    loginPage = new LoginPage(page);
     await registrationPage.goto();
   });
 
@@ -95,5 +98,51 @@ test.describe('Registration', () => {
     mock.push('register-response', registerResponse);
     mock.push('login-response', loginResponse);
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  });
+
+  test('stores opted-in handle and prefills login player name', async ({ page }) => {
+    const registerResponse = {
+      success: true,
+      message: 'Registration successful!',
+    };
+    const loginResponse = {
+      success: true,
+      message: 'Login successful!',
+      sessionKey: 'session-001',
+    };
+
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+
+    mock.on('register', () => ({
+      event: 'register-response',
+      data: registerResponse,
+    }));
+
+    mock.on('login', () => ({
+      event: 'login-response',
+      data: loginResponse,
+    }));
+
+    mock.on('character-list-request', () => ({
+      event: 'character-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: 'rememberedpilot',
+        characters: [],
+      },
+    }));
+
+    await registrationPage.goto();
+    await mock.connected;
+
+    await registrationPage.register('rememberedpilot', 'remembered@example.com', 'password123', 'en', true);
+    mock.push('register-response', registerResponse);
+    mock.push('login-response', loginResponse);
+    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+
+    await loginPage.goto();
+    await expect(loginPage.playerNameInput).toHaveValue('rememberedpilot');
   });
 });

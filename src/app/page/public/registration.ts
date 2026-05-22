@@ -18,6 +18,7 @@ import {
   type SupportedLocaleCode,
 } from '../../i18n/locale';
 import { LoginRequest, LoginResponse } from '../../model/login';
+import { clearRememberedPlayerHandle, writeRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { RegisterRequest, RegisterResponse } from '../../model/register';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
@@ -69,6 +70,7 @@ export default class RegistrationPage implements OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
+      rememberHandle: [false],
     },
     { validators: passwordMatchValidator },
   );
@@ -86,7 +88,7 @@ export default class RegistrationPage implements OnDestroy {
       return;
     }
 
-    const { playerName, email, password, locale: selectedLocale } = this.registrationForm.value;
+    const { playerName, email, password, locale: selectedLocale, rememberHandle } = this.registrationForm.value;
     const normalizedPlayerName = playerName?.trim() ?? '';
     const normalizedEmail = email?.trim() ?? '';
     const normalizedPassword = password ?? '';
@@ -116,6 +118,11 @@ export default class RegistrationPage implements OnDestroy {
     this.unsubscribeRegisterResponse = this.authService.register(request, (response: RegisterResponse) => {
       if (response.success) {
         this.successMessage.set(response.message);
+        if (rememberHandle === true) {
+          writeRememberedPlayerHandle(request.playerName);
+        } else {
+          clearRememberedPlayerHandle();
+        }
 
         const loginRequest: LoginRequest = {
           playerName: request.playerName,

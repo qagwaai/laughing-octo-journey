@@ -11,6 +11,7 @@ import {
 } from '../../../testing';
 import { setActiveLocaleCode } from '../../i18n/locale';
 import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, type LoginResponse } from '../../model/login';
+import { REMEMBERED_PLAYER_HANDLE_STORAGE_KEY } from '../../model/remembered-player-handle';
 import type { RegisterResponse } from '../../model/register';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT } from '../../model/register';
 import { SessionService } from '../../services/session.service';
@@ -57,6 +58,7 @@ describe('RegistrationPage', () => {
 
   beforeEach(() => {
     setActiveLocaleCode('en');
+    window.localStorage.removeItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY);
     socketService = createMockSocketService();
     sessionService = createMockSessionService();
   });
@@ -141,6 +143,11 @@ describe('RegistrationPage', () => {
       expect(component['errorMessage']()).toBeNull();
       expect(component['successMessage']()).toBeNull();
     });
+
+    it('should keep rememberHandle disabled by default', () => {
+      const { component } = setup({ socketService, sessionService });
+      expect(component['registrationForm'].value.rememberHandle).toBe(false);
+    });
   });
 
   describe('register-response handling', () => {
@@ -180,6 +187,35 @@ describe('RegistrationPage', () => {
         preserveFragment: true,
         state: { playerName: 'Pioneer' },
       });
+    });
+
+    it('should persist remembered handle when opt-in is enabled', () => {
+      const { component } = setup({ socketService, sessionService });
+      fillValidForm(component);
+      component['registrationForm'].patchValue({ rememberHandle: true });
+      component.submit();
+
+      socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+        success: true,
+        message: 'Registration successful!',
+      } satisfies RegisterResponse);
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBe('Pioneer');
+    });
+
+    it('should clear remembered handle when opt-in is disabled', () => {
+      window.localStorage.setItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY, 'OldPilot');
+      const { component } = setup({ socketService, sessionService });
+      fillValidForm(component);
+      component['registrationForm'].patchValue({ rememberHandle: false });
+      component.submit();
+
+      socketService.triggerEvent(REGISTER_RESPONSE_EVENT, {
+        success: true,
+        message: 'Registration successful!',
+      } satisfies RegisterResponse);
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBeNull();
     });
 
     it('should store the session key returned from login after registration success', () => {

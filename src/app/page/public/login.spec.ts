@@ -12,6 +12,7 @@ import {
 import { setActiveLocaleCode } from '../../i18n/locale';
 import type { LoginResponse } from '../../model/login';
 import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT } from '../../model/login';
+import { REMEMBERED_PLAYER_HANDLE_STORAGE_KEY } from '../../model/remembered-player-handle';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import LoginPage from './login';
@@ -47,6 +48,7 @@ describe('LoginPage', () => {
 
   beforeEach(() => {
     setActiveLocaleCode('en');
+    window.localStorage.removeItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY);
     socketService = createMockSocketService();
     sessionService = createMockSessionService();
   });
@@ -58,6 +60,13 @@ describe('LoginPage', () => {
   it('should create', () => {
     const { component } = setup({ socketService, sessionService });
     expect(component).toBeTruthy();
+  });
+
+  it('should prefill playerName from remembered handle storage', () => {
+    window.localStorage.setItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY, 'RememberedPilot');
+    const { component } = setup({ socketService, sessionService });
+
+    expect(component['loginForm'].value.playerName).toBe('RememberedPilot');
   });
 
   it('should initialise with no messages and not submitting', () => {

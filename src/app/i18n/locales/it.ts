@@ -43,6 +43,8 @@ export const it: DeepPartial<EnLocale> = {
     registration: {
       title: 'Registrazione',
       localeLabel: 'Lingua',
+      rememberHandleLabel: "Ricorda il mio handle su questo dispositivo",
+      rememberHandleHint: 'Memorizzato localmente su questo dispositivo.',
       submitLabel: 'Crea account e accedi',
       submittingLabel: 'Creazione account e accesso in corso...',
       loginLink: 'Hai gia un account? Accedi qui.',

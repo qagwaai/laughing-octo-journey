@@ -27,6 +27,10 @@ export class RegistrationPage {
     return this.page.locator('#confirmPassword');
   }
 
+  get rememberHandleCheckbox() {
+    return this.page.locator('#rememberHandle');
+  }
+
   get submitButton() {
     return this.page.locator('button[type="submit"]');
   }
@@ -39,12 +43,17 @@ export class RegistrationPage {
     return this.page.locator('.success-message');
   }
 
-  async register(playerName: string, email: string, password: string, locale = 'en') {
+  async register(playerName: string, email: string, password: string, locale = 'en', rememberHandle = false) {
     await this.localeSelect.selectOption(locale);
     await this.playerNameInput.fill(playerName);
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
     await this.confirmPasswordInput.fill(password);
+    if (rememberHandle) {
+      await this.rememberHandleCheckbox.check();
+    } else {
+      await this.rememberHandleCheckbox.uncheck();
+    }
     await this.submitButton.click();
   }
 }

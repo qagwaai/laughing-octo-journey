@@ -11,6 +11,7 @@ import {
   type SupportedLocaleCode,
 } from '../../i18n/locale';
 import { LoginRequest, LoginResponse } from '../../model/login';
+import { readRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
 
@@ -42,9 +43,10 @@ export default class LoginPage implements OnDestroy {
     isSupportedLocaleCode(this.navigationState.preferredLocale)
       ? this.navigationState.preferredLocale
       : currentLocaleCode;
+  private rememberedPlayerName = readRememberedPlayerHandle();
 
   protected loginForm = this.fb.group({
-    playerName: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
+    playerName: [this.rememberedPlayerName ?? '', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     locale: [this.defaultLocale, [Validators.required]],
   });

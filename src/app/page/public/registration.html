@@ -73,6 +73,14 @@
       }
     </div>
 
+    <div class="form-group remember-handle-group">
+      <label class="checkbox-label" for="rememberHandle">
+        <input id="rememberHandle" type="checkbox" formControlName="rememberHandle" />
+        <span>{{ t.public.registration.rememberHandleLabel }}</span>
+      </label>
+      <small>{{ t.public.registration.rememberHandleHint }}</small>
+    </div>
+
     @if (errorMessage()) {
     <div class="status-message error-message">{{ errorMessage() }}</div>
     } @if (successMessage()) {
