@@ -166,7 +166,7 @@ export const it: DeepPartial<EnLocale> = {
       sectionTitle: 'Esci',
       sectionDescription: 'Usa questa azione per cancellare la sessione e tornare al login.',
       confirmLabel: 'Conferma uscita',
-      characterListLink: 'Torna alla lista personaggi',
+      characterListLink: 'Lascia questa sessione di gioco e torna alla lista personaggi',
     },
     stellarInitiation: {
       title: 'Iniziazione stellare',

@@ -47,15 +47,18 @@ describe('LogoutPage', () => {
   });
 
   describe('navigateToCharacterList()', () => {
-    it('should navigate to character-list in left outlet', () => {
+    it('should navigate to character-list in left outlet and knot in primary', () => {
       const { component, mockRouter } = setup({ sessionService });
 
       component.navigateToCharacterList();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
-        preserveFragment: true,
-        state: { playerName: '' },
-      });
+      expect(mockRouter.navigate).toHaveBeenCalledWith(
+        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        {
+          preserveFragment: true,
+          state: { playerName: '' },
+        },
+      );
     });
 
     it('should pass playerName in navigation state', () => {
@@ -66,10 +69,13 @@ describe('LogoutPage', () => {
 
       component.navigateToCharacterList();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
-        preserveFragment: true,
-        state: { playerName: 'Pioneer' },
-      });
+      expect(mockRouter.navigate).toHaveBeenCalledWith(
+        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        {
+          preserveFragment: true,
+          state: { playerName: 'Pioneer' },
+        },
+      );
     });
 
     it('should not clear session when navigating to character list', () => {

@@ -221,7 +221,7 @@ export const en = {
       sectionTitle: 'Sign Out',
       sectionDescription: 'Use this sample page action to clear the session and return to login.',
       confirmLabel: 'Confirm Logout',
-      characterListLink: 'Back to Character List',
+      characterListLink: 'Leave this game session and return to character list',
     },
 
     stellarInitiation: {

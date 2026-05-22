@@ -41,10 +41,10 @@ export default class LogoutPage {
   }
 
   /**
-   * Returns to the character list without clearing current navigation context.
+   * Leaves the active game session view and returns to character list + knot scene.
    */
   navigateToCharacterList(): void {
-    this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+    this.router.navigate([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
       preserveFragment: true,
       state: { playerName: this.playerName() },
     });
