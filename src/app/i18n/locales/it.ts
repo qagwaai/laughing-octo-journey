@@ -394,6 +394,7 @@ export const it: DeepPartial<EnLocale> = {
       shipNameLabel: 'Nave:',
       inventoryEmptyStatus: "Nessun oggetto trovato nell'inventario.",
       itemNameLabel: 'Oggetto',
+      tierLabel: 'Tier',
       quantityLabel: 'Qta',
       actionsLabel: 'Azioni',
       viewSpecsLabel: 'Vedi specifiche',

@@ -19,6 +19,7 @@ interface ItemStub {
   id: string;
   itemType: string;
   displayName: string;
+  tier?: number;
   state?: 'contained' | 'deployed' | 'destroyed';
   damageStatus?: 'intact' | 'damaged' | 'disabled' | 'destroyed';
   destroyedAt?: string | null;
@@ -54,6 +55,7 @@ interface InventoryGroup {
   itemType: string;
   name: string;
   quantity: number;
+  tier: number | null;
   item: ItemStub;
 }
 
@@ -62,6 +64,7 @@ function makeItem(overrides?: Partial<ItemStub>): ItemStub {
     id: overrides?.id ?? 'item-1',
     itemType: overrides?.itemType ?? 'expendable-dart-drone',
     displayName: overrides?.displayName ?? 'Expendable Dart Drone',
+    tier: overrides?.tier,
     state: overrides?.state,
     damageStatus: overrides?.damageStatus,
   };
@@ -166,6 +169,124 @@ describe('ShipViewInventoryPage', () => {
     expect(groups[1].quantity).toBe(1);
   });
 
+  it('should render tier values and dash fallback in the inventory table', () => {
+    const { fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'item-1', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser', tier: 2 }),
+            makeItem({ id: 'item-2', itemType: 'sensor-array', displayName: 'Sensor Array' }),
+          ],
+        },
+      },
+    });
+
+    fixture.detectChanges();
+    const native = fixture.nativeElement as HTMLElement;
+    const headers = Array.from(native.querySelectorAll('thead th')).map((th) => th.textContent?.trim() ?? '');
+    expect(headers.some((text) => text.includes('Tier'))).toBeTrue();
+
+    const rows = Array.from(native.querySelectorAll('tbody tr'));
+    const cellsByRow = rows.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim() ?? ''));
+    const laserRow = cellsByRow.find((cells) => cells[0] === 'Basic Mining Laser');
+    const sensorRow = cellsByRow.find((cells) => cells[0] === 'Sensor Array');
+    expect(laserRow?.[1]).toBe('2');
+    expect(sensorRow?.[1]).toBe('-');
+  });
+
+  it('should sort groups by item name when item header is toggled', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'item-z', itemType: 'zeta-tool', displayName: 'Zeta Tool', tier: 3 }),
+            makeItem({ id: 'item-a', itemType: 'alpha-tool', displayName: 'Alpha Tool', tier: 1 }),
+          ],
+        },
+      },
+    });
+
+    component['toggleSort']('name');
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual(['Alpha Tool', 'Zeta Tool']);
+
+    component['toggleSort']('name');
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual(['Zeta Tool', 'Alpha Tool']);
+  });
+
+  it('should toggle active sort class between item and tier headers', () => {
+    const { fixture, component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'item-a', itemType: 'alpha-tool', displayName: 'Alpha Tool', tier: 1 }),
+            makeItem({ id: 'item-b', itemType: 'beta-tool', displayName: 'Beta Tool', tier: 2 }),
+          ],
+        },
+      },
+    });
+
+    component['toggleSort']('name');
+    fixture.detectChanges();
+
+    const native = fixture.nativeElement as HTMLElement;
+    const sortButtons = Array.from(native.querySelectorAll('.sort-button')) as HTMLButtonElement[];
+    const itemSortButton = sortButtons.find((button) => (button.textContent ?? '').includes('Item'));
+    const tierSortButton = sortButtons.find((button) => (button.textContent ?? '').includes('Tier'));
+
+    expect(itemSortButton?.classList.contains('active-sort')).toBeTrue();
+    expect(tierSortButton?.classList.contains('active-sort')).toBeFalse();
+
+    component['toggleSort']('tier');
+    fixture.detectChanges();
+
+    expect(itemSortButton?.classList.contains('active-sort')).toBeFalse();
+    expect(tierSortButton?.classList.contains('active-sort')).toBeTrue();
+  });
+
+  it('should sort groups by tier with missing tier last', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'item-mid', itemType: 'mid-tool', displayName: 'Mid Tool', tier: 2 }),
+            makeItem({ id: 'item-none', itemType: 'none-tool', displayName: 'No Tier Tool' }),
+            makeItem({ id: 'item-low', itemType: 'low-tool', displayName: 'Low Tool', tier: 1 }),
+          ],
+        },
+      },
+    });
+
+    component['toggleSort']('tier');
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual([
+      'Low Tool',
+      'Mid Tool',
+      'No Tier Tool',
+    ]);
+
+    component['toggleSort']('tier');
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual([
+      'Mid Tool',
+      'Low Tool',
+      'No Tier Tool',
+    ]);
+  });
+
   it('should navigate to item-view-specs with grouped item context', () => {
     const character = { id: 'c-1', characterName: 'Nova' };
     const groupedItem = makeItem({ id: 'item-1', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser' });
@@ -182,6 +303,7 @@ describe('ShipViewInventoryPage', () => {
       itemType: groupedItem.itemType,
       name: groupedItem.displayName,
       quantity: 3,
+      tier: null,
       item: groupedItem as any,
     });
 

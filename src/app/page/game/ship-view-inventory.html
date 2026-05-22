@@ -27,7 +27,26 @@
       <table class="inventory-table" aria-label="Ship inventory">
         <thead>
           <tr>
-            <th>{{ t.game.shipViewInventory.itemNameLabel }}</th>
+            <th>
+              <button
+                type="button"
+                class="sort-button"
+                [class.active-sort]="isSortActive('name')"
+                (click)="toggleSort('name')"
+              >
+                {{ t.game.shipViewInventory.itemNameLabel }} {{ sortIndicator('name') }}
+              </button>
+            </th>
+            <th class="tier-col">
+              <button
+                type="button"
+                class="sort-button"
+                [class.active-sort]="isSortActive('tier')"
+                (click)="toggleSort('tier')"
+              >
+                {{ t.game.shipViewInventory.tierLabel }} {{ sortIndicator('tier') }}
+              </button>
+            </th>
             <th class="qty-col">{{ t.game.shipViewInventory.quantityLabel }}</th>
             <th class="actions-col">{{ t.game.shipViewInventory.actionsLabel }}</th>
           </tr>
@@ -36,6 +55,7 @@
           @for (group of inventoryGroups(); track group.itemType) {
           <tr>
             <td>{{ group.name }}</td>
+            <td class="tier-col">{{ group.tier ?? '-' }}</td>
             <td class="qty-col">{{ group.quantity }}</td>
             <td class="actions-col">
               <button type="button" class="spec-link" (click)="navigateToItemSpecs(group)">

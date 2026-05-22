@@ -65,6 +65,30 @@
   font-weight: 600;
 }
 
+.sort-button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-button:hover {
+  color: #d7e8ff;
+}
+
+.sort-button.active-sort {
+  color: #eaf4ff;
+  text-shadow: 0 0 8px rgba(120, 190, 255, 0.65);
+  font-weight: 700;
+}
+
+.tier-col {
+  text-align: center;
+  width: 4rem;
+}
+
 .qty-col {
   text-align: center;
   width: 4rem;

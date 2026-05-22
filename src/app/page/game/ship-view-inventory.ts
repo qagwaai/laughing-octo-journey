@@ -38,8 +38,12 @@ export interface InventoryGroup {
   itemType: string;
   name: string;
   quantity: number;
+  tier: number | null;
   item: ShipItem;
 }
+
+type InventorySortKey = 'name' | 'tier';
+type SortDirection = 'asc' | 'desc';
 
 @Component({
   selector: 'app-ship-view-inventory-page',
@@ -65,6 +69,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
   protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
+  protected readonly sortKey = signal<InventorySortKey | null>(null);
+  protected readonly sortDirection = signal<SortDirection>('asc');
 
   constructor() {
     this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
@@ -157,11 +163,62 @@ export default class ShipViewInventoryPage implements OnDestroy {
         itemType: item.itemType,
         name: item.displayName,
         quantity: 1,
+        tier: typeof item.tier === 'number' ? item.tier : null,
         item,
       });
     }
-    return Array.from(counts.values());
+
+    const groups = Array.from(counts.values());
+    const activeSortKey = this.sortKey();
+    if (!activeSortKey) {
+      return groups;
+    }
+
+    const direction = this.sortDirection() === 'asc' ? 1 : -1;
+    return [...groups].sort((left, right) => {
+      if (activeSortKey === 'name') {
+        return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+      }
+
+      // Always push missing tiers to the end so real tiers remain visible first.
+      if (left.tier === null && right.tier === null) {
+        return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+      }
+      if (left.tier === null) {
+        return 1;
+      }
+      if (right.tier === null) {
+        return -1;
+      }
+
+      if (left.tier === right.tier) {
+        return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+      }
+
+      return (left.tier - right.tier) * direction;
+    });
   });
+
+  protected toggleSort(key: InventorySortKey): void {
+    if (this.sortKey() === key) {
+      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+
+    this.sortKey.set(key);
+    this.sortDirection.set('asc');
+  }
+
+  protected sortIndicator(key: InventorySortKey): string {
+    if (this.sortKey() !== key) {
+      return '';
+    }
+    return this.sortDirection() === 'asc' ? '↑' : '↓';
+  }
+
+  protected isSortActive(key: InventorySortKey): boolean {
+    return this.sortKey() === key;
+  }
 
   protected getShipDisplayName(): string {
     const ship = this.joinShip();

@@ -485,6 +485,7 @@ export const en = {
       shipNameLabel: 'Ship:',
       inventoryEmptyStatus: 'No inventory items found.',
       itemNameLabel: 'Item',
+      tierLabel: 'Tier',
       quantityLabel: 'Qty',
       actionsLabel: 'Actions',
       viewSpecsLabel: 'View Specs',
