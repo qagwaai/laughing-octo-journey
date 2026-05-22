@@ -337,7 +337,7 @@ describe('CharacterListPage', () => {
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
-    it('should keep the standard join label when first-target is completed', () => {
+    it('should keep the in-progress join label when first-target is completed', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
@@ -346,7 +346,31 @@ describe('CharacterListPage', () => {
         missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
       };
 
-      expect(component['getJoinGameLabel'](character)).toBe('Join Game');
+      expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
+    });
+
+    it('should keep the in-progress join label when first-target is failed', () => {
+      const fixture = TestBed.createComponent(CharacterListPage);
+      const component = fixture.componentInstance;
+      const character = {
+        id: '1',
+        characterName: 'Nova',
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'failed' as const }],
+      };
+
+      expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
+    });
+
+    it('should keep the in-progress join label when first-target is abandoned', () => {
+      const fixture = TestBed.createComponent(CharacterListPage);
+      const component = fixture.componentInstance;
+      const character = {
+        id: '1',
+        characterName: 'Nova',
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'abandoned' as const }],
+      };
+
+      expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
     it('should navigate directly to game-main and cold-boot-scan when first-target is already started', async () => {

@@ -26,6 +26,20 @@ const characterWithCompletedMission = {
   missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' }],
 };
 
+const characterWithFailedMission = {
+  id: 'char-5',
+  characterName: 'Damaged Relay',
+  level: 7,
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'failed' }],
+};
+
+const characterWithAbandonedMission = {
+  id: 'char-6',
+  characterName: 'Lost Beacon',
+  level: 6,
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'abandoned' }],
+};
+
 function characterListResponse(characters: object[]) {
   return {
     success: true,
@@ -215,12 +229,28 @@ test.describe('Character List — join game label', () => {
     await expect(characterListPage.joinButton(0)).toHaveText('Join Game in Progress');
   });
 
-  test('shows "Join Game" for characters with a completed first-target mission', async ({ page }) => {
+  test('shows "Join Game in Progress" for characters with a completed first-target mission', async ({ page }) => {
     const { characterListPage } = await setupCharacterListTest(page, {
       autoLoadResponse: [characterWithCompletedMission],
     });
 
-    await expect(characterListPage.joinButton(0)).toHaveText('Join Game');
+    await expect(characterListPage.joinButton(0)).toHaveText('Join Game in Progress');
+  });
+
+  test('shows "Join Game in Progress" for characters with a failed first-target mission', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: [characterWithFailedMission],
+    });
+
+    await expect(characterListPage.joinButton(0)).toHaveText('Join Game in Progress');
+  });
+
+  test('shows "Join Game in Progress" for characters with an abandoned first-target mission', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: [characterWithAbandonedMission],
+    });
+
+    await expect(characterListPage.joinButton(0)).toHaveText('Join Game in Progress');
   });
 });
 
