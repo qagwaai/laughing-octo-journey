@@ -163,6 +163,7 @@ export const en = {
       editSubtitle: 'Update your pilot profile.',
       characterNameLabel: 'Character Name',
       characterNamePlaceholder: 'Enter your character name',
+      shuffleNameLabel: 'Shuffle Suggested Name',
       submitLabel: 'Save Character',
       editSubmitLabel: 'Save Character Changes',
       submittingLabel: 'Saving Character...',

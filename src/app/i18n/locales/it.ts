@@ -84,6 +84,7 @@ export const it: DeepPartial<EnLocale> = {
       editSubtitle: 'Aggiorna il profilo del pilota.',
       characterNameLabel: 'Nome personaggio',
       characterNamePlaceholder: 'Inserisci il nome del personaggio',
+      shuffleNameLabel: 'Mescola nome suggerito',
       submitLabel: 'Salva personaggio',
       editSubmitLabel: 'Salva modifiche personaggio',
       submittingLabel: 'Salvataggio personaggio...',

@@ -6,6 +6,10 @@ import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
+import {
+  normalizeCharacterName,
+  pickSuggestedCharacterName,
+} from '../../model/character-name-suggestions';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { type ShipListRequest, type ShipListResponse } from '../../model/ship-list';
@@ -23,6 +27,8 @@ interface CharacterSetupNavigationState {
   editCharacter?: PlayerCharacterSummary;
   existingCharacters?: { id: string; characterName: string }[];
 }
+
+const LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY = 'character.setup.lastSuggestedName';
 
 @Component({
   selector: 'app-character-setup-page',
@@ -55,7 +61,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
   protected characterForm = this.fb.group({
     characterName: [
-      this.editCharacter()?.characterName ?? this.playerName(),
+      this.editCharacter()?.characterName ?? '',
       [Validators.required, Validators.minLength(2), Validators.maxLength(24)],
     ],
   });
@@ -80,6 +86,8 @@ export default class CharacterSetupPage implements OnDestroy {
   }
 
   constructor() {
+    this.initializeSuggestedName();
+
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
@@ -243,8 +251,58 @@ export default class CharacterSetupPage implements OnDestroy {
     return this.hasDuplicateCharacterName(candidateName);
   }
 
+  protected shuffleSuggestedName(): void {
+    if (this.isEditMode()) {
+      return;
+    }
+
+    const currentName = this.characterForm.get('characterName')?.value ?? '';
+    this.applySuggestedName(currentName);
+  }
+
+  private initializeSuggestedName(): void {
+    if (this.isEditMode()) {
+      return;
+    }
+
+    const existingValue = this.characterForm.get('characterName')?.value ?? '';
+    if (existingValue.trim()) {
+      return;
+    }
+
+    this.applySuggestedName(null);
+  }
+
+  private applySuggestedName(disallowName: string | null): void {
+    const suggestion = pickSuggestedCharacterName({
+      existingNames: this.existingCharacters().map((character) => character.characterName),
+      previousSuggestion: this.readLastSuggestedName(),
+      disallowName,
+    });
+
+    this.characterForm.get('characterName')?.setValue(suggestion);
+    this.writeLastSuggestedName(suggestion);
+    this.errorMessage.set(null);
+  }
+
+  private readLastSuggestedName(): string | null {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return null;
+    }
+
+    return window.localStorage.getItem(LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY);
+  }
+
+  private writeLastSuggestedName(name: string): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+
+    window.localStorage.setItem(LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY, name);
+  }
+
   private hasDuplicateCharacterName(candidateName: string): boolean {
-    const normalizedCandidate = this.normalizeCharacterName(candidateName);
+    const normalizedCandidate = normalizeCharacterName(candidateName);
     if (!normalizedCandidate) {
       return false;
     }
@@ -255,12 +313,8 @@ export default class CharacterSetupPage implements OnDestroy {
       if (editingCharacterId && candidateId === editingCharacterId) {
         return false;
       }
-      return this.normalizeCharacterName(character.characterName) === normalizedCandidate;
+      return normalizeCharacterName(character.characterName) === normalizedCandidate;
     });
-  }
-
-  private normalizeCharacterName(rawName: string): string {
-    return rawName.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
   ngOnDestroy(): void {

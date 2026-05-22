@@ -83,6 +83,23 @@ input:focus {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.shuffle-name-btn {
+  align-self: flex-start;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.shuffle-name-btn:hover {
+  opacity: 0.85;
+}
+
 .field-error {
   font-size: 0.8rem;
   color: #ff7c7c;

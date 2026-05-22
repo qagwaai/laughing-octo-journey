@@ -19,6 +19,7 @@ import {
   CHARACTER_EDIT_RESPONSE_EVENT,
   type CharacterEditResponse,
 } from '../../model/character-edit';
+import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT, type ShipListResponse } from '../../model/ship-list';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
@@ -110,6 +111,7 @@ describe('CharacterSetupPage', () => {
   beforeEach(() => {
     socketService = createExtendedMockSocketService();
     sessionService = createMockSessionService('test-session-key');
+    window.localStorage.removeItem('character.setup.lastSuggestedName');
   });
 
   it('should create', () => {
@@ -120,6 +122,47 @@ describe('CharacterSetupPage', () => {
   it('should initialize with a playerName value', () => {
     const { component } = setup({ socketService, sessionService, setupState: { playerName: 'Pioneer' } });
     expect(component['playerName']()).toBe('Pioneer');
+  });
+
+  it('should auto-fill create mode with a suggested full name', () => {
+    spyOn(Math, 'random').and.returnValue(0);
+    const { component } = setup({
+      socketService,
+      sessionService,
+      setupState: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
+    });
+
+    expect(component['characterForm'].value.characterName).toBe(CHARACTER_NAME_SUGGESTIONS[0]);
+  });
+
+  it('should not reuse the previous localStorage suggestion on next load', () => {
+    window.localStorage.setItem('character.setup.lastSuggestedName', CHARACTER_NAME_SUGGESTIONS[0]);
+    spyOn(Math, 'random').and.returnValue(0);
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      setupState: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
+    });
+
+    expect(component['characterForm'].value.characterName).toBe(CHARACTER_NAME_SUGGESTIONS[1]);
+  });
+
+  it('should shuffle suggested name and persist latest suggestion', () => {
+    const randomSpy = spyOn(Math, 'random').and.returnValues(0, 0.5);
+    const { component } = setup({
+      socketService,
+      sessionService,
+      setupState: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
+    });
+
+    const firstName = component['characterForm'].value.characterName!;
+    component['shuffleSuggestedName']();
+    const nextName = component['characterForm'].value.characterName!;
+
+    expect(randomSpy).toHaveBeenCalled();
+    expect(nextName).not.toBe(firstName);
+    expect(window.localStorage.getItem('character.setup.lastSuggestedName')).toBe(nextName);
   });
 
   it('should initialize form in edit mode using selected character name', () => {

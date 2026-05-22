@@ -24,6 +24,11 @@
           formControlName="characterName"
           [placeholder]="t.character.setup.characterNamePlaceholder"
         />
+        @if (!isEditMode()) {
+        <button type="button" class="shuffle-name-btn" (click)="shuffleSuggestedName()">
+          {{ t.character.setup.shuffleNameLabel }}
+        </button>
+        }
         @if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
         <span class="field-error">
           @if (characterForm.get('characterName')?.errors?.['required']) { {{
