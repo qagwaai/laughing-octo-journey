@@ -62,6 +62,21 @@
     (pointerButtonUp)="onDebrisRightPointerUp($event)"
   />
   }
+  @if (tractorBeamVisual(); as beam) {
+  <ngt-group>
+    <ngt-mesh [position]="beam.conePosition" [rotation]="beam.coneRotation" [scale]="beam.coneScale">
+      <ngt-cone-geometry *args="[0.16, 1, 20, 1, true]" />
+      <ngt-mesh-basic-material [color]="'#5ad9ff'" [transparent]="true" [opacity]="0.34" [depthWrite]="false" />
+    </ngt-mesh>
+
+    @for (particle of beam.particlePositions; track $index) {
+    <ngt-mesh [position]="particle">
+      <ngt-sphere-geometry *args="[0.035, 10, 10]" />
+      <ngt-mesh-basic-material [color]="'#9defff'" [transparent]="true" [opacity]="0.86" [depthWrite]="false" />
+    </ngt-mesh>
+    }
+  </ngt-group>
+  }
   @if (targetedDebrisPosition(); as targetPosition) {
   <ngt-group [position]="targetPosition">
     <ngt-mesh [rotation]="[Math.PI / 2, 0, 0]">

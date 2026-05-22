@@ -159,6 +159,27 @@ interface MissionProgressUpsertQueueItem {
   toastMessage: string | null;
 }
 
+type TractorBeamPhase = 'pulling' | 'committing' | 'reversing';
+
+interface TractorBeamAnimationState {
+  debrisId: string;
+  itemType: string;
+  displayName: string;
+  startPositionKm: Triple;
+  currentPositionKm: Triple;
+  phase: TractorBeamPhase;
+  phaseStartedAtMs: number;
+  phaseDurationMs: number;
+  reverseFailureMessage: string | null;
+}
+
+interface TractorBeamVisualState {
+  conePosition: [number, number, number];
+  coneRotation: [number, number, number];
+  coneScale: [number, number, number];
+  particlePositions: [number, number, number][];
+}
+
 interface ShipExteriorViewTestApi {
   getMissionGateState(): ShipExteriorMissionGateState | null;
   getMissionObjectiveText(): string;
@@ -204,6 +225,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly TARGET_HOLD_MS = 250;
   private static readonly TRACTOR_BEAM_RANGE_KM = 10;
   private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
+  private static readonly TRACTOR_BEAM_PULL_DURATION_MS = 3000;
+  private static readonly TRACTOR_BEAM_REVERSE_DURATION_MS = 550;
+  private static readonly TRACTOR_BEAM_ANIMATION_TICK_MS = 16;
+  private static readonly TRACTOR_BEAM_PARTICLE_COUNT = 8;
   private static readonly ACTIVE_SCAN_MIN_MOTION_DAMPING = 0.15;
   private static readonly SCANNED_MOTION_DAMPING = 0.65;
   private static readonly HOTKEY_SLOT_COUNT = 5;
@@ -248,6 +273,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected readonly targetHoldCandidateId = this.sessionController.targetHoldCandidateId;
   private sceneElapsedSeconds = 0;
   private pendingActiveStateUpserts = new Set<string>();
+  private tractorBeamAnimationIntervalId: number | null = null;
+  private readonly tractorBeamAnimationState = signal<TractorBeamAnimationState | null>(null);
+  private readonly tractorBeamAnimationClockMs = signal(0);
+  private tractorBeamAudioContext: AudioContext | null = null;
+  private tractorBeamLoopGainNode: GainNode | null = null;
+  private tractorBeamLoopOscNodes: OscillatorNode[] = [];
   private flightTickIntervalId: number | null = null;
   private flightTrackingAccumulatorMs = 0;
   private readonly flightPressedKeys = new Set<string>();
@@ -488,6 +519,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected hoveredDebrisId = signal<string | null>(null);
   protected activeTarget = signal<{ kind: 'asteroid' | 'debris'; id: string } | null>(null);
   protected floatingDebrisItems = computed<FloatingDebrisItem[]>(() => this.floatingDebrisStateService.items());
+  protected tractorBeamVisual = computed<TractorBeamVisualState | null>(() => this.resolveTractorBeamVisualState());
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
   readonly launchHotkeysEnabled = computed(() => {
     const targetedId = this.targetedAsteroidId();
@@ -1155,6 +1187,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeCelestialBodyListResponse?.();
     this.unsubscribeLaunchItemResponse?.();
     this.floatingDebrisController.stop();
+    this.stopTractorBeamAnimationLoop();
+    this.stopTractorBeamLoopAudio();
+    this.disposeTractorBeamAudioContext();
     this.bootstrapController.dispose();
     this.sessionController.dispose();
     this.stopFlightLoop();
@@ -2117,6 +2152,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   protected debrisScenePosition(item: FloatingDebrisItem): [number, number, number] {
+    const pullState = this.tractorBeamAnimationState();
+    if (pullState && pullState.debrisId === item.id) {
+      return this.debrisScenePositionFromKm(pullState.currentPositionKm);
+    }
+
     const ship = this.activeShipLocationKm() ?? { x: 0, y: 0, z: 0 };
     const scale = ShipExteriorViewScene.DEBRIS_KM_TO_SCENE_UNITS;
     return [
@@ -2126,12 +2166,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     ];
   }
 
+  private debrisScenePositionFromKm(positionKm: Triple): [number, number, number] {
+    const ship = this.activeShipLocationKm() ?? { x: 0, y: 0, z: 0 };
+    const scale = ShipExteriorViewScene.DEBRIS_KM_TO_SCENE_UNITS;
+    return [
+      (positionKm.x - ship.x) * scale,
+      (positionKm.y - ship.y) * scale,
+      (positionKm.z - ship.z) * scale,
+    ];
+  }
+
   protected isDebrisTargeted(debrisId: string): boolean {
     const target = this.activeTarget();
     return !!target && target.kind === 'debris' && target.id === debrisId;
   }
 
   private tryActivateTractorBeam(): void {
+    if (this.tractorBeamAnimationState()) {
+      this.setLaunchToast('Tractor beam is already active.', 'error', null);
+      return;
+    }
+
     const target = this.activeTarget();
     if (!target || target.kind !== 'debris') {
       this.setLaunchToast('Lock a debris target before activating the tractor beam.', 'error', null);
@@ -2164,19 +2219,121 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
 
+    this.startTractorBeamPull(debris);
+  }
+
+  private startTractorBeamPull(debris: FloatingDebrisItem): void {
+    const nowMs = Date.now();
+    this.tractorBeamAnimationState.set({
+      debrisId: debris.id,
+      itemType: debris.itemType,
+      displayName: debris.displayName,
+      startPositionKm: { ...debris.positionKm },
+      currentPositionKm: { ...debris.positionKm },
+      phase: 'pulling',
+      phaseStartedAtMs: nowMs,
+      phaseDurationMs: ShipExteriorViewScene.TRACTOR_BEAM_PULL_DURATION_MS,
+      reverseFailureMessage: null,
+    });
+    this.tractorBeamAnimationClockMs.set(nowMs);
+    this.startTractorBeamLoopAudio();
+    this.startTractorBeamAnimationLoop();
+    this.setLaunchToast('Tractor beam engaged.', 'success', null);
+  }
+
+  private startTractorBeamAnimationLoop(): void {
+    if (this.tractorBeamAnimationIntervalId !== null) {
+      return;
+    }
+
+    this.tractorBeamAnimationIntervalId = window.setInterval(
+      () => this.tickTractorBeamAnimation(),
+      ShipExteriorViewScene.TRACTOR_BEAM_ANIMATION_TICK_MS,
+    );
+  }
+
+  private stopTractorBeamAnimationLoop(): void {
+    if (this.tractorBeamAnimationIntervalId !== null) {
+      window.clearInterval(this.tractorBeamAnimationIntervalId);
+      this.tractorBeamAnimationIntervalId = null;
+    }
+  }
+
+  private tickTractorBeamAnimation(): void {
+    const state = this.tractorBeamAnimationState();
+    if (!state) {
+      this.stopTractorBeamAnimationLoop();
+      return;
+    }
+
+    const nowMs = Date.now();
+    this.tractorBeamAnimationClockMs.set(nowMs);
+
+    if (state.phase === 'committing') {
+      return;
+    }
+
+    const elapsedMs = Math.max(0, nowMs - state.phaseStartedAtMs);
+    const t = Math.max(0, Math.min(1, elapsedMs / Math.max(1, state.phaseDurationMs)));
+    const eased = 1 - Math.pow(1 - t, 3);
+    const bayKm = this.activeShipLocationKm() ?? { x: 0, y: 0, z: 0 };
+
+    const from = state.phase === 'pulling' ? state.startPositionKm : bayKm;
+    const to = state.phase === 'pulling' ? bayKm : state.startPositionKm;
+    const nextPosition: Triple = {
+      x: from.x + (to.x - from.x) * eased,
+      y: from.y + (to.y - from.y) * eased,
+      z: from.z + (to.z - from.z) * eased,
+    };
+
+    this.tractorBeamAnimationState.set({
+      ...state,
+      currentPositionKm: nextPosition,
+    });
+
+    if (t < 1) {
+      return;
+    }
+
+    if (state.phase === 'pulling') {
+      this.commitTractorBeamCollection(state);
+      return;
+    }
+
+    if (state.phase === 'reversing') {
+      const reverseMessage = state.reverseFailureMessage ?? 'unknown error';
+      this.tractorBeamAnimationState.set(null);
+      this.stopTractorBeamAnimationLoop();
+      this.stopTractorBeamLoopAudio();
+      this.setLaunchToast(`Tractor beam failed: ${reverseMessage}.`, 'error', null);
+    }
+  }
+
+  private commitTractorBeamCollection(state: TractorBeamAnimationState): void {
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
     const playerName = this.playerName().trim();
     const shipId = this.activeShipId().trim();
     const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
     if (!sessionKey || !playerName || !shipId || !characterId) {
+      this.tractorBeamAnimationState.set(null);
+      this.stopTractorBeamAnimationLoop();
+      this.stopTractorBeamLoopAudio();
       this.setLaunchToast('Missing player/ship context. Cannot fire tractor beam.', 'error', null);
       return;
     }
 
-    // Optimistic remove so the UI reflects immediately; restore on failure.
-    const removedDebris = debris;
-    this.floatingDebrisStateService.removeById(debris.id);
-    this.clearDebrisTarget();
+    const settledAtBay = this.activeShipLocationKm() ?? state.currentPositionKm;
+    this.tractorBeamAnimationState.set({
+      ...state,
+      phase: 'committing',
+      phaseStartedAtMs: Date.now(),
+      phaseDurationMs: 1,
+      currentPositionKm: {
+        x: settledAtBay.x,
+        y: settledAtBay.y,
+        z: settledAtBay.z,
+      },
+    });
 
     this.socketService.upsertItem(
       {
@@ -2184,9 +2341,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         sessionKey,
         correlationSource: 'ship-exterior.tractor-beam',
         item: {
-          id: debris.id,
-          itemType: debris.itemType,
-          displayName: debris.displayName,
+          id: state.debrisId,
+          itemType: state.itemType,
+          displayName: state.displayName,
           state: 'contained',
           container: { containerType: 'ship', containerId: shipId },
           spatial: null,
@@ -2197,14 +2354,175 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       },
       (response: ItemUpsertResponse) => {
         if (response.success) {
-          this.setLaunchToast(`Tractor beam collected: ${debris.displayName}.`, 'success', null);
+          this.floatingDebrisStateService.removeById(state.debrisId);
+          this.clearDebrisTarget();
+          this.tractorBeamAnimationState.set(null);
+          this.stopTractorBeamAnimationLoop();
+          this.stopTractorBeamLoopAudio();
+          this.playTractorBeamCompletionChime();
+          this.setLaunchToast(`Tractor beam collected: ${state.displayName}.`, 'success', null);
           return;
         }
-        // Roll back optimistic removal on failure.
-        this.floatingDebrisStateService.upsertLocal([removedDebris]);
-        this.setLaunchToast(`Tractor beam failed: ${response.message || 'unknown error'}.`, 'error', null);
+
+        const current = this.tractorBeamAnimationState();
+        if (!current || current.debrisId !== state.debrisId) {
+          return;
+        }
+
+        this.tractorBeamAnimationState.set({
+          ...current,
+          phase: 'reversing',
+          phaseStartedAtMs: Date.now(),
+          phaseDurationMs: ShipExteriorViewScene.TRACTOR_BEAM_REVERSE_DURATION_MS,
+          reverseFailureMessage: response.message || 'unknown error',
+        });
       },
     );
+  }
+
+  private resolveTractorBeamVisualState(): TractorBeamVisualState | null {
+    const state = this.tractorBeamAnimationState();
+    if (!state || (state.phase !== 'pulling' && state.phase !== 'reversing')) {
+      return null;
+    }
+
+    const target = this.debrisScenePositionFromKm(state.currentPositionKm);
+    const direction = new Vector3(target[0], target[1], target[2]);
+    const length = direction.length();
+    if (length < 1e-4) {
+      return null;
+    }
+
+    const normalized = direction.clone().normalize();
+    const quaternion = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normalized);
+    const coneEuler = new Euler().setFromQuaternion(quaternion, 'XYZ');
+    const midpoint: [number, number, number] = [target[0] * 0.5, target[1] * 0.5, target[2] * 0.5];
+
+    const elapsedSeconds = this.tractorBeamAnimationClockMs() / 1000;
+    const particlePositions: [number, number, number][] = [];
+    const tangent = Math.abs(normalized.y) > 0.93 ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0);
+    const basisA = new Vector3().crossVectors(normalized, tangent).normalize();
+    const basisB = new Vector3().crossVectors(normalized, basisA).normalize();
+
+    for (let index = 0; index < ShipExteriorViewScene.TRACTOR_BEAM_PARTICLE_COUNT; index += 1) {
+      const travel = ((elapsedSeconds * 1.8 + index / ShipExteriorViewScene.TRACTOR_BEAM_PARTICLE_COUNT) % 1 + 1) % 1;
+      const along = direction.clone().multiplyScalar(travel);
+      const swirlRadius = 0.05 + 0.035 * Math.sin((elapsedSeconds + index) * 2.4);
+      const swirlAngle = elapsedSeconds * 7 + index * 0.9;
+      const swirl = basisA
+        .clone()
+        .multiplyScalar(Math.cos(swirlAngle) * swirlRadius)
+        .add(basisB.clone().multiplyScalar(Math.sin(swirlAngle) * swirlRadius));
+      const point = along.add(swirl);
+      particlePositions.push([point.x, point.y, point.z]);
+    }
+
+    return {
+      conePosition: midpoint,
+      coneRotation: [coneEuler.x, coneEuler.y, coneEuler.z],
+      coneScale: [0.38, length, 0.38],
+      particlePositions,
+    };
+  }
+
+  private ensureTractorBeamAudioContext(): AudioContext | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    if (this.tractorBeamAudioContext) {
+      return this.tractorBeamAudioContext;
+    }
+
+    const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      return null;
+    }
+
+    this.tractorBeamAudioContext = new AudioContextCtor();
+    return this.tractorBeamAudioContext;
+  }
+
+  private startTractorBeamLoopAudio(): void {
+    const context = this.ensureTractorBeamAudioContext();
+    if (!context || this.tractorBeamLoopOscNodes.length > 0) {
+      return;
+    }
+
+    const now = context.currentTime;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.06);
+    gain.connect(context.destination);
+
+    const low = context.createOscillator();
+    low.type = 'sawtooth';
+    low.frequency.setValueAtTime(86, now);
+    low.detune.setValueAtTime(-8, now);
+
+    const high = context.createOscillator();
+    high.type = 'triangle';
+    high.frequency.setValueAtTime(172, now);
+    high.detune.setValueAtTime(6, now);
+
+    low.connect(gain);
+    high.connect(gain);
+    low.start(now);
+    high.start(now);
+
+    this.tractorBeamLoopGainNode = gain;
+    this.tractorBeamLoopOscNodes = [low, high];
+  }
+
+  private stopTractorBeamLoopAudio(): void {
+    const context = this.tractorBeamAudioContext;
+    const gain = this.tractorBeamLoopGainNode;
+    if (!context || !gain || this.tractorBeamLoopOscNodes.length === 0) {
+      this.tractorBeamLoopGainNode = null;
+      this.tractorBeamLoopOscNodes = [];
+      return;
+    }
+
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    for (const oscillator of this.tractorBeamLoopOscNodes) {
+      oscillator.stop(now + 0.09);
+    }
+    this.tractorBeamLoopOscNodes = [];
+    this.tractorBeamLoopGainNode = null;
+  }
+
+  private playTractorBeamCompletionChime(): void {
+    const context = this.ensureTractorBeamAudioContext();
+    if (!context) {
+      return;
+    }
+
+    const now = context.currentTime;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+    gain.connect(context.destination);
+
+    const oscillator = context.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(520, now);
+    oscillator.frequency.exponentialRampToValueAtTime(920, now + 0.2);
+    oscillator.connect(gain);
+    oscillator.start(now);
+    oscillator.stop(now + 0.25);
+  }
+
+  private disposeTractorBeamAudioContext(): void {
+    if (!this.tractorBeamAudioContext) {
+      return;
+    }
+
+    void this.tractorBeamAudioContext.close();
+    this.tractorBeamAudioContext = null;
   }
 
   private clearDebrisTarget(): void {

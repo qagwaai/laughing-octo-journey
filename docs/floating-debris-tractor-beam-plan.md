@@ -256,6 +256,12 @@ Two possible UX models to decide:
   "gravity scoop" narrative).
 - **Key-press collect**: player presses `F` (or similar) to activate tractor beam when in range.
 
+**Negotiated divergence (implemented):**
+- Collection is explicitly target-driven. Pilot locks debris, then presses `E` to fire tractor beam.
+- A timed pull animation plays (beam visuals + audio loop) before inventory commit.
+- `item-upsert-request` is sent after the pull animation completes.
+- On server failure, debris plays a reverse pull-back animation and remains in space.
+
 Collection sends `item-upsert-request`:
 ```ts
 socketService.upsertItem({
