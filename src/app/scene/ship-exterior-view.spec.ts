@@ -414,6 +414,67 @@ describe('ShipExteriorViewScene', () => {
     expect(component.activeLaunchToast()).toEqual(jasmine.objectContaining({ tone: 'success' }));
   });
 
+  it('should immediately add raw iron to active ship inventory on successful Iron asteroid launch', () => {
+    const { component, fixture, mockSocket, mockSession } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+    });
+
+    mockSession.setActiveShip({
+      id: 'ship-1',
+      name: 'Starter Pod',
+      model: 'Scavenger Pod',
+      tier: 1,
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: 0 },
+        epochMs: Date.now(),
+      },
+      inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' } as any],
+    } as any);
+
+    component['asteroidSamples'].set([
+      makeSample('sample-a3', {
+        serverCelestialBodyId: 'sample-a3',
+        revealedMaterial: { material: 'Iron', rarity: 'Common', textureColor: '#8f99a7' },
+        scanned: true,
+      }),
+    ]);
+    component['targetedAsteroidId'].set('sample-a3');
+    fixture.detectChanges();
+
+    mockSocket.triggerEvent(LAUNCH_ITEM_RESPONSE_EVENT, {
+      success: true,
+      message: 'Target destroyed',
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      shipId: 'ship-1',
+      targetCelestialBodyId: 'sample-a3',
+      hotkey: 1,
+      itemId: 'i-1',
+      itemType: 'expendable-dart-drone',
+      resolution: {
+        outcome: 'target-destroyed',
+        targetDestroyed: true,
+        yieldedMaterials: [{ material: 'Iron', rarity: 'Common', quantity: 3 }],
+        yieldedItems: [],
+        launchSeed: 123,
+      },
+    });
+
+    const updatedInventory = mockSession.activeShip()?.inventory ?? [];
+    const rawIronItems = updatedInventory.filter((item) => item.itemType === 'iron');
+    expect(rawIronItems.length).toBe(1);
+    expect(rawIronItems[0]?.displayName).toBe('Iron');
+    expect(mockSocket.upsertItem).toHaveBeenCalled();
+  });
+
   it('should keep target when no-effect and set success toast', () => {
     const { component, fixture, mockSocket } = setup({
       playerName: 'Pioneer',

@@ -49,7 +49,7 @@ import {
   type CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
 import { PlayerCharacterSummary } from '../model/character-list';
-import { type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
+import { type LaunchItemRequest, type LaunchItemResponse, type LaunchItemYieldedMaterial } from '../model/launch-item';
 import { type AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../model/math/celestial-body-location';
 import { type MissionStatus } from '../model/mission';
@@ -184,6 +184,7 @@ interface ShipExteriorViewTestApi {
   getMissionGateState(): ShipExteriorMissionGateState | null;
   getMissionObjectiveText(): string;
   getAsteroidSamples(): AsteroidScanSample[];
+  getActiveShipInventoryItemTypes(): string[];
   getTargetedAsteroidId(): string | null;
   hoverAsteroid(sampleId: string): boolean;
   unhoverAsteroid(sampleId: string): boolean;
@@ -359,6 +360,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     persistMissionGateState: (gateState) => this.persistMissionGateState(gateState),
     enqueueMissionProgressUpsert: (item) => this.missionProgressController.enqueueMissionProgressUpsert(item),
     removeAsteroidSamples: (sampleIds) => this.removeAsteroidSamples(sampleIds),
+    applyMaterialRewards: (materials) => this.applyLaunchMaterialRewards(materials),
     queuePostLaunchRefresh: () => this.queuePostLaunchRefresh(),
     setLaunchToast: (message, tone, seed) => this.setLaunchToast(message, tone, seed),
     invokePluginHook: (name, payload) => this.invokePluginHook(name, payload),
@@ -1833,6 +1835,144 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.launchToastController.set(message, tone, seed);
   }
 
+  private normalizeMaterialToken(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[_\s]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  }
+
+  private applyLaunchMaterialRewards(materials: readonly LaunchItemYieldedMaterial[]): void {
+    const quantityByMaterial = new Map<string, number>();
+    for (const material of materials) {
+      const token = this.normalizeMaterialToken(material.material);
+      if (!token) {
+        continue;
+      }
+
+      const quantity = Math.max(0, Math.floor(material.quantity));
+      if (quantity <= 0) {
+        continue;
+      }
+
+      quantityByMaterial.set(token, (quantityByMaterial.get(token) ?? 0) + quantity);
+    }
+
+    if (quantityByMaterial.size === 0) {
+      return;
+    }
+
+    const shipId = this.activeShipId().trim();
+    if (!shipId) {
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const rewardItems: ShipItem[] = [];
+    for (const [token, quantity] of quantityByMaterial.entries()) {
+      const materialName = token
+        .split('-')
+        .filter((part) => part.length > 0)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+      const itemType = token === 'iron' ? 'iron' : `${token}-raw-material`;
+      const displayName = token === 'iron' ? 'Iron' : `${materialName} (raw material)`;
+
+      for (let index = 0; index < quantity; index += 1) {
+        rewardItems.push({
+          id: `launch-${itemType}-${Date.now().toString(36)}-${index}`,
+          itemType,
+          displayName,
+          launchable: false,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: shipId },
+          owningPlayerId: this.playerName().trim() || null,
+          owningCharacterId: this.navigationState.joinCharacter?.id?.trim() || null,
+          spatial: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        });
+      }
+    }
+
+    if (rewardItems.length === 0) {
+      return;
+    }
+
+    this.persistLaunchMaterialRewards(rewardItems, shipId);
+
+    const navShip = this.navigationState.joinShip;
+    if (navShip && navShip.id === shipId) {
+      const updatedNavigationShip: ShipSummary = {
+        ...navShip,
+        inventory: [...(navShip.inventory ?? []), ...rewardItems],
+      };
+      this.navigationState.joinShip = updatedNavigationShip;
+      this.launchableInventory.set(this.resolveLaunchableInventory(updatedNavigationShip.inventory));
+      this.hasExpendableDartDrone.set(
+        this.missionDefinition.resolveTargetingCapabilityFromInventory(updatedNavigationShip.inventory),
+      );
+    }
+
+    const activeShip = this.sessionService.activeShip();
+    if (activeShip && activeShip.id === shipId) {
+      this.sessionService.setActiveShip({
+        ...activeShip,
+        inventory: [...(activeShip.inventory ?? []), ...rewardItems],
+      });
+      return;
+    }
+
+    if (this.navigationState.joinShip && this.navigationState.joinShip.id === shipId) {
+      this.sessionService.setActiveShip(this.navigationState.joinShip);
+    }
+  }
+
+  private persistLaunchMaterialRewards(rewardItems: readonly ShipItem[], shipId: string): void {
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const playerName = this.playerName().trim();
+    const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+    if (!sessionKey || !playerName || !characterId || !shipId) {
+      return;
+    }
+
+    for (const rewardItem of rewardItems) {
+      this.socketService.upsertItem(
+        {
+          playerName,
+          sessionKey,
+          correlationSource: 'ship-exterior.launch-material-reward',
+          item: {
+            itemType: rewardItem.itemType,
+            displayName: rewardItem.displayName,
+            launchable: false,
+            state: 'contained',
+            damageStatus: 'intact',
+            container: { containerType: 'ship', containerId: shipId },
+            spatial: null,
+            motion: null,
+            owningPlayerId: playerName,
+            owningCharacterId: characterId,
+          },
+        },
+        (_response: ItemUpsertResponse) => {
+          if (!_response.success) {
+            this.setLaunchToast(`Material reward sync failed: ${_response.message}`, 'error', null);
+            return;
+          }
+
+          this.queuePostLaunchRefresh();
+        },
+      );
+    }
+  }
+
   private registerTestUtils(): void {
     if (environment.production || typeof window === 'undefined') {
       return;
@@ -1845,6 +1985,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       },
       getMissionObjectiveText: () => this.missionObjectiveText(),
       getAsteroidSamples: () => cloneForTest(this.asteroidSamples()),
+      getActiveShipInventoryItemTypes: () => {
+        const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
+        return (activeShip?.inventory ?? []).map((item) => item.itemType);
+      },
       getTargetedAsteroidId: () => this.targetedAsteroidId(),
       hoverAsteroid: (sampleId: string) => {
         const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);

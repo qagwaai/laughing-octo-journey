@@ -406,6 +406,21 @@ test.describe('First Target Mission Flow', () => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
+                getActiveShipInventoryItemTypes?: () => string[];
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return api?.getActiveShipInventoryItemTypes?.() ?? [];
+        }),
+      )
+      .toContain('iron');
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
                 simulateManufacture: (itemType: string) => unknown;
                 getMissionGateState: () => {
                   steps: Array<{ key: string; status: string }>;

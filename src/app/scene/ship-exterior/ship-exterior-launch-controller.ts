@@ -1,6 +1,6 @@
 import { evaluateMissionGateOnLaunch, type ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { ShipExteriorMissionDefinition } from '../../mission/ship-exterior-mission';
-import type { LaunchItemResponse } from '../../model/launch-item';
+import type { LaunchItemResponse, LaunchItemYieldedMaterial } from '../../model/launch-item';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 
 interface ShipExteriorLaunchControllerDeps {
@@ -15,6 +15,7 @@ interface ShipExteriorLaunchControllerDeps {
     toastMessage: string | null;
   }) => void;
   removeAsteroidSamples: (sampleIds: readonly string[]) => void;
+  applyMaterialRewards: (materials: readonly LaunchItemYieldedMaterial[]) => void;
   queuePostLaunchRefresh: () => void;
   setLaunchToast: (message: string, tone: 'success' | 'error', seed: number | null) => void;
   invokePluginHook: (
@@ -33,6 +34,59 @@ interface ShipExteriorLaunchControllerDeps {
 export class ShipExteriorLaunchController {
   constructor(private readonly deps: ShipExteriorLaunchControllerDeps) {}
 
+  private normalizeMaterialToken(value: string): string {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[_\s]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+  }
+
+  private resolveImmediateMaterialRewards(params: {
+    response: LaunchItemResponse;
+    missionResolution: { removeAsteroidSampleIds: string[] };
+    asteroidSamples: readonly AsteroidScanSample[];
+  }): LaunchItemYieldedMaterial[] {
+    const yieldedMaterials = (params.response.resolution?.yieldedMaterials ?? []).filter(
+      (material) => Number.isFinite(material.quantity) && material.quantity > 0,
+    );
+    const isIronTargetHit = params.asteroidSamples.some((sample) => {
+      const matchedByMissionResolution = params.missionResolution.removeAsteroidSampleIds.includes(sample.id);
+      const matchedByResponseTarget =
+        sample.serverCelestialBodyId === params.response.targetCelestialBodyId ||
+        sample.id === params.response.targetCelestialBodyId;
+      if (!matchedByMissionResolution && !matchedByResponseTarget) {
+        return false;
+      }
+
+      return this.normalizeMaterialToken(sample.revealedMaterial?.material ?? '') === 'iron';
+    });
+
+    if (params.response.resolution?.outcome === 'target-destroyed' && isIronTargetHit) {
+      const nonIronYielded = yieldedMaterials.filter(
+        (material) => this.normalizeMaterialToken(material.material) !== 'iron',
+      );
+      return [
+        {
+          material: 'Iron',
+          rarity: 'Common',
+          quantity: 1,
+        },
+        ...nonIronYielded,
+      ];
+    }
+
+    if (yieldedMaterials.length > 0) {
+      return yieldedMaterials;
+    }
+
+    if (params.response.resolution?.outcome !== 'target-destroyed') {
+      return [];
+    }
+
+    return [];
+  }
+
   handleLaunchItemResponse(response: LaunchItemResponse): void {
     if (!response || typeof response !== 'object') {
       return;
@@ -40,9 +94,10 @@ export class ShipExteriorLaunchController {
 
     const launchSeed = response.resolution?.launchSeed ?? null;
     this.deps.setLaunchSeedHint(launchSeed);
+    const asteroidSamples = this.deps.getAsteroidSamples();
     const missionResolution = this.deps.missionDefinition.resolveLaunchItemResponse({
       response,
-      asteroidSamples: this.deps.getAsteroidSamples(),
+      asteroidSamples,
     });
 
     if (!response.success) {
@@ -54,7 +109,20 @@ export class ShipExteriorLaunchController {
       this.deps.removeAsteroidSamples(missionResolution.removeAsteroidSampleIds);
     }
 
+    const materialRewards = this.resolveImmediateMaterialRewards({
+      response,
+      missionResolution,
+      asteroidSamples,
+    });
+    if (materialRewards.length > 0) {
+      this.deps.applyMaterialRewards(materialRewards);
+    }
+
     let toastMessage = response.message || 'Launch complete';
+    if (materialRewards.length > 0) {
+      const materialsList = materialRewards.map((item) => `${item.material} ×${item.quantity}`).join(', ');
+      toastMessage = `${toastMessage} — ${materialsList}`;
+    }
     const yieldedItems = response.resolution?.yieldedItems ?? [];
     if (yieldedItems.length > 0) {
       const itemsList = yieldedItems.map((item) => `${item.displayName} ×${item.quantity}`).join(', ');
