@@ -84,4 +84,38 @@ test.describe('Character Edit — setup save redirect', () => {
     });
     expect(shipListRequestCount).toBe(0);
   });
+
+  test('blocks edit when renaming to another existing character name', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+
+    let editRequestCount = 0;
+    mock.on('character-list-request', () => ({
+      event: 'character-list-response',
+      data: characterListResponse([
+        { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 },
+        { id: 'char-other-002', characterName: 'Atlas Commander', level: 2 },
+      ]),
+    }));
+    mock.on('character-edit', () => {
+      editRequestCount += 1;
+      return null;
+    });
+
+    await loginViaUI(page, mock);
+
+    const characterListPage = new CharacterListPage(page);
+    const characterSetupPage = new CharacterSetupPage(page);
+
+    await expect(characterListPage.characterItems).toHaveCount(2);
+    await characterListPage.editButton(0).click();
+    await expect(page).toHaveURL(/left:character-setup/);
+
+    await characterSetupPage.fillCharacterName('  atlas   commander ');
+    await characterSetupPage.characterNameInput.blur();
+
+    await expect(characterSetupPage.submitButton).toBeDisabled();
+    await expect(characterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
+    expect(editRequestCount).toBe(0);
+  });
 });

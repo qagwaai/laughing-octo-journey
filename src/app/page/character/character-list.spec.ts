@@ -285,7 +285,7 @@ describe('CharacterListPage', () => {
 
       expect(router.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-setup'] } }], {
         preserveFragment: true,
-        state: { playerName: 'Pioneer', mode: 'create' },
+        state: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
       });
     });
 
@@ -297,7 +297,7 @@ describe('CharacterListPage', () => {
 
       expect(router.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-setup'] } }], {
         preserveFragment: true,
-        state: { playerName: 'Pioneer', mode: 'edit', editCharacter: character },
+        state: { playerName: 'Pioneer', mode: 'edit', editCharacter: character, existingCharacters: [] },
       });
     });
 

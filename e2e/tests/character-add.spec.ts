@@ -196,6 +196,35 @@ test.describe('Character Add — from character list', () => {
     await expect(characterSetupPage.fieldError).toContainText('Must be 24 characters or fewer.');
   });
 
+  test('blocks duplicate character names client-side before submit', async ({ page }) => {
+    const { mock, characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
+
+    let addRequestCount = 0;
+    mock.on('character-list-request', () => ({
+      event: 'character-list-response',
+      data: characterListResponse([
+        { id: 'char-existing-001', characterName: 'Nova Prime', level: 3 },
+      ]),
+    }));
+    mock.on('character-add-request', () => {
+      addRequestCount += 1;
+      return null;
+    });
+
+    await characterListPage.clickLoad();
+    await expect(characterListPage.characterItems).toHaveCount(1);
+
+    await characterListPage.clickSetup();
+    await expect(page).toHaveURL(/left:character-setup/);
+
+    await characterSetupPage.fillCharacterName('  nova   prime  ');
+    await characterSetupPage.characterNameInput.blur();
+
+    await expect(characterSetupPage.submitButton).toBeDisabled();
+    await expect(characterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
+    expect(addRequestCount).toBe(0);
+  });
+
   test('shows error and does not trigger starter-ship chain when add fails', async ({ page }) => {
     const { mock, characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
 

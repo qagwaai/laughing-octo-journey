@@ -34,9 +34,16 @@
           t.character.setup.errors.characterNameMaxLength }} }
         </span>
         }
+        @if (duplicateNameError()) {
+        <span class="field-error">{{ duplicateNameError() }}</span>
+        }
       </div>
 
-      <button type="submit" [disabled]="characterForm.invalid || isSubmitting()" class="submit-btn">
+      <button
+        type="submit"
+        [disabled]="characterForm.invalid || isSubmitting() || isDuplicateNameBlockingSubmit()"
+        class="submit-btn"
+      >
         {{ isSubmitting() ? t.character.setup.submittingLabel : (isEditMode() ? t.character.setup.editSubmitLabel :
         t.character.setup.submitLabel) }}
       </button>

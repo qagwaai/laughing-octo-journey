@@ -171,6 +171,7 @@ export const en = {
         characterNameRequired: 'Character name is required.',
         characterNameMinLength: 'Must be at least 2 characters.',
         characterNameMaxLength: 'Must be 24 characters or fewer.',
+        characterNameDuplicate: 'Character name already exists. Choose a unique name.',
       },
       messages: {
         saveRequiresPlayer: 'Player name is required to save a character.',

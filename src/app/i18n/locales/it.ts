@@ -92,6 +92,7 @@ export const it: DeepPartial<EnLocale> = {
         characterNameRequired: 'Il nome del personaggio e obbligatorio.',
         characterNameMinLength: 'Deve contenere almeno 2 caratteri.',
         characterNameMaxLength: 'Deve contenere al massimo 24 caratteri.',
+        characterNameDuplicate: 'Il nome del personaggio esiste gia. Scegli un nome univoco.',
       },
       messages: {
         saveRequiresPlayer: 'Il nome giocatore e obbligatorio per salvare un personaggio.',

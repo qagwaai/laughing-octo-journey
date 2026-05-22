@@ -46,6 +46,13 @@ export default class CharacterListPage implements OnDestroy {
   protected pendingDeleteCharacter = signal<PlayerCharacterSummary | null>(null);
   protected isDeleting = signal(false);
 
+  private buildExistingCharacterState(): { id: string; characterName: string }[] {
+    return this.characters().map((character) => ({
+      id: character.id,
+      characterName: character.characterName,
+    }));
+  }
+
   constructor() {
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
@@ -204,7 +211,11 @@ export default class CharacterListPage implements OnDestroy {
     const playerName = this.playerName();
     this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
       preserveFragment: true,
-      state: { playerName, mode: 'create' },
+      state: {
+        playerName,
+        mode: 'create',
+        existingCharacters: this.buildExistingCharacterState(),
+      },
     });
   }
 
@@ -216,6 +227,7 @@ export default class CharacterListPage implements OnDestroy {
         playerName,
         mode: 'edit',
         editCharacter: character,
+        existingCharacters: this.buildExistingCharacterState(),
       },
     });
   }

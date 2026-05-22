@@ -21,6 +21,7 @@ interface CharacterSetupNavigationState {
   playerName?: string;
   mode?: 'create' | 'edit';
   editCharacter?: PlayerCharacterSummary;
+  existingCharacters?: { id: string; characterName: string }[];
 }
 
 @Component({
@@ -64,6 +65,19 @@ export default class CharacterSetupPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected warningMessage = signal<string | null>(null);
   protected isSubmitting = signal(false);
+  protected existingCharacters = signal<{ id: string; characterName: string }[]>(
+    this.setupState.existingCharacters ?? [],
+  );
+
+  protected duplicateNameError(): string | null {
+    const control = this.characterForm.get('characterName');
+    if (!control || (!control.dirty && !control.touched)) {
+      return null;
+    }
+    return this.hasDuplicateCharacterName(control.value ?? '')
+      ? this.t.character.setup.errors.characterNameDuplicate
+      : null;
+  }
 
   constructor() {
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
@@ -76,6 +90,14 @@ export default class CharacterSetupPage implements OnDestroy {
    * Validates form input and dispatches add/edit character request flow.
    */
   saveCharacter(): void {
+    const candidateName = this.characterForm.value.characterName ?? '';
+    if (this.hasDuplicateCharacterName(candidateName)) {
+      this.characterForm.get('characterName')?.markAsTouched();
+      this.errorMessage.set(this.t.character.setup.errors.characterNameDuplicate);
+      this.isSaved.set(false);
+      return;
+    }
+
     if (this.characterForm.invalid) {
       this.characterForm.markAllAsTouched();
       return;
@@ -214,6 +236,31 @@ export default class CharacterSetupPage implements OnDestroy {
       preserveFragment: true,
       state: { playerName },
     });
+  }
+
+  protected isDuplicateNameBlockingSubmit(): boolean {
+    const candidateName = this.characterForm.value.characterName ?? '';
+    return this.hasDuplicateCharacterName(candidateName);
+  }
+
+  private hasDuplicateCharacterName(candidateName: string): boolean {
+    const normalizedCandidate = this.normalizeCharacterName(candidateName);
+    if (!normalizedCandidate) {
+      return false;
+    }
+
+    const editingCharacterId = this.editCharacter()?.id?.trim() ?? '';
+    return this.existingCharacters().some((character) => {
+      const candidateId = character.id?.trim() ?? '';
+      if (editingCharacterId && candidateId === editingCharacterId) {
+        return false;
+      }
+      return this.normalizeCharacterName(character.characterName) === normalizedCandidate;
+    });
+  }
+
+  private normalizeCharacterName(rawName: string): string {
+    return rawName.trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
   ngOnDestroy(): void {

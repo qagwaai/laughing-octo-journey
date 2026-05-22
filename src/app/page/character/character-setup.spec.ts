@@ -46,6 +46,7 @@ interface SetupState {
   playerName?: string;
   mode?: 'create' | 'edit';
   editCharacter?: { id: string; characterName: string; level?: number };
+  existingCharacters?: { id: string; characterName: string }[];
 }
 
 function createShipListResponse(params?: {
@@ -240,6 +241,80 @@ describe('CharacterSetupPage', () => {
         sessionKey: 'test-session-key',
       } satisfies CharacterAddRequest);
       expect(component['isSubmitting']()).toBe(true);
+    });
+
+    it('should block create when normalized name duplicates an existing character', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        setupState: {
+          playerName: 'Pioneer',
+          mode: 'create',
+          existingCharacters: [{ id: 'c-10', characterName: '  Nova   Prime  ' }],
+        },
+      });
+
+      component['characterForm'].patchValue({ characterName: 'nova prime' });
+      component['characterForm'].get('characterName')?.markAsTouched();
+      component.saveCharacter();
+
+      expect(component['isDuplicateNameBlockingSubmit']()).toBe(true);
+      expect(component['duplicateNameError']()).toBe('Character name already exists. Choose a unique name.');
+      expect(component['errorMessage']()).toBe('Character name already exists. Choose a unique name.');
+      expect(socketService.emittedEvents.length).toBe(0);
+    });
+
+    it('should allow edit when name matches the same character id', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        setupState: {
+          playerName: 'Pioneer',
+          mode: 'edit',
+          editCharacter: { id: 'c-1', characterName: 'Nova Prime' },
+          existingCharacters: [
+            { id: 'c-1', characterName: 'Nova Prime' },
+            { id: 'c-2', characterName: 'Atlas' },
+          ],
+        },
+      });
+
+      component['characterForm'].patchValue({ characterName: '  nova   prime ' });
+      component.saveCharacter();
+
+      expect(component['isDuplicateNameBlockingSubmit']()).toBe(false);
+      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
+        event: CHARACTER_EDIT_REQUEST_EVENT,
+        data: {
+          characterId: 'c-1',
+          playerName: 'Pioneer',
+          characterName: '  nova   prime ',
+          sessionKey: 'test-session-key',
+        },
+      });
+    });
+
+    it('should block edit when name duplicates another character', () => {
+      const { component } = setup({
+        socketService,
+        sessionService,
+        setupState: {
+          playerName: 'Pioneer',
+          mode: 'edit',
+          editCharacter: { id: 'c-1', characterName: 'Nova Prime' },
+          existingCharacters: [
+            { id: 'c-1', characterName: 'Nova Prime' },
+            { id: 'c-2', characterName: 'Atlas Commander' },
+          ],
+        },
+      });
+
+      component['characterForm'].patchValue({ characterName: ' atlas   commander ' });
+      component.saveCharacter();
+
+      expect(component['isDuplicateNameBlockingSubmit']()).toBe(true);
+      expect(component['errorMessage']()).toBe('Character name already exists. Choose a unique name.');
+      expect(socketService.emittedEvents.length).toBe(0);
     });
 
     it('should handle successful character-add response', () => {
