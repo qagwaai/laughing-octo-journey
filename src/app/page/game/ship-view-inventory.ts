@@ -46,7 +46,7 @@ export interface InventoryGroup {
 
 type InventorySortKey = 'name' | 'tier';
 type SortDirection = 'asc' | 'desc';
-type DevInventoryActionKey = 'add-dart-drone' | 'add-sensor-array';
+type DevInventoryActionKey = 'add-dart-drone' | 'add-sensor-array' | 'add-tractor-beam';
 
 interface DevInventoryAction {
   key: DevInventoryActionKey;
@@ -56,6 +56,8 @@ interface DevInventoryAction {
 
 const SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
 const SENSOR_ARRAY_DISPLAY_NAME = 'Sensor Array';
+const TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
+const TRACTOR_BEAM_DISPLAY_NAME = 'Tractor Beam';
 const SENSOR_ARRAY_MIN_TIER = 1;
 const SENSOR_ARRAY_MAX_TIER = 20;
 
@@ -81,6 +83,11 @@ export default class ShipViewInventoryPage implements OnDestroy {
     {
       key: 'add-sensor-array',
       label: 'Sensor Array',
+      buttonLabel: 'Add',
+    },
+    {
+      key: 'add-tractor-beam',
+      label: 'Tractor Beam',
       buttonLabel: 'Add',
     },
   ];
@@ -117,7 +124,16 @@ export default class ShipViewInventoryPage implements OnDestroy {
   });
 
   constructor() {
+    this.syncActiveShip(this.joinShip());
     this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
+  }
+
+  private syncActiveShip(ship: ShipSummary | null): void {
+    if (!ship) {
+      return;
+    }
+
+    this.sessionService.setActiveShip(ship);
   }
 
   private coerceSubsystemItemType(system: ShipSubsystemDamage): string {
@@ -279,6 +295,10 @@ export default class ShipViewInventoryPage implements OnDestroy {
     return this.equippedTierByItemType().get(group.itemType) === group.tier;
   }
 
+  protected hasNonIntactStatus(group: InventoryGroup): boolean {
+    return group.item.damageStatus !== 'intact';
+  }
+
   ngOnDestroy(): void {}
 
   navigateBackToHangar(): void {
@@ -347,10 +367,13 @@ export default class ShipViewInventoryPage implements OnDestroy {
           return;
         }
 
+        let updatedShip: ShipSummary | null = null;
         this.joinShip.update((current) => {
           if (!current) return current;
-          return { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+          updatedShip = { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+          return updatedShip;
         });
+        this.syncActiveShip(updatedShip);
       },
     );
   }
@@ -395,10 +418,64 @@ export default class ShipViewInventoryPage implements OnDestroy {
           return;
         }
 
+        let updatedShip: ShipSummary | null = null;
         this.joinShip.update((current) => {
           if (!current) return current;
-          return { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+          updatedShip = { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+          return updatedShip;
         });
+        this.syncActiveShip(updatedShip);
+      },
+    );
+  }
+
+  /**
+   * Adds a tractor beam item into current ship inventory for dev testing.
+   */
+  addTractorBeamToInventory(): void {
+    if (environment.production) {
+      return;
+    }
+
+    const tier = this.promptTier(`${TRACTOR_BEAM_DISPLAY_NAME} tier`);
+    if (tier === null) {
+      return;
+    }
+
+    const ship = this.joinShip();
+    const sessionKey = this.sessionService.getSessionKey();
+    if (!ship || !sessionKey) {
+      return;
+    }
+
+    this.socketService.upsertItem(
+      {
+        playerName: this.playerName(),
+        sessionKey,
+        item: {
+          itemType: TRACTOR_BEAM_ITEM_TYPE,
+          displayName: TRACTOR_BEAM_DISPLAY_NAME,
+          tier,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: ship.id },
+          owningPlayerId: this.playerName(),
+          owningCharacterId: this.joinCharacter()?.id ?? null,
+        },
+      },
+      (response: ItemUpsertResponse) => {
+        if (!response.success || !response.item) {
+          console.log('Add tractor beam failed:', response.message);
+          return;
+        }
+
+        let updatedShip: ShipSummary | null = null;
+        this.joinShip.update((current) => {
+          if (!current) return current;
+          updatedShip = { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+          return updatedShip;
+        });
+        this.syncActiveShip(updatedShip);
       },
     );
   }
@@ -410,6 +487,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
         return;
       case 'add-sensor-array':
         this.addSensorArrayToInventory();
+        return;
+      case 'add-tractor-beam':
+        this.addTractorBeamToInventory();
         return;
       default: {
         const exhaustiveCheck: never = actionKey;
@@ -423,12 +503,16 @@ export default class ShipViewInventoryPage implements OnDestroy {
   }
 
   private promptSensorArrayTier(): number | null {
+    return this.promptTier(`${SENSOR_ARRAY_DISPLAY_NAME} tier`);
+  }
+
+  private promptTier(itemLabel: string): number | null {
     if (typeof window === 'undefined') {
       return null;
     }
 
     const rawValue = window.prompt(
-      `Sensor Array tier (${SENSOR_ARRAY_MIN_TIER}-${SENSOR_ARRAY_MAX_TIER})`,
+      `${itemLabel} (${SENSOR_ARRAY_MIN_TIER}-${SENSOR_ARRAY_MAX_TIER})`,
       String(SENSOR_ARRAY_MIN_TIER),
     );
     if (rawValue === null) {
@@ -468,7 +552,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
       const matchingShip = (response.ships ?? []).find((ship) => ship.id === shipId);
       if (matchingShip) {
-        this.joinShip.set(this.normalizeShipSummary(matchingShip));
+        const normalizedShip = this.normalizeShipSummary(matchingShip);
+        this.joinShip.set(normalizedShip);
+        this.syncActiveShip(normalizedShip);
       }
     });
   }

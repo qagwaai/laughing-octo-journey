@@ -19,12 +19,22 @@ export interface ItemTierCapabilities {
   qualityConfidence: number;
 }
 
+export interface TractorBeamTierCapabilities {
+  tier: number;
+  maxRangeKm: number;
+  pullDurationMs: number;
+}
+
 export const SENSOR_ARRAY_MIN_TIER = 1;
 export const SENSOR_ARRAY_MAX_TIER = 20;
 
 const SENSOR_ARRAY_BASE_SCAN_DURATION_MS = 10_000;
 const SENSOR_ARRAY_SCAN_DURATION_STEP_MS = 400;
 const SENSOR_ARRAY_SCAN_TICK_MS = 100;
+const TRACTOR_BEAM_BASE_RANGE_KM = 10;
+const TRACTOR_BEAM_MAX_RANGE_KM = 25;
+const TRACTOR_BEAM_BASE_PULL_DURATION_MS = 10_000;
+const TRACTOR_BEAM_MIN_PULL_DURATION_MS = 1_200;
 
 export function clampSensorArrayTier(tier: number): number {
   if (!Number.isFinite(tier)) {
@@ -47,6 +57,22 @@ export function resolveSensorArrayCapabilities(tier: number): ItemTierCapabiliti
   };
 }
 
+export function resolveTractorBeamCapabilities(tier: number): TractorBeamTierCapabilities {
+  const clampedTier = clampSensorArrayTier(tier);
+  const progress = (clampedTier - SENSOR_ARRAY_MIN_TIER) / (SENSOR_ARRAY_MAX_TIER - SENSOR_ARRAY_MIN_TIER);
+
+  return {
+    tier: clampedTier,
+    maxRangeKm: roundCapabilityValue(
+      TRACTOR_BEAM_BASE_RANGE_KM + (TRACTOR_BEAM_MAX_RANGE_KM - TRACTOR_BEAM_BASE_RANGE_KM) * progress,
+    ),
+    pullDurationMs: Math.round(
+      TRACTOR_BEAM_BASE_PULL_DURATION_MS +
+        (TRACTOR_BEAM_MIN_PULL_DURATION_MS - TRACTOR_BEAM_BASE_PULL_DURATION_MS) * progress,
+    ),
+  };
+}
+
 function resolveScanDetailBand(tier: number): ScannerDetailBand {
   if (tier >= 20) return 'apex';
   if (tier >= 18) return 'elite+';
@@ -65,4 +91,8 @@ function resolveQualityConfidence(tier: number): number {
   const progress = (tier - SENSOR_ARRAY_MIN_TIER) / (SENSOR_ARRAY_MAX_TIER - SENSOR_ARRAY_MIN_TIER);
   const confidence = 0.45 + progress * 0.48;
   return Math.round(confidence * 1000) / 1000;
+}
+
+function roundCapabilityValue(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }

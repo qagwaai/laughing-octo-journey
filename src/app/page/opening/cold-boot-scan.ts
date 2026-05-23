@@ -67,6 +67,15 @@ export default class ColdBootScanPage {
   protected debrisPropertiesStateText = computed(
     () => this.shipExteriorView()?.debrisPropertiesStateText() ?? 'STATE: ---',
   );
+  protected showTractorBeamCapabilityDetails = computed(
+    () => this.shipExteriorView()?.showTractorBeamCapabilityDetails() ?? false,
+  );
+  protected tractorBeamCapabilityText = computed(
+    () => this.shipExteriorView()?.tractorBeamCapabilityText() ?? 'TRACTOR EQ: UNAVAILABLE',
+  );
+  protected tractorBeamTimingText = computed(
+    () => this.shipExteriorView()?.tractorBeamTimingText() ?? 'TRACTOR PULL: ---',
+  );
   protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
   protected showQuickTargetIronControl = computed(() => this.shipExteriorView()?.showQuickTargetIronControl() ?? false);
   protected activeLaunchToast = computed(() => this.shipExteriorView()?.activeLaunchToast() ?? null);

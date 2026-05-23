@@ -115,9 +115,9 @@ Progress:
 
 Progress:
 
-- Status: Planned
-- Tier model: Not started
-- Implementation: Not started
+- Status: Implemented
+- Tier model: Reuses active `sensor-array` capability timing
+- Implementation: Live in ship exterior target-lock hold for asteroids and debris
 
 ### 3) Tractor Beam (`ship-tractor-beam`) - `E` activation
 
@@ -130,9 +130,41 @@ Progress:
 
 Progress:
 
-- Status: Planned
-- Tier model: Not started
-- Implementation: Not started
+- Status: Implemented
+- Tier model: Implemented (`item-tier-capabilities` resolver)
+- Implementation: Live in ship exterior tractor beam range + pull duration
+
+## Tier Bands (1-20) for Tractor Beam (`ship-tractor-beam`)
+
+Tier baseline and progression targets for planning. Values are frontend behavior targets until backend capability payloads are finalized.
+
+- Tier 1 tractor beam pull time is `10_000 ms`.
+- Tier 1 tractor beam range is `10.0 km`.
+- Tier 20 tractor beam pull time target is `1_200 ms`.
+- Tier 20 tractor beam range target is `25.0 km`.
+
+| Tier | Max Range (km) | Pull Duration (ms) | Notes |
+| --- | ---: | ---: | --- |
+| 1 | 10.0 | 10000 | Baseline parity range, new slower pull baseline |
+| 2 | 10.789 | 9537 |  |
+| 3 | 11.579 | 9074 |  |
+| 4 | 12.368 | 8611 |  |
+| 5 | 13.158 | 8147 |  |
+| 6 | 13.947 | 7684 |  |
+| 7 | 14.737 | 7221 |  |
+| 8 | 15.526 | 6758 |  |
+| 9 | 16.316 | 6295 |  |
+| 10 | 17.105 | 5832 | Midpoint progression milestone |
+| 11 | 17.895 | 5368 |  |
+| 12 | 18.684 | 4905 | Highest intact-only tier currently used if present |
+| 13 | 19.474 | 4442 |  |
+| 14 | 20.263 | 3979 |  |
+| 15 | 21.053 | 3516 |  |
+| 16 | 21.842 | 3053 |  |
+| 17 | 22.632 | 2589 |  |
+| 18 | 23.421 | 2126 |  |
+| 19 | 24.211 | 1663 |  |
+| 20 | 25.0 | 1200 | Cap tier target for this iteration |
 
 ### 4) Dart Drone (`expendable-dart-drone`) - launch/impact workflow
 

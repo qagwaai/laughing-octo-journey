@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   CUSTOM_ELEMENTS_SCHEMA,
   ElementRef,
   EventEmitter,
@@ -53,6 +54,26 @@ export interface FloatingDebrisHoverEvent {
           [roughness]="0.35"
         />
       </ngt-mesh>
+
+      <ngt-mesh [visible]="targetingHold()" [rotation]="[Math.PI / 2, -pulsePhase() * 0.9, 0]" [scale]="1.24">
+        <ngt-torus-geometry *args="[0.68, 0.03, 10, 64]" />
+        <ngt-mesh-basic-material
+          [color]="'#ff4747'"
+          [transparent]="true"
+          [opacity]="targetHoldRingOpacity()"
+          [depthWrite]="false"
+        />
+      </ngt-mesh>
+
+      <ngt-mesh [visible]="targeted()" [rotation]="[Math.PI / 2, pulsePhase() * 0.45, 0]" [scale]="1.16">
+        <ngt-torus-geometry *args="[0.64, 0.02, 10, 64]" />
+        <ngt-mesh-basic-material
+          [color]="'#ffb347'"
+          [transparent]="true"
+          [opacity]="targetedRingOpacity()"
+          [depthWrite]="false"
+        />
+      </ngt-mesh>
     </ngt-group>
   `,
   imports: [NgtArgs],
@@ -61,9 +82,14 @@ export interface FloatingDebrisHoverEvent {
 export class FloatingDebrisNode {
   item = input.required<FloatingDebrisItem>();
   position = input.required<[number, number, number]>();
+  targetingHold = input<boolean>(false);
   targeted = input<boolean>(false);
 
   protected hovered = signal(false);
+  protected pulsePhase = signal(0);
+  protected targetHoldRingOpacity = computed(() => (this.targetingHold() ? 0.92 : 0));
+  protected targetedRingOpacity = computed(() => (this.targeted() ? 0.9 : 0));
+  protected Math = Math;
 
   private meshRef = viewChild<ElementRef<THREE.Mesh>>('mesh');
 
@@ -78,6 +104,7 @@ export class FloatingDebrisNode {
       if (!mesh) {
         return;
       }
+      this.pulsePhase.update((value) => value + delta * 1.1);
       mesh.rotation.x += delta * 0.4;
       mesh.rotation.y += delta * 0.55;
       mesh.rotation.z += delta * 0.25;

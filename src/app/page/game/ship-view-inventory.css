@@ -47,6 +47,22 @@
   color: #c8ddff;
 }
 
+.badge-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  color: #c8ddff;
+  font-size: 0.82rem;
+}
+
+.badge-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .inventory-table {
   width: 100%;
   border-collapse: collapse;
@@ -75,7 +91,7 @@
   gap: 0.35rem;
 }
 
-.equipped-badge {
+.status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -89,6 +105,18 @@
   font-size: 0.66rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.equipped-badge {
+  border: 1px solid rgba(137, 203, 255, 0.55);
+  background: rgba(96, 182, 255, 0.14);
+  color: #d8f0ff;
+}
+
+.damaged-badge {
+  border: 1px solid rgba(255, 183, 120, 0.55);
+  background: rgba(255, 153, 64, 0.16);
+  color: #ffe2c1;
 }
 
 .sort-button {

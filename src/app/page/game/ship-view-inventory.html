@@ -24,6 +24,16 @@
       } @if (inventoryGroups().length === 0) {
       <p class="empty-state">{{ t.game.shipViewInventory.inventoryEmptyStatus }}</p>
       } @else {
+      <div class="badge-legend" aria-label="Inventory badge legend">
+        <span class="badge-legend-item">
+          <span class="status-badge equipped-badge" aria-hidden="true">E</span>
+          <span>Equipped tier</span>
+        </span>
+        <span class="badge-legend-item">
+          <span class="status-badge damaged-badge" aria-hidden="true">D</span>
+          <span>Damaged/Unavailable</span>
+        </span>
+      </div>
       <table class="inventory-table" aria-label="Ship inventory">
         <thead>
           <tr>
@@ -59,6 +69,11 @@
                 <span>{{ group.name }}</span>
                 @if (isEquippedGroup(group)) {
                 <span class="equipped-badge" title="Equipped tier" aria-label="Equipped tier">E</span>
+                }
+                @if (hasNonIntactStatus(group)) {
+                <span class="status-badge damaged-badge" title="Damaged/Unavailable" aria-label="Damaged/Unavailable">
+                  D
+                </span>
                 }
               </div>
             </td>

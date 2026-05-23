@@ -1227,13 +1227,30 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     };
   }
 
+  function shipNavStateWithInventory(inventory: Array<Record<string, unknown>>, positionKm = { x: 0, y: 0, z: 0 }): NavigationState {
+    return {
+      ...shipNavState(positionKm),
+      joinShip: {
+        ...shipNavState(positionKm).joinShip,
+        inventory: inventory as any,
+      },
+    };
+  }
+
   it('beginTargetHold (asteroid path) syncs activeTarget and clears debris target', () => {
-    const { component } = setup(shipNavState());
+    const { component } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip,
+        inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20 }],
+      },
+    });
     component['targetedDebrisId'].set('debris-x');
 
     // Force the session controller's hold callback to run synchronously.
     spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
-      (_id: string, onConfirm: () => void) => {
+      (_id: string, onConfirm: () => void, holdMs: number) => {
+        expect(holdMs).toBe(2400);
         onConfirm();
       },
     );
@@ -1246,11 +1263,18 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   });
 
   it('beginDebrisTargetHold syncs activeTarget and clears asteroid target', () => {
-    const { component } = setup(shipNavState());
+    const { component } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip,
+        inventory: [{ id: 'sensor-12', itemType: 'sensor-array', tier: 12 }],
+      },
+    });
     component['targetedAsteroidId'].set('asteroid-x');
 
     spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
-      (_id: string, onConfirm: () => void) => {
+      (_id: string, onConfirm: () => void, holdMs: number) => {
+        expect(holdMs).toBe(5600);
         onConfirm();
       },
     );
@@ -1260,6 +1284,48 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['targetedDebrisId']()).toBe('debris-1');
     expect(component['targetedAsteroidId']()).toBeNull();
     expect(component['activeTarget']()).toEqual({ kind: 'debris', id: 'debris-1' });
+  });
+
+  it('beginDebrisTargetHold surfaces the debris as the active hold candidate before lock', () => {
+    const { component } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip,
+        inventory: [{ id: 'sensor-12', itemType: 'sensor-array', tier: 12 }],
+      },
+    });
+
+    spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
+      (id: string, _onConfirm: () => void, _holdMs: number) => {
+        component['targetHoldCandidateId'].set(id);
+      },
+    );
+
+    component['beginDebrisTargetHold']('debris-1');
+
+    expect(component['targetHoldCandidateId']()).toBe('debris-1');
+  });
+
+  it('beginTargetHold blocks asteroid targeting and toasts when no sensor array is installed', () => {
+    const { component } = setup(shipNavState());
+    const beginTargetHoldSpy = spyOn(component['sessionController'], 'beginTargetHold');
+
+    component['beginTargetHold']('asteroid-1');
+
+    expect(beginTargetHoldSpy).not.toHaveBeenCalled();
+    expect(component['activeLaunchToast']()?.message).toContain('Sensor array unavailable');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
+  });
+
+  it('beginDebrisTargetHold blocks debris targeting and toasts when no sensor array is installed', () => {
+    const { component } = setup(shipNavState());
+    const beginTargetHoldSpy = spyOn(component['sessionController'], 'beginTargetHold');
+
+    component['beginDebrisTargetHold']('debris-1');
+
+    expect(beginTargetHoldSpy).not.toHaveBeenCalled();
+    expect(component['activeLaunchToast']()?.message).toContain('Sensor array unavailable');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
   });
 
   it('tryActivateTractorBeam toasts and exits when no debris is targeted', () => {
@@ -1273,9 +1339,11 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['activeLaunchToast']()?.tone).toBe('error');
   });
 
-  it('tryActivateTractorBeam refuses targets beyond 10 km range', () => {
-    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
-    seedDebris(component, 'debris-far', { x: 50, y: 0, z: 0 });
+  it('tryActivateTractorBeam refuses targets beyond tier-scaled range', () => {
+    const { component, mockSocket } = setup(
+      shipNavStateWithInventory([{ id: 'beam-1', itemType: 'ship-tractor-beam', tier: 1, damageStatus: 'intact' }]),
+    );
+    seedDebris(component, 'debris-far', { x: 10.5, y: 0, z: 0 });
     component['targetedDebrisId'].set('debris-far');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-far' });
 
@@ -1286,8 +1354,45 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['activeLaunchToast']()?.tone).toBe('error');
   });
 
+  it('tryActivateTractorBeam uses the highest intact-only tractor beam tier for range', () => {
+    const { component, mockSocket } = setup(
+      shipNavStateWithInventory([
+        { id: 'beam-disabled', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'disabled' },
+        { id: 'beam-intact', itemType: 'ship-tractor-beam', tier: 12, damageStatus: 'intact' },
+      ]),
+    );
+    seedDebris(component, 'debris-mid', { x: 20, y: 0, z: 0 });
+    component['targetedDebrisId'].set('debris-mid');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-mid' });
+
+    component['tryActivateTractorBeam']();
+
+    expect(component['activeTractorBeamCapabilities']()?.tier).toBe(12);
+    expect(component['activeLaunchToast']()?.message).toContain('Out of tractor range');
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
+  });
+
+  it('tryActivateTractorBeam blocks when only non-intact tractor beams are installed', () => {
+    const { component, mockSocket } = setup(
+      shipNavStateWithInventory([{ id: 'beam-disabled', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'disabled' }]),
+    );
+    seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 });
+    component['targetedDebrisId'].set('debris-near');
+    component['activeTarget'].set({ kind: 'debris', id: 'debris-near' });
+
+    component['tryActivateTractorBeam']();
+
+    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam unavailable');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
+    expect(component['tractorBeamCapabilityText']()).toBe('TRACTOR EQ: DAMAGED // REPAIR REQUIRED');
+    expect(component['tractorBeamTimingText']()).toBe('TRACTOR PULL: REPAIR REQUIRED');
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
+  });
+
   it('tryActivateTractorBeam waits for pull duration before committing upsertItem', () => {
-    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    const { component, mockSocket } = setup(
+      shipNavStateWithInventory([{ id: 'beam-20', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'intact' }]),
+    );
     const stateService = seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 }, 'Tractor Beam');
     component['targetedDebrisId'].set('debris-near');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-near' });
@@ -1301,7 +1406,15 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     const pullState = component['tractorBeamAnimationState']()!;
     component['tractorBeamAnimationState'].set({
       ...pullState,
-      phaseStartedAtMs: Date.now() - 3500,
+      phaseStartedAtMs: Date.now() - 1100,
+    });
+    component['tickTractorBeamAnimation']();
+
+    expect(mockSocket.upsertItem).not.toHaveBeenCalled();
+
+    component['tractorBeamAnimationState'].set({
+      ...component['tractorBeamAnimationState']()!,
+      phaseStartedAtMs: Date.now() - 1300,
     });
     component['tickTractorBeamAnimation']();
 
@@ -1391,7 +1504,12 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   });
 
   it('debris properties text computeds reflect the hovered debris', () => {
-    const { component } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
+    const { component } = setup(
+      shipNavStateWithInventory(
+        [{ id: 'beam-20', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'intact' }],
+        { x: 0, y: 0, z: 0 },
+      ),
+    );
     const service = component['floatingDebrisStateService'] as FloatingDebrisStateService;
     service.upsertLocal([
       {
@@ -1409,6 +1527,9 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['debrisPropertiesPositionText']()).toBe('POS KM: X 3.0 Y 4.0 Z 0.0');
     expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: 5.0');
     expect(component['debrisPropertiesStateText']()).toBe('STATE: DEPLOYED // DAMAGE: INTACT');
+    expect(component['showTractorBeamCapabilityDetails']()).toBeTrue();
+    expect(component['tractorBeamCapabilityText']()).toBe('TRACTOR EQ: T20 // RANGE 25.0 KM');
+    expect(component['tractorBeamTimingText']()).toBe('TRACTOR PULL: 1200 MS');
     expect(component['propertiesPanelTitle']()).toBe('TRACTOR BEAM // PROPERTIES');
   });
 
@@ -1419,5 +1540,21 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     component['onDebrisHoverChange']({ id: 'debris-fallback', hovering: true });
     expect(component['debrisPropertiesDistanceText']()).toBe('DIST KM: ---');
     expect(component['debrisPropertiesStateText']()).toBe('STATE: --- // DAMAGE: ---');
+    expect(component['showTractorBeamCapabilityDetails']()).toBeTrue();
+    expect(component['tractorBeamCapabilityText']()).toBe('TRACTOR EQ: T1 // RANGE 10.0 KM');
+    expect(component['tractorBeamTimingText']()).toBe('TRACTOR PULL: 10000 MS');
+  });
+
+  it('debris properties show repair-required tractor details when only non-intact beams are installed', () => {
+    const { component } = setup(
+      shipNavStateWithInventory([{ id: 'beam-disabled', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'disabled' }]),
+    );
+    seedDebris(component, 'debris-disabled', { x: 1, y: 0, z: 0 }, 'Tractor Beam');
+
+    component['onDebrisHoverChange']({ id: 'debris-disabled', hovering: true });
+
+    expect(component['showTractorBeamCapabilityDetails']()).toBeTrue();
+    expect(component['tractorBeamCapabilityText']()).toBe('TRACTOR EQ: DAMAGED // REPAIR REQUIRED');
+    expect(component['tractorBeamTimingText']()).toBe('TRACTOR PULL: REPAIR REQUIRED');
   });
 });

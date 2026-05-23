@@ -254,6 +254,54 @@ describe('ShipViewInventoryPage', () => {
     expect(equippedTexts.some((text) => text.includes('Sensor Array') && text.includes('1'))).toBeFalse();
   });
 
+  it('should show a D badge for grouped items with non-intact damage status', () => {
+    const { fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'beam-1', itemType: 'ship-tractor-beam', displayName: 'Tractor Beam', tier: 20, damageStatus: 'damaged' }),
+            makeItem({ id: 'sensor-1', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 12, damageStatus: 'intact' }),
+          ],
+        },
+      },
+    });
+
+    fixture.detectChanges();
+    const native = fixture.nativeElement as HTMLElement;
+    const damagedBadges = Array.from(native.querySelectorAll('.damaged-badge')) as HTMLElement[];
+
+    expect(damagedBadges.length).toBe(1);
+    expect(damagedBadges[0].textContent?.trim()).toBe('D');
+    expect(damagedBadges[0].getAttribute('title')).toBe('Damaged/Unavailable');
+    expect(native.textContent).toContain('Tractor Beam');
+  });
+
+  it('should show a visible badge legend when inventory is present', () => {
+    const { fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [makeItem({ id: 'sensor-1', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 12 })],
+        },
+      },
+    });
+
+    fixture.detectChanges();
+    const native = fixture.nativeElement as HTMLElement;
+    const legend = native.querySelector('.badge-legend') as HTMLElement | null;
+
+    expect(legend).not.toBeNull();
+    expect(legend?.textContent).toContain('Equipped tier');
+    expect(legend?.textContent).toContain('Damaged/Unavailable');
+  });
+
   it('should sort groups by item name when item header is toggled', () => {
     const { component } = setup({
       socketService,
@@ -812,6 +860,47 @@ describe('ShipViewInventoryPage', () => {
     component.addSensorArrayToInventory();
   });
 
+  it('adds tractor-beam item with prompted tier on successful upsert', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    spyOn(window, 'prompt').and.returnValue('7');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((request: any, cb: (response: any) => void) => {
+        expect(request.item.itemType).toBe('ship-tractor-beam');
+        expect(request.item.displayName).toBe('Tractor Beam');
+        expect(request.item.tier).toBe(7);
+
+        cb({
+          success: true,
+          item: {
+            id: 'beam-1',
+            itemType: 'ship-tractor-beam',
+            displayName: 'Tractor Beam',
+            tier: 7,
+            state: 'contained',
+            damageStatus: 'intact',
+          },
+        });
+      });
+
+    component.addTractorBeamToInventory();
+
+    const added = component['joinShip']()?.inventory?.find((item: any) => item.id === 'beam-1');
+    expect(added).toBeDefined();
+    expect(added?.tier).toBe(7);
+    const activeShipBeam = sessionService.activeShip()?.inventory?.find((item: any) => item.id === 'beam-1');
+    expect(activeShipBeam?.tier).toBe(7);
+  });
+
   it('routes add-dart-drone dev action through the dispatcher', () => {
     const { component } = setup({
       socketService,
@@ -842,6 +931,22 @@ describe('ShipViewInventoryPage', () => {
     const addSensorSpy = spyOn(component as any, 'addSensorArrayToInventory');
     component['runDevInventoryAction']('add-sensor-array');
     expect(addSensorSpy).toHaveBeenCalled();
+  });
+
+  it('routes add-tractor-beam dev action through the dispatcher', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    const addTractorBeamSpy = spyOn(component as any, 'addTractorBeamToInventory');
+    component['runDevInventoryAction']('add-tractor-beam');
+    expect(addTractorBeamSpy).toHaveBeenCalled();
   });
 
   it('does not request ship refresh when required context is missing', () => {

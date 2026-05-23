@@ -45,7 +45,12 @@ import { type LaunchItemRequest, type LaunchItemResponse, type LaunchItemYielded
 import { type AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { type MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
-import { resolveSensorArrayCapabilities, type ItemTierCapabilities } from '../model/item-tier-capabilities';
+import {
+  resolveSensorArrayCapabilities,
+  resolveTractorBeamCapabilities,
+  type ItemTierCapabilities,
+  type TractorBeamTierCapabilities,
+} from '../model/item-tier-capabilities';
 import { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
@@ -154,10 +159,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly framePressureAvg = computed(() => this.framePressureSampler.getAverage());
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
-  private static readonly TARGET_HOLD_MS = 250;
-  private static readonly TRACTOR_BEAM_RANGE_KM = 10;
+  private static readonly TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
   private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
-  private static readonly TRACTOR_BEAM_PULL_DURATION_MS = 3000;
   private static readonly TRACTOR_BEAM_REVERSE_DURATION_MS = 550;
   private static readonly TRACTOR_BEAM_ANIMATION_TICK_MS = 16;
   private static readonly TRACTOR_BEAM_PARTICLE_COUNT = 8;
@@ -466,6 +469,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly activeSensorArrayCapabilities = computed<ItemTierCapabilities | null>(() =>
     this.resolveActiveSensorArrayCapabilities(),
   );
+  private readonly activeTractorBeamCapabilities = computed<TractorBeamTierCapabilities | null>(() =>
+    this.resolveActiveTractorBeamCapabilities(),
+  );
   readonly launchHotkeysEnabled = computed(() => {
     const targetedId = this.targetedAsteroidId();
     if (!targetedId) {
@@ -683,6 +689,33 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const state = debris.state ? debris.state.toUpperCase() : '---';
     const damage = debris.damageStatus ? debris.damageStatus.toUpperCase() : '---';
     return `STATE: ${state} // DAMAGE: ${damage}`;
+  });
+  readonly showTractorBeamCapabilityDetails = computed(
+    () => this.hoveredDebrisItem()?.itemType === ShipExteriorViewScene.TRACTOR_BEAM_ITEM_TYPE,
+  );
+  readonly tractorBeamCapabilityText = computed(() => {
+    const capabilities = this.activeTractorBeamCapabilities();
+    if (!capabilities) {
+      if (this.hasOnlyNonIntactTractorBeamInstalled()) {
+        return 'TRACTOR EQ: DAMAGED // REPAIR REQUIRED';
+      }
+
+      return 'TRACTOR EQ: UNAVAILABLE';
+    }
+
+    return `TRACTOR EQ: T${capabilities.tier} // RANGE ${capabilities.maxRangeKm.toFixed(1)} KM`;
+  });
+  readonly tractorBeamTimingText = computed(() => {
+    const capabilities = this.activeTractorBeamCapabilities();
+    if (!capabilities) {
+      if (this.hasOnlyNonIntactTractorBeamInstalled()) {
+        return 'TRACTOR PULL: REPAIR REQUIRED';
+      }
+
+      return 'TRACTOR PULL: ---';
+    }
+
+    return `TRACTOR PULL: ${capabilities.pullDurationMs} MS`;
   });
   readonly propertiesPanelTitle = computed(() => {
     const debris = this.hoveredDebrisItem();
@@ -1930,6 +1963,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private beginTargetHold(asteroidId: string): void {
+    const targetHoldMs = this.resolveTargetHoldDurationMs();
+    if (targetHoldMs === null) {
+      return;
+    }
+
     this.sessionController.beginTargetHold(
       asteroidId,
       () => {
@@ -1937,11 +1975,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.targetedDebrisId.set(null);
         this.activeTarget.set({ kind: 'asteroid', id: asteroidId });
       },
-      ShipExteriorViewScene.TARGET_HOLD_MS,
+      targetHoldMs,
     );
   }
 
   private beginDebrisTargetHold(debrisId: string): void {
+    const targetHoldMs = this.resolveTargetHoldDurationMs();
+    if (targetHoldMs === null) {
+      return;
+    }
+
     this.sessionController.beginTargetHold(
       debrisId,
       () => {
@@ -1949,7 +1992,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.targetedAsteroidId.set(null);
         this.activeTarget.set({ kind: 'debris', id: debrisId });
       },
-      ShipExteriorViewScene.TARGET_HOLD_MS,
+      targetHoldMs,
     );
   }
 
@@ -1993,6 +2036,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
 
+    const tractorBeamCapabilities = this.activeTractorBeamCapabilities();
+    if (!tractorBeamCapabilities) {
+      this.setLaunchToast('Tractor beam unavailable. Install an intact tractor beam to collect debris.', 'error', null);
+      return;
+    }
+
     const target = this.activeTarget();
     if (!target || target.kind !== 'debris') {
       this.setLaunchToast('Lock a debris target before activating the tractor beam.', 'error', null);
@@ -2016,19 +2065,22 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const dy = debris.positionKm.y - shipPosKm.y;
     const dz = debris.positionKm.z - shipPosKm.z;
     const distanceKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (distanceKm > ShipExteriorViewScene.TRACTOR_BEAM_RANGE_KM) {
+    if (distanceKm > tractorBeamCapabilities.maxRangeKm) {
       this.setLaunchToast(
-        `Out of tractor range (${distanceKm.toFixed(1)} km > ${ShipExteriorViewScene.TRACTOR_BEAM_RANGE_KM} km).`,
+        `Out of tractor range (${distanceKm.toFixed(1)} km > ${tractorBeamCapabilities.maxRangeKm.toFixed(1)} km).`,
         'error',
         null,
       );
       return;
     }
 
-    this.startTractorBeamPull(debris);
+    this.startTractorBeamPull(debris, tractorBeamCapabilities);
   }
 
-  private startTractorBeamPull(debris: FloatingDebrisItem): void {
+  private startTractorBeamPull(
+    debris: FloatingDebrisItem,
+    tractorBeamCapabilities: TractorBeamTierCapabilities,
+  ): void {
     const nowMs = Date.now();
     this.tractorBeamAnimationState.set({
       debrisId: debris.id,
@@ -2038,7 +2090,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       currentPositionKm: { ...debris.positionKm },
       phase: 'pulling',
       phaseStartedAtMs: nowMs,
-      phaseDurationMs: ShipExteriorViewScene.TRACTOR_BEAM_PULL_DURATION_MS,
+      phaseDurationMs: tractorBeamCapabilities.pullDurationMs,
       reverseFailureMessage: null,
     });
     this.tractorBeamAnimationClockMs.set(nowMs);
@@ -2348,6 +2400,53 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const durationMs = Math.max(capabilities.scanTickMs, capabilities.scanDurationMs);
     const totalTicks = durationMs / capabilities.scanTickMs;
     return 100 / totalTicks;
+  }
+
+  private resolveTargetHoldDurationMs(): number | null {
+    const capabilities = this.activeSensorArrayCapabilities();
+    if (!capabilities) {
+      this.setLaunchToast('Sensor array unavailable. Install a sensor array to target objects.', 'error', null);
+      return null;
+    }
+
+    return capabilities.scanDurationMs;
+  }
+
+  private resolveActiveTractorBeamCapabilities(): TractorBeamTierCapabilities | null {
+    const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
+    const tractorBeamItems = (activeShip?.inventory ?? []).filter(
+      (item) => item.itemType === ShipExteriorViewScene.TRACTOR_BEAM_ITEM_TYPE && item.state !== 'destroyed',
+    );
+
+    if (tractorBeamItems.length === 0) {
+      // Preserve current gameplay until the backend consistently surfaces the
+      // installed tractor beam in ship inventory payloads.
+      return resolveTractorBeamCapabilities(1);
+    }
+
+    const highestInstalledTier = tractorBeamItems.reduce<number | null>((highestTier, item) => {
+      if (item.damageStatus !== 'intact') {
+        return highestTier;
+      }
+
+      const itemTier = typeof item.tier === 'number' ? item.tier : 1;
+      return highestTier === null ? itemTier : Math.max(highestTier, itemTier);
+    }, null);
+
+    if (highestInstalledTier === null) {
+      return null;
+    }
+
+    return resolveTractorBeamCapabilities(highestInstalledTier);
+  }
+
+  private hasOnlyNonIntactTractorBeamInstalled(): boolean {
+    const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
+    const tractorBeamItems = (activeShip?.inventory ?? []).filter(
+      (item) => item.itemType === ShipExteriorViewScene.TRACTOR_BEAM_ITEM_TYPE && item.state !== 'destroyed',
+    );
+
+    return tractorBeamItems.length > 0 && tractorBeamItems.every((item) => item.damageStatus !== 'intact');
   }
 
   hidePropertiesPanel(): void {

@@ -13,6 +13,7 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
     <app-floating-debris-node
       [item]="item"
       [position]="position"
+      [targetingHold]="targetingHold"
       [targeted]="targeted"
       (pointerButtonDown)="downEvents.push($event)"
       (pointerButtonUp)="upEvents.push($event)"
@@ -30,6 +31,7 @@ class HostComponent {
     positionKm: { x: 0, y: 0, z: 0 },
   };
   position: [number, number, number] = [0, 0, 0];
+  targetingHold = false;
   targeted = false;
   downEvents: FloatingDebrisPointerEvent[] = [];
   upEvents: FloatingDebrisPointerEvent[] = [];
@@ -97,5 +99,22 @@ describe('FloatingDebrisNode', () => {
       { id: 'debris-1', hovering: true },
       { id: 'debris-1', hovering: false },
     ]);
+  });
+
+  it('exposes asteroid-style hold and target ring opacities from inputs', () => {
+    const fixture = makeFixture();
+    const host = fixture.componentInstance;
+
+    host.targetingHold = true;
+    host.targeted = true;
+    fixture.detectChanges();
+
+    const node = host.node as unknown as {
+      targetHoldRingOpacity: () => number;
+      targetedRingOpacity: () => number;
+    };
+
+    expect(node.targetHoldRingOpacity()).toBe(0.92);
+    expect(node.targetedRingOpacity()).toBe(0.9);
   });
 });

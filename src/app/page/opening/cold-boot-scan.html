@@ -136,6 +136,10 @@
         <p>{{ debrisPropertiesPositionText() }}</p>
         <p>{{ debrisPropertiesDistanceText() }}</p>
         <p>{{ debrisPropertiesStateText() }}</p>
+        @if (showTractorBeamCapabilityDetails()) {
+        <p>{{ tractorBeamCapabilityText() }}</p>
+        <p>{{ tractorBeamTimingText() }}</p>
+        }
       }
     </div>
   </section>
