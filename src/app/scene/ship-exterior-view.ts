@@ -10,48 +10,39 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { Euler, PMREMGenerator, Quaternion, Vector3 } from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { NgtArgs, injectStore } from 'angular-three';
+import { injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { Euler, PMREMGenerator, Vector3 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { environment } from '../../environments/environment';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
 import { Sol } from '../component/sol';
-import { FramePressureSampler } from './ship-exterior/frame-pressure-sampler';
-import {
-  clearMissionGatePendingRetry,
-  createInitialMissionGateState,
-  evaluateMissionGateOnLaunch,
-  evaluateMissionGateOnManufacture,
-  evaluateMissionGateOnRepair,
-  evaluateMissionGateOnScan,
-  hasMissionGatePendingRetry,
-  markMissionGateStepPendingRetry,
-  parseMissionGateState,
-  serializeMissionGateState,
-  type ShipExteriorMissionGateState,
-  type ShipExteriorMissionGateStepStatus,
-} from '../mission/ship-exterior-mission';
 import {
   resolveMissionScenePlugin,
   type MissionScenePlugin,
 } from '../mission/mission-scene-plugin';
+import {
+  createInitialMissionGateState,
+  evaluateMissionGateOnScan,
+  parseMissionGateState,
+  type ShipExteriorMissionGateState,
+  type ShipExteriorMissionGateStepStatus
+} from '../mission/ship-exterior-mission';
+import { FramePressureSampler } from './ship-exterior/frame-pressure-sampler';
 // Side-effect import: register additional missions and their plugin factories
 // so `resolveMissionScenePlugin` can resolve them when the navigation state
 // targets one of these missions.
 import '../mission/generic-exploration-ship-exterior-mission';
 import { pickWeightedAsteroidMaterial, type AsteroidMaterialProfile } from '../model/catalog/asteroid-materials';
-import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../model/celestial-body-list';
 import {
-  DEFAULT_SOLAR_SYSTEM_ID,
-  type CelestialBodyUpsertRequest,
-  type CelestialBodyUpsertResponse,
+  DEFAULT_SOLAR_SYSTEM_ID
 } from '../model/celestial-body-upsert';
 import { PlayerCharacterSummary } from '../model/character-list';
+import type { FloatingDebrisItem } from '../model/floating-debris-item';
+import { type ItemUpsertResponse } from '../model/item-upsert';
 import { type LaunchItemRequest, type LaunchItemResponse, type LaunchItemYieldedMaterial } from '../model/launch-item';
 import { type AsteroidKinematics } from '../model/math/asteroid-kinematics';
-import { DEFAULT_CLUSTER_SPREAD_KM } from '../model/math/celestial-body-location';
 import { type MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { Triple } from '../model/shared/triple';
@@ -62,19 +53,13 @@ import {
 } from '../model/ship-exterior-view-context';
 import type { ShipItem } from '../model/ship-item';
 import {
-  assignAsteroidRenderTiers,
-  DEFAULT_ASTEROID_TIER_CAPS,
-  DEFAULT_ASTEROID_TIER_DISTANCES,
-  resolveAsteroidTierDetailOverride,
-  type AsteroidRenderTier,
-} from './ship-exterior/asteroid-tier-selection';
-import {
   coerceShipInventory,
   coerceShipModel,
   type ShipListRequest,
   type ShipListResponse,
   type ShipSummary,
 } from '../model/ship-list';
+import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import { appLogger } from '../services/logger';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
@@ -87,20 +72,29 @@ import {
   type ShipExteriorMissionStateContext,
 } from '../services/ship-exterior-mission-state.service';
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
-import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
+import { SocketService } from '../services/socket.service';
+import {
+  assignAsteroidRenderTiers,
+  DEFAULT_ASTEROID_TIER_CAPS,
+  DEFAULT_ASTEROID_TIER_DISTANCES,
+  resolveAsteroidTierDetailOverride,
+  type AsteroidRenderTier,
+} from './ship-exterior/asteroid-tier-selection';
 import { FloatingDebrisController } from './ship-exterior/floating-debris-controller';
 import {
   FloatingDebrisNode,
   type FloatingDebrisHoverEvent,
   type FloatingDebrisPointerEvent,
 } from './ship-exterior/floating-debris-node';
-import type { FloatingDebrisItem } from '../model/floating-debris-item';
-import { ITEM_UPSERT_RESPONSE_EVENT, type ItemUpsertResponse } from '../model/item-upsert';
-import { SocketService } from '../services/socket.service';
+import { HotkeyFlashController } from './ship-exterior/hotkey-flash-controller';
+import { LaunchToastController, type LaunchFeedbackToast } from './ship-exterior/launch-toast-controller';
+import { ShipDamageController } from './ship-exterior/ship-damage-controller';
+import { ShipExteriorBootstrapController } from './ship-exterior/ship-exterior-bootstrap-controller';
+import { ShipExteriorCelestialBodyController } from './ship-exterior/ship-exterior-celestial-body-controller';
+import { ShipExteriorFlightController } from './ship-exterior/ship-exterior-flight-controller';
 import {
   ASTRONOMICAL_UNIT_KM,
   DEFAULT_SHIP_SUN_DISTANCE_KM,
-  cloneForTest,
   formatClusterText,
   formatDiameterText,
   formatLocationText,
@@ -113,22 +107,16 @@ import {
   resolveHotkeyNumber,
   resolveSunConfigForSolarSystem,
 } from './ship-exterior/ship-exterior-formatters';
-import {
-  applyMouseLook,
-  integrateFlightStep,
-  quantizeCoordinate,
-  resolveMovementInput,
-  type FlightOrientation,
-} from './ship-exterior/ship-exterior-flight-controls';
-import { AsyncSerialQueue } from './ship-exterior/async-serial-queue';
-import { HotkeyFlashController } from './ship-exterior/hotkey-flash-controller';
-import { LaunchToastController, type LaunchFeedbackToast } from './ship-exterior/launch-toast-controller';
 import { ShipExteriorLaunchController } from './ship-exterior/ship-exterior-launch-controller';
-import { ShipExteriorCelestialBodyController } from './ship-exterior/ship-exterior-celestial-body-controller';
 import { ShipExteriorMissionProgressController } from './ship-exterior/ship-exterior-mission-progress-controller';
-import { ShipExteriorBootstrapController } from './ship-exterior/ship-exterior-bootstrap-controller';
 import { ShipExteriorSessionController } from './ship-exterior/ship-exterior-session-controller';
-import { ShipDamageController } from './ship-exterior/ship-damage-controller';
+import { registerShipExteriorTestUtils, unregisterShipExteriorTestUtils } from './ship-exterior/ship-exterior-test-utils';
+import { TractorBeamAudioController } from './ship-exterior/tractor-beam-audio-controller';
+import {
+  resolveTractorBeamVisualState as buildTractorBeamVisualState,
+  type TractorBeamAnimationState,
+  type TractorBeamVisualState,
+} from './ship-exterior/tractor-beam-visual';
 
 interface ShipExteriorViewNavigationState {
   playerName?: string;
@@ -144,63 +132,6 @@ interface LaunchHotkeySlot {
   label: string;
   enabled: boolean;
   launching: boolean;
-}
-
-interface CelestialBodyUpsertQueueItem {
-  sampleId: string;
-  state: 'unscanned' | 'active' | 'destroyed';
-  revealedMaterial: AsteroidMaterialProfile | null;
-  revealedKinematics: AsteroidKinematics | null;
-}
-
-interface MissionProgressUpsertQueueItem {
-  gateState: ShipExteriorMissionGateState;
-  completedStepKey: string | null;
-  toastMessage: string | null;
-}
-
-type TractorBeamPhase = 'pulling' | 'committing' | 'reversing';
-
-interface TractorBeamAnimationState {
-  debrisId: string;
-  itemType: string;
-  displayName: string;
-  startPositionKm: Triple;
-  currentPositionKm: Triple;
-  phase: TractorBeamPhase;
-  phaseStartedAtMs: number;
-  phaseDurationMs: number;
-  reverseFailureMessage: string | null;
-}
-
-interface TractorBeamVisualState {
-  conePosition: [number, number, number];
-  coneRotation: [number, number, number];
-  coneScale: [number, number, number];
-  particlePositions: [number, number, number][];
-}
-
-interface ShipExteriorViewTestApi {
-  getMissionGateState(): ShipExteriorMissionGateState | null;
-  getMissionObjectiveText(): string;
-  getAsteroidSamples(): AsteroidScanSample[];
-  getActiveShipInventoryItemTypes(): string[];
-  getTargetedAsteroidId(): string | null;
-  hoverAsteroid(sampleId: string): boolean;
-  unhoverAsteroid(sampleId: string): boolean;
-  forceTargetAsteroid(sampleId: string): boolean;
-  tickScanTicks(ticks?: number): AsteroidScanSample[];
-  forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null;
-  simulateManufacture(itemType: string): ShipExteriorMissionGateState | null;
-  simulateRepair(repairKind: string): ShipExteriorMissionGateState | null;
-  launchFromHotkey(hotkey: 1 | 2 | 3 | 4 | 5): void;
-  clearToast(): void;
-}
-
-declare global {
-  interface Window {
-    __shipExteriorTestUtils?: ShipExteriorViewTestApi;
-  }
 }
 
 @Component({
@@ -277,18 +208,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private tractorBeamAnimationIntervalId: number | null = null;
   private readonly tractorBeamAnimationState = signal<TractorBeamAnimationState | null>(null);
   private readonly tractorBeamAnimationClockMs = signal(0);
-  private tractorBeamAudioContext: AudioContext | null = null;
-  private tractorBeamLoopGainNode: GainNode | null = null;
-  private tractorBeamLoopOscNodes: OscillatorNode[] = [];
-  private flightTickIntervalId: number | null = null;
-  private flightTrackingAccumulatorMs = 0;
-  private readonly flightPressedKeys = new Set<string>();
-  private flightOrientation = signal<FlightOrientation>({ yawRad: 0, pitchRad: 0, rollRad: 0 });
-  // Camera orientation polled from the live Three.js camera each tick. Used for VIEW/MOVE
-  // displays when flight mode is OFF (so they reflect OrbitControls rotation).
-  private cameraOrientation = signal<FlightOrientation>({ yawRad: 0, pitchRad: 0, rollRad: 0 });
-  private flightDisplacementScene: Triple = { x: 0, y: 0, z: 0 };
-  private flightCurrentLocationKm: Triple = { x: 0, y: 0, z: 0 };
+  private readonly tractorBeamAudioController = new TractorBeamAudioController();
+  private readonly flightController = new ShipExteriorFlightController({
+    config: {
+      tickMs: ShipExteriorViewScene.FLIGHT_TICK_MS,
+      trackingCheckpointMs: ShipExteriorViewScene.FLIGHT_TRACKING_CHECKPOINT_MS,
+      trackingQuantizeKm: ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM,
+      sceneUnitToKm: ShipExteriorViewScene.FLIGHT_SCENE_UNIT_TO_KM,
+      baseSpeedSceneUnitsPerSec: ShipExteriorViewScene.FLIGHT_BASE_SPEED_SCENE_UNITS_PER_SEC,
+      boostMultiplier: ShipExteriorViewScene.FLIGHT_BOOST_MULTIPLIER,
+      rollSpeedRadPerSec: ShipExteriorViewScene.FLIGHT_ROLL_SPEED_RAD_PER_SEC,
+      defaultMouseSensitivity: ShipExteriorViewScene.FLIGHT_DEFAULT_MOUSE_SENSITIVITY,
+      mouseSensitivityMin: ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MIN,
+      mouseSensitivityMax: ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MAX,
+      maxPitchRad: ShipExteriorViewScene.FLIGHT_MAX_PITCH_RAD,
+    },
+    getCamera: () => this.store?.snapshot.camera ?? null,
+    setActiveShipLocationKm: (location) => this.activeShipLocationKm.set(location),
+    commitTrackedLocation: (location) => this.commitFlightTrackingCheckpointToSession(location),
+  });
+  private readonly flightOrientation = this.flightController.flightOrientation;
+  private readonly cameraOrientation = this.flightController.cameraOrientation;
   private unsubscribeShipListResponse?: () => void;
   private unsubscribeCelestialBodyListResponse?: () => void;
   private unsubscribeLaunchItemResponse?: () => void;
@@ -468,13 +408,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   });
   protected Math = Math;
   private propertiesPanelHidden = signal(false);
-  readonly flightModeEnabled = signal(false);
+  readonly flightModeEnabled = this.flightController.flightModeEnabled;
   readonly flightPointerLocked = signal(false);
-  readonly flightInvertY = signal(false);
-  readonly flightMouseSensitivity = signal(ShipExteriorViewScene.FLIGHT_DEFAULT_MOUSE_SENSITIVITY);
-  readonly flightSpeedKmPerSec = signal(0);
-  readonly flightWorldOffset = signal<[number, number, number]>([0, 0, 0]);
-  readonly flightWorldRotation = signal<[number, number, number]>([0, 0, 0]);
+  readonly flightInvertY = this.flightController.flightInvertY;
+  readonly flightMouseSensitivity = this.flightController.flightMouseSensitivity;
+  readonly flightSpeedKmPerSec = this.flightController.flightSpeedKmPerSec;
+  readonly flightWorldOffset = this.flightController.flightWorldOffset;
+  readonly flightWorldRotation = this.flightController.flightWorldRotation;
   readonly flightStatusLine = computed(() => {
     if (!this.flightModeEnabled()) {
       return 'FLIGHT // OFF';
@@ -870,7 +810,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    this.flightCurrentLocationKm = this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 };
+    this.flightController.initializeCurrentLocation(this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 });
     this.socketService.connect(this.socketService.serverUrl);
     this.installSceneEnvironment();
     this.initializeMissionGateState();
@@ -896,7 +836,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.bootstrapController.seedAsteroidsAroundStarterShip();
     }
     this.sessionController.startScanLoop(() => this.tickScene(), ShipExteriorViewScene.SCAN_TICK_MS);
-    this.startFlightLoop();
+    this.flightController.start();
     window.addEventListener('pointerdown', this.onWindowPointerDown);
     window.addEventListener('pointerup', this.onWindowPointerUp);
     window.addEventListener('contextmenu', this.onWindowContextMenu);
@@ -1190,11 +1130,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeLaunchItemResponse?.();
     this.floatingDebrisController.stop();
     this.stopTractorBeamAnimationLoop();
-    this.stopTractorBeamLoopAudio();
-    this.disposeTractorBeamAudioContext();
+    this.tractorBeamAudioController.dispose();
     this.bootstrapController.dispose();
     this.sessionController.dispose();
-    this.stopFlightLoop();
+    this.flightController.dispose();
     this.disposeSceneEnvironment();
     window.removeEventListener('pointerdown', this.onWindowPointerDown);
     window.removeEventListener('pointerup', this.onWindowPointerUp);
@@ -1208,33 +1147,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   setFlightModeEnabled(enabled: boolean): void {
-    this.flightModeEnabled.set(enabled);
-    this.flightPressedKeys.clear();
-    this.flightTrackingAccumulatorMs = 0;
-    this.flightSpeedKmPerSec.set(0);
     this.clearTargetHoldTimer();
     this.activeScanAsteroidId.set(null);
-    if (enabled) {
-      // Reset camera to a canonical orientation facing -Z so flight math aligns with the camera view.
-      this.resetCameraForFlight();
-      // Reset flight orientation and displacement so we start from a clean slate.
-      this.flightOrientation.set({ yawRad: 0, pitchRad: 0, rollRad: 0 });
-      this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
-      this.syncFlightWorldTransform();
-    } else {
+    this.flightController.setFlightModeEnabled(enabled);
+    if (!enabled) {
       this.exitPointerLockIfHeld();
     }
-  }
-
-  private resetCameraForFlight(): void {
-    const camera = this.store?.snapshot.camera;
-    if (!camera) {
-      return;
-    }
-    // Position the camera so its forward direction is exactly -Z.
-    camera.position.set(0, 0, 6.6);
-    camera.lookAt(0, 0, 0);
-    camera.updateMatrixWorld();
   }
 
   private installSceneEnvironment(): void {
@@ -1280,53 +1198,24 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.sceneEnvironmentInstalled = false;
   }
 
-  // Polls the live Three.js camera and pushes its yaw/pitch/roll into `cameraOrientation`.
-  // Used to drive the VIEW / MOVE diagnostic lines when flight mode is OFF (OrbitControls active).
-  private pollCameraOrientation(): void {
-    const camera = this.store?.snapshot.camera;
-    if (!camera) {
-      return;
-    }
-    const euler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-    const current = this.cameraOrientation();
-    const next: FlightOrientation = {
-      yawRad: euler.y,
-      pitchRad: euler.x,
-      rollRad: euler.z,
-    };
-    // Avoid pointless signal churn when nothing changed (sub-milliradian threshold).
-    if (
-      Math.abs(next.yawRad - current.yawRad) < 1e-4 &&
-      Math.abs(next.pitchRad - current.pitchRad) < 1e-4 &&
-      Math.abs(next.rollRad - current.rollRad) < 1e-4
-    ) {
-      return;
-    }
-    this.cameraOrientation.set(next);
-  }
-
   toggleFlightMode(): void {
     this.setFlightModeEnabled(!this.flightModeEnabled());
   }
 
   setFlightInvertY(enabled: boolean): void {
-    this.flightInvertY.set(enabled);
+    this.flightController.setFlightInvertY(enabled);
   }
 
   setFlightMouseSensitivity(rawValue: number): void {
-    const clamped = Math.max(
-      ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MIN,
-      Math.min(ShipExteriorViewScene.FLIGHT_MOUSE_SENSITIVITY_MAX, rawValue),
-    );
-    this.flightMouseSensitivity.set(clamped);
+    this.flightController.setFlightMouseSensitivity(rawValue);
   }
 
   getFlightMouseSensitivitySliderValue(): number {
-    return Math.round(this.flightMouseSensitivity() * 10000);
+    return this.flightController.getFlightMouseSensitivitySliderValue();
   }
 
   setFlightMouseSensitivityFromSliderValue(rawValue: number): void {
-    this.setFlightMouseSensitivity(rawValue / 10000);
+    this.flightController.setFlightMouseSensitivityFromSliderValue(rawValue);
   }
 
   private onWindowPointerDown = (event: PointerEvent): void => {
@@ -1383,7 +1272,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         return;
       }
 
-      if (this.captureFlightMovementKey(event.code)) {
+      if (this.flightController.captureFlightMovementKey(event.code)) {
         event.preventDefault();
         return;
       }
@@ -1409,11 +1298,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   };
 
   private onWindowKeyUp = (event: KeyboardEvent): void => {
-    if (!this.flightModeEnabled()) {
-      return;
-    }
-
-    if (this.flightPressedKeys.delete(event.code)) {
+    if (this.flightController.releaseFlightMovementKey(event.code)) {
       event.preventDefault();
     }
   };
@@ -1423,12 +1308,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
 
-    this.flightOrientation.set(applyMouseLook(this.flightOrientation(), event.movementX, event.movementY, {
-      sensitivity: this.flightMouseSensitivity(),
-      invertY: this.flightInvertY(),
-      maxPitchRad: ShipExteriorViewScene.FLIGHT_MAX_PITCH_RAD,
-    }));
-    this.syncFlightWorldTransform();
+    this.flightController.applyMouseMove(event.movementX, event.movementY);
   };
 
   private onPointerLockChange = (): void => {
@@ -1448,28 +1328,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
   };
 
-  private captureFlightMovementKey(code: string): boolean {
-    if (
-      code === 'KeyW' ||
-      code === 'KeyA' ||
-      code === 'KeyS' ||
-      code === 'KeyD' ||
-      code === 'Space' ||
-      code === 'ControlLeft' ||
-      code === 'ControlRight' ||
-      code === 'KeyC' ||
-      code === 'ShiftLeft' ||
-      code === 'ShiftRight' ||
-      code === 'KeyQ' ||
-      code === 'KeyE'
-    ) {
-      this.flightPressedKeys.add(code);
-      return true;
-    }
-
-    return false;
-  }
-
   private requestPointerLock(): void {
     if (!this.flightModeEnabled() || this.flightPointerLocked()) {
       return;
@@ -1484,73 +1342,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
   }
 
-  private startFlightLoop(): void {
-    this.stopFlightLoop();
-    this.flightTickIntervalId = window.setInterval(() => this.tickFlight(), ShipExteriorViewScene.FLIGHT_TICK_MS);
-  }
-
-  private stopFlightLoop(): void {
-    if (this.flightTickIntervalId !== null) {
-      clearInterval(this.flightTickIntervalId);
-      this.flightTickIntervalId = null;
-    }
-  }
-
-  private tickFlight(): void {
-    if (!this.flightModeEnabled()) {
-      this.pollCameraOrientation();
-      return;
-    }
-
-    const step = integrateFlightStep(
-      this.flightOrientation(),
-      resolveMovementInput(this.flightPressedKeys),
-      {
-        deltaSeconds: ShipExteriorViewScene.FLIGHT_TICK_MS / 1000,
-        baseSpeedSceneUnitsPerSec: ShipExteriorViewScene.FLIGHT_BASE_SPEED_SCENE_UNITS_PER_SEC,
-        boostMultiplier: ShipExteriorViewScene.FLIGHT_BOOST_MULTIPLIER,
-        rollSpeedRadPerSec: ShipExteriorViewScene.FLIGHT_ROLL_SPEED_RAD_PER_SEC,
-      },
-    );
-    this.flightOrientation.set(step.orientation);
-    this.flightSpeedKmPerSec.set(step.speedSceneUnitsPerSec * ShipExteriorViewScene.FLIGHT_SCENE_UNIT_TO_KM);
-
-    if (step.speedSceneUnitsPerSec <= 0) {
-      this.syncFlightWorldTransform();
-      return;
-    }
-
-    this.flightDisplacementScene = {
-      x: this.flightDisplacementScene.x + step.worldDelta.x,
-      y: this.flightDisplacementScene.y + step.worldDelta.y,
-      z: this.flightDisplacementScene.z + step.worldDelta.z,
-    };
-
-    const kmScale = ShipExteriorViewScene.FLIGHT_SCENE_UNIT_TO_KM;
-    this.flightCurrentLocationKm = {
-      x: this.flightCurrentLocationKm.x + step.worldDelta.x * kmScale,
-      y: this.flightCurrentLocationKm.y + step.worldDelta.y * kmScale,
-      z: this.flightCurrentLocationKm.z + step.worldDelta.z * kmScale,
-    };
-
-    this.flightTrackingAccumulatorMs += ShipExteriorViewScene.FLIGHT_TICK_MS;
-    if (this.flightTrackingAccumulatorMs >= ShipExteriorViewScene.FLIGHT_TRACKING_CHECKPOINT_MS) {
-      this.commitFlightTrackingCheckpoint();
-      this.flightTrackingAccumulatorMs = 0;
-    }
-
-    this.syncFlightWorldTransform();
-  }
-
-  private commitFlightTrackingCheckpoint(): void {
-    const nextLocation: Triple = {
-      x: quantizeCoordinate(this.flightCurrentLocationKm.x, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
-      y: quantizeCoordinate(this.flightCurrentLocationKm.y, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
-      z: quantizeCoordinate(this.flightCurrentLocationKm.z, ShipExteriorViewScene.FLIGHT_TRACKING_QUANTIZE_KM),
-    };
-
-    this.activeShipLocationKm.set(nextLocation);
-
+  private commitFlightTrackingCheckpointToSession(nextLocation: Triple): void {
     const activeShip = this.sessionService.activeShip();
     const shipId = this.activeShipId();
     if (!activeShip || activeShip.id !== shipId) {
@@ -1574,33 +1366,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     });
   }
 
-  private syncFlightWorldTransform(): void {
-    const orientation = this.flightOrientation();
-    this.flightWorldOffset.set([
-      +(-this.flightDisplacementScene.x).toFixed(3),
-      +(-this.flightDisplacementScene.y).toFixed(3),
-      +(-this.flightDisplacementScene.z).toFixed(3),
-    ]);
-    // Convert flight orientation (YXZ Euler) to world rotation (XYZ Euler via Quaternion).
-    // Movement is calculated using YXZ order, but ngt-group expects XYZ order.
-    // Use Quaternion as the common representation to avoid order confusion.
-    const orientationQuaternion = new Quaternion().setFromEuler(
-      new Euler(
-        orientation.pitchRad,
-        orientation.yawRad,
-        orientation.rollRad,
-        'YXZ',
-      ),
-    );
-    // Convert the quaternion back to Euler angles, negated and in XYZ order (which ngt-group uses).
-    const sceneEuler = new Euler().setFromQuaternion(orientationQuaternion.invert(), 'XYZ');
-    this.flightWorldRotation.set([
-      +(sceneEuler.x).toFixed(4),
-      +(sceneEuler.y).toFixed(4),
-      +(sceneEuler.z).toFixed(4),
-    ]);
-  }
-
   private updateTargetingCapabilityFromShipList(ships: ShipSummary[] | undefined): void {
     if (!Array.isArray(ships) || ships.length === 0) {
       return;
@@ -1612,9 +1377,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.hasExpendableDartDrone.set(nextHasDrone);
     this.activeShipId.set(matchingShip?.id?.trim() ?? '');
     this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
-    if (!this.flightModeEnabled()) {
-      this.flightCurrentLocationKm = matchingShip?.spatial?.positionKm ?? { x: 0, y: 0, z: 0 };
-    }
+    this.flightController.syncCurrentLocationFromShip(matchingShip?.spatial?.positionKm ?? null);
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
     this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
     this.shipDamageController.resolveFromShipSummary(matchingShip);
@@ -1974,145 +1737,35 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private registerTestUtils(): void {
-    if (environment.production || typeof window === 'undefined') {
-      return;
-    }
-
-    window.__shipExteriorTestUtils = {
-      getMissionGateState: () => {
-        const gateState = this.missionGateState();
-        return gateState ? cloneForTest(gateState) : null;
-      },
+    registerShipExteriorTestUtils({
+      isProduction: environment.production,
+      missionDefinition: this.missionDefinition,
+      getMissionGateState: () => this.missionGateState(),
+      setMissionGateState: (gateState) => this.missionGateState.set(gateState),
+      persistMissionGateState: (gateState) => this.persistMissionGateState(gateState),
       getMissionObjectiveText: () => this.missionObjectiveText(),
-      getAsteroidSamples: () => cloneForTest(this.asteroidSamples()),
+      getAsteroidSamples: () => this.asteroidSamples(),
+      updateAsteroidSamples: (updater) => this.asteroidSamples.update(updater),
       getActiveShipInventoryItemTypes: () => {
         const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
         return (activeShip?.inventory ?? []).map((item) => item.itemType);
       },
       getTargetedAsteroidId: () => this.targetedAsteroidId(),
-      hoverAsteroid: (sampleId: string) => {
-        const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
-        if (!exists) {
-          return false;
-        }
-        this.onAsteroidHoverChange({ id: sampleId, hovering: true });
-        return true;
-      },
-      unhoverAsteroid: (sampleId: string) => {
-        const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
-        if (!exists) {
-          return false;
-        }
-        this.onAsteroidHoverChange({ id: sampleId, hovering: false });
-        return true;
-      },
-      forceTargetAsteroid: (sampleId: string) => {
-        const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
-        if (!exists || !this.canTargetAsteroids()) {
-          return false;
-        }
-        this.targetedAsteroidId.set(sampleId);
-        return true;
-      },
-      tickScanTicks: (ticks: number = 1) => {
-        const safeTicks = Math.max(1, Math.min(500, Math.floor(ticks)));
-        for (let index = 0; index < safeTicks; index += 1) {
-          this.tickScene();
-        }
-        return cloneForTest(this.asteroidSamples());
-      },
-      forceCompleteIronScan: (sampleId?: string) => {
-        const targetId = sampleId ?? this.asteroidSamples()[0]?.id;
-        if (!targetId) {
-          return null;
-        }
-
-        let updated = false;
-        this.asteroidSamples.update((samples) =>
-          samples.map((sample) => {
-            if (sample.id !== targetId) {
-              return sample;
-            }
-            updated = true;
-            return {
-              ...sample,
-              scanProgress: 100,
-              scanned: true,
-              revealedMaterial: {
-                rarity: 'Common',
-                material: 'Iron',
-                textureColor: '#8f8f8f',
-              },
-              revealedKinematics: sample.revealedKinematics ?? sample.capturedKinematics,
-            };
-          }),
-        );
-
-        if (!updated) {
-          return this.missionGateState();
-        }
-
-        this.persistAsteroidSamples();
-        this.evaluateMissionGateForCompletedSamples([targetId]);
-        const gateState = this.missionGateState();
-        return gateState ? cloneForTest(gateState) : null;
-      },
-      simulateManufacture: (itemType: string) => {
-        const gateState = this.missionGateState();
-        if (!gateState) {
-          return null;
-        }
-
-        const evaluation = evaluateMissionGateOnManufacture({
-          mission: this.missionDefinition,
-          gateState,
-          manufacturedItemType: itemType,
-        });
-        if (evaluation.changed) {
-          this.missionGateState.set(evaluation.gateState);
-          this.persistMissionGateState(evaluation.gateState);
-          this.invokePluginHook('onManufacture', {
-            manufacturedItemType: itemType,
-            gateState: evaluation.gateState,
-          });
-        }
-        return cloneForTest(this.missionGateState());
-      },
-      simulateRepair: (repairKind: string) => {
-        const gateState = this.missionGateState();
-        if (!gateState) {
-          return null;
-        }
-
-        const evaluation = evaluateMissionGateOnRepair({
-          mission: this.missionDefinition,
-          gateState,
-          repairKind,
-        });
-        if (evaluation.changed) {
-          this.missionGateState.set(evaluation.gateState);
-          this.persistMissionGateState(evaluation.gateState);
-          this.invokePluginHook('onRepair', { repairKind, gateState: evaluation.gateState });
-        }
-        return cloneForTest(this.missionGateState());
-      },
-      launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => {
-        this.launchFromHotkeySlot(hotkey);
-      },
-      clearToast: () => {
-        this.launchToastController.clear();
-      },
-    };
+      onAsteroidHoverChange: (event) => this.onAsteroidHoverChange(event),
+      canTargetAsteroids: () => this.canTargetAsteroids(),
+      setTargetedAsteroidId: (sampleId) => this.targetedAsteroidId.set(sampleId),
+      tickScene: () => this.tickScene(),
+      persistAsteroidSamples: () => this.persistAsteroidSamples(),
+      evaluateMissionGateForCompletedSamples: (sampleIds) => this.evaluateMissionGateForCompletedSamples(sampleIds),
+      invokePluginOnManufacture: (payload) => this.invokePluginHook('onManufacture', payload),
+      invokePluginOnRepair: (payload) => this.invokePluginHook('onRepair', payload),
+      launchFromHotkeySlot: (hotkey) => this.launchFromHotkeySlot(hotkey),
+      clearLaunchToast: () => this.launchToastController.clear(),
+    });
   }
 
   private unregisterTestUtils(): void {
-    if (environment.production || typeof window === 'undefined') {
-      return;
-    }
-
-    if (window.__shipExteriorTestUtils) {
-      delete window.__shipExteriorTestUtils;
-    }
+    unregisterShipExteriorTestUtils(environment.production);
   }
 
   private persistMissionGateState(gateState: ShipExteriorMissionGateState): void {
@@ -2380,7 +2033,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       reverseFailureMessage: null,
     });
     this.tractorBeamAnimationClockMs.set(nowMs);
-    this.startTractorBeamLoopAudio();
+    this.tractorBeamAudioController.startLoop();
     this.startTractorBeamAnimationLoop();
     this.setLaunchToast('Tractor beam engaged.', 'success', null);
   }
@@ -2448,7 +2101,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       const reverseMessage = state.reverseFailureMessage ?? 'unknown error';
       this.tractorBeamAnimationState.set(null);
       this.stopTractorBeamAnimationLoop();
-      this.stopTractorBeamLoopAudio();
+      this.tractorBeamAudioController.stopLoop();
       this.setLaunchToast(`Tractor beam failed: ${reverseMessage}.`, 'error', null);
     }
   }
@@ -2461,7 +2114,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     if (!sessionKey || !playerName || !shipId || !characterId) {
       this.tractorBeamAnimationState.set(null);
       this.stopTractorBeamAnimationLoop();
-      this.stopTractorBeamLoopAudio();
+      this.tractorBeamAudioController.stopLoop();
       this.setLaunchToast('Missing player/ship context. Cannot fire tractor beam.', 'error', null);
       return;
     }
@@ -2502,8 +2155,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           this.clearDebrisTarget();
           this.tractorBeamAnimationState.set(null);
           this.stopTractorBeamAnimationLoop();
-          this.stopTractorBeamLoopAudio();
-          this.playTractorBeamCompletionChime();
+          this.tractorBeamAudioController.stopLoop();
+          this.tractorBeamAudioController.playCompletionChime();
           this.setLaunchToast(`Tractor beam collected: ${state.displayName}.`, 'success', null);
           return;
         }
@@ -2525,148 +2178,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private resolveTractorBeamVisualState(): TractorBeamVisualState | null {
-    const state = this.tractorBeamAnimationState();
-    if (!state || (state.phase !== 'pulling' && state.phase !== 'reversing')) {
-      return null;
-    }
-
-    const target = this.debrisScenePositionFromKm(state.currentPositionKm);
-    const direction = new Vector3(target[0], target[1], target[2]);
-    const length = direction.length();
-    if (length < 1e-4) {
-      return null;
-    }
-
-    const normalized = direction.clone().normalize();
-    const quaternion = new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), normalized);
-    const coneEuler = new Euler().setFromQuaternion(quaternion, 'XYZ');
-    const midpoint: [number, number, number] = [target[0] * 0.5, target[1] * 0.5, target[2] * 0.5];
-
-    const elapsedSeconds = this.tractorBeamAnimationClockMs() / 1000;
-    const particlePositions: [number, number, number][] = [];
-    const tangent = Math.abs(normalized.y) > 0.93 ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0);
-    const basisA = new Vector3().crossVectors(normalized, tangent).normalize();
-    const basisB = new Vector3().crossVectors(normalized, basisA).normalize();
-
-    for (let index = 0; index < ShipExteriorViewScene.TRACTOR_BEAM_PARTICLE_COUNT; index += 1) {
-      const travel = ((elapsedSeconds * 1.8 + index / ShipExteriorViewScene.TRACTOR_BEAM_PARTICLE_COUNT) % 1 + 1) % 1;
-      const along = direction.clone().multiplyScalar(travel);
-      const swirlRadius = 0.05 + 0.035 * Math.sin((elapsedSeconds + index) * 2.4);
-      const swirlAngle = elapsedSeconds * 7 + index * 0.9;
-      const swirl = basisA
-        .clone()
-        .multiplyScalar(Math.cos(swirlAngle) * swirlRadius)
-        .add(basisB.clone().multiplyScalar(Math.sin(swirlAngle) * swirlRadius));
-      const point = along.add(swirl);
-      particlePositions.push([point.x, point.y, point.z]);
-    }
-
-    return {
-      conePosition: midpoint,
-      coneRotation: [coneEuler.x, coneEuler.y, coneEuler.z],
-      coneScale: [0.38, length, 0.38],
-      particlePositions,
-    };
-  }
-
-  private ensureTractorBeamAudioContext(): AudioContext | null {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-
-    if (this.tractorBeamAudioContext) {
-      return this.tractorBeamAudioContext;
-    }
-
-    const AudioContextCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) {
-      return null;
-    }
-
-    this.tractorBeamAudioContext = new AudioContextCtor();
-    return this.tractorBeamAudioContext;
-  }
-
-  private startTractorBeamLoopAudio(): void {
-    const context = this.ensureTractorBeamAudioContext();
-    if (!context || this.tractorBeamLoopOscNodes.length > 0) {
-      return;
-    }
-
-    const now = context.currentTime;
-    const gain = context.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.06);
-    gain.connect(context.destination);
-
-    const low = context.createOscillator();
-    low.type = 'sawtooth';
-    low.frequency.setValueAtTime(86, now);
-    low.detune.setValueAtTime(-8, now);
-
-    const high = context.createOscillator();
-    high.type = 'triangle';
-    high.frequency.setValueAtTime(172, now);
-    high.detune.setValueAtTime(6, now);
-
-    low.connect(gain);
-    high.connect(gain);
-    low.start(now);
-    high.start(now);
-
-    this.tractorBeamLoopGainNode = gain;
-    this.tractorBeamLoopOscNodes = [low, high];
-  }
-
-  private stopTractorBeamLoopAudio(): void {
-    const context = this.tractorBeamAudioContext;
-    const gain = this.tractorBeamLoopGainNode;
-    if (!context || !gain || this.tractorBeamLoopOscNodes.length === 0) {
-      this.tractorBeamLoopGainNode = null;
-      this.tractorBeamLoopOscNodes = [];
-      return;
-    }
-
-    const now = context.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-    for (const oscillator of this.tractorBeamLoopOscNodes) {
-      oscillator.stop(now + 0.09);
-    }
-    this.tractorBeamLoopOscNodes = [];
-    this.tractorBeamLoopGainNode = null;
-  }
-
-  private playTractorBeamCompletionChime(): void {
-    const context = this.ensureTractorBeamAudioContext();
-    if (!context) {
-      return;
-    }
-
-    const now = context.currentTime;
-    const gain = context.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
-    gain.connect(context.destination);
-
-    const oscillator = context.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(520, now);
-    oscillator.frequency.exponentialRampToValueAtTime(920, now + 0.2);
-    oscillator.connect(gain);
-    oscillator.start(now);
-    oscillator.stop(now + 0.25);
-  }
-
-  private disposeTractorBeamAudioContext(): void {
-    if (!this.tractorBeamAudioContext) {
-      return;
-    }
-
-    void this.tractorBeamAudioContext.close();
-    this.tractorBeamAudioContext = null;
+    return buildTractorBeamVisualState({
+      state: this.tractorBeamAnimationState(),
+      elapsedMs: this.tractorBeamAnimationClockMs(),
+      particleCount: ShipExteriorViewScene.TRACTOR_BEAM_PARTICLE_COUNT,
+      debrisScenePositionFromKm: (positionKm) => this.debrisScenePositionFromKm(positionKm),
+    });
   }
 
   private clearDebrisTarget(): void {
