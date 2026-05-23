@@ -52,6 +52,7 @@ interface NavigationState {
 }
 
 interface InventoryGroup {
+  groupKey: string;
   itemType: string;
   name: string;
   quantity: number;
@@ -167,6 +168,29 @@ describe('ShipViewInventoryPage', () => {
     expect(groups[0].quantity).toBe(2);
     expect(groups[1].itemType).toBe('basic-mining-laser');
     expect(groups[1].quantity).toBe(1);
+  });
+
+  it('should split groups by tier for the same item type', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'sensor-1', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 1 }),
+            makeItem({ id: 'sensor-2', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 20 }),
+          ],
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    expect(groups.length).toBe(2);
+    expect(groups.every((group) => group.itemType === 'sensor-array')).toBeTrue();
+    expect(groups.map((group) => group.tier).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([1, 20]);
+    expect(groups.every((group) => group.quantity === 1)).toBeTrue();
   });
 
   it('should render tier values and dash fallback in the inventory table', () => {
@@ -639,6 +663,153 @@ describe('ShipViewInventoryPage', () => {
     component.addDroneToInventory();
 
     expect(component['joinShip']()?.inventory?.length ?? 0).toBe(0);
+  });
+
+  it('adds sensor-array item with prompted tier on successful upsert', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    spyOn(window, 'prompt').and.returnValue('12');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((request: any, cb: (response: any) => void) => {
+        expect(request.item.itemType).toBe('sensor-array');
+        expect(request.item.displayName).toBe('Sensor Array');
+        expect(request.item.tier).toBe(12);
+
+        cb({
+          success: true,
+          item: {
+            id: 'sensor-1',
+            itemType: 'sensor-array',
+            displayName: 'Sensor Array',
+            tier: 12,
+            state: 'contained',
+            damageStatus: 'intact',
+          },
+        });
+      });
+
+    component.addSensorArrayToInventory();
+
+    const added = component['joinShip']()?.inventory?.find((item: any) => item.id === 'sensor-1');
+    expect(added).toBeDefined();
+    expect(added?.tier).toBe(12);
+  });
+
+  it('uses backend tier value from item-upsert response', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    spyOn(window, 'prompt').and.returnValue('10');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((_request: any, cb: (response: any) => void) => {
+        cb({
+          success: true,
+          item: {
+            id: 'sensor-backend-1',
+            itemType: 'sensor-array',
+            displayName: 'Sensor Array',
+            tier: 1,
+            state: 'contained',
+            damageStatus: 'intact',
+          },
+        });
+      });
+
+    component.addSensorArrayToInventory();
+
+    const added = component['joinShip']()?.inventory?.find((item: any) => item.id === 'sensor-backend-1');
+    expect(added?.tier).toBe(1);
+  });
+
+  it('does not call sensor-array upsert when prompt is cancelled', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    spyOn(window, 'prompt').and.returnValue(null);
+    const upsertSpy = jasmine.createSpy('upsertItem');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = upsertSpy;
+
+    component.addSensorArrayToInventory();
+
+    expect(upsertSpy).not.toHaveBeenCalled();
+  });
+
+  it('clamps prompted sensor-array tier to 1..20 before upsert', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    spyOn(window, 'prompt').and.returnValue('999');
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = jasmine
+      .createSpy('upsertItem')
+      .and.callFake((request: any, cb: (response: any) => void) => {
+        expect(request.item.tier).toBe(20);
+        cb({ success: false, message: 'ok' });
+      });
+
+    component.addSensorArrayToInventory();
+  });
+
+  it('routes add-dart-drone dev action through the dispatcher', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    const addDroneSpy = spyOn(component as any, 'addDroneToInventory');
+    component['runDevInventoryAction']('add-dart-drone');
+    expect(addDroneSpy).toHaveBeenCalled();
+  });
+
+  it('routes add-sensor-array dev action through the dispatcher', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+
+    const addSensorSpy = spyOn(component as any, 'addSensorArrayToInventory');
+    component['runDevInventoryAction']('add-sensor-array');
+    expect(addSensorSpy).toHaveBeenCalled();
   });
 
   it('does not request ship refresh when required context is missing', () => {

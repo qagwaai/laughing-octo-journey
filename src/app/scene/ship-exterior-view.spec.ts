@@ -571,7 +571,13 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should progress active asteroid scan one step per tick', () => {
-    const { component, fixture } = setup();
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-1',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'sensor-1', itemType: 'sensor-array' }],
+      },
+    });
 
     component['asteroidSamples'].set([makeSample('sample-a2'), makeSample('sample-a1')]);
     fixture.detectChanges();
@@ -586,7 +592,13 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should complete asteroid scan after one hundred ticks', () => {
-    const { component, fixture } = setup();
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-2',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'sensor-2', itemType: 'sensor-array' }],
+      },
+    });
 
     component['asteroidSamples'].set([makeSample('sample-a4')]);
     fixture.detectChanges();
@@ -601,7 +613,13 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should reset scan progress when cursor leaves active asteroid', () => {
-    const { component, fixture } = setup();
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-3',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'sensor-3', itemType: 'sensor-array' }],
+      },
+    });
 
     component['asteroidSamples'].set([makeSample('sample-a1')]);
     fixture.detectChanges();
@@ -617,7 +635,13 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should reset previous asteroid progress when switching hover targets', () => {
-    const { component, fixture } = setup();
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-4',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'sensor-4', itemType: 'sensor-array' }],
+      },
+    });
 
     component['asteroidSamples'].set([makeSample('sample-a1'), makeSample('sample-a3')]);
     fixture.detectChanges();
@@ -647,6 +671,28 @@ describe('ShipExteriorViewScene', () => {
     fixture.detectChanges();
 
     expect(component['scanStatusLine']()).toBe('SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED');
+  });
+
+  it('should block hover scanning and show an error toast when no sensor-array is installed', () => {
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-5',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'tool-1', itemType: 'basic-mining-laser' }],
+      },
+    });
+
+    component['asteroidSamples'].set([makeSample('sample-a1')]);
+    fixture.detectChanges();
+
+    const api = (window as any).__shipExteriorTestUtils;
+    api.hoverAsteroid('sample-a1');
+    api.tickScanTicks(5);
+
+    expect(component['activeScanAsteroidId']()).toBeNull();
+    expect(component['asteroidSamples']()[0].scanProgress).toBe(0);
+    expect(component['activeLaunchToast']()?.message).toContain('Sensor array unavailable');
+    expect(component['activeLaunchToast']()?.tone).toBe('error');
   });
 
   it('should suppress hover scanning while flight mode is enabled', () => {

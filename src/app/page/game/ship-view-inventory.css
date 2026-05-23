@@ -113,6 +113,47 @@
   color: #c8ddff;
 }
 
+.dev-tools-note {
+  margin: 0.2rem 0 0.75rem;
+  color: #b4cfff;
+}
+
+.dev-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dev-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.18);
+  background: rgba(20, 33, 56, 0.35);
+}
+
+.dev-tool-label {
+  color: #d7e8ff;
+}
+
+.dev-tool-button {
+  background: transparent;
+  border: 1px solid rgba(140, 190, 255, 0.45);
+  color: #8ec5ff;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.dev-tool-button:hover {
+  background: rgba(140, 190, 255, 0.1);
+  border-color: rgba(140, 190, 255, 0.75);
+}
+
 .back-nav {
   margin-top: 1.25rem;
 }

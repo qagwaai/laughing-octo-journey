@@ -45,6 +45,7 @@ import { type LaunchItemRequest, type LaunchItemResponse, type LaunchItemYielded
 import { type AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { type MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import { resolveSensorArrayCapabilities, type ItemTierCapabilities } from '../model/item-tier-capabilities';
 import { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
@@ -152,8 +153,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly qualityScaler = this._qualityScaler;
   private readonly framePressureAvg = computed(() => this.framePressureSampler.getAverage());
   private static readonly SCAN_TICK_MS = 100;
-  private static readonly SCAN_TOTAL_MS = 10000;
-  private static readonly SCAN_STEP = 100 / (ShipExteriorViewScene.SCAN_TOTAL_MS / ShipExteriorViewScene.SCAN_TICK_MS);
+  private static readonly SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
+  private static readonly TEMP_SENSOR_ARRAY_TIER = 1;
   private static readonly TARGET_HOLD_MS = 250;
   private static readonly TRACTOR_BEAM_RANGE_KM = 10;
   private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
@@ -463,6 +464,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected floatingDebrisItems = computed<FloatingDebrisItem[]>(() => this.floatingDebrisStateService.items());
   protected tractorBeamVisual = computed<TractorBeamVisualState | null>(() => this.resolveTractorBeamVisualState());
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
+  private readonly activeSensorArrayCapabilities = computed<ItemTierCapabilities | null>(() =>
+    this.resolveActiveSensorArrayCapabilities(),
+  );
   readonly launchHotkeysEnabled = computed(() => {
     const targetedId = this.targetedAsteroidId();
     if (!targetedId) {
@@ -835,7 +839,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     } else {
       this.bootstrapController.seedAsteroidsAroundStarterShip();
     }
-    this.sessionController.startScanLoop(() => this.tickScene(), ShipExteriorViewScene.SCAN_TICK_MS);
+    const scanTickMs = this.activeSensorArrayCapabilities()?.scanTickMs ?? ShipExteriorViewScene.SCAN_TICK_MS;
+    this.sessionController.startScanLoop(() => this.tickScene(), scanTickMs);
     this.flightController.start();
     window.addEventListener('pointerdown', this.onWindowPointerDown);
     window.addEventListener('pointerup', this.onWindowPointerUp);
@@ -1851,6 +1856,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     if (event.hovering) {
+      if (!this.activeSensorArrayCapabilities()) {
+        this.setLaunchToast('Sensor array unavailable. Install a sensor array to scan asteroids.', 'error', null);
+        this.activeScanAsteroidId.set(null);
+        return;
+      }
       const previousActiveId = this.activeScanAsteroidId();
       if (previousActiveId && previousActiveId !== event.id) {
         this.resetPartialScanProgress(previousActiveId);
@@ -2215,7 +2225,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
     this.lastTickTimestamp = now;
 
-    this.sceneElapsedSeconds += ShipExteriorViewScene.SCAN_TICK_MS / 1000;
+    const scanCapabilities = this.activeSensorArrayCapabilities();
+    const scanTickMs = scanCapabilities?.scanTickMs ?? ShipExteriorViewScene.SCAN_TICK_MS;
+    const scanStep = this.resolveScanStep(scanCapabilities);
+
+    this.sceneElapsedSeconds += scanTickMs / 1000;
     if (!this.sceneEnvironmentInstalled) {
       this.installSceneEnvironment();
     }
@@ -2226,7 +2240,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       samples.map((sample) => {
         const animatedPosition = this.resolveAsteroidPosition(sample, this.sceneElapsedSeconds, activeId);
 
-        if (!activeId || sample.id !== activeId || sample.scanned) {
+        if (!activeId || scanStep <= 0 || sample.id !== activeId || sample.scanned) {
           if (
             sample.position[0] === animatedPosition[0] &&
             sample.position[1] === animatedPosition[1] &&
@@ -2240,7 +2254,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           };
         }
 
-        const nextProgress = Math.min(100, sample.scanProgress + ShipExteriorViewScene.SCAN_STEP);
+        const nextProgress = Math.min(100, sample.scanProgress + scanStep);
         const completedNow = nextProgress >= 100;
         const revealedMaterial = completedNow
           ? (sample.revealedMaterial ?? pickWeightedAsteroidMaterial())
@@ -2304,6 +2318,28 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         };
       }),
     );
+  }
+
+  private resolveActiveSensorArrayCapabilities(): ItemTierCapabilities | null {
+    const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
+    const hasSensorArray = (activeShip?.inventory ?? []).some(
+      (item) => item.itemType === ShipExteriorViewScene.SENSOR_ARRAY_ITEM_TYPE,
+    );
+    if (!hasSensorArray) {
+      return null;
+    }
+
+    return resolveSensorArrayCapabilities(ShipExteriorViewScene.TEMP_SENSOR_ARRAY_TIER);
+  }
+
+  private resolveScanStep(capabilities: ItemTierCapabilities | null): number {
+    if (!capabilities) {
+      return 0;
+    }
+
+    const durationMs = Math.max(capabilities.scanTickMs, capabilities.scanDurationMs);
+    const totalTicks = durationMs / capabilities.scanTickMs;
+    return 100 / totalTicks;
   }
 
   hidePropertiesPanel(): void {

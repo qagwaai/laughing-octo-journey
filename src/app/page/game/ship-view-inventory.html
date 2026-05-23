@@ -52,7 +52,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (group of inventoryGroups(); track group.itemType) {
+          @for (group of inventoryGroups(); track group.groupKey) {
           <tr>
             <td>{{ group.name }}</td>
             <td class="tier-col">{{ group.tier ?? '-' }}</td>
@@ -69,10 +69,22 @@
       }
     </section>
 
+    @if (showDevTools) {
     <section class="ops-card dev-tools">
       <h2>Dev Tools</h2>
-      <button type="button" (click)="addDroneToInventory()">Add Expendable Dart Drone</button>
+      <p class="dev-tools-note">Quick-add test inventory items. Sensor Array will prompt for tier.</p>
+      <div class="dev-tool-list" role="list">
+        @for (action of devInventoryActions; track action.key) {
+        <div class="dev-tool-row" role="listitem">
+          <span class="dev-tool-label">{{ action.label }}</span>
+          <button type="button" class="dev-tool-button" (click)="runDevInventoryAction(action.key)">
+            {{ action.buttonLabel }}
+          </button>
+        </div>
+        }
+      </div>
     </section>
+    }
 
     <div class="back-nav">
       <button type="button" (click)="navigateBackToHangar()">{{ t.game.shipViewInventory.backLabel }}</button>

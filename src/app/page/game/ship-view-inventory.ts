@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal
 import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -35,6 +36,7 @@ interface ShipViewInventoryNavigationState {
 }
 
 export interface InventoryGroup {
+  groupKey: string;
   itemType: string;
   name: string;
   quantity: number;
@@ -44,6 +46,18 @@ export interface InventoryGroup {
 
 type InventorySortKey = 'name' | 'tier';
 type SortDirection = 'asc' | 'desc';
+type DevInventoryActionKey = 'add-dart-drone' | 'add-sensor-array';
+
+interface DevInventoryAction {
+  key: DevInventoryActionKey;
+  label: string;
+  buttonLabel: string;
+}
+
+const SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
+const SENSOR_ARRAY_DISPLAY_NAME = 'Sensor Array';
+const SENSOR_ARRAY_MIN_TIER = 1;
+const SENSOR_ARRAY_MAX_TIER = 20;
 
 @Component({
   selector: 'app-ship-view-inventory-page',
@@ -57,6 +71,19 @@ type SortDirection = 'asc' | 'desc';
  */
 export default class ShipViewInventoryPage implements OnDestroy {
   protected readonly t = locale;
+  protected readonly showDevTools = !environment.production;
+  protected readonly devInventoryActions: readonly DevInventoryAction[] = [
+    {
+      key: 'add-dart-drone',
+      label: 'Expendable Dart Drone',
+      buttonLabel: 'Add',
+    },
+    {
+      key: 'add-sensor-array',
+      label: 'Sensor Array',
+      buttonLabel: 'Add',
+    },
+  ];
   private router = inject(Router);
   private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
@@ -153,13 +180,15 @@ export default class ShipViewInventoryPage implements OnDestroy {
     const inventory = this.resolveDisplayInventory(this.joinShip());
     const counts = new Map<string, InventoryGroup>();
     for (const item of inventory) {
-      const existing = counts.get(item.itemType);
+      const groupKey = this.buildInventoryGroupKey(item);
+      const existing = counts.get(groupKey);
       if (existing) {
         existing.quantity += 1;
         continue;
       }
 
-      counts.set(item.itemType, {
+      counts.set(groupKey, {
+        groupKey,
         itemType: item.itemType,
         name: item.displayName,
         quantity: 1,
@@ -299,6 +328,99 @@ export default class ShipViewInventoryPage implements OnDestroy {
         });
       },
     );
+  }
+
+  /**
+   * Adds a sensor array item into current ship inventory for dev testing.
+   */
+  addSensorArrayToInventory(): void {
+    if (environment.production) {
+      return;
+    }
+
+    const tier = this.promptSensorArrayTier();
+    if (tier === null) {
+      return;
+    }
+
+    const ship = this.joinShip();
+    const sessionKey = this.sessionService.getSessionKey();
+    if (!ship || !sessionKey) {
+      return;
+    }
+
+    this.socketService.upsertItem(
+      {
+        playerName: this.playerName(),
+        sessionKey,
+        item: {
+          itemType: SENSOR_ARRAY_ITEM_TYPE,
+          displayName: SENSOR_ARRAY_DISPLAY_NAME,
+          tier,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: ship.id },
+          owningPlayerId: this.playerName(),
+          owningCharacterId: this.joinCharacter()?.id ?? null,
+        },
+      },
+      (response: ItemUpsertResponse) => {
+        if (!response.success || !response.item) {
+          console.log('Add sensor array failed:', response.message);
+          return;
+        }
+
+        this.joinShip.update((current) => {
+          if (!current) return current;
+          return { ...current, inventory: [...(current.inventory ?? []), response.item!] };
+        });
+      },
+    );
+  }
+
+  protected runDevInventoryAction(actionKey: DevInventoryActionKey): void {
+    switch (actionKey) {
+      case 'add-dart-drone':
+        this.addDroneToInventory();
+        return;
+      case 'add-sensor-array':
+        this.addSensorArrayToInventory();
+        return;
+      default: {
+        const exhaustiveCheck: never = actionKey;
+        throw new Error(`Unsupported dev inventory action: ${String(exhaustiveCheck)}`);
+      }
+    }
+  }
+
+  private clampSensorArrayTier(tier: number): number {
+    return Math.max(SENSOR_ARRAY_MIN_TIER, Math.min(SENSOR_ARRAY_MAX_TIER, Math.trunc(tier)));
+  }
+
+  private promptSensorArrayTier(): number | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const rawValue = window.prompt(
+      `Sensor Array tier (${SENSOR_ARRAY_MIN_TIER}-${SENSOR_ARRAY_MAX_TIER})`,
+      String(SENSOR_ARRAY_MIN_TIER),
+    );
+    if (rawValue === null) {
+      return null;
+    }
+
+    const parsed = Number.parseInt(rawValue.trim(), 10);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+
+    return this.clampSensorArrayTier(parsed);
+  }
+
+  private buildInventoryGroupKey(item: ShipItem): string {
+    const tierToken = typeof item.tier === 'number' ? String(item.tier) : 'none';
+    return `${item.itemType}::tier:${tierToken}`;
   }
 
   /**
