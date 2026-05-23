@@ -98,6 +98,23 @@ export default class ShipViewInventoryPage implements OnDestroy {
   protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
   protected readonly sortKey = signal<InventorySortKey | null>(null);
   protected readonly sortDirection = signal<SortDirection>('asc');
+  private readonly equippedTierByItemType = computed<Map<string, number>>(() => {
+    const inventory = this.resolveDisplayInventory(this.joinShip());
+    const highestTierByItemType = new Map<string, number>();
+
+    for (const item of inventory) {
+      if (typeof item.tier !== 'number') {
+        continue;
+      }
+
+      const currentHighestTier = highestTierByItemType.get(item.itemType);
+      if (currentHighestTier === undefined || item.tier > currentHighestTier) {
+        highestTierByItemType.set(item.itemType, item.tier);
+      }
+    }
+
+    return highestTierByItemType;
+  });
 
   constructor() {
     this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
@@ -252,6 +269,14 @@ export default class ShipViewInventoryPage implements OnDestroy {
   protected getShipDisplayName(): string {
     const ship = this.joinShip();
     return ship?.name?.trim() || ship?.id || '';
+  }
+
+  protected isEquippedGroup(group: InventoryGroup): boolean {
+    if (group.tier === null) {
+      return false;
+    }
+
+    return this.equippedTierByItemType().get(group.itemType) === group.tier;
   }
 
   ngOnDestroy(): void {}

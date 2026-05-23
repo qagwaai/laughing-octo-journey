@@ -53,8 +53,15 @@
         </thead>
         <tbody>
           @for (group of inventoryGroups(); track group.groupKey) {
-          <tr>
-            <td>{{ group.name }}</td>
+          <tr [class.equipped-row]="isEquippedGroup(group)">
+            <td>
+              <div class="item-name-cell">
+                <span>{{ group.name }}</span>
+                @if (isEquippedGroup(group)) {
+                <span class="equipped-badge" title="Equipped tier" aria-label="Equipped tier">E</span>
+                }
+              </div>
+            </td>
             <td class="tier-col">{{ group.tier ?? '-' }}</td>
             <td class="qty-col">{{ group.quantity }}</td>
             <td class="actions-col">

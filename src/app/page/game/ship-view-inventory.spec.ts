@@ -222,6 +222,38 @@ describe('ShipViewInventoryPage', () => {
     expect(sensorRow?.[1]).toBe('-');
   });
 
+  it('should mark the highest-tier grouped component as equipped', () => {
+    const { fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'sensor-low', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 1 }),
+            makeItem({ id: 'sensor-high', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 12 }),
+            makeItem({ id: 'laser', itemType: 'basic-mining-laser', displayName: 'Basic Mining Laser', tier: 2 }),
+          ],
+        },
+      },
+    });
+
+    fixture.detectChanges();
+    const native = fixture.nativeElement as HTMLElement;
+    const rows = Array.from(native.querySelectorAll('tbody tr'));
+    const equippedRows = rows.filter((row) => row.classList.contains('equipped-row'));
+    const equippedTexts = equippedRows.map((row) => row.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+    const equippedBadges = Array.from(native.querySelectorAll('.equipped-badge')) as HTMLElement[];
+
+    expect(equippedRows.length).toBe(2);
+    expect(equippedBadges.every((badge) => badge.textContent?.trim() === 'E')).toBeTrue();
+    expect(equippedBadges.every((badge) => badge.getAttribute('title') === 'Equipped tier')).toBeTrue();
+    expect(equippedTexts.some((text) => text.includes('Sensor Array') && text.includes('12'))).toBeTrue();
+    expect(equippedTexts.some((text) => text.includes('Basic Mining Laser') && text.includes('2'))).toBeTrue();
+    expect(equippedTexts.some((text) => text.includes('Sensor Array') && text.includes('1'))).toBeFalse();
+  });
+
   it('should sort groups by item name when item header is toggled', () => {
     const { component } = setup({
       socketService,

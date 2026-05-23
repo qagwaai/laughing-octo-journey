@@ -65,6 +65,32 @@
   font-weight: 600;
 }
 
+.equipped-row {
+  background: linear-gradient(90deg, rgba(72, 122, 196, 0.18), rgba(72, 122, 196, 0.04));
+}
+
+.item-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.equipped-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(137, 203, 255, 0.55);
+  background: rgba(96, 182, 255, 0.14);
+  color: #d8f0ff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .sort-button {
   border: none;
   background: transparent;

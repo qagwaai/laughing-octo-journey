@@ -154,7 +154,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly framePressureAvg = computed(() => this.framePressureSampler.getAverage());
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
-  private static readonly TEMP_SENSOR_ARRAY_TIER = 1;
   private static readonly TARGET_HOLD_MS = 250;
   private static readonly TRACTOR_BEAM_RANGE_KM = 10;
   private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
@@ -2322,14 +2321,23 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private resolveActiveSensorArrayCapabilities(): ItemTierCapabilities | null {
     const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
-    const hasSensorArray = (activeShip?.inventory ?? []).some(
-      (item) => item.itemType === ShipExteriorViewScene.SENSOR_ARRAY_ITEM_TYPE,
-    );
-    if (!hasSensorArray) {
+    const highestInstalledTier = (activeShip?.inventory ?? []).reduce<number | null>((highestTier, item) => {
+      if (
+        item.itemType !== ShipExteriorViewScene.SENSOR_ARRAY_ITEM_TYPE ||
+        item.state === 'destroyed' ||
+        item.damageStatus === 'destroyed'
+      ) {
+        return highestTier;
+      }
+
+      const itemTier = typeof item.tier === 'number' ? item.tier : 1;
+      return highestTier === null ? itemTier : Math.max(highestTier, itemTier);
+    }, null);
+    if (highestInstalledTier === null) {
       return null;
     }
 
-    return resolveSensorArrayCapabilities(ShipExteriorViewScene.TEMP_SENSOR_ARRAY_TIER);
+    return resolveSensorArrayCapabilities(highestInstalledTier);
   }
 
   private resolveScanStep(capabilities: ItemTierCapabilities | null): number {

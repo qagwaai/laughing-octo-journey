@@ -612,6 +612,31 @@ describe('ShipExteriorViewScene', () => {
     expect(target?.scanned).toBe(true);
   });
 
+  it('should use the highest installed sensor-array tier for scan speed', () => {
+    const { component, fixture } = setup({
+      joinShip: {
+        id: 'scanner-ship-tiered',
+        model: 'Scavenger Pod',
+        inventory: [
+          { id: 'sensor-low', itemType: 'sensor-array', tier: 1 },
+          { id: 'sensor-high', itemType: 'sensor-array', tier: 20 },
+        ],
+      },
+    });
+
+    component['asteroidSamples'].set([makeSample('sample-tiered')]);
+    fixture.detectChanges();
+
+    const api = (window as any).__shipExteriorTestUtils;
+    api.hoverAsteroid('sample-tiered');
+    const samples = api.tickScanTicks(24);
+
+    const target = samples.find((sample: AsteroidScanSample) => sample.id === 'sample-tiered');
+    expect(target?.scanProgress).toBe(100);
+    expect(target?.scanned).toBe(true);
+    expect(component['activeSensorArrayCapabilities']()?.tier).toBe(20);
+  });
+
   it('should reset scan progress when cursor leaves active asteroid', () => {
     const { component, fixture } = setup({
       joinShip: {
