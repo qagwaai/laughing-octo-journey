@@ -38,8 +38,8 @@ function configureShipExteriorResumeMock(mock: SocketIOMock): void {
     },
   }));
 
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',

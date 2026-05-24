@@ -21,7 +21,11 @@ import {
 } from '../../model/character-edit';
 import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
 import { INVALID_SESSION_EVENT } from '../../model/session';
-import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT, type ShipListResponse } from '../../model/ship-list';
+import {
+  SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+  SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+  type ShipListByOwnerResponse,
+} from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -52,14 +56,19 @@ interface SetupState {
 
 function createShipListResponse(params?: {
   success?: boolean;
-  ships?: ShipListResponse['ships'];
+  ships?: ShipListByOwnerResponse['ships'];
   message?: string;
-}): ShipListResponse {
+}): ShipListByOwnerResponse {
   return {
     success: params?.success ?? true,
     message: params?.message ?? 'ok',
-    playerName: 'Pioneer',
-    characterId: 'c-1',
+    owner: {
+      ownerType: 'player-character',
+      playerId: 'p-1',
+      characterId: 'c-1',
+      npcId: null,
+      factionId: null,
+    },
     ships: params?.ships ?? [
       {
         id: 'ship-1',
@@ -483,16 +492,19 @@ describe('CharacterSetupPage', () => {
       } satisfies CharacterAddResponse);
     }
 
-    it('should emit ship-list-request after successful character-add', () => {
+    it('should emit owner-scoped ship list after successful character-add', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_REQUEST_EVENT);
+      const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT);
       expect(shipListEmit).toBeDefined();
       expect(shipListEmit!.data).toEqual({
         playerName: 'Pioneer',
-        characterId: 'c-1',
         sessionKey: 'test-session-key',
+        owner: {
+          ownerType: 'player-character',
+          characterId: 'c-1',
+        },
       });
     });
 
@@ -501,7 +513,7 @@ describe('CharacterSetupPage', () => {
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
       socketService.triggerOnce(
-        SHIP_LIST_RESPONSE_EVENT,
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
         createShipListResponse({ success: false, ships: [], message: 'No ships found.' }),
       );
 
@@ -512,7 +524,7 @@ describe('CharacterSetupPage', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse({ ships: [] }));
+      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse({ ships: [] }));
 
       expect(component['warningMessage']()).toBe('Character created, but no starter ship record was returned.');
     });
@@ -521,7 +533,7 @@ describe('CharacterSetupPage', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
+      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
 
       const shipUpsertEmit = socketService.emittedEvents.find((e) => e.event === SHIP_UPSERT_REQUEST_EVENT);
       expect(shipUpsertEmit).toBeDefined();
@@ -534,7 +546,7 @@ describe('CharacterSetupPage', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
+      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
       socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
         success: false,
         message: 'Ship upsert failed.',
@@ -549,7 +561,7 @@ describe('CharacterSetupPage', () => {
       component['warningMessage'].set('Previous warning');
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_RESPONSE_EVENT, createShipListResponse());
+      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
       socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
@@ -582,7 +594,7 @@ describe('CharacterSetupPage', () => {
         characterName: 'Nova-Prime',
       } satisfies CharacterEditResponse);
 
-      const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_REQUEST_EVENT);
+      const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT);
       expect(shipListEmit).toBeUndefined();
     });
   });

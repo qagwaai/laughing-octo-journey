@@ -69,8 +69,8 @@ test.describe('Mission Board — mission progress display', () => {
     const missionBoardPage = new MissionBoardPage(page);
 
     mock.on('game-join-request', () => null);
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',

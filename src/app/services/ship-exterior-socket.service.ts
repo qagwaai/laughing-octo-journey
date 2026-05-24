@@ -13,11 +13,14 @@ import {
 } from '../model/item-list-by-location';
 import { LAUNCH_ITEM_RESPONSE_EVENT, type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
 import {
-  SHIP_LIST_REQUEST_EVENT,
-  SHIP_LIST_RESPONSE_EVENT,
   type ShipListRequest,
   type ShipListResponse,
 } from '../model/ship-list';
+import {
+  SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+  SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+  type ShipListByOwnerResponse,
+} from '../model/ship-list-by-owner';
 import { SocketService } from './socket.service';
 
 @Injectable({ providedIn: 'root' })
@@ -40,12 +43,25 @@ export class ShipExteriorSocketService {
    * Requests ship list and resolves once with the first matching response.
    */
   listShips(request: ShipListRequest, onResponse: (response: ShipListResponse) => void): () => void {
-    const unsubscribe = this.socketService.on(SHIP_LIST_RESPONSE_EVENT, (response: ShipListResponse) => {
+    const unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
       unsubscribe();
-      onResponse(response);
+      onResponse({
+        success: response.success,
+        message: response.message,
+        playerName: request.playerName,
+        characterId: response.owner?.characterId ?? request.characterId,
+        ships: response.ships ?? [],
+      });
     });
 
-    this.socketService.emit(SHIP_LIST_REQUEST_EVENT, request);
+    this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, {
+      playerName: request.playerName,
+      sessionKey: request.sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId: request.characterId,
+      },
+    });
     return unsubscribe;
   }
 

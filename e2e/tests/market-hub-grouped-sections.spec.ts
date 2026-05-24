@@ -105,8 +105,8 @@ async function setupAndOpenMarketHub(page: Page) {
 
   mock.on('game-join', () => null);
 
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',
@@ -217,8 +217,8 @@ test.describe('Market Hub grouped sections', () => {
       data: { success: true, message: '', playerName: TEST_PLAYER, characters: [CHARACTER] },
     }));
     mock.on('game-join', () => null);
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',

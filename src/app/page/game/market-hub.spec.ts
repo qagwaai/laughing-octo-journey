@@ -11,7 +11,7 @@ import type { MarketSummary } from '../../model/market-list';
 import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE_EVENT } from '../../model/market-list';
 import { estimateTravelHours } from '../../model/math/drive-profile';
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
-import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT } from '../../model/ship-list';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import MarketHubPage from './market-hub';
@@ -153,13 +153,18 @@ describe('MarketHubPage', () => {
     });
 
     expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_REQUEST_EVENT,
-      data: { playerName: 'Pioneer', characterId: 'c-1', sessionKey: 'session-key' },
+      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+      data: {
+        playerName: 'Pioneer',
+        sessionKey: 'session-key',
+        owner: { ownerType: 'player-character', characterId: 'c-1' },
+      },
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'starter-pod-c-1',
@@ -192,8 +197,12 @@ describe('MarketHubPage', () => {
     });
 
     expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_REQUEST_EVENT,
-      data: { playerName: 'Pioneer', characterId: 'c-1', sessionKey: 'session-key' },
+      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+      data: {
+        playerName: 'Pioneer',
+        sessionKey: 'session-key',
+        owner: { ownerType: 'player-character', characterId: 'c-1' },
+      },
     });
   });
 
@@ -206,9 +215,10 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'ship-origin',
@@ -241,9 +251,10 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'first-ship',
@@ -283,9 +294,10 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
     } as any);
 
     expect(sessionService.activeShip()?.id).toBe('starter-pod-c-1');

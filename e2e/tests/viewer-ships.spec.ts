@@ -124,8 +124,8 @@ async function setupViewerShipsTest(page: any) {
   await loginViaUI(page, mock);
 
   mock.on('game-join-request', () => null);
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
   }));
 
@@ -150,8 +150,8 @@ async function navigateToScene(page: any, mock: any, ships: any[] = [ACTIVE_SHIP
     event: 'solar-system-get-response',
     data: makeSolarSystemGetResponse(),
   }));
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: makeShipListResponse(ships),
   }));
 
@@ -245,8 +245,8 @@ test.describe('Viewer — Character Ships', () => {
       event: 'solar-system-get-response',
       data: makeSolarSystemGetResponse(),
     }));
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: { success: false, message: 'Service unavailable', playerName: TEST_PLAYER, characterId: 'char-viewer-1', ships: [] },
     }));
 
@@ -269,10 +269,10 @@ test.describe('Viewer — Character Ships', () => {
     const { mock } = await setupViewerShipsTest(page);
     let capturedShipRequest: any = null;
 
-    mock.on('ship-list-request', (data) => {
+    mock.on('ship-list-by-owner-request', (data) => {
       capturedShipRequest = data;
       return {
-        event: 'ship-list-response',
+        event: 'ship-list-by-owner-response',
         data: makeShipListResponse([ACTIVE_SHIP]),
       };
     });
@@ -294,7 +294,12 @@ test.describe('Viewer — Character Ships', () => {
     if (capturedShipRequest) {
       expect(capturedShipRequest).toHaveProperty('playerName', TEST_PLAYER);
       expect(capturedShipRequest).toHaveProperty('sessionKey', TEST_SESSION_KEY);
-      expect(capturedShipRequest).toHaveProperty('characterId');
+      expect(capturedShipRequest).toMatchObject({
+        owner: {
+          ownerType: 'player-character',
+          characterId: 'char-viewer-1',
+        },
+      });
     }
   });
 

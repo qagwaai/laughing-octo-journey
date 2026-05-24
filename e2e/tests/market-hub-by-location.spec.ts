@@ -77,8 +77,8 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
 
   mock.on('game-join', () => null);
 
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',

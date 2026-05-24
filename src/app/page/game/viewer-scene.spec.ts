@@ -12,7 +12,7 @@ import {
   MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
   MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
 } from '../../model/market-list';
-import { SHIP_LIST_REQUEST_EVENT, SHIP_LIST_RESPONSE_EVENT } from '../../model/ship-list';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
 import { SessionService } from '../../services/session.service';
@@ -271,13 +271,12 @@ describe('ViewerScenePage', () => {
     });
     fixture.detectChanges();
 
-    expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_LIST_REQUEST_EVENT)).toBeTrue();
+    expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)).toBeTrue();
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'char-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'char-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'ship-broken',
@@ -322,11 +321,10 @@ describe('ViewerScenePage', () => {
     });
     fixture.detectChanges();
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'char-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'char-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'ship-ok',

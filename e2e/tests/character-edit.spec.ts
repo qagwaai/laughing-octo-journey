@@ -58,7 +58,7 @@ test.describe('Character Edit — setup save redirect', () => {
       };
     });
 
-    mock.on('ship-list-request', () => {
+    mock.on('ship-list-by-owner-request', () => {
       shipListRequestCount += 1;
       return null;
     });

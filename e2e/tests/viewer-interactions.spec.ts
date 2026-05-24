@@ -225,8 +225,8 @@ async function setupViewerInteractionTest(page: any) {
 
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',

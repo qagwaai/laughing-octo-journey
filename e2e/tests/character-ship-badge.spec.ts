@@ -37,14 +37,19 @@ async function setupAndNavigateToShipHangar(page: Page) {
 
   mock.on('game-join-request', () => null);
 
-  // Ship-list loads in ship-hangar
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  // Ship-list-by-owner loads in ship-hangar
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',
-      playerName: TEST_PLAYER,
-      characterId: CHARACTER_WITH_MISSION.id,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: CHARACTER_WITH_MISSION.id,
+        npcId: null,
+        factionId: null,
+      },
       ships: [SHIP],
     },
   }));

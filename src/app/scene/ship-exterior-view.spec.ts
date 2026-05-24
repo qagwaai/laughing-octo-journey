@@ -7,7 +7,7 @@ import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-miss
 import { CELESTIAL_BODY_LIST_REQUEST_EVENT, CELESTIAL_BODY_LIST_RESPONSE_EVENT } from '../model/celestial-body-list';
 import { LAUNCH_ITEM_RESPONSE_EVENT } from '../model/launch-item';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
-import { SHIP_LIST_RESPONSE_EVENT } from '../model/ship-list';
+import { SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../model/ship-list-by-owner';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
@@ -558,7 +558,7 @@ describe('ShipExteriorViewScene', () => {
     });
 
     // Trigger ship list response with no ships (causes fallback seeding)
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'no ships',
       playerName: 'Pioneer',
@@ -795,7 +795,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -815,7 +815,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       firstTargetMissionStatus: 'completed',
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -831,7 +831,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
     const { component } = setup();
     // No playerName, characterId, or session key — falls back immediately
 
-    mockSocket_triggerIfRegistered((window as any).__shipExteriorTestUtils, SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket_triggerIfRegistered((window as any).__shipExteriorTestUtils, SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'no auth',
       ships: [],
@@ -850,7 +850,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -869,7 +869,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -910,7 +910,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -952,7 +952,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',
@@ -991,7 +991,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: '',
       playerName: 'Pioneer',

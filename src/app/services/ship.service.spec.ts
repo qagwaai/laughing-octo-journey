@@ -1,7 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import {
-  SHIP_LIST_REQUEST_EVENT,
-  SHIP_LIST_RESPONSE_EVENT,
   type ShipListRequest,
   type ShipListResponse,
 } from '../model/ship-list';
@@ -84,7 +82,7 @@ describe('ShipService', () => {
     service = TestBed.inject(ShipService);
   });
 
-  it('emits ship-list and handles the first response once', () => {
+  it('emits owner-scoped ship list and maps response to ship-list shape', () => {
     const request: ShipListRequest = {
       playerName: 'Pioneer',
       characterId: 'char-1',
@@ -96,21 +94,41 @@ describe('ShipService', () => {
       received = response;
     });
 
-    expect(socketService.emittedEvents).toEqual([{ eventName: SHIP_LIST_REQUEST_EVENT, payload: request }]);
-    expect(socketService.listenerCount(SHIP_LIST_RESPONSE_EVENT)).toBe(2);
+    expect(socketService.emittedEvents).toEqual([
+      {
+        eventName: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        payload: {
+          playerName: 'Pioneer',
+          sessionKey: 'session-1',
+          owner: { ownerType: 'player-character', characterId: 'char-1' },
+        },
+      },
+    ]);
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(2);
 
-    const response: ShipListResponse = {
+    const response: ShipListByOwnerResponse = {
+      success: true,
+      message: 'ok',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-1',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    };
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, response);
+
+    expect(received).toEqual({
       success: true,
       message: 'ok',
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [],
-    };
-
-    socketService.trigger(SHIP_LIST_RESPONSE_EVENT, response);
-
-    expect(received).toEqual(response);
-    expect(socketService.listenerCount(SHIP_LIST_RESPONSE_EVENT)).toBe(0);
+    });
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 
   it('emits ship-list-by-owner and handles the first response once', () => {

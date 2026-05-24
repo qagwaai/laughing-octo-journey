@@ -12,10 +12,8 @@ import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import ShipHangarPage from './ship-hangar';
-
-const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
-const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 const FIRST_TARGET_MISSION_ID = 'first-target';
 
 function setup(options: {
@@ -96,11 +94,14 @@ describe('ShipHangarPage', () => {
     expect(component['playerName']()).toBe('Pioneer');
     expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
     expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_REQUEST_EVENT,
+      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
       data: {
         playerName: 'Pioneer',
-        characterId: 'c-1',
         sessionKey: 'test-session-key',
+        owner: {
+          ownerType: 'player-character',
+          characterId: 'c-1',
+        },
       },
     });
   });
@@ -118,7 +119,7 @@ describe('ShipHangarPage', () => {
 
     expect(socketService.emittedEvents.length).toBe(0);
     socketService.triggerOnceEvent('connect');
-    expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_REQUEST_EVENT);
+    expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_BY_OWNER_REQUEST_EVENT);
   });
 
   it('should set validation error when playerName is missing', () => {
@@ -180,9 +181,10 @@ describe('ShipHangarPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         { id: 's-1', name: 'Courier', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
         { id: 's-2', name: 'Ranger' },
@@ -205,9 +207,10 @@ describe('ShipHangarPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'Character not found',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [{ id: 's-1', name: 'Courier' }],
     });
 

@@ -10,10 +10,8 @@ import {
 } from '../../../testing';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import GameJoinPage from './game-join';
-
-const SHIP_LIST_REQUEST_EVENT = 'ship-list-request';
-const SHIP_LIST_RESPONSE_EVENT = 'ship-list-response';
 
 function setup(options: {
   socketService: MockSocketService;
@@ -67,11 +65,14 @@ describe('GameJoinPage', () => {
     expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova-Prime', level: 7 });
     expect(component['characterName']()).toBe('Nova-Prime');
     expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_REQUEST_EVENT,
+      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
       data: {
         playerName: 'Pioneer',
-        characterId: 'c-1',
         sessionKey: 'test-session-key',
+        owner: {
+          ownerType: 'player-character',
+          characterId: 'c-1',
+        },
       },
     });
   });
@@ -104,7 +105,7 @@ describe('GameJoinPage', () => {
 
     expect(socketService.emittedEvents.length).toBe(0);
     socketService.triggerOnceEvent('connect');
-    expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_REQUEST_EVENT);
+    expect(socketService.emittedEvents[0].event).toBe(SHIP_LIST_BY_OWNER_REQUEST_EVENT);
   });
 
   it('should populate ships on successful response', () => {
@@ -118,11 +119,10 @@ describe('GameJoinPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'c-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         { id: 'd-1', name: 'Surveyor' },
         { id: 'd-2', name: 'Guardian', status: 'ACTIVE' },
@@ -148,11 +148,10 @@ describe('GameJoinPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'c-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [{ id: 'd-1', shipName: 'Surveyor' } as any, { id: 'd-2', name: '   ', displayName: 'Guardian' } as any],
     });
 
@@ -171,11 +170,10 @@ describe('GameJoinPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'c-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
           id: 'd-1',
@@ -210,11 +208,10 @@ describe('GameJoinPage', () => {
       connected: true,
     });
 
-    socketService.triggerEvent(SHIP_LIST_RESPONSE_EVENT, {
+    socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'Character ships unavailable.',
-      playerName: 'Pioneer',
-      characterId: 'c-1',
+      owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [],
     });
 

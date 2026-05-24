@@ -67,11 +67,11 @@ test.describe('Character Add — from character list', () => {
       };
     });
 
-    mock.on('ship-list-request', (request) => {
-      emittedEvents.push('ship-list-request');
+    mock.on('ship-list-by-owner-request', (request) => {
+      emittedEvents.push('ship-list-by-owner-request');
       receivedShipListRequest = request as Record<string, unknown>;
       return {
-        event: 'ship-list-response',
+        event: 'ship-list-by-owner-response',
         data: {
           success: true,
           message: '',
@@ -150,8 +150,11 @@ test.describe('Character Add — from character list', () => {
     });
     expect(receivedShipListRequest).toEqual({
       playerName: TEST_PLAYER,
-      characterId: 'char-new-001',
       sessionKey: 'test-session-key-abc123',
+      owner: {
+        ownerType: 'player-character',
+        characterId: 'char-new-001',
+      },
     });
 
     expect(receivedShipUpsertRequest).not.toBeNull();
@@ -161,7 +164,7 @@ test.describe('Character Add — from character list', () => {
     expect((receivedShipUpsertRequest?.['ship'] as Record<string, unknown>)?.['id']).toBe('starter-ship-001');
 
     expect(emittedEvents).toEqual(
-      expect.arrayContaining(['character-add-request', 'ship-list-request', 'ship-upsert-request']),
+      expect.arrayContaining(['character-add-request', 'ship-list-by-owner-request', 'ship-upsert-request']),
     );
 
     // Item upsert is conditional: it only fires when starter ship inventory
@@ -241,7 +244,7 @@ test.describe('Character Add — from character list', () => {
       },
     }));
 
-    mock.on('ship-list-request', () => {
+    mock.on('ship-list-by-owner-request', () => {
       shipListRequestCount += 1;
       return null;
     });

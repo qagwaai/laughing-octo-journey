@@ -5,6 +5,14 @@
 - Live contract reviewed from `http://localhost:3000/openapi.yaml` using a cache-busted request.
 - Primary contract theme for this rollout: backend ownership semantics are becoming explicit, and ship data is no longer safely modeled as character-bound by default.
 
+## Implementation Status (2026-05-24)
+
+- Phase 2 decision was finalized as full cutover now (no legacy fallback).
+- `ShipService.listShips(...)` now emits `ship-list-by-owner-request` and maps `ship-list-by-owner-response` back to the existing `ShipListResponse` shape for callers.
+- `ShipExteriorSocketService.listShips(...)` now follows the same owner-scoped path.
+- Existing gameplay pages continue using existing service APIs, but runtime transport is owner-scoped (`ownerType: player-character`).
+- Regression validation for this cutover is green: focused impacted specs, `npm run test:ci`, `npm run build`, and selected Playwright suite `e2e/tests/character-ship-badge.spec.ts`.
+
 ## Contract Changes That Matter
 
 The current live contract keeps the existing character-scoped ship flow, but adds a second ownership-aware layer that the frontend does not model yet.
@@ -54,6 +62,8 @@ The frontend is still predominantly character-scoped for ship discovery and sess
   - Uses `characterId` and active ship session state heavily for launch, tractor, mission, and location refresh flows.
 
 ## Rollout Strategy
+
+Note: the strategy below was written before the explicit full-cutover decision. Runtime behavior has now moved to owner-scoped ship listing with no legacy endpoint fallback.
 
 The right first move is additive compatibility, not an immediate cutover.
 

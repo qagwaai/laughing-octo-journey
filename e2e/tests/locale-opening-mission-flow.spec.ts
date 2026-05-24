@@ -136,8 +136,8 @@ test.describe('Locale opening and mission flow', () => {
     }));
 
     // In-progress join now fetches active ship before navigating away from character-list.
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',

@@ -69,8 +69,8 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
 
   mock.on('game-join', () => null);
 
-  mock.on('ship-list-request', () => ({
-    event: 'ship-list-response',
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
     data: {
       success: true,
       message: '',
@@ -266,8 +266,8 @@ test.describe('Market Hub cross-system route badges', () => {
 
     mock.on('game-join', () => null);
 
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',

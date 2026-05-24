@@ -46,8 +46,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       },
     }));
 
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',
@@ -281,8 +281,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       },
     }));
 
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',
@@ -565,8 +565,53 @@ test.describe('Ship Exterior Test Utilities', () => {
     });
 
     expect(finalGate).not.toBeNull();
-    expect(finalGate!.steps.every((step) => step.status === 'completed')).toBe(true);
-    expect(finalGate!.activeObjectiveText).toContain('Mission objectives complete');
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState: () => {
+                  steps: Array<{ key: string; status: string }>;
+                  activeObjectiveText: string;
+                };
+              };
+            }
+          ).__shipExteriorTestUtils;
+          const gate = api!.getMissionGateState();
+          const statuses = new Map(gate.steps.map((step) => [step.key, step.status]));
+          return {
+            identify: statuses.get('identify_iron_asteroid') ?? null,
+            neutralize: statuses.get('neutralize_identified_asteroid') ?? null,
+            manufacture: statuses.get('manufacture_hull_patch_kit') ?? null,
+            repair: statuses.get('repair_scavenger_pod') ?? null,
+            objective: gate.activeObjectiveText,
+          };
+        }),
+      )
+      .toMatchObject({
+        identify: 'completed',
+        neutralize: 'completed',
+        manufacture: 'completed',
+        repair: 'completed',
+      });
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState: () => {
+                  activeObjectiveText: string;
+                };
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return api!.getMissionGateState().activeObjectiveText;
+        }),
+      )
+      .toContain('Mission objectives complete');
 
     await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'in-progress')).toBe(true);
   });
@@ -612,8 +657,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       },
     }));
 
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',
@@ -841,8 +886,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       },
     }));
 
-    mock.on('ship-list-request', () => ({
-      event: 'ship-list-response',
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
       data: {
         success: true,
         message: '',
