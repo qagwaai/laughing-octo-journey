@@ -4,6 +4,7 @@ import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -22,6 +23,7 @@ import { ShipService } from '../../services/ship.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { appLogger } from '../../services/logger';
 
 interface ShipHangarNavigationState {
   playerName?: string;
@@ -91,7 +93,29 @@ export default class ShipHangarPage {
     this.shipService.listShips(request, (response: ShipListResponse) => {
       this.isLoadingShips.set(false);
       if (response.success) {
-        this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));
+        const normalizedShips = (response.ships ?? []).map((ship) => this.normalizeShipSummary(ship));
+        this.ships.set(normalizedShips);
+
+        const selected = resolveActiveShipSelection({
+          ships: normalizedShips,
+          sessionActiveShipId: this.sessionService.activeShip()?.id,
+        });
+
+        if (selected.ship) {
+          this.sessionService.setActiveShip(selected.ship);
+          this.shipListError.set(null);
+          return;
+        }
+
+        if (selected.reason === 'no-usable-spatial-ship') {
+          appLogger.log('ShipHangarPage.loadShipsForCharacter: hard fail due to missing usable ship spatial data', {
+            playerName,
+            characterId,
+          });
+          this.shipListError.set('No ship with usable spatial data is available.');
+          return;
+        }
+
         this.shipListError.set(null);
       } else {
         this.ships.set([]);

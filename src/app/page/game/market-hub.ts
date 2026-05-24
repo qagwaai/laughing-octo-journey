@@ -5,6 +5,7 @@ import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { MISSION_IDS, resolveMissionById } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
@@ -25,6 +26,7 @@ import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipService } from '../../services/ship.service';
+import { appLogger } from '../../services/logger';
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 const DEFAULT_MARKET_RADIUS_AU = 0.5;
@@ -175,24 +177,30 @@ export default class MarketHubPage {
         return;
       }
 
-      const ships = response.ships ?? [];
-      if (ships.length === 0) {
+      const resolved = resolveActiveShipSelection({
+        ships: response.ships ?? [],
+        sessionActiveShipId: existing?.id,
+        requestedShipId: existing?.id,
+      });
+
+      if (resolved.ship) {
+        this.sessionService.setActiveShip(resolved.ship);
+        this.loadNearbyMarkets();
         return;
       }
 
-      const current = this.activeShip();
-      const sameShip = current ? ships.find((ship) => ship.id === current.id) : undefined;
-      const shipWithPosition = ships.find((ship) => this.hasUsablePosition(ship.spatial?.positionKm));
-      const fallbackShip = ships[0];
-
-      const resolvedShip: ShipSummary | undefined = sameShip ?? shipWithPosition ?? fallbackShip;
-
-      if (resolvedShip) {
-        this.sessionService.setActiveShip(resolvedShip);
-        if (this.hasUsableShipPosition(resolvedShip)) {
-          this.loadNearbyMarkets();
-        }
-      }
+      appLogger.log(
+        'MarketHubPage.ensureActiveShipPosition: hard fail selecting ship with usable spatial data',
+        {
+          reason: resolved.reason,
+          playerName,
+          characterId,
+        },
+      );
+      this.marketListError.set(this.t.game.marketHub.errors.loadMarketsRequiresPosition);
+      this.markets.set([]);
+      this.isDockedAtAnyMarket.set(false);
+      this.dockedMarketId.set(null);
     });
   }
 

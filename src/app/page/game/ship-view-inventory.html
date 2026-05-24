@@ -16,6 +16,10 @@
     <section class="ops-card">
       <h2>{{ t.game.shipViewInventory.sectionTitle }}</h2>
 
+      @if (refreshToastMessage()) {
+      <p role="alert" class="status-message warning-message">{{ refreshToastMessage() }}</p>
+      }
+
       @if (joinShip()) {
       <p class="ship-context">
         <strong>{{ t.game.shipViewInventory.shipNameLabel }}</strong>

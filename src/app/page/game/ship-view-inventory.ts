@@ -5,6 +5,7 @@ import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import {
   EXPENDABLE_DART_DRONE_DISPLAY_NAME,
@@ -28,6 +29,7 @@ import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.s
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
+import { appLogger } from '../../services/logger';
 
 interface ShipViewInventoryNavigationState {
   playerName?: string;
@@ -103,6 +105,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
   protected joinShip = signal<ShipSummary | null>(this.navigationState.joinShip ?? null);
+  protected refreshToastMessage = signal<string | null>(null);
   protected readonly sortKey = signal<InventorySortKey | null>(null);
   protected readonly sortDirection = signal<SortDirection>('asc');
   private readonly equippedTierByItemType = computed<Map<string, number>>(() => {
@@ -550,11 +553,29 @@ export default class ShipViewInventoryPage implements OnDestroy {
         return;
       }
 
-      const matchingShip = (response.ships ?? []).find((ship) => ship.id === shipId);
-      if (matchingShip) {
-        const normalizedShip = this.normalizeShipSummary(matchingShip);
+      const normalizedShips = (response.ships ?? []).map((ship) => this.normalizeShipSummary(ship));
+      const selected = resolveActiveShipSelection({
+        ships: normalizedShips,
+        sessionActiveShipId: this.sessionService.activeShip()?.id,
+        requestedShipId: shipId,
+      });
+
+      if (selected.ship) {
+        const normalizedShip = selected.ship;
         this.joinShip.set(normalizedShip);
         this.syncActiveShip(normalizedShip);
+        this.refreshToastMessage.set(null);
+        return;
+      }
+
+      if (selected.reason === 'no-usable-spatial-ship') {
+        const toastMessage = 'No ship with usable spatial data is available.';
+        appLogger.log('ShipViewInventoryPage.refreshShipFromServer: hard fail due to missing usable ship spatial data', {
+          playerName,
+          characterId,
+          shipId,
+        });
+        this.refreshToastMessage.set(toastMessage);
       }
     });
   }

@@ -11,6 +11,11 @@
 - `ShipService.listShips(...)` now emits `ship-list-by-owner-request` and maps `ship-list-by-owner-response` back to the existing `ShipListResponse` shape for callers.
 - `ShipExteriorSocketService.listShips(...)` now follows the same owner-scoped path.
 - Existing gameplay pages continue using existing service APIs, but runtime transport is owner-scoped (`ownerType: player-character`).
+- Phase 3 active-ship policy is now implemented with shared resolver usage across mission navigation, market hub hydration, ship hangar refresh, and ship inventory refresh.
+- Phase 3 policy is now also applied to repair/retrofit and print-queue ship hydration flows.
+- Phase 3 uses strict hard-fail semantics when no usable ship spatial data is returned (no fallback to first returned ship).
+- Hard-fail paths now emit runtime logs and surface UI-visible warnings/errors in impacted pages.
+- Validation for this extension is green: focused specs for `repair-retrofit` + `print-queue`, `npm run build`, and selected Playwright `e2e/tests/first-target-fabrication-menu-cue.spec.ts`.
 - Regression validation for this cutover is green: focused impacted specs, `npm run test:ci`, `npm run build`, and selected Playwright suite `e2e/tests/character-ship-badge.spec.ts`.
 
 ## Contract Changes That Matter
@@ -103,7 +108,7 @@ Introduce a single active-ship resolution helper or small service-level policy i
   - existing session active ship when still present in refreshed results
   - exact ship id requested by navigation state
   - first ship with usable spatial data
-  - first returned ship
+- If no ship has usable spatial data, hard-fail (do not fallback to first returned ship)
 - Make this policy usable from:
   - mission navigation
   - market hub hydration

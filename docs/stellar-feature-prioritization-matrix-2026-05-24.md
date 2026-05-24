@@ -37,10 +37,13 @@ Interpretation:
 | SW-09 | NPC Presence v0 (Belt Pirate Runtime) | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Adds living-world simulation baseline using single-ship NPC archetypes |
 | SW-10 | Technology Progress Tree Viewer v0 | H1/H2 bridge | 4 | 3 | 2 | 3 | 5 | 4.00 | Makes item progression and gating legible to players |
 | SW-11 | Skill Gating Scaffold (Mining First) | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Adds first activity-driven skill gate for higher-tier mining tools |
+| SW-12 | Minimal Ship-to-Ship Encounter v0 | H1/H2 bridge | 4 | 3 | 3 | 3 | 5 | 3.85 | Enables piracy, cargo theft, and sacrificial drone interactions without full combat depth |
+| SW-13 | External Object Presentation Expansion | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Improves debris, ship, gate, and station readability in ship-external view |
+| SW-14 | In-System Short-Hop Drive | H1/H2 bridge | 5 | 3 | 3 | 4 | 5 | 4.00 | Makes in-system travel practical without removing fuel and route pressure |
 
 ## Ranked Small-Win Order
 
-Canonical ranking (descending by score):
+Revised canonical ranking (descending by score):
 1. SW-08 Contract Safety Gate in CI (4.65)
 2. SW-01 Mission Board Status Lanes (4.50)
 3. SW-02 Market Opportunity Pings (4.25)
@@ -48,10 +51,13 @@ Canonical ranking (descending by score):
 5. SW-05 Ship Condition Badges in Hangar (4.05)
 6. SW-06 Discovery Log v1 (4.00)
 7. SW-10 Technology Progress Tree Viewer v0 (4.00)
-8. SW-04 Fabrication Queue Timeline (3.85)
-9. SW-07 Spatial Clarity Pack (3.85)
-10. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
-11. SW-11 Skill Gating Scaffold (Mining First) (3.75)
+8. SW-14 In-System Short-Hop Drive (4.00)
+9. SW-04 Fabrication Queue Timeline (3.85)
+10. SW-07 Spatial Clarity Pack (3.85)
+11. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
+12. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
+13. SW-11 Skill Gating Scaffold (Mining First) (3.75)
+14. SW-13 External Object Presentation Expansion (3.75)
 
 Tie-break rule used for equal scores: prefer lower risk and fewer dependencies for H1.
 
@@ -91,6 +97,9 @@ Reason: better visible momentum in economy systems while preserving one hardenin
 | BB-05 | Frontend/backend hotspot decomposition | H1/H2 enabler | 5 | 5 | 4 | 5 | 4 | 3.25 | Enables safer scaling but should be staged by seam extraction |
 | BB-06 | Autonomous NPC hierarchy (pirates to kingpins) | H2/H3 | 5 | 5 | 5 | 5 | 5 | 3.35 | Requires actor runtime, fleet doctrine, event contracts, and deterministic simulation tests |
 | BB-07 | Skill Mastery Economy and Tech-Tree Coupling | H2/H3 | 5 | 4 | 4 | 5 | 5 | 3.70 | Requires skill progression model, unlock contracts, balance tuning, and anti-grind guardrails |
+| BB-08 | Asymmetric Combat and Piracy Pressure System | H2/H3 | 5 | 5 | 4 | 5 | 5 | 3.55 | Requires encounter design, cargo theft rules, drone lethality rules, and careful identity protection |
+| BB-09 | External Scene Identity and Landmark System | H2 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires object families, LOD/mesh rules, landmark clarity, and scene loading discipline |
+| BB-10 | In-System Short-Hop Travel Network | H2 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires drive model, fuel economy balancing, route constraints, and mission/market integration |
 
 ## Big Bet Sequencing Recommendation
 
@@ -101,14 +110,21 @@ Reason: better visible momentum in economy systems while preserving one hardenin
 5. BB-04 NPC-driven market dynamics
 6. BB-06 Autonomous NPC hierarchy (pirates to kingpins)
 7. BB-07 Skill Mastery Economy and Tech-Tree Coupling
+8. BB-08 Asymmetric Combat and Piracy Pressure System
+9. BB-09 External Scene Identity and Landmark System
+10. BB-10 In-System Short-Hop Travel Network
 
 Reasoning:
 - BB-02 and BB-03 produce visible gameplay depth with manageable risk compared to full mission scripting.
 - BB-01 should start after route and persistence contracts are stable enough to avoid rework.
 - BB-05 should run continuously in narrow slices to reduce architecture risk accumulation.
+- BB-05 should explicitly revisit ship-external-view and stellar-viewer on a recurring cadence because both are hot points.
 - BB-04 should start only after telemetry and balancing controls improve.
 - BB-06 should begin with a narrow runtime scaffold (single-ship pirates) before fleet-level behavior.
 - BB-07 should start with one proven skill track (Mining) before introducing multi-skill compound gates.
+- BB-08 should begin with a narrow piracy encounter model before adding ship-to-ship escalation paths.
+- BB-09 should start with debris and landmark families before full ship/station visual taxonomy.
+- BB-10 should start with a single low-tier short-hop drive before adding broader system transit options.
 
 ## Technology Tree and Skills Addendum (New)
 
@@ -159,6 +175,41 @@ Validation expectations:
 - Unit tests for actor state transitions and deterministic tick replay.
 - Contract tests for NPC event payloads consumed by frontend.
 - Integration tests to verify NPC activity does not break market/mission invariants.
+
+## Combat and Piracy Addendum (New)
+
+Scope statement:
+- Ship-to-ship combat stays intentionally minimal at first, centered on piracy, cargo theft, escape, and sacrificial drones.
+
+Core constraints:
+1. Minimal shields only; they should soften danger, not erase it.
+2. Pirates may steal cargo without killing the pilot.
+3. Dart drone impact against pirates should usually end in drone loss and parts-level salvage.
+4. The encounter model should communicate that space is hard and unforgiving.
+
+Validation expectations:
+- Unit tests for theft, escape, damage, and drone-destruction outcomes.
+- Contract tests for encounter summary payloads and loss reporting.
+- Integration tests ensuring combat resolution does not corrupt cargo/ship state.
+
+## External Objects and Travel Addendum (New)
+
+Scope statement:
+- Improve ship-external view so debris, ships, jump gates, and stations have clearer identity, and add a low-tier short-hop drive so in-system travel remains practical.
+
+Core constraints:
+1. Debris should render as detailed enough meshes to communicate item identity and salvage value.
+2. Ships and stations should use recognizable visual families.
+3. Jump gates should be unmistakable navigational landmarks.
+4. Short-hop travel must preserve fuel cost and route choice.
+
+Validation expectations:
+- Unit tests for drive cost and route eligibility.
+- Contract tests for external object descriptors and identity fields.
+- Integration tests for travel action outcomes and scene object selection.
+
+Recurring decomposition reminder:
+- ship-external-view and stellar-viewer should be reviewed periodically even when they are not the primary focus of a sprint, because they remain structural hot points.
 
 ## Dependency and Guardrail Checklist (Use During Sprint Planning)
 

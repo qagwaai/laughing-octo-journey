@@ -48,6 +48,7 @@ Primary risks/gaps:
 Practical implication:
 - Prioritize visible player-facing wins that can be implemented without destabilizing scene architecture.
 - Pair each feature sprint with at least one testing/contract hardening action.
+- Periodically revisit decomposition of ship-external-view and stellar-viewer, since both remain recurring hotspot candidates.
 
 ### solid-train (backend)
 
@@ -114,6 +115,22 @@ Practical implication:
 - Use skill level thresholds to gate higher-tier tools (for example Tier 2 drill requires Mining level N).
 - Value: Adds consequence-driven mastery and long-term identity continuity.
 
+12. Minimal Ship-to-Ship Encounter v0
+- Add a constrained combat surface focused on interdiction, escape, and cargo theft instead of full ship destruction.
+- Keep shields minimal and outcomes harsh so the game communicates that space is hard and unforgiving.
+- Allow pirates to threaten cargo holds without killing the pilot, while making dart drone impacts decisively lethal to the drone.
+- Value: Introduces survival pressure and piracy interactions without turning Stellar into a combat-first game.
+
+13. External Object Presentation Expansion
+- Extend ship-external-view to render detailed debris meshes, jump gates, other ship silhouettes, and space stations with clearer identity and scale.
+- Use progressive detail so important objects read well at game distance without flooding the scene with clutter.
+- Value: Makes external space feel populated and legible, and supports future encounter and travel systems.
+
+14. In-System Short-Hop Drive
+- Introduce a low-level drive that enables practical travel between planets and major bodies inside a solar system.
+- Charge fuel for each hop so movement remains strategic instead of free, and so route planning still matters.
+- Value: Prevents in-system travel from becoming a long-duration blocker while preserving logistics and resource pressure.
+
 ## Long-Term Big Bets (Track, Sequence, and De-risk)
 
 1. Mission scripting framework for branching outcomes and authored depth.
@@ -123,6 +140,9 @@ Practical implication:
 5. Decomposition of major frontend/backend complexity hotspots for scaling teams.
 6. Autonomous NPC hierarchy and doctrine simulation (pirates to kingpins).
 7. Full skill-based progression model with technology tree coupling.
+8. Asymmetric combat and piracy pressure system.
+9. External scene object variety and identity rendering.
+10. Practical in-system short-hop travel with fuel cost.
 
 ## Technology Tree and Skill Gating Concept (New)
 
@@ -143,6 +163,17 @@ Example gating path:
 
 3. Mining Drill Tier 3
 - Unlock requires: Mining skill level 6 + rare components + hazard-zone mission completion.
+
+Combat and piracy principle:
+- Encounters should typically resolve as evade, disable, steal, or salvage rather than prolonged duels.
+- Pirates should be able to extract cargo from a hold without requiring pilot death.
+- Expendable dart drones should be nearly destroyed on impact with hostile targets, leaving only parts or wreckage.
+- Minimal shields may buy time, but they should not erase the consequences of hostile contact.
+
+Early combat-adjacent rules:
+1. If cargo is taken, the loss should be visible and understandable in the outcome summary.
+2. If a drone is spent against a pirate, the result should be a strong one-way sacrifice.
+3. If a ship is caught, the system should favor damage and loss over elimination unless the player chooses escalation.
 
 Suggested skill list for initial design backlog:
 1. Mining (yield efficiency, extraction speed)
@@ -170,6 +201,73 @@ Rollout shape:
 3. Phase C (H2/H3)
 - Build specialization branches and fleet-oriented command skills.
 - Couple skill milestones to mission branches and faction consequences.
+
+## External Scene and Travel Concept (New)
+
+Objective:
+- Make the ship-external view capable of showing more of the living system: debris, ships, jump gates, and stations, while also supporting fast enough in-system movement to make planetary-scale play practical.
+
+External object requirements:
+1. Item debris should show a detailed mesh or convincing mesh variant, not just a generic marker.
+2. Ships should be distinguishable by style/mesh family so factions and roles read at a glance.
+3. Jump gates should be visually clear as navigation landmarks.
+4. Stations should feel like durable persistent infrastructure, not merely background decoration.
+
+Travel principle:
+- In-system travel should be meaningfully faster than raw orbital drift, but should still cost fuel and involve a planning choice.
+
+Suggested short-hop drive behavior:
+1. Available at a relatively low progression level.
+2. Moves between major planets, stations, or other named bodies inside the same system.
+3. Consumes fuel proportional to distance and mass/drive tier.
+4. Does not replace long-range interstellar travel; it only makes local travel practical.
+
+Rollout shape:
+1. Phase A (H1-compatible)
+- Add external object representation improvements for debris and major landmarks.
+- Add a basic short-hop drive prototype with fuel cost and route validation.
+
+2. Phase B (H2)
+- Add style families for ship meshes and station types.
+- Integrate travel choices with mission, market, and encounter state.
+
+3. Phase C (H2/H3)
+- Expand to richer travel windows, lane/orbit constraints, and system-scale route pressure.
+
+## Combat and Piracy Concept (New)
+
+Objective:
+- Support a minimal ship-to-ship combat layer that enables pirate pressure, cargo theft, defensive responses, and sacrificial drone attacks while keeping the game identity exploration-first.
+
+Core behavior rules:
+1. Space should feel hard and unforgiving; routine combat should be dangerous, not heroic.
+2. Pirates can steal from cargo holds without needing to kill the pilot.
+3. Dart drone strikes against pirates should usually leave only salvageable parts.
+4. Shields, if present, should be minimal and temporary.
+5. Noncombat outcomes such as fleeing, disabling, and loss should be common and readable.
+
+Suggested early implementation slices:
+1. Interdiction resolution
+- Pirate pressure, cargo demand, escape attempt, theft outcome.
+
+2. Damage and disable state
+- Ship damage, partial cargo loss, salvage fragments, nonlethal defeat state.
+
+3. Expendable drone strike rule
+- Drone impact resolves to destruction with limited salvage and no persistent recovery.
+
+4. Minimal defense layer
+- Small shield/evade values that reduce but do not negate danger.
+
+Rollout shape:
+1. Phase A (H1-compatible)
+- One pirate encounter flow with theft, escape, and damage outcomes.
+
+2. Phase B (H2)
+- Add drone-vs-pirate interaction and aftermath salvage.
+
+3. Phase C (H2/H3)
+- Expand into faction pressure, patrols, and loadout tradeoffs.
 
 ## NPC Simulation Concept (New)
 
@@ -224,6 +322,10 @@ Example package:
 4. Over-scoping H2/H3 mechanics before H1 reliability criteria are stable.
 5. NPC runtime complexity introducing nondeterminism and difficult-to-reproduce regressions.
 6. Skill gating over-constraining progression and creating early-game friction.
+7. Combat tuning drifting Stellar toward a combat-first identity.
+8. External scene richness creating asset/LOD and readability complexity.
+9. Short-hop travel making fuel economy and route balance fragile if tuned too aggressively.
+10. Deferred decomposition work on ship-external-view and stellar-viewer accumulating technical debt.
 
 ## Definition of Progress for This Brainstorming Track
 
@@ -239,3 +341,4 @@ This session produced a balanced, foundation-first feature slate that preserves 
 - Immediate small wins are available and aligned to north-star pillars.
 - Longer-term bets are identified with sequencing awareness.
 - Technical hardening remains explicitly coupled to feature delivery.
+- Ship-external-view and stellar-viewer should be revisited on a recurring basis for decomposition opportunities.

@@ -1014,7 +1014,12 @@ describe('ShipViewInventoryPage', () => {
             modelName: '  ',
             tierLevel: 99,
             inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron' }],
-            spatial: null,
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 5, y: 0, z: 0 },
+              epochMs: 0,
+            },
           },
         ],
       });
@@ -1028,6 +1033,40 @@ describe('ShipViewInventoryPage', () => {
     expect(component['joinShip']()?.tier).toBe(1);
     expect(component['joinShip']()?.inventory?.length).toBe(1);
     expect(component['joinShip']()?.inventory?.[0].itemType).toBe('iron');
+  });
+
+  it('shows refresh warning when no ship has usable spatial data', () => {
+    const { component, mockShipService, fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+    mockShipService.listShips.calls.reset();
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger I',
+            model: 'Scavenger Pod',
+            tier: 1,
+            spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+          },
+        ],
+      });
+    });
+
+    component['refreshShipFromServer']();
+    fixture.detectChanges();
+
+    expect(component['joinShip']()?.id).toBe('s-1');
+    expect(component['refreshToastMessage']()).toBe('No ship with usable spatial data is available.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No ship with usable spatial data is available.');
   });
 
   describe('DOM smoke tests', () => {

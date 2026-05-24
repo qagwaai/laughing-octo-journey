@@ -17,7 +17,19 @@ const CHARACTER_WITH_MISSION = {
   missions: [{ missionId: MISSION_ID, status: 'started' }],
 };
 
-const SHIP = { id: 'd-1', name: 'Surveyor', model: 'Scavenger Pod', tier: 1, status: 'ACTIVE' };
+const SHIP = {
+  id: 'd-1',
+  name: 'Surveyor',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'ACTIVE',
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 1, y: 0, z: 0 },
+    epochMs: 0,
+  },
+};
 
 function characterListResponse(characters: object[]) {
   return { success: true, message: '', playerName: TEST_PLAYER, characters };

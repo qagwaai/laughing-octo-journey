@@ -11,6 +11,7 @@ import {
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { resolveNavigationState } from '../navigation-state';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import {
   describePrintableMaterials,
   findConsumableMaterialsForPrintableItem,
@@ -30,6 +31,7 @@ import {
   type ShipSummary,
 } from '../../model/ship-list';
 import { SessionService, ShipService, SocketService } from '../../services';
+import { appLogger } from '../../services/logger';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import { PrinterStateService } from '../../services/printer-state.service';
@@ -129,17 +131,32 @@ export default class PrintQueuePage {
         return;
       }
 
-      const nextShip = response.ships?.[0] ?? null;
-      if (!nextShip) {
+      const resolved = resolveActiveShipSelection({
+        ships: response.ships ?? [],
+        sessionActiveShipId: this.sessionService.activeShip()?.id,
+        requestedShipId: this.activeShip()?.id,
+      });
+      if (!resolved.ship) {
+        appLogger.log('PrintQueuePage.loadActiveShip: hard fail due to missing usable ship spatial data', {
+          reason: resolved.reason,
+          playerName,
+          characterId,
+        });
+        this.printerError.set('No ship with usable spatial data is available.');
         return;
       }
 
+      const nextShip = resolved.ship;
       const hydratedShip: ShipSummary = {
         ...nextShip,
         inventory: coerceShipInventory(nextShip.inventory),
       };
 
       this.activeShip.set(hydratedShip);
+      this.sessionService.setActiveShip(hydratedShip);
+      if (this.printerError() === 'No ship with usable spatial data is available.') {
+        this.printerError.set(null);
+      }
     });
   }
 

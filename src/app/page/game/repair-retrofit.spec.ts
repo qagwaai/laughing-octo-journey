@@ -276,7 +276,7 @@ describe('RepairRetrofitPage', () => {
   });
 
   it('hydrates active ship and clears load error on successful ship list response', () => {
-    const { component, mockShipService } = setup({
+    const { component, mockShipService, mockSession } = setup({
       playerName: 'Pioneer',
       joinCharacter: {
         id: 'c-1',
@@ -284,6 +284,7 @@ describe('RepairRetrofitPage', () => {
         missions: [{ missionId: 'first-target', status: 'started' }],
       },
     });
+    const setActiveShipSpy = spyOn(mockSession, 'setActiveShip').and.callThrough();
     mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
@@ -293,7 +294,7 @@ describe('RepairRetrofitPage', () => {
             name: 'Scavenger Pod',
             model: 'Scavenger Pod',
             tier: 1,
-            spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
+            spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 10, y: 0, z: 0 }, epochMs: 0 },
             inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' }],
           },
         ],
@@ -306,11 +307,12 @@ describe('RepairRetrofitPage', () => {
     expect(component['activeShip']()?.id).toBe('s-1');
     expect(component['shipLoadError']()).toBeNull();
     expect((component['activeShip']()?.inventory?.length ?? 0)).toBeGreaterThan(0);
+    expect(setActiveShipSpy).toHaveBeenCalled();
     // No explicit ship profile was returned; in-progress mission falls back to cold-boot profile.
     expect(component['damageProfile']()?.origin).toBe('cold-boot-scripted');
   });
 
-  it('sets active ship to null when ship list succeeds with no ships', () => {
+  it('sets hard-fail error when ship list succeeds with no ships', () => {
     const { component, mockShipService } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova' },
@@ -329,6 +331,34 @@ describe('RepairRetrofitPage', () => {
     component['loadActiveShip']();
 
     expect(component['activeShip']()).toBeNull();
+    expect(component['shipLoadError']()).toBe('No ship with usable spatial data is available.');
+  });
+
+  it('sets hard-fail error when ship list has no usable ship spatial data', () => {
+    const { component, mockShipService } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'c-1', characterName: 'Nova' },
+    });
+    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger Pod',
+            model: 'Scavenger Pod',
+            tier: 1,
+            spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+            inventory: [],
+          },
+        ],
+      });
+    });
+
+    component['loadActiveShip']();
+
+    expect(component['activeShip']()).toBeNull();
+    expect(component['shipLoadError']()).toBe('No ship with usable spatial data is available.');
   });
 
   describe('DOM smoke tests', () => {

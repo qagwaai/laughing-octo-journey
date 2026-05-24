@@ -13,6 +13,7 @@ import {
 } from '../../../testing';
 import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { ShipService } from '../../services/ship.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -72,12 +73,16 @@ function setup(options: {
   const mockMissionProgressSync = {
     syncGateState: jasmine.createSpy('syncGateState').and.returnValue(Promise.resolve('skipped' as const)),
   };
+  const mockShipService = {
+    listShips: jasmine.createSpy('listShips'),
+  };
 
   TestBed.configureTestingModule({
     imports: [PrintQueuePage],
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: ShipService, useValue: mockShipService },
       { provide: PrinterStateService, useValue: options.printerService },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionState },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSync },
@@ -88,7 +93,14 @@ function setup(options: {
 
   const fixture = TestBed.createComponent(PrintQueuePage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter, mockMissionState, mockMissionProgressSync };
+  return {
+    component: fixture.componentInstance,
+    fixture,
+    mockRouter,
+    mockMissionState,
+    mockMissionProgressSync,
+    mockShipService,
+  };
 }
 
 describe('PrintQueuePage', () => {
@@ -121,6 +133,41 @@ describe('PrintQueuePage', () => {
       ]);
       fixture.detectChanges();
       expect(component['printerStatus']()).toBe('printing');
+    });
+  });
+
+  describe('loadActiveShip() resolver behavior', () => {
+    const navigationState = {
+      playerName: 'tester',
+      joinCharacter: { id: 'char-1', characterName: 'Nova' },
+      joinShip: makeActiveShip({
+        id: 'ship-requested',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+      }),
+    };
+
+    it('sets printer error when no returned ship has usable spatial data', () => {
+      const { component, fixture, mockShipService } = setup({ socketService, sessionService, printerService, navigationState });
+      mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+        cb({
+          success: true,
+          ships: [
+            {
+              id: 'ship-requested',
+              name: 'Requested Ship',
+              model: 'Scavenger Pod',
+              tier: 1,
+              spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+              inventory: [],
+            },
+          ],
+        });
+      });
+
+      component['loadActiveShip']();
+      fixture.detectChanges();
+
+      expect(component['printerError']()).toBe('No ship with usable spatial data is available.');
     });
   });
 

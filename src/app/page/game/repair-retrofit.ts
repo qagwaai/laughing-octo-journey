@@ -4,6 +4,7 @@ import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
@@ -18,6 +19,7 @@ import {
   type ShipSummary,
 } from '../../model/ship-list';
 import { SessionService, ShipService, SocketService } from '../../services';
+import { appLogger } from '../../services/logger';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import {
   type RepairAssetFilter,
@@ -136,7 +138,25 @@ export default class RepairRetrofitPage {
         return;
       }
 
-      const nextShip = response.ships?.[0] ?? null;
+      const resolved = resolveActiveShipSelection({
+        ships: response.ships ?? [],
+        sessionActiveShipId: this.sessionService.activeShip()?.id,
+        requestedShipId: this.navigationState.joinShip?.id,
+      });
+
+      if (!resolved.ship) {
+        appLogger.log('RepairRetrofitPage.loadActiveShip: hard fail due to missing usable ship spatial data', {
+          reason: resolved.reason,
+          playerName,
+          characterId,
+        });
+        this.activeShip.set(null);
+        this.shipLoadError.set('No ship with usable spatial data is available.');
+        this.damageProfile.set(this.resolveDamageProfileForShip(null));
+        return;
+      }
+
+      const nextShip = resolved.ship;
       this.activeShip.set(
         nextShip
           ? {
@@ -145,6 +165,8 @@ export default class RepairRetrofitPage {
             }
           : null,
       );
+      this.sessionService.setActiveShip(nextShip);
+      this.shipLoadError.set(null);
       this.damageProfile.set(this.resolveDamageProfileForShip(nextShip));
     });
   }

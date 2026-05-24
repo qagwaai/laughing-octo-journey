@@ -242,10 +242,10 @@ describe('MarketHubPage', () => {
     expect(sessionService.activeShip()?.id).toBe('ship-usable');
   });
 
-  it('should fallback to first ship when ship-list has no usable positions', () => {
+  it('should hard-fail hydration when ship-list has no usable positions', () => {
     sessionService.activeShip.set(null as any);
 
-    setup({
+    const { component } = setup({
       socketService,
       sessionService,
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
@@ -275,7 +275,8 @@ describe('MarketHubPage', () => {
       ],
     });
 
-    expect(sessionService.activeShip()?.id).toBe('first-ship');
+    expect(sessionService.activeShip()).toBeNull();
+    expect(component['marketListError']()).toBe('Active ship position is required to load local markets.');
   });
 
   it('should ignore successful ship-list response when ships payload is omitted', () => {

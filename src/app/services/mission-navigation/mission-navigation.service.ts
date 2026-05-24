@@ -13,6 +13,7 @@
  */
 
 import { Injectable, inject } from '@angular/core';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import type { PlayerCharacterSummary } from '../../model/character-list';
 import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import type { ShipSummary, ShipListResponse } from '../../model/ship-list';
@@ -149,17 +150,40 @@ export class MissionNavigationService {
       this.shipService.listShips(
         { playerName, characterId, sessionKey },
         (response: ShipListResponse) => {
-          if (response.success && response.ships?.length) {
-            const ship = response.ships[0];
-            this.sessionService.setActiveShip(ship);
-            resolve({ ship, success: true });
-          } else {
+          if (response.success) {
+            const selectedShip = resolveActiveShipSelection({
+              ships: response.ships ?? [],
+              sessionActiveShipId: this.sessionService.activeShip()?.id,
+            });
+
+            if (selectedShip.ship) {
+              const ship = selectedShip.ship;
+              this.sessionService.setActiveShip(ship);
+              resolve({ ship, success: true });
+              return;
+            }
+
+            appLogger.log(
+              'MissionNavigationService.fetchActiveShip: hard fail selecting ship with usable spatial data',
+              {
+                reason: selectedShip.reason,
+                playerName,
+                characterId,
+              },
+            );
             resolve({
               ship: null,
               success: false,
-              message: response.message || 'no-ships-returned',
+              message: selectedShip.reason,
             });
+            return;
           }
+
+          resolve({
+            ship: null,
+            success: false,
+            message: response.message || 'ship-list-failed',
+          });
         },
       );
     });
