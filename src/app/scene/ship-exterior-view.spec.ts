@@ -26,7 +26,7 @@ interface NavigationState {
   joinShip?: {
     id: string;
     model?: string;
-    inventory?: Array<{ id: string; itemType: string; displayName?: string; launchable?: boolean }>;
+    inventory?: Array<{ id: string; itemType: string; displayName?: string; launchable?: boolean; tier?: number }>;
     spatial?: { solarSystemId?: string; positionKm: { x: number; y: number; z: number } };
   };
   firstTargetMissionStatus?: string;
@@ -747,7 +747,7 @@ describe('ShipExteriorViewScene', () => {
     component.setFlightModeEnabled(true);
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
     for (let index = 0; index < 6; index += 1) {
-      component['tickFlight']();
+      (component as any)['flightController']['tickFlight']();
     }
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
 
@@ -1228,10 +1228,11 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   }
 
   function shipNavStateWithInventory(inventory: Array<Record<string, unknown>>, positionKm = { x: 0, y: 0, z: 0 }): NavigationState {
+    const baseJoinShip = shipNavState(positionKm).joinShip!;
     return {
       ...shipNavState(positionKm),
       joinShip: {
-        ...shipNavState(positionKm).joinShip,
+        ...baseJoinShip,
         inventory: inventory as any,
       },
     };
@@ -1241,7 +1242,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     const { component } = setup({
       ...shipNavState(),
       joinShip: {
-        ...shipNavState().joinShip,
+        ...shipNavState().joinShip!,
         inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20 }],
       },
     });
@@ -1266,7 +1267,7 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     const { component } = setup({
       ...shipNavState(),
       joinShip: {
-        ...shipNavState().joinShip,
+        ...shipNavState().joinShip!,
         inventory: [{ id: 'sensor-12', itemType: 'sensor-array', tier: 12 }],
       },
     });
@@ -1290,14 +1291,14 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     const { component } = setup({
       ...shipNavState(),
       joinShip: {
-        ...shipNavState().joinShip,
+        ...shipNavState().joinShip!,
         inventory: [{ id: 'sensor-12', itemType: 'sensor-array', tier: 12 }],
       },
     });
 
     spyOn(component['sessionController'], 'beginTargetHold').and.callFake(
       (id: string, _onConfirm: () => void, _holdMs: number) => {
-        component['targetHoldCandidateId'].set(id);
+        (component as any)['sessionController']['targetHoldCandidate'].set(id);
       },
     );
 
@@ -1439,8 +1440,10 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   });
 
   it('tryActivateTractorBeam reverses pull and keeps debris when the server rejects', () => {
-    const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
-    const stateService = seedDebris(component, 'debris-rb', { x: 3, y: 0, z: 0 }, 'Tractor Beam');
+    const { component, mockSocket } = setup(
+      shipNavStateWithInventory([{ id: 'beam-20', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'intact' }]),
+    );
+    const stateService = seedDebris(component, 'debris-rb', { x: 1, y: 0, z: 0 }, 'Tractor Beam');
     component['targetedDebrisId'].set('debris-rb');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-rb' });
 

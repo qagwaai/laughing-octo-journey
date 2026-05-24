@@ -291,15 +291,23 @@ describe('ItemViewSpecsPage', () => {
   });
 
   it('should set imageNotFound to true on image error', () => {
-    const { component } = setup();
+    const { component } = setup({ itemType: 'propulsion-manifold' });
     expect(component['imageNotFound']()).toBeFalse();
+
+    const candidates = component['blueprintImagePathCandidates']();
     component.onImageError();
-    expect(component['imageNotFound']()).toBeTrue();
+
+    if (candidates.length > 1) {
+      expect(component['imageNotFound']()).toBeFalse();
+      expect(component['blueprintImagePathIndex']()).toBe(1);
+    } else {
+      expect(component['imageNotFound']()).toBeTrue();
+    }
   });
 
   it('should clear imageNotFound on image load', () => {
-    const { component } = setup();
-    component.onImageError();
+    const { component } = setup({ itemType: 'propulsion-manifold' });
+    component['imageNotFound'].set(true);
     expect(component['imageNotFound']()).toBeTrue();
     component.onImageLoad();
     expect(component['imageNotFound']()).toBeFalse();

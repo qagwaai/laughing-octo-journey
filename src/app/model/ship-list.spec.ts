@@ -1,5 +1,6 @@
 import { EXPENDABLE_DART_DRONE_DISPLAY_NAME, EXPENDABLE_DART_DRONE_ITEM_TYPE } from './expendable-dart-drone';
 import {
+  coerceShipOwnership,
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
   coerceShipModel,
@@ -163,5 +164,31 @@ describe('coerceShipDamageProfileOrNull', () => {
     });
     expect(result).not.toBeNull();
     expect(result!.overallStatus).toBe('damaged');
+  });
+});
+
+describe('coerceShipOwnership', () => {
+  it('returns normalized ownership for supported owner descriptors', () => {
+    expect(
+      coerceShipOwnership({
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-1',
+        npcId: null,
+        factionId: null,
+      }),
+    ).toEqual({
+      ownerType: 'player-character',
+      playerId: 'player-1',
+      characterId: 'char-1',
+      npcId: null,
+      factionId: null,
+    });
+  });
+
+  it('returns null for missing or unsupported ownerType', () => {
+    expect(coerceShipOwnership(null)).toBeNull();
+    expect(coerceShipOwnership({ ownerType: 'mystery-owner' })).toBeNull();
+    expect(coerceShipOwnership({ playerId: 'player-1' })).toBeNull();
   });
 });

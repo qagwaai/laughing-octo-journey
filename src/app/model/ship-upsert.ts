@@ -1,6 +1,7 @@
 /**
  * Ship upsert socket contracts and payload shape for ship persistence updates.
  */
+import type { ShipOwnership } from './ship-owner';
 import { ShipDamageProfile } from './ship-damage';
 import { ShipItem } from './ship-item';
 import { ShipMotion } from './ship-list';
@@ -12,6 +13,7 @@ export const SHIP_UPSERT_RESPONSE_EVENT = 'ship-upsert-response';
 export interface ShipUpsertPayload {
   id: string;
   status?: string;
+  ownership?: ShipOwnership | null;
   model?: string;
   tier?: number;
   launchable?: boolean;
@@ -25,6 +27,7 @@ export interface ShipUpsertResponsePayload {
   id: string;
   shipName: string;
   status?: string;
+  ownership?: ShipOwnership | null;
   model: string;
   tier: number;
   launchable?: boolean;
@@ -38,6 +41,7 @@ export interface ShipUpsertRequest {
   playerName: string;
   characterId: string;
   sessionKey: string;
+  claimToken?: string;
   correlationId?: string;
   correlationSource?: string;
   ship: ShipUpsertPayload;

@@ -2,6 +2,7 @@
  * Ship list socket contracts plus ship-domain coercion helpers for UI-safe consumption.
  */
 import type { DriveProfileInput } from './drive-profile';
+import { coerceShipOwnershipOrNull, type ShipOwnership } from './ship-owner';
 import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 import { ShipItem, coerceShipItem } from './ship-item';
 import { ObservabilityState, SpatialState } from './spatial';
@@ -26,6 +27,7 @@ export interface ShipSummary {
   id: string;
   name: string;
   status?: string | null;
+  ownership?: ShipOwnership | null;
   damageProfile?: ShipDamageProfile | null;
   model: string;
   tier: number;
@@ -73,6 +75,10 @@ export function coerceShipStatus(status: unknown): string | null {
 
 export function coerceShipDamageProfileOrNull(raw: unknown): ShipDamageProfile | null {
   return coerceShipDamageProfile(raw);
+}
+
+export function coerceShipOwnership(raw: unknown): ShipOwnership | null {
+  return coerceShipOwnershipOrNull(raw);
 }
 
 function coerceShipItemFromDisplayName(displayName: string): ShipItem {

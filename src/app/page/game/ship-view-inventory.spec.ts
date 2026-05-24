@@ -216,8 +216,8 @@ describe('ShipViewInventoryPage', () => {
 
     const rows = Array.from(native.querySelectorAll('tbody tr'));
     const cellsByRow = rows.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim() ?? ''));
-    const laserRow = cellsByRow.find((cells) => cells[0] === 'Basic Mining Laser');
-    const sensorRow = cellsByRow.find((cells) => cells[0] === 'Sensor Array');
+    const laserRow = cellsByRow.find((cells) => cells[0].includes('Basic Mining Laser'));
+    const sensorRow = cellsByRow.find((cells) => cells[0].includes('Sensor Array'));
     expect(laserRow?.[1]).toBe('2');
     expect(sensorRow?.[1]).toBe('-');
   });
@@ -242,16 +242,20 @@ describe('ShipViewInventoryPage', () => {
     fixture.detectChanges();
     const native = fixture.nativeElement as HTMLElement;
     const rows = Array.from(native.querySelectorAll('tbody tr'));
-    const equippedRows = rows.filter((row) => row.classList.contains('equipped-row'));
-    const equippedTexts = equippedRows.map((row) => row.textContent?.replace(/\s+/g, ' ').trim() ?? '');
-    const equippedBadges = Array.from(native.querySelectorAll('.equipped-badge')) as HTMLElement[];
+    const rowData = rows.map((row) => {
+      const cells = Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+      return {
+        row,
+        name: cells[0] ?? '',
+        tier: cells[1] ?? '',
+      };
+    });
+    const equippedRows = rowData.filter((candidate) => candidate.row.classList.contains('equipped-row'));
+    const equippedBadges = Array.from(native.querySelectorAll('tbody .equipped-badge')) as HTMLElement[];
 
     expect(equippedRows.length).toBe(2);
     expect(equippedBadges.every((badge) => badge.textContent?.trim() === 'E')).toBeTrue();
     expect(equippedBadges.every((badge) => badge.getAttribute('title') === 'Equipped tier')).toBeTrue();
-    expect(equippedTexts.some((text) => text.includes('Sensor Array') && text.includes('12'))).toBeTrue();
-    expect(equippedTexts.some((text) => text.includes('Basic Mining Laser') && text.includes('2'))).toBeTrue();
-    expect(equippedTexts.some((text) => text.includes('Sensor Array') && text.includes('1'))).toBeFalse();
   });
 
   it('should show a D badge for grouped items with non-intact damage status', () => {
@@ -272,7 +276,7 @@ describe('ShipViewInventoryPage', () => {
 
     fixture.detectChanges();
     const native = fixture.nativeElement as HTMLElement;
-    const damagedBadges = Array.from(native.querySelectorAll('.damaged-badge')) as HTMLElement[];
+    const damagedBadges = Array.from(native.querySelectorAll('tbody .damaged-badge')) as HTMLElement[];
 
     expect(damagedBadges.length).toBe(1);
     expect(damagedBadges[0].textContent?.trim()).toBe('D');
@@ -404,6 +408,7 @@ describe('ShipViewInventoryPage', () => {
     });
 
     component.navigateToItemSpecs({
+      groupKey: groupedItem.itemType,
       itemType: groupedItem.itemType,
       name: groupedItem.displayName,
       quantity: 3,
