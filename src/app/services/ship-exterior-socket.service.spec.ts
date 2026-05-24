@@ -13,12 +13,10 @@ import {
 } from '../model/item-list-by-location';
 import { LAUNCH_ITEM_RESPONSE_EVENT, type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
 import {
-  type ShipListRequest,
-  type ShipListResponse,
-} from '../model/ship-list';
-import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+  type ShipListByOwnerRequest,
+  type ShipListByOwnerResponse,
 } from '../model/ship-list-by-owner';
 import { ShipExteriorSocketService } from './ship-exterior-socket.service';
 import { SocketService } from './socket.service';
@@ -79,28 +77,24 @@ describe('ShipExteriorSocketService', () => {
   });
 
   it('should emit owner-scoped ship list and resolve once', () => {
-    let received: ShipListResponse | undefined;
-    const request: ShipListRequest = {
-      sessionKey: 'session-1',
+    let received: ShipListByOwnerResponse | undefined;
+    const request: ShipListByOwnerRequest = {
       playerName: 'Pioneer',
-      characterId: 'char-1',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'player-character', characterId: 'char-1' },
     };
 
-    const unsubscribe = service.listShips(request, (response) => {
+    const unsubscribe = service.listShipsByOwner(request, (response) => {
       received = response;
     });
 
     expect(socketService.emittedEvents[0]).toEqual({
       eventName: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-      payload: {
-        playerName: 'Pioneer',
-        sessionKey: 'session-1',
-        owner: { ownerType: 'player-character', characterId: 'char-1' },
-      },
+      payload: request,
     });
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
 
-    const response = {
+    const response: ShipListByOwnerResponse = {
       success: true,
       message: 'ok',
       owner: {
@@ -118,13 +112,7 @@ describe('ShipExteriorSocketService', () => {
       fail('Expected ship-list response callback to be invoked');
       return;
     }
-    expect(received).toEqual({
-      success: true,
-      message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'char-1',
-      ships: [],
-    });
+    expect(received).toEqual(response);
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
 
     unsubscribe();

@@ -16,7 +16,8 @@ import {
   type ShipDamageProfile,
 } from '../../model/ship-damage';
 import { type ShipItem } from '../../model/ship-item';
-import { type ShipListRequest, type ShipSummary } from '../../model/ship-list';
+import { type ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
+import { type ShipSummary } from '../../model/ship-list';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
@@ -317,13 +318,16 @@ export default class RepairRetrofitShipDetailPage {
     fallbackProfile: ShipDamageProfile;
     consumedKitId: string | null;
   }): void {
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName: params.playerName,
-      characterId: params.characterId,
       sessionKey: params.sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId: params.characterId,
+      },
     };
 
-    this.shipService.listShips(request, (response) => {
+    this.shipService.listShipsByOwner(request, (response) => {
       if (!response.success) {
         return;
       }

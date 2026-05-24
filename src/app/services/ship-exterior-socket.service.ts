@@ -13,12 +13,9 @@ import {
 } from '../model/item-list-by-location';
 import { LAUNCH_ITEM_RESPONSE_EVENT, type LaunchItemRequest, type LaunchItemResponse } from '../model/launch-item';
 import {
-  type ShipListRequest,
-  type ShipListResponse,
-} from '../model/ship-list';
-import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+  type ShipListByOwnerRequest,
   type ShipListByOwnerResponse,
 } from '../model/ship-list-by-owner';
 import { SocketService } from './socket.service';
@@ -42,26 +39,16 @@ export class ShipExteriorSocketService {
   /**
    * Requests ship list and resolves once with the first matching response.
    */
-  listShips(request: ShipListRequest, onResponse: (response: ShipListResponse) => void): () => void {
+  listShipsByOwner(
+    request: ShipListByOwnerRequest,
+    onResponse: (response: ShipListByOwnerResponse) => void,
+  ): () => void {
     const unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
       unsubscribe();
-      onResponse({
-        success: response.success,
-        message: response.message,
-        playerName: request.playerName,
-        characterId: response.owner?.characterId ?? request.characterId,
-        ships: response.ships ?? [],
-      });
+      onResponse(response);
     });
 
-    this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, {
-      playerName: request.playerName,
-      sessionKey: request.sessionKey,
-      owner: {
-        ownerType: 'player-character',
-        characterId: request.characterId,
-      },
-    });
+    this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, request);
     return unsubscribe;
   }
 

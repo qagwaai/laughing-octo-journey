@@ -7,14 +7,13 @@ import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { summarizeShipMotion } from '../../model/math/kinematics';
 import { type SpatialState } from '../../model/math/spatial';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
   coerceShipModel,
   coerceShipStatus,
   coerceShipTier,
-  type ShipListRequest,
-  type ShipListResponse,
   type ShipMotion,
   type ShipSummary,
 } from '../../model/ship-list';
@@ -87,12 +86,15 @@ export default class GameJoinPage {
     this.isLoadingShips.set(true);
     this.shipListError.set(null);
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId: character.id,
       sessionKey: this.sessionService.getSessionKey()!,
+      owner: {
+        ownerType: 'player-character',
+        characterId: character.id,
+      },
     };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       this.isLoadingShips.set(false);
       if (response.success) {
         this.ships.set((response.ships ?? []).map((ship) => this.normalizeShipSummary(ship)));

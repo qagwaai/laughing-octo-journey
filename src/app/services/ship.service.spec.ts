@@ -1,9 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import {
-  type ShipListRequest,
-  type ShipListResponse,
-} from '../model/ship-list';
-import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
   type ShipListByOwnerRequest,
@@ -80,55 +76,6 @@ describe('ShipService', () => {
       providers: [{ provide: SocketService, useValue: socketService }],
     });
     service = TestBed.inject(ShipService);
-  });
-
-  it('emits owner-scoped ship list and maps response to ship-list shape', () => {
-    const request: ShipListRequest = {
-      playerName: 'Pioneer',
-      characterId: 'char-1',
-      sessionKey: 'session-1',
-    };
-    let received: ShipListResponse | undefined;
-
-    service.listShips(request, (response) => {
-      received = response;
-    });
-
-    expect(socketService.emittedEvents).toEqual([
-      {
-        eventName: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-        payload: {
-          playerName: 'Pioneer',
-          sessionKey: 'session-1',
-          owner: { ownerType: 'player-character', characterId: 'char-1' },
-        },
-      },
-    ]);
-    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(2);
-
-    const response: ShipListByOwnerResponse = {
-      success: true,
-      message: 'ok',
-      owner: {
-        ownerType: 'player-character',
-        playerId: 'player-1',
-        characterId: 'char-1',
-        npcId: null,
-        factionId: null,
-      },
-      ships: [],
-    };
-
-    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, response);
-
-    expect(received).toEqual({
-      success: true,
-      message: 'ok',
-      playerName: 'Pioneer',
-      characterId: 'char-1',
-      ships: [],
-    });
-    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 
   it('emits ship-list-by-owner and handles the first response once', () => {

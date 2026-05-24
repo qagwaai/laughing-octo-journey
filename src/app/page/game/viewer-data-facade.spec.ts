@@ -24,7 +24,7 @@ interface FacadeHarness {
   services: {
     solarSystemService: { getSolarSystem: jasmine.Spy };
     marketService: { listMarketsByLocation: jasmine.Spy };
-    shipService: { listShips: jasmine.Spy };
+    shipService: { listShipsByOwner: jasmine.Spy };
     socketService: { upsertShip: jasmine.Spy };
   };
 }
@@ -66,7 +66,7 @@ function createHarness(): FacadeHarness {
     listMarketsByLocation: jasmine.createSpy('listMarketsByLocation'),
   };
   const shipService = {
-    listShips: jasmine.createSpy('listShips'),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner'),
   };
   const socketService = {
     upsertShip: jasmine.createSpy('upsertShip'),
@@ -173,7 +173,7 @@ describe('ViewerDataFacade', () => {
     expect(state.resetCount).toBe(1);
     expect(state.bodies.map((body) => body.id)).toEqual(['sol-star', 'station-a']);
     expect(state.ships).toEqual([]);
-    expect(services.shipService.listShips).not.toHaveBeenCalled();
+    expect(services.shipService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
   it('hydrates market stations when none exist and drops stale responses', () => {
@@ -270,7 +270,7 @@ describe('ViewerDataFacade', () => {
       });
     });
 
-    services.shipService.listShips.and.callFake((_request: unknown, cb: (response: any) => void) => {
+    services.shipService.listShipsByOwner.and.callFake((_request: unknown, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [
@@ -300,7 +300,7 @@ describe('ViewerDataFacade', () => {
       });
     });
 
-    services.shipService.listShips.and.callFake((_request: unknown, cb: (response: any) => void) => {
+    services.shipService.listShipsByOwner.and.callFake((_request: unknown, cb: (response: any) => void) => {
       state.currentSolarSystemId = 'different';
       cb({ success: true, ships: [{ id: 'ship-1' }] });
     });
@@ -322,7 +322,7 @@ describe('ViewerDataFacade', () => {
     });
 
     let listCalls = 0;
-    services.shipService.listShips.and.callFake((_request: unknown, cb: (response: any) => void) => {
+    services.shipService.listShipsByOwner.and.callFake((_request: unknown, cb: (response: any) => void) => {
       listCalls += 1;
       if (listCalls === 1) {
         cb({
@@ -356,7 +356,7 @@ describe('ViewerDataFacade', () => {
     facade.loadSystem('sol');
 
     expect(services.socketService.upsertShip).toHaveBeenCalledTimes(1);
-    expect(services.shipService.listShips).toHaveBeenCalledTimes(2);
+    expect(services.shipService.listShipsByOwner).toHaveBeenCalledTimes(2);
   });
 
   it('does not reload ships when invalid-spatial upsert fails', () => {
@@ -370,7 +370,7 @@ describe('ViewerDataFacade', () => {
       });
     });
 
-    services.shipService.listShips.and.callFake((_request: unknown, cb: (response: any) => void) => {
+    services.shipService.listShipsByOwner.and.callFake((_request: unknown, cb: (response: any) => void) => {
       cb({ success: true, ships: [{ id: 'ship-invalid', spatial: { solarSystemId: 'sol' } }] });
     });
 
@@ -381,6 +381,6 @@ describe('ViewerDataFacade', () => {
     facade.loadSystem('sol');
 
     expect(services.socketService.upsertShip).toHaveBeenCalledTimes(1);
-    expect(services.shipService.listShips).toHaveBeenCalledTimes(1);
+    expect(services.shipService.listShipsByOwner).toHaveBeenCalledTimes(1);
   });
 });

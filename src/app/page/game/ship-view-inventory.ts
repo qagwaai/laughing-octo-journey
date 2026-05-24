@@ -19,10 +19,9 @@ import {
   coerceShipModel,
   coerceShipStatus,
   coerceShipTier,
-  type ShipListRequest,
-  type ShipListResponse,
   ShipSummary,
 } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipSubsystemDamage } from '../../model/ship-damage';
 import { SessionService } from '../../services/session.service';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
@@ -547,8 +546,15 @@ export default class ShipViewInventoryPage implements OnDestroy {
       return;
     }
 
-    const request: ShipListRequest = { playerName, characterId, sessionKey };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    const request: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
+    };
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       if (!response.success) {
         return;
       }

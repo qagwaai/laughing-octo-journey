@@ -3,7 +3,8 @@ import { generateDeterministicStarterShipUpdate } from '../../model/domain/start
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
-import type { ShipSummary, ShipListRequest, ShipListResponse } from '../../model/ship-list';
+import type { ShipSummary } from '../../model/ship-list';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
@@ -154,13 +155,16 @@ export class ViewerDataFacade {
       return;
     }
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
     };
 
-    this.deps.shipService.listShips(request, (response: ShipListResponse) => {
+    this.deps.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       if (!response.success || this.deps.getCurrentSolarSystemId() !== solarSystemId) {
         this.deps.setShips([]);
         return;

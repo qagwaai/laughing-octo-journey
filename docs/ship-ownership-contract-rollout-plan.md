@@ -8,242 +8,61 @@
 ## Implementation Status (2026-05-24)
 
 - Phase 2 decision was finalized as full cutover now (no legacy fallback).
-- `ShipService.listShips(...)` now emits `ship-list-by-owner-request` and maps `ship-list-by-owner-response` back to the existing `ShipListResponse` shape for callers.
-- `ShipExteriorSocketService.listShips(...)` now follows the same owner-scoped path.
-- Existing gameplay pages continue using existing service APIs, but runtime transport is owner-scoped (`ownerType: player-character`).
+- Compatibility wrapper retirement is complete: legacy `listShips(...)` APIs were removed from `ShipService` and `ShipExteriorSocketService`.
+- Owner-scoped loading now uses explicit `listShipsByOwner(...)` APIs end-to-end in production callers.
 - Phase 3 active-ship policy is now implemented with shared resolver usage across mission navigation, market hub hydration, ship hangar refresh, and ship inventory refresh.
 - Phase 3 policy is now also applied to repair/retrofit and print-queue ship hydration flows.
 - Phase 3 uses strict hard-fail semantics when no usable ship spatial data is returned (no fallback to first returned ship).
+- Phase 3 is complete for the planned gameplay surfaces (mission navigation, game join/hangar-market hydration, repair/retrofit, print queue, inventory refresh).
 - Hard-fail paths now emit runtime logs and surface UI-visible warnings/errors in impacted pages.
+- Phase 4 explicit owner-scoped loading (`listShipsByOwner`) is complete across: mission navigation, game join, ship hangar, market hub hydration, repair/retrofit, print queue, and repair/retrofit ship-detail refresh.
+- Phase 4 owner-scoped loading also covers ship inventory refresh, viewer-scene system ship hydration, and solar-system-details ship hydration facades.
+- Phase 4 owner-scoped loading also covers starter-ship bootstrap in character setup and ship-exterior bootstrap/post-launch refresh flows.
 - Validation for this extension is green: focused specs for `repair-retrofit` + `print-queue`, `npm run build`, and selected Playwright `e2e/tests/first-target-fabrication-menu-cue.spec.ts`.
-- Regression validation for this cutover is green: focused impacted specs, `npm run test:ci`, `npm run build`, and selected Playwright suite `e2e/tests/character-ship-badge.spec.ts`.
+- Latest validation after Phase 4 start: `npm run build` passed and Playwright `e2e/tests/repair-retrofit.spec.ts` + `e2e/tests/print-queue.spec.ts` passed (4/4).
+- Full `npm run test:ci` is green after wrapper retirement (1586/1586).
+
+## Current Phase 4 Result
+
+Phase 4 owner-scoped caller migration is complete for production gameplay/scene code in this repo.
+
+No remaining `listShips(...)` symbols are present in `src/`.
 
 ## Contract Changes That Matter
 
-The current live contract keeps the existing character-scoped ship flow, but adds a second ownership-aware layer that the frontend does not model yet.
-
-### Still available
-
-- `/socket/ship-list`
-  - Still requests ships by `playerName + characterId + sessionKey`.
-  - Still returns canonical ship payloads.
-  - This is the current frontend dependency for join, hangar, market hydration, repair hydration, inventory refresh, and mission navigation bootstrap.
-
-### New or materially changed
+### Active frontend runtime path
 
 - `/socket/ship-list-by-owner`
-  - Requests ships by a normalized owner descriptor.
-  - Response includes a normalized `owner` descriptor and canonical `ship.ownership` payloads.
+  - Primary runtime request/response path for ship loading in migrated production callers.
+  - Owner payload currently standardized as `ownerType: player-character` plus `characterId`.
+
+### Legacy compatibility path status
+
+- `/socket/ship-list`
+  - Legacy service-level compatibility APIs were removed from frontend service wrappers.
+  - Runtime ship loading now uses owner-scoped contracts directly.
+
+### Other ownership-sensitive endpoints
+
 - `/socket/ship-transfer`
-  - Introduces explicit ownership transfer semantics.
-  - Supports unknown -> player-character claim flows via `claimToken`.
+  - Explicit ownership transfer semantics.
 - `/socket/ship-upsert`
-  - Ownership mutation is now strict.
-  - Cross-player mutation attempts are rejected with `SHIP_OWNERSHIP_MISMATCH`.
-  - `unknown -> player-character` ownership transitions require `claimToken`.
-  - Legacy `ship.location` and `ship.kinematics` are explicitly rejected in favor of canonical `ship.spatial` and optional `ship.motion`.
-- `/socket/character-list`
-  - `characters[].ships` is now explicitly optional/enrichment-style rather than a stable assumption.
+  - Strict ownership mutation checks.
 
-## Current Frontend Assumptions
+## Validation Snapshot
 
-The frontend is still predominantly character-scoped for ship discovery and session hydration.
+- Focused specs for migrated surfaces passed (including character setup and ship-exterior bootstrap slices).
+- `npm run test:ci` passed: 1586/1586.
+- `npm run build` passed.
+- `npx playwright test e2e/tests/repair-retrofit.spec.ts e2e/tests/print-queue.spec.ts --reporter=line` passed: 4/4.
+- Expanded Playwright closeout coverage passed: `character-add`, `character-ship-badge`, `ship-exterior-flight-mode`, `ship-exterior-hangar-resume` (9/9).
 
-### High-impact code paths
+## Phase 4 Closeout Implementation
 
-- [src/app/services/ship.service.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/services/ship.service.ts)
-  - Only wraps `ship-list`.
-- [src/app/services/mission-navigation/mission-navigation.service.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/services/mission-navigation/mission-navigation.service.ts)
-  - Fetches the active ship via `ship-list` and stores the first returned ship in session state.
-- [src/app/page/game/game-join.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/game-join.ts)
-  - Loads ships for the selected character with `ship-list`.
-- [src/app/page/game/ship-hangar.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/ship-hangar.ts)
-  - Lists ships for the selected character with `ship-list`.
-- [src/app/page/game/ship-view-inventory.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/ship-view-inventory.ts)
-  - Refreshes active ship state with `ship-list`.
-- [src/app/page/game/market-hub.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/market-hub.spec.ts)
-  - Existing tests already depend on ship hydration behavior when the active ship is incomplete.
-- [src/app/scene/ship-exterior-view.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/scene/ship-exterior-view.ts)
-  - Uses `characterId` and active ship session state heavily for launch, tractor, mission, and location refresh flows.
+1. Completed: Expanded Playwright coverage to character and ship-exterior routes after wrapper retirement.
+2. Completed: Added cross-repo owner-only API coordination checklist and handoff template in `docs/planning/ship-ownership-owner-only-handoff-checklist.md`.
 
-## Rollout Strategy
+## Residual Risk
 
-Note: the strategy below was written before the explicit full-cutover decision. Runtime behavior has now moved to owner-scoped ship listing with no legacy endpoint fallback.
-
-The right first move is additive compatibility, not an immediate cutover.
-
-### Phase 1: Add ownership-aware contract models without changing behavior
-
-Create new frontend contract types for the new ship ownership layer.
-
-- Add `ShipOwnerDescriptor` and `ShipOwnership` model types.
-- Add request/response models for:
-  - `ship-list-by-owner`
-  - `ship-transfer`
-- Extend `ShipSummary` to accept optional `ownership` without breaking existing callers.
-- Extend ship normalization helpers so unknown ownership shapes fail soft instead of breaking views.
-
-Expected outcome:
-
-- The frontend can represent the new contract surface while preserving all current character-scoped flows.
-
-### Phase 2: Extend `ShipService` with additive wrappers
-
-Add new `ShipService` methods alongside the existing `listShips` method.
-
-- Keep `listShips(request)` unchanged for current consumers.
-- Add `listShipsByOwner(request)`.
-- Add `transferShip(request)`.
-- Keep response handling single-shot and consistent with the existing service style.
-
-Expected outcome:
-
-- New ownership-aware flows can be built without forcing every current caller to migrate in one patch.
-
-### Phase 3: Normalize active ship selection rules
-
-Introduce a single active-ship resolution helper or small service-level policy instead of letting each page decide independently.
-
-- Preferred selection order:
-  - existing session active ship when still present in refreshed results
-  - exact ship id requested by navigation state
-  - first ship with usable spatial data
-- If no ship has usable spatial data, hard-fail (do not fallback to first returned ship)
-- Make this policy usable from:
-  - mission navigation
-  - market hub hydration
-  - hangar selection refresh
-  - inventory refresh
-
-Expected outcome:
-
-- Contract changes to ownership or result ordering do not fragment active ship behavior across pages.
-
-### Phase 4: Decide where owner-scoped loading replaces character-scoped loading
-
-Do not replace all `ship-list` callers blindly. Split them by business meaning.
-
-#### Keep character-scoped until proven otherwise
-
-- `game-join`
-- `ship-hangar`
-- mission entry that is explicitly character-led
-
-Reason:
-
-- The live contract still supports `ship-list`, and these screens are still framed around the selected character.
-
-#### Candidate migrations to owner-aware queries
-
-- any future “all player ships” view
-- claim/unbound ship flows
-- transfer flows
-- pages that must survive backend removal of implicit `character -> ships[]` assumptions
-
-Reason:
-
-- These are the places where the new ownership model adds actual capability rather than duplicate plumbing.
-
-### Phase 5: Add compatibility fallback only where real breakage appears
-
-If the backend starts returning fewer ships for character-scoped calls because ships are disassociated from characters, add targeted fallback behavior instead of global dual-fetching.
-
-Recommended fallback shape:
-
-- Try `ship-list` first where the page is character-scoped.
-- If the response succeeds but returns no usable active ship, optionally try `ship-list-by-owner` with the agreed owner descriptor.
-- Gate that fallback behind a small helper so it is testable and reversible.
-
-This avoids paying complexity cost before the backend behavior actually requires it.
-
-## Tests To Preserve and Reuse
-
-The existing suite is already strong enough to act as a regression net for the rollout. We should use it as the baseline proof that ownership-contract work did not break current gameplay.
-
-### Focused Karma/Jasmine specs to run during implementation
-
-- [src/app/services/ship-exterior-socket.service.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/services/ship-exterior-socket.service.spec.ts)
-  - Protects request/response wrapper behavior.
-- [src/app/services/session.service.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/services/session.service.spec.ts)
-  - Protects active ship session semantics.
-- [src/app/page/game/game-join.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/game-join.spec.ts)
-  - Protects character-scoped ship loading and normalization.
-- [src/app/page/game/ship-hangar.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/ship-hangar.spec.ts)
-  - Protects ship listing and active-ship selection from the hangar.
-- [src/app/page/game/market-hub.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/market-hub.spec.ts)
-  - Protects active ship hydration when ship location data is incomplete.
-- [src/app/page/game/repair-retrofit.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/repair-retrofit.spec.ts)
-  - Protects ship-list refresh behavior on repair flows.
-- [src/app/page/game/ship-view-inventory.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/game/ship-view-inventory.spec.ts)
-  - Protects active ship refresh and inventory rendering.
-- [src/app/page/character/character-list.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/character/character-list.spec.ts)
-  - Protects join behavior and character normalization assumptions.
-- [src/app/page/character/character-setup.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/page/character/character-setup.spec.ts)
-  - Protects starter ship bootstrap behavior after character creation.
-- [src/app/component/character-ship-badge.integration.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/component/character-ship-badge.integration.spec.ts)
-  - Protects shared active-ship display semantics.
-- [src/app/scene/ship-exterior-view.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/scene/ship-exterior-view.spec.ts)
-  - Protects mission/exterior flows that depend on active ship hydration and ship inventory.
-
-### Existing Playwright specs worth keeping green
-
-- [e2e/tests/character-add.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/e2e/tests/character-add.spec.ts)
-  - Covers starter-ship chain after character creation.
-- [e2e/tests/character-ship-badge.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/e2e/tests/character-ship-badge.spec.ts)
-  - Covers active ship hydration and hangar selection UX.
-- [e2e/tests/first-target-fabrication-menu-cue.spec.ts](/c:/Development/Projects/Github/laughing-octo-journey/e2e/tests/first-target-fabrication-menu-cue.spec.ts)
-  - Covers in-progress mission behavior that depends on ship inventory from `ship-list`.
-
-### Recommended command order during implementation
-
-Use focused specs first, then broaden.
-
-1. `npm run test:spec -- "**/game-join.spec.ts"`
-2. `npm run test:spec -- "**/ship-hangar.spec.ts"`
-3. `npm run test:spec -- "**/market-hub.spec.ts"`
-4. `npm run test:spec -- "**/character-list.spec.ts"`
-5. `npm run test:spec -- "**/character-setup.spec.ts"`
-6. `npm run test:spec -- "**/ship-view-inventory.spec.ts"`
-7. `npm run test:spec -- "**/ship-exterior-view.spec.ts"`
-8. `npm run test:ci`
-9. `npm run build`
-10. `npm run e2e:spec -- e2e/tests/character-ship-badge.spec.ts`
-
-## Documentation Updates Needed During Implementation
-
-### Must update
-
-- [docs/openapi-integration.md](/c:/Development/Projects/Github/laughing-octo-journey/docs/openapi-integration.md)
-  - Add a section for ship ownership and owner-scoped ship queries.
-  - Prefer the live local contract URL for day-to-day development notes instead of only the GitHub copy.
-- [docs/server-message-contracts.md](/c:/Development/Projects/Github/laughing-octo-journey/docs/server-message-contracts.md)
-  - Reconcile character-scoped ship assumptions with the new ownership-aware contract.
-  - Add or update `ship-list-by-owner`, `ship-transfer`, and ownership notes on `ship-upsert`.
-
-### Update if UI wording changes
-
-- [src/app/i18n/locales/en.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/i18n/locales/en.ts)
-- [src/app/i18n/locales/it.ts](/c:/Development/Projects/Github/laughing-octo-journey/src/app/i18n/locales/it.ts)
-
-## Open Questions To Resolve Before Phase 4
-
-- Should `ship-hangar` show only ships attached to the selected character, or all ships owned by the player-character owner descriptor?
-- When a ship is disassociated from a character, what owner shape should the frontend expect for normal player gameplay:
-  - `player-character`
-  - `player`
-  - transitional `unknown` until claimed
-- Does `game-join` remain strictly character-scoped even when ship ownership is no longer character-bound?
-- Should active ship persistence remain a plain `ShipSummary` in session state, or should it also remember the normalized owner descriptor?
-
-## Recommended First Implementation Slice
-
-The smallest defensible first change set is:
-
-1. Add new ownership-aware models.
-2. Extend `ShipService` with additive wrappers.
-3. Extend `ShipSummary` normalization for `ownership`.
-4. Add unit tests for the new models and service methods.
-5. Run the existing focused regression specs listed above.
-6. Update the docs after the code and tests are green.
-
-That slice gives us immediate contract coverage without forcing a risky behavioral migration before we confirm how the backend will expose disassociated ships in practice.
+- External repositories or tooling outside this workspace may still assume legacy `listShips(...)` wrappers.
+- Use the owner-only handoff checklist to validate and sign off any external consumers before enforcing stricter CI gates.

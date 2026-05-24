@@ -26,10 +26,9 @@ import {
 import {
   coerceShipInventory,
   type ShipItem,
-  type ShipListRequest,
-  type ShipListResponse,
   type ShipSummary,
 } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { SessionService, ShipService, SocketService } from '../../services';
 import { appLogger } from '../../services/logger';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
@@ -121,12 +120,15 @@ export default class PrintQueuePage {
       return;
     }
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
     };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       if (!response.success) {
         return;
       }

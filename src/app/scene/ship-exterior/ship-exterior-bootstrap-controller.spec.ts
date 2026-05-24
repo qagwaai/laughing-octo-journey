@@ -32,7 +32,7 @@ function makeControllerHarness(overrides?: {
   const unsubscribeCelestialBodyListResponse = jasmine.createSpy('unsubscribeCelestialBodyListResponse');
 
   const socketService = {
-    listShips: jasmine.createSpy('listShips').and.returnValue(unsubscribeShipListResponse),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner').and.returnValue(unsubscribeShipListResponse),
     listCelestialBodies: jasmine
       .createSpy('listCelestialBodies')
       .and.returnValue(unsubscribeCelestialBodyListResponse),
@@ -87,12 +87,12 @@ describe('ShipExteriorBootstrapController', () => {
 
     expect(harness.createFallbackSamples).toHaveBeenCalled();
     expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.fallbackSamples);
-    expect(harness.socketService.listShips).not.toHaveBeenCalled();
+    expect(harness.socketService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
   it('falls back when in-progress mission ship list has no usable center', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShips.and.callFake((_request: unknown, callback: (response: any) => void) => {
+    harness.socketService.listShipsByOwner.and.callFake((_request: unknown, callback: (response: any) => void) => {
       callback({ success: true, ships: [{ id: 'starter-1', spatial: null }] });
       return harness.unsubscribeShipListResponse;
     });
@@ -110,7 +110,7 @@ describe('ShipExteriorBootstrapController', () => {
     const center = { x: 10, y: 20, z: 30 };
     const existingBodies = [{ id: 'cb-1', state: 'active' }, { id: 'cb-2', state: 'destroyed' }];
 
-    harness.socketService.listShips.and.callFake((_request: unknown, callback: (response: any) => void) => {
+    harness.socketService.listShipsByOwner.and.callFake((_request: unknown, callback: (response: any) => void) => {
       callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: center } }] });
       return harness.unsubscribeShipListResponse;
     });
@@ -140,7 +140,7 @@ describe('ShipExteriorBootstrapController', () => {
 
   it('uses fallback samples when starter-ship list request fails', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShips.and.callFake((_request: unknown, callback: (response: any) => void) => {
+    harness.socketService.listShipsByOwner.and.callFake((_request: unknown, callback: (response: any) => void) => {
       callback({ success: false, message: 'ship-list failed' });
       return harness.unsubscribeShipListResponse;
     });
@@ -157,7 +157,7 @@ describe('ShipExteriorBootstrapController', () => {
     const center = { x: 400, y: 500, z: 600 };
     const ships = [{ id: 'starter-ship', spatial: { positionKm: center } }];
 
-    harness.socketService.listShips.and.callFake((_request: unknown, callback: (response: any) => void) => {
+    harness.socketService.listShipsByOwner.and.callFake((_request: unknown, callback: (response: any) => void) => {
       callback({ success: true, ships });
       return harness.unsubscribeShipListResponse;
     });
@@ -179,7 +179,7 @@ describe('ShipExteriorBootstrapController', () => {
 
   it('unsubscribes ship and celestial-body listeners on dispose', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShips.and.callFake((_request: unknown, callback: (response: any) => void) => {
+    harness.socketService.listShipsByOwner.and.callFake((_request: unknown, callback: (response: any) => void) => {
       callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }] });
       return harness.unsubscribeShipListResponse;
     });

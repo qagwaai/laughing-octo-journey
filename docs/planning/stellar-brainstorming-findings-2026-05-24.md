@@ -131,6 +131,12 @@ Practical implication:
 - Charge fuel for each hop so movement remains strategic instead of free, and so route planning still matters.
 - Value: Prevents in-system travel from becoming a long-duration blocker while preserving logistics and resource pressure.
 
+15. Minimal Character Bust Builder v0 (Separate Track)
+- Add a browser-friendly character builder focused on bust-level identity, not full-body customization.
+- Prioritize high-value controls: facial structure presets, skin tone variation, tattoos, and scars.
+- Keep this as a separate implementation track because of its higher 3D asset/runtime budget.
+- Value: Strengthens identity and continuity, and can be reused for NPC portrait/bust presentation.
+
 ## Long-Term Big Bets (Track, Sequence, and De-risk)
 
 1. Mission scripting framework for branching outcomes and authored depth.
@@ -143,6 +149,9 @@ Practical implication:
 8. Asymmetric combat and piracy pressure system.
 9. External scene object variety and identity rendering.
 10. Practical in-system short-hop travel with fuel cost.
+11. Character identity pipeline for player and NPC bust presentation.
+12. Dynamic faction ecology with persistent world consequences.
+13. Run specialization plus campaign-level legacy progression.
 
 ## Technology Tree and Skill Gating Concept (New)
 
@@ -233,6 +242,48 @@ Rollout shape:
 
 3. Phase C (H2/H3)
 - Expand to richer travel windows, lane/orbit constraints, and system-scale route pressure.
+
+## Character Bust Builder Concept (New)
+
+Objective:
+- Deliver a minimal but high-value character builder in the browser that supports face-first identity and can be reused for NPCs and in-ship communication views.
+
+Scope boundaries:
+1. Bust-level only (head/upper torso), no full-body variability in the first phase.
+2. High-value customization first: skin tone, facial variants, tattoos, scars.
+3. Separate implementation track from core scene changes due to 3D budget risk.
+
+Expected use cases:
+1. Player character identity setup and updates.
+2. NPC bust generation and variation for world population.
+3. Ship-to-ship communication portraits where both participants display bust visuals.
+
+Rollout shape:
+1. Phase A (H1-compatible)
+- Preset-driven bust builder with limited sliders and deterministic save format.
+
+2. Phase B (H2)
+- Add richer tattoos/scars layering and NPC reuse pipeline.
+
+3. Phase C (H2/H3)
+- Integrate communication scenes and faction style packs.
+
+## Replayability Roundout Concepts (New)
+
+1. Dynamic faction ecology with persistent consequence memory
+- Build a living multi-faction simulation where pirate cells, market syndicates, station authorities, and frontier operators compete over routes and resources.
+- Let player choices alter regional control, mission supply, route risk, and market behavior over time.
+- Replayability value: each campaign evolves differently, creating new strategic and narrative conditions.
+
+2. Run specialization with campaign-level legacy progression
+- Force meaningful per-run specialization so players cannot optimize every path in one campaign.
+- Add a constrained legacy layer that carries account-level unlocks between campaigns without invalidating progression challenge.
+- Replayability value: each new run supports different builds and goals while preserving long-horizon continuity.
+
+Suggested guardrails:
+1. Legacy unlocks should widen options, not trivialize core loops.
+2. Faction simulation should emit readable changes so players understand consequences.
+3. Specialization choices should be reversible only at meaningful cost.
 
 ## Combat and Piracy Concept (New)
 
@@ -326,6 +377,9 @@ Example package:
 8. External scene richness creating asset/LOD and readability complexity.
 9. Short-hop travel making fuel economy and route balance fragile if tuned too aggressively.
 10. Deferred decomposition work on ship-external-view and stellar-viewer accumulating technical debt.
+11. Character customization features over-consuming browser 3D budget and harming scene performance.
+12. Legacy progression overpowering run identity and reducing replay diversity.
+13. Faction dynamics becoming opaque if consequence signals are not visible in UI and mission context.
 
 ## Definition of Progress for This Brainstorming Track
 

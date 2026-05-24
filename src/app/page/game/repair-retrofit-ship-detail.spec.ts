@@ -102,7 +102,7 @@ function setup(state?: NavigationState) {
     ensureConnected: jasmine.createSpy('ensureConnected'),
   };
   const mockShipService = {
-    listShips: jasmine.createSpy('listShips'),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner'),
   };
   const mockConsumedItemShadowService = {
     markConsumed: jasmine.createSpy('markConsumed'),
@@ -746,7 +746,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
       } as any,
     });
 
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [
@@ -794,7 +794,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
       } as any,
     });
 
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({ success: false, ships: [] });
     });
 
@@ -803,7 +803,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     mockSocket.triggerOnceEvent(ITEM_UPSERT_RESPONSE_EVENT, { success: false, message: 'item write failed' });
 
     expect(component['persistError']()).toBe('item write failed');
-    expect(mockShipService.listShips).toHaveBeenCalled();
+    expect(mockShipService.listShipsByOwner).toHaveBeenCalled();
   });
 
   it('does not replace ship when refresh response has no matching ship id', () => {
@@ -826,7 +826,7 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
       } as any,
     });
 
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [{ id: 'other-ship', name: 'Other', model: 'Scavenger Pod', tier: 1, spatial: mockSpatial, inventory: [] }],

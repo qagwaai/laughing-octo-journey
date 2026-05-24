@@ -1,7 +1,7 @@
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
-import type { ShipListRequest, ShipListResponse } from '../../model/ship-list';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
@@ -18,7 +18,7 @@ interface ShipExteriorBootstrapControllerDeps {
   missionScenePlugin: MissionScenePlugin;
   setAsteroidSamples: (samples: AsteroidScanSample[]) => void;
   persistSeededAsteroidsAsUnscanned: (samples: readonly AsteroidScanSample[]) => void;
-  updateTargetingCapabilityFromShipList: (ships: ShipListResponse['ships']) => void;
+  updateTargetingCapabilityFromShipList: (ships: ShipListByOwnerResponse['ships']) => void;
 }
 
 /**
@@ -47,10 +47,17 @@ export class ShipExteriorBootstrapController {
     }
 
     this.unsubscribeShipListResponse?.();
-    const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
-    this.unsubscribeShipListResponse = this.deps.socketService.listShips(
+    const shipRequest: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
+    };
+    this.unsubscribeShipListResponse = this.deps.socketService.listShipsByOwner(
       shipRequest,
-      (shipResponse: ShipListResponse) => {
+      (shipResponse: ShipListByOwnerResponse) => {
         if (shipResponse.success) {
           this.deps.updateTargetingCapabilityFromShipList(shipResponse.ships);
         }
@@ -115,10 +122,17 @@ export class ShipExteriorBootstrapController {
     }
 
     this.unsubscribeShipListResponse?.();
-    const request: ShipListRequest = { playerName, characterId, sessionKey };
-    this.unsubscribeShipListResponse = this.deps.socketService.listShips(
+    const request: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
+    };
+    this.unsubscribeShipListResponse = this.deps.socketService.listShipsByOwner(
       request,
-      (response: ShipListResponse) => {
+      (response: ShipListByOwnerResponse) => {
         if (!response.success) {
           const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
           this.deps.setAsteroidSamples(fallbackSamples);

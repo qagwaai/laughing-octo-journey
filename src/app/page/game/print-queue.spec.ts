@@ -74,7 +74,7 @@ function setup(options: {
     syncGateState: jasmine.createSpy('syncGateState').and.returnValue(Promise.resolve('skipped' as const)),
   };
   const mockShipService = {
-    listShips: jasmine.createSpy('listShips'),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner'),
   };
 
   TestBed.configureTestingModule({
@@ -148,7 +148,7 @@ describe('PrintQueuePage', () => {
 
     it('sets printer error when no returned ship has usable spatial data', () => {
       const { component, fixture, mockShipService } = setup({ socketService, sessionService, printerService, navigationState });
-      mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+      mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
         cb({
           success: true,
           ships: [

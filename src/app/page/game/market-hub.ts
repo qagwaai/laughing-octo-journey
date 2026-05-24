@@ -21,7 +21,8 @@ import {
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
 import type { CharacterMissionProgress } from '../../model/mission';
 import type { Triple } from '../../model/shared/triple';
-import { type ShipListRequest, type ShipListResponse, type ShipSummary } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
+import { type ShipSummary } from '../../model/ship-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
@@ -167,12 +168,15 @@ export default class MarketHubPage {
       return;
     }
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
     };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       if (!response.success) {
         return;
       }

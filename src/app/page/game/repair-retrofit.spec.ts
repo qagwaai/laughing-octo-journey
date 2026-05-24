@@ -34,7 +34,7 @@ function setup(state?: NavigationState) {
   const mockSocket = createMockSocketService();
   const mockSession = createMockSessionService('session-key');
   const mockShipService = {
-    listShips: jasmine.createSpy('listShips'),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner'),
   };
   const mockSocketLifecycle = {
     runWhenConnected: jasmine.createSpy('runWhenConnected'),
@@ -257,7 +257,7 @@ describe('RepairRetrofitPage', () => {
     component['loadActiveShip']();
 
     expect(component['shipLoadError']()).toBe('Unable to load ship context for repair operations.');
-    expect(mockShipService.listShips).not.toHaveBeenCalled();
+    expect(mockShipService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
   it('sets ship-load error when ship list request fails', () => {
@@ -265,7 +265,7 @@ describe('RepairRetrofitPage', () => {
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova' },
     });
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({ success: false, message: 'ship-list failed' });
     });
 
@@ -285,7 +285,7 @@ describe('RepairRetrofitPage', () => {
       },
     });
     const setActiveShipSpy = spyOn(mockSession, 'setActiveShip').and.callThrough();
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [
@@ -324,7 +324,7 @@ describe('RepairRetrofitPage', () => {
         spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: [0, 0, 0], epochMs: 0 },
       },
     });
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({ success: true, ships: [] });
     });
 
@@ -339,7 +339,7 @@ describe('RepairRetrofitPage', () => {
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova' },
     });
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [

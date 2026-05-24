@@ -1,9 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import {
-  type ShipListRequest,
-  type ShipListResponse,
-} from '../model/ship-list';
-import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
   type ShipListByOwnerRequest,
@@ -24,53 +20,6 @@ import { SocketService } from './socket.service';
  */
 export class ShipService {
   private socketService = inject(SocketService);
-
-  private toOwnerRequest(request: ShipListRequest): ShipListByOwnerRequest {
-    return {
-      playerName: request.playerName,
-      sessionKey: request.sessionKey,
-      owner: {
-        ownerType: 'player-character',
-        characterId: request.characterId,
-      },
-    };
-  }
-
-  private toListResponse(request: ShipListRequest, response: ShipListByOwnerResponse): ShipListResponse {
-    return {
-      success: response.success,
-      message: response.message,
-      playerName: request.playerName,
-      characterId: response.owner?.characterId ?? request.characterId,
-      ships: response.ships ?? [],
-    };
-  }
-
-  /**
-   * Requests the player's ships and resolves the first matching response once.
-   */
-  listShips(request: ShipListRequest, onResponse: (response: ShipListResponse) => void): void {
-    const ownerRequest = this.toOwnerRequest(request);
-    let handled = false;
-    let unsubscribe = () => {};
-    const handleResponse = (response: ShipListByOwnerResponse) => {
-      if (handled) {
-        return;
-      }
-      handled = true;
-      unsubscribe();
-      onResponse(this.toListResponse(request, response));
-    };
-
-    unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
-      handleResponse(response);
-    });
-    this.socketService.once(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
-      handleResponse(response);
-    });
-
-    this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, ownerRequest);
-  }
 
   /**
    * Requests ships by normalized ownership descriptor and resolves the first matching response once.

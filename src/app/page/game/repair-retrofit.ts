@@ -14,10 +14,9 @@ import {
 } from '../../model/ship-damage';
 import {
   coerceShipInventory,
-  type ShipListRequest,
-  type ShipListResponse,
   type ShipSummary,
 } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { SessionService, ShipService, SocketService } from '../../services';
 import { appLogger } from '../../services/logger';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
@@ -125,12 +124,15 @@ export default class RepairRetrofitPage {
     this.isLoadingShip.set(true);
     this.shipLoadError.set(null);
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
     };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       this.isLoadingShip.set(false);
 
       if (!response.success) {

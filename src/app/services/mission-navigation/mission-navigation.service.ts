@@ -15,8 +15,9 @@
 import { Injectable, inject } from '@angular/core';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import type { PlayerCharacterSummary } from '../../model/character-list';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import type { ShipSummary, ShipListResponse } from '../../model/ship-list';
+import type { ShipSummary } from '../../model/ship-list';
 import type { MissionStatus } from '../../model/mission';
 import { SessionService } from '../session.service';
 import { ShipService } from '../ship.service';
@@ -147,9 +148,18 @@ export class MissionNavigationService {
     }
 
     return new Promise<ShipFetchResult>((resolve) => {
-      this.shipService.listShips(
-        { playerName, characterId, sessionKey },
-        (response: ShipListResponse) => {
+      const request: ShipListByOwnerRequest = {
+        playerName,
+        sessionKey,
+        owner: {
+          ownerType: 'player-character',
+          characterId,
+        },
+      };
+
+      this.shipService.listShipsByOwner(
+        request,
+        (response: ShipListByOwnerResponse) => {
           if (response.success) {
             const selectedShip = resolveActiveShipSelection({
               ships: response.ships ?? [],

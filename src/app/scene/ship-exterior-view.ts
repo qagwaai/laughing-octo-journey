@@ -61,10 +61,9 @@ import type { ShipItem } from '../model/ship-item';
 import {
   coerceShipInventory,
   coerceShipModel,
-  type ShipListRequest,
-  type ShipListResponse,
   type ShipSummary,
 } from '../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../model/ship-list-by-owner';
 import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import { appLogger } from '../services/logger';
 import { MissionService } from '../services/mission.service';
@@ -1618,10 +1617,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     this.unsubscribeShipListResponse?.();
-    const shipRequest: ShipListRequest = { playerName, characterId, sessionKey };
-    this.unsubscribeShipListResponse = this.shipExteriorSocketService.listShips(
+    const shipRequest: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
+    };
+    this.unsubscribeShipListResponse = this.shipExteriorSocketService.listShipsByOwner(
       shipRequest,
-      (shipResponse: ShipListResponse) => {
+      (shipResponse: ShipListByOwnerResponse) => {
         if (!shipResponse.success) {
           return;
         }

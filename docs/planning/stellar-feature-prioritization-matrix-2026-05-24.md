@@ -1,7 +1,7 @@
 # Stellar Feature Prioritization Matrix
 
 Date: 2026-05-24
-Companion to: docs/stellar-brainstorming-findings-2026-05-24.md
+Companion to: docs/planning/stellar-brainstorming-findings-2026-05-24.md
 Scope: Horizon 1 first, with explicit Horizon 2 motivation tracking
 
 ## How to Read This Matrix
@@ -40,6 +40,7 @@ Interpretation:
 | SW-12 | Minimal Ship-to-Ship Encounter v0 | H1/H2 bridge | 4 | 3 | 3 | 3 | 5 | 3.85 | Enables piracy, cargo theft, and sacrificial drone interactions without full combat depth |
 | SW-13 | External Object Presentation Expansion | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Improves debris, ship, gate, and station readability in ship-external view |
 | SW-14 | In-System Short-Hop Drive | H1/H2 bridge | 5 | 3 | 3 | 4 | 5 | 4.00 | Makes in-system travel practical without removing fuel and route pressure |
+| SW-15 | Minimal Character Bust Builder v0 | H1/H2 bridge | 4 | 4 | 3 | 4 | 5 | 3.60 | Browser-friendly bust customization for player identity and NPC reuse |
 
 ## Ranked Small-Win Order
 
@@ -58,6 +59,7 @@ Revised canonical ranking (descending by score):
 12. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
 13. SW-11 Skill Gating Scaffold (Mining First) (3.75)
 14. SW-13 External Object Presentation Expansion (3.75)
+15. SW-15 Minimal Character Bust Builder v0 (3.60)
 
 Tie-break rule used for equal scores: prefer lower risk and fewer dependencies for H1.
 
@@ -100,6 +102,9 @@ Reason: better visible momentum in economy systems while preserving one hardenin
 | BB-08 | Asymmetric Combat and Piracy Pressure System | H2/H3 | 5 | 5 | 4 | 5 | 5 | 3.55 | Requires encounter design, cargo theft rules, drone lethality rules, and careful identity protection |
 | BB-09 | External Scene Identity and Landmark System | H2 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires object families, LOD/mesh rules, landmark clarity, and scene loading discipline |
 | BB-10 | In-System Short-Hop Travel Network | H2 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires drive model, fuel economy balancing, route constraints, and mission/market integration |
+| BB-11 | Character Identity and Communication Bust Pipeline | H2/H3 | 5 | 5 | 4 | 5 | 5 | 3.55 | Requires browser-safe mesh/material pipeline, customization persistence, NPC reuse, and comms scene integration |
+| BB-12 | Dynamic Faction Ecology and Consequence Memory | H2/H3 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires faction state model, control-pressure simulation, and readable consequence outputs |
+| BB-13 | Run Specialization and Legacy Progression Layer | H2/H3 | 5 | 4 | 4 | 4 | 5 | 3.90 | Requires specialization constraints, legacy unlock governance, and anti-power-creep balancing |
 
 ## Big Bet Sequencing Recommendation
 
@@ -113,6 +118,9 @@ Reason: better visible momentum in economy systems while preserving one hardenin
 8. BB-08 Asymmetric Combat and Piracy Pressure System
 9. BB-09 External Scene Identity and Landmark System
 10. BB-10 In-System Short-Hop Travel Network
+11. BB-11 Character Identity and Communication Bust Pipeline
+12. BB-12 Dynamic Faction Ecology and Consequence Memory
+13. BB-13 Run Specialization and Legacy Progression Layer
 
 Reasoning:
 - BB-02 and BB-03 produce visible gameplay depth with manageable risk compared to full mission scripting.
@@ -125,6 +133,9 @@ Reasoning:
 - BB-08 should begin with a narrow piracy encounter model before adding ship-to-ship escalation paths.
 - BB-09 should start with debris and landmark families before full ship/station visual taxonomy.
 - BB-10 should start with a single low-tier short-hop drive before adding broader system transit options.
+- BB-11 should start with preset-driven busts and deterministic asset constraints before deeper customization.
+- BB-12 should begin with a small faction set and explicit consequence telemetry before large simulation breadth.
+- BB-13 should begin with one specialization branch and one constrained legacy unlock band.
 
 ## Technology Tree and Skills Addendum (New)
 
@@ -207,6 +218,38 @@ Validation expectations:
 - Unit tests for drive cost and route eligibility.
 - Contract tests for external object descriptors and identity fields.
 - Integration tests for travel action outcomes and scene object selection.
+
+## Character Bust Builder Addendum (New)
+
+Scope statement:
+- Build a minimal browser-based character builder focused on bust-level face identity, with reuse for NPCs and ship-to-ship communication views.
+
+Core constraints:
+1. Treat as a separate high-3D-budget implementation track.
+2. Limit v0 to bust-level controls: face variants, skin tones, tattoos, scars.
+3. Preserve runtime performance and avoid degrading existing scene responsiveness.
+4. Save/load format should be deterministic and reusable by NPC generation.
+
+Validation expectations:
+- Unit tests for serialization/deserialization of bust customization state.
+- Contract tests for identity payload fields used by player/NPC views.
+- Integration tests for rendering busts in communication contexts.
+
+## Replayability Roundout Addendum (New)
+
+Scope statement:
+- Improve long-term replayability through (a) dynamic faction ecology with persistent world consequences and (b) per-run specialization paired with constrained campaign-level legacy progression.
+
+Core constraints:
+1. Faction outcomes must be visible and interpretable in missions, routes, and markets.
+2. Legacy progression should expand options, not collapse challenge.
+3. Specialization choices should materially differentiate runs.
+4. Replayability systems must avoid power creep that invalidates early/mid-game loops.
+
+Validation expectations:
+- Simulation tests for faction state transitions and territorial/economic deltas.
+- Contract tests for consequence summary payloads and legacy progression state.
+- Integration tests confirming that distinct builds produce distinct viable play patterns.
 
 Recurring decomposition reminder:
 - ship-external-view and stellar-viewer should be reviewed periodically even when they are not the primary focus of a sprint, because they remain structural hot points.

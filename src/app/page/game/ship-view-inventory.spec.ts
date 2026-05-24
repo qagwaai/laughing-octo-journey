@@ -77,7 +77,7 @@ function setup(options: {
   navigationState?: NavigationState;
 }) {
   const mockShipService = {
-    listShips: jasmine.createSpy('listShips'),
+    listShipsByOwner: jasmine.createSpy('listShipsByOwner'),
   };
   const mockSocketLifecycle = {
     runWhenConnected: jasmine.createSpy('runWhenConnected').and.callFake((callback: () => void) => callback()),
@@ -964,11 +964,11 @@ describe('ShipViewInventoryPage', () => {
         joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
       },
     });
-    mockShipService.listShips.calls.reset();
+    mockShipService.listShipsByOwner.calls.reset();
 
     component['refreshShipFromServer']();
 
-    expect(mockShipService.listShips).not.toHaveBeenCalled();
+    expect(mockShipService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
   it('does not replace ship when refresh response has no matching ship', () => {
@@ -981,8 +981,8 @@ describe('ShipViewInventoryPage', () => {
         joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
       },
     });
-    mockShipService.listShips.calls.reset();
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.calls.reset();
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({ success: true, ships: [{ id: 'different-ship', name: 'Other', model: 'X', tier: 1, spatial: null }] });
     });
 
@@ -1002,8 +1002,8 @@ describe('ShipViewInventoryPage', () => {
         joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
       },
     });
-    mockShipService.listShips.calls.reset();
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.calls.reset();
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [
@@ -1045,8 +1045,8 @@ describe('ShipViewInventoryPage', () => {
         joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
       },
     });
-    mockShipService.listShips.calls.reset();
-    mockShipService.listShips.and.callFake((_request: any, cb: (response: any) => void) => {
+    mockShipService.listShipsByOwner.calls.reset();
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
         ships: [

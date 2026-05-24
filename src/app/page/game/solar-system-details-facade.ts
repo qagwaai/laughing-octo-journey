@@ -1,6 +1,7 @@
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import type { ViewerBody, SolarSystemGetResponse } from '../../model/solar-system-get';
-import type { ShipListRequest, ShipListResponse, ShipSummary } from '../../model/ship-list';
+import type { ShipSummary } from '../../model/ship-list';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
@@ -158,13 +159,16 @@ export class SolarSystemDetailsFacade {
       return;
     }
 
-    const request: ShipListRequest = {
+    const request: ShipListByOwnerRequest = {
       playerName,
-      characterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
     };
 
-    this.deps.shipService.listShips(request, (response: ShipListResponse) => {
+    this.deps.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       if (!response.success) {
         this.deps.setShipRows([]);
         return;

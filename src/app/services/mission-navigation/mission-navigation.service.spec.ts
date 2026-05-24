@@ -88,7 +88,7 @@ describe('MissionNavigationService', () => {
       'getSessionKey',
     ]);
 
-    const shipServiceSpy = jasmine.createSpyObj('ShipService', ['listShips']);
+    const shipServiceSpy = jasmine.createSpyObj('ShipService', ['listShipsByOwner']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -121,12 +121,17 @@ describe('MissionNavigationService', () => {
     };
 
     // Mock ship service to return empty list (ship fetch fails gracefully)
-    shipService.listShips.and.callFake((_request, callback) => {
+    shipService.listShipsByOwner.and.callFake((_request, callback) => {
       callback({
         success: false,
         message: 'No ships',
-        playerName: 'test-player',
-        characterId: 'char-123',
+        owner: {
+          ownerType: 'player-character',
+          playerId: 'player-1',
+          characterId: 'char-123',
+          npcId: null,
+          factionId: null,
+        },
         ships: [],
       });
     });
@@ -152,12 +157,17 @@ describe('MissionNavigationService', () => {
       sessionKey: 'session-key',
     };
 
-    shipService.listShips.and.callFake((_request, callback) => {
+    shipService.listShipsByOwner.and.callFake((_request, callback) => {
       callback({
         success: false,
         message: '',
-        playerName: '',
-        characterId: '',
+        owner: {
+          ownerType: 'player-character',
+          playerId: null,
+          characterId: null,
+          npcId: null,
+          factionId: null,
+        },
         ships: [],
       });
     });
@@ -184,7 +194,7 @@ describe('MissionNavigationService', () => {
 
     const result = await service.prepareNavigation(context);
 
-    expect(shipService.listShips).not.toHaveBeenCalled();
+    expect(shipService.listShipsByOwner).not.toHaveBeenCalled();
     expect(result.joinShip).toBeUndefined();
   });
 });

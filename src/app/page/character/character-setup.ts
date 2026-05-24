@@ -12,7 +12,7 @@ import {
 } from '../../model/character-name-suggestions';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
-import { type ShipListRequest, type ShipListResponse } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
@@ -194,12 +194,15 @@ export default class CharacterSetupPage implements OnDestroy {
       return;
     }
 
-    const followupRequest: ShipListRequest = {
+    const followupRequest: ShipListByOwnerRequest = {
       playerName,
-      characterId: resolvedCharacterId,
       sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId: resolvedCharacterId,
+      },
     };
-    this.shipService.listShips(followupRequest, (response: ShipListResponse) => {
+    this.shipService.listShipsByOwner(followupRequest, (response: ShipListByOwnerResponse) => {
       if (!response.success) {
         appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
         this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);

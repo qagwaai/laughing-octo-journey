@@ -8,14 +8,13 @@ import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
   coerceShipModel,
   coerceShipStatus,
   coerceShipTier,
-  type ShipListRequest,
-  type ShipListResponse,
   type ShipSummary,
 } from '../../model/ship-list';
 import { SessionService } from '../../services/session.service';
@@ -89,8 +88,15 @@ export default class ShipHangarPage {
     this.isLoadingShips.set(true);
     this.shipListError.set(null);
 
-    const request: ShipListRequest = { playerName, characterId, sessionKey };
-    this.shipService.listShips(request, (response: ShipListResponse) => {
+    const request: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId,
+      },
+    };
+    this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
       this.isLoadingShips.set(false);
       if (response.success) {
         const normalizedShips = (response.ships ?? []).map((ship) => this.normalizeShipSummary(ship));

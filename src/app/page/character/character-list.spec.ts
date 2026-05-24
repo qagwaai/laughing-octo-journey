@@ -21,7 +21,8 @@ import {
 import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { INVALID_SESSION_EVENT } from '../../model/session';
-import type { ShipListRequest, ShipListResponse, ShipSummary } from '../../model/ship-list';
+import type { ShipSummary } from '../../model/ship-list';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
@@ -44,23 +45,28 @@ function setup(options: {
   socketService: MockSocketService;
   sessionService: MockSessionService;
   playerName?: string;
-  shipService?: { listShips: jasmine.Spy };
+  shipService?: { listShipsByOwner: jasmine.Spy };
 }): { component: CharacterListPage; fixture: ComponentFixture<CharacterListPage> } {
   const router = makeMockRouter(options.playerName ?? 'Pioneer');
   const shipService =
     options.shipService ??
     ({
-      listShips: jasmine.createSpy('listShips').and.callFake(
-        (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+      listShipsByOwner: jasmine.createSpy('listShipsByOwner').and.callFake(
+        (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
           cb({
             success: true,
             message: 'ok',
-            playerName: req.playerName,
-            characterId: req.characterId,
+            owner: {
+              ownerType: 'player-character',
+              playerId: null,
+              characterId: req.owner.characterId ?? null,
+              npcId: null,
+              factionId: null,
+            },
             ships: [],
           }),
       ),
-    } as { listShips: jasmine.Spy });
+    } as { listShipsByOwner: jasmine.Spy });
 
   TestBed.configureTestingModule({
     imports: [CharacterListPage],
@@ -250,18 +256,23 @@ describe('CharacterListPage', () => {
 
   describe('navigateToCharacterSetup()', () => {
     let router: ReturnType<typeof makeMockRouter>;
-    let shipServiceStub: { listShips: jasmine.Spy };
+    let shipServiceStub: { listShipsByOwner: jasmine.Spy };
 
     beforeEach(() => {
       router = makeMockRouter('Pioneer');
       shipServiceStub = {
-        listShips: jasmine.createSpy('listShips').and.callFake(
-          (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+        listShipsByOwner: jasmine.createSpy('listShipsByOwner').and.callFake(
+          (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
             cb({
               success: true,
               message: 'ok',
-              playerName: req.playerName,
-              characterId: req.characterId,
+              owner: {
+                ownerType: 'player-character',
+                playerId: null,
+                characterId: req.owner.characterId ?? null,
+                npcId: null,
+                factionId: null,
+              },
               ships: [],
             }),
         ),
@@ -388,18 +399,26 @@ describe('CharacterListPage', () => {
           epochMs: 1700000000000,
         },
       };
-      shipServiceStub.listShips.and.callFake(
-        (req: ShipListRequest, cb: (resp: ShipListResponse) => void) => {
+      shipServiceStub.listShipsByOwner.and.callFake(
+        (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) => {
           expect(req).toEqual({
             playerName: 'Pioneer',
-            characterId: '1',
             sessionKey: 'test-session-key',
+            owner: {
+              ownerType: 'player-character',
+              characterId: '1',
+            },
           });
           cb({
             success: true,
             message: 'ok',
-            playerName: req.playerName,
-            characterId: req.characterId,
+            owner: {
+              ownerType: 'player-character',
+              playerId: 'player-1',
+              characterId: '1',
+              npcId: null,
+              factionId: null,
+            },
             ships: [realShip],
           });
         },
@@ -606,13 +625,18 @@ describe('CharacterListPage', () => {
           {
             provide: ShipService,
             useValue: {
-              listShips: jasmine.createSpy('listShips').and.callFake(
-                (req: ShipListRequest, cb: (resp: ShipListResponse) => void) =>
+              listShipsByOwner: jasmine.createSpy('listShipsByOwner').and.callFake(
+                (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
                   cb({
                     success: true,
                     message: 'ok',
-                    playerName: req.playerName,
-                    characterId: req.characterId,
+                    owner: {
+                      ownerType: 'player-character',
+                      playerId: null,
+                      characterId: req.owner.characterId ?? null,
+                      npcId: null,
+                      factionId: null,
+                    },
                     ships: [],
                   }),
               ),
