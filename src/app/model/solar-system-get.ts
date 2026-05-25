@@ -4,6 +4,12 @@ import { SolarSystemSummary } from './solar-system-list';
 export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';
 
+export interface SolarSystemGetRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'station' | string;
 export type ViewerStationKind = 'market' | string;
 
@@ -65,6 +71,9 @@ export interface SolarSystemGetRequest {
   playerName: string;
   sessionKey: string;
   solarSystemId: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: SolarSystemGetRequestIdentity;
   asOf?: string;
   requestId?: string;
 }
@@ -72,6 +81,8 @@ export interface SolarSystemGetRequest {
 export interface SolarSystemGetResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: SolarSystemGetRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;

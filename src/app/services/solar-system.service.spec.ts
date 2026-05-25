@@ -51,7 +51,7 @@ describe('SolarSystemService', () => {
     service = TestBed.inject(SolarSystemService);
   });
 
-  it('emits solar-system-list-request and resolves callback once', () => {
+  it('emits solar-system-list-request and resolves only matching responses', () => {
     const callback = jasmine.createSpy('listCallback');
 
     service.listSolarSystems(
@@ -61,12 +61,40 @@ describe('SolarSystemService', () => {
 
     expect(socket.emittedEvents[0].event).toBe(SOLAR_SYSTEM_LIST_REQUEST_EVENT);
     expect(socket.emittedEvents[0].data).toEqual(
-      jasmine.objectContaining({ playerName: 'Pilot', sessionKey: 'sk', limit: 50 }),
+      jasmine.objectContaining({
+        playerName: 'Pilot',
+        sessionKey: 'sk',
+        limit: 50,
+        correlationId: jasmine.any(String),
+        correlationSource: 'solar-system-service.listSolarSystems',
+        requestIdentity: {
+          operation: 'solar-system-list',
+          entityType: 'all-sources',
+          containerId: 'pilot||||50',
+        },
+      }),
     );
+
+    const requestPayload = socket.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: requestPayload.requestIdentity,
+      playerName: 'Other',
+      solarSystems: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
 
     socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
       playerName: 'Pilot',
       solarSystems: [],
     });
@@ -81,7 +109,7 @@ describe('SolarSystemService', () => {
     expect(callback.calls.first().args[0].message).toBe('ok');
   });
 
-  it('emits solar-system-get-request and resolves callback once', () => {
+  it('emits solar-system-get-request and resolves only matching responses', () => {
     const callback = jasmine.createSpy('getCallback');
 
     service.getSolarSystem(
@@ -90,16 +118,41 @@ describe('SolarSystemService', () => {
     );
 
     expect(socket.emittedEvents[0].event).toBe(SOLAR_SYSTEM_GET_REQUEST_EVENT);
+    expect(socket.emittedEvents[0].data).toEqual(
+      jasmine.objectContaining({
+        playerName: 'Pilot',
+        sessionKey: 'sk',
+        solarSystemId: 'sol',
+        correlationId: jasmine.any(String),
+        correlationSource: 'solar-system-service.getSolarSystem',
+        requestIdentity: {
+          operation: 'solar-system-get',
+          entityType: 'sol',
+          containerId: 'pilot|sol|',
+        },
+      }),
+    );
+
+    const requestPayload = socket.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: requestPayload.requestIdentity,
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
 
     socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      solarSystemId: 'sol',
-      bodies: [],
-    });
-    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
-      success: true,
-      message: 'late',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
       solarSystemId: 'sol',
       bodies: [],
     });

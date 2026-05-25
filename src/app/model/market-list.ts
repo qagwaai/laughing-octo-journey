@@ -6,6 +6,12 @@ export const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';
 export const MARKET_LIST_BY_LOCATION_REQUEST_EVENT = 'market-list-by-location-request';
 export const MARKET_LIST_BY_LOCATION_RESPONSE_EVENT = 'market-list-by-location-response';
 
+export interface MarketListRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 /**
  * Socket payload for listing markets, optionally constrained by system.
  */
@@ -13,6 +19,9 @@ export interface MarketListRequest {
   playerName: string;
   sessionKey: string;
   solarSystemId?: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: MarketListRequestIdentity;
 }
 
 /**
@@ -57,6 +66,8 @@ export interface MarketSummary {
 export interface MarketListResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: MarketListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   markets: MarketSummary[];
@@ -69,6 +80,9 @@ export interface MarketListByLocationRequest {
   playerName: string;
   sessionKey: string;
   solarSystemId: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: MarketListRequestIdentity;
   positionKm: Triple;
   distanceAu: number;
   limit?: number;
@@ -83,6 +97,8 @@ export interface MarketListByLocationRequest {
 export interface MarketListByLocationResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: MarketListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   positionKm?: Triple;

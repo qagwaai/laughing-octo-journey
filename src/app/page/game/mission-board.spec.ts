@@ -81,11 +81,18 @@ describe('MissionBoardPage', () => {
     expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
     expect(socketService.emittedEvents[0]).toEqual({
       event: MISSION_LIST_REQUEST_EVENT,
-      data: {
+      data: jasmine.objectContaining({
         playerName: 'Pioneer',
         characterId: 'c-1',
         sessionKey: 'test-session-key',
-      },
+        correlationId: jasmine.any(String),
+        correlationSource: 'mission-board-service.listMissions',
+        requestIdentity: {
+          operation: 'mission-list',
+          entityType: 'mission',
+          containerId: 'c-1',
+        },
+      }),
     });
   });
 

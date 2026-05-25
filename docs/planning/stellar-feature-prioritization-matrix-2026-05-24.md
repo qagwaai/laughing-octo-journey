@@ -26,6 +26,8 @@ Interpretation:
 
 | ID | Feature | Horizon Fit | Impact | Effort | Risk | Dependency Complexity | North-star Fit | Priority Score | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| SW-R01 | Regression Fix: Cold Boot Dart Launch Availability | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Expendable Dart Drone is in inventory but unavailable to launch at cold boot start; restore expected opening flow |
+| SW-R02 | Regression Fix: Missing Starter Ship Inventory Components | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Restore canonical starter components in ship inventory: Expendable Dart Drone, Sensor Array, Tractor Beam |
 | SW-01 | Mission Board Status Lanes | H1 | 4 | 2 | 1 | 2 | 5 | 4.50 | High clarity gain, low implementation risk |
 | SW-02 | Market Opportunity Pings | H1/H2 bridge | 4 | 2 | 2 | 3 | 5 | 4.25 | Gives economy excitement before full dynamic events |
 | SW-03 | Quick Dock to Trade Flow | H1 | 4 | 2 | 2 | 2 | 4 | 4.15 | Strong short-session loop completion |
@@ -41,50 +43,67 @@ Interpretation:
 | SW-13 | External Object Presentation Expansion | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Improves debris, ship, gate, and station readability in ship-external view |
 | SW-14 | In-System Short-Hop Drive | H1/H2 bridge | 5 | 3 | 3 | 4 | 5 | 4.00 | Makes in-system travel practical without removing fuel and route pressure |
 | SW-15 | Minimal Character Bust Builder v0 | H1/H2 bridge | 4 | 4 | 3 | 4 | 5 | 3.60 | Browser-friendly bust customization for player identity and NPC reuse |
+| SW-16 | Ship-External Target Persistence on Re-Entry | H1 | 4 | 2 | 2 | 2 | 5 | 4.30 | Preserve current target when re-entering ship-external-view if target remains valid |
+| SW-COR | Socket Correlation Contract Hardening | H1 foundation | 5 | 2 | 1 | 2 | 5 | 4.65 | Enforce correlationId echo on all socket request/response pairs; prevent concurrent-request state corruption; SW-08 amendment |
 
 ## Ranked Small-Win Order
 
 Revised canonical ranking (descending by score):
-1. SW-08 Contract Safety Gate in CI (4.65)
-2. SW-01 Mission Board Status Lanes (4.50)
-3. SW-02 Market Opportunity Pings (4.25)
-4. SW-03 Quick Dock to Trade Flow (4.15)
-5. SW-05 Ship Condition Badges in Hangar (4.05)
-6. SW-06 Discovery Log v1 (4.00)
-7. SW-10 Technology Progress Tree Viewer v0 (4.00)
-8. SW-14 In-System Short-Hop Drive (4.00)
-9. SW-04 Fabrication Queue Timeline (3.85)
-10. SW-07 Spatial Clarity Pack (3.85)
-11. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
-12. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
-13. SW-11 Skill Gating Scaffold (Mining First) (3.75)
-14. SW-13 External Object Presentation Expansion (3.75)
-15. SW-15 Minimal Character Bust Builder v0 (3.60)
+1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability (4.65)
+2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components (4.65)
+3. SW-08 Contract Safety Gate in CI (4.65)
+4. SW-COR Socket Correlation Contract Hardening (4.65)
+5. SW-01 Mission Board Status Lanes (4.50)
+6. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
+7. SW-02 Market Opportunity Pings (4.25)
+8. SW-03 Quick Dock to Trade Flow (4.15)
+9. SW-05 Ship Condition Badges in Hangar (4.05)
+10. SW-06 Discovery Log v1 (4.00)
+11. SW-10 Technology Progress Tree Viewer v0 (4.00)
+12. SW-14 In-System Short-Hop Drive (4.00)
+13. SW-04 Fabrication Queue Timeline (3.85)
+14. SW-07 Spatial Clarity Pack (3.85)
+15. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
+16. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
+17. SW-11 Skill Gating Scaffold (Mining First) (3.75)
+18. SW-13 External Object Presentation Expansion (3.75)
+19. SW-15 Minimal Character Bust Builder v0 (3.60)
 
 Tie-break rule used for equal scores: prefer lower risk and fewer dependencies for H1.
 
+Correlation contract override rule:
+- Any socket event pair missing correlationId echo is a foundation-layer vulnerability. SW-COR must execute before any new socket event pair is merged.
+
+Regression override rule:
+- Any opening-loop regression that blocks expected first-action gameplay (for example initial Dart launch availability) should execute before same-scope net-new work.
+- Any regression that removes canonical starter inventory components should execute before same-scope net-new work.
+
 ## Recommended Top 3 for Next Sprint
 
-1. SW-08 Contract Safety Gate in CI
-- Why now: Prevents drift while feature throughput increases.
-- Success signal: contract mismatch is caught before merge at least once in dry-run validation.
-- Validation path: CI job + failing test fixture for intentional mismatch.
+1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability
+- Why now: Opening-loop regression blocks expected first action and degrades onboarding reliability.
+- Success signal: cold boot starts with Expendable Dart Drone launch available whenever starting inventory contains the item.
+- Validation path: focused opening-flow tests for inventory-to-launch state and ship-external launch entry path.
 
-2. SW-01 Mission Board Status Lanes
-- Why now: Directly improves mission comprehension and progression clarity.
-- Success signal: users can identify next actionable mission in under 10 seconds.
-- Validation path: unit/component tests for tab grouping + one e2e filter flow.
+2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components
+- Why now: Player starts with empty inventory; all canonical starter components (Expendable Dart Drone, Sensor Array, Tractor Beam) must be present.
+- Success signal: cold boot inventory contains all three canonical starter components.
+- Validation path: inventory state test at session start.
 
-3. SW-03 Quick Dock to Trade Flow
-- Why now: Immediate loop acceleration from spatial scene to economy action.
-- Success signal: reduced clicks/time from target market selection to first trade action.
-- Validation path: e2e path from exterior context to market transaction intent.
+3. SW-COR Socket Correlation Contract Hardening
+- Why now: Confirmed concurrent-request race condition causes silent state corruption on item-upsert. Foundation vulnerability affects all socket event pairs.
+- Success signal: N=3 concurrent item-upserts each resolve only their own response; correlationId mismatch is dropped and logged; SW-08 CI catches missing correlation echo.
+- Validation path: concurrent contract fixture + SW-08 rule catalog update.
+
+Immediate follow-up priority:
+- SW-16 Ship-External Target Persistence on Re-Entry should be scheduled in the same reliability window as SW-R01 because both protect early player trust in interaction continuity.
+- SW-R02 Missing Starter Ship Inventory Components should be scheduled in the same reliability window as SW-R01 because both protect opening-loop viability.
 
 ## Alternate Top 3 (If Economy Excitement Is Preferred)
 
-1. SW-08 Contract Safety Gate in CI
-2. SW-02 Market Opportunity Pings
-3. SW-03 Quick Dock to Trade Flow
+1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability
+2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components
+3. SW-08 Contract Safety Gate in CI
 
 Reason: better visible momentum in economy systems while preserving one hardening item.
 

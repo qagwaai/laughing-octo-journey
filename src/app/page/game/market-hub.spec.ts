@@ -122,7 +122,7 @@ describe('MarketHubPage', () => {
 
     expect(socketService.emittedEvents.find((e) => e.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)).toEqual({
       event: MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
-      data: {
+      data: jasmine.objectContaining({
         playerName: 'Pioneer',
         sessionKey: 'session-key',
         solarSystemId: 'sol',
@@ -131,7 +131,14 @@ describe('MarketHubPage', () => {
         limit: 50,
         locationTypes: ['station', 'free-floating'],
         characterId: 'c-1',
-      },
+        correlationId: jasmine.any(String),
+        correlationSource: 'market-service.listMarketsByLocation',
+        requestIdentity: {
+          operation: 'market-list-by-location',
+          entityType: 'market',
+          containerId: 'sol',
+        },
+      }),
     });
   });
 
@@ -152,18 +159,27 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
-    expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-      data: {
-        playerName: 'Pioneer',
-        sessionKey: 'session-key',
-        owner: { ownerType: 'player-character', characterId: 'c-1' },
-      },
-    });
+    expect(socketService.emittedEvents[0]).toEqual(
+      jasmine.objectContaining({
+        event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        data: jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'session-key',
+          owner: { ownerType: 'player-character', characterId: 'c-1' },
+        }),
+      }),
+    );
+
+    const shipListRequest = socketService.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
 
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: shipListRequest.correlationId,
+      requestIdentity: shipListRequest.requestIdentity,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
@@ -196,14 +212,16 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
-    expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-      data: {
-        playerName: 'Pioneer',
-        sessionKey: 'session-key',
-        owner: { ownerType: 'player-character', characterId: 'c-1' },
-      },
-    });
+    expect(socketService.emittedEvents[0]).toEqual(
+      jasmine.objectContaining({
+        event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        data: jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'session-key',
+          owner: { ownerType: 'player-character', characterId: 'c-1' },
+        }),
+      }),
+    );
   });
 
   it('should hydrate active ship using first ship with usable position when current ship is missing', () => {
@@ -215,9 +233,16 @@ describe('MarketHubPage', () => {
       navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
     });
 
+    const shipListRequest = socketService.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: shipListRequest.correlationId,
+      requestIdentity: shipListRequest.requestIdentity,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {

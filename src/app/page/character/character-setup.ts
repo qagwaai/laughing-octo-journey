@@ -29,6 +29,7 @@ interface CharacterSetupNavigationState {
 }
 
 const LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY = 'character.setup.lastSuggestedName';
+const STARTER_SHIP_PROVISIONING_TIMEOUT_MS = 3000;
 
 @Component({
   selector: 'app-character-setup-page',
@@ -137,7 +138,7 @@ export default class CharacterSetupPage implements OnDestroy {
       }
     }
 
-    const handleSaveResponse = (response: CharacterAddResponse | CharacterEditResponse): void => {
+    const handleSaveResponse = async (response: CharacterAddResponse | CharacterEditResponse): Promise<void> => {
       this.isSubmitting.set(false);
       if (response.success) {
         this.isSaved.set(true);
@@ -145,7 +146,7 @@ export default class CharacterSetupPage implements OnDestroy {
         this.errorMessage.set(null);
         if (!isEditMode) {
           const addResponse = response as CharacterAddResponse;
-          this.createStarterShipForCharacter(addResponse.characterId);
+          await this.createStarterShipForCharacter(addResponse.characterId);
         }
         this.navigateToCharacterList();
       } else {
@@ -165,7 +166,7 @@ export default class CharacterSetupPage implements OnDestroy {
         sessionKey: this.sessionService.getSessionKey()!,
       };
       this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
-        handleSaveResponse(response);
+        void handleSaveResponse(response);
       });
       return;
     }
@@ -176,68 +177,95 @@ export default class CharacterSetupPage implements OnDestroy {
       sessionKey: this.sessionService.getSessionKey()!,
     };
     this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
-      handleSaveResponse(response);
+      void handleSaveResponse(response);
     });
   }
 
   /**
    * Resolves starter ship and applies deterministic starter configuration/items.
    */
-  private createStarterShipForCharacter(characterId?: string): void {
-    const playerName = this.playerName().trim();
-    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-    const resolvedCharacterId = characterId?.trim() ?? '';
+  private createStarterShipForCharacter(characterId?: string): Promise<void> {
+    return new Promise((resolve) => {
+      let finished = false;
+      const finish = (): void => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        resolve();
+      };
 
-    if (!playerName || !sessionKey || !resolvedCharacterId) {
-      appLogger.warn('Skipping starter ship upsert due to missing character context.');
-      this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
-      return;
-    }
+      const timeout = window.setTimeout(() => {
+        appLogger.warn('Starter ship provisioning timed out before confirmation callback.');
+        this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
+        finish();
+      }, STARTER_SHIP_PROVISIONING_TIMEOUT_MS);
 
-    const followupRequest: ShipListByOwnerRequest = {
-      playerName,
-      sessionKey,
-      owner: {
-        ownerType: 'player-character',
-        characterId: resolvedCharacterId,
-      },
-    };
-    this.shipService.listShipsByOwner(followupRequest, (response: ShipListByOwnerResponse) => {
-      if (!response.success) {
-        appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
-        this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
+      const finishAndClearTimeout = (): void => {
+        window.clearTimeout(timeout);
+        finish();
+      };
+
+      const playerName = this.playerName().trim();
+      const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+      const resolvedCharacterId = characterId?.trim() ?? '';
+
+      if (!playerName || !sessionKey || !resolvedCharacterId) {
+        appLogger.warn('Skipping starter ship upsert due to missing character context.');
+        this.warningMessage.set(this.t.character.setup.messages.starterShipInitPending);
+        finishAndClearTimeout();
         return;
       }
 
-      const starterShipId = response.ships?.[0]?.id?.trim();
-      if (!starterShipId) {
-        appLogger.warn('Starter ship id was not returned by ship-list response.');
-        this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
-        return;
-      }
-
-      const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
-      this.socketService.upsertShip(
-        {
-          playerName,
+      const followupRequest: ShipListByOwnerRequest = {
+        playerName,
+        sessionKey,
+        owner: {
+          ownerType: 'player-character',
           characterId: resolvedCharacterId,
-          sessionKey,
-          ship: shipUpdate,
         },
-        (upsertResponse: ShipUpsertResponse) => {
-          if (!upsertResponse.success) {
-            appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
-            this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
-            return;
-          }
+      };
+      this.shipService.listShipsByOwner(followupRequest, (response: ShipListByOwnerResponse) => {
+        if (!response.success) {
+          appLogger.warn('Unable to resolve starter ship from ship-list:', response.message);
+          this.warningMessage.set(this.t.character.setup.messages.starterShipResolvePending);
+          finishAndClearTimeout();
+          return;
+        }
 
-          if (!Array.isArray(upsertResponse.ship?.inventory)) {
-            appLogger.warn('Starter ship upsert did not include backend inventory payload.');
-          }
+        const starterShipId = response.ships?.[0]?.id?.trim();
+        if (!starterShipId) {
+          appLogger.warn('Starter ship id was not returned by ship-list response.');
+          this.warningMessage.set(this.t.character.setup.messages.starterShipMissingRecord);
+          finishAndClearTimeout();
+          return;
+        }
 
-          this.warningMessage.set(null);
-        },
-      );
+        const shipUpdate = generateDeterministicStarterShipUpdate(playerName, resolvedCharacterId, starterShipId);
+        this.socketService.upsertShip(
+          {
+            playerName,
+            characterId: resolvedCharacterId,
+            sessionKey,
+            ship: shipUpdate,
+          },
+          (upsertResponse: ShipUpsertResponse) => {
+            if (!upsertResponse.success) {
+              appLogger.warn('Starter ship upsert failed:', upsertResponse.message);
+              this.warningMessage.set(this.t.character.setup.messages.starterShipUpdateFailed);
+              finishAndClearTimeout();
+              return;
+            }
+
+            if (!Array.isArray(upsertResponse.ship?.inventory)) {
+              appLogger.warn('Starter ship upsert did not include backend inventory payload.');
+            }
+
+            this.warningMessage.set(null);
+            finishAndClearTimeout();
+          },
+        );
+      });
     });
   }
 

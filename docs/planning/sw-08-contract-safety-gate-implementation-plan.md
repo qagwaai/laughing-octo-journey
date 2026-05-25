@@ -1,7 +1,8 @@
 # SW-08 Contract Safety Gate Implementation Plan (Frontend-Led)
 
-Status: Stage 5 optimization and continuous assurance in progress
+Status: Completed (Maintenance Mode)
 Date: 2026-05-24
+Completed: 2026-05-25
 Repo: laughing-octo-journey
 
 ## 1. Objective
@@ -101,7 +102,7 @@ Stage 5 optimization additions:
 - Pre-merge PR checklist and assumption-change note guardrails are active for consumer assumption updates.
 - False-positive baseline is tracked via approved-exception proxy rate with a documented short action plan.
 
-Stage 3 tuning needed before completion:
+Ongoing maintenance guardrails:
 - Keep approved exceptions short-lived and review expiry dates before every merge window.
 - Confirm any future enum-expansion allowlist entries are tied to a clearly documented consumer fallback.
 - Scope any future hard-fail threshold to changed contract surfaces first to keep CI time and noise down.

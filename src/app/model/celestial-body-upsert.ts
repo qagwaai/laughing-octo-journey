@@ -4,6 +4,13 @@ import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './
 export const CELESTIAL_BODY_UPSERT_REQUEST_EVENT = 'celestial-body-upsert-request';
 export const CELESTIAL_BODY_UPSERT_RESPONSE_EVENT = 'celestial-body-upsert-response';
 
+export interface CelestialBodyUpsertRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+  characterId?: string;
+}
+
 export const DEFAULT_SOLAR_SYSTEM_ID = 'sol';
 
 export interface CelestialBodyUpsertVisualization {
@@ -84,11 +91,16 @@ export interface CelestialBodyUpsertRequest {
   playerName: string;
   /** Explicit actor character id for easier backend extraction. */
   createdByCharacterId: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: CelestialBodyUpsertRequestIdentity;
   celestialBody: CelestialBodyUpsertEntity;
 }
 
 export interface CelestialBodyUpsertResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: CelestialBodyUpsertRequestIdentity;
   celestialBody?: CelestialBodyUpsertEntity;
 }

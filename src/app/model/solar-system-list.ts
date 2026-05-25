@@ -3,6 +3,12 @@ import { Triple } from './shared/triple';
 export const SOLAR_SYSTEM_LIST_REQUEST_EVENT = 'solar-system-list-request';
 export const SOLAR_SYSTEM_LIST_RESPONSE_EVENT = 'solar-system-list-response';
 
+export interface SolarSystemListRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 export type SolarSystemSource = 'curated' | 'procedural';
 
 export interface SolarSystemPrimaryStarSummary {
@@ -33,6 +39,9 @@ export interface SolarSystemSummary {
 export interface SolarSystemListRequest {
   playerName: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: SolarSystemListRequestIdentity;
   source?: SolarSystemSource;
   maxDistanceParsec?: number;
   search?: string;
@@ -43,6 +52,8 @@ export interface SolarSystemListRequest {
 export interface SolarSystemListResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: SolarSystemListRequestIdentity;
   playerName?: string;
   solarSystems: SolarSystemSummary[];
   requestId?: string;

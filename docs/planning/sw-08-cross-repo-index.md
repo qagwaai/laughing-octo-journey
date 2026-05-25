@@ -1,7 +1,8 @@
 # SW-08 Cross-Repo Coordination Index
 
-Status: Active
+Status: Completed (Maintenance Mode)
 Date: 2026-05-24
+Completed: 2026-05-25
 Scope: Contract Safety Gate across laughing-octo-journey and solid-train
 
 ## Purpose
@@ -29,6 +30,15 @@ Backend repo documents:
 1. Stage 1: Report-only (warn)
 2. Stage 2: Soft fail with approved bypass
 3. Stage 3: Hard fail on PR path
+4. Stage 4: Operational stabilization with weekly metrics
+5. Stage 5: Optimization and continuous assurance
+
+## Current Status
+
+| Repo | Stage | PR Gate | Notes |
+| --- | --- | --- | --- |
+| laughing-octo-journey | Stage 5 | Hard fail | Weekly metrics + trend/recurrence guardrails active |
+| solid-train | Stage 5 | Hard fail | Producer-side checklist, migration-note discipline, and SLA timing active |
 
 ## Shared Status Board Template
 
@@ -67,3 +77,4 @@ Bypass requires:
 ## Change Log
 
 - 2026-05-24: Initial cross-repo index and shared status board template created.
+- 2026-05-25: SW-08 marked complete and transitioned to maintenance mode across both repos.

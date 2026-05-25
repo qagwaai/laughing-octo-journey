@@ -151,10 +151,12 @@ describe('CharacterListPage', () => {
 
       expect(socketService.emittedEvents.length).toBe(1);
       expect(socketService.emittedEvents[0].event).toBe(CHARACTER_LIST_REQUEST_EVENT);
-      expect(socketService.emittedEvents[0].data).toEqual({
-        playerName: 'Pioneer',
-        sessionKey: 'test-session-key',
-      });
+      expect(socketService.emittedEvents[0].data).toEqual(
+        jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'test-session-key',
+        }),
+      );
     });
 
     it('should show validation error when playerName is empty', () => {
@@ -556,12 +558,14 @@ describe('CharacterListPage', () => {
       expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].event).toBe(
         CHARACTER_DELETE_REQUEST_EVENT,
       );
-      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual({
-        playerName: 'Pioneer',
-        characterId: '1',
-        characterName: 'Nova',
-        sessionKey: 'test-session-key',
-      });
+      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1].data).toEqual(
+        jasmine.objectContaining({
+          playerName: 'Pioneer',
+          characterId: '1',
+          characterName: 'Nova',
+          sessionKey: 'test-session-key',
+        }),
+      );
       expect(component['isDeleting']()).toBe(true);
     });
 

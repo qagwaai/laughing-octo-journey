@@ -7,6 +7,7 @@ import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import { createCanonicalStarterShipInventory } from '../../model/domain/starter-ship';
 import {
   EXPENDABLE_DART_DRONE_DISPLAY_NAME,
   EXPENDABLE_DART_DRONE_ITEM_TYPE,
@@ -19,6 +20,7 @@ import {
   coerceShipModel,
   coerceShipStatus,
   coerceShipTier,
+  DEFAULT_SHIP_MODEL,
   ShipSummary,
 } from '../../model/ship-list';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
@@ -55,10 +57,37 @@ interface DevInventoryAction {
   buttonLabel: string;
 }
 
+interface StarterInventoryTemplateItem {
+  itemType: string;
+  displayName: string;
+  launchable: boolean;
+  tier?: number;
+}
+
 const SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
 const SENSOR_ARRAY_DISPLAY_NAME = 'Sensor Array';
 const TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
 const TRACTOR_BEAM_DISPLAY_NAME = 'Tractor Beam';
+const STARTER_ITEM_BY_SUFFIX: Record<string, StarterInventoryTemplateItem> = {
+  'expendable-dart-drone': {
+    itemType: EXPENDABLE_DART_DRONE_ITEM_TYPE,
+    displayName: EXPENDABLE_DART_DRONE_DISPLAY_NAME,
+    launchable: true,
+    tier: 1,
+  },
+  'sensor-array': {
+    itemType: SENSOR_ARRAY_ITEM_TYPE,
+    displayName: SENSOR_ARRAY_DISPLAY_NAME,
+    launchable: false,
+    tier: 1,
+  },
+  'ship-tractor-beam': {
+    itemType: TRACTOR_BEAM_ITEM_TYPE,
+    displayName: TRACTOR_BEAM_DISPLAY_NAME,
+    launchable: false,
+    tier: 1,
+  },
+};
 const SENSOR_ARRAY_MIN_TIER = 1;
 const SENSOR_ARRAY_MAX_TIER = 20;
 
@@ -100,6 +129,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
   private sessionService = inject(SessionService);
   private navigationState: ShipViewInventoryNavigationState =
     resolveNavigationState<ShipViewInventoryNavigationState>(this.router);
+  private starterInventoryRepairInFlightShipIds = new Set<string>();
+  private starterInventoryRepairAttemptedShipIds = new Set<string>();
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -127,6 +158,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
   constructor() {
     this.syncActiveShip(this.joinShip());
+    this.maybeRepairMissingStarterInventory(this.joinShip());
     this.socketLifecycleService.runWhenConnected(() => this.refreshShipFromServer());
   }
 
@@ -567,10 +599,11 @@ export default class ShipViewInventoryPage implements OnDestroy {
       });
 
       if (selected.ship) {
-        const normalizedShip = selected.ship;
+        const normalizedShip = this.mergeWithLocalInventoryIfIncomingEmpty(selected.ship);
         this.joinShip.set(normalizedShip);
         this.syncActiveShip(normalizedShip);
         this.refreshToastMessage.set(null);
+        this.maybeRepairMissingStarterInventory(normalizedShip);
         return;
       }
 
@@ -587,14 +620,377 @@ export default class ShipViewInventoryPage implements OnDestroy {
   }
 
   private normalizeShipSummary(ship: ShipSummary): ShipSummary {
-    const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
+    const rawShip = ship as ShipSummary & {
+      modelName?: string;
+      tierLevel?: number;
+      inventoryItemIds?: unknown;
+      inventoryIds?: unknown;
+    };
     return {
       ...ship,
       status: coerceShipStatus(rawShip.status),
       damageProfile: coerceShipDamageProfileOrNull(rawShip.damageProfile),
       model: coerceShipModel(rawShip.model ?? rawShip.modelName),
       tier: coerceShipTier(rawShip.tier ?? rawShip.tierLevel),
-      inventory: coerceShipInventory(rawShip.inventory),
+      inventory: this.resolveInventoryFromShipPayload(rawShip),
     };
+  }
+
+  private resolveInventoryFromShipPayload(
+    ship: ShipSummary & { inventoryItemIds?: unknown; inventoryIds?: unknown },
+  ): ShipItem[] {
+    const hasInventoryField = Array.isArray(ship.inventory);
+    const hasLegacyInventoryIdsField = Array.isArray(ship.inventoryItemIds) || Array.isArray(ship.inventoryIds);
+    const normalizedInventory = coerceShipInventory(ship.inventory);
+    if (normalizedInventory.length > 0) {
+      return normalizedInventory;
+    }
+
+    const legacyInventoryIds =
+      (Array.isArray(ship.inventoryItemIds) ? ship.inventoryItemIds : null) ??
+      (Array.isArray(ship.inventoryIds) ? ship.inventoryIds : null);
+    if (!legacyInventoryIds) {
+      return normalizedInventory;
+    }
+
+    const compatInventory = this.mapInventoryItemIdsToShipItems(ship.id, legacyInventoryIds);
+    if (compatInventory.length > 0) {
+      console.log(
+        '[inventory-sync-marker] compat-inventory-item-ids',
+        JSON.stringify({
+          shipId: ship.id,
+          count: compatInventory.length,
+        }),
+      );
+    }
+
+    if (!hasInventoryField && !hasLegacyInventoryIdsField) {
+      console.log(
+        '[inventory-sync-marker] contract-missing-inventory-fields',
+        JSON.stringify({
+          shipId: ship.id,
+          model: ship.model,
+          hasInventoryField,
+          hasLegacyInventoryIdsField,
+        }),
+      );
+    }
+
+    return compatInventory;
+  }
+
+  private mergeWithLocalInventoryIfIncomingEmpty(incomingShip: ShipSummary): ShipSummary {
+    const incomingInventory = incomingShip.inventory ?? [];
+    if (incomingInventory.length > 0) {
+      return incomingShip;
+    }
+
+    const localShip = this.joinShip();
+    if (!localShip || localShip.id !== incomingShip.id) {
+      return incomingShip;
+    }
+
+    const localInventory = localShip.inventory ?? [];
+    if (localInventory.length === 0) {
+      return incomingShip;
+    }
+
+    console.log(
+      '[inventory-sync-marker] preserve-local-inventory-on-empty-refresh',
+      JSON.stringify({
+        shipId: incomingShip.id,
+        localCount: localInventory.length,
+      }),
+    );
+
+    return {
+      ...incomingShip,
+      inventory: localInventory,
+    };
+  }
+
+  private mapInventoryItemIdsToShipItems(shipId: string, rawItemIds: unknown[]): ShipItem[] {
+    const now = new Date().toISOString();
+    const items: ShipItem[] = [];
+
+    for (const rawItemId of rawItemIds) {
+      if (typeof rawItemId !== 'string') {
+        continue;
+      }
+
+      const itemId = rawItemId.trim();
+      if (!itemId) {
+        continue;
+      }
+
+      const prefix = `${shipId}-`;
+      const suffix = itemId.startsWith(prefix) ? itemId.slice(prefix.length) : itemId;
+      const starterItem = STARTER_ITEM_BY_SUFFIX[suffix];
+
+      if (starterItem) {
+        items.push({
+          id: itemId,
+          itemType: starterItem.itemType,
+          displayName: starterItem.displayName,
+          tier: starterItem.tier,
+          launchable: starterItem.launchable,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: shipId },
+          owningPlayerId: null,
+          owningCharacterId: this.joinCharacter()?.id ?? null,
+          spatial: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        continue;
+      }
+
+      // Fallback for unknown ids keeps visibility instead of dropping inventory completely.
+      items.push({
+        id: itemId,
+        itemType: suffix,
+        displayName: suffix,
+        launchable: false,
+        state: 'contained',
+        damageStatus: 'intact',
+        container: { containerType: 'ship', containerId: shipId },
+        owningPlayerId: null,
+        owningCharacterId: this.joinCharacter()?.id ?? null,
+        spatial: null,
+        destroyedAt: null,
+        destroyedReason: null,
+        discoveredAt: null,
+        discoveredByCharacterId: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return items;
+  }
+
+  private maybeRepairMissingStarterInventory(ship: ShipSummary | null): void {
+    if (!ship) {
+      return;
+    }
+
+    const shipId = ship.id?.trim() ?? '';
+    if (
+      !shipId ||
+      this.starterInventoryRepairInFlightShipIds.has(shipId) ||
+      this.starterInventoryRepairAttemptedShipIds.has(shipId)
+    ) {
+      return;
+    }
+
+    const rawModel = typeof ship.model === 'string' ? ship.model.trim() : '';
+    if (!rawModel) {
+      return;
+    }
+
+    const normalizedModel = coerceShipModel(rawModel);
+    if (normalizedModel !== DEFAULT_SHIP_MODEL) {
+      return;
+    }
+
+    if ((ship.inventory ?? []).length > 0) {
+      return;
+    }
+
+    const sessionKey = this.sessionService.getSessionKey();
+    const playerName = this.playerName().trim();
+    const characterId = this.joinCharacter()?.id?.trim() ?? '';
+    if (!sessionKey || !playerName || !characterId) {
+      return;
+    }
+
+    this.starterInventoryRepairInFlightShipIds.add(shipId);
+    this.starterInventoryRepairAttemptedShipIds.add(shipId);
+
+    const starterItems = createCanonicalStarterShipInventory(shipId);
+    const upsertItem = (this.socketService as { upsertItem?: Function }).upsertItem;
+    const markerId = `starter-repair:${shipId}:${Date.now()}`;
+    console.log(
+      '[inventory-sync-marker] starter-repair-attempt',
+      JSON.stringify({
+        markerId,
+        playerName,
+        characterId,
+        shipId,
+        itemTypes: starterItems.map((item) => item.itemType),
+      }),
+    );
+    if (typeof upsertItem !== 'function') {
+      appLogger.warn('ShipViewInventoryPage starter inventory repair skipped: upsertItem unavailable.');
+      console.log(
+        '[inventory-sync-marker] starter-repair-skip',
+        JSON.stringify({
+          markerId,
+          reason: 'upsertItem-unavailable',
+          shipId,
+        }),
+      );
+      this.starterInventoryRepairInFlightShipIds.delete(shipId);
+      return;
+    }
+
+    let successCount = 0;
+
+    const runItemUpsert = (index: number): void => {
+      if (index >= starterItems.length) {
+        this.starterInventoryRepairInFlightShipIds.delete(shipId);
+        if (successCount === 0) {
+          appLogger.warn('ShipViewInventoryPage starter inventory repair failed for all item-upserts.', {
+            playerName,
+            characterId,
+            shipId,
+          });
+        }
+
+        console.log(
+          '[inventory-sync-marker] starter-repair-complete',
+          JSON.stringify({
+            markerId,
+            shipId,
+            successCount,
+            totalItems: starterItems.length,
+          }),
+        );
+
+        this.refreshShipFromServer();
+        return;
+      }
+
+      const starterItem = starterItems[index];
+      upsertItem.call(
+        this.socketService,
+        {
+          playerName,
+          sessionKey,
+          correlationSource: 'ship-view-inventory.starter-inventory-repair.item-upsert',
+          item: {
+            itemType: starterItem.itemType,
+            displayName: starterItem.displayName,
+            tier: starterItem.tier,
+            launchable: starterItem.launchable,
+            state: 'contained',
+            damageStatus: 'intact',
+            container: { containerType: 'ship', containerId: shipId },
+            owningPlayerId: playerName,
+            owningCharacterId: characterId,
+          },
+        },
+        (response: ItemUpsertResponse) => {
+          if (!response.success) {
+            appLogger.warn('ShipViewInventoryPage starter inventory item-upsert failed:', response.message, {
+              itemType: starterItem.itemType,
+              shipId,
+            });
+            console.log(
+              '[inventory-sync-marker] starter-repair-item-failed',
+              JSON.stringify({
+                markerId,
+                shipId,
+                itemType: starterItem.itemType,
+                message: response.message,
+              }),
+            );
+            runItemUpsert(index + 1);
+            return;
+          }
+
+          const responseItemType = response.item?.itemType?.trim()?.toLowerCase() ?? null;
+          const expectedItemType = starterItem.itemType.trim().toLowerCase();
+          const isResponseTypeMatch = responseItemType === expectedItemType;
+
+          successCount += 1;
+          console.log(
+            '[inventory-sync-marker] starter-repair-item-success',
+            JSON.stringify({
+              markerId,
+              shipId,
+              itemType: starterItem.itemType,
+              responseItemType,
+              responseItemId: response.item?.id ?? null,
+              responseTypeMatch: isResponseTypeMatch,
+            }),
+          );
+
+          if (!isResponseTypeMatch) {
+            console.log(
+              '[inventory-sync-marker] starter-repair-item-type-mismatch',
+              JSON.stringify({
+                markerId,
+                shipId,
+                expectedItemType,
+                responseItemType,
+              }),
+            );
+          }
+
+          const itemToMerge =
+            response.item && isResponseTypeMatch
+              ? response.item
+              : this.buildStarterItemProjection(shipId, starterItem);
+          this.mergeItemIntoCurrentShip(shipId, itemToMerge, starterItem.itemType);
+
+          runItemUpsert(index + 1);
+        },
+      );
+    };
+
+    runItemUpsert(0);
+  }
+
+  private buildStarterItemProjection(shipId: string, starterItem: StarterInventoryTemplateItem): ShipItem {
+    const now = new Date().toISOString();
+    return {
+      id: `${shipId}-${starterItem.itemType}`,
+      itemType: starterItem.itemType,
+      displayName: starterItem.displayName,
+      tier: starterItem.tier ?? 1,
+      launchable: starterItem.launchable,
+      state: 'contained',
+      damageStatus: 'intact',
+      container: { containerType: 'ship', containerId: shipId },
+      owningPlayerId: this.playerName() || null,
+      owningCharacterId: this.joinCharacter()?.id ?? null,
+      spatial: null,
+      destroyedAt: null,
+      destroyedReason: null,
+      discoveredAt: null,
+      discoveredByCharacterId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  private mergeItemIntoCurrentShip(shipId: string, itemToMerge: ShipItem, expectedItemType: string): void {
+    let nextShip: ShipSummary | null = null;
+    this.joinShip.update((current) => {
+      if (!current || current.id !== shipId) {
+        return current;
+      }
+
+      const hasMatchingId = (current.inventory ?? []).some((item) => item.id === itemToMerge.id);
+      const hasMatchingType = (current.inventory ?? []).some(
+        (item) => item.itemType?.trim().toLowerCase() === expectedItemType.trim().toLowerCase(),
+      );
+      if (hasMatchingId || hasMatchingType) {
+        return current;
+      }
+
+      nextShip = {
+        ...current,
+        inventory: [...(current.inventory ?? []), itemToMerge],
+      };
+      return nextShip;
+    });
+    this.syncActiveShip(nextShip);
   }
 }

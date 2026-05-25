@@ -4,7 +4,34 @@
 import { generateRandomAsteroidBeltClusterCenterKm } from '../math/celestial-body-location';
 import { SpatialState } from '../math/spatial';
 import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER, ShipMotion } from '../ship-list';
+import { ShipItem } from '../ship-item';
 import { ShipUpsertPayload } from '../ship-upsert';
+
+const STARTER_INVENTORY_TEMPLATE: ReadonlyArray<{
+  itemType: string;
+  displayName: string;
+  launchable: boolean;
+  tier: number;
+}> = [
+  {
+    itemType: 'expendable-dart-drone',
+    displayName: 'Expendable Dart Drone',
+    launchable: true,
+    tier: 1,
+  },
+  {
+    itemType: 'sensor-array',
+    displayName: 'Sensor Array',
+    launchable: false,
+    tier: 1,
+  },
+  {
+    itemType: 'ship-tractor-beam',
+    displayName: 'Tractor Beam',
+    launchable: false,
+    tier: 1,
+  },
+];
 
 function hashToSeed(input: string): number {
   let hash = 2166136261;
@@ -41,6 +68,29 @@ function buildStarterShipMotion(spatial: SpatialState, random: () => number): Sh
   };
 }
 
+export function createCanonicalStarterShipInventory(shipId: string): ShipItem[] {
+  const now = new Date().toISOString();
+  return STARTER_INVENTORY_TEMPLATE.map((template) => ({
+    id: `${shipId}-${template.itemType}`,
+    itemType: template.itemType,
+    displayName: template.displayName,
+    tier: template.tier,
+    launchable: template.launchable,
+    state: 'contained',
+    damageStatus: 'intact',
+    container: null,
+    owningPlayerId: null,
+    owningCharacterId: null,
+    spatial: null,
+    destroyedAt: null,
+    destroyedReason: null,
+    discoveredAt: null,
+    discoveredByCharacterId: null,
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
 export function generateDeterministicStarterShipUpdate(
   playerName: string,
   characterId: string,
@@ -55,11 +105,13 @@ export function generateDeterministicStarterShipUpdate(
     epochMs: Date.now(),
   };
   const motion = buildStarterShipMotion(spatial, random);
+  const inventory = createCanonicalStarterShipInventory(shipId);
 
   return {
     id: shipId,
     model: DEFAULT_SHIP_MODEL,
     tier: DEFAULT_SHIP_TIER,
+    inventory,
     spatial,
     motion,
   } satisfies ShipUpsertPayload;

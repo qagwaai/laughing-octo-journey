@@ -68,6 +68,25 @@ Practical implication:
 
 ## Prioritized Feature Opportunities (Small Wins, 1-2 Sprints)
 
+0. High-Priority Regression: Cold Boot Dart Launch Availability
+- Symptom: cold boot sequence no longer starts with Expendable Dart Drone available to launch, even though it appears in inventory.
+- Expected: cold boot opening flow should allow immediate Dart launch when starting inventory contains expendable dart drone.
+- Priority: critical regression fix, schedule ahead of net-new feature work in the same area.
+- Validation: add focused tests for inventory-to-launch availability in opening sequence and ship-external launch entry path.
+
+0.1. Continuity Issue: Ship-External Target Persistence on Re-Entry
+- Symptom: re-entering ship-external-view does not keep the currently targeted item.
+- Expected: when returning to ship-external-view in the same active context, previously selected target should persist if still valid.
+- Priority: high continuity fix for interaction flow and player orientation.
+- Validation: add tests for target persistence across view exit/re-entry and fallback behavior when prior target is no longer valid.
+
+0.2. Confirmed Regression: Missing Starter Ship Inventory Components
+- Symptom: ship inventory is missing expected starter components.
+- Missing items: Expendable Dart Drone, Sensor Array, Tractor Beam.
+- Expected: starter ship inventory should include canonical opening components so cold-boot and early ship-external actions function.
+- Priority: critical opening-loop regression fix; schedule with top onboarding regressions.
+- Validation: add startup inventory tests asserting presence of required starter components and downstream availability in launch/scan/tractor flows.
+
 1. Mission Board Status Lanes
 - Add Available / Active / Completed filtering and clearer progression visibility.
 - Value: Better mission comprehension and agency with low architecture risk.
@@ -396,3 +415,6 @@ This session produced a balanced, foundation-first feature slate that preserves 
 - Longer-term bets are identified with sequencing awareness.
 - Technical hardening remains explicitly coupled to feature delivery.
 - Ship-external-view and stellar-viewer should be revisited on a recurring basis for decomposition opportunities.
+- Critical gameplay regressions in opening flow (such as missing initial Dart launch availability) should preempt adjacent feature implementation.
+- Ship-external interaction continuity issues (such as target loss on re-entry) should be treated as near-term reliability fixes.
+- Regression of canonical starter inventory loadout should be treated as critical opening-loop reliability work.

@@ -93,17 +93,19 @@ describe('ShipHangarPage', () => {
 
     expect(component['playerName']()).toBe('Pioneer');
     expect(component['joinCharacter']()).toEqual({ id: 'c-1', characterName: 'Nova' });
-    expect(socketService.emittedEvents[0]).toEqual({
-      event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-      data: {
-        playerName: 'Pioneer',
-        sessionKey: 'test-session-key',
-        owner: {
-          ownerType: 'player-character',
-          characterId: 'c-1',
-        },
-      },
-    });
+    expect(socketService.emittedEvents[0]).toEqual(
+      jasmine.objectContaining({
+        event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        data: jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'test-session-key',
+          owner: {
+            ownerType: 'player-character',
+            characterId: 'c-1',
+          },
+        }),
+      }),
+    );
   });
 
   it('should request ships when connect event fires for initially disconnected socket', () => {
@@ -181,9 +183,16 @@ describe('ShipHangarPage', () => {
       connected: true,
     });
 
+    const shipListRequest = socketService.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: shipListRequest.correlationId,
+      requestIdentity: shipListRequest.requestIdentity,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         { id: 's-1', name: 'Courier', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
@@ -207,9 +216,16 @@ describe('ShipHangarPage', () => {
       connected: true,
     });
 
+    const shipListRequest = socketService.emittedEvents[0].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'Character not found',
+      correlationId: shipListRequest.correlationId,
+      requestIdentity: shipListRequest.requestIdentity,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [{ id: 's-1', name: 'Courier' }],
     });

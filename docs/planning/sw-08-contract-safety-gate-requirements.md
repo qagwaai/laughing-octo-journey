@@ -1,7 +1,8 @@
 # SW-08 Contract Safety Gate Requirements (Frontend-Led)
 
-Status: Draft
+Status: Completed (Maintenance Mode)
 Date: 2026-05-24
+Completed: 2026-05-25
 Repo: laughing-octo-journey
 Related repo: solid-train
 Owner: Frontend lead (primary), Backend lead (co-owner), QA lead (validation)
@@ -41,10 +42,24 @@ Drift means any incompatible mismatch between frontend expectation and backend c
 - Enum/value mismatch.
 - Endpoint/event missing or renamed.
 - Breaking structural changes without migration path.
+- **Correlation semantics violation (see amendment below)**.
 
 Non-breaking drift examples:
 - New optional field added.
 - New enum value that frontend safely ignores by design.
+
+### 4a. Correlation Semantics Amendment (2026-05-25)
+
+Request/response correlation is treated as a first-class contract requirement, same severity as shape mismatch. The following are drift violations:
+
+- Response does not echo `correlationId` from the originating request.
+- Response echoes a `correlationId` that does not match any active request.
+- Response does not echo `requestIdentity` (operation, entityType, containerId).
+- Frontend listener resolves a request callback with a mismatched response payload.
+
+Rationale: Shape-only validation is insufficient when concurrent requests share the same event name. A structurally valid response with the wrong correlationId causes silent state corruption (wrong payload merged into wrong context).
+
+Full correlation contract: docs/planning/socket-correlation-contract-spec.md
 
 ## 5. Gate Behavior
 
@@ -115,3 +130,4 @@ Track:
 - docs/planning/sw-08-contract-safety-gate-implementation-plan.md
 - docs/planning/sw-08-contract-safety-gate-runbook.md
 - docs/planning/sw-08-contract-safety-gate-prompt-pack.md
+- docs/planning/socket-correlation-contract-spec.md

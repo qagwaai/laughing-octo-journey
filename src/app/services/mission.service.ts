@@ -1,21 +1,145 @@
 import { Injectable } from '@angular/core';
+import { appLogger } from './logger';
 import type { MissionStatus } from '../model/mission';
 import type { ShipDamagePreset } from '../model/ship-damage';
 import { resolveMissionInitializationStrategy } from './mission-navigation/mission-initialization-strategy';
-import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT, MissionAddResponse } from '../model/mission-add';
+import {
+  MISSION_ADD_REQUEST_EVENT,
+  MISSION_ADD_RESPONSE_EVENT,
+  type MissionAddRequest,
+  type MissionAddRequestIdentity,
+  MissionAddResponse,
+} from '../model/mission-add';
 import {
   MISSION_LIST_REQUEST_EVENT,
   MISSION_LIST_RESPONSE_EVENT,
+  type MissionListRequestIdentity,
   MissionListRequest,
   MissionListResponse,
 } from '../model/mission-list';
 import {
   MISSION_UPSERT_REQUEST_EVENT,
   MISSION_UPSERT_RESPONSE_EVENT,
+  type MissionUpsertRequestIdentity,
   MissionUpsertRequest,
   MissionUpsertResponse,
 } from '../model/mission-upsert.model';
+import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
+
+function buildDefaultMissionListRequestIdentity(request: MissionListRequest): MissionListRequestIdentity {
+  return {
+    operation: 'mission-list',
+    entityType: 'mission',
+    containerId: normalizeIdentityValue(request.characterId) || 'unknown-character',
+  };
+}
+
+function matchesMissionListRequestIdentity(
+  left: MissionListRequestIdentity | undefined,
+  right: MissionListRequestIdentity | undefined,
+): boolean {
+  return matchesBasicRequestIdentity(left, right);
+}
+
+function isMissionListResponseForRequest(
+  response: MissionListResponse,
+  expectedCorrelationId: string,
+  expectedRequestIdentity: MissionListRequestIdentity,
+  expectedRequest: MissionListRequest,
+): boolean {
+  const responseCorrelationId = response.correlationId?.trim() ?? '';
+  if (responseCorrelationId) {
+    if (responseCorrelationId !== expectedCorrelationId) {
+      return false;
+    }
+
+    if (response.requestIdentity) {
+      return matchesMissionListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+    }
+  }
+
+  return (
+    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
+    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
+  );
+}
+
+function buildDefaultMissionAddRequestIdentity(request: MissionAddRequest): MissionAddRequestIdentity {
+  return {
+    operation: 'mission-upsert',
+    entityType: 'mission',
+    containerId: normalizeIdentityValue(request.characterId) || 'unknown-character',
+  };
+}
+
+function matchesMissionAddRequestIdentity(
+  left: MissionAddRequestIdentity | undefined,
+  right: MissionAddRequestIdentity | undefined,
+): boolean {
+  return matchesBasicRequestIdentity(left, right);
+}
+
+function isMissionAddResponseForRequest(
+  response: MissionAddResponse,
+  expectedCorrelationId: string,
+  expectedRequestIdentity: MissionAddRequestIdentity,
+  expectedRequest: MissionAddRequest,
+): boolean {
+  const responseCorrelationId = response.correlationId?.trim() ?? '';
+  if (responseCorrelationId) {
+    if (responseCorrelationId !== expectedCorrelationId) {
+      return false;
+    }
+
+    if (response.requestIdentity) {
+      return matchesMissionAddRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+    }
+  }
+
+  return (
+    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
+    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
+  );
+}
+
+function buildDefaultMissionUpsertRequestIdentity(request: MissionUpsertRequest): MissionUpsertRequestIdentity {
+  return {
+    operation: 'mission-upsert',
+    entityType: 'mission',
+    containerId: normalizeIdentityValue(request.characterId) || 'unknown-character',
+  };
+}
+
+function matchesMissionUpsertRequestIdentity(
+  left: MissionUpsertRequestIdentity | undefined,
+  right: MissionUpsertRequestIdentity | undefined,
+): boolean {
+  return matchesBasicRequestIdentity(left, right);
+}
+
+function isMissionUpsertResponseForRequest(
+  response: MissionUpsertResponse,
+  expectedCorrelationId: string,
+  expectedRequestIdentity: MissionUpsertRequestIdentity,
+  expectedRequest: MissionUpsertRequest,
+): boolean {
+  const responseCorrelationId = response.correlationId?.trim() ?? '';
+  if (responseCorrelationId) {
+    if (responseCorrelationId !== expectedCorrelationId) {
+      return false;
+    }
+
+    if (response.requestIdentity) {
+      return matchesMissionUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+    }
+  }
+
+  return (
+    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
+    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
+  );
+}
 
 /**
  * Input contract for ensuring a mission record exists for a character session.
@@ -96,8 +220,14 @@ export class MissionService {
         settle('timeout');
       }, MissionService.RESPONSE_TIMEOUT_MS);
 
+      const listCorrelationId = createCorrelationId('mission-list');
+      const listRequestIdentity = buildDefaultMissionListRequestIdentity(listRequest);
+
       unsubscribeList = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
-        if (response.playerName !== playerName || response.characterId !== characterId) {
+        if (!isMissionListResponseForRequest(response, listCorrelationId, listRequestIdentity, listRequest)) {
+          appLogger.warn(
+            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listCorrelationId} responsePlayerName=${response.playerName ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
+          );
           return;
         }
 
@@ -112,24 +242,45 @@ export class MissionService {
           return;
         }
 
+        const addRequest: MissionAddRequest = {
+          playerName,
+          characterId,
+          missionId,
+          sessionKey,
+          status: request.initialStatus ?? 'available',
+          correlationId: createCorrelationId('mission-add'),
+          correlationSource: 'mission-service.ensureMissionExists.add',
+        };
+        const addRequestIdentity = buildDefaultMissionAddRequestIdentity(addRequest);
+        addRequest.requestIdentity = addRequestIdentity;
+
         unsubscribeAdd = this.socketService.on(MISSION_ADD_RESPONSE_EVENT, (addResponse: MissionAddResponse) => {
-          if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
+          if (
+            !isMissionAddResponseForRequest(
+              addResponse,
+              addRequest.correlationId!,
+              addRequestIdentity,
+              addRequest,
+            )
+          ) {
+            appLogger.warn(
+              `[socket-correlation] Dropping unmatched mission-add response. responseCorrelationId=${addResponse.correlationId ?? 'missing'} expectedCorrelationId=${addRequest.correlationId} responsePlayerName=${addResponse.playerName ?? 'missing'} responseCharacterId=${addResponse.characterId ?? 'missing'}`,
+            );
             return;
           }
 
           settle(addResponse.success ? 'added' : 'add-failed');
         });
 
-        this.socketService.emit(MISSION_ADD_REQUEST_EVENT, {
-          playerName,
-          characterId,
-          missionId,
-          sessionKey,
-          status: request.initialStatus ?? 'available',
-        });
+        this.socketService.emit(MISSION_ADD_REQUEST_EVENT, addRequest);
       });
 
-      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, listRequest);
+      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, {
+        ...listRequest,
+        correlationId: listCorrelationId,
+        correlationSource: 'mission-service.ensureMissionExists.list',
+        requestIdentity: listRequestIdentity,
+      });
     });
   }
 
@@ -168,8 +319,29 @@ export class MissionService {
         settle({ status: 'timeout', missions: [] });
       }, MissionService.RESPONSE_TIMEOUT_MS);
 
+      const listRequestWithCorrelation: MissionListRequest = {
+        playerName,
+        characterId,
+        sessionKey,
+        ...(Array.isArray(request.statuses) ? { statuses: request.statuses } : {}),
+        correlationId: createCorrelationId('mission-list'),
+        correlationSource: 'mission-service.listMissions',
+      };
+      const listRequestIdentity = buildDefaultMissionListRequestIdentity(listRequestWithCorrelation);
+      listRequestWithCorrelation.requestIdentity = listRequestIdentity;
+
       unsubscribeList = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
-        if (response.playerName !== playerName || response.characterId !== characterId) {
+        if (
+          !isMissionListResponseForRequest(
+            response,
+            listRequestWithCorrelation.correlationId!,
+            listRequestIdentity,
+            listRequestWithCorrelation,
+          )
+        ) {
+          appLogger.warn(
+            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listRequestWithCorrelation.correlationId} responsePlayerName=${response.playerName ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
+          );
           return;
         }
 
@@ -188,12 +360,7 @@ export class MissionService {
         });
       });
 
-      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, {
-        playerName,
-        characterId,
-        sessionKey,
-        ...(Array.isArray(request.statuses) ? { statuses: request.statuses } : {}),
-      });
+      this.socketService.emit(MISSION_LIST_REQUEST_EVENT, listRequestWithCorrelation);
     });
   }
 
@@ -220,6 +387,19 @@ export class MissionService {
       let settled = false;
       let unsubscribeAdd: (() => void) | undefined;
 
+      const upsertRequest: MissionUpsertRequest = {
+        playerName,
+        characterId,
+        missionId,
+        sessionKey,
+        status,
+        ...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
+        correlationId: createCorrelationId('mission-upsert'),
+        correlationSource: 'mission-service.upsertMissionStatus',
+      };
+      const upsertRequestIdentity = buildDefaultMissionUpsertRequestIdentity(upsertRequest);
+      upsertRequest.requestIdentity = upsertRequestIdentity;
+
       const settle = (result: UpsertMissionStatusResult) => {
         if (settled) {
           return;
@@ -235,21 +415,24 @@ export class MissionService {
       }, MissionService.RESPONSE_TIMEOUT_MS);
 
       unsubscribeAdd = this.socketService.on(MISSION_UPSERT_RESPONSE_EVENT, (addResponse: MissionUpsertResponse) => {
-        if (addResponse.playerName !== playerName || addResponse.characterId !== characterId) {
+        if (
+          !isMissionUpsertResponseForRequest(
+            addResponse,
+            upsertRequest.correlationId!,
+            upsertRequestIdentity,
+            upsertRequest,
+          )
+        ) {
+          appLogger.warn(
+            `[socket-correlation] Dropping unmatched mission-upsert response. responseCorrelationId=${addResponse.correlationId ?? 'missing'} expectedCorrelationId=${upsertRequest.correlationId} responsePlayerName=${addResponse.playerName ?? 'missing'} responseCharacterId=${addResponse.characterId ?? 'missing'}`,
+          );
           return;
         }
 
         settle(addResponse.success ? 'updated' : 'update-failed');
       });
 
-      this.socketService.emit(MISSION_UPSERT_REQUEST_EVENT, {
-        playerName,
-        characterId,
-        missionId,
-        sessionKey,
-        status,
-        ...(typeof request.statusDetail === 'string' ? { statusDetail: request.statusDetail } : {}),
-      });
+      this.socketService.emit(MISSION_UPSERT_REQUEST_EVENT, upsertRequest);
     });
   }
 

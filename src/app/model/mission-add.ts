@@ -3,6 +3,12 @@ import type { CharacterMissionProgress, MissionStatus } from './mission';
 export const MISSION_ADD_REQUEST_EVENT = 'add-mission-request';
 export const MISSION_ADD_RESPONSE_EVENT = 'add-mission-response';
 
+export interface MissionAddRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 /**
  * Socket payload for creating mission progress records.
  */
@@ -11,6 +17,9 @@ export interface MissionAddRequest {
   characterId: string;
   missionId: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: MissionAddRequestIdentity;
   status?: MissionStatus;
 }
 
@@ -20,6 +29,8 @@ export interface MissionAddRequest {
 export interface MissionAddResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: MissionAddRequestIdentity;
   playerName: string;
   characterId: string;
   mission?: CharacterMissionProgress;

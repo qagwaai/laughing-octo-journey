@@ -58,10 +58,14 @@ function createShipListResponse(params?: {
   success?: boolean;
   ships?: ShipListByOwnerResponse['ships'];
   message?: string;
+  correlationId?: string;
+  requestIdentity?: ShipListByOwnerResponse['requestIdentity'];
 }): ShipListByOwnerResponse {
   return {
     success: params?.success ?? true,
     message: params?.message ?? 'ok',
+    correlationId: params?.correlationId,
+    requestIdentity: params?.requestIdentity,
     owner: {
       ownerType: 'player-character',
       playerId: 'p-1',
@@ -237,15 +241,17 @@ describe('CharacterSetupPage', () => {
       component.saveCharacter();
 
       expect(component['isEditMode']()).toBe(true);
-      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
-        event: CHARACTER_EDIT_REQUEST_EVENT,
-        data: {
-          characterId: 'c-1',
-          playerName: 'Pioneer',
-          characterName: 'Nova-Prime',
-          sessionKey: 'test-session-key',
-        },
-      });
+      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual(
+        jasmine.objectContaining({
+          event: CHARACTER_EDIT_REQUEST_EVENT,
+          data: jasmine.objectContaining({
+            characterId: 'c-1',
+            playerName: 'Pioneer',
+            characterName: 'Nova-Prime',
+            sessionKey: 'test-session-key',
+          }),
+        }),
+      );
     });
 
     it('should handle successful character-edit response in edit mode', () => {
@@ -287,11 +293,13 @@ describe('CharacterSetupPage', () => {
 
       expect(socketService.emittedEvents.length).toBe(1);
       expect(socketService.emittedEvents[0].event).toBe(CHARACTER_ADD_REQUEST_EVENT);
-      expect(socketService.emittedEvents[0].data).toEqual({
-        playerName: 'Pioneer',
-        characterName: 'Nova-Prime',
-        sessionKey: 'test-session-key',
-      } satisfies CharacterAddRequest);
+      expect(socketService.emittedEvents[0].data).toEqual(
+        jasmine.objectContaining({
+          playerName: 'Pioneer',
+          characterName: 'Nova-Prime',
+          sessionKey: 'test-session-key',
+        } satisfies CharacterAddRequest),
+      );
       expect(component['isSubmitting']()).toBe(true);
     });
 
@@ -335,15 +343,17 @@ describe('CharacterSetupPage', () => {
       component.saveCharacter();
 
       expect(component['isDuplicateNameBlockingSubmit']()).toBe(false);
-      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual({
-        event: CHARACTER_EDIT_REQUEST_EVENT,
-        data: {
-          characterId: 'c-1',
-          playerName: 'Pioneer',
-          characterName: '  nova   prime ',
-          sessionKey: 'test-session-key',
-        },
-      });
+      expect(socketService.emittedEvents[socketService.emittedEvents.length - 1]).toEqual(
+        jasmine.objectContaining({
+          event: CHARACTER_EDIT_REQUEST_EVENT,
+          data: jasmine.objectContaining({
+            characterId: 'c-1',
+            playerName: 'Pioneer',
+            characterName: '  nova   prime ',
+            sessionKey: 'test-session-key',
+          }),
+        }),
+      );
     });
 
     it('should block edit when name duplicates another character', () => {
@@ -369,7 +379,7 @@ describe('CharacterSetupPage', () => {
       expect(socketService.emittedEvents.length).toBe(0);
     });
 
-    it('should handle successful character-add response', () => {
+    it('should handle successful character-add response', async () => {
       const { component, mockRouter } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
@@ -381,6 +391,26 @@ describe('CharacterSetupPage', () => {
         characterName: 'Nova-Prime',
         characterId: 'c-1',
       } satisfies CharacterAddResponse);
+
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
+      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+      });
+      await Promise.resolve();
 
       expect(component['isSubmitting']()).toBe(false);
       expect(component['isSaved']()).toBe(true);
@@ -498,23 +528,35 @@ describe('CharacterSetupPage', () => {
 
       const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT);
       expect(shipListEmit).toBeDefined();
-      expect(shipListEmit!.data).toEqual({
-        playerName: 'Pioneer',
-        sessionKey: 'test-session-key',
-        owner: {
-          ownerType: 'player-character',
-          characterId: 'c-1',
-        },
-      });
+      expect(shipListEmit!.data).toEqual(
+        jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'test-session-key',
+          owner: {
+            ownerType: 'player-character',
+            characterId: 'c-1',
+          },
+        }),
+      );
     });
 
     it('should set warningMessage when ship-list-response fails', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
         SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({ success: false, ships: [], message: 'No ships found.' }),
+        createShipListResponse({
+          success: false,
+          ships: [],
+          message: 'No ships found.',
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
       );
 
       expect(component['warningMessage']()).toBe('Character created, but starter ship could not be resolved yet.');
@@ -524,7 +566,18 @@ describe('CharacterSetupPage', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse({ ships: [] }));
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          ships: [],
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
 
       expect(component['warningMessage']()).toBe('Character created, but no starter ship record was returned.');
     });
@@ -533,20 +586,77 @@ describe('CharacterSetupPage', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
 
       const shipUpsertEmit = socketService.emittedEvents.find((e) => e.event === SHIP_UPSERT_REQUEST_EVENT);
       expect(shipUpsertEmit).toBeDefined();
       expect(shipUpsertEmit!.data.playerName).toBe('Pioneer');
       expect(shipUpsertEmit!.data.characterId).toBe('c-1');
       expect(shipUpsertEmit!.data.ship.id).toBe('ship-1');
+      expect(shipUpsertEmit!.data.ship.inventory.map((item: { itemType: string }) => item.itemType)).toEqual([
+        'expendable-dart-drone',
+        'sensor-array',
+        'ship-tractor-beam',
+      ]);
+    });
+
+    it('should defer navigation until starter ship provisioning settles', async () => {
+      const { component, mockRouter } = setup({ socketService, sessionService });
+      triggerSuccessfulCharacterAdd(component, 'c-1');
+
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+      });
+      await Promise.resolve();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+        preserveFragment: true,
+        state: { playerName: 'Pioneer' },
+      });
     });
 
     it('should set warningMessage when ship-upsert-response fails', () => {
       const { component } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
       socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
         success: false,
         message: 'Ship upsert failed.',
@@ -561,7 +671,17 @@ describe('CharacterSetupPage', () => {
       component['warningMessage'].set('Previous warning');
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
-      socketService.triggerOnce(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, createShipListResponse());
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
       socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
         success: true,
         message: 'ok',

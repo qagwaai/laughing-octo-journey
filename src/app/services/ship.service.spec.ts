@@ -78,7 +78,7 @@ describe('ShipService', () => {
     service = TestBed.inject(ShipService);
   });
 
-  it('emits ship-list-by-owner and handles the first response once', () => {
+  it('emits ship-list-by-owner and resolves only matching responses', () => {
     const request: ShipListByOwnerRequest = {
       playerName: 'Pioneer',
       sessionKey: 'session-1',
@@ -90,12 +90,51 @@ describe('ShipService', () => {
       received = response;
     });
 
-    expect(socketService.emittedEvents).toEqual([{ eventName: SHIP_LIST_BY_OWNER_REQUEST_EVENT, payload: request }]);
-    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(2);
+    expect(socketService.emittedEvents).toEqual([
+      {
+        eventName: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        payload: jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'ship-service.listShipsByOwner',
+          requestIdentity: {
+            operation: 'ship-list-by-owner',
+            entityType: 'ship',
+            containerId: 'player-character:char-1',
+          },
+        }),
+      },
+    ]);
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    const correlationId = requestPayload.correlationId!;
+    const requestIdentity = requestPayload.requestIdentity!;
+
+    const mismatchResponse: ShipListByOwnerResponse = {
+      success: true,
+      message: 'wrong response',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-2',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    };
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, mismatchResponse);
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
 
     const response: ShipListByOwnerResponse = {
       success: true,
       message: 'ok',
+      correlationId,
+      requestIdentity,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -112,7 +151,7 @@ describe('ShipService', () => {
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 
-  it('emits ship-transfer and handles the first response once', () => {
+  it('emits ship-transfer and resolves only matching responses', () => {
     const request: ShipTransferRequest = {
       playerName: 'Pioneer',
       sessionKey: 'session-1',
@@ -131,12 +170,51 @@ describe('ShipService', () => {
       received = response;
     });
 
-    expect(socketService.emittedEvents).toEqual([{ eventName: SHIP_TRANSFER_REQUEST_EVENT, payload: request }]);
-    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(2);
+    expect(socketService.emittedEvents).toEqual([
+      {
+        eventName: SHIP_TRANSFER_REQUEST_EVENT,
+        payload: jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'ship-service.transferShip',
+          requestIdentity: {
+            operation: 'ship-transfer',
+            entityType: 'ship',
+            containerId: 'ship-1',
+          },
+        }),
+      },
+    ]);
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipTransferRequest;
+    const correlationId = requestPayload.correlationId!;
+    const requestIdentity = requestPayload.requestIdentity!;
+
+    const mismatchResponse: ShipTransferResponse = {
+      success: true,
+      message: 'wrong response',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity,
+      shipId: 'ship-2',
+      toOwner: {
+        ownerType: 'player-character',
+        playerId: 'player-2',
+        characterId: 'char-2',
+        npcId: null,
+        factionId: null,
+      },
+    };
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, mismatchResponse);
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
 
     const response: ShipTransferResponse = {
       success: true,
       message: 'ok',
+      correlationId,
+      requestIdentity,
       shipId: 'ship-1',
       toOwner: {
         ownerType: 'player-character',
@@ -151,5 +229,98 @@ describe('ShipService', () => {
 
     expect(received).toEqual(response);
     expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('isolates N=3 concurrent ship-list-by-owner requests under out-of-order responses', () => {
+    const requestA: ShipListByOwnerRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'player-character', characterId: 'char-a' },
+    };
+    const requestB: ShipListByOwnerRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'player-character', characterId: 'char-b' },
+    };
+    const requestC: ShipListByOwnerRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'player-character', characterId: 'char-c' },
+    };
+
+    const received: Record<string, ShipListByOwnerResponse | undefined> = {};
+
+    service.listShipsByOwner(requestA, (response) => {
+      received['a'] = response;
+    });
+    service.listShipsByOwner(requestB, (response) => {
+      received['b'] = response;
+    });
+    service.listShipsByOwner(requestC, (response) => {
+      received['c'] = response;
+    });
+
+    expect(socketService.emittedEvents.length).toBe(3);
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(3);
+
+    const payloadA = socketService.emittedEvents[0].payload as ShipListByOwnerRequest;
+    const payloadB = socketService.emittedEvents[1].payload as ShipListByOwnerRequest;
+    const payloadC = socketService.emittedEvents[2].payload as ShipListByOwnerRequest;
+
+    const responseB: ShipListByOwnerResponse = {
+      success: true,
+      message: 'ok-b',
+      correlationId: payloadB.correlationId,
+      requestIdentity: payloadB.requestIdentity,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-b',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    };
+    const responseC: ShipListByOwnerResponse = {
+      success: true,
+      message: 'ok-c',
+      correlationId: payloadC.correlationId,
+      requestIdentity: payloadC.requestIdentity,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-c',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    };
+    const responseA: ShipListByOwnerResponse = {
+      success: true,
+      message: 'ok-a',
+      correlationId: payloadA.correlationId,
+      requestIdentity: payloadA.requestIdentity,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-a',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    };
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, responseB);
+    expect(received['b']).toEqual(responseB);
+    expect(received['a']).toBeUndefined();
+    expect(received['c']).toBeUndefined();
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, responseC);
+    expect(received['c']).toEqual(responseC);
+    expect(received['a']).toBeUndefined();
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, responseA);
+    expect(received['a']).toEqual(responseA);
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 });

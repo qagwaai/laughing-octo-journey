@@ -205,6 +205,13 @@ Required payload:
 {
   "playerName": "string",
   "sessionKey": "string",
+  "correlationId": "market-list:<timestamp>:<uuid>",
+  "correlationSource": "market-service.listMarketsByLocation",
+  "requestIdentity": {
+    "operation": "market-list",
+    "entityType": "market",
+    "containerId": "sol"
+  },
   "solarSystemId": "string (optional)"
 }
 ```
@@ -213,6 +220,8 @@ Client-side behavior:
 
 - `playerName` is trimmed before sending.
 - `sessionKey` is required.
+- `correlationId` is client-generated per request and must be echoed by the server.
+- `requestIdentity` uses Forge's canonical market identity: `operation: market-list`, `entityType: market`, `containerId: <solarSystemId>`.
 - Omitting `solarSystemId` returns markets across all solar systems.
 
 ### `market-list-response` (response)
@@ -223,6 +232,12 @@ Payload:
 {
   "success": true,
   "message": "Market list retrieved successfully",
+  "correlationId": "market-list:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "market-list",
+    "entityType": "market",
+    "containerId": "sol"
+  },
   "playerName": "canonical player name",
   "solarSystemId": "sol (optional)",
   "markets": [
@@ -272,6 +287,13 @@ Required payload:
 {
   "playerName": "string",
   "sessionKey": "string",
+  "correlationId": "market-list-by-location:<timestamp>:<uuid>",
+  "correlationSource": "market-service.listMarketsByLocation",
+  "requestIdentity": {
+    "operation": "market-list-by-location",
+    "entityType": "market",
+    "containerId": "sol"
+  },
   "solarSystemId": "string",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
   "distanceAu": 0.5,
@@ -287,6 +309,8 @@ Client-side behavior:
 - Used by Market Hub for local-area browsing.
 - `positionKm` comes from active ship spatial state.
 - `distanceAu` comes from user-selected radius (NOT `distanceKm`).
+- `correlationId` is client-generated per request and must be echoed by the server.
+- `requestIdentity` uses Forge's canonical market identity: `operation: market-list-by-location`, `entityType: market`, `containerId: <solarSystemId>`.
 - Client clamps `distanceAu` to the active drive range before emitting the request.
 - `locationTypes` is a request-time filter list (for example `['station']`).
 - `characterId` and `shipId` are included when available so server can compute docking state.
@@ -299,6 +323,12 @@ Payload:
 {
   "success": true,
   "message": "Local market list retrieved successfully",
+  "correlationId": "market-list-by-location:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "market-list-by-location",
+    "entityType": "market",
+    "containerId": "sol"
+  },
   "playerName": "canonical player name",
   "solarSystemId": "sol",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
@@ -503,6 +533,13 @@ Required payload:
 {
   "playerName": "string",
   "sessionKey": "string",
+  "correlationId": "celestial-body-list:<timestamp>:<uuid>",
+  "correlationSource": "ship-exterior-socket.listCelestialBodies",
+  "requestIdentity": {
+    "operation": "celestial-body-list",
+    "entityType": "<solarSystemId>",
+    "containerId": "<normalized request key>"
+  },
   "solarSystemId": "string",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
   "distanceKm": 100,
@@ -521,6 +558,12 @@ Payload:
 {
   "success": true,
   "message": "Celestial body list retrieved successfully",
+  "correlationId": "celestial-body-list:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "celestial-body-list",
+    "entityType": "<solarSystemId>",
+    "containerId": "<normalized request key>"
+  },
   "playerName": "canonical player name",
   "solarSystemId": "sol",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
@@ -573,6 +616,7 @@ Payload:
 - By default, list includes all lifecycle states unless `states` filter is provided.
 - Results are sorted nearest-first by computed `distanceKm`.
 - `limit` is applied after filtering and sorting.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -588,6 +632,17 @@ Required payload:
   "sessionKey": "string",
   "characterId": "string",
   "shipId": "string",
+  "correlationId": "launch-item:<timestamp>:<uuid>",
+  "correlationSource": "socket.launchItem",
+  "requestIdentity": {
+    "operation": "launch-item",
+    "entityType": "string",
+    "containerId": "string",
+    "itemId": "string",
+    "hotkey": 1,
+    "targetCelestialBodyId": "string",
+    "characterId": "string"
+  },
   "targetCelestialBodyId": "string",
   "hotkey": 1,
   "itemId": "string",
@@ -604,6 +659,16 @@ Required payload:
   "success": true,
   "message": "Launch successful: target destroyed and materials yielded",
   "playerName": "canonical player name",
+  "correlationId": "launch-item:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "launch-item",
+    "entityType": "expendable-dart-drone",
+    "containerId": "<ship id>",
+    "itemId": "<item id>",
+    "hotkey": 3,
+    "targetCelestialBodyId": "<celestial body id>",
+    "characterId": "<character id>"
+  },
   "characterId": "<character id>",
   "shipId": "<ship id>",
   "targetCelestialBodyId": "<celestial body id>",
@@ -790,6 +855,17 @@ Required payload:
   "sessionKey": "string",
   "characterId": "string",
   "shipId": "string",
+  "correlationId": "launch-item:<timestamp>:<uuid>",
+  "correlationSource": "socket.launchItem",
+  "requestIdentity": {
+    "operation": "launch-item",
+    "entityType": "string",
+    "containerId": "string",
+    "itemId": "string",
+    "hotkey": 1,
+    "targetCelestialBodyId": "string",
+    "characterId": "string"
+  },
   "targetCelestialBodyId": "string",
   "hotkey": 1,
   "itemId": "string",
@@ -801,6 +877,8 @@ Required payload:
 
 Required payload fields on success include request echo fields plus:
 
+- `correlationId`
+- `requestIdentity`
 - `launchedItem`
 - `resolution.outcome` (`target-destroyed` | `no-effect`)
 - `resolution.targetDestroyed`
@@ -812,7 +890,8 @@ Required payload fields on success include request echo fields plus:
 Client behavior decision:
 
 - The client allows rapid launches (no single in-flight lock).
-- Responses are processed from a shared `launch-item-response` listener.
+- Responses are processed from a shared `launch-item-response` listener with pending-request matching.
+- If pending requests exist, unmatched responses are dropped and logged as socket-correlation warnings.
 - After each successful response, the client refetches `ship-list-request` and `celestial-body-list-request` to reconcile authoritative inventory and asteroid state.
 
 ---
@@ -920,7 +999,14 @@ Required payload:
 ```json
 {
   "playerName": "string",
-  "sessionKey": "string"
+  "sessionKey": "string",
+  "correlationId": "character-list:<timestamp>:<uuid>",
+  "correlationSource": "character-service.listCharacters",
+  "requestIdentity": {
+    "operation": "character-list",
+    "entityType": "<playerName>",
+    "containerId": "<normalized playerName>"
+  }
 }
 ```
 
@@ -943,6 +1029,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "character-list:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "character-list",
+    "entityType": "<playerName>",
+    "containerId": "<normalized playerName>"
+  },
   "playerName": "string",
   "characters": [
     {
@@ -973,6 +1065,7 @@ Edge cases:
 - `credits` is a server-computed value: `sum(put.amount) - sum(take.amount)` across `creditLedger`.
 - `creditLedger` defaults to `[]` when a character has no transactions.
 - Client treats missing `credits` as `0` and missing `creditLedger` as `[]`.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1120,7 +1213,14 @@ Required payload:
 {
   "playerName": "string",
   "characterName": "string",
-  "sessionKey": "string"
+  "sessionKey": "string",
+  "correlationId": "character-add:<timestamp>:<uuid>",
+  "correlationSource": "character-service.addCharacter",
+  "requestIdentity": {
+    "operation": "character-add",
+    "entityType": "<characterName>",
+    "containerId": "<normalized playerName>"
+  }
 }
 ```
 
@@ -1143,6 +1243,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "character-add:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "character-add",
+    "entityType": "<characterName>",
+    "containerId": "<normalized playerName>"
+  },
   "playerName": "string",
   "characterName": "string (optional)",
   "characterId": "string (optional)"
@@ -1153,6 +1259,7 @@ Edge cases:
 
 - On success, include `characterId` when possible to support future client-side optimistic updates.
 - On failure, include actionable `message` (for example duplicate name).
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1167,7 +1274,14 @@ Required payload:
   "characterId": "string",
   "playerName": "string",
   "characterName": "string",
-  "sessionKey": "string"
+  "sessionKey": "string",
+  "correlationId": "character-edit:<timestamp>:<uuid>",
+  "correlationSource": "character-service.editCharacter",
+  "requestIdentity": {
+    "operation": "character-edit",
+    "entityType": "<characterId>",
+    "containerId": "<normalized playerName>|<normalized characterName>"
+  }
 }
 ```
 
@@ -1191,6 +1305,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "character-edit:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "character-edit",
+    "entityType": "<characterId>",
+    "containerId": "<normalized playerName>|<normalized characterName>"
+  },
   "playerName": "string",
   "characterId": "string",
   "characterName": "string (optional)"
@@ -1201,6 +1321,7 @@ Edge cases:
 
 - If `characterId` is not found or does not belong to the player, return `success: false` with explicit message.
 - If name conflicts with another character, return `success: false` and message indicating conflict.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1215,7 +1336,14 @@ Required payload:
   "playerName": "string",
   "characterId": "string",
   "characterName": "string (optional)",
-  "sessionKey": "string"
+  "sessionKey": "string",
+  "correlationId": "character-delete:<timestamp>:<uuid>",
+  "correlationSource": "character-service.deleteCharacter",
+  "requestIdentity": {
+    "operation": "character-delete",
+    "entityType": "<characterId>",
+    "containerId": "<normalized playerName>|<normalized characterName>"
+  }
 }
 ```
 
@@ -1238,6 +1366,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "character-delete:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "character-delete",
+    "entityType": "<characterId>",
+    "containerId": "<normalized playerName>|<normalized characterName>"
+  },
   "playerName": "string",
   "characterId": "string (optional)"
 }
@@ -1249,6 +1383,7 @@ Edge cases:
   - Either idempotent success with message, or
   - failure with explicit not-found message.
 - Returning `characterId` helps client reconciliation in multi-tab scenarios.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1389,6 +1524,14 @@ Required payload:
   "playerName": "string",
   "characterId": "string",
   "sessionKey": "string",
+  "correlationId": "ship-upsert:<timestamp>:<uuid>",
+  "correlationSource": "socket.upsertShip",
+  "requestIdentity": {
+    "operation": "ship-upsert",
+    "entityType": "string",
+    "containerId": "string",
+    "characterId": "string"
+  },
   "ship": {
     "id": "string",
     "model": "string (optional patch field)",
@@ -1433,6 +1576,13 @@ Payload:
   "message": "string",
   "playerName": "string",
   "characterId": "string",
+  "correlationId": "ship-upsert:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "ship-upsert",
+    "entityType": "string",
+    "containerId": "string",
+    "characterId": "string"
+  },
   "ship": {
     "id": "string",
     "name": "string",
@@ -1462,6 +1612,142 @@ Edge cases:
 - If `inventory` is omitted in request, response should include persisted inventory unchanged.
 - If ship is a `Scavenger Pod` with missing inventory in storage, response should include backfilled `["Expendable Dart Drone"]`.
 - Invalid session emits `invalid-session`.
+- Client demux rejects mismatched `correlationId` / `requestIdentity` when present; legacy responses without those fields are matched by echoed request identifiers.
+
+---
+
+## Ship List By Owner
+
+### `ship-list-by-owner-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "correlationId": "ship-list-by-owner:<timestamp>:<uuid>",
+  "correlationSource": "ship-service.listShipsByOwner",
+  "requestIdentity": {
+    "operation": "ship-list-by-owner",
+    "entityType": "ship-owner",
+    "containerId": "<normalized owner identity key>"
+  },
+  "owner": {
+    "ownerType": "player-character | player | npc | faction | unknown",
+    "playerId": "string | null",
+    "characterId": "string | null",
+    "npcId": "string | null",
+    "factionId": "string | null"
+  }
+}
+```
+
+### `ship-list-by-owner-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "correlationId": "ship-list-by-owner:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "ship-list-by-owner",
+    "entityType": "ship-owner",
+    "containerId": "<normalized owner identity key>"
+  },
+  "owner": {
+    "ownerType": "player-character",
+    "playerId": "player-1",
+    "characterId": "char-1",
+    "npcId": null,
+    "factionId": null
+  },
+  "ships": []
+}
+```
+
+Edge cases:
+
+- Invalid session emits `invalid-session`.
+- Client wrappers drop responses with mismatched `correlationId` or `requestIdentity` and log socket-correlation warnings.
+- Legacy responses missing correlation fields are matched by owner identity for transition compatibility.
+
+---
+
+## Ship Transfer
+
+### `ship-transfer-request` (request)
+
+Required payload:
+
+```json
+{
+  "playerName": "string",
+  "sessionKey": "string",
+  "shipId": "string",
+  "correlationId": "ship-transfer:<timestamp>:<uuid>",
+  "correlationSource": "ship-service.transferShip",
+  "requestIdentity": {
+    "operation": "ship-transfer",
+    "entityType": "<toOwner.ownerType>",
+    "containerId": "<shipId>|<normalized toOwner identity key>"
+  },
+  "toOwner": {
+    "ownerType": "player-character | player | npc | faction | unknown",
+    "playerId": "string | null",
+    "characterId": "string | null",
+    "npcId": "string | null",
+    "factionId": "string | null"
+  },
+  "fromOwner": {
+    "ownerType": "player-character | player | npc | faction | unknown",
+    "playerId": "string | null",
+    "characterId": "string | null",
+    "npcId": "string | null",
+    "factionId": "string | null"
+  }
+}
+```
+
+### `ship-transfer-response` (response)
+
+Payload:
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "correlationId": "ship-transfer:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "ship-transfer",
+    "entityType": "player-character",
+    "containerId": "ship-1|player-character|player-2|char-2||"
+  },
+  "shipId": "ship-1",
+  "fromOwner": {
+    "ownerType": "player-character",
+    "playerId": "player-1",
+    "characterId": "char-1",
+    "npcId": null,
+    "factionId": null
+  },
+  "toOwner": {
+    "ownerType": "player-character",
+    "playerId": "player-2",
+    "characterId": "char-2",
+    "npcId": null,
+    "factionId": null
+  }
+}
+```
+
+Edge cases:
+
+- Invalid session emits `invalid-session`.
+- Client wrappers drop responses with mismatched `correlationId` or `requestIdentity` and log socket-correlation warnings.
+- Legacy responses missing correlation fields are matched by `shipId` for transition compatibility.
 
 ---
 
@@ -1623,6 +1909,13 @@ Required payload:
   "characterId": "string",
   "missionId": "string",
   "sessionKey": "string",
+  "correlationId": "mission-add:<timestamp>:<uuid>",
+  "correlationSource": "mission-service.ensureMissionExists.add",
+  "requestIdentity": {
+    "operation": "mission-add",
+    "entityType": "<missionId>",
+    "containerId": "<normalized request key>"
+  },
   "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in (optional)",
   "statusDetail": "string (optional)",
   "requestId": "string (optional, echoed in response)"
@@ -1665,6 +1958,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "mission-add:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "mission-add",
+    "entityType": "<missionId>",
+    "containerId": "<normalized request key>"
+  },
   "playerName": "string",
   "characterId": "string",
   "requestId": "string (optional, echoed when provided)",
@@ -1687,6 +1986,7 @@ Edge cases:
 - If mission already exists for the character, prefer deterministic upsert semantics and return updated `mission`.
 - If mission is unknown, return `success: false` with a safe message.
 - If a status transition is invalid by server rules, return `success: false` with transition guidance.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1701,6 +2001,14 @@ Required payload:
   "sessionKey": "string",
   "playerName": "string",
   "createdByCharacterId": "string",
+  "correlationId": "celestial-body-upsert:<timestamp>:<uuid>",
+  "correlationSource": "socket.upsertCelestialBody",
+  "requestIdentity": {
+    "operation": "celestial-body-upsert",
+    "entityType": "<catalogId>",
+    "containerId": "<sourceScanId>",
+    "characterId": "<createdByCharacterId>"
+  },
   "celestialBody": {
     "id": "string",
     "catalogId": "string",
@@ -1773,6 +2081,13 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "celestial-body-upsert:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "celestial-body-upsert",
+    "entityType": "<catalogId>",
+    "containerId": "<sourceScanId>",
+    "characterId": "<createdByCharacterId>"
+  },
   "celestialBody": {
     "id": "string",
     "catalogId": "string",
@@ -1823,6 +2138,7 @@ Edge cases:
 - If the same source scan is sent repeatedly, return deterministic idempotent success with the authoritative stored record.
 - If `spatial.solarSystemId` is unknown, return `success: false` with a user-safe message.
 - If timestamps are malformed, either normalize server-side or reject with explicit validation guidance.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1845,6 +2161,13 @@ Required payload:
   "characterId": "string",
   "missionId": "string",
   "sessionKey": "string",
+  "correlationId": "mission-upsert:<timestamp>:<uuid>",
+  "correlationSource": "mission-service.upsertMissionStatus",
+  "requestIdentity": {
+    "operation": "mission-upsert",
+    "entityType": "<missionId>",
+    "containerId": "<normalized request key>"
+  },
   "status": "available | started | in-progress | failed | completed | locked | abandoned | paused | turned-in",
   "statusDetail": "string (optional)",
   "requestId": "string (optional, echoed in response)"
@@ -1873,6 +2196,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "mission-upsert:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "mission-upsert",
+    "entityType": "<missionId>",
+    "containerId": "<normalized request key>"
+  },
   "playerName": "string",
   "characterId": "string",
   "requestId": "string (optional, echoed when provided)",
@@ -1895,6 +2224,7 @@ Edge cases:
 - If mission does not exist, server should create then return the created/updated mission snapshot.
 - If a status transition is invalid by server rules, return `success: false` with transition guidance.
 - Return the authoritative stored status/timestamps in `mission` after transition.
+- Client wrappers drop responses with mismatched `correlationId` / `requestIdentity` and emit socket-correlation warnings.
 
 ---
 
@@ -1909,6 +2239,13 @@ Required payload:
   "playerName": "string",
   "characterId": "string",
   "sessionKey": "string",
+  "correlationId": "mission-list:<timestamp>:<uuid>",
+  "correlationSource": "mission-service.listMissions or mission-board-service.listMissions",
+  "requestIdentity": {
+    "operation": "mission-list",
+    "entityType": "mission",
+    "containerId": "<characterId>"
+  },
   "statuses": ["available", "started", "in-progress", "failed", "completed"]
 }
 ```
@@ -1932,6 +2269,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "mission-list:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "mission-list",
+    "entityType": "mission",
+    "containerId": "<characterId>"
+  },
   "playerName": "string",
   "characterId": "string",
   "missions": [
@@ -1949,6 +2292,8 @@ Payload:
   ]
 }
 ```
+
+Client behavior: wrappers drop unmatched responses by `correlationId`/`requestIdentity` when echoed, and fall back to player/character matching while backend echo rollout is in progress.
 
 Edge cases:
 
@@ -2411,6 +2756,13 @@ Required payload:
 {
   "playerName": "string",
   "sessionKey": "string",
+  "correlationId": "item-list-by-location:<timestamp>:<uuid>",
+  "correlationSource": "ship-exterior-socket.listNearbyDeployedItems",
+  "requestIdentity": {
+    "operation": "item-list-by-location",
+    "entityType": "<solarSystemId>",
+    "containerId": "<normalized request key>"
+  },
   "solarSystemId": "string",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
   "distanceKm": 100,
@@ -2429,6 +2781,12 @@ Payload:
 {
   "success": true,
   "message": "string",
+  "correlationId": "item-list-by-location:<timestamp>:<uuid>",
+  "requestIdentity": {
+    "operation": "item-list-by-location",
+    "entityType": "<solarSystemId>",
+    "containerId": "<normalized request key>"
+  },
   "playerName": "string",
   "solarSystemId": "string",
   "positionKm": { "x": 0, "y": 0, "z": 0 },
@@ -2438,7 +2796,7 @@ Payload:
 }
 ```
 
-`items` entries include `distanceKm` as a computed field. Only items with `kinematics` are included (deployed items). Results sorted nearest-first.
+`items` entries include `distanceKm` as a computed field. Only items with `kinematics` are included (deployed items). Results sorted nearest-first. Client wrappers drop mismatched correlation responses and emit socket-correlation warnings.
 
 ---
 
@@ -2473,6 +2831,13 @@ Client-emitted to fetch a paginated list of curated/procedural systems.
 interface SolarSystemListRequest {
   playerName: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: {
+    operation: 'solar-system-list';
+    entityType: string;
+    containerId: string;
+  };
   source?: 'curated' | 'procedural';
   maxDistanceParsec?: number;
   search?: string;
@@ -2487,11 +2852,20 @@ interface SolarSystemListRequest {
 interface SolarSystemListResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: {
+    operation: 'solar-system-list';
+    entityType: string;
+    containerId: string;
+  };
   playerName?: string;
   solarSystems: SolarSystemSummary[];
   requestId?: string;
 }
 ```
+
+Client behavior: wrappers drop unmatched responses by `correlationId`/`requestIdentity` when echoed,
+and fall back to legacy `requestId` matching for transition compatibility.
 
 `SolarSystemSummary` exposes display name, source, distance in parsecs,
 multi-star flag, a `primaryStar` summary (`spectralClass`, `colorHex`,
@@ -2508,6 +2882,13 @@ interface SolarSystemGetRequest {
   playerName: string;
   sessionKey: string;
   solarSystemId: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: {
+    operation: 'solar-system-get';
+    entityType: string;
+    containerId: string;
+  };
   asOf?: string; // ISO timestamp; backend may compute orbital positions
   requestId?: string;
 }
@@ -2519,6 +2900,12 @@ interface SolarSystemGetRequest {
 interface SolarSystemGetResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: {
+    operation: 'solar-system-get';
+    entityType: string;
+    containerId: string;
+  };
   playerName?: string;
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;
@@ -2527,6 +2914,9 @@ interface SolarSystemGetResponse {
   requestId?: string;
 }
 ```
+
+Client behavior: wrappers drop unmatched responses by `correlationId`/`requestIdentity` when echoed,
+and fall back to legacy `requestId`/`solarSystemId` matching for transition compatibility.
 
 `ViewerBody` carries `spatial.positionKm` (canonical world frame),
 `visualization.colorHex`, `physicalCatalog.estimatedDiameterM`, optional

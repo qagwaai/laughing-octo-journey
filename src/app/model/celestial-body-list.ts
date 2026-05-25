@@ -5,9 +5,18 @@ import { Triple } from './triple';
 export const CELESTIAL_BODY_LIST_REQUEST_EVENT = 'celestial-body-list-request';
 export const CELESTIAL_BODY_LIST_RESPONSE_EVENT = 'celestial-body-list-response';
 
+export interface CelestialBodyListRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 export interface CelestialBodyListRequest {
   playerName: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: CelestialBodyListRequestIdentity;
   solarSystemId: string;
   positionKm: Triple;
   distanceKm: number;
@@ -49,6 +58,8 @@ export interface CelestialBodyListItem {
 export interface CelestialBodyListResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: CelestialBodyListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   positionKm?: Triple;

@@ -1,4 +1,9 @@
 import {
+  CELESTIAL_BODY_LIST_REQUEST_EVENT,
+  CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+  type CelestialBodyListRequest,
+} from '../model/celestial-body-list';
+import {
   CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
   CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
   type CelestialBodyUpsertRequest,
@@ -113,24 +118,33 @@ describe('SocketService', () => {
   });
 
   describe('upsertCelestialBody', () => {
-    it('should emit celestial body upsert request and register one-time response listener', () => {
-      let emittedEvent: string | null = null;
-      let emittedPayload: unknown;
-      let onceEvent: string | null = null;
-      let responseCallback: ((data: unknown) => void) | undefined;
+    it('should emit celestial-body upsert request and resolve only matching responses', () => {
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: unknown) => {
-          emittedEvent = event;
-          emittedPayload = data;
+          emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {
-          onceEvent = event;
-          responseCallback = callback;
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
         disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
@@ -173,37 +187,172 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).not.toBeNull();
-      expect(onceEvent!).toBe(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT);
-      expect(emittedEvent).not.toBeNull();
-      expect(emittedEvent!).toBe(CELESTIAL_BODY_UPSERT_REQUEST_EVENT);
-      expect(emittedPayload).toEqual(request);
+      expect(onEvents.has(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT)).toBeTrue();
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([CELESTIAL_BODY_UPSERT_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.upsertCelestialBody',
+          requestIdentity: {
+            operation: 'celestial-body-upsert',
+            entityType: 'sol-cb-1',
+            containerId: 'sample-a1',
+            characterId: 'char-1',
+          },
+        }),
+      );
 
-      const fakeResponse = { success: true, message: 'ok', celestialBody: request.celestialBody };
-      responseCallback?.(fakeResponse);
+      const requestPayload = emittedEvents[0]?.payload as CelestialBodyUpsertRequest;
+      const correlationId = requestPayload.correlationId!;
+      const requestIdentity = requestPayload.requestIdentity!;
+
+      const mismatchResponse = {
+        success: true,
+        message: 'wrong response',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity,
+        celestialBody: { ...request.celestialBody, sourceScanId: 'sample-other' },
+      };
+      const callbacks = onEvents.get(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT) ?? [];
+      callbacks[0]?.(mismatchResponse);
+      expect(callbackResponse).toBeUndefined();
+
+      const fakeResponse = {
+        success: true,
+        message: 'ok',
+        correlationId,
+        requestIdentity,
+        celestialBody: request.celestialBody,
+      };
+      callbacks[0]?.(fakeResponse);
+      expect(callbackResponse).toEqual(fakeResponse);
+    });
+  });
+
+  describe('listCelestialBodies', () => {
+    it('should emit celestial-body list request and resolve only matching responses', () => {
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvents.push({ event, payload: data });
+        },
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
+        },
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
+        disconnect: () => {},
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: CelestialBodyListRequest = {
+        sessionKey: 'session-123',
+        playerName: 'Pioneer',
+        solarSystemId: 'sol',
+        positionKm: { x: 0, y: 0, z: 0 },
+        distanceKm: 1000,
+      };
+
+      let callbackResponse: unknown;
+      service.listCelestialBodies(request, (response) => {
+        callbackResponse = response;
+      });
+
+      expect(onEvents.has(CELESTIAL_BODY_LIST_RESPONSE_EVENT)).toBeTrue();
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([CELESTIAL_BODY_LIST_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.listCelestialBodies',
+          requestIdentity: {
+            operation: 'celestial-body-list',
+            entityType: 'sol',
+            containerId: 'pioneer|sol|1000|0|0|0',
+          },
+        }),
+      );
+
+      const requestPayload = emittedEvents[0]?.payload as CelestialBodyListRequest;
+      const correlationId = requestPayload.correlationId!;
+      const requestIdentity = requestPayload.requestIdentity!;
+
+      const mismatchResponse = {
+        success: true,
+        message: 'wrong response',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity,
+        playerName: 'Pioneer',
+        solarSystemId: 'alpha-centauri',
+        positionKm: { x: 0, y: 0, z: 0 },
+        distanceKm: 1000,
+        celestialBodies: [],
+      };
+      const callbacks = onEvents.get(CELESTIAL_BODY_LIST_RESPONSE_EVENT) ?? [];
+      callbacks[0]?.(mismatchResponse);
+      expect(callbackResponse).toBeUndefined();
+
+      const fakeResponse = {
+        success: true,
+        message: 'ok',
+        correlationId,
+        requestIdentity,
+        playerName: 'Pioneer',
+        solarSystemId: 'sol',
+        positionKm: { x: 0, y: 0, z: 0 },
+        distanceKm: 1000,
+        celestialBodies: [],
+      };
+      callbacks[0]?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });
   });
 
   describe('upsertShip', () => {
-    it('should emit ship upsert request and register one-time response listener', () => {
-      let emittedEvent: string | null = null;
-      let emittedPayload: unknown;
-      let onceEvent: string | null = null;
-      let responseCallback: ((data: unknown) => void) | undefined;
+    it('should emit ship upsert request and resolve only matching ship-upsert responses', () => {
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: unknown) => {
-          emittedEvent = event;
-          emittedPayload = data;
+          emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {
-          onceEvent = event;
-          responseCallback = callback;
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
         disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
@@ -233,26 +382,49 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).not.toBeNull();
-      expect(onceEvent!).toBe(SHIP_UPSERT_RESPONSE_EVENT);
-      expect(emittedEvent).not.toBeNull();
-      expect(emittedEvent!).toBe(SHIP_UPSERT_REQUEST_EVENT);
-      expect(emittedPayload).toEqual(
+      expect(onEvents.has(SHIP_UPSERT_RESPONSE_EVENT)).toBeTrue();
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
         jasmine.objectContaining({
           ...request,
           correlationId: jasmine.any(String),
           correlationSource: 'socket.upsertShip',
+          requestIdentity: {
+            operation: 'ship-upsert',
+            entityType: 'Scavenger Pod',
+            containerId: 'starter-char-1',
+            characterId: 'char-1',
+          },
         }),
       );
+
+      const requestPayload = emittedEvents[0]?.payload as ShipUpsertRequest;
+      const correlationId = requestPayload.correlationId!;
+      const requestIdentity = requestPayload.requestIdentity!;
+
+      const mismatchResponse = {
+        success: true,
+        message: 'wrong response',
+        playerName: 'Pioneer',
+        characterId: 'char-2',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity,
+        ship: { ...request.ship, id: 'starter-char-2', shipName: 'Wrong Ship' },
+      };
+      const callbacks = onEvents.get(SHIP_UPSERT_RESPONSE_EVENT) ?? [];
+      callbacks[0]?.(mismatchResponse);
+      expect(callbackResponse).toBeUndefined();
 
       const fakeResponse = {
         success: true,
         message: 'ok',
         playerName: 'Pioneer',
         characterId: 'char-1',
+        correlationId,
+        requestIdentity,
         ship: { ...request.ship, shipName: 'Starter Ship' },
       };
-      responseCallback?.(fakeResponse);
+      callbacks[0]?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });
   });
@@ -262,22 +434,35 @@ describe('SocketService', () => {
       jasmine.clock().uninstall();
     });
 
-    it('should register once listeners for both item-upsert responses and emit canonical request only when response arrives', () => {
+    it('should register listeners for both response aliases and resolve only matching item-upsert responses', () => {
       jasmine.clock().install();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
-      const onceEvents: Array<{ event: string; callback: (data: unknown) => void }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {
-          onceEvents.push({ event, callback });
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
         disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
@@ -300,32 +485,61 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      const onceEventNames = onceEvents.map((entry) => entry.event);
       const emittedEventNames = emittedEvents.map((entry) => entry.event);
 
-      expect(onceEventNames).toContain(ITEM_UPSERT_RESPONSE_EVENT);
-      expect(onceEventNames).toContain('upsert-item-response');
+      expect(onEvents.has(ITEM_UPSERT_RESPONSE_EVENT)).toBeTrue();
+      expect(onEvents.has('upsert-item-response')).toBeTrue();
       expect(emittedEventNames).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload).toEqual(
         jasmine.objectContaining({
           ...request,
           correlationId: jasmine.any(String),
           correlationSource: 'socket.upsertItem',
+          requestIdentity: {
+            operation: 'item-upsert',
+            entityType: 'expendable-dart-drone',
+            containerId: 'ship-1',
+          },
         }),
       );
+
+      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload as ItemUpsertRequest;
+      const correlationId = requestPayload.correlationId!;
+      const requestIdentity = requestPayload.requestIdentity!;
 
       const fakeResponse = {
         success: true,
         message: 'Item created.',
         playerName: 'Pioneer',
+        correlationId,
+        requestIdentity,
         item: { ...request.item, id: 'item-1', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z' },
       };
 
-      const canonicalCallback = onceEvents.find((entry) => entry.event === ITEM_UPSERT_RESPONSE_EVENT)?.callback;
-      const aliasCallback = onceEvents.find((entry) => entry.event === 'upsert-item-response')?.callback;
-      canonicalCallback?.(fakeResponse);
+      const mismatchResponse = {
+        success: true,
+        message: 'mismatch',
+        playerName: 'Pioneer',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity,
+        item: {
+          ...request.item,
+          itemType: 'sensor-array',
+          container: { containerType: 'ship', containerId: 'ship-2' },
+          id: 'wrong-item',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      };
+
+      const canonicalCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
+      const aliasCallbacks = onEvents.get('upsert-item-response') ?? [];
+      canonicalCallbacks[0]?.(mismatchResponse);
+      expect(callbackResponse).toBeUndefined();
+
+      aliasCallbacks[0]?.(fakeResponse);
       jasmine.clock().tick(1000);
-      aliasCallback?.({ success: true, message: 'duplicate', playerName: 'Pioneer' });
+      canonicalCallbacks[0]?.({ success: true, message: 'duplicate', playerName: 'Pioneer' });
 
       expect(callbackResponse).toEqual(fakeResponse);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
@@ -431,24 +645,33 @@ describe('SocketService', () => {
   });
 
   describe('launchItem', () => {
-    it('should register a once listener for launch-item-response and emit launch-item-request', () => {
-      let emittedEvent: string | null = null;
-      let emittedPayload: unknown;
-      let onceEvent: string | null = null;
-      let responseCallback: ((data: unknown) => void) | undefined;
+    it('should register a filtered listener for launch-item-response and emit launch-item-request with correlation metadata', () => {
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
       const mockSocket = {
         connected: true,
         emit: (event: string, data?: unknown) => {
-          emittedEvent = event;
-          emittedPayload = data;
+          emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {
-          onceEvent = event;
-          responseCallback = callback;
+        once: (event: string, callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
         disconnect: () => {},
       };
       service['socket'] = mockSocket as any;
@@ -469,18 +692,47 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onceEvent).not.toBeNull();
-      expect(onceEvent!).toBe(LAUNCH_ITEM_RESPONSE_EVENT);
-      expect(emittedEvent).not.toBeNull();
-      expect(emittedEvent!).toBe(LAUNCH_ITEM_REQUEST_EVENT);
-      expect(emittedPayload).toEqual(request);
+      expect(onEvents.has(LAUNCH_ITEM_RESPONSE_EVENT)).toBeTrue();
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([LAUNCH_ITEM_REQUEST_EVENT]);
+      expect(emittedEvents[0]?.payload).toEqual(
+        jasmine.objectContaining({
+          ...request,
+          correlationId: jasmine.any(String),
+          correlationSource: 'socket.launchItem',
+          requestIdentity: {
+            operation: 'launch-item',
+            entityType: 'expendable-dart-drone',
+            containerId: 'ship-1',
+            itemId: 'item-3',
+            hotkey: 3,
+            targetCelestialBodyId: 'sample-a3',
+            characterId: 'char-1',
+          },
+        }),
+      );
+
+      const requestPayload = emittedEvents[0]?.payload as LaunchItemRequest;
+      const correlationId = requestPayload.correlationId!;
+      const requestIdentity = requestPayload.requestIdentity!;
+
+      const mismatchResponse = {
+        success: true,
+        message: 'wrong launch',
+        ...request,
+        correlationId: 'wrong-correlation-id',
+      };
+      const callbacks = onEvents.get(LAUNCH_ITEM_RESPONSE_EVENT) ?? [];
+      callbacks[0]?.(mismatchResponse);
+      expect(callbackResponse).toBeUndefined();
 
       const fakeResponse = {
         success: true,
         message: 'Launch queued.',
         ...request,
+        correlationId,
+        requestIdentity,
       };
-      responseCallback?.(fakeResponse);
+      callbacks[0]?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });
   });

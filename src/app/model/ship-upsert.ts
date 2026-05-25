@@ -10,6 +10,13 @@ import { SpatialState } from './spatial';
 export const SHIP_UPSERT_REQUEST_EVENT = 'ship-upsert-request';
 export const SHIP_UPSERT_RESPONSE_EVENT = 'ship-upsert-response';
 
+export interface ShipUpsertRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+  characterId?: string;
+}
+
 export interface ShipUpsertPayload {
   id: string;
   status?: string;
@@ -44,6 +51,7 @@ export interface ShipUpsertRequest {
   claimToken?: string;
   correlationId?: string;
   correlationSource?: string;
+  requestIdentity?: ShipUpsertRequestIdentity;
   ship: ShipUpsertPayload;
 }
 
@@ -52,5 +60,7 @@ export interface ShipUpsertResponse {
   message: string;
   playerName: string;
   characterId: string;
+  correlationId?: string;
+  requestIdentity?: ShipUpsertRequestIdentity;
   ship?: ShipUpsertResponsePayload;
 }

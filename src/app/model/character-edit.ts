@@ -1,6 +1,12 @@
 export const CHARACTER_EDIT_REQUEST_EVENT = 'character-edit';
 export const CHARACTER_EDIT_RESPONSE_EVENT = 'character-edit-response';
 
+export interface CharacterEditRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 /**
  * Socket payload for renaming/updating character metadata.
  */
@@ -9,6 +15,9 @@ export interface CharacterEditRequest {
   playerName: string;
   characterName: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: CharacterEditRequestIdentity;
 }
 
 /**
@@ -17,6 +26,8 @@ export interface CharacterEditRequest {
 export interface CharacterEditResponse {
   success: boolean;
   message: string;
+  correlationId?: string;
+  requestIdentity?: CharacterEditRequestIdentity;
   playerName: string;
   characterId: string;
   characterName?: string;

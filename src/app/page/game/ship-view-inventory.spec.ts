@@ -1035,6 +1035,162 @@ describe('ShipViewInventoryPage', () => {
     expect(component['joinShip']()?.inventory?.[0].itemType).toBe('iron');
   });
 
+  it('normalizes inventory from legacy inventoryItemIds payload when inventory is absent', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: { id: 's-1', name: 'Scavenger I', inventory: [] },
+      },
+    });
+    mockShipService.listShipsByOwner.calls.reset();
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger I',
+            model: 'Scavenger Pod',
+            tier: 1,
+            inventoryItemIds: ['s-1-expendable-dart-drone', 's-1-sensor-array', 's-1-ship-tractor-beam'],
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 42, y: 0, z: 0 },
+              epochMs: 123,
+            },
+          },
+        ],
+      });
+    });
+
+    component['refreshShipFromServer']();
+
+    const inventory = component['joinShip']()?.inventory ?? [];
+    expect(inventory.map((item) => item.itemType)).toEqual([
+      'expendable-dart-drone',
+      'sensor-array',
+      'ship-tractor-beam',
+    ]);
+  });
+
+  it('preserves local inventory when refresh returns empty inventory payload for same ship', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          model: 'Scavenger Pod',
+          inventory: [
+            makeItem({ id: 'seeded-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' }),
+          ],
+        },
+      },
+    });
+    mockShipService.listShipsByOwner.calls.reset();
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger I',
+            model: 'Scavenger Pod',
+            tier: 1,
+            inventory: [],
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 42, y: 0, z: 0 },
+              epochMs: 123,
+            },
+          },
+        ],
+      });
+    });
+
+    component['refreshShipFromServer']();
+
+    const inventory = component['joinShip']()?.inventory ?? [];
+    expect(inventory.length).toBe(1);
+    expect(inventory[0].itemType).toBe('expendable-dart-drone');
+  });
+
+  it('repairs empty scavenger starter inventory via item-upsert and re-fetches ship data', () => {
+    const { component, mockShipService } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [],
+        },
+      },
+    });
+    mockShipService.listShipsByOwner.calls.reset();
+
+    let refreshCallCount = 0;
+    mockShipService.listShipsByOwner.and.callFake((_request: any, cb: (response: any) => void) => {
+      refreshCallCount += 1;
+      cb({
+        success: true,
+        ships: [
+          {
+            id: 's-1',
+            name: 'Scavenger I',
+            model: 'Scavenger Pod',
+            tier: 1,
+            inventory: [],
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 42, y: 0, z: 0 },
+              epochMs: 123,
+            },
+          },
+        ],
+      });
+    });
+
+    const upsertItemSpy = jasmine.createSpy('upsertItem').and.callFake((request: any, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        item: {
+          id: `seeded-${request.item.itemType}`,
+          itemType: request.item.itemType,
+          displayName: request.item.displayName,
+          tier: request.item.tier,
+          state: 'contained',
+          damageStatus: 'intact',
+        },
+      });
+    });
+    (socketService as unknown as { upsertItem: jasmine.Spy }).upsertItem = upsertItemSpy;
+
+    component['refreshShipFromServer']();
+
+    expect(upsertItemSpy).toHaveBeenCalledTimes(3);
+    const itemTypes = upsertItemSpy.calls.allArgs().map((args) => args[0].item.itemType).sort();
+    expect(itemTypes).toEqual([
+      'expendable-dart-drone',
+      'sensor-array',
+      'ship-tractor-beam',
+    ].sort());
+    expect(refreshCallCount).toBe(2);
+  });
+
   it('shows refresh warning when no ship has usable spatial data', () => {
     const { component, mockShipService, fixture } = setup({
       socketService,

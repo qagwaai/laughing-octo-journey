@@ -80,9 +80,16 @@ describe('ViewerScenePage', () => {
   it('populates bodies on a successful response', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socketService.triggerEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: getRequest?.correlationId,
+      requestIdentity: getRequest?.requestIdentity,
       solarSystemId: 'sol',
       stars: [
         {
@@ -115,9 +122,16 @@ describe('ViewerScenePage', () => {
   it('hydrates market stations from market-list-by-location when solar-system-get has none', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socketService.triggerEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: getRequest?.correlationId,
+      requestIdentity: getRequest?.requestIdentity,
       solarSystemId: 'sol',
       stars: [
         {
@@ -187,9 +201,16 @@ describe('ViewerScenePage', () => {
   it('reports an error when the response indicates failure', () => {
     const { component, socketService } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socketService.triggerEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: false,
       message: 'not-found',
+      correlationId: getRequest?.correlationId,
+      requestIdentity: getRequest?.requestIdentity,
       solarSystemId: 'sol',
       bodies: [],
     });
@@ -262,9 +283,16 @@ describe('ViewerScenePage', () => {
     // `socketService.upsertShip(...)` call is observable in this test.
     (socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip = jasmine.createSpy('upsertShip');
 
-    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socketService.triggerEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: getRequest?.correlationId,
+      requestIdentity: getRequest?.requestIdentity,
       solarSystemId: 'sol',
       stars: [],
       bodies: [],
@@ -273,9 +301,16 @@ describe('ViewerScenePage', () => {
 
     expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)).toBeTrue();
 
+    const shipListRequest = socketService.emittedEvents.find((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: shipListRequest?.correlationId,
+      requestIdentity: shipListRequest?.requestIdentity,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'char-1', npcId: null, factionId: null },
       ships: [
         {
@@ -312,9 +347,16 @@ describe('ViewerScenePage', () => {
     sessionService.setActiveCharacter({ id: 'char-1', characterName: 'Nova', level: 5 });
     (socketService as unknown as { upsertShip: jasmine.Spy }).upsertShip = jasmine.createSpy('upsertShip');
 
-    socketService.triggerOnceEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
+
+    socketService.triggerEvent(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: getRequest?.correlationId,
+      requestIdentity: getRequest?.requestIdentity,
       solarSystemId: 'sol',
       stars: [],
       bodies: [],

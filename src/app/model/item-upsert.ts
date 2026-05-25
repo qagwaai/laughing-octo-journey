@@ -4,6 +4,12 @@ import { MotionState, SpatialState } from './spatial';
 export const ITEM_UPSERT_REQUEST_EVENT = 'item-upsert-request';
 export const ITEM_UPSERT_RESPONSE_EVENT = 'item-upsert-response';
 
+export interface ItemUpsertRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 export interface ItemUpsertPayload {
   id?: string;
   itemType?: string;
@@ -32,6 +38,7 @@ export interface ItemUpsertRequest {
   sessionKey: string;
   correlationId?: string;
   correlationSource?: string;
+  requestIdentity?: ItemUpsertRequestIdentity;
   item: ItemUpsertPayload;
 }
 
@@ -39,5 +46,7 @@ export interface ItemUpsertResponse {
   success: boolean;
   message: string;
   playerName: string;
+  correlationId?: string;
+  requestIdentity?: ItemUpsertRequestIdentity;
   item?: ShipItem;
 }

@@ -123,10 +123,30 @@ describe('MissionService', () => {
     expect(socketService.emittedEvents.length).toBe(2);
     expect(socketService.emittedEvents[1].event).toBe(MISSION_ADD_REQUEST_EVENT);
     expect(socketService.emittedEvents[1].data.status).toBe('started');
+    expect(socketService.emittedEvents[1].data.correlationId).toEqual(jasmine.any(String));
+    expect(socketService.emittedEvents[1].data.requestIdentity).toEqual(
+      jasmine.objectContaining({
+        operation: 'mission-upsert',
+        entityType: 'mission',
+        containerId: 'char-1',
+      }),
+    );
+
+    socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: socketService.emittedEvents[1].data.requestIdentity,
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+    });
+    await Promise.resolve();
 
     socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
       success: true,
       message: 'added',
+      correlationId: socketService.emittedEvents[1].data.correlationId,
+      requestIdentity: socketService.emittedEvents[1].data.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -295,18 +315,40 @@ describe('MissionService', () => {
     expect(socketService.emittedEvents.length).toBe(1);
     expect(socketService.emittedEvents[0]).toEqual({
       event: MISSION_UPSERT_REQUEST_EVENT,
-      data: {
+      data: jasmine.objectContaining({
         playerName: 'Pioneer',
         characterId: 'char-1',
         missionId: 'first-target',
         sessionKey: 'session-1',
         status: 'started',
-      },
+        correlationId: jasmine.any(String),
+        correlationSource: 'mission-service.upsertMissionStatus',
+        requestIdentity: jasmine.objectContaining({
+          operation: 'mission-upsert',
+          entityType: 'mission',
+          containerId: 'char-1',
+        }),
+      }),
     });
+
+    const requestPayload = socketService.emittedEvents[0].data;
+
+    socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: requestPayload.requestIdentity,
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      mission: { missionId: 'first-target', status: 'started' },
+    });
+    await Promise.resolve();
 
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'updated',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -472,9 +514,31 @@ describe('MissionService', () => {
       const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
       await Promise.resolve();
 
+      expect(socketService.emittedEvents[0].data.correlationId).toEqual(jasmine.any(String));
+      expect(socketService.emittedEvents[0].data.requestIdentity).toEqual(
+        jasmine.objectContaining({
+          operation: 'mission-list',
+          entityType: 'mission',
+          containerId: 'c-1',
+        }),
+      );
+
+      socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'wrong',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        missions: [{ missionId: 'first-target', status: 'started' }],
+      });
+      await Promise.resolve();
+
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: socketService.emittedEvents[0].data.correlationId,
+        requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
         missions: [{ missionId: 'first-target', status: 'started' }],
