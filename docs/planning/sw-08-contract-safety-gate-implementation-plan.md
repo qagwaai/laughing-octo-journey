@@ -1,6 +1,6 @@
 # SW-08 Contract Safety Gate Implementation Plan (Frontend-Led)
 
-Status: Stage 1 implemented (report-only)
+Status: Stage 2 started (soft-fail in progress)
 Date: 2026-05-24
 Repo: laughing-octo-journey
 
@@ -92,11 +92,12 @@ Implemented in this repo:
 - Local preflight command: npm run contract:check
 
 Current mode:
-- Report-only only; drift is reported and artifacted, but the workflow does not hard-fail on findings.
+- Stage 2 soft-fail mode is now wired through the detector and PR workflow.
+- Approved exceptions are validated with owner markers, expiry, rollback, and ticket metadata.
 
 Stage 2 tuning needed before soft-fail:
-- Add an allowlist for deliberate backend enum expansions that frontend consumers ignore safely.
-- Separate true producer regressions from frontend normalization gaps when the consumer can coerce legacy aliases.
+- Expand the approved exception review checklist to include incident owner assignment and rollback verification.
+- Confirm any future enum-expansion allowlist entries are tied to a clearly documented consumer fallback.
 - Scope any future soft-fail threshold to changed contract surfaces first to keep CI time and noise down.
 
 ## 9. Done Criteria

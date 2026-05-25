@@ -28,7 +28,7 @@
           "responseFields": [
             { "path": "success", "type": "boolean", "required": true },
             { "path": "message", "type": "string", "required": true },
-            { "path": "reason", "type": "enum", "required": false, "values": ["PLAYER_NOT_REGISTERED", "PASSWORD_MISMATCH", "UNKNOWN"] },
+            { "path": "reason", "type": "enum", "required": false, "values": ["PLAYER_NOT_REGISTERED", "PASSWORD_MISMATCH", "UNKNOWN"], "allowAdditionalValues": true },
             { "path": "playerId", "type": "string", "required": false },
             { "path": "sessionKey", "type": "string", "required": false }
           ]

@@ -21,7 +21,7 @@ Purpose: Reusable prompts for consistent implementation and maintenance.
 
 ## Prompt 3: CI Integration
 
-"Add a CI job for SW-08 contract safety gate in report-only mode, then soft-fail mode behind a flag. Ensure output is uploaded as an artifact and includes remediation hints."
+"Add a CI job for SW-08 contract safety gate in report-only mode, then soft-fail mode behind a flag with approved-exception metadata. Ensure output is uploaded as an artifact and includes remediation hints."
 
 ## Prompt 4: Create Intentional Mismatch Fixture
 

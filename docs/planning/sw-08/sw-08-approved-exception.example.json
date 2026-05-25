@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "reason": "Prevent the known SW-08 breaking fixture from blocking the stage-2 rollout while backend and frontend owners coordinate the fix.",
+  "impact": "The intentional mismatch fixture remains red until the coordinated contract fix lands, but the exception keeps the rollout auditable.",
+  "expiryDate": "2026-06-07",
+  "rollbackPlan": "Remove this exception file and re-run the SW-08 gate after the backend and frontend contract updates are merged.",
+  "followUpTicket": "SW-08-STAGE2-EXCEPTION-001",
+  "followUpOwner": "Frontend lead",
+  "approvals": {
+    "frontendLead": true,
+    "backendLead": true
+  },
+  "allowedFindings": [
+    {
+      "surfaceId": "market/ledger",
+      "contractId": "market.list",
+      "category": "type mismatch",
+      "fieldPath": "response.markets[].driftPercentPerHour"
+    },
+    {
+      "surfaceId": "item catalog/fabrication",
+      "contractId": "fabrication.printableItem",
+      "category": "missing required field",
+      "fieldPath": "response.requiredMaterials[].acceptedDisplayNames"
+    },
+    {
+      "surfaceId": "ship-external-view",
+      "contractId": "shipExterior.launchItem",
+      "category": "enum/value mismatch",
+      "fieldPath": "response.resolution.outcome"
+    }
+  ]
+}

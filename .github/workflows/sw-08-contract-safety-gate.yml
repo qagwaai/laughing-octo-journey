@@ -3,9 +3,14 @@ name: SW-08 Contract Safety Gate
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      exception-file:
+        description: Optional approved exception manifest path
+        required: false
+        type: string
 
 jobs:
-  report-only:
+  soft-fail:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,8 +25,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run SW-08 report-only gate
-        run: npm run contract:check
+      - name: Run SW-08 soft-fail gate
+        id: sw08_gate
+        continue-on-error: true
+        env:
+          SW08_CONTRACT_EXCEPTION_FILE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs['exception-file'] || '' }}
+        run: npm run contract:check:stage2
+
+      - name: Summarize SW-08 gate result
+        if: always()
+        run: |
+          if [ "${{ steps.sw08_gate.outcome }}" = "failure" ]; then
+            {
+              echo "SW-08 stage 2 soft fail detected breaking drift."
+              echo "Review reports/sw-08-contract-safety-gate/report.md for owner mapping and remediation hints."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "SW-08 stage 2 gate passed or an approved exception was applied." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload SW-08 report artifact
         if: always()

@@ -22,8 +22,11 @@ Suggested flow:
 1. Pull latest main.
 2. Retrieve current backend contract artifact.
 3. Run `npm run contract:check` for the canonical report-only comparison.
-4. To prove detector behavior, run `npm run contract:check:fixture`.
-5. Confirm exact mismatch lines and paths.
+4. To reproduce stage 2 soft-fail behavior, run `npm run contract:check:stage2`.
+5. To prove detector behavior, run `npm run contract:check:stage2:fixture`.
+6. To confirm an approved bypass, run `npm run contract:check:stage2:approved`.
+7. To validate non-breaking additions, run `npm run contract:check:compatibility`.
+8. Confirm exact mismatch lines, owner tags, and remediation hints.
 
 Report artifacts are written to `reports/sw-08-contract-safety-gate/` as `report.json` and `report.md`.
 
@@ -47,10 +50,23 @@ Shared fix:
 Use only for urgent merges.
 
 Required:
+- Reason and impact.
 - Approval from frontend and backend leads.
 - Ticket with expiry date.
 - Rollback strategy.
 - Follow-up owner assigned.
+
+Approved exception manifest fields:
+- `status: approved`
+- `reason`
+- `impact`
+- `expiryDate`
+- `rollbackPlan`
+- `followUpTicket`
+- `followUpOwner`
+- `approvals.frontendLead = true`
+- `approvals.backendLead = true`
+- `allowedFindings[]` entries that match contractId, category, and fieldPath.
 
 ## 6. Communication Template
 
