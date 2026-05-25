@@ -1,6 +1,6 @@
 {
-  "windowDays": 7,
-  "generatedAt": "2026-05-25T01:40:22.180Z",
+  "windowDays": 30,
+  "generatedAt": "2026-05-25T01:40:22.181Z",
   "eventsInWindow": 21,
   "driftCount": 36,
   "driftCountByClass": {

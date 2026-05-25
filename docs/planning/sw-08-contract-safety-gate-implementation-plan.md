@@ -1,6 +1,6 @@
 # SW-08 Contract Safety Gate Implementation Plan (Frontend-Led)
 
-Status: Stage 3 implemented (hard-fail in progress)
+Status: Stage 5 optimization and continuous assurance in progress
 Date: 2026-05-24
 Repo: laughing-octo-journey
 
@@ -95,6 +95,11 @@ Current mode:
 - Stage 3 hard-fail mode is now wired through the detector and PR workflow.
 - Approved exceptions are validated with owner markers, expiry, rollback, and ticket metadata.
 - Invalid or expired exception manifests fail CI even when no drift findings are present.
+
+Stage 5 optimization additions:
+- Weekly and rolling 30-day trend artifacts are generated for drift class, impacted surface, owner tag, MTTR, and repeat-offender signals.
+- Pre-merge PR checklist and assumption-change note guardrails are active for consumer assumption updates.
+- False-positive baseline is tracked via approved-exception proxy rate with a documented short action plan.
 
 Stage 3 tuning needed before completion:
 - Keep approved exceptions short-lived and review expiry dates before every merge window.

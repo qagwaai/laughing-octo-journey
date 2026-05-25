@@ -6,7 +6,10 @@ const DEFAULT_BACKEND_ARTIFACT = 'docs/planning/sw-08/backend-contract-artifact.
 const DEFAULT_REPORT_DIR = 'reports/sw-08-contract-safety-gate';
 const DEFAULT_MODE = 'hard-fail';
 const DEFAULT_EXCEPTION_MAX_DAYS = Number.parseInt(process.env.SW08_EXCEPTION_MAX_DAYS ?? '14', 10);
+const DEFAULT_EXCEPTION_NEAR_EXPIRY_DAYS = Number.parseInt(process.env.SW08_EXCEPTION_NEAR_EXPIRY_DAYS ?? '3', 10);
 const WEEKLY_WINDOW_DAYS = 7;
+const ROLLING_WINDOW_DAYS = 30;
+const REPEAT_DRIFT_THRESHOLD = Number.parseInt(process.env.SW08_REPEAT_DRIFT_THRESHOLD ?? '3', 10);
 const REQUIRED_SURFACE_IDS = [
   'auth/session',
   'character/ship',
@@ -241,14 +244,24 @@ function parseApprovedException(exceptionFile, findings) {
 
   const expiryTimestamp = Date.parse(String(manifest?.expiryDate ?? ''));
   const nowTimestamp = Date.now();
+  let expiryDaysRemaining = null;
+  let nearExpiry = false;
   if (Number.isNaN(expiryTimestamp)) {
     validationErrors.push('Exception expiryDate must be a parseable date.');
   } else if (expiryTimestamp < nowTimestamp) {
     validationErrors.push('Exception expiryDate has already passed.');
-  } else if (isFiniteNumber(DEFAULT_EXCEPTION_MAX_DAYS) && DEFAULT_EXCEPTION_MAX_DAYS > 0) {
-    const maxWindowMs = DEFAULT_EXCEPTION_MAX_DAYS * 24 * 60 * 60 * 1000;
-    if (expiryTimestamp - nowTimestamp > maxWindowMs) {
-      validationErrors.push(`Exception expiryDate exceeds max allowed window (${DEFAULT_EXCEPTION_MAX_DAYS} days).`);
+  } else {
+    expiryDaysRemaining = Number(((expiryTimestamp - nowTimestamp) / (24 * 60 * 60 * 1000)).toFixed(2));
+
+    if (isFiniteNumber(DEFAULT_EXCEPTION_MAX_DAYS) && DEFAULT_EXCEPTION_MAX_DAYS > 0) {
+      const maxWindowMs = DEFAULT_EXCEPTION_MAX_DAYS * 24 * 60 * 60 * 1000;
+      if (expiryTimestamp - nowTimestamp > maxWindowMs) {
+        validationErrors.push(`Exception expiryDate exceeds max allowed window (${DEFAULT_EXCEPTION_MAX_DAYS} days).`);
+      }
+    }
+
+    if (isFiniteNumber(DEFAULT_EXCEPTION_NEAR_EXPIRY_DAYS) && DEFAULT_EXCEPTION_NEAR_EXPIRY_DAYS >= 0) {
+      nearExpiry = expiryDaysRemaining <= DEFAULT_EXCEPTION_NEAR_EXPIRY_DAYS;
     }
   }
 
@@ -275,6 +288,8 @@ function parseApprovedException(exceptionFile, findings) {
     manifest,
     validationErrors,
     isApproved: validationErrors.length === 0,
+    nearExpiry,
+    expiryDaysRemaining,
     matchedFindingSignatures: findings.map(buildFindingSignature).filter((signature) => allowedSignatures.has(signature)),
   };
 }
@@ -340,24 +355,66 @@ function appendJsonLine(filePath, payload) {
   fs.appendFileSync(filePath, `${JSON.stringify(payload)}\n`, 'utf8');
 }
 
-function computeWeeklyMetrics(events, nowTimestamp = Date.now()) {
-  const windowStartTimestamp = nowTimestamp - WEEKLY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-  const weeklyEvents = events
+function summarizeFindingsBy(events, selector) {
+  return events.reduce((summary, event) => {
+    const findings = Array.isArray(event?.findings) ? event.findings : [];
+    for (const finding of findings) {
+      const key = String(selector(finding) ?? '').trim();
+      if (!key) {
+        continue;
+      }
+
+      summary[key] = (summary[key] ?? 0) + 1;
+    }
+
+    return summary;
+  }, {});
+}
+
+function collectRepeatOffenders(events, threshold) {
+  const counts = {};
+  for (const event of events) {
+    const findings = Array.isArray(event?.findings) ? event.findings : [];
+    for (const finding of findings) {
+      const surfaceId = String(finding?.surfaceId ?? '').trim();
+      const category = String(finding?.category ?? '').trim();
+      if (!surfaceId || !category) {
+        continue;
+      }
+
+      const key = `${surfaceId}::${category}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+  }
+
+  return Object.entries(counts)
+    .filter(([, count]) => count >= threshold)
+    .map(([key, count]) => {
+      const [surfaceId, category] = key.split('::');
+      return { surfaceId, category, count };
+    })
+    .sort((a, b) => b.count - a.count);
+}
+
+function computeWindowMetrics(events, windowDays, nowTimestamp = Date.now()) {
+  const windowStartTimestamp = nowTimestamp - windowDays * 24 * 60 * 60 * 1000;
+  const scopedEvents = events
     .filter((event) => Number.isFinite(event?.timestampMs) && event.timestampMs >= windowStartTimestamp)
     .sort((a, b) => a.timestampMs - b.timestampMs);
 
-  const isFailureDecision = (decision) => decision === 'hard-fail' || decision === 'invalid-exception';
+  const isFailureDecision = (decision) =>
+    decision === 'hard-fail' || decision === 'invalid-exception' || decision === 'coverage-gap';
   const isRecoveredDecision = (decision) => decision === 'pass' || decision === 'approved-exception';
 
   const resolutionDurationsMs = [];
-  for (let index = 0; index < weeklyEvents.length; index += 1) {
-    const event = weeklyEvents[index];
+  for (let index = 0; index < scopedEvents.length; index += 1) {
+    const event = scopedEvents[index];
     if (!isFailureDecision(String(event?.decision ?? '').trim())) {
       continue;
     }
 
-    for (let nextIndex = index + 1; nextIndex < weeklyEvents.length; nextIndex += 1) {
-      const candidate = weeklyEvents[nextIndex];
+    for (let nextIndex = index + 1; nextIndex < scopedEvents.length; nextIndex += 1) {
+      const candidate = scopedEvents[nextIndex];
       if (!isRecoveredDecision(String(candidate?.decision ?? '').trim())) {
         continue;
       }
@@ -372,14 +429,41 @@ function computeWeeklyMetrics(events, nowTimestamp = Date.now()) {
       ? Number((resolutionDurationsMs.reduce((total, value) => total + value, 0) / resolutionDurationsMs.length / 3600000).toFixed(2))
       : null;
 
+  const findingsByClass = summarizeFindingsBy(scopedEvents, (finding) => finding.category);
+  const findingsBySurface = summarizeFindingsBy(scopedEvents, (finding) => finding.surfaceId);
+  const findingsByOwnerTag = summarizeFindingsBy(scopedEvents, (finding) => finding.ownerTag);
+  const repeatOffenders = collectRepeatOffenders(scopedEvents, REPEAT_DRIFT_THRESHOLD);
+
+  const bypassEvents = scopedEvents.filter((event) => String(event?.decision ?? '').trim() === 'approved-exception');
+  const bypassCount = bypassEvents.length;
+  const expiredBypasses = scopedEvents.filter((event) => event?.exceptionExpired === true).length;
+  const nearExpiryBypasses = scopedEvents.filter((event) => event?.exceptionNearExpiry === true).length;
+
+  const totalFindings = scopedEvents.reduce((total, event) => total + Number(event?.findingCount ?? 0), 0);
+  const falsePositiveProxyRate = totalFindings > 0 ? Number((bypassEvents.reduce((sum, event) => sum + Number(event?.findingCount ?? 0), 0) / totalFindings).toFixed(3)) : 0;
+
   return {
-    windowDays: WEEKLY_WINDOW_DAYS,
+    windowDays,
     generatedAt: new Date(nowTimestamp).toISOString(),
-    eventsInWindow: weeklyEvents.length,
-    driftCount: weeklyEvents.reduce((total, event) => total + Number(event?.findingCount ?? 0), 0),
-    bypassCount: weeklyEvents.filter((event) => String(event?.decision ?? '').trim() === 'approved-exception').length,
-    expiredBypasses: weeklyEvents.filter((event) => event?.exceptionExpired === true).length,
+    eventsInWindow: scopedEvents.length,
+    driftCount: totalFindings,
+    driftCountByClass: findingsByClass,
+    impactedSurfaceCounts: findingsBySurface,
+    ownerTagCounts: findingsByOwnerTag,
     mttrHours,
+    bypassCount,
+    expiredBypasses,
+    nearExpiryBypasses,
+    repeatOffenders,
+    falsePositiveBaseline: {
+      proxyRate: falsePositiveProxyRate,
+      metric: 'approved_exception_findings / total_findings',
+      actionPlan: [
+        'Prioritize top repeat offender surfaces for contract alignment with producer owners.',
+        'Require migration notes when frontend assumptions or consumer inventory fields change.',
+        'Review allowAdditionalValues usage quarterly to ensure it remains narrowly scoped.',
+      ],
+    },
   };
 }
 
@@ -391,11 +475,25 @@ function renderWeeklyMetricsMarkdown(metrics) {
     `- Generated at: ${metrics.generatedAt}`,
     `- Events in window: ${metrics.eventsInWindow}`,
     `- Drift count: ${metrics.driftCount}`,
+    `- Drift by class: ${JSON.stringify(metrics.driftCountByClass)}`,
+    `- Impacted surfaces: ${JSON.stringify(metrics.impactedSurfaceCounts)}`,
+    `- Owner tags: ${JSON.stringify(metrics.ownerTagCounts)}`,
     `- MTTR (hours): ${metrics.mttrHours ?? 'n/a'}`,
     `- Bypass count: ${metrics.bypassCount}`,
     `- Expired bypasses: ${metrics.expiredBypasses}`,
+    `- Near-expiry bypasses: ${metrics.nearExpiryBypasses}`,
+    `- Repeat offenders: ${metrics.repeatOffenders.length > 0 ? JSON.stringify(metrics.repeatOffenders) : 'none'}`,
+    `- False-positive baseline (${metrics.falsePositiveBaseline.metric}): ${metrics.falsePositiveBaseline.proxyRate}`,
     '',
   ];
+
+  if (Array.isArray(metrics.falsePositiveBaseline?.actionPlan)) {
+    lines.push('## Baseline Action Plan');
+    for (const action of metrics.falsePositiveBaseline.actionPlan) {
+      lines.push(`- ${action}`);
+    }
+    lines.push('');
+  }
 
   return lines.join('\n');
 }
@@ -601,7 +699,12 @@ function renderMarkdownReport(result) {
 
   if (result.exception) {
     lines.push(`- Exception: ${result.exception.filePath}`);
-    lines.push(`- Exception ticket: ${result.exception.followUpTicket}`);
+    if (result.exception.followUpTicket) {
+      lines.push(`- Exception ticket: ${result.exception.followUpTicket}`);
+    }
+    if (result.exceptionNearExpiry === true) {
+      lines.push('- Exception status: near-expiry');
+    }
     lines.push('');
   }
 
@@ -643,14 +746,27 @@ function writeReportArtifacts(reportDir, result) {
     timestampMs: Date.now(),
     decision: result.decision,
     findingCount: result.findingCount,
+    findings: result.findings.map((finding) => ({
+      category: finding.category,
+      surfaceId: finding.surfaceId,
+      ownerTag: finding.ownerTag,
+      contractId: finding.contractId,
+      fieldPath: finding.fieldPath,
+    })),
+    exceptionApplied: result.exceptionApplied,
     exceptionExpired: Array.isArray(result.exceptionValidationErrors)
       ? result.exceptionValidationErrors.some((error) => String(error).includes('expiryDate has already passed'))
       : false,
+    exceptionNearExpiry: result.exceptionNearExpiry,
   });
 
-  const weeklyMetrics = computeWeeklyMetrics(readJsonLines(metricsLogPath));
+  const allEvents = readJsonLines(metricsLogPath);
+  const weeklyMetrics = computeWindowMetrics(allEvents, WEEKLY_WINDOW_DAYS);
+  const rollingMetrics = computeWindowMetrics(allEvents, ROLLING_WINDOW_DAYS);
   fs.writeFileSync(path.join(resolvedReportDir, 'weekly-metrics.json'), `${JSON.stringify(weeklyMetrics, null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(resolvedReportDir, 'weekly-metrics.md'), `${renderWeeklyMetricsMarkdown(weeklyMetrics)}\n`, 'utf8');
+  fs.writeFileSync(path.join(resolvedReportDir, 'rolling-30d-trends.json'), `${JSON.stringify(rollingMetrics, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(path.join(resolvedReportDir, 'rolling-30d-trends.md'), `${renderWeeklyMetricsMarkdown(rollingMetrics)}\n`, 'utf8');
 }
 
 function main() {
@@ -679,6 +795,7 @@ function main() {
   const exception = parseApprovedException(args.exceptionFile, findings);
   const exceptionApplies = Boolean(exception && exception.isApproved);
   const exceptionHasErrors = Boolean(exception && exception.validationErrors.length > 0);
+  const exceptionNearExpiry = Boolean(exceptionApplies && exception?.nearExpiry);
   const hasBreakingFindings = findings.some((finding) => finding.severity === 'breaking');
   const enforceCoverage = isCanonicalInventoryPath(args.frontendInventory);
   const shouldFailForBreakingDrift = hasBreakingFindings && !exceptionApplies && mode !== 'report-only';
@@ -710,6 +827,8 @@ function main() {
     summaryBySeverity: summarizeByKey(findings, 'severity'),
     criticalSurfaceCoverage,
     exceptionValidationErrors: exceptionHasErrors ? exception.validationErrors : [],
+    exceptionNearExpiry,
+    exceptionApplied: exceptionApplies,
     findings: findings.map(toReportFinding),
     exception: exceptionApplies
       ? {
@@ -748,10 +867,24 @@ function main() {
   if (exceptionApplies) {
     console.log(`Approved exception applied: ${exception.filePath}`);
     console.log(`Exception ticket: ${exception.manifest.followUpTicket}`);
+    if (exceptionNearExpiry) {
+      console.log(`Exception near expiry: ${exception.expiryDaysRemaining} days remaining.`);
+    }
   } else if (exceptionHasErrors) {
     console.log(`Invalid exception supplied: ${exception.filePath}`);
     for (const validationError of exception.validationErrors) {
       console.log(`- ${validationError}`);
+    }
+  }
+
+  const rollingMetricsPath = path.join(resolveWorkspacePath(args.reportDir), 'rolling-30d-trends.json');
+  const rollingMetrics = fs.existsSync(rollingMetricsPath)
+    ? JSON.parse(fs.readFileSync(rollingMetricsPath, 'utf8'))
+    : { repeatOffenders: [] };
+  if (result.findingCount > 0 && Array.isArray(rollingMetrics.repeatOffenders) && rollingMetrics.repeatOffenders.length > 0) {
+    console.log(`Escalation note: repeat drift threshold (${REPEAT_DRIFT_THRESHOLD}) reached for:`);
+    for (const offender of rollingMetrics.repeatOffenders) {
+      console.log(`- ${offender.surfaceId} | ${offender.category} | count=${offender.count}`);
     }
   }
   if (findings.length > 0) {

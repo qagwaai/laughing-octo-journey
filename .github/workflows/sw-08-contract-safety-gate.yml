@@ -25,6 +25,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate SW-08 assumption change note
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if echo "$changed_files" | grep -q "^docs/planning/sw-08/frontend-consumer-contract-inventory.json$"; then
+            if ! echo "$PR_BODY" | grep -qi "SW-08 Assumption Change Note:"; then
+              echo "Missing required PR note: SW-08 Assumption Change Note:"
+              exit 1
+            fi
+          fi
+
       - name: Run SW-08 hard-fail gate
         id: sw08_gate
         env:
@@ -43,7 +58,7 @@ jobs:
       - name: Summarize SW-08 weekly metrics
         if: always()
         run: |
-          node -e "const fs=require('node:fs'); const p='reports/sw-08-contract-safety-gate/weekly-metrics.json'; if(!fs.existsSync(p)){process.exit(0)} const m=JSON.parse(fs.readFileSync(p,'utf8')); console.log('SW-08 weekly metrics'); console.log('- Drift count: ' + m.driftCount); console.log('- MTTR (hours): ' + (m.mttrHours ?? 'n/a')); console.log('- Bypass count: ' + m.bypassCount); console.log('- Expired bypasses: ' + m.expiredBypasses);" >> "$GITHUB_STEP_SUMMARY"
+          node -e "const fs=require('node:fs'); const weekly='reports/sw-08-contract-safety-gate/weekly-metrics.json'; const rolling='reports/sw-08-contract-safety-gate/rolling-30d-trends.json'; if(fs.existsSync(weekly)){ const m=JSON.parse(fs.readFileSync(weekly,'utf8')); console.log('SW-08 weekly metrics'); console.log('- Drift count: ' + m.driftCount); console.log('- MTTR (hours): ' + (m.mttrHours ?? 'n/a')); console.log('- Bypass count: ' + m.bypassCount); console.log('- Expired bypasses: ' + m.expiredBypasses); console.log('- Near-expiry bypasses: ' + (m.nearExpiryBypasses ?? 0)); } if(fs.existsSync(rolling)){ const r=JSON.parse(fs.readFileSync(rolling,'utf8')); console.log('SW-08 rolling 30-day trends'); console.log('- Drift by class: ' + JSON.stringify(r.driftCountByClass ?? {})); console.log('- Impacted surfaces: ' + JSON.stringify(r.impactedSurfaceCounts ?? {})); console.log('- Owner tags: ' + JSON.stringify(r.ownerTagCounts ?? {})); console.log('- Repeat offenders: ' + JSON.stringify(r.repeatOffenders ?? [])); }" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload SW-08 report artifact
         if: always()

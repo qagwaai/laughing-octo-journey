@@ -23,6 +23,7 @@ Suggested flow:
 2. Retrieve current backend contract artifact.
 3. Run `npm run contract:check` for the canonical report-only comparison.
 4. To reproduce stage 3 hard-fail behavior, run `npm run contract:check:stage3`.
+4a. Stage 5 continuous-assurance path uses `npm run contract:check:stage5` (same hard-fail semantics + trend artifacts).
 5. To prove detector behavior, run `npm run contract:check:stage3:fixture`.
 6. To confirm an approved bypass, run `npm run contract:check:stage3:approved`.
 7. To validate invalid exception rejection, run `npm run contract:check:stage3:expired` and `npm run contract:check:stage3:missing-approval`.
@@ -34,12 +35,17 @@ Report artifacts are written to `reports/sw-08-contract-safety-gate/` as `report
 Weekly metrics artifacts are also written to `reports/sw-08-contract-safety-gate/` as:
 - `weekly-metrics.json`
 - `weekly-metrics.md`
+- `rolling-30d-trends.json`
+- `rolling-30d-trends.md`
 
 Metrics fields:
 - Drift count
 - MTTR (hours)
 - Bypass count
 - Expired bypasses
+- Drift by class / impacted surface / owner tag
+- Repeat offender signals by surface + mismatch class
+- Near-expiry bypass count
 
 ## 4. Fix Paths
 
@@ -81,6 +87,10 @@ Approved exception manifest fields:
 
 Policy note:
 - Expired or incomplete exception manifests must fail CI even when no drift findings are present.
+- Near-expiry exceptions are reported for proactive cleanup.
+
+Pre-merge prevention note:
+- If `docs/planning/sw-08/frontend-consumer-contract-inventory.json` changes in a PR, include `SW-08 Assumption Change Note:` in the PR body.
 
 ## 6. Communication Template
 

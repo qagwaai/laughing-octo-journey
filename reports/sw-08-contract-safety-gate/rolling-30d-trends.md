@@ -1,7 +1,7 @@
 # SW-08 Weekly Metrics
 
-- Window (days): 7
-- Generated at: 2026-05-25T01:40:22.180Z
+- Window (days): 30
+- Generated at: 2026-05-25T01:40:22.181Z
 - Events in window: 21
 - Drift count: 36
 - Drift by class: {"type mismatch":5,"missing required field":5,"enum/value mismatch":5}
