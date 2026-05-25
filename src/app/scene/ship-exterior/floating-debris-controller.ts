@@ -77,7 +77,6 @@ export class FloatingDebrisController {
   /** Exposed for tests; production code triggers this via start()/timer. */
   requestNearbyItems(): void {
     const playerName = this.deps.getPlayerName().trim();
-    const shipId = this.deps.getActiveShipId()?.trim() ?? '';
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
     const positionKm = this.deps.getShipPositionKm();
     const solarSystemId = this.deps.getSolarSystemId().trim() || DEFAULT_SOLAR_SYSTEM_ID;
@@ -90,10 +89,9 @@ export class FloatingDebrisController {
       this.seedColdBootTractorBeam(positionKm);
     }
 
-    if (!playerName || !shipId || !sessionKey || !positionKm) {
+    if (!playerName || !sessionKey || !positionKm) {
       appLogger.debug?.('FloatingDebrisController skipped request (missing context)', {
         hasPlayerName: !!playerName,
-        hasShipId: !!shipId,
         hasSessionKey: !!sessionKey,
         hasPosition: !!positionKm,
       });
@@ -105,12 +103,9 @@ export class FloatingDebrisController {
       {
         sessionKey,
         playerName,
-        shipId,
-        location: {
-          solarSystemId,
-          positionKm: { x: positionKm.x, y: positionKm.y, z: positionKm.z },
-        },
-        maxDistanceKm: FLOATING_DEBRIS_RADIUS_KM,
+        solarSystemId,
+        positionKm: { x: positionKm.x, y: positionKm.y, z: positionKm.z },
+        distanceKm: FLOATING_DEBRIS_RADIUS_KM,
       },
       (response) => this.handleListResponse(response, positionKm, solarSystemId),
     );

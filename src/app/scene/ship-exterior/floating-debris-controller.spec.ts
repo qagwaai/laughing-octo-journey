@@ -74,12 +74,9 @@ describe('FloatingDebrisController', () => {
     expect(calls[0].request).toEqual({
       sessionKey: 'session-abc',
       playerName: 'Pilot',
-      shipId: 'ship-1',
-      location: {
-        solarSystemId: 'sol-1',
-        positionKm: { x: 1, y: 2, z: 3 },
-      },
-      maxDistanceKm: 50,
+      solarSystemId: 'sol-1',
+      positionKm: { x: 1, y: 2, z: 3 },
+      distanceKm: 50,
     });
   });
 
@@ -152,12 +149,6 @@ describe('FloatingDebrisController', () => {
 
   it('does not emit a request when sessionKey is missing (negative)', () => {
     const { controller, calls } = createDeps({ sessionKey: '' });
-    controller.start();
-    expect(calls.length).toBe(0);
-  });
-
-  it('does not emit a request when shipId is missing (negative)', () => {
-    const { controller, calls } = createDeps({ shipId: '' });
     controller.start();
     expect(calls.length).toBe(0);
   });

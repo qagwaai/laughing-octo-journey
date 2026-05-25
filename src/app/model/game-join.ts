@@ -1,4 +1,4 @@
-export const GAME_JOIN_REQUEST_EVENT = 'game-join';
+export const GAME_JOIN_REQUEST_EVENT = 'game-join-request';
 export const GAME_JOIN_RESPONSE_EVENT = 'game-join-response';
 
 /**

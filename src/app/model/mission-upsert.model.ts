@@ -1,7 +1,7 @@
 import type { CharacterMissionProgress, MissionStatus } from './mission';
 
-export const MISSION_UPSERT_REQUEST_EVENT = 'add-mission-request';
-export const MISSION_UPSERT_RESPONSE_EVENT = 'add-mission-response';
+export const MISSION_UPSERT_REQUEST_EVENT = 'mission-upsert-request';
+export const MISSION_UPSERT_RESPONSE_EVENT = 'mission-upsert-response';
 
 export interface MissionUpsertRequestIdentity {
   operation: string;

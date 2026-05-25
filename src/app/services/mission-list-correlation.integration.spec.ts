@@ -158,7 +158,7 @@ describe('mission-list correlation integration', () => {
     });
   }));
 
-  it('uses legacy fallback matching for responses without correlation metadata', fakeAsync(() => {
+  it('keeps strict mission-list matching when responses omit correlation metadata', fakeAsync(() => {
     let missionServiceResult: ListMissionsResult | undefined;
     const missionServicePromise = missionService.listMissions({
       playerName: 'Pioneer',
@@ -202,9 +202,30 @@ describe('mission-list correlation integration', () => {
     } satisfies MissionListResponse);
     flushMicrotasks();
 
+    expect(missionBoardCallback).toHaveBeenCalledTimes(1);
+    expect(missionServiceResult).toBeUndefined();
+
+    const requestFromMissionService = socketService.emittedEvents.find(
+      (entry) =>
+        entry.event === MISSION_LIST_REQUEST_EVENT &&
+        (entry.data as MissionListRequest).correlationSource === 'mission-service.listMissions',
+    )?.data as MissionListRequest;
+
+    socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'strict-char-a',
+      correlationId: requestFromMissionService.correlationId,
+      requestIdentity: requestFromMissionService.requestIdentity,
+      playerName: 'Pioneer',
+      characterId: 'char-a',
+      missions: [{ missionId: 'service-mission', status: 'started' }],
+    } satisfies MissionListResponse);
+    flushMicrotasks();
+
     expect(missionServiceResult).toEqual({
       status: 'loaded',
       missions: [{ missionId: 'service-mission', status: 'started' }],
     });
+    expect(missionBoardCallback).toHaveBeenCalledTimes(1);
   }));
 });

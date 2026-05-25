@@ -1,4 +1,4 @@
-export const CHARACTER_EDIT_REQUEST_EVENT = 'character-edit';
+export const CHARACTER_EDIT_REQUEST_EVENT = 'character-edit-request';
 export const CHARACTER_EDIT_RESPONSE_EVENT = 'character-edit-response';
 
 export interface CharacterEditRequestIdentity {

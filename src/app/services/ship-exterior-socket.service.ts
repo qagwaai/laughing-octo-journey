@@ -206,7 +206,7 @@ export class ShipExteriorSocketService {
     return {
       operation: 'item-list-by-location',
       entityType: 'item',
-      containerId: request.location?.solarSystemId?.trim() || 'unknown-solar-system',
+      containerId: request.solarSystemId?.trim() || 'unknown-solar-system',
     };
   }
 
@@ -581,7 +581,8 @@ export class ShipExteriorSocketService {
             expectedRequestOperation: expectedRequestIdentity.operation,
             expectedRequestEntityType: expectedRequestIdentity.entityType,
             expectedRequestContainerId: expectedRequestIdentity.containerId,
-            expectedShipId: request.shipId,
+            expectedSolarSystemId: request.solarSystemId,
+            expectedDistanceKm: request.distanceKm,
             responseCorrelationId: response.correlationId ?? null,
             responseRequestOperation: response.requestIdentity?.operation ?? null,
             responseRequestEntityType: response.requestIdentity?.entityType ?? null,

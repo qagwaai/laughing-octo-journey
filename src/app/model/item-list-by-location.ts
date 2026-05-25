@@ -15,16 +15,14 @@ export interface ItemListByLocationRequest {
   correlationId?: string;
   correlationSource?: string;
   requestIdentity?: ItemListByLocationRequestIdentity;
-  shipId: string;
-  location: {
-    solarSystemId: string;
-    positionKm: {
-      x: number;
-      y: number;
-      z: number;
-    };
+  solarSystemId: string;
+  positionKm: {
+    x: number;
+    y: number;
+    z: number;
   };
-  maxDistanceKm?: number;
+  distanceKm: number;
+  itemType?: string;
   limit?: number;
 }
 

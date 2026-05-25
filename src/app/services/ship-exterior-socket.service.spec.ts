@@ -335,12 +335,9 @@ describe('ShipExteriorSocketService', () => {
     const request: ItemListByLocationRequest = {
       sessionKey: 'session-1',
       playerName: 'Pioneer',
-      shipId: 'starter-char-1',
-      location: {
-        solarSystemId: 'sol',
-        positionKm: { x: 10, y: 20, z: 30 },
-      },
-      maxDistanceKm: 500,
+      solarSystemId: 'sol',
+      positionKm: { x: 10, y: 20, z: 30 },
+      distanceKm: 500,
       limit: 50,
     };
 
@@ -423,11 +420,9 @@ describe('ShipExteriorSocketService', () => {
     const request: ItemListByLocationRequest = {
       sessionKey: 'session-1',
       playerName: 'Pioneer',
-      shipId: 'starter-char-1',
-      location: {
-        solarSystemId: 'sol',
-        positionKm: { x: 0, y: 0, z: 0 },
-      },
+      solarSystemId: 'sol',
+      positionKm: { x: 0, y: 0, z: 0 },
+      distanceKm: 500,
     };
 
     const unsubscribe = service.listNearbyDeployedItems(request, () => {

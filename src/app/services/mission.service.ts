@@ -46,23 +46,18 @@ function isMissionListResponseForRequest(
   response: MissionListResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: MissionListRequestIdentity,
-  expectedRequest: MissionListRequest,
+  _expectedRequest: MissionListRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesMissionListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  return (
-    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
-    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
-  );
+  if (!response.requestIdentity) {
+    return false;
+  }
+
+  return matchesMissionListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildDefaultMissionAddRequestIdentity(request: MissionAddRequest): MissionAddRequestIdentity {
@@ -84,23 +79,18 @@ function isMissionAddResponseForRequest(
   response: MissionAddResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: MissionAddRequestIdentity,
-  expectedRequest: MissionAddRequest,
+  _expectedRequest: MissionAddRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesMissionAddRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  return (
-    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
-    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
-  );
+  if (!response.requestIdentity) {
+    return false;
+  }
+
+  return matchesMissionAddRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildDefaultMissionUpsertRequestIdentity(request: MissionUpsertRequest): MissionUpsertRequestIdentity {
@@ -122,23 +112,18 @@ function isMissionUpsertResponseForRequest(
   response: MissionUpsertResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: MissionUpsertRequestIdentity,
-  expectedRequest: MissionUpsertRequest,
+  _expectedRequest: MissionUpsertRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesMissionUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  return (
-    normalizeIdentityValue(response.playerName) === normalizeIdentityValue(expectedRequest.playerName) &&
-    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId)
-  );
+  if (!response.requestIdentity) {
+    return false;
+  }
+
+  return matchesMissionUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 /**

@@ -198,6 +198,8 @@ describe('Mission integration proof of concept', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
       playerName,
       characterId,
       mission: {
@@ -333,6 +335,8 @@ describe('Mission integration proof of concept', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: emittedRequest.data.correlationId,
+      requestIdentity: emittedRequest.data.requestIdentity,
       playerName,
       characterId,
       mission: {

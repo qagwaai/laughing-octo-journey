@@ -65,6 +65,18 @@ describe('MissionService', () => {
     service = new MissionService(socketService as never);
   });
 
+  function metadataFor(eventName: string): { correlationId: string; requestIdentity: unknown } {
+    const emitted = [...socketService.emittedEvents].reverse().find((entry) => entry.event === eventName);
+    if (!emitted?.data?.correlationId || !emitted?.data?.requestIdentity) {
+      throw new Error(`Missing correlation metadata for ${eventName}`);
+    }
+
+    return {
+      correlationId: emitted.data.correlationId,
+      requestIdentity: emitted.data.requestIdentity,
+    };
+  }
+
   it('should return invalid-request when required fields are missing', async () => {
     const result = await service.ensureMissionExists({
       playerName: ' ',
@@ -88,10 +100,13 @@ describe('MissionService', () => {
     await Promise.resolve();
 
     expect(socketService.emittedEvents[0].event).toBe(MISSION_LIST_REQUEST_EVENT);
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
 
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [{ missionId: 'first-target', status: 'started' }],
@@ -112,9 +127,13 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [],
@@ -165,19 +184,26 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [],
     });
 
     expect(socketService.emittedEvents[1].data.status).toBe('available');
+    const addMetadata = metadataFor(MISSION_ADD_REQUEST_EVENT);
 
     socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
       success: true,
       message: 'added',
+      correlationId: addMetadata.correlationId,
+      requestIdentity: addMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'available' },
@@ -196,9 +222,13 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: false,
       message: 'boom',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [],
@@ -218,17 +248,25 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [],
     });
 
+    const addMetadata = metadataFor(MISSION_ADD_REQUEST_EVENT);
+
     socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
       success: false,
       message: 'nope',
+      correlationId: addMetadata.correlationId,
+      requestIdentity: addMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
     });
@@ -246,9 +284,13 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'OtherPlayer',
       characterId: 'char-1',
       missions: [{ missionId: 'first-target', status: 'completed' }],
@@ -257,6 +299,8 @@ describe('MissionService', () => {
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: 'wrong-correlation-id-2',
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'other-char',
       missions: [{ missionId: 'first-target', status: 'completed' }],
@@ -267,6 +311,8 @@ describe('MissionService', () => {
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: false,
       message: 'boom',
+      correlationId: listMetadata.correlationId,
+      requestIdentity: listMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [],
@@ -384,6 +430,8 @@ describe('MissionService', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: false,
       message: 'nope',
+      correlationId: socketService.emittedEvents[0].data.correlationId,
+      requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
     });
@@ -404,10 +452,13 @@ describe('MissionService', () => {
     await Promise.resolve();
 
     expect(socketService.emittedEvents[0].data.statusDetail).toBe('{"some":"detail"}');
+    const upsertMetadata = metadataFor(MISSION_UPSERT_REQUEST_EVENT);
 
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'updated',
+      correlationId: upsertMetadata.correlationId,
+      requestIdentity: upsertMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -426,9 +477,13 @@ describe('MissionService', () => {
     });
     await Promise.resolve();
 
+    const upsertMetadata = metadataFor(MISSION_UPSERT_REQUEST_EVENT);
+
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'updated',
+      correlationId: 'wrong-correlation-id',
+      requestIdentity: upsertMetadata.requestIdentity,
       playerName: 'OtherPlayer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -437,6 +492,8 @@ describe('MissionService', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'updated',
+      correlationId: upsertMetadata.correlationId,
+      requestIdentity: upsertMetadata.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -463,6 +520,8 @@ describe('MissionService', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'updated',
+        correlationId: socketService.emittedEvents[0].data.correlationId,
+        requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
       mission: { missionId: 'first-target', status: 'started' },
@@ -498,6 +557,8 @@ describe('MissionService', () => {
         socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
           success: true,
           message: 'ok',
+          correlationId: socketService.emittedEvents[0].data.correlationId,
+          requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
           playerName: 'Pioneer',
           characterId: 'c-1',
           missions: [],
@@ -556,6 +617,8 @@ describe('MissionService', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: false,
         message: 'boom',
+        correlationId: socketService.emittedEvents[0].data.correlationId,
+        requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
         missions: [],
@@ -569,9 +632,13 @@ describe('MissionService', () => {
       const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
       await Promise.resolve();
 
+      const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: 'wrong-correlation-id',
+        requestIdentity: listMetadata.requestIdentity,
         playerName: 'OtherPlayer',
         characterId: 'c-1',
         missions: [],
@@ -580,6 +647,8 @@ describe('MissionService', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: 'wrong-correlation-id-2',
+        requestIdentity: listMetadata.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'other-char',
         missions: [],
@@ -588,6 +657,8 @@ describe('MissionService', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: listMetadata.correlationId,
+        requestIdentity: listMetadata.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
         missions: [{ missionId: 'first-target', status: 'available' }],
@@ -608,9 +679,13 @@ describe('MissionService', () => {
 
       expect(socketService.emittedEvents[0].data.statuses).toEqual(['started', 'completed']);
 
+      const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: listMetadata.correlationId,
+        requestIdentity: listMetadata.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
         missions: [],
@@ -623,9 +698,13 @@ describe('MissionService', () => {
       const resultPromise = service.listMissions({ playerName: 'Pioneer', characterId: 'c-1', sessionKey: 's-1' });
       await Promise.resolve();
 
+      const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
+
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: listMetadata.correlationId,
+        requestIdentity: listMetadata.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
         missions: null,
