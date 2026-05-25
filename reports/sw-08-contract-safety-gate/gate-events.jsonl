@@ -1,0 +1,12 @@
+{"timestampMs":1779669631120,"decision":"pass","findingCount":0,"exceptionExpired":false}
+{"timestampMs":1779669631744,"decision":"coverage-gap","findingCount":3,"exceptionExpired":false}
+{"timestampMs":1779669632342,"decision":"coverage-gap","findingCount":3,"exceptionExpired":false}
+{"timestampMs":1779669632994,"decision":"invalid-exception","findingCount":3,"exceptionExpired":true}
+{"timestampMs":1779669633621,"decision":"invalid-exception","findingCount":3,"exceptionExpired":false}
+{"timestampMs":1779669634269,"decision":"coverage-gap","findingCount":0,"exceptionExpired":false}
+{"timestampMs":1779669648982,"decision":"pass","findingCount":0,"exceptionExpired":false}
+{"timestampMs":1779669649596,"decision":"hard-fail","findingCount":3,"exceptionExpired":false}
+{"timestampMs":1779669650222,"decision":"approved-exception","findingCount":3,"exceptionExpired":false}
+{"timestampMs":1779669650879,"decision":"invalid-exception","findingCount":3,"exceptionExpired":true}
+{"timestampMs":1779669651507,"decision":"pass","findingCount":0,"exceptionExpired":false}
+{"timestampMs":1779669668355,"decision":"pass","findingCount":0,"exceptionExpired":false}

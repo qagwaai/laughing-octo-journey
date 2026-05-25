@@ -8,6 +8,27 @@
   "summaryByCategory": {},
   "summaryByOwnerTag": {},
   "summaryBySeverity": {},
+  "criticalSurfaceCoverage": {
+    "requiredSurfaceIds": [
+      "auth/session",
+      "character/ship",
+      "market/ledger",
+      "mission flows",
+      "item catalog/fabrication",
+      "ship-external-view"
+    ],
+    "presentSurfaceIds": [
+      "auth/session",
+      "character/ship",
+      "item catalog/fabrication",
+      "market/ledger",
+      "mission flows",
+      "ship-external-view"
+    ],
+    "missingSurfaceIds": [],
+    "status": "complete"
+  },
+  "exceptionValidationErrors": [],
   "findings": [],
   "exception": null
 }

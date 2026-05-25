@@ -6,6 +6,7 @@
 - Backend artifact: docs/planning/sw-08/backend-contract-artifact.json
 - Contracts checked: 14
 - Findings: 0
+- Critical surface coverage: complete
 
 No drift detected.
 

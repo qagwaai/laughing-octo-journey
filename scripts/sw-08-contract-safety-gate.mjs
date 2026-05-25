@@ -5,6 +5,16 @@ const DEFAULT_FRONTEND_INVENTORY = 'docs/planning/sw-08/frontend-consumer-contra
 const DEFAULT_BACKEND_ARTIFACT = 'docs/planning/sw-08/backend-contract-artifact.json';
 const DEFAULT_REPORT_DIR = 'reports/sw-08-contract-safety-gate';
 const DEFAULT_MODE = 'hard-fail';
+const DEFAULT_EXCEPTION_MAX_DAYS = Number.parseInt(process.env.SW08_EXCEPTION_MAX_DAYS ?? '14', 10);
+const WEEKLY_WINDOW_DAYS = 7;
+const REQUIRED_SURFACE_IDS = [
+  'auth/session',
+  'character/ship',
+  'market/ledger',
+  'mission flows',
+  'item catalog/fabrication',
+  'ship-external-view',
+];
 
 const REMEDIATION_HINTS = {
   'backend remediation': 'Update the backend contract artifact and migration notes, then re-run the gate.',
@@ -84,6 +94,14 @@ function normalizeMode(mode) {
   }
 
   return DEFAULT_MODE;
+}
+
+function isCanonicalInventoryPath(frontendInventoryPath) {
+  return path.normalize(String(frontendInventoryPath ?? '')) === path.normalize(DEFAULT_FRONTEND_INVENTORY);
+}
+
+function isFiniteNumber(value) {
+  return Number.isFinite(value);
 }
 
 function flattenContracts(catalog) {
@@ -167,6 +185,29 @@ function getRemediationHint(ownerTag) {
   return REMEDIATION_HINTS[String(ownerTag ?? '').trim()] ?? 'Review the owning contract surface and update the consumer or producer contract as needed.';
 }
 
+function getNextAction(finding) {
+  const category = String(finding?.category ?? '').trim();
+  const fieldPath = String(finding?.fieldPath ?? 'n/a').trim();
+
+  if (category === 'missing required field') {
+    return `Restore required field ${fieldPath} in producer contract or update frontend expectation, then run npm run contract:check:stage3.`;
+  }
+
+  if (category === 'type mismatch') {
+    return `Align producer and consumer type at ${fieldPath} and re-run npm run contract:check:stage3.`;
+  }
+
+  if (category === 'enum/value mismatch') {
+    return `Align enum values at ${fieldPath} or document safe extension policy, then re-run npm run contract:check:stage3.`;
+  }
+
+  if (category === 'endpoint/event missing' || category === 'endpoint/event renamed') {
+    return 'Restore endpoint/event compatibility or coordinated alias path, then re-run npm run contract:check:stage3.';
+  }
+
+  return 'Review the drift details, assign owner, and re-run npm run contract:check:stage3.';
+}
+
 function buildFindingSignature(finding) {
   return [finding.contractId, finding.category, finding.fieldPath].map((value) => String(value ?? '').trim()).join('::');
 }
@@ -199,10 +240,16 @@ function parseApprovedException(exceptionFile, findings) {
   }
 
   const expiryTimestamp = Date.parse(String(manifest?.expiryDate ?? ''));
+  const nowTimestamp = Date.now();
   if (Number.isNaN(expiryTimestamp)) {
     validationErrors.push('Exception expiryDate must be a parseable date.');
-  } else if (expiryTimestamp < Date.now()) {
+  } else if (expiryTimestamp < nowTimestamp) {
     validationErrors.push('Exception expiryDate has already passed.');
+  } else if (isFiniteNumber(DEFAULT_EXCEPTION_MAX_DAYS) && DEFAULT_EXCEPTION_MAX_DAYS > 0) {
+    const maxWindowMs = DEFAULT_EXCEPTION_MAX_DAYS * 24 * 60 * 60 * 1000;
+    if (expiryTimestamp - nowTimestamp > maxWindowMs) {
+      validationErrors.push(`Exception expiryDate exceeds max allowed window (${DEFAULT_EXCEPTION_MAX_DAYS} days).`);
+    }
   }
 
   const allowedFindings = Array.isArray(manifest?.allowedFindings) ? manifest.allowedFindings : [];
@@ -247,7 +294,110 @@ function toReportFinding(finding) {
     producerContractSurface: finding.surfaceLabel,
     producerLocation: finding.backendArtifactPath,
     remediationHint: getRemediationHint(finding.ownerTag),
+    nextAction: getNextAction(finding),
   };
+}
+
+function evaluateCriticalSurfaceCoverage(catalog) {
+  const surfaces = Array.isArray(catalog?.surfaces) ? catalog.surfaces : [];
+  const presentIds = new Set(
+    surfaces
+      .map((surface) => String(surface?.id ?? '').trim())
+      .filter(Boolean),
+  );
+
+  const missingSurfaceIds = REQUIRED_SURFACE_IDS.filter((surfaceId) => !presentIds.has(surfaceId));
+
+  return {
+    requiredSurfaceIds: REQUIRED_SURFACE_IDS,
+    presentSurfaceIds: [...presentIds].sort(),
+    missingSurfaceIds,
+    status: missingSurfaceIds.length === 0 ? 'complete' : 'incomplete',
+  };
+}
+
+function readJsonLines(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+function appendJsonLine(filePath, payload) {
+  fs.appendFileSync(filePath, `${JSON.stringify(payload)}\n`, 'utf8');
+}
+
+function computeWeeklyMetrics(events, nowTimestamp = Date.now()) {
+  const windowStartTimestamp = nowTimestamp - WEEKLY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const weeklyEvents = events
+    .filter((event) => Number.isFinite(event?.timestampMs) && event.timestampMs >= windowStartTimestamp)
+    .sort((a, b) => a.timestampMs - b.timestampMs);
+
+  const isFailureDecision = (decision) => decision === 'hard-fail' || decision === 'invalid-exception';
+  const isRecoveredDecision = (decision) => decision === 'pass' || decision === 'approved-exception';
+
+  const resolutionDurationsMs = [];
+  for (let index = 0; index < weeklyEvents.length; index += 1) {
+    const event = weeklyEvents[index];
+    if (!isFailureDecision(String(event?.decision ?? '').trim())) {
+      continue;
+    }
+
+    for (let nextIndex = index + 1; nextIndex < weeklyEvents.length; nextIndex += 1) {
+      const candidate = weeklyEvents[nextIndex];
+      if (!isRecoveredDecision(String(candidate?.decision ?? '').trim())) {
+        continue;
+      }
+
+      resolutionDurationsMs.push(candidate.timestampMs - event.timestampMs);
+      break;
+    }
+  }
+
+  const mttrHours =
+    resolutionDurationsMs.length > 0
+      ? Number((resolutionDurationsMs.reduce((total, value) => total + value, 0) / resolutionDurationsMs.length / 3600000).toFixed(2))
+      : null;
+
+  return {
+    windowDays: WEEKLY_WINDOW_DAYS,
+    generatedAt: new Date(nowTimestamp).toISOString(),
+    eventsInWindow: weeklyEvents.length,
+    driftCount: weeklyEvents.reduce((total, event) => total + Number(event?.findingCount ?? 0), 0),
+    bypassCount: weeklyEvents.filter((event) => String(event?.decision ?? '').trim() === 'approved-exception').length,
+    expiredBypasses: weeklyEvents.filter((event) => event?.exceptionExpired === true).length,
+    mttrHours,
+  };
+}
+
+function renderWeeklyMetricsMarkdown(metrics) {
+  const lines = [
+    '# SW-08 Weekly Metrics',
+    '',
+    `- Window (days): ${metrics.windowDays}`,
+    `- Generated at: ${metrics.generatedAt}`,
+    `- Events in window: ${metrics.eventsInWindow}`,
+    `- Drift count: ${metrics.driftCount}`,
+    `- MTTR (hours): ${metrics.mttrHours ?? 'n/a'}`,
+    `- Bypass count: ${metrics.bypassCount}`,
+    `- Expired bypasses: ${metrics.expiredBypasses}`,
+    '',
+  ];
+
+  return lines.join('\n');
 }
 
 function compareContract(expectedContract, backendContract, allBackendContracts) {
@@ -445,6 +595,7 @@ function renderMarkdownReport(result) {
     `- Backend artifact: ${result.backendArtifactPath}`,
     `- Contracts checked: ${result.contractCount}`,
     `- Findings: ${result.findings.length}`,
+    `- Critical surface coverage: ${result.criticalSurfaceCoverage.status}`,
     '',
   ];
 
@@ -454,17 +605,22 @@ function renderMarkdownReport(result) {
     lines.push('');
   }
 
+  if (result.criticalSurfaceCoverage.missingSurfaceIds.length > 0) {
+    lines.push(`- Missing critical surfaces: ${result.criticalSurfaceCoverage.missingSurfaceIds.join(', ')}`);
+    lines.push('');
+  }
+
   if (result.findings.length === 0) {
     lines.push('No drift detected.', '');
     return lines.join('\n');
   }
 
-  lines.push('| Category | Severity | Owner | Producer surface | Consumer location | Field | Expected | Actual | Remediation hint |');
-  lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+  lines.push('| Category | Severity | Owner | Producer surface | Consumer location | Field | Expected | Actual | Remediation hint | Next action |');
+  lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 
   for (const finding of result.findings) {
     lines.push(
-      `| ${finding.category} | ${finding.severity} | ${finding.ownerTag} | ${finding.producerContractSurface} | ${escapeMarkdownCell(finding.consumerLocation)} | ${finding.fieldPath ?? 'n/a'} | ${escapeMarkdownCell(finding.expected)} | ${escapeMarkdownCell(finding.actual)} | ${escapeMarkdownCell(finding.remediationHint)} |`,
+      `| ${finding.category} | ${finding.severity} | ${finding.ownerTag} | ${finding.producerContractSurface} | ${escapeMarkdownCell(finding.consumerLocation)} | ${finding.fieldPath ?? 'n/a'} | ${escapeMarkdownCell(finding.expected)} | ${escapeMarkdownCell(finding.actual)} | ${escapeMarkdownCell(finding.remediationHint)} | ${escapeMarkdownCell(finding.nextAction)} |`,
     );
   }
 
@@ -481,6 +637,20 @@ function writeReportArtifacts(reportDir, result) {
   fs.mkdirSync(resolvedReportDir, { recursive: true });
   fs.writeFileSync(path.join(resolvedReportDir, 'report.json'), `${JSON.stringify(result, null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(resolvedReportDir, 'report.md'), `${renderMarkdownReport(result)}\n`, 'utf8');
+
+  const metricsLogPath = path.join(resolvedReportDir, 'gate-events.jsonl');
+  appendJsonLine(metricsLogPath, {
+    timestampMs: Date.now(),
+    decision: result.decision,
+    findingCount: result.findingCount,
+    exceptionExpired: Array.isArray(result.exceptionValidationErrors)
+      ? result.exceptionValidationErrors.some((error) => String(error).includes('expiryDate has already passed'))
+      : false,
+  });
+
+  const weeklyMetrics = computeWeeklyMetrics(readJsonLines(metricsLogPath));
+  fs.writeFileSync(path.join(resolvedReportDir, 'weekly-metrics.json'), `${JSON.stringify(weeklyMetrics, null, 2)}\n`, 'utf8');
+  fs.writeFileSync(path.join(resolvedReportDir, 'weekly-metrics.md'), `${renderWeeklyMetricsMarkdown(weeklyMetrics)}\n`, 'utf8');
 }
 
 function main() {
@@ -492,6 +662,7 @@ function main() {
   const frontendContracts = flattenContracts(frontendInventory);
   const backendContracts = flattenContracts(backendArtifact);
   const backendById = indexByContractId(backendContracts);
+  const criticalSurfaceCoverage = evaluateCriticalSurfaceCoverage(frontendInventory);
 
   const findings = frontendContracts.flatMap((contract) => {
     const contractId = String(contract.contractId ?? '').trim();
@@ -509,14 +680,18 @@ function main() {
   const exceptionApplies = Boolean(exception && exception.isApproved);
   const exceptionHasErrors = Boolean(exception && exception.validationErrors.length > 0);
   const hasBreakingFindings = findings.some((finding) => finding.severity === 'breaking');
+  const enforceCoverage = isCanonicalInventoryPath(args.frontendInventory);
   const shouldFailForBreakingDrift = hasBreakingFindings && !exceptionApplies && mode !== 'report-only';
   const shouldFailForInvalidException = exceptionHasErrors && mode !== 'report-only';
-  const shouldFail = shouldFailForBreakingDrift || shouldFailForInvalidException;
+  const shouldFailForCoverageGap = enforceCoverage && criticalSurfaceCoverage.missingSurfaceIds.length > 0 && mode !== 'report-only';
+  const shouldFail = shouldFailForBreakingDrift || shouldFailForInvalidException || shouldFailForCoverageGap;
   const decision =
     mode === 'report-only'
       ? 'report-only'
       : shouldFailForInvalidException
         ? 'invalid-exception'
+        : shouldFailForCoverageGap
+          ? 'coverage-gap'
         : shouldFailForBreakingDrift
           ? 'hard-fail'
           : exceptionApplies && findings.length > 0
@@ -533,6 +708,8 @@ function main() {
     summaryByCategory: summarizeByKey(findings, 'category'),
     summaryByOwnerTag: summarizeByKey(findings, 'ownerTag'),
     summaryBySeverity: summarizeByKey(findings, 'severity'),
+    criticalSurfaceCoverage,
+    exceptionValidationErrors: exceptionHasErrors ? exception.validationErrors : [],
     findings: findings.map(toReportFinding),
     exception: exceptionApplies
       ? {
@@ -561,6 +738,13 @@ function main() {
   console.log(`Decision: ${decision}`);
   console.log(`Contracts checked: ${result.contractCount}`);
   console.log(`Findings: ${result.findingCount}`);
+  console.log(`Critical surface coverage: ${criticalSurfaceCoverage.status}`);
+  if (criticalSurfaceCoverage.missingSurfaceIds.length > 0) {
+    console.log(`Missing critical surfaces: ${criticalSurfaceCoverage.missingSurfaceIds.join(', ')}`);
+    if (!enforceCoverage) {
+      console.log('Coverage enforcement skipped for non-canonical fixture inventory.');
+    }
+  }
   if (exceptionApplies) {
     console.log(`Approved exception applied: ${exception.filePath}`);
     console.log(`Exception ticket: ${exception.manifest.followUpTicket}`);
@@ -573,7 +757,7 @@ function main() {
   if (findings.length > 0) {
     for (const finding of findings) {
       console.log(
-        `- ${finding.category} | ${finding.severity} | ${finding.ownerTag} | ${finding.surfaceLabel} | ${finding.contractId} | ${finding.fieldPath ?? 'n/a'} | ${getRemediationHint(finding.ownerTag)}`,
+        `- ${finding.category} | ${finding.severity} | ${finding.ownerTag} | ${finding.surfaceLabel} | ${finding.contractId} | ${finding.fieldPath ?? 'n/a'} | ${getRemediationHint(finding.ownerTag)} | ${getNextAction(finding)}`,
       );
     }
   } else {
@@ -584,6 +768,8 @@ function main() {
     console.error(
       shouldFailForInvalidException
         ? 'Hard fail: exception metadata is invalid and does not satisfy SW-08 policy.'
+        : shouldFailForCoverageGap
+          ? 'Hard fail: frontend critical surface coverage is incomplete.'
         : 'Hard fail: breaking contract drift detected and no approved exception was supplied.',
     );
     process.exitCode = 1;

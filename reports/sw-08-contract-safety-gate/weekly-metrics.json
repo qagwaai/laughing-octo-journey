@@ -1,0 +1,9 @@
+{
+  "windowDays": 7,
+  "generatedAt": "2026-05-25T00:41:08.355Z",
+  "eventsInWindow": 12,
+  "driftCount": 21,
+  "bypassCount": 1,
+  "expiredBypasses": 2,
+  "mttrHours": 0
+}

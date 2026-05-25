@@ -31,6 +31,16 @@ Suggested flow:
 
 Report artifacts are written to `reports/sw-08-contract-safety-gate/` as `report.json` and `report.md`.
 
+Weekly metrics artifacts are also written to `reports/sw-08-contract-safety-gate/` as:
+- `weekly-metrics.json`
+- `weekly-metrics.md`
+
+Metrics fields:
+- Drift count
+- MTTR (hours)
+- Bypass count
+- Expired bypasses
+
 ## 4. Fix Paths
 
 Frontend-led fix:

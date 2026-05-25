@@ -40,6 +40,11 @@ jobs:
             echo "SW-08 stage 3 gate passed or an approved exception was applied within policy bounds." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Summarize SW-08 weekly metrics
+        if: always()
+        run: |
+          node -e "const fs=require('node:fs'); const p='reports/sw-08-contract-safety-gate/weekly-metrics.json'; if(!fs.existsSync(p)){process.exit(0)} const m=JSON.parse(fs.readFileSync(p,'utf8')); console.log('SW-08 weekly metrics'); console.log('- Drift count: ' + m.driftCount); console.log('- MTTR (hours): ' + (m.mttrHours ?? 'n/a')); console.log('- Bypass count: ' + m.bypassCount); console.log('- Expired bypasses: ' + m.expiredBypasses);" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload SW-08 report artifact
         if: always()
         uses: actions/upload-artifact@v4
