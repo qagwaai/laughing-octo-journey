@@ -31,6 +31,8 @@
     "e2e:install": "playwright install",
     "catalog:test": "node scripts/catalog-test.mjs",
     "catalog:audit": "node scripts/audit-backend-item-catalog.mjs",
+    "contract:check": "node scripts/sw-08-contract-safety-gate.mjs",
+    "contract:check:fixture": "node scripts/sw-08-contract-safety-gate.mjs --frontend-inventory docs/planning/sw-08/frontend-consumer-contract-inventory.intentional-mismatch.json --backend-artifact docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
     "export:ships": "node scripts/export-scavenger-pod-glb.mjs"
   },
   "private": true,

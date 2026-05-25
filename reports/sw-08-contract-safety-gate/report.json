@@ -1,0 +1,60 @@
+{
+  "mode": "report-only",
+  "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.intentional-mismatch.json",
+  "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
+  "contractCount": 3,
+  "findingCount": 3,
+  "summaryByCategory": {
+    "type mismatch": 1,
+    "missing required field": 1,
+    "enum/value mismatch": 1
+  },
+  "findings": [
+    {
+      "surfaceId": "market/ledger",
+      "surfaceLabel": "market/ledger",
+      "contractId": "market.list",
+      "ownerTag": "backend remediation",
+      "consumerFiles": [
+        "src/app/model/market-list.ts"
+      ],
+      "category": "type mismatch",
+      "severity": "breaking",
+      "fieldPath": "response.markets[].driftPercentPerHour",
+      "detail": "Response field response.markets[].driftPercentPerHour changed type.",
+      "expected": "number",
+      "actual": "string"
+    },
+    {
+      "surfaceId": "item catalog/fabrication",
+      "surfaceLabel": "item catalog/fabrication",
+      "contractId": "fabrication.printableItem",
+      "ownerTag": "frontend remediation",
+      "consumerFiles": [
+        "src/app/model/printable-item.ts"
+      ],
+      "category": "missing required field",
+      "severity": "breaking",
+      "fieldPath": "response.requiredMaterials[].acceptedDisplayNames",
+      "detail": "Required response field response.requiredMaterials[].acceptedDisplayNames is not marked required by the backend artifact.",
+      "expected": "required",
+      "actual": "false"
+    },
+    {
+      "surfaceId": "ship-external-view",
+      "surfaceLabel": "ship-external-view",
+      "contractId": "shipExterior.launchItem",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": [
+        "src/app/model/launch-item.ts",
+        "src/app/model/ship-item.ts"
+      ],
+      "category": "enum/value mismatch",
+      "severity": "breaking",
+      "fieldPath": "response.resolution.outcome",
+      "detail": "Response enum values changed for response.resolution.outcome.",
+      "expected": "[\"no-effect\",\"target-destroyed\"]",
+      "actual": "[\"no-effect\",\"target-eliminated\"]"
+    }
+  ]
+}

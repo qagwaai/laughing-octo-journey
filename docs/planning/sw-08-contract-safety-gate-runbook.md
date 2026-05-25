@@ -21,8 +21,11 @@ Use this runbook when the SW-08 CI gate fails due to detected contract drift.
 Suggested flow:
 1. Pull latest main.
 2. Retrieve current backend contract artifact.
-3. Run local SW-08 check command.
-4. Confirm exact mismatch lines and paths.
+3. Run `npm run contract:check` for the canonical report-only comparison.
+4. To prove detector behavior, run `npm run contract:check:fixture`.
+5. Confirm exact mismatch lines and paths.
+
+Report artifacts are written to `reports/sw-08-contract-safety-gate/` as `report.json` and `report.md`.
 
 ## 4. Fix Paths
 
