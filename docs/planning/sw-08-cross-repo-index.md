@@ -15,12 +15,14 @@ Frontend repo documents:
 2. [Implementation Plan](sw-08-contract-safety-gate-implementation-plan.md)
 3. [Runbook](sw-08-contract-safety-gate-runbook.md)
 4. [Prompt Pack](sw-08-contract-safety-gate-prompt-pack.md)
+5. [Closure Checklist](sw-08-closure-checklist.md)
 
 Backend repo documents:
 1. [solid-train Requirements](../../../solid-train/docs/planning/sw-08-contract-safety-gate-requirements.md)
 2. [solid-train Implementation Plan](../../../solid-train/docs/planning/sw-08-contract-safety-gate-implementation-plan.md)
 3. [solid-train Runbook](../../../solid-train/docs/planning/sw-08-contract-safety-gate-runbook.md)
 4. [solid-train Prompt Pack](../../../solid-train/docs/planning/sw-08-contract-safety-gate-prompt-pack.md)
+5. [solid-train Closure Checklist](../../../solid-train/docs/planning/sw-08-closure-checklist.md)
 
 ## Shared Rollout Stages
 
