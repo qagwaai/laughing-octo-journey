@@ -1,6 +1,6 @@
 # SW-08 Contract Safety Gate Implementation Plan (Frontend-Led)
 
-Status: Stage 2 started (soft-fail in progress)
+Status: Stage 3 implemented (hard-fail in progress)
 Date: 2026-05-24
 Repo: laughing-octo-journey
 
@@ -92,13 +92,14 @@ Implemented in this repo:
 - Local preflight command: npm run contract:check
 
 Current mode:
-- Stage 2 soft-fail mode is now wired through the detector and PR workflow.
+- Stage 3 hard-fail mode is now wired through the detector and PR workflow.
 - Approved exceptions are validated with owner markers, expiry, rollback, and ticket metadata.
+- Invalid or expired exception manifests fail CI even when no drift findings are present.
 
-Stage 2 tuning needed before soft-fail:
-- Expand the approved exception review checklist to include incident owner assignment and rollback verification.
+Stage 3 tuning needed before completion:
+- Keep approved exceptions short-lived and review expiry dates before every merge window.
 - Confirm any future enum-expansion allowlist entries are tied to a clearly documented consumer fallback.
-- Scope any future soft-fail threshold to changed contract surfaces first to keep CI time and noise down.
+- Scope any future hard-fail threshold to changed contract surfaces first to keep CI time and noise down.
 
 ## 9. Done Criteria
 

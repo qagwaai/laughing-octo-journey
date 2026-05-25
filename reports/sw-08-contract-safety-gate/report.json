@@ -1,6 +1,6 @@
 {
-  "mode": "report-only",
-  "decision": "report-only",
+  "mode": "hard-fail",
+  "decision": "pass",
   "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.json",
   "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.json",
   "contractCount": 14,

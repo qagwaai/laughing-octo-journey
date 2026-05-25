@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "stage": "hard-fail",
+  "purpose": "Stage 3 compatibility fixture that only adds non-breaking optional fields.",
+  "surfaces": [
+    {
+      "id": "auth/session",
+      "label": "auth/session",
+      "ownerTag": "backend remediation",
+      "consumerFiles": ["src/app/model/login.ts"],
+      "contracts": [
+        {
+          "contractId": "auth.login",
+          "kind": "socket",
+          "requestEvent": "login",
+          "responseEvent": "login-response",
+          "consumerFiles": ["src/app/model/login.ts"],
+          "ownerTag": "backend remediation",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "password", "type": "string", "required": true },
+            { "path": "locale", "type": "string", "required": false },
+            { "path": "timezone", "type": "string", "required": false }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "enum", "required": false, "values": ["PLAYER_NOT_REGISTERED", "PASSWORD_MISMATCH", "UNKNOWN"], "allowAdditionalValues": true },
+            { "path": "playerId", "type": "string", "required": false },
+            { "path": "sessionKey", "type": "string", "required": false },
+            { "path": "preferredLocale", "type": "string", "required": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ship-external-view",
+      "label": "ship-external-view",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": ["src/app/model/launch-item.ts", "src/app/model/ship-item.ts"],
+      "contracts": [
+        {
+          "contractId": "shipExterior.launchItem",
+          "kind": "socket",
+          "requestEvent": "launch-item-request",
+          "responseEvent": "launch-item-response",
+          "consumerFiles": ["src/app/model/launch-item.ts", "src/app/model/ship-item.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "characterId", "type": "string", "required": true },
+            { "path": "shipId", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "targetCelestialBodyId", "type": "string", "required": true },
+            { "path": "hotkey", "type": "enum", "required": true, "values": ["1", "2", "3", "4", "5"] },
+            { "path": "itemId", "type": "string", "required": true },
+            { "path": "itemType", "type": "string", "required": true },
+            { "path": "flightPlanId", "type": "string", "required": false }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "resolution", "type": "object", "required": false },
+            { "path": "resolution.outcome", "type": "enum", "required": false, "values": ["target-destroyed", "no-effect"] },
+            { "path": "resolution.targetDestroyed", "type": "boolean", "required": false },
+            { "path": "resolution.yieldedMaterials", "type": "array", "required": false },
+            { "path": "resolution.yieldedItems", "type": "array", "required": false },
+            { "path": "resolution.targetCelestialBody", "type": "object", "required": false },
+            { "path": "resolution.notes", "type": "string", "required": false }
+          ]
+        }
+      ]
+    }
+  ]
+}

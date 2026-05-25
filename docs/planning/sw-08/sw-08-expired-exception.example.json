@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "reason": "Expired exception fixture for SW-08 hard-fail validation.",
+  "impact": "This exception should be rejected because the expiry date is in the past.",
+  "expiryDate": "2026-05-01",
+  "rollbackPlan": "Delete the exception and re-run SW-08 after renewing approval.",
+  "followUpTicket": "SW-08-STAGE3-EXPIRED-001",
+  "followUpOwner": "Backend lead",
+  "approvals": {
+    "frontendLead": true,
+    "backendLead": true
+  },
+  "allowedFindings": [
+    {
+      "surfaceId": "market/ledger",
+      "contractId": "market.list",
+      "category": "type mismatch",
+      "fieldPath": "response.markets[].driftPercentPerHour"
+    }
+  ]
+}

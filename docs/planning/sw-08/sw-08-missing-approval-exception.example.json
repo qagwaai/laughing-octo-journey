@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "status": "approved",
+  "reason": "Missing approval fixture for SW-08 hard-fail validation.",
+  "impact": "This exception should be rejected because backend lead approval is absent.",
+  "expiryDate": "2026-06-07",
+  "rollbackPlan": "Delete the exception and re-run SW-08 after collecting both approvals.",
+  "followUpTicket": "SW-08-STAGE3-MISSING-APPROVAL-001",
+  "followUpOwner": "Frontend lead",
+  "approvals": {
+    "frontendLead": true
+  },
+  "allowedFindings": [
+    {
+      "surfaceId": "item catalog/fabrication",
+      "contractId": "fabrication.printableItem",
+      "category": "missing required field",
+      "fieldPath": "response.requiredMaterials[].acceptedDisplayNames"
+    }
+  ]
+}

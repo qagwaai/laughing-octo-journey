@@ -4,7 +4,7 @@ import path from 'node:path';
 const DEFAULT_FRONTEND_INVENTORY = 'docs/planning/sw-08/frontend-consumer-contract-inventory.json';
 const DEFAULT_BACKEND_ARTIFACT = 'docs/planning/sw-08/backend-contract-artifact.json';
 const DEFAULT_REPORT_DIR = 'reports/sw-08-contract-safety-gate';
-const DEFAULT_MODE = 'report-only';
+const DEFAULT_MODE = 'hard-fail';
 
 const REMEDIATION_HINTS = {
   'backend remediation': 'Update the backend contract artifact and migration notes, then re-run the gate.',
@@ -79,7 +79,11 @@ function parseArgs(argv) {
 
 function normalizeMode(mode) {
   const normalizedMode = String(mode ?? '').trim().toLowerCase();
-  return normalizedMode === 'soft-fail' ? 'soft-fail' : DEFAULT_MODE;
+  if (normalizedMode === 'report-only' || normalizedMode === 'soft-fail' || normalizedMode === 'hard-fail') {
+    return normalizedMode;
+  }
+
+  return DEFAULT_MODE;
 }
 
 function flattenContracts(catalog) {
@@ -223,6 +227,7 @@ function parseApprovedException(exceptionFile, findings) {
     filePath: exceptionFile,
     manifest,
     validationErrors,
+    isApproved: validationErrors.length === 0,
     matchedFindingSignatures: findings.map(buildFindingSignature).filter((signature) => allowedSignatures.has(signature)),
   };
 }
@@ -466,6 +471,7 @@ function renderMarkdownReport(result) {
   lines.push('', '## Notes');
   lines.push('- Report-only mode keeps CI green while drift is collected and triaged.');
   lines.push('- Soft-fail mode returns a non-zero exit code unless the drift is covered by an approved exception manifest.');
+  lines.push('- Hard-fail mode blocks PRs for breaking drift and blocks invalid exception manifests even if drift is absent.');
   lines.push('- Suggested owner tags are advisory and come from the frontend inventory entry for each contract.');
   return lines.join('\n');
 }
@@ -500,16 +506,22 @@ function main() {
   });
 
   const exception = parseApprovedException(args.exceptionFile, findings);
-  const exceptionApplies = Boolean(exception && exception.validationErrors.length === 0);
-  const shouldSoftFail = mode === 'soft-fail' && findings.length > 0 && !exceptionApplies;
+  const exceptionApplies = Boolean(exception && exception.isApproved);
+  const exceptionHasErrors = Boolean(exception && exception.validationErrors.length > 0);
+  const hasBreakingFindings = findings.some((finding) => finding.severity === 'breaking');
+  const shouldFailForBreakingDrift = hasBreakingFindings && !exceptionApplies && mode !== 'report-only';
+  const shouldFailForInvalidException = exceptionHasErrors && mode !== 'report-only';
+  const shouldFail = shouldFailForBreakingDrift || shouldFailForInvalidException;
   const decision =
     mode === 'report-only'
       ? 'report-only'
-      : findings.length === 0
-        ? 'pass'
-        : exceptionApplies
-          ? 'approved-exception'
-          : 'soft-fail';
+      : shouldFailForInvalidException
+        ? 'invalid-exception'
+        : shouldFailForBreakingDrift
+          ? 'hard-fail'
+          : exceptionApplies && findings.length > 0
+            ? 'approved-exception'
+            : 'pass';
 
   const result = {
     mode,
@@ -535,7 +547,12 @@ function main() {
           allowedFindings: exception.manifest.allowedFindings,
           matchedFindingSignatures: exception.matchedFindingSignatures,
         }
-      : null,
+      : exception
+        ? {
+            filePath: exception.filePath,
+            validationErrors: exception.validationErrors,
+          }
+        : null,
   };
 
   writeReportArtifacts(args.reportDir, result);
@@ -547,6 +564,11 @@ function main() {
   if (exceptionApplies) {
     console.log(`Approved exception applied: ${exception.filePath}`);
     console.log(`Exception ticket: ${exception.manifest.followUpTicket}`);
+  } else if (exceptionHasErrors) {
+    console.log(`Invalid exception supplied: ${exception.filePath}`);
+    for (const validationError of exception.validationErrors) {
+      console.log(`- ${validationError}`);
+    }
   }
   if (findings.length > 0) {
     for (const finding of findings) {
@@ -558,8 +580,12 @@ function main() {
     console.log('No drift detected.');
   }
 
-  if (shouldSoftFail) {
-    console.error('Soft fail: breaking contract drift detected and no approved exception was supplied.');
+  if (shouldFail) {
+    console.error(
+      shouldFailForInvalidException
+        ? 'Hard fail: exception metadata is invalid and does not satisfy SW-08 policy.'
+        : 'Hard fail: breaking contract drift detected and no approved exception was supplied.',
+    );
     process.exitCode = 1;
   }
 }
