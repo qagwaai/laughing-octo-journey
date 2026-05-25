@@ -133,7 +133,7 @@ These specs correctly drive the SUT through `TestBed` and produce real coverage;
 ### 4.5 e2e suite — healthy
 
 - 68 tests pass in 28.8 s on 10 workers; no flakes observed in this run.
-- Deterministic via [e2e/fixtures/socket-mock.ts](e2e/fixtures/socket-mock.ts), aligned with [docs/server-message-contracts.md](docs/server-message-contracts.md).
+- Deterministic via [e2e/fixtures/socket-mock.ts](e2e/fixtures/socket-mock.ts), aligned with OpenAPI contracts in `openapi.yaml`.
 - Page-object layer in [e2e/page-objects](e2e/page-objects) is consistent and small.
 - Risk: the e2e suite is currently the _only_ layer exercising real Angular components for `page/game/*`, `page/character/*`, `page/public/*`, `page/opening/*`, and `scene/*`. If shadow specs remain, every regression in those areas must be caught e2e — which is slower, more brittle, and harder to triage.
 

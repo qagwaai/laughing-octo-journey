@@ -40,6 +40,24 @@ Backend repo documents:
 | laughing-octo-journey | Stage 5 | Hard fail | Weekly metrics + trend/recurrence guardrails active |
 | solid-train | Stage 5 | Hard fail | Producer-side checklist, migration-note discipline, and SLA timing active |
 
+## Communication Semantics Companion (SW-COR)
+
+Status: Completed (Maintenance Mode)
+Completed: 2026-05-25
+
+Purpose:
+- SW-08 remains the shape-level contract gate.
+- SW-COR is the communication-semantics companion for request/response correlation guarantees.
+
+Canonical references:
+1. [SW-COR spec (laughing-octo-journey)](socket-correlation-contract-spec.md)
+2. [SW-COR spec (solid-train)](../../../solid-train/docs/planning/socket-correlation-contract-spec.md)
+3. [SW-COR prompt pack (laughing-octo-journey)](sw-cor-correlation-hardening-prompt-pack.md)
+4. [SW-COR prompt pack (solid-train)](../../../solid-train/docs/planning/sw-cor-correlation-hardening-prompt-pack.md)
+
+Sign-off:
+- Nova and Forge confirmed SW-COR + SW-08 complete on 2026-05-25.
+
 ## Shared Status Board Template
 
 Use this table in sprint reviews and incident triage:
@@ -78,3 +96,4 @@ Bypass requires:
 
 - 2026-05-24: Initial cross-repo index and shared status board template created.
 - 2026-05-25: SW-08 marked complete and transitioned to maintenance mode across both repos.
+- 2026-05-25: SW-COR completion recorded and linked as the communication-semantics companion to SW-08.

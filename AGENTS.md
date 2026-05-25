@@ -181,7 +181,8 @@ PLAYWRIGHT_HTML_OPEN=never npx playwright test e2e/tests/market-hub-by-location.
   - `src/app/page/public/`
 - Socket event contracts/types:
   - `src/app/model/`
-  - `docs/server-message-contracts.md`
+  - `http://localhost:3000/openapi.yaml` (preferred runtime source)
+  - `docs/openapi-integration.md`
 - Localization:
   - `src/app/i18n/locales/en.ts`
   - `src/app/i18n/locales/it.ts`
@@ -208,7 +209,8 @@ PLAYWRIGHT_HTML_OPEN=never npx playwright test e2e/tests/market-hub-by-location.
 
 - Preserve existing Angular standalone patterns and signal/computed usage.
 - Keep socket event names and payload contracts aligned with `src/app/model/*` types.
-- Update docs when message contracts change.
+- Treat `openapi.yaml` as the only contract authority; update docs and models from OpenAPI.
+- If OpenAPI is missing required messaging detail, stop and report that OpenAPI is insufficient instead of using alternate contract docs.
 - When changing i18n-driven UI text, update both `en.ts` and `it.ts`.
 - Prefer minimal, targeted edits over broad refactors.
 

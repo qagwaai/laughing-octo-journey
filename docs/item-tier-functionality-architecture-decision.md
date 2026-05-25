@@ -86,14 +86,14 @@ Use a data-driven item behavior adapter pattern on the frontend.
 
 ## Contract Guidance
 
-- Define capability payloads in server message contracts and keep frontend model types aligned.
+- Define capability payloads in OpenAPI (`openapi.yaml`) and keep frontend model types aligned.
 - Prefer additive versioning for new capability fields.
 - Provide sane defaults for optional fields to avoid runtime regressions during rollout.
 - Include explicit unit annotations in field names where practical (`Ms`, `Meters`, `Deg`).
 
 Primary reference:
 
-- `docs/server-message-contracts.md`
+- `http://localhost:3000/openapi.yaml` (preferred)
 
 ## Consequences
 

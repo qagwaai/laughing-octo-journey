@@ -1,7 +1,8 @@
 # Socket Request-Response Correlation Contract Specification
 
-Status: Active
+Status: Completed (Maintenance Mode)
 Date: 2026-05-25
+Completed: 2026-05-25
 Repos: laughing-octo-journey (consumer), solid-train (producer)
 Owner: Backend lead (producer), Frontend lead (consumer), QA lead (validation)
 Triggered by: item-upsert race condition root cause analysis
@@ -116,25 +117,25 @@ CI checks must:
 ## 7. Implementation Checklist
 
 Backend (solid-train / Forge):
-- [ ] Add correlationId (required, UUID v4) to ItemUpsertRequest schema.
-- [ ] Add correlationId echo + requestIdentity echo to ItemUpsertResponse schema.
-- [ ] Update handler to echo correlationId and requestIdentity in every response path.
-- [ ] Apply same pattern to item-remove, tractor-beam-activate, drone-launch.
-- [ ] Add server-side test asserting echo fidelity.
-- [ ] Update openapi.yaml with correlationId fields on all in-scope event pairs.
+- [x] Add correlationId (required, UUID v4) to ItemUpsertRequest schema.
+- [x] Add correlationId echo + requestIdentity echo to ItemUpsertResponse schema.
+- [x] Update handler to echo correlationId and requestIdentity in every response path.
+- [x] Apply same pattern to item-remove, tractor-beam-activate, drone-launch.
+- [x] Add server-side test asserting echo fidelity.
+- [x] Update openapi.yaml with correlationId fields on all in-scope event pairs.
 
 Frontend (laughing-octo-journey / Nova):
-- [ ] Generate correlationId (UUID v4) per request in socket call site.
-- [ ] Update ItemUpsertResponse consumer model to include correlationId.
-- [ ] Add demux validation in socket.service.ts: reject responses with mismatched correlationId.
-- [ ] Apply same demux pattern to item-remove, tractor-beam-activate, drone-launch.
-- [ ] Add concurrent test fixture covering N=3 overlapping item-upserts.
-- [ ] Add SW-08 drift rule for missing correlation echo.
+- [x] Generate correlationId (UUID v4) per request in socket call site.
+- [x] Update ItemUpsertResponse consumer model to include correlationId.
+- [x] Add demux validation in socket.service.ts: reject responses with mismatched correlationId.
+- [x] Apply same demux pattern to item-remove, tractor-beam-activate, drone-launch.
+- [x] Add concurrent test fixture covering N=3 overlapping item-upserts.
+- [x] Add SW-08 drift rule for missing correlation echo.
 
 QA:
-- [ ] Validate all in-scope fixtures pass in CI.
-- [ ] Confirm concurrent test is non-flaky over repeated runs.
-- [ ] Add correlation check to SW-08 rule catalog.
+- [x] Validate all in-scope fixtures pass in CI.
+- [x] Confirm concurrent test is non-flaky over repeated runs.
+- [x] Add correlation check to SW-08 rule catalog.
 
 ## 8. Acceptance Criteria
 
@@ -163,3 +164,4 @@ This specification becomes the canonical correlation contract for all new socket
 ## Change Log
 
 - 2026-05-25: Initial correlation contract specification created from item-upsert race condition root cause analysis.
+- 2026-05-25: Completion recorded. Nova and Forge confirmed SW-COR implementation complete; moved to maintenance mode.

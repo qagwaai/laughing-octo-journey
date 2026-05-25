@@ -16,8 +16,8 @@ on selection, drives the right pane to a 3D scene that renders the system's
 celestial bodies.
 
 Source data: HYG database (https://codeberg.org/astronexus/hyg) served by the
-backend via the contract described in
-https://github.com/qagwaai/solid-train/blob/main/MESSAGE_CONTRACT.md.
+backend via the socket contracts documented in OpenAPI (`openapi.yaml`,
+prefer runtime `http://localhost:3000/openapi.yaml`).
 
 ## Decision
 

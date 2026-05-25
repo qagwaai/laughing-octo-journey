@@ -79,6 +79,25 @@
     }
   </section>
 
+  @if (launchInventoryDebugLine(); as launchDebug) {
+  <section class="ship-exterior-launch-debug" aria-live="polite">
+    <p>{{ launchDebug }}</p>
+  </section>
+  }
+
+  @if (socketCorrelationDebugLine(); as socketDebug) {
+  <section class="ship-exterior-socket-debug" aria-live="polite">
+    <p>{{ socketContractViolationCounterLine() }}</p>
+    <p>{{ socketDebug }}</p>
+  </section>
+  }
+
+  @if (launchIdentityDebugLine(); as launchIdentityDebug) {
+  <section class="ship-exterior-launch-id-debug" aria-live="polite">
+    <p>{{ launchIdentityDebug }}</p>
+  </section>
+  }
+
   <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
     @for (slot of launchHotkeySlots(); track slot.hotkey) {
     <button

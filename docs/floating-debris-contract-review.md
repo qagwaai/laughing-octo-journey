@@ -7,7 +7,7 @@
 
 ### `launch-item-response.resolution.yieldedItems`
 
-**Current format** (from `docs/server-message-contracts.md` line 598–750):
+**Current format** (from OpenAPI `launch-item-response` schema in `openapi.yaml`):
 
 ```json
 {
@@ -105,13 +105,13 @@ From the [floating-debris-tractor-beam-plan.md](floating-debris-tractor-beam-pla
    - Use a server config flag
    - Default to current behaviour (contained items) for non-first-target missions
 
-4. **Update contract documentation** in `docs/server-message-contracts.md` to show the new format with `spatial` and `motion` fields.
+4. **Update OpenAPI (`openapi.yaml`)** to show the new format with `spatial` and `motion` fields.
 
 ---
 
 ## Secondary Gap: `item-list-by-location-response`
 
-**Current contract note** (line 2448 in `docs/server-message-contracts.md`):
+**Current contract note** (from OpenAPI `item-list-by-location-response` schema):
 > *"Only items with `kinematics` are included (deployed items)."*
 
 **Problem**: The legacy `kinematics` field does not exist on new items created with canonical `spatial`. The filter needs to use `spatial` instead.
@@ -154,5 +154,5 @@ The frontend TypeScript contract definition (`src/app/model/launch-item.ts`) alr
 ## Reference Documents
 
 - Implementation plan: [floating-debris-tractor-beam-plan.md](floating-debris-tractor-beam-plan.md)
-- Socket contract spec: [server-message-contracts.md](server-message-contracts.md) (lines 598–750)
+- Socket contract spec: OpenAPI `openapi.yaml` (prefer runtime `http://localhost:3000/openapi.yaml`)
 - Frontend type model: `src/app/model/launch-item.ts`

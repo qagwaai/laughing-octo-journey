@@ -4,7 +4,7 @@
 
 As of 2026-05-16, the project now sources all in-game item definitions (raw materials, manufactured items, ship items, etc.) from the backend, using the canonical OpenAPI contract at:
 
-- https://github.com/qagwaai/solid-train/blob/main/openapi.yaml
+- http://localhost:3000/openapi.yaml (preferred runtime source)
 
 ## Key Changes
 
@@ -30,7 +30,6 @@ As of 2026-05-16, the project now sources all in-game item definitions (raw mate
 - The OpenAPI contract is the single source of truth for item schemas and endpoints.
 - See `src/app/services/item-catalog.service.ts` for the integration entry point.
 - For backend contract changes, update the OpenAPI YAML and notify the frontend team.
-- For legacy message contracts, see `docs/server-message-contracts.md`.
 
 ## Catalog Gap Audit
 

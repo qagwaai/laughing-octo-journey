@@ -172,7 +172,7 @@ describe('ship-list correlation integration', () => {
     expect(shipServiceCallback).toHaveBeenCalledWith(shipServiceResponse);
   }));
 
-  it('supports legacy fallback matching without correlation metadata', fakeAsync(() => {
+  it('keeps ship-exterior strict when responses omit correlation metadata', fakeAsync(() => {
     const shipServiceCallback = jasmine.createSpy('shipServiceCallback');
     shipService.listShipsByOwner(
       {
@@ -217,7 +217,7 @@ describe('ship-list correlation integration', () => {
     } as ShipListByOwnerResponse);
     flushMicrotasks();
 
-    expect(shipExteriorCallback).toHaveBeenCalledTimes(1);
+    expect(shipExteriorCallback).not.toHaveBeenCalled();
     expect(shipServiceCallback).not.toHaveBeenCalled();
 
     socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
@@ -244,6 +244,7 @@ describe('ship-list correlation integration', () => {
     } as ShipListByOwnerResponse);
     flushMicrotasks();
 
+    expect(shipExteriorCallback).not.toHaveBeenCalled();
     expect(shipServiceCallback).toHaveBeenCalledTimes(1);
   }));
 

@@ -197,7 +197,7 @@ Apply this shared structure for every item family so behavior remains predictabl
 2. Add adapter/resolver functions by item family.
 3. Migrate ship exterior hardcoded scanner duration to adapter output.
 4. Add unit tests per adapter and integration tests in ship exterior specs.
-5. Document backend field alignment in `docs/server-message-contracts.md` as capabilities are introduced.
+5. Document backend field alignment in OpenAPI (`openapi.yaml`, prefer `http://localhost:3000/openapi.yaml`) as capabilities are introduced.
 
 ## Definition of Done (Scanner First Slice)
 

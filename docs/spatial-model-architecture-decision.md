@@ -283,6 +283,6 @@ Backend implementation should expose one authoritative spatial field on every re
 ## Follow-up Recommendations
 
 1. Add a dedicated spatial utility module and route all distance calculations through it.
-2. Update server message contracts after the hard-cut interfaces are implemented on both client and backend.
+2. Update OpenAPI (`openapi.yaml`, prefer `http://localhost:3000/openapi.yaml`) after the hard-cut interfaces are implemented on both client and backend.
 3. Add focused unit tests for `distanceSquaredKm`, frame mismatches, and range selection behavior.
 4. Add one integration test around `ship-exterior-view` candidate filtering using canonical `spatial` inputs only.

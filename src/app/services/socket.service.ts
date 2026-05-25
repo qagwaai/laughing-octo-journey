@@ -38,9 +38,6 @@ import {
 import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 
-const ITEM_UPSERT_REQUEST_EVENT_ALIAS = 'upsert-item-request';
-const ITEM_UPSERT_RESPONSE_EVENT_ALIAS = 'upsert-item-response';
-const ITEM_UPSERT_ALIAS_FALLBACK_DELAY_MS = 750;
 const ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
 
 function buildDefaultItemUpsertRequestIdentity(request: ItemUpsertRequest): ItemUpsertRequestIdentity {
@@ -64,38 +61,22 @@ function isItemUpsertResponseForRequest(
   expectedRequestIdentity: ItemUpsertRequestIdentity,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
-  }
-
-  // Compatibility fallback for producers that do not yet echo correlation metadata.
-  const responseItemType = normalizeIdentityValue(response.item?.itemType);
-  const expectedItemType = normalizeIdentityValue(expectedRequestIdentity.entityType);
-  if (!responseItemType || responseItemType !== expectedItemType) {
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
     return false;
   }
 
-  const responseContainerId = normalizeIdentityValue(response.item?.container?.containerId);
-  const expectedContainerId = normalizeIdentityValue(expectedRequestIdentity.containerId);
-  if (!responseContainerId || !expectedContainerId) {
+  if (!response.requestIdentity) {
     return false;
   }
 
-  return responseContainerId === expectedContainerId;
+  return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildDefaultShipUpsertRequestIdentity(request: ShipUpsertRequest): ShipUpsertRequestIdentity {
   return {
     operation: 'ship-upsert',
-    entityType: request.ship?.model?.trim() || 'unknown-ship-model',
+    entityType: 'ship',
     containerId: request.ship?.id?.trim() || 'unknown-ship-id',
-    characterId: request.characterId?.trim() || undefined,
   };
 }
 
@@ -110,8 +91,7 @@ function matchesShipRequestIdentity(
   return (
     normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
     normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId) &&
-    normalizeIdentityValue(left.characterId) === normalizeIdentityValue(right.characterId)
+    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
   );
 }
 
@@ -119,52 +99,18 @@ function isShipUpsertResponseForRequest(
   response: ShipUpsertResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: ShipUpsertRequestIdentity,
-  expectedRequest: ShipUpsertRequest,
+  _expectedRequest: ShipUpsertRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesShipRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  // Compatibility fallback for producers that do not yet echo correlation metadata.
-  const expectedPlayerName = normalizeIdentityValue(expectedRequest.playerName);
-  const expectedCharacterId = normalizeIdentityValue(expectedRequest.characterId);
-  const expectedShipId = normalizeIdentityValue(expectedRequest.ship?.id);
-
-  let comparedFields = 0;
-
-  const responsePlayerName = normalizeIdentityValue(response.playerName);
-  if (responsePlayerName) {
-    comparedFields += 1;
-    if (responsePlayerName !== expectedPlayerName) {
-      return false;
-    }
+  if (!response.requestIdentity) {
+    return false;
   }
 
-  const responseCharacterId = normalizeIdentityValue(response.characterId);
-  if (responseCharacterId) {
-    comparedFields += 1;
-    if (responseCharacterId !== expectedCharacterId) {
-      return false;
-    }
-  }
-
-  const responseShipId = normalizeIdentityValue(response.ship?.id);
-  if (responseShipId) {
-    comparedFields += 1;
-    if (responseShipId !== expectedShipId) {
-      return false;
-    }
-  }
-
-  // If server doesn't echo identifying fields yet, permit for compatibility.
-  return true;
+  return matchesShipRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildDefaultLaunchItemRequestIdentity(request: LaunchItemRequest): LaunchItemRequestIdentity {
@@ -202,29 +148,18 @@ function isLaunchItemResponseForRequest(
   response: LaunchItemResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: LaunchItemRequestIdentity,
-  expectedRequest: LaunchItemRequest,
+  _expectedRequest: LaunchItemRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesLaunchRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  // Compatibility fallback for producers that do not yet echo correlation metadata.
-  return (
-    normalizeIdentityValue(response.itemType) === normalizeIdentityValue(expectedRequest.itemType) &&
-    normalizeIdentityValue(response.itemId) === normalizeIdentityValue(expectedRequest.itemId) &&
-    normalizeIdentityValue(response.shipId) === normalizeIdentityValue(expectedRequest.shipId) &&
-    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequest.characterId) &&
-    normalizeIdentityValue(response.targetCelestialBodyId) ===
-      normalizeIdentityValue(expectedRequest.targetCelestialBodyId) &&
-    response.hotkey === expectedRequest.hotkey
-  );
+  if (!response.requestIdentity) {
+    return false;
+  }
+
+  return matchesLaunchRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildDefaultCelestialBodyUpsertRequestIdentity(
@@ -232,9 +167,8 @@ function buildDefaultCelestialBodyUpsertRequestIdentity(
 ): CelestialBodyUpsertRequestIdentity {
   return {
     operation: 'celestial-body-upsert',
-    entityType: request.celestialBody?.catalogId?.trim() || 'unknown-catalog-id',
-    containerId: request.celestialBody?.sourceScanId?.trim() || 'unknown-source-scan-id',
-    characterId: request.createdByCharacterId?.trim() || undefined,
+    entityType: 'celestial-body',
+    containerId: request.celestialBody?.id?.trim() || 'unknown-celestial-body',
   };
 }
 
@@ -249,8 +183,7 @@ function matchesCelestialBodyUpsertRequestIdentity(
   return (
     normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
     normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId) &&
-    normalizeIdentityValue(left.characterId) === normalizeIdentityValue(right.characterId)
+    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
   );
 }
 
@@ -258,26 +191,18 @@ function isCelestialBodyUpsertResponseForRequest(
   response: CelestialBodyUpsertResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: CelestialBodyUpsertRequestIdentity,
-  expectedRequest: CelestialBodyUpsertRequest,
+  _expectedRequest: CelestialBodyUpsertRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesCelestialBodyUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  const responseSourceScanId = normalizeIdentityValue(response.celestialBody?.sourceScanId);
-  if (responseSourceScanId) {
-    const expectedSourceScanId = normalizeIdentityValue(expectedRequest.celestialBody?.sourceScanId);
-    return responseSourceScanId === expectedSourceScanId;
+  if (!response.requestIdentity) {
+    return false;
   }
 
-  return true;
+  return matchesCelestialBodyUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 function buildCelestialBodyListRequestKey(input: {
@@ -304,8 +229,8 @@ function buildDefaultCelestialBodyListRequestIdentity(
 ): CelestialBodyListRequestIdentity {
   return {
     operation: 'celestial-body-list',
-    entityType: request.solarSystemId?.trim() || 'unknown-solar-system',
-    containerId: buildCelestialBodyListRequestKey(request),
+    entityType: 'celestial-body',
+    containerId: request.solarSystemId?.trim() || 'unknown-solar-system',
   };
 }
 
@@ -328,32 +253,18 @@ function isCelestialBodyListResponseForRequest(
   response: CelestialBodyListResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: CelestialBodyListRequestIdentity,
-  expectedRequest: CelestialBodyListRequest,
+  _expectedRequest: CelestialBodyListRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+    return false;
   }
 
-  const expectedKey = buildCelestialBodyListRequestKey(expectedRequest);
-  const responseKey = buildCelestialBodyListRequestKey({
-    playerName: response.playerName,
-    solarSystemId: response.solarSystemId,
-    distanceKm: response.distanceKm,
-    positionKm: response.positionKm,
-  });
-
-  if (responseKey.replace(/\|/g, '').length > 0) {
-    return responseKey === expectedKey;
+  if (!response.requestIdentity) {
+    return false;
   }
 
-  return true;
+  return matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 /**
@@ -471,7 +382,7 @@ export class SocketService {
           )
         ) {
           appLogger.warn(
-            `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'}`,
+            `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} expectedRequestCharacterId=${requestIdentity.characterId ?? 'missing'} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'} responseRequestCharacterId=${response.requestIdentity?.characterId ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'}`,
           );
           if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(
@@ -583,7 +494,7 @@ export class SocketService {
 
         if (!isShipUpsertResponseForRequest(response, correlationId, requestIdentity, shipUpsertWithCorrelation)) {
           appLogger.warn(
-            `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedCharacterId=${requestIdentity.characterId ?? 'missing'} expectedPlayerName=${shipUpsertWithCorrelation.playerName} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'}`,
+            `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedPlayerName=${shipUpsertWithCorrelation.playerName} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} expectedRequestEntityType=${requestIdentity.entityType ?? 'missing'} expectedRequestContainerId=${requestIdentity.containerId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'} responseRequestEntityType=${response.requestIdentity?.entityType ?? 'missing'} responseRequestContainerId=${response.requestIdentity?.containerId ?? 'missing'}`,
           );
           if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(
@@ -629,17 +540,10 @@ export class SocketService {
     };
 
     let handled = false;
-    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
     let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
     let unsubscribeCanonical: (() => void) | null = null;
-    let unsubscribeAlias: (() => void) | null = null;
 
     const clearTimers = () => {
-      if (fallbackTimer) {
-        clearTimeout(fallbackTimer);
-        fallbackTimer = null;
-      }
-
       if (noResponseTimer) {
         clearTimeout(noResponseTimer);
         noResponseTimer = null;
@@ -648,11 +552,6 @@ export class SocketService {
       if (unsubscribeCanonical) {
         unsubscribeCanonical();
         unsubscribeCanonical = null;
-      }
-
-      if (unsubscribeAlias) {
-        unsubscribeAlias();
-        unsubscribeAlias = null;
       }
     };
 
@@ -689,19 +588,6 @@ export class SocketService {
       };
 
       unsubscribeCanonical = this.on(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
-      unsubscribeAlias = this.on(ITEM_UPSERT_RESPONSE_EVENT_ALIAS, handleResponse);
-
-      // Emit legacy alias only if canonical request appears unsupported.
-      fallbackTimer = setTimeout(() => {
-        if (handled) {
-          return;
-        }
-
-        appLogger.warn(
-          `No response for ${ITEM_UPSERT_REQUEST_EVENT}; retrying with ${ITEM_UPSERT_REQUEST_EVENT_ALIAS}. correlationId=${correlationId} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
-        );
-        this.emit(ITEM_UPSERT_REQUEST_EVENT_ALIAS, requestWithCorrelation);
-      }, ITEM_UPSERT_ALIAS_FALLBACK_DELAY_MS);
 
       noResponseTimer = setTimeout(() => {
         if (handled) {
@@ -709,7 +595,7 @@ export class SocketService {
         }
 
         appLogger.error(
-          `No item-upsert response received on either alias. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+          `No item-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
         );
       }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
     }

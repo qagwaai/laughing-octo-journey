@@ -5,9 +5,8 @@ import { Router } from '@angular/router';
 import { createMockMissionService, createMockSessionService, createMockSocketService } from '../../testing';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 import { CELESTIAL_BODY_LIST_REQUEST_EVENT, CELESTIAL_BODY_LIST_RESPONSE_EVENT } from '../model/celestial-body-list';
-import { LAUNCH_ITEM_RESPONSE_EVENT } from '../model/launch-item';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
-import { SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../model/ship-list-by-owner';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../model/ship-list-by-owner';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
@@ -389,7 +388,7 @@ describe('ShipExteriorViewScene', () => {
     component['activeScanAsteroidId'].set('sample-a3');
     fixture.detectChanges();
 
-    mockSocket.triggerEvent(LAUNCH_ITEM_RESPONSE_EVENT, {
+    component['handleLaunchItemResponse']({
       success: true,
       message: 'Launch successful: target destroyed and materials yielded',
       playerName: 'Pioneer',
@@ -449,7 +448,7 @@ describe('ShipExteriorViewScene', () => {
     component['targetedAsteroidId'].set('sample-a3');
     fixture.detectChanges();
 
-    mockSocket.triggerEvent(LAUNCH_ITEM_RESPONSE_EVENT, {
+    component['handleLaunchItemResponse']({
       success: true,
       message: 'Target destroyed',
       playerName: 'Pioneer',
@@ -486,7 +485,7 @@ describe('ShipExteriorViewScene', () => {
     component['targetedAsteroidId'].set('sample-a2');
     fixture.detectChanges();
 
-    mockSocket.triggerEvent(LAUNCH_ITEM_RESPONSE_EVENT, {
+    component['handleLaunchItemResponse']({
       success: true,
       message: 'Launch completed with no effect',
       playerName: 'Pioneer',
@@ -519,7 +518,7 @@ describe('ShipExteriorViewScene', () => {
 
     fixture.detectChanges();
 
-    mockSocket.triggerEvent(LAUNCH_ITEM_RESPONSE_EVENT, {
+    component['handleLaunchItemResponse']({
       success: false,
       message: 'Launch item is not launchable',
       playerName: 'Pioneer',
@@ -558,7 +557,7 @@ describe('ShipExteriorViewScene', () => {
     });
 
     // Trigger ship list response with no ships (causes fallback seeding)
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+    triggerMatchingShipListResponse(mockSocket, {
       success: false,
       message: 'no ships',
       playerName: 'Pioneer',
@@ -795,9 +794,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
@@ -815,9 +812,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       firstTargetMissionStatus: 'completed',
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
@@ -850,9 +845,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod' }], // no spatial
@@ -869,9 +862,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
@@ -891,9 +882,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       distanceKm: 1.5,
     };
 
-    mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingCelestialBodyListResponse(mockSocket, {
       celestialBodies: [existingBody],
     });
 
@@ -910,9 +899,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
@@ -932,9 +919,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       distanceKm: 0.5,
     };
 
-    mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingCelestialBodyListResponse(mockSocket, {
       celestialBodies: [existingBody],
     });
 
@@ -952,9 +937,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
@@ -974,9 +957,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       distanceKm: i,
     }));
 
-    mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingCelestialBodyListResponse(mockSocket, {
       celestialBodies: manyBodies,
     });
 
@@ -991,17 +972,13 @@ describe('ColdBootScanScene in-progress seeding', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingShipListResponse(mockSocket, {
       playerName: 'Pioneer',
       characterId: 'char-1',
       ships: [{ id: 'ship-1', model: 'Scavenger Pod', spatial: { positionKm: { x: 1e8, y: 0, z: 0 } } }],
     });
 
-    mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
-      success: true,
-      message: '',
+    triggerMatchingCelestialBodyListResponse(mockSocket, {
       celestialBodies: [
         {
           id: 'cb-1',
@@ -1029,6 +1006,41 @@ describe('ColdBootScanScene in-progress seeding', () => {
 /** Utility: trigger a socket event only if the listener is registered (avoids false failures). */
 function mockSocket_triggerIfRegistered(_api: unknown, _event: string, _data: unknown): void {
   // no-op: used only where needed; the real trigger happens via mockSocket.triggerEvent
+}
+
+function triggerMatchingShipListResponse(mockSocket: MockSocketWithLaunch, overrides: Record<string, unknown>): void {
+  const request = [...mockSocket.emittedEvents]
+    .reverse()
+    .find((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+    | { correlationId?: string; requestIdentity?: unknown }
+    | undefined;
+
+  mockSocket.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+    success: true,
+    message: '',
+    correlationId: request?.correlationId,
+    requestIdentity: request?.requestIdentity,
+    ...overrides,
+  });
+}
+
+function triggerMatchingCelestialBodyListResponse(
+  mockSocket: MockSocketWithLaunch,
+  overrides: Record<string, unknown>,
+): void {
+  const request = [...mockSocket.emittedEvents]
+    .reverse()
+    .find((entry) => entry.event === CELESTIAL_BODY_LIST_REQUEST_EVENT)?.data as
+    | { correlationId?: string; requestIdentity?: unknown }
+    | undefined;
+
+  mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
+    success: true,
+    message: '',
+    correlationId: request?.correlationId,
+    requestIdentity: request?.requestIdentity,
+    ...overrides,
+  });
 }
 
 // ---------------------------------------------------------------------------

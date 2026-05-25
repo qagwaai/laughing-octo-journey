@@ -68,11 +68,11 @@ Practical implication:
 
 ## Prioritized Feature Opportunities (Small Wins, 1-2 Sprints)
 
-0. High-Priority Regression: Cold Boot Dart Launch Availability
+0. High-Priority Regression: Cold Boot Dart Launch Availability (Closed 2026-05-25)
 - Symptom: cold boot sequence no longer starts with Expendable Dart Drone available to launch, even though it appears in inventory.
 - Expected: cold boot opening flow should allow immediate Dart launch when starting inventory contains expendable dart drone.
-- Priority: critical regression fix, schedule ahead of net-new feature work in the same area.
-- Validation: add focused tests for inventory-to-launch availability in opening sequence and ship-external launch entry path.
+- Resolution: restored opening flow so Expendable Dart Drone is available to launch at cold boot.
+- Validation: focused tests for inventory-to-launch availability in opening sequence and ship-external launch entry path are now part of regression coverage.
 
 0.1. Continuity Issue: Ship-External Target Persistence on Re-Entry
 - Symptom: re-entering ship-external-view does not keep the currently targeted item.
@@ -80,12 +80,22 @@ Practical implication:
 - Priority: high continuity fix for interaction flow and player orientation.
 - Validation: add tests for target persistence across view exit/re-entry and fallback behavior when prior target is no longer valid.
 
-0.2. Confirmed Regression: Missing Starter Ship Inventory Components
+0.2. Confirmed Regression: Missing Starter Ship Inventory Components (Closed 2026-05-25)
 - Symptom: ship inventory is missing expected starter components.
 - Missing items: Expendable Dart Drone, Sensor Array, Tractor Beam.
 - Expected: starter ship inventory should include canonical opening components so cold-boot and early ship-external actions function.
-- Priority: critical opening-loop regression fix; schedule with top onboarding regressions.
-- Validation: add startup inventory tests asserting presence of required starter components and downstream availability in launch/scan/tractor flows.
+- Resolution: restored canonical starter ship inventory with Expendable Dart Drone, Sensor Array, and Tractor Beam.
+- Validation: startup inventory tests now assert required starter components plus downstream availability in launch/scan/tractor flows.
+
+0.3. New Regression: Expendable Dart Drone Fire Action Unavailable from Scavenger Inventory (Opened 2026-05-25)
+- Symptom: Expendable Dart Drone appears in ship inventory view, but the player cannot fire it from Scavenger's inventory path.
+- Expected: if Expendable Dart Drone is present in Scavenger's inventory, fire action should be available (matching previously working behavior).
+- Priority: critical opening-loop action regression; schedule ahead of same-scope net-new feature work.
+- Validation: add tests that assert inventory visibility and fire-action availability parity for Scavenger inventory flow.
+
+Closure note:
+- SW-R01 and SW-R02 are complete and moved to historical regression record as of 2026-05-25.
+- SW-R03 is now the active opening-loop regression in this cluster.
 
 1. Mission Board Status Lanes
 - Add Available / Active / Completed filtering and clearer progression visibility.

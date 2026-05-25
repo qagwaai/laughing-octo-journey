@@ -26,8 +26,9 @@ Interpretation:
 
 | ID | Feature | Horizon Fit | Impact | Effort | Risk | Dependency Complexity | North-star Fit | Priority Score | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SW-R01 | Regression Fix: Cold Boot Dart Launch Availability | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Expendable Dart Drone is in inventory but unavailable to launch at cold boot start; restore expected opening flow |
-| SW-R02 | Regression Fix: Missing Starter Ship Inventory Components | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Restore canonical starter components in ship inventory: Expendable Dart Drone, Sensor Array, Tractor Beam |
+| SW-R01 | Regression Fix: Cold Boot Dart Launch Availability | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Completed 2026-05-25. Restored opening flow so Expendable Dart Drone is available at cold boot launch. |
+| SW-R02 | Regression Fix: Missing Starter Ship Inventory Components | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Completed 2026-05-25. Restored canonical starter inventory: Expendable Dart Drone, Sensor Array, Tractor Beam. |
+| SW-R03 | Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory | H1 critical | 5 | 2 | 2 | 2 | 5 | 4.55 | New regression (2026-05-25): inventory item is visible in ship inventory view, but firing Expendable Dart Drone from Scavenger's inventory is unavailable. |
 | SW-01 | Mission Board Status Lanes | H1 | 4 | 2 | 1 | 2 | 5 | 4.50 | High clarity gain, low implementation risk |
 | SW-02 | Market Opportunity Pings | H1/H2 bridge | 4 | 2 | 2 | 3 | 5 | 4.25 | Gives economy excitement before full dynamic events |
 | SW-03 | Quick Dock to Trade Flow | H1 | 4 | 2 | 2 | 2 | 4 | 4.15 | Strong short-session loop completion |
@@ -49,25 +50,26 @@ Interpretation:
 ## Ranked Small-Win Order
 
 Revised canonical ranking (descending by score):
-1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability (4.65)
-2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components (4.65)
+1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability (4.65, Completed 2026-05-25)
+2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components (4.65, Completed 2026-05-25)
 3. SW-08 Contract Safety Gate in CI (4.65)
 4. SW-COR Socket Correlation Contract Hardening (4.65)
-5. SW-01 Mission Board Status Lanes (4.50)
-6. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
-7. SW-02 Market Opportunity Pings (4.25)
-8. SW-03 Quick Dock to Trade Flow (4.15)
-9. SW-05 Ship Condition Badges in Hangar (4.05)
-10. SW-06 Discovery Log v1 (4.00)
-11. SW-10 Technology Progress Tree Viewer v0 (4.00)
-12. SW-14 In-System Short-Hop Drive (4.00)
-13. SW-04 Fabrication Queue Timeline (3.85)
-14. SW-07 Spatial Clarity Pack (3.85)
-15. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
-16. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
-17. SW-11 Skill Gating Scaffold (Mining First) (3.75)
-18. SW-13 External Object Presentation Expansion (3.75)
-19. SW-15 Minimal Character Bust Builder v0 (3.60)
+5. SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory (4.55)
+6. SW-01 Mission Board Status Lanes (4.50)
+7. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
+8. SW-02 Market Opportunity Pings (4.25)
+9. SW-03 Quick Dock to Trade Flow (4.15)
+10. SW-05 Ship Condition Badges in Hangar (4.05)
+11. SW-06 Discovery Log v1 (4.00)
+12. SW-10 Technology Progress Tree Viewer v0 (4.00)
+13. SW-14 In-System Short-Hop Drive (4.00)
+14. SW-04 Fabrication Queue Timeline (3.85)
+15. SW-07 Spatial Clarity Pack (3.85)
+16. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
+17. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
+18. SW-11 Skill Gating Scaffold (Mining First) (3.75)
+19. SW-13 External Object Presentation Expansion (3.75)
+20. SW-15 Minimal Character Bust Builder v0 (3.60)
 
 Tie-break rule used for equal scores: prefer lower risk and fewer dependencies for H1.
 
@@ -77,32 +79,48 @@ Correlation contract override rule:
 Regression override rule:
 - Any opening-loop regression that blocks expected first-action gameplay (for example initial Dart launch availability) should execute before same-scope net-new work.
 - Any regression that removes canonical starter inventory components should execute before same-scope net-new work.
+- Any regression that removes a previously available fire/launch action for canonical starter equipment should execute before same-scope net-new work.
 
-## Recommended Top 3 for Next Sprint
+## Closure Update (2026-05-25)
 
-1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability
-- Why now: Opening-loop regression blocks expected first action and degrades onboarding reliability.
-- Success signal: cold boot starts with Expendable Dart Drone launch available whenever starting inventory contains the item.
-- Validation path: focused opening-flow tests for inventory-to-launch state and ship-external launch entry path.
+- SW-R01 closed: Cold boot launch availability restored for Expendable Dart Drone.
+- SW-R02 closed: Starter ship inventory restored with Expendable Dart Drone, Sensor Array, and Tractor Beam.
+- Both items remain in the matrix as completed historical reliability work.
 
-2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components
-- Why now: Player starts with empty inventory; all canonical starter components (Expendable Dart Drone, Sensor Array, Tractor Beam) must be present.
-- Success signal: cold boot inventory contains all three canonical starter components.
-- Validation path: inventory state test at session start.
+## New Regression Intake (2026-05-25)
 
-3. SW-COR Socket Correlation Contract Hardening
-- Why now: Confirmed concurrent-request race condition causes silent state corruption on item-upsert. Foundation vulnerability affects all socket event pairs.
-- Success signal: N=3 concurrent item-upserts each resolve only their own response; correlationId mismatch is dropped and logged; SW-08 CI catches missing correlation echo.
-- Validation path: concurrent contract fixture + SW-08 rule catalog update.
+- SW-R03 opened: Expendable Dart Drone visible in ship inventory, but fire action from Scavenger's inventory is unavailable.
+- Expected behavior: if Expendable Dart Drone exists in Scavenger's inventory, fire action must be available from ship inventory flow.
+- Validation target: add launch-action tests covering inventory visibility + action availability parity.
 
-Immediate follow-up priority:
-- SW-16 Ship-External Target Persistence on Re-Entry should be scheduled in the same reliability window as SW-R01 because both protect early player trust in interaction continuity.
-- SW-R02 Missing Starter Ship Inventory Components should be scheduled in the same reliability window as SW-R01 because both protect opening-loop viability.
+## Recommended Top 3 for Next Sprint (Post-Closure)
+
+1. SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory
+- Why now: Opening-loop regression reappeared in action semantics; player can see inventory item but cannot perform previously available fire behavior.
+- Success signal: Expendable Dart Drone can be fired from Scavenger's inventory when present.
+- Validation path: inventory-visibility and fire-action parity tests from ship inventory flow.
+
+2. SW-16 Ship-External Target Persistence on Re-Entry
+- Why now: Reliability/continuity issue remains open and directly affects player orientation.
+- Success signal: target persists across ship-external view re-entry when still valid.
+- Validation path: exit/re-entry target persistence tests with invalid-target fallback checks.
+
+3. SW-01 Mission Board Status Lanes
+- Why now: High-value clarity improvement with low implementation risk.
+- Success signal: available/active/completed mission separation is visible and filterable.
+- Validation path: mission board UX tests and route-level smoke coverage.
+
+Recently closed reliability items:
+- SW-R01 Cold Boot Dart Launch Availability (closed 2026-05-25).
+- SW-R02 Missing Starter Ship Inventory Components (closed 2026-05-25).
+
+Open regression intake:
+- SW-R03 Expendable Dart Drone fire action unavailable from Scavenger's inventory (opened 2026-05-25).
 
 ## Alternate Top 3 (If Economy Excitement Is Preferred)
 
-1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability
-2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components
+1. SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory
+2. SW-02 Market Opportunity Pings
 3. SW-08 Contract Safety Gate in CI
 
 Reason: better visible momentum in economy systems while preserving one hardening item.

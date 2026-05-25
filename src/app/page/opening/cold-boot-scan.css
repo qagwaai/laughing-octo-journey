@@ -170,6 +170,69 @@
   pointer-events: auto;
 }
 
+.ship-exterior-launch-debug {
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
+  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.26rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px dashed rgba(255, 212, 140, 0.58);
+  background: linear-gradient(165deg, rgba(38, 27, 12, 0.86), rgba(21, 15, 7, 0.9));
+  color: #ffeac3;
+  font-size: 0.52rem;
+  letter-spacing: 0.07em;
+  z-index: 19;
+  pointer-events: none;
+}
+
+.ship-exterior-launch-debug p {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ship-exterior-socket-debug {
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: calc(var(--ship-hotkey-offset-y) + 4.95rem);
+  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.24rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px dashed rgba(147, 211, 255, 0.58);
+  background: linear-gradient(165deg, rgba(10, 32, 47, 0.88), rgba(7, 18, 28, 0.92));
+  color: #d7f2ff;
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  z-index: 19;
+  pointer-events: none;
+}
+
+.ship-exterior-socket-debug p {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ship-exterior-launch-id-debug {
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: calc(var(--ship-hotkey-offset-y) + 4.0rem);
+  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.24rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px dashed rgba(129, 255, 208, 0.55);
+  background: linear-gradient(165deg, rgba(7, 36, 33, 0.88), rgba(7, 22, 21, 0.92));
+  color: #d9fff2;
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  z-index: 19;
+  pointer-events: none;
+}
+
+.ship-exterior-launch-id-debug p {
+  margin: 0;
+  line-height: 1.2;
+}
+
 .ship-exterior-launch-toast {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
@@ -445,6 +508,16 @@
 
   .ship-exterior-launch-toast {
     bottom: calc(var(--ship-hotkey-offset-y) + 2.7rem);
+  }
+
+  .ship-exterior-launch-debug {
+    bottom: calc(var(--ship-hotkey-offset-y) + 2.7rem);
+    max-width: min(100%, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  }
+
+  .ship-exterior-socket-debug {
+    bottom: calc(var(--ship-hotkey-offset-y) + 4.45rem);
+    max-width: min(100%, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
   }
 
   .ship-exterior-flight-panel {

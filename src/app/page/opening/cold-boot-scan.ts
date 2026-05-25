@@ -77,6 +77,9 @@ export default class ColdBootScanPage {
     () => this.shipExteriorView()?.tractorBeamTimingText() ?? 'TRACTOR PULL: ---',
   );
   protected launchHotkeySlots = computed(() => this.shipExteriorView()?.launchHotkeySlots() ?? DEFAULT_HOTKEY_SLOTS);
+  protected launchInventoryDebugLine = computed(() => this.shipExteriorView()?.launchInventoryDebugLine() ?? '');
+  protected launchIdentityDebugLine = computed(() => this.shipExteriorView()?.launchIdentityDebugLine() ?? '');
+  protected socketCorrelationDebugLine = computed(() => this.shipExteriorView()?.socketCorrelationDebugLine() ?? '');
   protected showQuickTargetIronControl = computed(() => this.shipExteriorView()?.showQuickTargetIronControl() ?? false);
   protected activeLaunchToast = computed(() => this.shipExteriorView()?.activeLaunchToast() ?? null);
   protected missionObjectiveText = computed(
@@ -107,6 +110,9 @@ export default class ColdBootScanPage {
   );
   protected framePressureLine = computed(() => this.shipExteriorView()?.framePressureLine() ?? 'FRAME PRESSURE // 0.00 ms');
   protected qualityScalerLine = computed(() => this.shipExteriorView()?.qualityScalerLine() ?? 'QUALITY SCALER // 100%');
+  protected socketContractViolationCounterLine = computed(
+    () => this.shipExteriorView()?.socketContractViolationCounterLine() ?? '',
+  );
   protected showAsteroidDebugTag = computed(() => this.shipExteriorView()?.showAsteroidDebugTag() ?? false);
   protected asteroidDebugHeaderText = computed(
     () => this.shipExteriorView()?.asteroidDebugHeaderText() ?? 'ASTEROID DEBUG // NO SAMPLE',

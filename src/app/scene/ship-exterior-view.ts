@@ -247,13 +247,14 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
   protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
   protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
+  private readonly normalizedNavigationInventory = coerceShipInventory(this.navigationState.joinShip?.inventory);
   protected hasExpendableDartDrone = signal(
-    this.missionDefinition.resolveTargetingCapabilityFromInventory(this.navigationState.joinShip?.inventory),
+    this.missionDefinition.resolveTargetingCapabilityFromInventory(this.normalizedNavigationInventory),
   );
   private activeShipId = signal(this.navigationState.joinShip?.id?.trim() ?? '');
   private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
   private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
-  private launchableInventory = signal(this.resolveLaunchableInventory(this.navigationState.joinShip?.inventory));
+  private launchableInventory = signal(this.resolveLaunchableInventory(this.normalizedNavigationInventory));
   private readonly shipDamageController = new ShipDamageController(
     this.navigationState.missionContext?.shipDamagePreset,
     this.navigationState.joinShip,
@@ -497,6 +498,59 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         launching: launchingHotkeys.has(hotkey),
       };
     });
+  });
+  readonly launchInventoryDebugLine = computed(() => {
+    if (environment.production) {
+      return '';
+    }
+
+    const launchables = this.launchableInventory();
+    const targetId = this.targetedAsteroidId();
+    const activeShip = this.navigationState.joinShip;
+    const navInventoryCount = coerceShipInventory(activeShip?.inventory).length;
+
+    return [
+      'LAUNCH DBG',
+      `SHIP ${this.activeShipId() || 'none'}`,
+      `NAV_INV ${navInventoryCount}`,
+      `LAUNCHABLE ${launchables.length}`,
+      `HAS_DRONE ${this.hasExpendableDartDrone() ? 'Y' : 'N'}`,
+      `TARGET ${targetId ? 'Y' : 'N'}`,
+      `HOTKEYS ${this.launchHotkeysEnabled() ? 'ON' : 'OFF'}`,
+    ].join(' // ');
+  });
+  private readonly socketCorrelationDebugMessage = signal('');
+  private readonly launchIdentityDebugMessage = signal('');
+  private readonly socketContractViolationTimestampsMs = signal<number[]>([]);
+  private readonly socketLastContractViolationOperation = signal<string>('none');
+  private readonly socketLastContractViolationAtMs = signal<number | null>(null);
+  readonly socketCorrelationDebugLine = computed(() => {
+    if (environment.production) {
+      return '';
+    }
+
+    return this.socketCorrelationDebugMessage();
+  });
+  readonly socketContractViolationCounterLine = computed(() => {
+    if (environment.production) {
+      return '';
+    }
+
+    const now = Date.now();
+    const cutoff = now - 60_000;
+    const recentCount = this.socketContractViolationTimestampsMs().filter((timestamp) => timestamp >= cutoff).length;
+    const lastOperation = this.socketLastContractViolationOperation();
+    const lastAt = this.socketLastContractViolationAtMs();
+    const ageSec = lastAt ? Math.max(0, Math.floor((now - lastAt) / 1000)) : null;
+
+    return `CONTRACT VIOLATIONS // ${recentCount}/min // LAST_OP ${lastOperation}${ageSec !== null ? ` // LAST_${ageSec}s` : ''}`;
+  });
+  readonly launchIdentityDebugLine = computed(() => {
+    if (environment.production) {
+      return '';
+    }
+
+    return this.launchIdentityDebugMessage();
   });
   readonly hoveredScannedAsteroid = computed<AsteroidScanSample | null>(() => {
     const hoveredId = this.activeScanAsteroidId();
@@ -879,6 +933,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     window.addEventListener('keydown', this.onWindowKeyDown);
     window.addEventListener('keyup', this.onWindowKeyUp);
     window.addEventListener('mousemove', this.onWindowMouseMove);
+    window.addEventListener('socket-correlation-warning', this.onSocketCorrelationWarning as EventListener);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
   }
 
@@ -891,6 +946,72 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       missionStatusHint,
     });
   }
+  private onSocketCorrelationWarning = (event: Event): void => {
+    if (environment.production) {
+      return;
+    }
+
+    if (!(event instanceof CustomEvent) || !event.detail || typeof event.detail !== 'object') {
+      return;
+    }
+
+    const detail = event.detail as Record<string, unknown>;
+    const code = typeof detail['code'] === 'string' ? detail['code'] : '';
+    const operation = typeof detail['operation'] === 'string' ? detail['operation'] : 'unknown';
+    const responseRequestOperation =
+      typeof detail['responseRequestOperation'] === 'string' ? detail['responseRequestOperation'] : null;
+    const responseCorrelationId =
+      typeof detail['responseCorrelationId'] === 'string' ? detail['responseCorrelationId'] : 'missing';
+    const expectedCorrelationId =
+      typeof detail['expectedCorrelationId'] === 'string' ? detail['expectedCorrelationId'] : 'missing';
+    const responseShipCount = typeof detail['responseShipCount'] === 'number' ? detail['responseShipCount'] : null;
+    const firstShipInventoryCount =
+      typeof detail['firstShipInventoryCount'] === 'number' ? detail['firstShipInventoryCount'] : null;
+    const firstShipInventoryItemIdsCount =
+      typeof detail['firstShipInventoryItemIdsCount'] === 'number' ? detail['firstShipInventoryItemIdsCount'] : null;
+    const firstShipInventoryIdsCount =
+      typeof detail['firstShipInventoryIdsCount'] === 'number' ? detail['firstShipInventoryIdsCount'] : null;
+    const responseItemId = typeof detail['responseItemId'] === 'string' ? detail['responseItemId'] : null;
+    const responseItemType = typeof detail['responseItemType'] === 'string' ? detail['responseItemType'] : null;
+    const responseShipId = typeof detail['responseShipId'] === 'string' ? detail['responseShipId'] : null;
+
+    const parts = [
+      'SOCKET DBG',
+      `OP ${operation}`,
+      `RESP_CORR ${responseCorrelationId}`,
+      `EXP_CORR ${expectedCorrelationId}`,
+    ];
+
+    if (responseShipCount !== null) {
+      parts.push(`SHIPS ${responseShipCount}`);
+    }
+    if (firstShipInventoryCount !== null) {
+      parts.push(`INV ${firstShipInventoryCount}`);
+    }
+    if (firstShipInventoryItemIdsCount !== null) {
+      parts.push(`INV_ITEM_IDS ${firstShipInventoryItemIdsCount}`);
+    }
+    if (firstShipInventoryIdsCount !== null) {
+      parts.push(`INV_IDS ${firstShipInventoryIdsCount}`);
+    }
+    if (responseItemId) {
+      parts.push(`RESP_ITEM ${responseItemId}`);
+    }
+    if (responseItemType) {
+      parts.push(`RESP_TYPE ${responseItemType}`);
+    }
+    if (responseShipId) {
+      parts.push(`RESP_SHIP ${responseShipId}`);
+    }
+
+    if (code === 'socket-contract-violation') {
+      const offendingOperation = responseRequestOperation?.trim() || operation;
+      this.recordSocketContractViolation(offendingOperation);
+      parts.push(`CODE ${code}`);
+    }
+
+    this.socketCorrelationDebugMessage.set(parts.join(' // '));
+  };
 
   private resolveNavigationShipLocationKm(): Triple | null {
     const location = this.navigationState.joinShip?.spatial?.positionKm;
@@ -907,6 +1028,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private resolveNavigationSolarSystemId(): string {
     return this.navigationState.joinShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+  }
+
+  private recordSocketContractViolation(offendingOperation: string): void {
+    const now = Date.now();
+    const cutoff = now - 60_000;
+
+    this.socketContractViolationTimestampsMs.update((timestamps) => {
+      const recent = timestamps.filter((timestamp) => timestamp >= cutoff);
+      recent.push(now);
+      return recent;
+    });
+    this.socketLastContractViolationOperation.set(offendingOperation);
+    this.socketLastContractViolationAtMs.set(now);
   }
 
   private resolveAsteroidStateContext(): ShipExteriorAsteroidStateContext | null {
@@ -1177,6 +1311,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     window.removeEventListener('keydown', this.onWindowKeyDown);
     window.removeEventListener('keyup', this.onWindowKeyUp);
     window.removeEventListener('mousemove', this.onWindowMouseMove);
+    window.removeEventListener('socket-correlation-warning', this.onSocketCorrelationWarning as EventListener);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.hotkeyFlashController.dispose();
     this.launchToastController.dispose();
@@ -1409,13 +1544,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
     const navShipId = this.navigationState.joinShip?.id;
     const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
-    const nextHasDrone = this.missionDefinition.resolveTargetingCapabilityFromInventory(matchingShip?.inventory);
+    const normalizedInventory = coerceShipInventory(matchingShip?.inventory);
+    const nextHasDrone = this.missionDefinition.resolveTargetingCapabilityFromInventory(normalizedInventory);
     this.hasExpendableDartDrone.set(nextHasDrone);
     this.activeShipId.set(matchingShip?.id?.trim() ?? '');
     this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
     this.flightController.syncCurrentLocationFromShip(matchingShip?.spatial?.positionKm ?? null);
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
-    this.launchableInventory.set(this.resolveLaunchableInventory(matchingShip?.inventory));
+    this.launchableInventory.set(this.resolveLaunchableInventory(normalizedInventory));
+    if (matchingShip) {
+      this.navigationState.joinShip = {
+        ...matchingShip,
+        inventory: normalizedInventory,
+      };
+    }
     this.shipDamageController.resolveFromShipSummary(matchingShip);
   }
 
@@ -1478,6 +1620,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       itemId: slot.item.id,
       itemType: slot.item.itemType,
     };
+
+    this.launchIdentityDebugMessage.set(
+      [
+        'LAUNCH ID DBG',
+        `REQ_ITEM ${request.itemId || 'missing'}`,
+        `REQ_TYPE ${request.itemType || 'missing'}`,
+        `HOTKEY ${request.hotkey}`,
+        `SHIP ${request.shipId}`,
+        `TARGET ${request.targetCelestialBodyId}`,
+      ].join(' // '),
+    );
 
     // Deliberate decision: rapid launches are allowed. Requests are emitted
     // immediately, and responses are consumed on one shared listener.
@@ -1572,6 +1725,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private handleLaunchItemResponse(response: LaunchItemResponse): void {
+    const rawMessage = typeof response.message === 'string' ? response.message.trim() : '';
+    const compactMessage = rawMessage.length > 64 ? `${rawMessage.slice(0, 61)}...` : rawMessage || 'missing';
+    this.launchIdentityDebugMessage.set(
+      [
+        'LAUNCH ID DBG',
+        `RESP_OK ${response.success ? 'Y' : 'N'}`,
+        `RESP_ITEM ${response.itemId || 'missing'}`,
+        `RESP_TYPE ${response.itemType || 'missing'}`,
+        `RESP_SHIP ${response.shipId || 'missing'}`,
+        `RESP_CORR ${response.correlationId || 'missing'}`,
+        `MSG ${compactMessage}`,
+      ].join(' // '),
+    );
     this.launchController.handleLaunchItemResponse(response);
   }
 

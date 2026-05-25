@@ -196,9 +196,8 @@ describe('SocketService', () => {
           correlationSource: 'socket.upsertCelestialBody',
           requestIdentity: {
             operation: 'celestial-body-upsert',
-            entityType: 'sol-cb-1',
-            containerId: 'sample-a1',
-            characterId: 'char-1',
+            entityType: 'celestial-body',
+            containerId: 'cb-1',
           },
         }),
       );
@@ -228,6 +227,7 @@ describe('SocketService', () => {
       callbacks[0]?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });
+
   });
 
   describe('listCelestialBodies', () => {
@@ -284,8 +284,8 @@ describe('SocketService', () => {
           correlationSource: 'socket.listCelestialBodies',
           requestIdentity: {
             operation: 'celestial-body-list',
-            entityType: 'sol',
-            containerId: 'pioneer|sol|1000|0|0|0',
+            entityType: 'celestial-body',
+            containerId: 'sol',
           },
         }),
       );
@@ -391,9 +391,8 @@ describe('SocketService', () => {
           correlationSource: 'socket.upsertShip',
           requestIdentity: {
             operation: 'ship-upsert',
-            entityType: 'Scavenger Pod',
+            entityType: 'ship',
             containerId: 'starter-char-1',
-            characterId: 'char-1',
           },
         }),
       );
@@ -427,6 +426,7 @@ describe('SocketService', () => {
       callbacks[0]?.(fakeResponse);
       expect(callbackResponse).toEqual(fakeResponse);
     });
+
   });
 
   describe('upsertItem', () => {
@@ -434,7 +434,7 @@ describe('SocketService', () => {
       jasmine.clock().uninstall();
     });
 
-    it('should register listeners for both response aliases and resolve only matching item-upsert responses', () => {
+    it('should register canonical response listener and resolve only matching item-upsert responses', () => {
       jasmine.clock().install();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
@@ -488,7 +488,7 @@ describe('SocketService', () => {
       const emittedEventNames = emittedEvents.map((entry) => entry.event);
 
       expect(onEvents.has(ITEM_UPSERT_RESPONSE_EVENT)).toBeTrue();
-      expect(onEvents.has('upsert-item-response')).toBeTrue();
+      expect(onEvents.has('upsert-item-response')).toBeFalse();
       expect(emittedEventNames).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload).toEqual(
         jasmine.objectContaining({
@@ -533,11 +533,10 @@ describe('SocketService', () => {
       };
 
       const canonicalCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
-      const aliasCallbacks = onEvents.get('upsert-item-response') ?? [];
       canonicalCallbacks[0]?.(mismatchResponse);
       expect(callbackResponse).toBeUndefined();
 
-      aliasCallbacks[0]?.(fakeResponse);
+      canonicalCallbacks[0]?.(fakeResponse);
       jasmine.clock().tick(1000);
       canonicalCallbacks[0]?.({ success: true, message: 'duplicate', playerName: 'Pioneer' });
 
@@ -545,7 +544,7 @@ describe('SocketService', () => {
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should emit alias request as fallback when canonical response does not arrive in time', () => {
+    it('should emit only canonical item-upsert request when no response arrives', () => {
       jasmine.clock().install();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
@@ -586,13 +585,10 @@ describe('SocketService', () => {
       );
 
       jasmine.clock().tick(1000);
-      expect(emittedEvents.map((entry) => entry.event)).toEqual([
-        ITEM_UPSERT_REQUEST_EVENT,
-        'upsert-item-request',
-      ]);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should use canonical-first then fallback for existing item updates when no response arrives', () => {
+    it('should use canonical item-upsert for existing item updates when no response arrives', () => {
       jasmine.clock().install();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
@@ -637,10 +633,7 @@ describe('SocketService', () => {
       );
 
       jasmine.clock().tick(1000);
-      expect(emittedEvents.map((entry) => entry.event)).toEqual([
-        ITEM_UPSERT_REQUEST_EVENT,
-        'upsert-item-request',
-      ]);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
   });
 

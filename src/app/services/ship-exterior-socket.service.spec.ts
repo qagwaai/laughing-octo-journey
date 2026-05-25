@@ -284,8 +284,8 @@ describe('ShipExteriorSocketService', () => {
         correlationSource: 'ship-exterior-socket.listCelestialBodies',
         requestIdentity: {
           operation: 'celestial-body-list',
-          entityType: 'sol',
-          containerId: 'pioneer|sol|1000|0|0|0',
+          entityType: 'celestial-body',
+          containerId: 'sol',
         },
       }),
     });
@@ -356,8 +356,8 @@ describe('ShipExteriorSocketService', () => {
         correlationSource: 'ship-exterior-socket.listNearbyDeployedItems',
         requestIdentity: {
           operation: 'item-list-by-location',
-          entityType: 'sol',
-          containerId: 'pioneer|starter-char-1|sol|500',
+          entityType: 'item',
+          containerId: 'sol',
         },
       }),
     });
@@ -492,6 +492,7 @@ describe('ShipExteriorSocketService', () => {
       itemId: 'item-1',
       itemType: 'probe',
     });
+    const launchRequestPayload = socketService.emittedEvents[0].payload as LaunchItemRequest;
 
     const unsubscribe = service.subscribeLaunchResponses((response) => {
       received = response;
@@ -509,7 +510,8 @@ describe('ShipExteriorSocketService', () => {
       hotkey: 1,
       itemId: 'item-1',
       itemType: 'probe',
-      correlationId: 'corr-launch-1',
+      correlationId: launchRequestPayload.correlationId,
+      requestIdentity: launchRequestPayload.requestIdentity,
     };
     socketService.trigger(LAUNCH_ITEM_RESPONSE_EVENT, response);
 

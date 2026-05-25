@@ -132,7 +132,7 @@ Remaining uncovered branches in locale.ts (10/34) are primarily global object gu
 - [x] Replace client-side mission auto-assignment (`MissionAssignmentService`) with server-driven unlock — backend now supports auto-creating `available` missions on `completed`/`turned-in` transition; client-side optimistic path can be removed once backend is confirmed stable
 - [ ] Normalize `playerName` comparison in `MissionService` response filters to be case-insensitive — backend returns canonical casing which may differ from what the client sent
 - [ ] Add `requestId` correlation to mission socket requests/responses to eliminate cross-response matching ambiguity and reduce timeout flakes
-- [x] Update `docs/server-message-contracts.md` to match the new backend `MESSAGE_CONTRACT.md` (mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, asteroid seeding edge case)
+- [x] Align frontend contract assumptions to OpenAPI (`openapi.yaml`, prefer `http://localhost:3000/openapi.yaml`) for mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, and asteroid seeding edge cases
 - [ ] Normalize the list of in game parts with those that are part of first-target, and need fixing
 
 ---

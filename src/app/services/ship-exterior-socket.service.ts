@@ -44,14 +44,78 @@ function createCorrelationId(operation: string): string {
  */
 export class ShipExteriorSocketService {
   private socketService = inject(SocketService);
-  private pendingLaunchByCorrelationId = new Map<
-    string,
-    { requestIdentity: LaunchItemRequestIdentity; legacyKey: string }
-  >();
-  private pendingLegacyLaunchKeyCount = new Map<string, number>();
+  private pendingLaunchByCorrelationId = new Map<string, LaunchItemRequestIdentity>();
 
   private normalizeIdentityValue(value: unknown): string {
     return typeof value === 'string' ? value.trim().toLowerCase() : '';
+  }
+
+  private serializeWarningDetail(detail: Record<string, unknown>): string {
+    return Object.entries(detail)
+      .map(([key, value]) => `${key}=${value ?? 'missing'}`)
+      .join(' ');
+  }
+
+  private buildIdentityMismatchReason(
+    expectedCorrelationId: string,
+    responseCorrelationId: string | undefined,
+    expectedRequestIdentity:
+      | ShipListByOwnerRequestIdentity
+      | CelestialBodyListRequestIdentity
+      | ItemListByLocationRequestIdentity,
+    responseRequestIdentity:
+      | ShipListByOwnerRequestIdentity
+      | CelestialBodyListRequestIdentity
+      | ItemListByLocationRequestIdentity
+      | undefined,
+  ): string {
+    const reasons: string[] = [];
+    const normalizedResponseCorrelationId = responseCorrelationId?.trim() ?? '';
+    if (!normalizedResponseCorrelationId) {
+      reasons.push('missing-correlation-id');
+    } else if (normalizedResponseCorrelationId !== expectedCorrelationId) {
+      reasons.push('correlation-id');
+    }
+
+    if (!responseRequestIdentity) {
+      reasons.push('missing-request-identity');
+      return reasons.join('|');
+    }
+
+    if (
+      this.normalizeIdentityValue(responseRequestIdentity.operation) !==
+      this.normalizeIdentityValue(expectedRequestIdentity.operation)
+    ) {
+      reasons.push('operation');
+    }
+
+    if (
+      this.normalizeIdentityValue(responseRequestIdentity.entityType) !==
+      this.normalizeIdentityValue(expectedRequestIdentity.entityType)
+    ) {
+      reasons.push('entity-type');
+    }
+
+    if (
+      this.normalizeIdentityValue(responseRequestIdentity.containerId) !==
+      this.normalizeIdentityValue(expectedRequestIdentity.containerId)
+    ) {
+      reasons.push('container-id');
+    }
+
+    return reasons.join('|') || 'unknown';
+  }
+
+  private isForeignOperationPayload(
+    expectedOperation: string,
+    responseOperation: string | undefined,
+  ): boolean {
+    const normalizedResponseOperation = this.normalizeIdentityValue(responseOperation);
+    if (!normalizedResponseOperation) {
+      return false;
+    }
+
+    return normalizedResponseOperation !== this.normalizeIdentityValue(expectedOperation);
   }
 
   private buildShipOwnerKey(owner: {
@@ -93,32 +157,13 @@ export class ShipExteriorSocketService {
     }
   }
 
-  private buildCelestialBodyListLegacyKey(input: {
-    playerName?: string;
-    solarSystemId?: string;
-    distanceKm?: number;
-    positionKm?: { x: number; y: number; z: number };
-  }): string {
-    const px = input.positionKm?.x ?? null;
-    const py = input.positionKm?.y ?? null;
-    const pz = input.positionKm?.z ?? null;
-    return [
-      this.normalizeIdentityValue(input.playerName),
-      this.normalizeIdentityValue(input.solarSystemId),
-      String(input.distanceKm ?? ''),
-      String(px ?? ''),
-      String(py ?? ''),
-      String(pz ?? ''),
-    ].join('|');
-  }
-
   private buildDefaultCelestialBodyListRequestIdentity(
     request: CelestialBodyListRequest,
   ): CelestialBodyListRequestIdentity {
     return {
       operation: 'celestial-body-list',
-      entityType: request.solarSystemId?.trim() || 'unknown-solar-system',
-      containerId: this.buildCelestialBodyListLegacyKey(request),
+      entityType: 'celestial-body',
+      containerId: request.solarSystemId?.trim() || 'unknown-solar-system',
     };
   }
 
@@ -141,45 +186,18 @@ export class ShipExteriorSocketService {
     response: CelestialBodyListResponse,
     expectedCorrelationId: string,
     expectedRequestIdentity: CelestialBodyListRequestIdentity,
-    expectedRequest: CelestialBodyListRequest,
+    _expectedRequest: CelestialBodyListRequest,
   ): boolean {
     const responseCorrelationId = response.correlationId?.trim() ?? '';
-    if (responseCorrelationId) {
-      if (responseCorrelationId !== expectedCorrelationId) {
-        return false;
-      }
-
-      if (response.requestIdentity) {
-        return this.matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-      }
+    if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+      return false;
     }
 
-    const expectedKey = this.buildCelestialBodyListLegacyKey(expectedRequest);
-    const responseKey = this.buildCelestialBodyListLegacyKey({
-      playerName: response.playerName,
-      solarSystemId: response.solarSystemId,
-      distanceKm: response.distanceKm,
-      positionKm: response.positionKm,
-    });
-    if (responseKey.replace(/\|/g, '').length > 0) {
-      return responseKey === expectedKey;
+    if (!response.requestIdentity) {
+      return false;
     }
 
-    return true;
-  }
-
-  private buildItemListByLocationLegacyKey(input: {
-    playerName?: string;
-    shipId?: string;
-    solarSystemId?: string;
-    maxDistanceKm?: number;
-  }): string {
-    return [
-      this.normalizeIdentityValue(input.playerName),
-      this.normalizeIdentityValue(input.shipId),
-      this.normalizeIdentityValue(input.solarSystemId),
-      String(input.maxDistanceKm ?? ''),
-    ].join('|');
+    return this.matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
   }
 
   private buildDefaultItemListByLocationRequestIdentity(
@@ -187,13 +205,8 @@ export class ShipExteriorSocketService {
   ): ItemListByLocationRequestIdentity {
     return {
       operation: 'item-list-by-location',
-      entityType: request.location?.solarSystemId?.trim() || 'unknown-solar-system',
-      containerId: this.buildItemListByLocationLegacyKey({
-        playerName: request.playerName,
-        shipId: request.shipId,
-        solarSystemId: request.location?.solarSystemId,
-        maxDistanceKm: request.maxDistanceKm,
-      }),
+      entityType: 'item',
+      containerId: request.location?.solarSystemId?.trim() || 'unknown-solar-system',
     };
   }
 
@@ -216,37 +229,18 @@ export class ShipExteriorSocketService {
     response: ItemListByLocationResponse,
     expectedCorrelationId: string,
     expectedRequestIdentity: ItemListByLocationRequestIdentity,
-    expectedRequest: ItemListByLocationRequest,
+    _expectedRequest: ItemListByLocationRequest,
   ): boolean {
     const responseCorrelationId = response.correlationId?.trim() ?? '';
-    if (responseCorrelationId) {
-      if (responseCorrelationId !== expectedCorrelationId) {
-        return false;
-      }
-
-      if (response.requestIdentity) {
-        return this.matchesItemListByLocationRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-      }
+    if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+      return false;
     }
 
-    const requestShipId = this.normalizeIdentityValue(expectedRequest.shipId);
-    const requestSolarSystemId = this.normalizeIdentityValue(expectedRequest.location?.solarSystemId);
-    const responseItems = Array.isArray(response.items) ? response.items : [];
-    if (responseItems.length > 0) {
-      for (const item of responseItems) {
-        const containerId = this.normalizeIdentityValue(item.container?.containerId);
-        if (containerId && requestShipId && containerId !== requestShipId) {
-          return false;
-        }
-
-        const itemSolarSystemId = this.normalizeIdentityValue(item.spatial?.solarSystemId);
-        if (itemSolarSystemId && requestSolarSystemId && itemSolarSystemId !== requestSolarSystemId) {
-          return false;
-        }
-      }
+    if (!response.requestIdentity) {
+      return false;
     }
 
-    return true;
+    return this.matchesItemListByLocationRequestIdentity(response.requestIdentity, expectedRequestIdentity);
   }
 
   private buildDefaultShipListByOwnerRequestIdentity(request: ShipListByOwnerRequest): ShipListByOwnerRequestIdentity {
@@ -276,125 +270,57 @@ export class ShipExteriorSocketService {
     response: ShipListByOwnerResponse,
     expectedCorrelationId: string,
     expectedRequestIdentity: ShipListByOwnerRequestIdentity,
-    expectedRequest: ShipListByOwnerRequest,
+    _expectedRequest: ShipListByOwnerRequest,
   ): boolean {
     const responseCorrelationId = response.correlationId?.trim() ?? '';
-    if (responseCorrelationId) {
-      if (responseCorrelationId !== expectedCorrelationId) {
-        return false;
-      }
-
-      if (response.requestIdentity) {
-        return this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-      }
+    if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
+      return false;
     }
 
-    const expectedOwnerKey = this.buildShipOwnerKey(expectedRequest.owner);
-    const responseOwnerKey = response.owner ? this.buildShipOwnerKey(response.owner) : '';
-    if (responseOwnerKey) {
-      return responseOwnerKey === expectedOwnerKey;
+    if (!response.requestIdentity) {
+      return false;
     }
 
-    return true;
-  }
-
-  private buildLaunchLegacyKey(input: {
-    itemId: string;
-    itemType: string;
-    hotkey: number;
-    shipId: string;
-    characterId: string;
-    targetCelestialBodyId: string;
-  }): string {
-    return [
-      this.normalizeIdentityValue(input.itemId),
-      this.normalizeIdentityValue(input.itemType),
-      String(input.hotkey),
-      this.normalizeIdentityValue(input.shipId),
-      this.normalizeIdentityValue(input.characterId),
-      this.normalizeIdentityValue(input.targetCelestialBodyId),
-    ].join('|');
-  }
-
-  private incrementPendingLegacyKey(key: string): void {
-    const next = (this.pendingLegacyLaunchKeyCount.get(key) ?? 0) + 1;
-    this.pendingLegacyLaunchKeyCount.set(key, next);
-  }
-
-  private decrementPendingLegacyKey(key: string): void {
-    const current = this.pendingLegacyLaunchKeyCount.get(key) ?? 0;
-    if (current <= 1) {
-      this.pendingLegacyLaunchKeyCount.delete(key);
-      return;
-    }
-
-    this.pendingLegacyLaunchKeyCount.set(key, current - 1);
+    return this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
   }
 
   private registerPendingLaunch(request: LaunchItemRequest): void {
     const correlationId = request.correlationId?.trim();
     const requestIdentity = request.requestIdentity;
-    const legacyKey = this.buildLaunchLegacyKey({
-      itemId: request.itemId,
-      itemType: request.itemType,
-      hotkey: request.hotkey,
-      shipId: request.shipId,
-      characterId: request.characterId,
-      targetCelestialBodyId: request.targetCelestialBodyId,
-    });
-
-    this.incrementPendingLegacyKey(legacyKey);
-
     if (correlationId && requestIdentity) {
-      this.pendingLaunchByCorrelationId.set(correlationId, { requestIdentity, legacyKey });
+      this.pendingLaunchByCorrelationId.set(correlationId, requestIdentity);
     }
-  }
-
-  private consumePendingLaunchByLegacyKey(legacyKey: string): boolean {
-    if (!this.pendingLegacyLaunchKeyCount.has(legacyKey)) {
-      return false;
-    }
-
-    this.decrementPendingLegacyKey(legacyKey);
-    for (const [correlationId, pending] of this.pendingLaunchByCorrelationId.entries()) {
-      if (pending.legacyKey === legacyKey) {
-        this.pendingLaunchByCorrelationId.delete(correlationId);
-        break;
-      }
-    }
-    return true;
-  }
-
-  private hasPendingLaunchRequests(): boolean {
-    return this.pendingLaunchByCorrelationId.size > 0 || this.pendingLegacyLaunchKeyCount.size > 0;
   }
 
   private shouldAcceptLaunchResponse(response: LaunchItemResponse): boolean {
-    if (!this.hasPendingLaunchRequests()) {
-      return true;
+    if (this.pendingLaunchByCorrelationId.size === 0) {
+      return false;
     }
 
     const responseCorrelationId = response.correlationId?.trim() ?? '';
-    if (responseCorrelationId) {
-      const pending = this.pendingLaunchByCorrelationId.get(responseCorrelationId);
-      if (!pending) {
-        return false;
-      }
-
-      this.pendingLaunchByCorrelationId.delete(responseCorrelationId);
-      this.decrementPendingLegacyKey(pending.legacyKey);
-      return true;
+    if (!responseCorrelationId) {
+      return false;
     }
 
-    const legacyKey = this.buildLaunchLegacyKey({
-      itemId: response.itemId,
-      itemType: response.itemType,
-      hotkey: response.hotkey,
-      shipId: response.shipId,
-      characterId: response.characterId,
-      targetCelestialBodyId: response.targetCelestialBodyId,
-    });
-    return this.consumePendingLaunchByLegacyKey(legacyKey);
+    const pendingIdentity = this.pendingLaunchByCorrelationId.get(responseCorrelationId);
+    if (!pendingIdentity) {
+      return false;
+    }
+
+    this.pendingLaunchByCorrelationId.delete(responseCorrelationId);
+
+    if (!response.requestIdentity) {
+      return false;
+    }
+
+    return (
+      this.normalizeIdentityValue(response.requestIdentity.operation) ===
+        this.normalizeIdentityValue(pendingIdentity.operation) &&
+      this.normalizeIdentityValue(response.requestIdentity.entityType) ===
+        this.normalizeIdentityValue(pendingIdentity.entityType) &&
+      this.normalizeIdentityValue(response.requestIdentity.containerId) ===
+        this.normalizeIdentityValue(pendingIdentity.containerId)
+    );
   }
 
   /**
@@ -403,19 +329,24 @@ export class ShipExteriorSocketService {
   subscribeLaunchResponses(onResponse: (response: LaunchItemResponse) => void): () => void {
     return this.socketService.on(LAUNCH_ITEM_RESPONSE_EVENT, (response: LaunchItemResponse) => {
       if (!this.shouldAcceptLaunchResponse(response)) {
+        const warningDetail = {
+          code: 'socket-correlation-unmatched',
+          channel: 'ship-exterior-subscriber',
+          operation: 'launch-item',
+          reason: 'pending-correlation-not-found',
+          responseEvent: LAUNCH_ITEM_RESPONSE_EVENT,
+          responseCorrelationId: response.correlationId ?? null,
+          responseItemId: response.itemId ?? null,
+          responseItemType: response.itemType ?? null,
+          responseShipId: response.shipId ?? null,
+        };
         appLogger.warn(
-          `[socket-correlation] Dropping unmatched launch-item response in ship-exterior subscriber. responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
+          `[socket-correlation] Dropping unmatched launch-item response in ship-exterior subscriber. ${this.serializeWarningDetail(warningDetail)}`,
         );
         if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
           window.dispatchEvent(
             new CustomEvent('socket-correlation-warning', {
-              detail: {
-                operation: 'launch-item',
-                responseCorrelationId: response.correlationId ?? null,
-                responseItemId: response.itemId ?? null,
-                responseItemType: response.itemType ?? null,
-                responseShipId: response.shipId ?? null,
-              },
+              detail: warningDetail,
             }),
           );
         }
@@ -452,19 +383,72 @@ export class ShipExteriorSocketService {
           requestWithCorrelation,
         )
       ) {
+        if (
+          this.isForeignOperationPayload(
+            expectedRequestIdentity.operation,
+            response.requestIdentity?.operation,
+          )
+        ) {
+          const contractViolationDetail = {
+            code: 'socket-contract-violation',
+            channel: 'ship-exterior-wrapper',
+            operation: 'ship-list-by-owner',
+            reason: 'foreign-operation-on-channel',
+            requestEvent: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+            responseEvent: SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+            expectedCorrelationId,
+            expectedRequestOperation: expectedRequestIdentity.operation,
+            expectedRequestEntityType: expectedRequestIdentity.entityType,
+            expectedRequestContainerId: expectedRequestIdentity.containerId,
+            responseCorrelationId: response.correlationId ?? null,
+            responseRequestOperation: response.requestIdentity?.operation ?? null,
+            responseRequestEntityType: response.requestIdentity?.entityType ?? null,
+            responseRequestContainerId: response.requestIdentity?.containerId ?? null,
+          };
+          appLogger.error(
+            `[socket-correlation] Contract violation: foreign operation payload on ship-list-by-owner response channel. ${this.serializeWarningDetail(contractViolationDetail)}`,
+          );
+          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+            window.dispatchEvent(
+              new CustomEvent('socket-correlation-warning', {
+                detail: contractViolationDetail,
+              }),
+            );
+          }
+          return;
+        }
+
+        const mismatchReason = this.buildIdentityMismatchReason(
+          expectedCorrelationId,
+          response.correlationId,
+          expectedRequestIdentity,
+          response.requestIdentity,
+        );
+        const warningDetail = {
+          code: 'socket-correlation-unmatched',
+          channel: 'ship-exterior-wrapper',
+          operation: 'ship-list-by-owner',
+          reason: mismatchReason,
+          requestEvent: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+          responseEvent: SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+          expectedCorrelationId,
+          expectedRequestOperation: expectedRequestIdentity.operation,
+          expectedRequestEntityType: expectedRequestIdentity.entityType,
+          expectedRequestContainerId: expectedRequestIdentity.containerId,
+          responseCorrelationId: response.correlationId ?? null,
+          responseOwnerType: response.owner?.ownerType ?? null,
+          responseOwnerCharacterId: response.owner?.characterId ?? null,
+          responseRequestOperation: response.requestIdentity?.operation ?? null,
+          responseRequestEntityType: response.requestIdentity?.entityType ?? null,
+          responseRequestContainerId: response.requestIdentity?.containerId ?? null,
+        };
         appLogger.warn(
-          `[socket-correlation] Dropping unmatched ship-list-by-owner response in ship-exterior wrapper. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responseOwnerType=${response.owner?.ownerType ?? 'missing'} responseOwnerCharacterId=${response.owner?.characterId ?? 'missing'}`,
+          `[socket-correlation] Dropping unmatched ship-list-by-owner response in ship-exterior wrapper. ${this.serializeWarningDetail(warningDetail)}`,
         );
         if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
           window.dispatchEvent(
             new CustomEvent('socket-correlation-warning', {
-              detail: {
-                operation: 'ship-list-by-owner',
-                responseCorrelationId: response.correlationId ?? null,
-                expectedCorrelationId,
-                responseOwnerType: response.owner?.ownerType ?? null,
-                responseOwnerCharacterId: response.owner?.characterId ?? null,
-              },
+              detail: warningDetail,
             }),
           );
         }
@@ -507,18 +491,36 @@ export class ShipExteriorSocketService {
             requestWithCorrelation,
           )
         ) {
+          const mismatchReason = this.buildIdentityMismatchReason(
+            expectedCorrelationId,
+            response.correlationId,
+            expectedRequestIdentity,
+            response.requestIdentity,
+          );
+          const warningDetail = {
+            code: 'socket-correlation-unmatched',
+            channel: 'ship-exterior-wrapper',
+            operation: 'celestial-body-list',
+            reason: mismatchReason,
+            requestEvent: CELESTIAL_BODY_LIST_REQUEST_EVENT,
+            responseEvent: CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+            expectedCorrelationId,
+            expectedRequestOperation: expectedRequestIdentity.operation,
+            expectedRequestEntityType: expectedRequestIdentity.entityType,
+            expectedRequestContainerId: expectedRequestIdentity.containerId,
+            responseCorrelationId: response.correlationId ?? null,
+            responseSolarSystemId: response.solarSystemId ?? null,
+            responseRequestOperation: response.requestIdentity?.operation ?? null,
+            responseRequestEntityType: response.requestIdentity?.entityType ?? null,
+            responseRequestContainerId: response.requestIdentity?.containerId ?? null,
+          };
           appLogger.warn(
-            `[socket-correlation] Dropping unmatched celestial-body-list response in ship-exterior wrapper. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responseSolarSystemId=${response.solarSystemId ?? 'missing'}`,
+            `[socket-correlation] Dropping unmatched celestial-body-list response in ship-exterior wrapper. ${this.serializeWarningDetail(warningDetail)}`,
           );
           if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(
               new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'celestial-body-list',
-                  responseCorrelationId: response.correlationId ?? null,
-                  expectedCorrelationId,
-                  responseSolarSystemId: response.solarSystemId ?? null,
-                },
+                detail: warningDetail,
               }),
             );
           }
@@ -562,18 +564,36 @@ export class ShipExteriorSocketService {
             requestWithCorrelation,
           )
         ) {
+          const mismatchReason = this.buildIdentityMismatchReason(
+            expectedCorrelationId,
+            response.correlationId,
+            expectedRequestIdentity,
+            response.requestIdentity,
+          );
+          const warningDetail = {
+            code: 'socket-correlation-unmatched',
+            channel: 'ship-exterior-wrapper',
+            operation: 'item-list-by-location',
+            reason: mismatchReason,
+            requestEvent: ITEM_LIST_BY_LOCATION_REQUEST_EVENT,
+            responseEvent: ITEM_LIST_BY_LOCATION_RESPONSE_EVENT,
+            expectedCorrelationId,
+            expectedRequestOperation: expectedRequestIdentity.operation,
+            expectedRequestEntityType: expectedRequestIdentity.entityType,
+            expectedRequestContainerId: expectedRequestIdentity.containerId,
+            expectedShipId: request.shipId,
+            responseCorrelationId: response.correlationId ?? null,
+            responseRequestOperation: response.requestIdentity?.operation ?? null,
+            responseRequestEntityType: response.requestIdentity?.entityType ?? null,
+            responseRequestContainerId: response.requestIdentity?.containerId ?? null,
+          };
           appLogger.warn(
-            `[socket-correlation] Dropping unmatched item-list-by-location response in ship-exterior wrapper. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} expectedShipId=${request.shipId}`,
+            `[socket-correlation] Dropping unmatched item-list-by-location response in ship-exterior wrapper. ${this.serializeWarningDetail(warningDetail)}`,
           );
           if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(
               new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'item-list-by-location',
-                  responseCorrelationId: response.correlationId ?? null,
-                  expectedCorrelationId,
-                  expectedShipId: request.shipId,
-                },
+                detail: warningDetail,
               }),
             );
           }

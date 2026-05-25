@@ -1,13 +1,15 @@
 # Server Message Contracts
 
-This document describes the socket message contracts currently used by the application when talking to the server. This is the canonical specification; implementation must conform to this contract.
+Deprecated contract notes. This file is a historical snapshot and is not a source of truth.
+
+Use OpenAPI (`openapi.yaml`, prefer runtime `http://localhost:3000/openapi.yaml`) as the only contract authority.
 
 **Contract Version**: 2.0.0 (canonical-only; no dual-key transition)  
 **Last Updated**: 2026-05-15
 
 ## Scope
 
-- Source of truth: remote server contract (https://github.com/qagwaai/solid-train/blob/main/MESSAGE_CONTRACT.md)
+- Source of truth: OpenAPI `openapi.yaml` only
 - These contracts are what the client must send and receive.
 - All string fields are trimmed by the server.
 - Player lookup is case-insensitive by `playerName`; canonical casing is returned.
@@ -2820,8 +2822,8 @@ Payload:
 ## Solar System Viewer (HYG-backed)
 
 These contracts power the left-pane Viewer page and right-pane Viewer scene.
-They consume the upstream HYG-derived dataset described by the backend's
-`MESSAGE_CONTRACT.md` (see `solid-train` repository).
+They consume the upstream HYG-derived dataset described by backend OpenAPI
+(`openapi.yaml`, prefer runtime `http://localhost:3000/openapi.yaml`).
 
 ### `solar-system-list-request`
 
