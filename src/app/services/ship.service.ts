@@ -45,6 +45,12 @@ function buildShipOwnerCorrelationContainerId(owner: {
   switch (ownerType) {
     case 'player-character':
       return `player-character:${normalizeIdentityValue(owner.characterId) || 'unknown-character'}`;
+    case 'npc-pirate':
+      return `npc-pirate:${normalizeIdentityValue(owner.npcId) || 'unknown-npc'}`;
+    case 'unowned':
+      return 'unowned';
+    case 'unknown':
+      return 'unknown';
     case 'player':
       return `player:${normalizeIdentityValue(owner.playerId) || 'unknown-player'}`;
     case 'npc':

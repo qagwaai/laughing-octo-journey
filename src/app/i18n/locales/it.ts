@@ -538,6 +538,16 @@ export const it: DeepPartial<EnLocale> = {
       },
     },
   },
+  shipExterior: {
+    tractorBeam: {
+      rangeIndicator: 'Portata Raggio Traente',
+      itemDetected: 'Detrito rilevato',
+      itemsDetected: 'Rilevati {{count}} detriti',
+      collecting: 'Raccolta in corso...',
+      collected: 'Raccolto: {{name}}',
+      allCollected: 'Tutti i detriti raccolti.',
+    },
+  },
   opening: {
     coldBoot: {
       bootStageLabel: 'Fase di avvio',

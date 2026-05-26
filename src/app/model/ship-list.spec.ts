@@ -191,4 +191,40 @@ describe('coerceShipOwnership', () => {
     expect(coerceShipOwnership({ ownerType: 'mystery-owner' })).toBeNull();
     expect(coerceShipOwnership({ playerId: 'player-1' })).toBeNull();
   });
+
+  it('accepts canonical npc-pirate ownership descriptors', () => {
+    expect(
+      coerceShipOwnership({
+        ownerType: 'npc-pirate',
+        playerId: null,
+        characterId: null,
+        npcId: 'pirate-1',
+        factionId: null,
+      }),
+    ).toEqual({
+      ownerType: 'npc-pirate',
+      playerId: null,
+      characterId: null,
+      npcId: 'pirate-1',
+      factionId: null,
+    });
+  });
+
+  it('accepts canonical unowned ownership descriptors', () => {
+    expect(
+      coerceShipOwnership({
+        ownerType: 'unowned',
+        playerId: null,
+        characterId: null,
+        npcId: null,
+        factionId: null,
+      }),
+    ).toEqual({
+      ownerType: 'unowned',
+      playerId: null,
+      characterId: null,
+      npcId: null,
+      factionId: null,
+    });
+  });
 });

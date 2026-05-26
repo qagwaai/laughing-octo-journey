@@ -262,6 +262,38 @@ describe('ShipExteriorSocketService', () => {
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('should format requestIdentity containerId for canonical npc-pirate owners', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'npc-pirate', npcId: 'pirate-42' } as any,
+      },
+      () => {
+        fail('Expected no callback invocation');
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(requestPayload.requestIdentity?.containerId).toBe('npc-pirate:pirate-42');
+  });
+
+  it('should format requestIdentity containerId for canonical unowned owners', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'unowned' } as any,
+      },
+      () => {
+        fail('Expected no callback invocation');
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(requestPayload.requestIdentity?.containerId).toBe('unowned');
+  });
+
   it('should emit celestial-body-list and resolve only matching responses', () => {
     let received: CelestialBodyListResponse | undefined;
     const request: CelestialBodyListRequest = {

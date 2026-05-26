@@ -1403,10 +1403,32 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   });
 
   it('tryActivateTractorBeam waits for pull duration before committing upsertItem', () => {
-    const { component, mockSocket } = setup(
+    const { component, fixture, mockSocket } = setup(
       shipNavStateWithInventory([{ id: 'beam-20', itemType: 'ship-tractor-beam', tier: 20, damageStatus: 'intact' }]),
     );
-    const stateService = seedDebris(component, 'debris-near', { x: 5, y: 0, z: 0 }, 'Tractor Beam');
+    component['missionGateState'].set({
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
+      updatedAt: '2026-05-25T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'collect_floating_debris', status: 'active' },
+        { key: 'manufacture_hull_patch_kit', status: 'active' },
+        { key: 'repair_scavenger_pod', status: 'locked' },
+      ],
+    });
+    const stateService = component['floatingDebrisStateService'] as FloatingDebrisStateService;
+    stateService.clear();
+    stateService.upsertLocal([
+      {
+        id: 'debris-near',
+        itemType: 'ship-tractor-beam',
+        displayName: 'Tractor Beam',
+        positionKm: { x: 5, y: 0, z: 0 },
+      },
+    ]);
     component['targetedDebrisId'].set('debris-near');
     component['activeTarget'].set({ kind: 'debris', id: 'debris-near' });
 
@@ -1443,12 +1465,16 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(request.correlationSource).toBe('ship-exterior.tractor-beam');
 
     callback({ success: true, message: 'ok', correlationId: 'c-1' });
+    fixture.detectChanges();
 
     expect(stateService.getAll().find((d) => d.id === 'debris-near')).toBeUndefined();
     expect(component['targetedDebrisId']()).toBeNull();
     expect(component['activeTarget']()).toBeNull();
-    expect(component['activeLaunchToast']()?.message).toContain('Tractor beam collected: Tractor Beam');
+    expect(component['activeLaunchToast']()?.message).toContain('Collected: Tractor Beam');
     expect(component['activeLaunchToast']()?.tone).toBe('success');
+    expect(component['missionGateState']()?.steps.find((step) => step.key === 'collect_floating_debris')?.status).toBe(
+      'completed',
+    );
   });
 
   it('tryActivateTractorBeam reverses pull and keeps debris when the server rejects', () => {

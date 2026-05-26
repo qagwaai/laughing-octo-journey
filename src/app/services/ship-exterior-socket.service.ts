@@ -146,6 +146,12 @@ export class ShipExteriorSocketService {
     switch (ownerType) {
       case 'player-character':
         return `player-character:${this.normalizeIdentityValue(owner.characterId) || 'unknown-character'}`;
+      case 'npc-pirate':
+        return `npc-pirate:${this.normalizeIdentityValue(owner.npcId) || 'unknown-npc'}`;
+      case 'unowned':
+        return 'unowned';
+      case 'unknown':
+        return 'unknown';
       case 'player':
         return `player:${this.normalizeIdentityValue(owner.playerId) || 'unknown-player'}`;
       case 'npc':

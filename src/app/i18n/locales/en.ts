@@ -644,6 +644,17 @@ export const en = {
     },
   },
 
+  shipExterior: {
+    tractorBeam: {
+      rangeIndicator: 'Tractor Beam Range',
+      itemDetected: 'Debris detected',
+      itemsDetected: '{{count}} debris items detected',
+      collecting: 'Collecting...',
+      collected: 'Collected: {{name}}',
+      allCollected: 'All debris collected.',
+    },
+  },
+
   opening: {
     coldBoot: {
       bootStageLabel: 'Boot Stage',

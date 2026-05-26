@@ -323,4 +323,34 @@ describe('ShipService', () => {
     expect(received['a']).toEqual(responseA);
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
+
+  it('formats requestIdentity containerId for canonical npc-pirate owners', () => {
+    const request: ShipListByOwnerRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'npc-pirate', npcId: 'pirate-7' } as any,
+    };
+
+    service.listShipsByOwner(request, () => {
+      fail('Expected no callback invocation');
+    });
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(requestPayload.requestIdentity?.containerId).toBe('npc-pirate:pirate-7');
+  });
+
+  it('formats requestIdentity containerId for canonical unowned owners', () => {
+    const request: ShipListByOwnerRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      owner: { ownerType: 'unowned' } as any,
+    };
+
+    service.listShipsByOwner(request, () => {
+      fail('Expected no callback invocation');
+    });
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(requestPayload.requestIdentity?.containerId).toBe('unowned');
+  });
 });

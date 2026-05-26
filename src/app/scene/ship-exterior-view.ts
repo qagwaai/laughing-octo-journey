@@ -15,6 +15,7 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Euler, PMREMGenerator, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { environment } from '../../environments/environment';
+import { locale } from '../i18n/locale';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
 import { Sol } from '../component/sol';
@@ -139,6 +140,13 @@ interface LaunchHotkeySlot {
   launching: boolean;
 }
 
+function interpolateTemplate(template: string, params: Record<string, string | number>): string {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
+    const value = params[key];
+    return value === undefined ? '' : String(value);
+  });
+}
+
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
@@ -150,6 +158,7 @@ interface LaunchHotkeySlot {
  * Real-time ship-exterior scene controller for scanning, mission gating, and launch actions.
  */
 export default class ShipExteriorViewScene implements OnInit, OnDestroy {
+  protected readonly t = locale;
   // --- Phase 3: Frame-pressure & Quality Scaler ---
   private readonly framePressureSampler = new FramePressureSampler(30); // Configurable window size
   private lastTickTimestamp: number | null = null;
@@ -334,6 +343,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
   });
   private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
+  private previousFloatingDebrisCount = 0;
   private readonly missionGateStateSync = effect(() => {
     const updated = this.missionStateService.lastSaved();
     if (!updated) {
@@ -346,6 +356,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     this.missionGateState.set(updated);
+  });
+  private readonly floatingDebrisMissionGateSync = effect(() => {
+    const debrisCount = this.floatingDebrisItems().length;
+    this.missionProgressController.evaluateFloatingDebrisCollection(this.previousFloatingDebrisCount, debrisCount);
+    this.previousFloatingDebrisCount = debrisCount;
   });
   readonly shipConditionLine = computed(() => {
     const profile = this.shipDamageController.current();
@@ -2268,7 +2283,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.tractorBeamAnimationClockMs.set(nowMs);
     this.tractorBeamAudioController.startLoop();
     this.startTractorBeamAnimationLoop();
-    this.setLaunchToast('Tractor beam engaged.', 'success', null);
+    this.setLaunchToast(this.t.shipExterior.tractorBeam.collecting, 'success', null);
   }
 
   private startTractorBeamAnimationLoop(): void {
@@ -2390,7 +2405,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           this.stopTractorBeamAnimationLoop();
           this.tractorBeamAudioController.stopLoop();
           this.tractorBeamAudioController.playCompletionChime();
-          this.setLaunchToast(`Tractor beam collected: ${state.displayName}.`, 'success', null);
+          this.setLaunchToast(
+            interpolateTemplate(this.t.shipExterior.tractorBeam.collected, { name: state.displayName }),
+            'success',
+            null,
+          );
           return;
         }
 

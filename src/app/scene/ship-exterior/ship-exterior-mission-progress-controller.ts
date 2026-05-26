@@ -1,13 +1,14 @@
 import { AsyncSerialQueue } from './async-serial-queue';
-import { clearMissionGatePendingRetry, markMissionGateStepPendingRetry, serializeMissionGateState, type ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
-import type { MissionStatus } from '../../model/mission';
+import {
+  clearMissionGatePendingRetry,
+  evaluateMissionGateOnDebrisCollection,
+  markMissionGateStepPendingRetry,
+  serializeMissionGateState,
+  type ShipExteriorMissionDefinition,
+  type ShipExteriorMissionGateState,
+} from '../../mission/ship-exterior-mission';
 import { MissionService } from '../../services/mission.service';
 import { SessionService } from '../../services/session.service';
-
-interface MissionDefinitionLike {
-  missionId: string;
-  resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus;
-}
 
 interface MissionProgressUpsertQueueItem {
   gateState: ShipExteriorMissionGateState;
@@ -16,7 +17,7 @@ interface MissionProgressUpsertQueueItem {
 }
 
 interface ShipExteriorMissionProgressControllerDeps {
-  missionDefinition: MissionDefinitionLike;
+  missionDefinition: ShipExteriorMissionDefinition;
   missionService: MissionService;
   sessionService: SessionService;
   getPlayerName: () => string;
@@ -39,6 +40,34 @@ export class ShipExteriorMissionProgressController {
   );
 
   constructor(private readonly deps: ShipExteriorMissionProgressControllerDeps) {}
+
+  evaluateFloatingDebrisCollection(previousCount: number, currentCount: number): void {
+    if (previousCount <= 0 || currentCount !== 0) {
+      return;
+    }
+
+    const currentGateState = this.deps.getGateState();
+    if (!currentGateState) {
+      return;
+    }
+
+    const evaluation = evaluateMissionGateOnDebrisCollection({
+      mission: this.deps.missionDefinition,
+      gateState: currentGateState,
+      remainingDebrisCount: currentCount,
+    });
+    if (!evaluation.changed) {
+      return;
+    }
+
+    this.deps.setGateState(evaluation.gateState);
+    this.deps.persistGateState(evaluation.gateState);
+    this.enqueueMissionProgressUpsert({
+      gateState: evaluation.gateState,
+      completedStepKey: evaluation.completedStepKey,
+      toastMessage: evaluation.completionToastMessage,
+    });
+  }
 
   retryPendingMissionProgressSync(): void {
     const gateState = this.deps.getGateState();

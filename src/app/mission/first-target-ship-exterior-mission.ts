@@ -82,6 +82,12 @@ const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] 
     prerequisiteStepKeys: ['identify_iron_asteroid'],
   },
   {
+    key: 'collect_floating_debris',
+    objectiveText: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
+    completionToastMessage: 'Mission update: Debris collected.',
+    prerequisiteStepKeys: ['neutralize_identified_asteroid'],
+  },
+  {
     key: 'manufacture_hull_patch_kit',
     objectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
     completionToastMessage: 'Mission update: Hull Patch Kit manufactured.',
@@ -302,6 +308,9 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
   },
   doesRepairCompleteGateStep(stepKey, repairKind) {
     return stepKey === 'repair_scavenger_pod' && repairKind === 'ship';
+  },
+  doesDebrisCollectionCompleteGateStep(stepKey, params) {
+    return stepKey === 'collect_floating_debris' && params.remainingDebrisCount === 0;
   },
   resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
     const totalSteps = gateState.steps.length;
