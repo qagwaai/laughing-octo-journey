@@ -55,7 +55,7 @@ When `launch-item-response` resolves with `outcome: "target-destroyed"`, the res
     "state": "destroyed",
     "debrisSeed": 123456789,
     "debris": [
-      { "material": "Iron", "rarity": "Common", "quantity": 14, "itemType": "raw-material-iron" }
+      { "material": "Iron", "rarity": "Common", "quantity": 14, "itemType": "iron" }
     ]
   },
   "yieldedItems": [ ... ]

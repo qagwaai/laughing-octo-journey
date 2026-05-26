@@ -15,6 +15,7 @@ interface ShipExteriorLaunchControllerDeps {
     toastMessage: string | null;
   }) => void;
   removeAsteroidSamples: (sampleIds: readonly string[]) => void;
+  consumeLaunchedItem: (response: LaunchItemResponse) => void;
   applyMaterialRewards: (materials: readonly LaunchItemYieldedMaterial[]) => void;
   queuePostLaunchRefresh: () => void;
   setLaunchToast: (message: string, tone: 'success' | 'error', seed: number | null) => void;
@@ -108,6 +109,8 @@ export class ShipExteriorLaunchController {
     if (missionResolution.removeAsteroidSampleIds.length > 0) {
       this.deps.removeAsteroidSamples(missionResolution.removeAsteroidSampleIds);
     }
+
+    this.deps.consumeLaunchedItem(response);
 
     const materialRewards = this.resolveImmediateMaterialRewards({
       response,

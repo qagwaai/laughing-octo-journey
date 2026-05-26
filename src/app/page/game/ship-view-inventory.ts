@@ -397,7 +397,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
       },
       (response: ItemUpsertResponse) => {
         if (!response.success || !response.item) {
-          console.log('Add drone failed:', response.message);
+          appLogger.warn('ShipViewInventoryPage add drone failed:', response.message);
           return;
         }
 
@@ -448,7 +448,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
       },
       (response: ItemUpsertResponse) => {
         if (!response.success || !response.item) {
-          console.log('Add sensor array failed:', response.message);
+          appLogger.warn('ShipViewInventoryPage add sensor array failed:', response.message);
           return;
         }
 
@@ -499,7 +499,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
       },
       (response: ItemUpsertResponse) => {
         if (!response.success || !response.item) {
-          console.log('Add tractor beam failed:', response.message);
+          appLogger.warn('ShipViewInventoryPage add tractor beam failed:', response.message);
           return;
         }
 
@@ -609,7 +609,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
       if (selected.reason === 'no-usable-spatial-ship') {
         const toastMessage = 'No ship with usable spatial data is available.';
-        appLogger.log('ShipViewInventoryPage.refreshShipFromServer: hard fail due to missing usable ship spatial data', {
+        appLogger.warn('ShipViewInventoryPage.refreshShipFromServer: hard fail due to missing usable ship spatial data', {
           playerName,
           characterId,
           shipId,
@@ -655,25 +655,19 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
     const compatInventory = this.mapInventoryItemIdsToShipItems(ship.id, legacyInventoryIds);
     if (compatInventory.length > 0) {
-      console.log(
-        '[inventory-sync-marker] compat-inventory-item-ids',
-        JSON.stringify({
-          shipId: ship.id,
-          count: compatInventory.length,
-        }),
-      );
+      appLogger.warn('[ship-inventory-contract] Coerced ship inventory from legacy inventory ids.', {
+        shipId: ship.id,
+        count: compatInventory.length,
+      });
     }
 
     if (!hasInventoryField && !hasLegacyInventoryIdsField) {
-      console.log(
-        '[inventory-sync-marker] contract-missing-inventory-fields',
-        JSON.stringify({
-          shipId: ship.id,
-          model: ship.model,
-          hasInventoryField,
-          hasLegacyInventoryIdsField,
-        }),
-      );
+      appLogger.warn('[ship-inventory-contract] Ship payload missing inventory fields.', {
+        shipId: ship.id,
+        model: ship.model,
+        hasInventoryField,
+        hasLegacyInventoryIdsField,
+      });
     }
 
     return compatInventory;
@@ -695,13 +689,10 @@ export default class ShipViewInventoryPage implements OnDestroy {
       return incomingShip;
     }
 
-    console.log(
-      '[inventory-sync-marker] preserve-local-inventory-on-empty-refresh',
-      JSON.stringify({
-        shipId: incomingShip.id,
-        localCount: localInventory.length,
-      }),
-    );
+    appLogger.warn('[ship-inventory-contract] Preserved local inventory after empty ship refresh payload.', {
+      shipId: incomingShip.id,
+      localCount: localInventory.length,
+    });
 
     return {
       ...incomingShip,
@@ -814,27 +805,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
     const starterItems = createCanonicalStarterShipInventory(shipId);
     const upsertItem = (this.socketService as { upsertItem?: Function }).upsertItem;
-    const markerId = `starter-repair:${shipId}:${Date.now()}`;
-    console.log(
-      '[inventory-sync-marker] starter-repair-attempt',
-      JSON.stringify({
-        markerId,
-        playerName,
-        characterId,
-        shipId,
-        itemTypes: starterItems.map((item) => item.itemType),
-      }),
-    );
     if (typeof upsertItem !== 'function') {
       appLogger.warn('ShipViewInventoryPage starter inventory repair skipped: upsertItem unavailable.');
-      console.log(
-        '[inventory-sync-marker] starter-repair-skip',
-        JSON.stringify({
-          markerId,
-          reason: 'upsertItem-unavailable',
-          shipId,
-        }),
-      );
       this.starterInventoryRepairInFlightShipIds.delete(shipId);
       return;
     }
@@ -851,16 +823,6 @@ export default class ShipViewInventoryPage implements OnDestroy {
             shipId,
           });
         }
-
-        console.log(
-          '[inventory-sync-marker] starter-repair-complete',
-          JSON.stringify({
-            markerId,
-            shipId,
-            successCount,
-            totalItems: starterItems.length,
-          }),
-        );
 
         this.refreshShipFromServer();
         return;
@@ -891,15 +853,6 @@ export default class ShipViewInventoryPage implements OnDestroy {
               itemType: starterItem.itemType,
               shipId,
             });
-            console.log(
-              '[inventory-sync-marker] starter-repair-item-failed',
-              JSON.stringify({
-                markerId,
-                shipId,
-                itemType: starterItem.itemType,
-                message: response.message,
-              }),
-            );
             runItemUpsert(index + 1);
             return;
           }
@@ -909,28 +862,13 @@ export default class ShipViewInventoryPage implements OnDestroy {
           const isResponseTypeMatch = responseItemType === expectedItemType;
 
           successCount += 1;
-          console.log(
-            '[inventory-sync-marker] starter-repair-item-success',
-            JSON.stringify({
-              markerId,
+          if (!isResponseTypeMatch) {
+            appLogger.warn('ShipViewInventoryPage starter inventory upsert item type mismatch.', {
               shipId,
-              itemType: starterItem.itemType,
+              expectedItemType,
               responseItemType,
               responseItemId: response.item?.id ?? null,
-              responseTypeMatch: isResponseTypeMatch,
-            }),
-          );
-
-          if (!isResponseTypeMatch) {
-            console.log(
-              '[inventory-sync-marker] starter-repair-item-type-mismatch',
-              JSON.stringify({
-                markerId,
-                shipId,
-                expectedItemType,
-                responseItemType,
-              }),
-            );
+            });
           }
 
           const itemToMerge =

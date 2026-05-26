@@ -245,6 +245,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private unsubscribeCelestialBodyListResponse?: () => void;
   private unsubscribeLaunchItemResponse?: () => void;
   private launchSeedHint: number | null = null;
+  private lastConsumedLaunchItemId: string | null = null;
   private navigationState: ShipExteriorViewNavigationState =
     (this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
     (history.state as ShipExteriorViewNavigationState | undefined) ??
@@ -313,6 +314,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     persistMissionGateState: (gateState) => this.persistMissionGateState(gateState),
     enqueueMissionProgressUpsert: (item) => this.missionProgressController.enqueueMissionProgressUpsert(item),
     removeAsteroidSamples: (sampleIds) => this.removeAsteroidSamples(sampleIds),
+    consumeLaunchedItem: (response) => this.consumeLaunchedItemFromInventory(response),
     applyMaterialRewards: (materials) => this.applyLaunchMaterialRewards(materials),
     queuePostLaunchRefresh: () => this.queuePostLaunchRefresh(),
     setLaunchToast: (message, tone, seed) => this.setLaunchToast(message, tone, seed),
@@ -537,6 +539,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   });
   private readonly socketCorrelationDebugMessage = signal('');
   private readonly launchIdentityDebugMessage = signal('');
+  private readonly lastLaunchRequestDebug = signal<LaunchItemRequest | null>(null);
   private readonly socketContractViolationTimestampsMs = signal<number[]>([]);
   private readonly socketLastContractViolationOperation = signal<string>('none');
   private readonly socketLastContractViolationAtMs = signal<number | null>(null);
@@ -1571,6 +1574,18 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const navShipId = this.navigationState.joinShip?.id;
     const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
     const normalizedInventory = coerceShipInventory(matchingShip?.inventory);
+    if (this.lastConsumedLaunchItemId) {
+      const consumedItemStillPresent = normalizedInventory.some((item) => item.id === this.lastConsumedLaunchItemId);
+      if (consumedItemStillPresent) {
+        appLogger.warn('[ship-exterior-launch-contract] Ship list still includes consumed launched item.', {
+          shipId: matchingShip?.id ?? null,
+          consumedItemId: this.lastConsumedLaunchItemId,
+        });
+      } else {
+        this.lastConsumedLaunchItemId = null;
+      }
+    }
+
     this.logLaunchabilitySnapshot({
       source: 'ship-list-response',
       ship: matchingShip ?? null,
@@ -1616,21 +1631,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       ? (shipRecord?.['inventoryItemIds'] as unknown[])
       : [];
     const inventoryIds = Array.isArray(shipRecord?.['inventoryIds']) ? (shipRecord?.['inventoryIds'] as unknown[]) : [];
-
-    appLogger.log('[ship-exterior-launchability] Snapshot', {
-      source: params.source,
-      shipId: ship?.id ?? null,
-      shipModel: ship?.model ?? null,
-      inventoryCount: inventory.length,
-      launchableCount,
-      droneCount: droneItems.length,
-      launchableDroneCount,
-      inventoryItemTypes,
-      inventoryLaunchableFlags,
-      hasInventoryArray: Array.isArray(ship?.inventory),
-      inventoryItemIdsCount: inventoryItemIds.length,
-      inventoryIdsCount: inventoryIds.length,
-    });
 
     if (params.source === 'ship-list-response' && ship && inventory.length === 0) {
       appLogger.warn('[ship-exterior-contract] Ship list response contains ship with empty inventory payload.', {
@@ -1698,6 +1698,49 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       });
   }
 
+  private buildLaunchContractSnapshot(): Record<string, unknown> {
+    const navigationShip = this.navigationState.joinShip;
+    const navigationInventory = coerceShipInventory(navigationShip?.inventory);
+    const launchableInventory = this.launchableInventory();
+    const targetedSampleId = this.targetedAsteroidId();
+    const targetedSample = targetedSampleId
+      ? this.asteroidSamples().find((sample) => sample.id === targetedSampleId) ?? null
+      : null;
+    const shipRecord = (navigationShip as unknown as Record<string, unknown> | null) ?? null;
+    const inventoryItemIds = Array.isArray(shipRecord?.['inventoryItemIds'])
+      ? ((shipRecord?.['inventoryItemIds'] as unknown[]).filter((value) => typeof value === 'string') as string[])
+      : [];
+    const inventoryIds = Array.isArray(shipRecord?.['inventoryIds'])
+      ? ((shipRecord?.['inventoryIds'] as unknown[]).filter((value) => typeof value === 'string') as string[])
+      : [];
+
+    return {
+      shipId: this.activeShipId(),
+      navigationInventoryCount: navigationInventory.length,
+      launchableInventoryCount: launchableInventory.length,
+      navigationInventoryItemIds: navigationInventory.map((item) => item.id),
+      navigationInventoryItemTypes: navigationInventory.map((item) => item.itemType),
+      launchableInventoryItemIds: launchableInventory.map((item) => item.id),
+      launchableInventoryItemTypes: launchableInventory.map((item) => item.itemType),
+      shipInventoryItemIdsCount: inventoryItemIds.length,
+      shipInventoryIdsCount: inventoryIds.length,
+      shipInventoryItemIds: inventoryItemIds,
+      shipInventoryIds: inventoryIds,
+      targetedSampleId,
+      targetedSampleServerCelestialBodyId: targetedSample?.serverCelestialBodyId ?? null,
+      targetedSampleScanned: targetedSample?.scanned ?? null,
+      targetedSampleMaterial: targetedSample?.revealedMaterial?.material ?? null,
+    };
+  }
+
+  private serializeLaunchDebugValue(value: unknown): string {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '[unserializable]';
+    }
+  }
+
   launchFromHotkeySlot(hotkey: 1 | 2 | 3 | 4 | 5): void {
     const targetedSampleId = this.targetedAsteroidId();
     if (!targetedSampleId) {
@@ -1758,9 +1801,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       ].join(' // '),
     );
 
+    const correlatedRequest = this.shipExteriorSocketService.launchItem(request);
+    this.lastLaunchRequestDebug.set(correlatedRequest);
     // Deliberate decision: rapid launches are allowed. Requests are emitted
     // immediately, and responses are consumed on one shared listener.
-    this.shipExteriorSocketService.launchItem(request);
     this.setLaunchToast(`Launch request sent for hotkey ${hotkey}.`, 'success', null);
     this.triggerHotkeyLaunchFlash(hotkey);
   }
@@ -1864,6 +1908,50 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         `MSG ${compactMessage}`,
       ].join(' // '),
     );
+
+    if (!response.success) {
+      const lastRequest = this.lastLaunchRequestDebug();
+      const snapshot = this.buildLaunchContractSnapshot();
+      appLogger.warn('[ship-exterior-launch-contract] Launch response rejected.', {
+        response: {
+          success: response.success,
+          message: rawMessage || null,
+          correlationId: response.correlationId ?? null,
+          itemId: response.itemId ?? null,
+          itemType: response.itemType ?? null,
+          shipId: response.shipId ?? null,
+          targetCelestialBodyId: response.targetCelestialBodyId ?? null,
+          requestIdentity: response.requestIdentity ?? null,
+        },
+        lastRequest: lastRequest
+          ? {
+              correlationId: lastRequest.correlationId ?? null,
+              itemId: lastRequest.itemId,
+              itemType: lastRequest.itemType,
+              shipId: lastRequest.shipId,
+              targetCelestialBodyId: lastRequest.targetCelestialBodyId,
+              requestIdentity: lastRequest.requestIdentity ?? null,
+            }
+          : null,
+        snapshot,
+      });
+      appLogger.warn(
+        '[ship-exterior-launch-contract] reject-summary ' +
+          `corr=${response.correlationId ?? 'missing'} ` +
+          `item=${response.itemId ?? 'missing'} ` +
+          `itemType=${response.itemType ?? 'missing'} ` +
+          `ship=${response.shipId ?? 'missing'} ` +
+          `target=${response.targetCelestialBodyId ?? 'missing'} ` +
+          `message=${rawMessage || 'missing'} ` +
+          `respIdentity=${this.serializeLaunchDebugValue(response.requestIdentity ?? null)} ` +
+          `reqIdentity=${this.serializeLaunchDebugValue(lastRequest?.requestIdentity ?? null)} ` +
+          `navIds=${this.serializeLaunchDebugValue(snapshot['navigationInventoryItemIds'])} ` +
+          `launchableIds=${this.serializeLaunchDebugValue(snapshot['launchableInventoryItemIds'])} ` +
+          `shipInventoryItemIds=${this.serializeLaunchDebugValue(snapshot['shipInventoryItemIds'])} ` +
+          `shipInventoryIds=${this.serializeLaunchDebugValue(snapshot['shipInventoryIds'])}`,
+      );
+    }
+
     this.launchController.handleLaunchItemResponse(response);
   }
 
@@ -1941,6 +2029,72 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       .replace(/[^a-z0-9-]/g, '');
   }
 
+  private toCanonicalYieldItemTypeToken(token: string): string {
+    return token.replace(/^raw-material-/, '').replace(/-raw-material$/, '').trim();
+  }
+
+  private consumeLaunchedItemFromInventory(response: LaunchItemResponse): void {
+    const shipId = response.shipId?.trim() ?? '';
+    if (!shipId) {
+      return;
+    }
+
+    const requestItemId = this.lastLaunchRequestDebug()?.itemId?.trim() ?? '';
+    const candidateConsumedItemIds = [response.launchedItem?.id?.trim() ?? '', response.itemId?.trim() ?? '', requestItemId]
+      .filter((value) => value.length > 0)
+      .filter((value, index, values) => values.indexOf(value) === index);
+    if (candidateConsumedItemIds.length === 0) {
+      appLogger.warn('[ship-exterior-launch-contract] Launch success missing consumed item id.', {
+        shipId,
+        correlationId: response.correlationId ?? null,
+        itemId: response.itemId ?? null,
+        launchedItemId: response.launchedItem?.id ?? null,
+      });
+      return;
+    }
+
+    let didRemoveFromNavigationInventory = false;
+    let didRemoveFromSessionInventory = false;
+
+    const navShip = this.navigationState.joinShip;
+    if (navShip && navShip.id === shipId) {
+      const filteredInventory = (navShip.inventory ?? []).filter(
+        (item) => !candidateConsumedItemIds.includes(item.id),
+      );
+      didRemoveFromNavigationInventory = filteredInventory.length !== (navShip.inventory ?? []).length;
+      const updatedNavigationShip: ShipSummary = {
+        ...navShip,
+        inventory: filteredInventory,
+      };
+      this.navigationState.joinShip = updatedNavigationShip;
+      this.launchableInventory.set(this.resolveLaunchableInventory(filteredInventory));
+      this.hasExpendableDartDrone.set(this.missionDefinition.resolveTargetingCapabilityFromInventory(filteredInventory));
+    }
+
+    const activeShip = this.sessionService.activeShip();
+    if (activeShip && activeShip.id === shipId) {
+      const filteredInventory = (activeShip.inventory ?? []).filter(
+        (item) => !candidateConsumedItemIds.includes(item.id),
+      );
+      didRemoveFromSessionInventory = filteredInventory.length !== (activeShip.inventory ?? []).length;
+      this.sessionService.setActiveShip({
+        ...activeShip,
+        inventory: filteredInventory,
+      });
+    }
+
+    const consumedItemId = candidateConsumedItemIds[0];
+    this.lastConsumedLaunchItemId = consumedItemId;
+    if (!didRemoveFromNavigationInventory && !didRemoveFromSessionInventory) {
+      appLogger.warn('[ship-exterior-launch-contract] Consumed launch item was not found in local inventory state.', {
+        shipId,
+        consumedItemId,
+        fallbackCandidateIds: candidateConsumedItemIds,
+        correlationId: response.correlationId ?? null,
+      });
+    }
+  }
+
   private applyLaunchMaterialRewards(materials: readonly LaunchItemYieldedMaterial[]): void {
     const quantityByMaterial = new Map<string, number>();
     for (const material of materials) {
@@ -1969,13 +2123,25 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const nowIso = new Date().toISOString();
     const rewardItems: ShipItem[] = [];
     for (const [token, quantity] of quantityByMaterial.entries()) {
-      const materialName = token
+      const canonicalToken = this.toCanonicalYieldItemTypeToken(token);
+      if (!canonicalToken) {
+        continue;
+      }
+
+      if (canonicalToken !== token) {
+        appLogger.warn('[ship-exterior-launch-contract] Non-canonical yielded material token received.', {
+          yieldedToken: token,
+          canonicalToken,
+        });
+      }
+
+      const materialName = canonicalToken
         .split('-')
         .filter((part) => part.length > 0)
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
-      const itemType = token === 'iron' ? 'iron' : `${token}-raw-material`;
-      const displayName = token === 'iron' ? 'Iron' : `${materialName} (raw material)`;
+      const itemType = canonicalToken;
+      const displayName = materialName;
 
       for (let index = 0; index < quantity; index += 1) {
         rewardItems.push({

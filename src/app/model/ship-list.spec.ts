@@ -81,6 +81,7 @@ describe('ship-list inventory helpers', () => {
     expect(result[0].launchable).toBe(false);
     expect(result[1].launchable).toBe(true);
   });
+
 });
 
 describe('DEFAULT_SHIP_MODEL', () => {

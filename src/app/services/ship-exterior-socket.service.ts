@@ -45,6 +45,8 @@ function createCorrelationId(operation: string): string {
 export class ShipExteriorSocketService {
   private socketService = inject(SocketService);
   private pendingLaunchByCorrelationId = new Map<string, LaunchItemRequestIdentity>();
+  private pendingLaunchTimeoutByCorrelationId = new Map<string, ReturnType<typeof setTimeout>>();
+  private static readonly LAUNCH_NO_RESPONSE_LOG_DELAY_MS = 3000;
 
   private normalizeIdentityValue(value: unknown): string {
     return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -290,11 +292,41 @@ export class ShipExteriorSocketService {
     return this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
   }
 
+  private buildDefaultLaunchItemRequestIdentity(request: LaunchItemRequest): LaunchItemRequestIdentity {
+    return {
+      operation: 'launch-item',
+      entityType: request.itemType?.trim() || 'unknown-item-type',
+      containerId: request.shipId?.trim() || 'unknown-ship-id',
+      itemId: request.itemId?.trim() || undefined,
+      hotkey: request.hotkey,
+      targetCelestialBodyId: request.targetCelestialBodyId?.trim() || undefined,
+      characterId: request.characterId?.trim() || undefined,
+    };
+  }
+
   private registerPendingLaunch(request: LaunchItemRequest): void {
     const correlationId = request.correlationId?.trim();
     const requestIdentity = request.requestIdentity;
     if (correlationId && requestIdentity) {
       this.pendingLaunchByCorrelationId.set(correlationId, requestIdentity);
+
+      const existingTimeout = this.pendingLaunchTimeoutByCorrelationId.get(correlationId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      const timeoutHandle = setTimeout(() => {
+        const pendingIdentity = this.pendingLaunchByCorrelationId.get(correlationId);
+        if (!pendingIdentity) {
+          return;
+        }
+
+        appLogger.warn(
+          `[ship-exterior-launch-contract] No launch-item response received within ${ShipExteriorSocketService.LAUNCH_NO_RESPONSE_LOG_DELAY_MS}ms. correlationId=${correlationId} operation=${pendingIdentity.operation ?? 'missing'} entityType=${pendingIdentity.entityType ?? 'missing'} containerId=${pendingIdentity.containerId ?? 'missing'}`,
+        );
+      }, ShipExteriorSocketService.LAUNCH_NO_RESPONSE_LOG_DELAY_MS);
+
+      this.pendingLaunchTimeoutByCorrelationId.set(correlationId, timeoutHandle);
     }
   }
 
@@ -314,6 +346,11 @@ export class ShipExteriorSocketService {
     }
 
     this.pendingLaunchByCorrelationId.delete(responseCorrelationId);
+    const timeoutHandle = this.pendingLaunchTimeoutByCorrelationId.get(responseCorrelationId);
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+      this.pendingLaunchTimeoutByCorrelationId.delete(responseCorrelationId);
+    }
 
     if (!response.requestIdentity) {
       return false;
@@ -619,8 +656,15 @@ export class ShipExteriorSocketService {
   /**
    * Emits launch-item request using the shared socket helper.
    */
-  launchItem(request: LaunchItemRequest): void {
-    const requestWithCorrelation = this.socketService.launchItem(request) ?? request;
+  launchItem(request: LaunchItemRequest): LaunchItemRequest {
+    const requestWithCorrelation: LaunchItemRequest = {
+      ...request,
+      correlationId: request.correlationId?.trim() || createCorrelationId('launch-item'),
+      requestIdentity: request.requestIdentity ?? this.buildDefaultLaunchItemRequestIdentity(request),
+    };
+
+    // Register before emit so ultra-fast responses cannot race past pending correlation tracking.
     this.registerPendingLaunch(requestWithCorrelation);
+    return this.socketService.launchItem(requestWithCorrelation) ?? requestWithCorrelation;
   }
 }

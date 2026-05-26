@@ -20,6 +20,7 @@ import { filter, map, startWith, Subscription } from 'rxjs';
 import { RoutedScene } from './routed-scene';
 import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
 import { OpeningAudioService } from './services';
+import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
@@ -70,6 +71,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected cdr = inject(ChangeDetectorRef);
   protected router = inject(Router);
   protected openingAudio = inject(OpeningAudioService);
+  protected contractVarianceNotifier = inject(ContractVarianceNotifierService);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
@@ -103,6 +105,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   );
 
   protected showColdBootLookHint = computed(() => this.isColdBootSceneActive() && this.lookHintOpacity() > 0);
+  protected contractVarianceToast = this.contractVarianceNotifier.activeToast;
 
   private startX = 0;
   private lookHintTimerId: number | null = null;
@@ -188,6 +191,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   onCanvasClick() {}
+
+  dismissContractVarianceToast(): void {
+    this.contractVarianceNotifier.dismissActiveToast();
+  }
 
   onStatsChange(value: boolean) {
     var statsElement = this.host.nativeElement.querySelector('.stats');

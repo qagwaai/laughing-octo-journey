@@ -1,4 +1,4 @@
-<div class="flex h-dvh w-full overflow-hidden" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
+<div class="relative flex h-dvh w-full overflow-hidden" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
   <!-- Left Content Area with Router Outlet -->
   <div class="relative flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
     <router-outlet name="left" />
@@ -77,4 +77,31 @@
       }
     }
   </div>
+
+  @if (contractVarianceToast()) {
+    <div class="pointer-events-none absolute top-3 right-3 z-50 max-w-[36rem]">
+      <div
+        class="pointer-events-auto rounded border px-3 py-2 text-sm shadow-lg backdrop-blur"
+        [class.border-red-400]="contractVarianceToast()?.level === 'error'"
+        [class.bg-red-950/90]="contractVarianceToast()?.level === 'error'"
+        [class.text-red-100]="contractVarianceToast()?.level === 'error'"
+        [class.border-amber-300]="contractVarianceToast()?.level !== 'error'"
+        [class.bg-amber-950/90]="contractVarianceToast()?.level !== 'error'"
+        [class.text-amber-100]="contractVarianceToast()?.level !== 'error'"
+        role="alert"
+      >
+        <div class="mb-1 text-xs font-semibold tracking-wide">
+          {{ contractVarianceToast()?.level === 'error' ? 'Contract Variance Error' : 'Contract Variance Warning' }}
+        </div>
+        <div class="mb-2 break-words leading-snug">{{ contractVarianceToast()?.message }}</div>
+        <button
+          type="button"
+          class="rounded border border-current/60 px-2 py-1 text-xs hover:bg-white/10"
+          (click)="dismissContractVarianceToast()"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  }
 </div>
