@@ -191,8 +191,8 @@ describe('ShipHangarPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         { id: 's-1', name: 'Courier', spatial: { positionKm: { x: 1, y: 2, z: 3 } } },
@@ -224,8 +224,8 @@ describe('ShipHangarPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'Character not found',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [{ id: 's-1', name: 'Courier' }],
     });

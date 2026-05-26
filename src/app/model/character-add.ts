@@ -25,8 +25,8 @@ export interface CharacterAddRequest {
 export interface CharacterAddResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CharacterAddRequestIdentity;
+  correlationId: string;
+  requestIdentity: CharacterAddRequestIdentity;
   playerName: string;
   characterName?: string;
   characterId?: string;

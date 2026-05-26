@@ -95,8 +95,8 @@ describe('market correlation integration', () => {
     const farResponse: MarketListByLocationResponse = {
       success: true,
       message: 'far',
-      correlationId: farRequest.correlationId,
-      requestIdentity: farRequest.requestIdentity,
+      correlationId: farRequest.correlationId!,
+      requestIdentity: farRequest.requestIdentity!,
       playerName: 'Pioneer',
       solarSystemId: 'sol',
       positionKm: { x: 20, y: 0, z: 0 },
@@ -108,8 +108,8 @@ describe('market correlation integration', () => {
     const nearResponse: MarketListByLocationResponse = {
       success: true,
       message: 'near',
-      correlationId: nearRequest.correlationId,
-      requestIdentity: nearRequest.requestIdentity,
+      correlationId: nearRequest.correlationId!,
+      requestIdentity: nearRequest.requestIdentity!,
       playerName: 'Pioneer',
       solarSystemId: 'sol',
       positionKm: { x: 0, y: 0, z: 0 },
@@ -132,7 +132,7 @@ describe('market correlation integration', () => {
     expect(nearCallback).toHaveBeenCalledWith(nearResponse);
   }));
 
-  it('supports legacy fallback matching when correlation echo is missing', fakeAsync(() => {
+  it('drops legacy-style responses when correlation does not match', fakeAsync(() => {
     const nearCallback = jasmine.createSpy('nearCallback');
     marketService.listMarketsByLocation(
       {
@@ -162,6 +162,12 @@ describe('market correlation integration', () => {
     socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
       success: true,
       message: 'legacy-far',
+      correlationId: '00000000-0000-4000-8000-000000000007',
+      requestIdentity: {
+        operation: 'list-markets-by-location',
+        entityType: 'market',
+        containerId: 'sol',
+      },
       playerName: 'Pioneer',
       solarSystemId: 'sol',
       positionKm: { x: 20, y: 0, z: 0 },
@@ -171,12 +177,18 @@ describe('market correlation integration', () => {
     } satisfies MarketListByLocationResponse);
     flushMicrotasks();
 
-    expect(farCallback).toHaveBeenCalledTimes(1);
+    expect(farCallback).not.toHaveBeenCalled();
     expect(nearCallback).not.toHaveBeenCalled();
 
     socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
       success: true,
       message: 'legacy-near',
+      correlationId: '00000000-0000-4000-8000-000000000008',
+      requestIdentity: {
+        operation: 'list-markets-by-location',
+        entityType: 'market',
+        containerId: 'sol',
+      },
       playerName: 'Pioneer',
       solarSystemId: 'sol',
       positionKm: { x: 0, y: 0, z: 0 },
@@ -186,6 +198,7 @@ describe('market correlation integration', () => {
     } satisfies MarketListByLocationResponse);
     flushMicrotasks();
 
-    expect(nearCallback).toHaveBeenCalledTimes(1);
+    expect(nearCallback).not.toHaveBeenCalled();
+    expect(farCallback).not.toHaveBeenCalled();
   }));
 });

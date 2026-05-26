@@ -86,8 +86,8 @@ export interface LaunchItemResponse {
   success: boolean;
   message: string;
   playerName: string;
-  correlationId?: string;
-  requestIdentity?: LaunchItemRequestIdentity;
+  correlationId: string;
+  requestIdentity: LaunchItemRequestIdentity;
   characterId: string;
   shipId: string;
   targetCelestialBodyId: string;

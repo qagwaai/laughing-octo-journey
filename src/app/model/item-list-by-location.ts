@@ -29,7 +29,7 @@ export interface ItemListByLocationRequest {
 export interface ItemListByLocationResponse {
   success: boolean;
   message?: string;
-  correlationId?: string;
-  requestIdentity?: ItemListByLocationRequestIdentity;
+  correlationId: string;
+  requestIdentity: ItemListByLocationRequestIdentity;
   items?: ShipItem[];
 }

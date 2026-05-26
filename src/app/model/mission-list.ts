@@ -7,6 +7,7 @@ export interface MissionListRequestIdentity {
   operation: string;
   entityType: string;
   containerId: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -28,8 +29,8 @@ export interface MissionListRequest {
 export interface MissionListResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: MissionListRequestIdentity;
+  correlationId: string;
+  requestIdentity: MissionListRequestIdentity;
   playerName: string;
   characterId: string;
   missions: CharacterMissionProgress[];

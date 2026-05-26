@@ -28,8 +28,8 @@ export interface ShipTransferResponse {
   success: boolean;
   message: string;
   reason?: string;
-  correlationId?: string;
-  requestIdentity?: ShipTransferRequestIdentity;
+  correlationId: string;
+  requestIdentity: ShipTransferRequestIdentity;
   shipId: string;
   fromOwner?: ShipOwnership | null;
   toOwner?: ShipOwnership | null;

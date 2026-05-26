@@ -58,8 +58,8 @@ export interface CelestialBodyListItem {
 export interface CelestialBodyListResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CelestialBodyListRequestIdentity;
+  correlationId: string;
+  requestIdentity: CelestialBodyListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   positionKm?: Triple;

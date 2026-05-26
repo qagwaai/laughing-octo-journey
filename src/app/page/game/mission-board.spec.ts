@@ -170,10 +170,16 @@ describe('MissionBoardPage', () => {
       },
       connected: true,
     });
+    const requestPayload = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
 
     socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       missions: [
         { missionId: 'first-target', status: 'in-progress', startedAt: '2026-04-01T10:00:00Z' },
         { missionId: 'second-mission', status: 'completed', updatedAt: '2026-04-10T12:00:00Z' },
@@ -195,10 +201,16 @@ describe('MissionBoardPage', () => {
       },
       connected: true,
     });
+    const requestPayload = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+      correlationId?: string;
+      requestIdentity?: unknown;
+    };
 
     socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
       success: false,
       message: 'Character not found',
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       missions: [],
     });
 
@@ -592,10 +604,16 @@ describe('MissionBoardPage', () => {
         },
         connected: true,
       });
+      const requestPayload = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId?: string;
+        requestIdentity?: unknown;
+      };
 
       socketService.triggerEvent(MISSION_LIST_RESPONSE_EVENT, {
         success: false,
         message: 'Load failed',
+        correlationId: requestPayload.correlationId!,
+        requestIdentity: requestPayload.requestIdentity!,
         missions: [],
       });
 

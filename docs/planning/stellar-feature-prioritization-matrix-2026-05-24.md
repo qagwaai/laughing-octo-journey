@@ -87,6 +87,26 @@ Regression override rule:
 - SW-R02 closed: Starter ship inventory restored with Expendable Dart Drone, Sensor Array, and Tractor Beam.
 - Both items remain in the matrix as completed historical reliability work.
 
+## SW-08 Post-Implementation Review (2026-05-25)
+
+Effort re-rating:
+- Original estimate for SW-08: 2 (small)
+- Retrospective rating for delivered scope: 4 (medium-high)
+
+Why the realized effort was higher:
+- Scope expansion from shape validation to communication semantics: SW-COR correlation guarantees were required to make drift detection reliable under concurrency.
+- Cross-repo coordination overhead: Nova and Forge changes were both required across contracts, handlers, listeners, tests, and documentation.
+- Hidden routing defects surfaced under stricter checks: foreign-operation-on-channel issues required additional backend channel-operation hardening.
+- Reliability regressions consumed planned capacity: SW-R01, SW-R02, and SW-R03 required opening-loop remediation in parallel with gate work.
+
+What still rates as effort 2:
+- A narrow SW-08 implementation that only adds baseline shape checks without semantics enforcement, recurrence controls, or cross-channel routing hardening.
+
+Estimation guardrails going forward:
+- If contract work touches both producer and consumer semantics, baseline effort should start at 3.
+- If strict correlation/routing assertions are added, baseline effort should start at 4.
+- If opening-loop regressions are already active in adjacent surfaces, add +1 contingency tier to schedule/risk planning.
+
 ## New Regression Intake (2026-05-25)
 
 - SW-R03 opened: Expendable Dart Drone visible in ship inventory, but fire action from Scavenger's inventory is unavailable.

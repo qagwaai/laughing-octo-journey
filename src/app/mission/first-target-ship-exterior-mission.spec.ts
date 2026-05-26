@@ -3,6 +3,13 @@ import {
   createFirstTargetMissionInitialGateState,
 } from './first-target-ship-exterior-mission';
 
+const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000003';
+const TEST_REQUEST_IDENTITY = {
+  operation: 'test-op',
+  entityType: 'test-entity',
+  containerId: 'test-container',
+};
+
 describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
   it('should only allow asteroid targeting for scavenger pod with expendable dart drone', () => {
     expect(
@@ -131,6 +138,8 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       response: {
         success: true,
         message: 'Target destroyed',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'char-1',
         shipId: 'ship-1',
@@ -203,6 +212,8 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       response: {
         success: false,
         message: 'Launch failed',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'char-1',
         shipId: 'ship-1',
@@ -287,6 +298,8 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       response: {
         success: true,
         message: 'Deflected',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'char-1',
         shipId: 'ship-1',
@@ -314,6 +327,8 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       response: {
         success: true,
         message: 'Target destroyed',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'char-1',
         shipId: 'ship-1',

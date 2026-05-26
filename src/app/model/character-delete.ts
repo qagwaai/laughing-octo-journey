@@ -26,8 +26,8 @@ export interface CharacterDeleteRequest {
 export interface CharacterDeleteResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CharacterDeleteRequestIdentity;
+  correlationId: string;
+  requestIdentity: CharacterDeleteRequestIdentity;
   playerName: string;
   characterId?: string;
 }

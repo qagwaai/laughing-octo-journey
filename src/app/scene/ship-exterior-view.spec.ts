@@ -391,6 +391,8 @@ describe('ShipExteriorViewScene', () => {
     component['handleLaunchItemResponse']({
       success: true,
       message: 'Launch successful: target destroyed and materials yielded',
+      correlationId: '00000000-0000-4000-8000-000000000005',
+      requestIdentity: { operation: 'test-op', entityType: 'test-entity', containerId: 'test-container' },
       playerName: 'Pioneer',
       characterId: 'char-1',
       shipId: 'ship-1',
@@ -451,6 +453,8 @@ describe('ShipExteriorViewScene', () => {
     component['handleLaunchItemResponse']({
       success: true,
       message: 'Target destroyed',
+      correlationId: '00000000-0000-4000-8000-000000000005',
+      requestIdentity: { operation: 'test-op', entityType: 'test-entity', containerId: 'test-container' },
       playerName: 'Pioneer',
       characterId: 'char-1',
       shipId: 'ship-1',
@@ -488,6 +492,8 @@ describe('ShipExteriorViewScene', () => {
     component['handleLaunchItemResponse']({
       success: true,
       message: 'Launch completed with no effect',
+      correlationId: '00000000-0000-4000-8000-000000000005',
+      requestIdentity: { operation: 'test-op', entityType: 'test-entity', containerId: 'test-container' },
       playerName: 'Pioneer',
       characterId: 'char-1',
       shipId: 'ship-1',
@@ -521,6 +527,8 @@ describe('ShipExteriorViewScene', () => {
     component['handleLaunchItemResponse']({
       success: false,
       message: 'Launch item is not launchable',
+      correlationId: '00000000-0000-4000-8000-000000000005',
+      requestIdentity: { operation: 'test-op', entityType: 'test-entity', containerId: 'test-container' },
       playerName: 'Pioneer',
       characterId: 'char-1',
       shipId: 'ship-1',

@@ -52,8 +52,8 @@ export interface SolarSystemListRequest {
 export interface SolarSystemListResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: SolarSystemListRequestIdentity;
+  correlationId: string;
+  requestIdentity: SolarSystemListRequestIdentity;
   playerName?: string;
   solarSystems: SolarSystemSummary[];
   requestId?: string;

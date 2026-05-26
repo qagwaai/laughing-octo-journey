@@ -26,8 +26,8 @@ export interface ShipListByOwnerResponse {
   success: boolean;
   message: string;
   reason?: string;
-  correlationId?: string;
-  requestIdentity?: ShipListByOwnerRequestIdentity;
+  correlationId: string;
+  requestIdentity: ShipListByOwnerRequestIdentity;
   owner?: ShipOwnership | null;
   ships: ShipSummary[];
 }

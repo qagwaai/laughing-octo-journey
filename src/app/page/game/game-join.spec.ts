@@ -129,8 +129,8 @@ describe('GameJoinPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         { id: 'd-1', name: 'Surveyor' },
@@ -165,8 +165,8 @@ describe('GameJoinPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [{ id: 'd-1', shipName: 'Surveyor' } as any, { id: 'd-2', name: '   ', displayName: 'Guardian' } as any],
     });
@@ -194,8 +194,8 @@ describe('GameJoinPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
@@ -239,8 +239,8 @@ describe('GameJoinPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: false,
       message: 'Character ships unavailable.',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [],
     });

@@ -96,8 +96,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: false,
         message: 'List failed',
-        correlationId: listMetadata.correlationId,
-        requestIdentity: listMetadata.requestIdentity,
+        correlationId: listMetadata.correlationId!,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missions: [],
@@ -121,8 +121,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
-        correlationId: listMetadata.correlationId,
-        requestIdentity: listMetadata.requestIdentity,
+        correlationId: listMetadata.correlationId!,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missions: [],
@@ -134,8 +134,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
         success: false,
         message: 'Add failed',
-        correlationId: addMetadata.correlationId,
-        requestIdentity: addMetadata.requestIdentity,
+        correlationId: addMetadata.correlationId!,
+        requestIdentity: addMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missionId: 'first-target',
@@ -161,7 +161,7 @@ describe('MissionService — error handling & timeout paths', () => {
         success: true,
         message: 'ok',
         correlationId: 'wrong-correlation-id',
-        requestIdentity: listMetadata.requestIdentity,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'WrongName',
         characterId: 'char-1',
         missions: [],
@@ -173,8 +173,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
-        correlationId: listMetadata.correlationId,
-        requestIdentity: listMetadata.requestIdentity,
+        correlationId: listMetadata.correlationId!,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missions: [],
@@ -231,8 +231,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: false,
         message: 'Database error',
-        correlationId: listMetadata.correlationId,
-        requestIdentity: listMetadata.requestIdentity,
+        correlationId: listMetadata.correlationId!,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missions: [],
@@ -283,7 +283,7 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
         correlationId: 'wrong-correlation-id',
-        requestIdentity: listMetadata.requestIdentity,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'wrong-char',
         missions: [{ missionId: 'm1', status: 'started' }],
@@ -293,8 +293,8 @@ describe('MissionService — error handling & timeout paths', () => {
 
       socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
         success: true,
-        correlationId: listMetadata.correlationId,
-        requestIdentity: listMetadata.requestIdentity,
+        correlationId: listMetadata.correlationId!,
+        requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         missions: [{ missionId: 'm1', status: 'started' }],
@@ -322,8 +322,8 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
         success: false,
         message: 'Update failed',
-        correlationId: upsertMetadata.correlationId,
-        requestIdentity: upsertMetadata.requestIdentity,
+        correlationId: upsertMetadata.correlationId!,
+        requestIdentity: upsertMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         mission: {},
@@ -379,7 +379,7 @@ describe('MissionService — error handling & timeout paths', () => {
       socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
         success: true,
         correlationId: 'wrong-correlation-id',
-        requestIdentity: upsertMetadata.requestIdentity,
+        requestIdentity: upsertMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'wrong-char',
         mission: { missionId: 'first-target', status: 'completed' },
@@ -389,8 +389,8 @@ describe('MissionService — error handling & timeout paths', () => {
 
       socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
         success: true,
-        correlationId: upsertMetadata.correlationId,
-        requestIdentity: upsertMetadata.requestIdentity,
+        correlationId: upsertMetadata.correlationId!,
+        requestIdentity: upsertMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
         mission: { missionId: 'first-target', status: 'completed' },

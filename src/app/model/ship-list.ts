@@ -17,10 +17,19 @@ export const DEFAULT_SHIP_TIER = 1;
 export const MIN_SHIP_TIER = 1;
 export const MAX_SHIP_TIER = 10;
 
+export interface ShipListRequestIdentity {
+  operation: string;
+  entityType: string;
+  containerId: string;
+}
+
 export interface ShipListRequest {
   playerName: string;
   characterId: string;
   sessionKey: string;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: ShipListRequestIdentity;
 }
 
 export interface ShipSummary {
@@ -131,6 +140,8 @@ export interface ShipMotion {
 export interface ShipListResponse {
   success: boolean;
   message: string;
+  correlationId: string;
+  requestIdentity: ShipListRequestIdentity;
   playerName: string;
   characterId: string;
   ships: ShipSummary[];

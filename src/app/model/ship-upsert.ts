@@ -60,7 +60,7 @@ export interface ShipUpsertResponse {
   message: string;
   playerName: string;
   characterId: string;
-  correlationId?: string;
-  requestIdentity?: ShipUpsertRequestIdentity;
+  correlationId: string;
+  requestIdentity: ShipUpsertRequestIdentity;
   ship?: ShipUpsertResponsePayload;
 }

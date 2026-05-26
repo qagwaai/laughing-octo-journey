@@ -91,8 +91,8 @@ describe('solar-system correlation integration', () => {
     const proceduralResponse: SolarSystemListResponse = {
       success: true,
       message: 'procedural',
-      correlationId: proceduralRequest.correlationId,
-      requestIdentity: proceduralRequest.requestIdentity,
+      correlationId: proceduralRequest.correlationId!,
+      requestIdentity: proceduralRequest.requestIdentity!,
       requestId: proceduralRequest.requestId,
       playerName: 'Pioneer',
       solarSystems: [
@@ -107,8 +107,8 @@ describe('solar-system correlation integration', () => {
     const curatedResponse: SolarSystemListResponse = {
       success: true,
       message: 'curated',
-      correlationId: curatedRequest.correlationId,
-      requestIdentity: curatedRequest.requestIdentity,
+      correlationId: curatedRequest.correlationId!,
+      requestIdentity: curatedRequest.requestIdentity!,
       requestId: curatedRequest.requestId,
       playerName: 'Pioneer',
       solarSystems: [
@@ -159,7 +159,7 @@ describe('solar-system correlation integration', () => {
         success: true,
         message: 'wrong-response',
         correlationId: 'wrong-correlation-id',
-        requestIdentity: requestPayload.requestIdentity,
+        requestIdentity: requestPayload.requestIdentity!,
         requestId: requestPayload.requestId,
         playerName: 'Pioneer',
         solarSystems: [],

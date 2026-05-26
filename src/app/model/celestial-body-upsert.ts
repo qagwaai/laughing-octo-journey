@@ -100,7 +100,7 @@ export interface CelestialBodyUpsertRequest {
 export interface CelestialBodyUpsertResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CelestialBodyUpsertRequestIdentity;
+  correlationId: string;
+  requestIdentity: CelestialBodyUpsertRequestIdentity;
   celestialBody?: CelestialBodyUpsertEntity;
 }

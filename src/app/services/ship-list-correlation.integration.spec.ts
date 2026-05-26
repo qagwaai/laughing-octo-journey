@@ -105,8 +105,8 @@ describe('ship-list correlation integration', () => {
     const exteriorResponse: ShipListByOwnerResponse = {
       success: true,
       message: 'ship-exterior',
-      correlationId: shipExteriorRequest.correlationId,
-      requestIdentity: shipExteriorRequest.requestIdentity,
+      correlationId: shipExteriorRequest.correlationId!,
+      requestIdentity: shipExteriorRequest.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: null,
@@ -133,8 +133,8 @@ describe('ship-list correlation integration', () => {
     const shipServiceResponse: ShipListByOwnerResponse = {
       success: true,
       message: 'ship-service',
-      correlationId: shipServiceRequest.correlationId,
-      requestIdentity: shipServiceRequest.requestIdentity,
+      correlationId: shipServiceRequest.correlationId!,
+      requestIdentity: shipServiceRequest.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: null,
@@ -272,7 +272,7 @@ describe('ship-list correlation integration', () => {
         success: true,
         message: 'wrong-response',
         correlationId: 'wrong-correlation-id',
-        requestIdentity: requestPayload.requestIdentity,
+        requestIdentity: requestPayload.requestIdentity!,
         owner: {
           ownerType: 'player-character',
           characterId: 'char-a',

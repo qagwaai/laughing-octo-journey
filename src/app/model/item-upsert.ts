@@ -46,7 +46,7 @@ export interface ItemUpsertResponse {
   success: boolean;
   message: string;
   playerName: string;
-  correlationId?: string;
-  requestIdentity?: ItemUpsertRequestIdentity;
+  correlationId: string;
+  requestIdentity: ItemUpsertRequestIdentity;
   item?: ShipItem;
 }

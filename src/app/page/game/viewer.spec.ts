@@ -80,8 +80,8 @@ describe('ViewerPage', () => {
     socketService.triggerEvent(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: listRequest.correlationId,
-      requestIdentity: listRequest.requestIdentity,
+      correlationId: listRequest.correlationId!,
+      requestIdentity: listRequest.requestIdentity!,
       solarSystems: [
         { id: 'sol', displayName: 'Sol', source: 'curated', distanceParsec: 0 },
         { id: 'alpha-cen', displayName: 'Alpha Centauri', source: 'curated', distanceParsec: 1.34 },
@@ -109,8 +109,8 @@ describe('ViewerPage', () => {
     socketService.triggerEvent(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: false,
       message: 'backend-down',
-      correlationId: listRequest.correlationId,
-      requestIdentity: listRequest.requestIdentity,
+      correlationId: listRequest.correlationId!,
+      requestIdentity: listRequest.requestIdentity!,
       solarSystems: [],
     });
 
@@ -157,8 +157,8 @@ describe('ViewerPage', () => {
     socketService.triggerEvent(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: listRequest.correlationId,
-      requestIdentity: listRequest.requestIdentity,
+      correlationId: listRequest.correlationId!,
+      requestIdentity: listRequest.requestIdentity!,
     });
     fixture.detectChanges();
 

@@ -125,6 +125,12 @@ describe('MissionNavigationService', () => {
       callback({
         success: false,
         message: 'No ships',
+        correlationId: '00000000-0000-4000-8000-000000000009',
+        requestIdentity: {
+          operation: 'list-ships-by-owner',
+          entityType: 'ship',
+          containerId: 'char-123',
+        },
         owner: {
           ownerType: 'player-character',
           playerId: 'player-1',
@@ -161,6 +167,12 @@ describe('MissionNavigationService', () => {
       callback({
         success: false,
         message: '',
+        correlationId: '00000000-0000-4000-8000-000000000010',
+        requestIdentity: {
+          operation: 'list-ships-by-owner',
+          entityType: 'ship',
+          containerId: 'unknown',
+        },
         owner: {
           ownerType: 'player-character',
           playerId: null,

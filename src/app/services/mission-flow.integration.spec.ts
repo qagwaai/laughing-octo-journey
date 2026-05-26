@@ -198,8 +198,8 @@ describe('Mission integration proof of concept', () => {
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName,
       characterId,
       mission: {

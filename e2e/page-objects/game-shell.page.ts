@@ -15,7 +15,7 @@ export class GameShellPage {
   }
 
   navButton(label: string) {
-    return this.page.locator(`app-guarded-left-menu button[aria-label="${label}"]`).last();
+    return this.page.locator(`app-guarded-left-menu button[aria-label="${label}"]:visible`).first();
   }
 
   async openNav(label: string) {

@@ -40,8 +40,8 @@ export interface PlayerCharacterSummary {
 export interface CharacterListResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CharacterListRequestIdentity;
+  correlationId: string;
+  requestIdentity: CharacterListRequestIdentity;
   playerName: string;
   characters: PlayerCharacterSummary[];
 }

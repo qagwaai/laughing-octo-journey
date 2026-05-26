@@ -208,8 +208,8 @@ describe('ShipExteriorSocketService', () => {
     const responseB: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-b',
-      correlationId: payloadB.correlationId,
-      requestIdentity: payloadB.requestIdentity,
+      correlationId: payloadB.correlationId!,
+      requestIdentity: payloadB.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -222,8 +222,8 @@ describe('ShipExteriorSocketService', () => {
     const responseA: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-a',
-      correlationId: payloadA.correlationId,
-      requestIdentity: payloadA.requestIdentity,
+      correlationId: payloadA.correlationId!,
+      requestIdentity: payloadA.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -236,8 +236,8 @@ describe('ShipExteriorSocketService', () => {
     const responseC: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-c',
-      correlationId: payloadC.correlationId,
-      requestIdentity: payloadC.requestIdentity,
+      correlationId: payloadC.correlationId!,
+      requestIdentity: payloadC.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -467,6 +467,12 @@ describe('ShipExteriorSocketService', () => {
 
     socketService.trigger(ITEM_LIST_BY_LOCATION_RESPONSE_EVENT, {
       success: true,
+      correlationId: '00000000-0000-4000-8000-000000000011',
+      requestIdentity: {
+        operation: 'list-item-by-location',
+        entityType: 'deployed-item',
+        containerId: 'sol',
+      },
       items: [],
     } as ItemListByLocationResponse);
 
@@ -537,8 +543,8 @@ describe('ShipExteriorSocketService', () => {
       hotkey: 1,
       itemId: 'item-1',
       itemType: 'probe',
-      correlationId: launchRequestPayload.correlationId,
-      requestIdentity: launchRequestPayload.requestIdentity,
+      correlationId: launchRequestPayload.correlationId!,
+      requestIdentity: launchRequestPayload.requestIdentity!,
     };
     socketService.trigger(LAUNCH_ITEM_RESPONSE_EVENT, response);
 

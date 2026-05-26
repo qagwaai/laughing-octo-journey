@@ -125,8 +125,8 @@ describe('MissionService connectivity integration', () => {
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
       missions: [{ missionId: 'first-target', status: 'started' }],

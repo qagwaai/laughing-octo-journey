@@ -108,7 +108,7 @@ describe('CharacterService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterName: 'Nyx',
       characterId: 'char-2',
@@ -120,8 +120,8 @@ describe('CharacterService', () => {
     const response: CharacterAddResponse = {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterName: 'Nyx',
       characterId: 'char-1',
@@ -155,8 +155,8 @@ describe('CharacterService', () => {
     const orinResponse: CharacterAddResponse = {
       success: true,
       message: 'orin',
-      correlationId: orinPayload.correlationId,
-      requestIdentity: orinPayload.requestIdentity,
+      correlationId: orinPayload.correlationId!,
+      requestIdentity: orinPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterName: 'Orin',
       characterId: 'char-orin',
@@ -164,8 +164,8 @@ describe('CharacterService', () => {
     const nyxResponse: CharacterAddResponse = {
       success: true,
       message: 'nyx',
-      correlationId: nyxPayload.correlationId,
-      requestIdentity: nyxPayload.requestIdentity,
+      correlationId: nyxPayload.correlationId!,
+      requestIdentity: nyxPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterName: 'Nyx',
       characterId: 'char-nyx',
@@ -213,7 +213,7 @@ describe('CharacterService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
       characterName: 'Nyx Prime',
@@ -224,8 +224,8 @@ describe('CharacterService', () => {
     const response: CharacterEditResponse = {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
       characterName: 'Nyx Prime',
@@ -268,7 +268,7 @@ describe('CharacterService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characters: [],
     } satisfies CharacterListResponse);
@@ -278,8 +278,8 @@ describe('CharacterService', () => {
     const response: CharacterListResponse = {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characters: [{ id: 'char-1', characterName: 'Nyx' }],
     };
@@ -323,7 +323,7 @@ describe('CharacterService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-9',
     } satisfies CharacterDeleteResponse);
@@ -333,8 +333,8 @@ describe('CharacterService', () => {
     const response: CharacterDeleteResponse = {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
     };

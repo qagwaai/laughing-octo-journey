@@ -26,8 +26,8 @@ export interface CharacterEditRequest {
 export interface CharacterEditResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: CharacterEditRequestIdentity;
+  correlationId: string;
+  requestIdentity: CharacterEditRequestIdentity;
   playerName: string;
   characterId: string;
   characterName?: string;

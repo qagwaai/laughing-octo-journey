@@ -11,11 +11,13 @@ import {
 import {
   CHARACTER_DELETE_REQUEST_EVENT,
   CHARACTER_DELETE_RESPONSE_EVENT,
+  type CharacterDeleteRequest,
   type CharacterDeleteResponse,
 } from '../../model/character-delete';
 import {
   CHARACTER_LIST_REQUEST_EVENT,
   CHARACTER_LIST_RESPONSE_EVENT,
+  type CharacterListRequest,
   type CharacterListResponse,
 } from '../../model/character-list';
 import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
@@ -29,6 +31,12 @@ import { SocketService } from '../../services/socket.service';
 import CharacterListPage from './character-list';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000001';
+const TEST_REQUEST_IDENTITY = {
+  operation: 'test-op',
+  entityType: 'test-entity',
+  containerId: 'test-container',
+};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -56,6 +64,8 @@ function setup(options: {
           cb({
             success: true,
             message: 'ok',
+            correlationId: TEST_CORRELATION_ID,
+            requestIdentity: TEST_REQUEST_IDENTITY,
             owner: {
               ownerType: 'player-character',
               playerId: null,
@@ -171,10 +181,16 @@ describe('CharacterListPage', () => {
     it('should populate characters on successful response', () => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
+      const listRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId: string;
+        requestIdentity: CharacterListRequest['requestIdentity'];
+      };
 
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: 'ok',
+        correlationId: listRequest.correlationId,
+        requestIdentity: listRequest.requestIdentity!,
         playerName: 'Pioneer',
         characters: [
           { id: '1', characterName: 'Nova', level: 5 },
@@ -238,10 +254,16 @@ describe('CharacterListPage', () => {
     it('should set error and clear list on failure response', () => {
       socketService.connected = true;
       const { component } = setup({ socketService, sessionService });
+      const listRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId: string;
+        requestIdentity: CharacterListRequest['requestIdentity'];
+      };
 
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: false,
         message: 'Player not found.',
+        correlationId: listRequest.correlationId,
+        requestIdentity: listRequest.requestIdentity!,
         playerName: 'Pioneer',
         characters: [],
       } satisfies CharacterListResponse);
@@ -268,6 +290,8 @@ describe('CharacterListPage', () => {
             cb({
               success: true,
               message: 'ok',
+              correlationId: TEST_CORRELATION_ID,
+              requestIdentity: TEST_REQUEST_IDENTITY,
               owner: {
                 ownerType: 'player-character',
                 playerId: null,
@@ -414,6 +438,8 @@ describe('CharacterListPage', () => {
           cb({
             success: true,
             message: 'ok',
+            correlationId: TEST_CORRELATION_ID,
+            requestIdentity: TEST_REQUEST_IDENTITY,
             owner: {
               ownerType: 'player-character',
               playerId: 'player-1',
@@ -572,9 +598,15 @@ describe('CharacterListPage', () => {
     it('should remove character and close dialog on successful delete response', () => {
       component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
       component.confirmDeleteCharacter();
+      const deleteRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId: string;
+        requestIdentity: CharacterDeleteRequest['requestIdentity'];
+      };
       socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
         success: true,
         message: 'Character deleted.',
+        correlationId: deleteRequest.correlationId,
+        requestIdentity: deleteRequest.requestIdentity!,
         playerName: 'Pioneer',
         characterId: '1',
       } satisfies CharacterDeleteResponse);
@@ -587,9 +619,15 @@ describe('CharacterListPage', () => {
     it('should keep dialog open and show error on failed delete response', () => {
       component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
       component.confirmDeleteCharacter();
+      const deleteRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId: string;
+        requestIdentity: CharacterDeleteRequest['requestIdentity'];
+      };
       socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
         success: false,
         message: 'Character cannot be deleted.',
+        correlationId: deleteRequest.correlationId,
+        requestIdentity: deleteRequest.requestIdentity!,
         playerName: 'Pioneer',
       } satisfies CharacterDeleteResponse);
 
@@ -601,9 +639,15 @@ describe('CharacterListPage', () => {
     it('should allow cancel after failed delete response', () => {
       component.requestDeleteCharacter({ id: '1', characterName: 'Nova' } as any);
       component.confirmDeleteCharacter();
+      const deleteRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as {
+        correlationId: string;
+        requestIdentity: CharacterDeleteRequest['requestIdentity'];
+      };
       socketService.triggerEvent(CHARACTER_DELETE_RESPONSE_EVENT, {
         success: false,
         message: 'Character cannot be deleted.',
+        correlationId: deleteRequest.correlationId,
+        requestIdentity: deleteRequest.requestIdentity!,
         playerName: 'Pioneer',
       } satisfies CharacterDeleteResponse);
       component.cancelDeleteCharacter();
@@ -634,6 +678,8 @@ describe('CharacterListPage', () => {
                   cb({
                     success: true,
                     message: 'ok',
+                    correlationId: TEST_CORRELATION_ID,
+                    requestIdentity: TEST_REQUEST_IDENTITY,
                     owner: {
                       ownerType: 'player-character',
                       playerId: null,

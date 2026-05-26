@@ -81,8 +81,8 @@ export interface SolarSystemGetRequest {
 export interface SolarSystemGetResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: SolarSystemGetRequestIdentity;
+  correlationId: string;
+  requestIdentity: SolarSystemGetRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;

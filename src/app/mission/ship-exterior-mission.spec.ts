@@ -17,6 +17,13 @@ import {
   type ShipExteriorMissionGateStepDefinition,
 } from './ship-exterior-mission';
 
+const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000004';
+const TEST_REQUEST_IDENTITY = {
+  operation: 'test-op',
+  entityType: 'test-entity',
+  containerId: 'test-container',
+};
+
 describe('resolveShipExteriorMission', () => {
   it('should resolve the first-target mission by id', () => {
     expect(resolveShipExteriorMission(FIRST_TARGET_MISSION_ID).missionId).toBe(FIRST_TARGET_MISSION_ID);
@@ -141,6 +148,8 @@ describe('evaluateMissionGateOnLaunch', () => {
       response: {
         success: true,
         message: 'Target neutralized',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'c-1',
         shipId: 'ship-1',
@@ -191,6 +200,8 @@ describe('evaluateMissionGateOnLaunch', () => {
       response: {
         success: true,
         message: 'No effect',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
         playerName: 'Pioneer',
         characterId: 'c-1',
         shipId: 'ship-1',

@@ -30,8 +30,8 @@ export interface MissionUpsertRequest {
 export interface MissionUpsertResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: MissionUpsertRequestIdentity;
+  correlationId: string;
+  requestIdentity: MissionUpsertRequestIdentity;
   playerName: string;
   characterId: string;
   mission?: CharacterMissionProgress;

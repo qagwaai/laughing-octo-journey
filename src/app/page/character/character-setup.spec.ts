@@ -17,6 +17,7 @@ import {
 import {
   CHARACTER_EDIT_REQUEST_EVENT,
   CHARACTER_EDIT_RESPONSE_EVENT,
+  type CharacterEditRequest,
   type CharacterEditResponse,
 } from '../../model/character-edit';
 import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
@@ -33,6 +34,13 @@ import CharacterSetupPage from './character-setup';
 
 type MockSocketServiceWithUpsert = MockSocketService & {
   upsertShip(request: any, onResponse?: (r: any) => void): void;
+};
+
+const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000002';
+const TEST_REQUEST_IDENTITY = {
+  operation: 'test-op',
+  entityType: 'test-entity',
+  containerId: 'test-container',
 };
 
 function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
@@ -64,8 +72,8 @@ function createShipListResponse(params?: {
   return {
     success: params?.success ?? true,
     message: params?.message ?? 'ok',
-    correlationId: params?.correlationId,
-    requestIdentity: params?.requestIdentity,
+    correlationId: params?.correlationId ?? TEST_CORRELATION_ID,
+    requestIdentity: params?.requestIdentity ?? TEST_REQUEST_IDENTITY,
     owner: {
       ownerType: 'player-character',
       playerId: 'p-1',
@@ -267,10 +275,13 @@ describe('CharacterSetupPage', () => {
 
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
+      const editRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterEditRequest;
 
       socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
         success: true,
         message: "Character 'Nova-Prime' updated.",
+        correlationId: editRequest.correlationId!,
+        requestIdentity: editRequest.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'c-1',
         characterName: 'Nova-Prime',
@@ -383,10 +394,13 @@ describe('CharacterSetupPage', () => {
       const { component, mockRouter } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
+      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
 
       socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
         success: true,
         message: "Character 'Nova-Prime' created.",
+        correlationId: addRequest.correlationId!,
+        requestIdentity: addRequest.requestIdentity!,
         playerName: 'Pioneer',
         characterName: 'Nova-Prime',
         characterId: 'c-1',
@@ -426,10 +440,13 @@ describe('CharacterSetupPage', () => {
       const { component, mockRouter } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
+      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
 
       socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
         success: false,
         message: 'Character name already exists.',
+        correlationId: addRequest.correlationId!,
+        requestIdentity: addRequest.requestIdentity!,
         playerName: 'Pioneer',
       } satisfies CharacterAddResponse);
 
@@ -513,9 +530,12 @@ describe('CharacterSetupPage', () => {
     function triggerSuccessfulCharacterAdd(component: CharacterSetupPage, characterId = 'c-1') {
       component['characterForm'].patchValue({ characterName: 'Nova' });
       component.saveCharacter();
+      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
       socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
         success: true,
         message: "Character 'Nova' created.",
+        correlationId: addRequest.correlationId!,
+        requestIdentity: addRequest.requestIdentity!,
         playerName: 'Pioneer',
         characterName: 'Nova',
         characterId,
@@ -705,10 +725,13 @@ describe('CharacterSetupPage', () => {
 
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
+      const editRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterEditRequest;
 
       socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
         success: true,
         message: "Character 'Nova-Prime' updated.",
+        correlationId: editRequest.correlationId!,
+        requestIdentity: editRequest.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'c-1',
         characterName: 'Nova-Prime',

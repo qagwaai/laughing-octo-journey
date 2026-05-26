@@ -270,8 +270,8 @@ describe('ShipService', () => {
     const responseB: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-b',
-      correlationId: payloadB.correlationId,
-      requestIdentity: payloadB.requestIdentity,
+      correlationId: payloadB.correlationId!,
+      requestIdentity: payloadB.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -284,8 +284,8 @@ describe('ShipService', () => {
     const responseC: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-c',
-      correlationId: payloadC.correlationId,
-      requestIdentity: payloadC.requestIdentity,
+      correlationId: payloadC.correlationId!,
+      requestIdentity: payloadC.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',
@@ -298,8 +298,8 @@ describe('ShipService', () => {
     const responseA: ShipListByOwnerResponse = {
       success: true,
       message: 'ok-a',
-      correlationId: payloadA.correlationId,
-      requestIdentity: payloadA.requestIdentity,
+      correlationId: payloadA.correlationId!,
+      requestIdentity: payloadA.requestIdentity!,
       owner: {
         ownerType: 'player-character',
         playerId: 'player-1',

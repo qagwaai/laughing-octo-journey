@@ -64,6 +64,13 @@ function createDeps(overrides: Partial<{
   return { controller, stateService, socketService, calls, intervals, cleared };
 }
 
+const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000006';
+const TEST_REQUEST_IDENTITY = {
+  operation: 'test-op',
+  entityType: 'test-entity',
+  containerId: 'test-container',
+};
+
 describe('FloatingDebrisController', () => {
   it('emits one location request on start with the supplied ship context', () => {
     const { controller, calls } = createDeps();
@@ -90,7 +97,7 @@ describe('FloatingDebrisController', () => {
   it('seeds a Tractor Beam when the first response is empty', () => {
     const { controller, calls, stateService } = createDeps();
     controller.start();
-    calls[0].onResponse({ success: true, items: [] });
+    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
@@ -126,7 +133,7 @@ describe('FloatingDebrisController', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    calls[0].onResponse({ success: true, items: [item] });
+    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [item] });
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
@@ -136,13 +143,13 @@ describe('FloatingDebrisController', () => {
   it('does not seed again on a subsequent empty response', () => {
     const { controller, intervals, calls, stateService } = createDeps();
     controller.start();
-    calls[0].onResponse({ success: true, items: [] });
+    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
     expect(stateService.getAll().length).toBe(1);
 
     // Simulate the timer tick that fires another request.
     intervals[0].handler();
     expect(calls.length).toBe(2);
-    calls[1].onResponse({ success: true, items: [] });
+    calls[1].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
 
     expect(stateService.getAll().length).toBe(1);
   });
@@ -194,7 +201,7 @@ describe('FloatingDebrisController', () => {
     // Tractor Beam is already present. A failed list response must not add
     // or remove anything beyond that seed.
     const seededIds = stateService.getAll().map((d) => d.id);
-    calls[0].onResponse({ success: false, message: 'boom' });
+    calls[0].onResponse({ success: false, message: 'boom', correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY });
     expect(stateService.getAll().map((d) => d.id)).toEqual(seededIds);
   });
 });

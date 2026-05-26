@@ -125,8 +125,8 @@ describe('mission-list correlation integration', () => {
     const responseForMissionBoard: MissionListResponse = {
       success: true,
       message: 'mission-board',
-      correlationId: requestFromMissionBoard.correlationId,
-      requestIdentity: requestFromMissionBoard.requestIdentity,
+      correlationId: requestFromMissionBoard.correlationId!,
+      requestIdentity: requestFromMissionBoard.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-b',
       missions: [{ missionId: 'board-mission', status: 'available' }],
@@ -135,8 +135,8 @@ describe('mission-list correlation integration', () => {
     const responseForMissionService: MissionListResponse = {
       success: true,
       message: 'mission-service',
-      correlationId: requestFromMissionService.correlationId,
-      requestIdentity: requestFromMissionService.requestIdentity,
+      correlationId: requestFromMissionService.correlationId!,
+      requestIdentity: requestFromMissionService.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-a',
       missions: [{ missionId: 'service-mission', status: 'started' }],
@@ -187,10 +187,10 @@ describe('mission-list correlation integration', () => {
       playerName: 'Pioneer',
       characterId: 'char-b',
       missions: [{ missionId: 'board-mission', status: 'available' }],
-    } satisfies MissionListResponse);
+    } as unknown as MissionListResponse);
     flushMicrotasks();
 
-    expect(missionBoardCallback).toHaveBeenCalledTimes(1);
+    expect(missionBoardCallback).toHaveBeenCalledTimes(0);
     expect(missionServiceResult).toBeUndefined();
 
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
@@ -199,10 +199,10 @@ describe('mission-list correlation integration', () => {
       playerName: 'Pioneer',
       characterId: 'char-a',
       missions: [{ missionId: 'service-mission', status: 'started' }],
-    } satisfies MissionListResponse);
+    } as unknown as MissionListResponse);
     flushMicrotasks();
 
-    expect(missionBoardCallback).toHaveBeenCalledTimes(1);
+    expect(missionBoardCallback).toHaveBeenCalledTimes(0);
     expect(missionServiceResult).toBeUndefined();
 
     const requestFromMissionService = socketService.emittedEvents.find(
@@ -214,8 +214,8 @@ describe('mission-list correlation integration', () => {
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'strict-char-a',
-      correlationId: requestFromMissionService.correlationId,
-      requestIdentity: requestFromMissionService.requestIdentity,
+      correlationId: requestFromMissionService.correlationId!,
+      requestIdentity: requestFromMissionService.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-a',
       missions: [{ missionId: 'service-mission', status: 'started' }],
@@ -226,6 +226,6 @@ describe('mission-list correlation integration', () => {
       status: 'loaded',
       missions: [{ missionId: 'service-mission', status: 'started' }],
     });
-    expect(missionBoardCallback).toHaveBeenCalledTimes(1);
+    expect(missionBoardCallback).toHaveBeenCalledTimes(0);
   }));
 });

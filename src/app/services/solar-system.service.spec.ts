@@ -84,7 +84,7 @@ describe('SolarSystemService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Other',
       solarSystems: [],
     });
@@ -93,8 +93,8 @@ describe('SolarSystemService', () => {
     socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pilot',
       solarSystems: [],
     });
@@ -142,7 +142,7 @@ describe('SolarSystemService', () => {
       success: true,
       message: 'wrong',
       correlationId: 'wrong-correlation-id',
-      requestIdentity: requestPayload.requestIdentity,
+      requestIdentity: requestPayload.requestIdentity!,
       solarSystemId: 'sol',
       bodies: [],
     });
@@ -151,8 +151,8 @@ describe('SolarSystemService', () => {
     socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: requestPayload.correlationId,
-      requestIdentity: requestPayload.requestIdentity,
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
       solarSystemId: 'sol',
       bodies: [],
     });

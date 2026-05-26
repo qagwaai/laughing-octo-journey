@@ -66,8 +66,8 @@ export interface MarketSummary {
 export interface MarketListResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: MarketListRequestIdentity;
+  correlationId: string;
+  requestIdentity: MarketListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   markets: MarketSummary[];
@@ -97,8 +97,8 @@ export interface MarketListByLocationRequest {
 export interface MarketListByLocationResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: MarketListRequestIdentity;
+  correlationId: string;
+  requestIdentity: MarketListRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
   positionKm?: Triple;

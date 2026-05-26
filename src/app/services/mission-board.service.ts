@@ -29,28 +29,18 @@ function isMissionListResponseForRequest(
   response: MissionListResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: MissionListRequestIdentity,
-  expectedRequest: MissionListRequest,
+  _expectedRequest: MissionListRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (responseCorrelationId) {
-    if (responseCorrelationId !== expectedCorrelationId) {
-      return false;
-    }
-
-    if (response.requestIdentity) {
-      return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-    }
-  }
-
-  if (response.playerName && response.playerName !== expectedRequest.playerName) {
+  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
     return false;
   }
 
-  if (response.characterId && response.characterId !== expectedRequest.characterId) {
+  if (!response.requestIdentity) {
     return false;
   }
 
-  return true;
+  return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
 @Injectable({ providedIn: 'root' })

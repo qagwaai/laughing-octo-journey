@@ -178,8 +178,8 @@ describe('MarketHubPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {
@@ -241,8 +241,8 @@ describe('MarketHubPage', () => {
     socketService.triggerEvent(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
       success: true,
       message: 'ok',
-      correlationId: shipListRequest.correlationId,
-      requestIdentity: shipListRequest.requestIdentity,
+      correlationId: shipListRequest.correlationId!,
+      requestIdentity: shipListRequest.requestIdentity!,
       owner: { ownerType: 'player-character', playerId: 'p-1', characterId: 'c-1', npcId: null, factionId: null },
       ships: [
         {

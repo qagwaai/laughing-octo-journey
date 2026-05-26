@@ -29,8 +29,8 @@ export interface MissionAddRequest {
 export interface MissionAddResponse {
   success: boolean;
   message: string;
-  correlationId?: string;
-  requestIdentity?: MissionAddRequestIdentity;
+  correlationId: string;
+  requestIdentity: MissionAddRequestIdentity;
   playerName: string;
   characterId: string;
   mission?: CharacterMissionProgress;

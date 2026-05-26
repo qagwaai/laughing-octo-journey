@@ -211,7 +211,7 @@ export class MissionService {
       unsubscribeList = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
         if (!isMissionListResponseForRequest(response, listCorrelationId, listRequestIdentity, listRequest)) {
           appLogger.warn(
-            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listCorrelationId} responsePlayerName=${response.playerName ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
+            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listCorrelationId} responsePlayerName=${response.playerName ?? 'missing'} expectedPlayerName=${listRequest.playerName} responseCharacterId=${response.characterId ?? 'missing'} expectedCharacterId=${listRequest.characterId}`,
           );
           return;
         }
@@ -325,7 +325,7 @@ export class MissionService {
           )
         ) {
           appLogger.warn(
-            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listRequestWithCorrelation.correlationId} responsePlayerName=${response.playerName ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
+            `[socket-correlation] Dropping unmatched mission-list response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${listRequestWithCorrelation.correlationId} responsePlayerName=${response.playerName ?? 'missing'} expectedPlayerName=${listRequestWithCorrelation.playerName} responseCharacterId=${response.characterId ?? 'missing'} expectedCharacterId=${listRequestWithCorrelation.characterId}`,
           );
           return;
         }
