@@ -205,10 +205,10 @@ function configureFirstTargetFlowMock(
     };
   });
 
-  mock.on('add-mission-request', (request) => {
+  mock.on('mission-upsert-request', (request) => {
     missionUpsertRequests.push(request as { status?: string });
     return {
-      event: 'add-mission-response',
+      event: 'mission-upsert-response',
       data: {
         success: true,
         message: '',
@@ -218,7 +218,7 @@ function configureFirstTargetFlowMock(
     };
   });
 
-  mock.on('upsert-item-request', (request) => {
+  mock.on('item-upsert-request', (request) => {
     const payload = request as {
       item?: {
         id?: string;
@@ -234,7 +234,7 @@ function configureFirstTargetFlowMock(
     };
     const item = payload.item ?? {};
     return {
-      event: 'upsert-item-response',
+      event: 'item-upsert-response',
       data: {
         success: true,
         message: '',
@@ -457,18 +457,19 @@ test.describe('First Target Mission Flow', () => {
               }
             ).__shipExteriorTestUtils;
             if (!api?.simulateRepair || !api?.getMissionGateState) {
-              return { allCompleted: false, hasCompletionObjective: false };
+              return { allCompleted: false, hasCompletionObjective: false, hasDebrisObjective: false };
             }
             api.simulateRepair('ship');
             const gate = api.getMissionGateState();
             return {
               allCompleted: Boolean(gate?.steps.every((step) => step.status === 'completed')),
               hasCompletionObjective: Boolean(gate?.activeObjectiveText.includes('Mission objectives complete')),
+              hasDebrisObjective: Boolean(gate?.activeObjectiveText.includes('collect the floating debris')),
             };
           }),
         { timeout: 30_000 },
       )
-      .toEqual({ allCompleted: true, hasCompletionObjective: true });
+      .toEqual({ allCompleted: false, hasCompletionObjective: false, hasDebrisObjective: true });
   });
 
   test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {
@@ -530,7 +531,7 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({
         repair: 'active',
-        objective: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+        objective: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
       });
 
     expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);

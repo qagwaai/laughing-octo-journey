@@ -48,8 +48,8 @@ function configurePrintQueueMock(mock: SocketIOMock, options: { usableShipSpatia
             ? [
                 {
                   id: 'mat-iron-1',
-                  itemType: 'iron-ore',
-                  displayName: 'Iron Ore',
+                  itemType: 'iron-raw-material',
+                  displayName: 'Iron (raw material)',
                   launchable: false,
                   state: 'contained',
                   damageStatus: 'intact',
@@ -77,7 +77,7 @@ function configurePrintQueueMock(mock: SocketIOMock, options: { usableShipSpatia
     },
   }));
 
-  mock.on('upsert-item-request', (request) => {
+  mock.on('item-upsert-request', (request) => {
     const payload = request as {
       item?: {
         id?: string;
@@ -97,7 +97,7 @@ function configurePrintQueueMock(mock: SocketIOMock, options: { usableShipSpatia
     const item = payload.item ?? {};
     const now = '2026-05-01T00:00:00.000Z';
     return {
-      event: 'upsert-item-response',
+      event: 'item-upsert-response',
       data: {
         success: true,
         message: '',

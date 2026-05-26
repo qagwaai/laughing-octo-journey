@@ -174,8 +174,8 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
     };
   });
 
-  mock.on('add-mission-request', () => ({
-    event: 'add-mission-response',
+  mock.on('mission-upsert-request', () => ({
+    event: 'mission-upsert-response',
     data: {
       success: true,
       message: '',
@@ -184,7 +184,7 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
     },
   }));
 
-  mock.on('upsert-item-request', (request) => {
+  mock.on('item-upsert-request', (request) => {
     const payload = request as {
       item?: {
         id?: string;
@@ -200,7 +200,7 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
     };
     const item = payload.item ?? {};
     return {
-      event: 'upsert-item-response',
+      event: 'item-upsert-response',
       data: {
         success: true,
         message: '',

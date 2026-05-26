@@ -143,19 +143,23 @@ test.describe('Character Add — from character list', () => {
     await expect.poll(() => !!receivedShipListRequest).toBe(true);
     await expect.poll(() => !!receivedShipUpsertRequest).toBe(true);
 
-    expect(receivedAddRequest).toEqual({
+    expect(receivedAddRequest).toEqual(
+      expect.objectContaining({
       playerName: TEST_PLAYER,
       characterName: 'Nova Prime',
       sessionKey: 'test-session-key-abc123',
-    });
-    expect(receivedShipListRequest).toEqual({
-      playerName: TEST_PLAYER,
-      sessionKey: 'test-session-key-abc123',
-      owner: {
-        ownerType: 'player-character',
-        characterId: 'char-new-001',
-      },
-    });
+      }),
+    );
+    expect(receivedShipListRequest).toEqual(
+      expect.objectContaining({
+        playerName: TEST_PLAYER,
+        sessionKey: 'test-session-key-abc123',
+        owner: {
+          ownerType: 'player-character',
+          characterId: 'char-new-001',
+        },
+      }),
+    );
 
     expect(receivedShipUpsertRequest).not.toBeNull();
     expect(receivedShipUpsertRequest?.['playerName']).toBe(TEST_PLAYER);

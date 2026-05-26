@@ -88,6 +88,7 @@ test.describe('Repair & Retrofit', () => {
     await loginAndOpenRepairPage(false, page);
 
     await expect(page.getByRole('alert')).toHaveText('No ship with usable spatial data is available.');
+    await expect(page.getByRole('button', { name: /Active ship:/ })).toContainText('No ship selected');
     await expect(page.getByRole('button', { name: 'View details' })).toHaveCount(0);
   });
 });

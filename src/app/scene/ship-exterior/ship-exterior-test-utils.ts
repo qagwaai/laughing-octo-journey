@@ -1,5 +1,6 @@
 import { type AsteroidHoverEvent } from '../../component/asteroid';
 import {
+  evaluateMissionGateOnDebrisCollection,
   evaluateMissionGateOnManufacture,
   evaluateMissionGateOnRepair,
   type ShipExteriorMissionDefinition,
@@ -29,6 +30,7 @@ export interface ShipExteriorViewTestApi {
   forceTargetAsteroid(sampleId: string): boolean;
   tickScanTicks(ticks?: number): AsteroidScanSample[];
   forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null;
+  simulateDebrisCollection(remainingDebrisCount?: number): ShipExteriorMissionGateState | null;
   simulateManufacture(itemType: string): ShipExteriorMissionGateState | null;
   simulateRepair(repairKind: string): ShipExteriorMissionGateState | null;
   launchFromHotkey(hotkey: 1 | 2 | 3 | 4 | 5): void;
@@ -163,6 +165,23 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
           manufacturedItemType: itemType,
           gateState: evaluation.gateState,
         });
+      }
+      return cloneForTest(context.getMissionGateState());
+    },
+    simulateDebrisCollection: (remainingDebrisCount: number = 0) => {
+      const gateState = context.getMissionGateState();
+      if (!gateState) {
+        return null;
+      }
+
+      const evaluation = evaluateMissionGateOnDebrisCollection({
+        mission: context.missionDefinition,
+        gateState,
+        remainingDebrisCount,
+      });
+      if (evaluation.changed) {
+        context.setMissionGateState(evaluation.gateState);
+        context.persistMissionGateState(evaluation.gateState);
       }
       return cloneForTest(context.getMissionGateState());
     },

@@ -151,8 +151,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       };
     });
 
-    mock.on('add-mission-request', () => ({
-      event: 'add-mission-response',
+    mock.on('mission-upsert-request', () => ({
+      event: 'mission-upsert-response',
       data: {
         success: true,
         message: '',
@@ -417,10 +417,10 @@ test.describe('Ship Exterior Test Utilities', () => {
       };
     });
 
-    mock.on('add-mission-request', (request) => {
+    mock.on('mission-upsert-request', (request) => {
       missionUpsertRequests.push(request as { status?: string });
       return {
-        event: 'add-mission-response',
+        event: 'mission-upsert-response',
         data: {
           success: true,
           message: '',
@@ -516,11 +516,39 @@ test.describe('Ship Exterior Test Utilities', () => {
           const gate = api!.getMissionGateState();
           return {
             neutralize: gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status,
+            collectDebris: gate.steps.find((step) => step.key === 'collect_floating_debris')?.status,
+          };
+        }),
+      )
+      .toEqual({ neutralize: 'completed', collectDebris: 'active' });
+
+    await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: { simulateDebrisCollection: (remainingDebrisCount?: number) => unknown };
+        }
+      ).__shipExteriorTestUtils;
+      api!.simulateDebrisCollection(0);
+    });
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
+              };
+            }
+          ).__shipExteriorTestUtils;
+          const gate = api!.getMissionGateState();
+          return {
+            collectDebris: gate.steps.find((step) => step.key === 'collect_floating_debris')?.status,
             manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
           };
         }),
       )
-      .toEqual({ neutralize: 'completed', manufacture: 'active' });
+      .toEqual({ collectDebris: 'completed', manufacture: 'active' });
 
     await page.evaluate(() => {
       const api = (
@@ -583,6 +611,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           return {
             identify: statuses.get('identify_iron_asteroid') ?? null,
             neutralize: statuses.get('neutralize_identified_asteroid') ?? null,
+            collectDebris: statuses.get('collect_floating_debris') ?? null,
             manufacture: statuses.get('manufacture_hull_patch_kit') ?? null,
             repair: statuses.get('repair_scavenger_pod') ?? null,
             objective: gate.activeObjectiveText,
@@ -592,6 +621,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       .toMatchObject({
         identify: 'completed',
         neutralize: 'completed',
+        collectDebris: 'completed',
         manufacture: 'completed',
         repair: 'completed',
       });
@@ -761,8 +791,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       };
     });
 
-    mock.on('add-mission-request', () => ({
-      event: 'add-mission-response',
+    mock.on('mission-upsert-request', () => ({
+      event: 'mission-upsert-response',
       data: {
         success: true,
         message: '',
@@ -821,7 +851,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           const gate = api!.getMissionGateState() as {
             steps: Array<{ key: string; status: string }>;
           };
-          return gate.steps.find((step) => step.key === 'identify_iron_asteroid')?.status ?? 'missing';
+          return gate.steps.find((step) => step.key === 'collect_floating_debris')?.status ?? 'missing';
         }),
       )
       .toBe('active');
@@ -839,9 +869,14 @@ test.describe('Ship Exterior Test Utilities', () => {
     });
 
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
-      'locked',
+      'completed',
     );
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe(
+      'completed',
+    );
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'collect_floating_debris')?.status).toBe(
+      'active',
+    );
     expect(gateAfterBackendRefresh.activeObjectiveText).not.toContain('Mission objectives complete');
   });
 
@@ -990,8 +1025,8 @@ test.describe('Ship Exterior Test Utilities', () => {
       };
     });
 
-    mock.on('add-mission-request', () => ({
-      event: 'add-mission-response',
+    mock.on('mission-upsert-request', () => ({
+      event: 'mission-upsert-response',
       data: {
         success: true,
         message: '',
@@ -1050,7 +1085,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           const gate = api!.getMissionGateState() as {
             steps: Array<{ key: string; status: string }>;
           };
-          return gate.steps.find((step) => step.key === 'repair_scavenger_pod')?.status ?? 'missing';
+          return gate.steps.find((step) => step.key === 'collect_floating_debris')?.status ?? 'missing';
         }),
       )
       .toBe('active');
@@ -1073,7 +1108,12 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
       'completed',
     );
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('active');
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe(
+      'completed',
+    );
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'collect_floating_debris')?.status).toBe(
+      'active',
+    );
     expect(gateAfterBackendRefresh.activeObjectiveText).not.toContain('Mission objectives complete');
   });
 });

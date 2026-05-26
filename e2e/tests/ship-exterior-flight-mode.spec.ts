@@ -77,8 +77,8 @@ function configureFlightModeMock(mock: SocketIOMock): void {
     },
   }));
 
-  mock.on('add-mission-request', () => ({
-    event: 'add-mission-response',
+  mock.on('mission-upsert-request', () => ({
+    event: 'mission-upsert-response',
     data: {
       success: true,
       message: '',

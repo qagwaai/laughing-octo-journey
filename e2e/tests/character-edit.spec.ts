@@ -43,7 +43,7 @@ test.describe('Character Edit — setup save redirect', () => {
     let receivedEditRequest: Record<string, unknown> | null = null;
     let shipListRequestCount = 0;
 
-    mock.on('character-edit', (request) => {
+    mock.on('character-edit-request', (request) => {
       receivedEditRequest = request as Record<string, unknown>;
       updateCharacterName('Zara Prime');
       return {
@@ -76,12 +76,14 @@ test.describe('Character Edit — setup save redirect', () => {
     await expect(characterListPage.characterItems).toHaveCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('Zara Prime');
 
-    expect(receivedEditRequest).toEqual({
-      characterId: 'char-edit-001',
-      playerName: TEST_PLAYER,
-      characterName: 'Zara Prime',
-      sessionKey: 'test-session-key-abc123',
-    });
+    expect(receivedEditRequest).toEqual(
+      expect.objectContaining({
+        characterId: 'char-edit-001',
+        playerName: TEST_PLAYER,
+        characterName: 'Zara Prime',
+        sessionKey: 'test-session-key-abc123',
+      }),
+    );
     expect(shipListRequestCount).toBe(0);
   });
 
@@ -97,7 +99,7 @@ test.describe('Character Edit — setup save redirect', () => {
         { id: 'char-other-002', characterName: 'Atlas Commander', level: 2 },
       ]),
     }));
-    mock.on('character-edit', () => {
+    mock.on('character-edit-request', () => {
       editRequestCount += 1;
       return null;
     });

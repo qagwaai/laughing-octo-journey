@@ -2,6 +2,29 @@ import { Page } from '@playwright/test';
 
 export type SocketEventHandler = (data: unknown) => { event: string; data: unknown } | null;
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function withRequestCorrelation(responseData: unknown, requestData: unknown): unknown {
+  if (!isObject(responseData) || !isObject(requestData)) {
+    return responseData;
+  }
+
+  const correlationId = requestData['correlationId'];
+  const requestIdentity = requestData['requestIdentity'];
+
+  const enriched: Record<string, unknown> = { ...responseData };
+  if (enriched['correlationId'] == null && typeof correlationId === 'string' && correlationId.trim().length > 0) {
+    enriched['correlationId'] = correlationId;
+  }
+  if (enriched['requestIdentity'] == null && isObject(requestIdentity)) {
+    enriched['requestIdentity'] = requestIdentity;
+  }
+
+  return enriched;
+}
+
 /**
  * Minimal socket.io v4 polling-transport mock for Playwright tests.
  *
@@ -150,10 +173,11 @@ export class SocketIOMock {
               if (handler) {
                 const response = handler(eventData);
                 if (response !== null) {
+                  const responseData = withRequestCorrelation(response.data, eventData);
                   if (this.debugEnabled) {
                     console.log(`[socket-mock] auto response: ${response.event}`);
                   }
-                  this.push(response.event, response.data);
+                  this.push(response.event, responseData);
                 }
               } else if (this.debugEnabled) {
                 console.log(`[socket-mock] no handler registered for event: ${eventName}`);
