@@ -168,6 +168,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
   private static readonly TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
+  private static readonly EXPENDABLE_DART_DRONE_ITEM_TYPE = 'expendable-dart-drone';
   private static readonly DEBRIS_KM_TO_SCENE_UNITS = 0.4;
   private static readonly TRACTOR_BEAM_REVERSE_DURATION_MS = 550;
   private static readonly TRACTOR_BEAM_ANIMATION_TICK_MS = 16;
@@ -920,6 +921,16 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.initializeMissionGateState();
     this.refreshMissionGateStateFromBackend();
     this.registerTestUtils();
+    this.logLaunchabilitySnapshot({
+      source: 'navigation-state',
+      ship: this.navigationState.joinShip ?? null,
+      inventory: this.normalizedNavigationInventory,
+    });
+    this.reportLaunchabilityContractMismatch(
+      this.normalizedNavigationInventory,
+      'navigation-state',
+      this.activeShipId(),
+    );
     this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
       (response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
     );
@@ -1560,6 +1571,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const navShipId = this.navigationState.joinShip?.id;
     const matchingShip = (navShipId ? ships.find((ship) => ship.id === navShipId) : undefined) ?? ships[0];
     const normalizedInventory = coerceShipInventory(matchingShip?.inventory);
+    this.logLaunchabilitySnapshot({
+      source: 'ship-list-response',
+      ship: matchingShip ?? null,
+      inventory: normalizedInventory,
+    });
+    this.reportLaunchabilityContractMismatch(normalizedInventory, 'ship-list-response', matchingShip?.id ?? null);
     const nextHasDrone = this.missionDefinition.resolveTargetingCapabilityFromInventory(normalizedInventory);
     this.hasExpendableDartDrone.set(nextHasDrone);
     this.activeShipId.set(matchingShip?.id?.trim() ?? '');
@@ -1574,6 +1591,100 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       };
     }
     this.shipDamageController.resolveFromShipSummary(matchingShip);
+  }
+
+  private logLaunchabilitySnapshot(params: {
+    source: 'navigation-state' | 'ship-list-response';
+    ship: ShipSummary | null;
+    inventory: readonly ShipItem[];
+  }): void {
+    const ship = params.ship;
+    const inventory = params.inventory;
+    const droneItems = inventory.filter(
+      (item) => item.itemType.trim().toLowerCase() === ShipExteriorViewScene.EXPENDABLE_DART_DRONE_ITEM_TYPE,
+    );
+    const launchableDroneCount = droneItems.filter((item) => item.launchable).length;
+    const launchableCount = inventory.filter((item) => item.launchable).length;
+    const inventoryItemTypes = inventory.map((item) => item.itemType);
+    const inventoryLaunchableFlags = inventory.map((item) => ({
+      id: item.id,
+      itemType: item.itemType,
+      launchable: item.launchable,
+    }));
+    const shipRecord = ship as Record<string, unknown> | null;
+    const inventoryItemIds = Array.isArray(shipRecord?.['inventoryItemIds'])
+      ? (shipRecord?.['inventoryItemIds'] as unknown[])
+      : [];
+    const inventoryIds = Array.isArray(shipRecord?.['inventoryIds']) ? (shipRecord?.['inventoryIds'] as unknown[]) : [];
+
+    appLogger.log('[ship-exterior-launchability] Snapshot', {
+      source: params.source,
+      shipId: ship?.id ?? null,
+      shipModel: ship?.model ?? null,
+      inventoryCount: inventory.length,
+      launchableCount,
+      droneCount: droneItems.length,
+      launchableDroneCount,
+      inventoryItemTypes,
+      inventoryLaunchableFlags,
+      hasInventoryArray: Array.isArray(ship?.inventory),
+      inventoryItemIdsCount: inventoryItemIds.length,
+      inventoryIdsCount: inventoryIds.length,
+    });
+
+    if (params.source === 'ship-list-response' && ship && inventory.length === 0) {
+      appLogger.warn('[ship-exterior-contract] Ship list response contains ship with empty inventory payload.', {
+        source: params.source,
+        shipId: ship.id,
+        shipModel: ship.model,
+        inventoryItemTypes,
+        inventoryLaunchableFlags,
+        hasInventoryArray: Array.isArray(ship.inventory),
+        inventoryItemIdsCount: inventoryItemIds.length,
+        inventoryIdsCount: inventoryIds.length,
+      });
+    }
+
+    const normalizedShipModel = (ship?.model ?? '').trim().toLowerCase();
+    if (normalizedShipModel === 'scavenger pod' && droneItems.length === 0) {
+      appLogger.warn('[ship-exterior-contract] Scavenger Pod inventory missing Expendable Dart Drone.', {
+        source: params.source,
+        shipId: ship?.id ?? null,
+        shipModel: ship?.model ?? null,
+        inventoryCount: inventory.length,
+        inventoryItemTypes,
+        inventoryLaunchableFlags,
+      });
+    }
+  }
+
+  private reportLaunchabilityContractMismatch(
+    inventory: readonly ShipItem[],
+    source: 'navigation-state' | 'ship-list-response',
+    shipId: string | null,
+  ): void {
+    const droneItems = inventory.filter(
+      (item) => item.itemType.trim().toLowerCase() === ShipExteriorViewScene.EXPENDABLE_DART_DRONE_ITEM_TYPE,
+    );
+    if (droneItems.length === 0) {
+      return;
+    }
+
+    const launchableDroneItems = droneItems.filter((item) => item.launchable);
+    if (launchableDroneItems.length > 0) {
+      return;
+    }
+
+    appLogger.warn(
+      '[ship-exterior-contract] Expendable Dart Drone present but no launchable drone available.',
+      {
+        source,
+        shipId: shipId?.trim() || null,
+        droneCount: droneItems.length,
+        droneItemIds: droneItems.map((item) => item.id),
+        droneLaunchableFlags: droneItems.map((item) => item.launchable),
+      },
+    );
   }
 
   private resolveLaunchableInventory(rawInventory: unknown): ShipItem[] {

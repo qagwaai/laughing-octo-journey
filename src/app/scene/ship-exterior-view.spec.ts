@@ -13,6 +13,7 @@ import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-aste
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { SocketService } from '../services/socket.service';
 import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
+import { appLogger } from '../services/logger';
 import ShipExteriorViewScene from './ship-exterior-view';
 
 // ---------------------------------------------------------------------------
@@ -184,6 +185,27 @@ describe('ShipExteriorViewScene', () => {
       },
     });
     expect(component['canTargetAsteroids']()).toBe(false);
+  });
+
+  it('logs a contract warning when expendable dart drone is present but not launchable', () => {
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    setup({
+      joinShip: {
+        id: 's-4',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-dart-1', itemType: 'expendable-dart-drone', launchable: false }],
+      },
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ship-exterior-contract] Expendable Dart Drone present but no launchable drone available.',
+      jasmine.objectContaining({
+        source: 'navigation-state',
+        shipId: 's-4',
+        droneCount: 1,
+      }),
+    );
   });
 
   it('should lock a single target after right-click hold when targeting is enabled', () => {
