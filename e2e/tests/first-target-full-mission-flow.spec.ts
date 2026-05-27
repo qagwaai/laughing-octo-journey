@@ -469,7 +469,7 @@ test.describe('First Target Mission Flow', () => {
           }),
         { timeout: 30_000 },
       )
-      .toEqual({ allCompleted: false, hasCompletionObjective: false, hasDebrisObjective: true });
+      .toEqual({ allCompleted: true, hasCompletionObjective: true, hasDebrisObjective: false });
   });
 
   test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {
@@ -531,7 +531,7 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({
         repair: 'active',
-        objective: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
+        objective: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
       });
 
     expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);

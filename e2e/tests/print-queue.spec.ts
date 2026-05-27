@@ -164,7 +164,9 @@ test.describe('Print Queue', () => {
   test('shows hard-fail error and keeps print action unavailable when no ship has usable spatial data', async ({ page }) => {
     await loginAndOpenPrintQueue({ usableShipSpatial: false, includeIron: false }, page);
 
-    await expect(page.getByRole('alert')).toHaveText('No ship with usable spatial data is available.');
+    await expect(page.locator('p.status-line--error[role="alert"]')).toHaveText(
+      'No ship with usable spatial data is available.',
+    );
     await expect(page.getByRole('button', { name: 'Print Hull Patch Kit' })).toHaveCount(0);
   });
 });

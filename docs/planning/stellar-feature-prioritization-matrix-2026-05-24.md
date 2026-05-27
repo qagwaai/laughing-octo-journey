@@ -36,7 +36,7 @@ Interpretation:
 | SW-05 | Ship Condition Badges in Hangar | H1 | 3 | 1 | 1 | 2 | 4 | 4.05 | Easy consequence readability win |
 | SW-06 | Discovery Log v1 | H1/H2 bridge | 4 | 3 | 2 | 3 | 5 | 4.00 | Reinforces wonder and continuity pillars |
 | SW-07 | Spatial Clarity Pack | H1 | 4 | 3 | 3 | 3 | 5 | 3.85 | Valuable but should avoid monolith coupling |
-| SW-08 | Contract Safety Gate in CI | H1 | 5 | 2 | 1 | 2 | 5 | 4.65 | Highest foundation multiplier across all future work |
+| ~~SW-08~~ | Contract Safety Gate in CI | H1 | 5 | 2 | 1 | 2 | 5 | 4.65 | Highest foundation multiplier across all future work |
 | SW-09 | NPC Presence v0 (Belt Pirate Runtime) | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Adds living-world simulation baseline using single-ship NPC archetypes |
 | SW-10 | Technology Progress Tree Viewer v0 | H1/H2 bridge | 4 | 3 | 2 | 3 | 5 | 4.00 | Makes item progression and gating legible to players |
 | SW-11 | Skill Gating Scaffold (Mining First) | H1/H2 bridge | 4 | 3 | 3 | 4 | 5 | 3.75 | Adds first activity-driven skill gate for higher-tier mining tools |
@@ -50,11 +50,11 @@ Interpretation:
 ## Ranked Small-Win Order
 
 Revised canonical ranking (descending by score):
-1. SW-R01 Regression Fix: Cold Boot Dart Launch Availability (4.65, Completed 2026-05-25)
-2. SW-R02 Regression Fix: Missing Starter Ship Inventory Components (4.65, Completed 2026-05-25)
-3. SW-08 Contract Safety Gate in CI (4.65)
-4. SW-COR Socket Correlation Contract Hardening (4.65)
-5. SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory (4.55)
+1. ~~SW-R01 Regression Fix: Cold Boot Dart Launch Availability (4.65, Completed 2026-05-25)~~
+2. ~~SW-R02 Regression Fix: Missing Starter Ship Inventory Components (4.65, Completed 2026-05-25)~~
+3. ~~SW-08 Contract Safety Gate in CI (4.65)~~
+4. ~~SW-COR Socket Correlation Contract Hardening (4.65)~~
+5. ~~SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory (4.55)~~
 6. SW-01 Mission Board Status Lanes (4.50)
 7. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
 8. SW-02 Market Opportunity Pings (4.25)

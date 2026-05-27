@@ -208,6 +208,79 @@ describe('ShipExteriorViewScene', () => {
     );
   });
 
+  it('does not warn missing dart drone when a dart was just consumed by launch', () => {
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    const { component } = setup({
+      joinShip: {
+        id: 's-5',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-dart-2', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+    });
+
+    component['consumeLaunchedItemFromInventory']({
+      success: true,
+      message: 'ok',
+      playerName: 'Pilot',
+      correlationId: 'corr-1',
+      requestIdentity: {
+        operation: 'launch-item',
+        entityType: 'ship-item',
+        containerId: 's-5',
+      },
+      characterId: 'char-1',
+      shipId: 's-5',
+      targetCelestialBodyId: 'cb-1',
+      hotkey: 1,
+      itemId: 'i-dart-2',
+      itemType: 'expendable-dart-drone',
+    });
+
+    component['updateTargetingCapabilityFromShipList']([
+      {
+        id: 's-5',
+        model: 'Scavenger Pod',
+        inventory: [],
+      },
+    ] as any);
+
+    const missingDroneWarningCalls = warnSpy.calls
+      .allArgs()
+      .filter((args) => args[0] === '[ship-exterior-contract] Scavenger Pod inventory missing Expendable Dart Drone.');
+    expect(missingDroneWarningCalls.length).toBe(0);
+
+    const emptyInventoryWarningCalls = warnSpy.calls
+      .allArgs()
+      .filter((args) => args[0] === '[ship-exterior-contract] Ship list response contains ship with empty inventory payload.');
+    expect(emptyInventoryWarningCalls.length).toBe(0);
+  });
+
+  it('does not warn empty-inventory payload for explicit empty inventory array', () => {
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    const { component } = setup({
+      joinShip: {
+        id: 's-6',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-dart-3', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+    });
+
+    component['updateTargetingCapabilityFromShipList']([
+      {
+        id: 's-6',
+        model: 'Scavenger Pod',
+        inventory: [],
+      },
+    ] as any);
+
+    const emptyInventoryWarningCalls = warnSpy.calls
+      .allArgs()
+      .filter((args) => args[0] === '[ship-exterior-contract] Ship list response contains ship with empty inventory payload.');
+    expect(emptyInventoryWarningCalls.length).toBe(0);
+  });
+
   it('should lock a single target after right-click hold when targeting is enabled', () => {
     const { component, fixture } = setup({
       joinShip: {
@@ -1439,12 +1512,11 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     component['missionGateState'].set({
       missionId: 'first-target',
       characterId: 'char-1',
-      activeObjectiveText: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
       updatedAt: '2026-05-25T00:00:00.000Z',
       steps: [
         { key: 'identify_iron_asteroid', status: 'completed' },
         { key: 'neutralize_identified_asteroid', status: 'completed' },
-        { key: 'collect_floating_debris', status: 'active' },
         { key: 'manufacture_hull_patch_kit', status: 'active' },
         { key: 'repair_scavenger_pod', status: 'locked' },
       ],
@@ -1502,8 +1574,8 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['activeTarget']()).toBeNull();
     expect(component['activeLaunchToast']()?.message).toContain('Collected: Tractor Beam');
     expect(component['activeLaunchToast']()?.tone).toBe('success');
-    expect(component['missionGateState']()?.steps.find((step) => step.key === 'collect_floating_debris')?.status).toBe(
-      'completed',
+    expect(component['missionGateState']()?.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
+      'active',
     );
   });
 

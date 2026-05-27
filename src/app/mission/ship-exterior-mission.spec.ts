@@ -430,14 +430,13 @@ describe('evaluateMissionGateOnRepair', () => {
 // ── evaluateMissionGateOnDebrisCollection ─────────────────────────────────────
 
 describe('evaluateMissionGateOnDebrisCollection', () => {
-  it('completes collect_floating_debris when remaining debris reaches zero', () => {
+  it('does not change first-target gate state when remaining debris reaches zero', () => {
     const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
     const gateState: ShipExteriorMissionGateState = {
       ...makeInitialState(),
       steps: [
         { key: 'identify_iron_asteroid', status: 'completed' },
         { key: 'neutralize_identified_asteroid', status: 'completed' },
-        { key: 'collect_floating_debris', status: 'active' },
         { key: 'manufacture_hull_patch_kit', status: 'active' },
         { key: 'repair_scavenger_pod', status: 'locked' },
       ],
@@ -450,9 +449,8 @@ describe('evaluateMissionGateOnDebrisCollection', () => {
       completedAt: '2026-05-25T00:00:00.000Z',
     });
 
-    expect(evaluation.changed).toBe(true);
-    expect(evaluation.completedStepKey).toBe('collect_floating_debris');
-    expect(evaluation.gateState.steps.find((s) => s.key === 'collect_floating_debris')?.status).toBe('completed');
+    expect(evaluation.changed).toBe(false);
+    expect(evaluation.completedStepKey).toBeNull();
   });
 
   it('does not change gate state while debris is still present', () => {
@@ -462,7 +460,6 @@ describe('evaluateMissionGateOnDebrisCollection', () => {
       steps: [
         { key: 'identify_iron_asteroid', status: 'completed' },
         { key: 'neutralize_identified_asteroid', status: 'completed' },
-        { key: 'collect_floating_debris', status: 'active' },
         { key: 'manufacture_hull_patch_kit', status: 'active' },
         { key: 'repair_scavenger_pod', status: 'locked' },
       ],

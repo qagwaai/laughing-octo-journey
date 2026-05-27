@@ -12,7 +12,7 @@
 | Area | Scenario | Result (Pass/Fail) | Evidence (screenshot/video/log) | Notes |
 | --- | --- | --- | --- | --- |
 | Auth/Character | Login, list, create, edit, join in-progress |  |  |  |
-| Mission Flow | First-target gate progression including debris step |  |  |  |
+| Mission Flow | First-target gate progression and stage text accuracy |  |  |  |
 | Ship Exterior/Hangar | Resume continuity and active ship consistency |  |  |  |
 | Print Queue | Queue/cancel + material consumption/restore behavior |  |  |  |
 | Repair/Retrofit | Usable and non-usable spatial data paths |  |  |  |

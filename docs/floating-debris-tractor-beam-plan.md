@@ -284,27 +284,10 @@ On `item-upsert-response` success:
 
 ---
 
-#### Phase 5 — Mission gate integration
+#### Phase 5 — Mission progression note
 
-**5a. New gate step in `first-target-ship-exterior-mission.ts`**
-
-After `neutralize_identified_asteroid` completes, unlock:
-```ts
-{
-  key: 'collect_floating_debris',
-  objectiveText: 'Objective unlocked: Pilot the Scavenger Pod to collect the floating debris via tractor beam.',
-  completionToastMessage: 'Mission update: Debris collected.',
-  prerequisiteStepKeys: ['neutralize_identified_asteroid'],
-}
-```
-
-Completion evidence: all `FloatingDebrisItems` from the destroyed Iron asteroid are collected
-(tracked in `FloatingDebrisStateService`).
-
-**5b. `ShipExteriorMissionProgressController` update**
-
-Add evaluation logic for `collect_floating_debris` — triggered by `FloatingDebrisStateService`
-signal change when last item is collected.
+Floating debris collection remains an optional gameplay loop. It is no longer a first-target
+mission gate step.
 
 ---
 
@@ -358,7 +341,7 @@ Summarised requirements for the backend:
 | 3a — Scene node rendering | ✅ Yes | `FloatingDebrisNode` Three.js component |
 | 3b — Range indicator | ✅ Yes | Wireframe sphere HUD |
 | 4 — Tractor beam collection | ✅ Yes (client trusts proximity) | Proximity detection + `item-upsert` collection |
-| 5 — Mission gate step | ✅ Yes | New `collect_floating_debris` step |
+| 5 — Mission progression note | ✅ Yes | Debris collection remains optional, not a first-target mission gate |
 | 6 — i18n | ✅ Yes | en.ts + it.ts strings |
 | 2b — Backend location poll | ❌ Blocked on backend gap #1 + #2 | `item-list-by-location` polling for resume |
 | Proximity validation | ❌ Blocked on backend gap #3 | Server-enforced range check |

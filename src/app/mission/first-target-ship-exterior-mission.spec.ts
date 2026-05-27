@@ -505,30 +505,4 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     expect(state.characterId).toBe('test-char');
     expect(state.steps.length).toBeGreaterThan(0);
   });
-
-  it('exposes collect_floating_debris gate step unlocked after neutralize', () => {
-    const collectStep = FIRST_TARGET_SHIP_EXTERIOR_MISSION.getGateStepDefinitions().find(
-      (step) => step.key === 'collect_floating_debris',
-    );
-
-    expect(collectStep).toEqual(
-      jasmine.objectContaining({
-        prerequisiteStepKeys: ['neutralize_identified_asteroid'],
-      }),
-    );
-  });
-
-  it('marks collect_floating_debris complete only when debris count reaches zero', () => {
-    expect(
-      FIRST_TARGET_SHIP_EXTERIOR_MISSION.doesDebrisCollectionCompleteGateStep?.('collect_floating_debris', {
-        remainingDebrisCount: 1,
-      }),
-    ).toBe(false);
-
-    expect(
-      FIRST_TARGET_SHIP_EXTERIOR_MISSION.doesDebrisCollectionCompleteGateStep?.('collect_floating_debris', {
-        remainingDebrisCount: 0,
-      }),
-    ).toBe(true);
-  });
 });

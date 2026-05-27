@@ -30,7 +30,6 @@ const completedMissionGateState = {
   steps: [
     { key: 'identify_iron_asteroid', status: 'completed' },
     { key: 'neutralize_identified_asteroid', status: 'completed' },
-    { key: 'collect_floating_debris', status: 'completed' },
     { key: 'manufacture_hull_patch_kit', status: 'completed' },
     { key: 'repair_scavenger_pod', status: 'completed' },
   ],
@@ -104,7 +103,7 @@ test.describe('Mission Board — mission progress display', () => {
         missions: [
           {
             missionId: FIRST_TARGET_MISSION_ID,
-            status: 'in-progress',
+            status: 'completed',
             statusDetail: JSON.stringify(completedMissionGateState),
             startedAt: '2026-04-01T10:00:00.000Z',
             updatedAt: '2026-04-30T00:00:00.000Z',
@@ -125,7 +124,7 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(missionItem).toContainText('Your First Target');
     await expect(missionBoardPage.missionStatus(0)).toHaveText('completed');
     await expect(missionBoardPage.missionStatus(0)).toHaveAttribute('data-status', 'completed');
-    await expect(missionItem).toContainText('Stage 5 of 5 — Complete');
+    await expect(missionItem).toContainText('Stage 4 of 4 — Complete');
     await expect(missionItem).toContainText('Mission objectives complete. Await further directives.');
   });
 

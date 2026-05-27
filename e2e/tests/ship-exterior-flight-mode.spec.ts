@@ -130,7 +130,8 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(flightHint(page)).toHaveCount(0);
 
     // --- Enable flight ---
-    await toggle.click();
+    await toggle.focus();
+    await page.keyboard.press('Enter');
     await expect(toggle).toHaveText(/DISABLE FLIGHT/);
     await expect(toggle).toHaveClass(/ship-exterior-flight-panel__toggle--active/);
     await expect(flightHint(page)).toBeVisible();
@@ -154,7 +155,8 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     }
 
     // --- Disable flight ---
-    await toggle.click();
+    await toggle.focus();
+    await page.keyboard.press('Enter');
     await expect(toggle).toHaveText(/ENABLE FLIGHT/);
     await expect(toggle).not.toHaveClass(/ship-exterior-flight-panel__toggle--active/);
     await expect(flightHint(page)).toHaveCount(0);
@@ -185,7 +187,8 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(panel).toBeVisible();
     await waitForFlightTelemetryReady(page);
 
-    await toggle.click();
+    await toggle.focus();
+    await page.keyboard.press('Enter');
     await expect(toggle).toHaveText(/DISABLE FLIGHT/);
 
     await page.keyboard.press('Escape');

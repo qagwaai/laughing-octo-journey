@@ -30,7 +30,6 @@ Use this as a strict pass/fail checklist.
 
 ### 2. First-Target Mission Flow
 - Mission gate order is coherent through all steps.
-- New debris step appears in flow and objective text updates correctly.
 - Manufacture and repair steps unlock only after prior gate completion.
 - Mission board stage count and completion text match observed mission state.
 
