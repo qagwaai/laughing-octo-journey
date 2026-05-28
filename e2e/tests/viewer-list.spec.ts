@@ -91,7 +91,7 @@ async function setupViewerListTest(page: any, systems: any[] = []) {
           missions: [
             {
               missionId: 'first-target',
-              status: 'in-progress',
+              status: 'active',
             },
           ],
         },
@@ -185,7 +185,7 @@ test.describe('Viewer — Solar System List', () => {
             missions: [
               {
                 missionId: 'first-target',
-                status: 'in-progress',
+                status: 'active',
               },
             ],
           },
@@ -274,7 +274,7 @@ test.describe('Viewer — Solar System List', () => {
             missions: [
               {
                 missionId: 'first-target',
-                status: 'in-progress',
+                status: 'active',
               },
             ],
           },
@@ -371,7 +371,7 @@ test.describe('Viewer — Solar System List', () => {
             missions: [
               {
                 missionId: 'first-target',
-                status: 'in-progress',
+                status: 'active',
               },
             ],
             preferredLocale: 'it',

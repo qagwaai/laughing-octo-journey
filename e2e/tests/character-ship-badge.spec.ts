@@ -14,7 +14,7 @@ const CHARACTER_WITH_MISSION = {
   id: 'char-1',
   characterName: 'Nova-Prime',
   level: 5,
-  missions: [{ missionId: MISSION_ID, status: 'started' }],
+  missions: [{ missionId: MISSION_ID, status: 'active' }],
 };
 
 const SHIP = {

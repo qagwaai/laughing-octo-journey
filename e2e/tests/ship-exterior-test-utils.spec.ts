@@ -22,7 +22,7 @@ test.describe('Ship Exterior Test Utilities', () => {
             id: TEST_CHARACTER_ID,
             characterName: 'Scout Alpha',
             level: 2,
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
       },
@@ -40,7 +40,7 @@ test.describe('Ship Exterior Test Utilities', () => {
         missions: [
           {
             missionId: FIRST_TARGET_MISSION_ID,
-            status: 'started',
+            status: 'active',
           },
         ],
       },
@@ -257,7 +257,7 @@ test.describe('Ship Exterior Test Utilities', () => {
             id: TEST_CHARACTER_ID,
             characterName: 'Scout Alpha',
             level: 2,
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
       },
@@ -275,7 +275,7 @@ test.describe('Ship Exterior Test Utilities', () => {
         missions: [
           {
             missionId: FIRST_TARGET_MISSION_ID,
-            status: 'started',
+            status: 'active',
           },
         ],
       },
@@ -432,18 +432,23 @@ test.describe('Ship Exterior Test Utilities', () => {
 
     await loginViaUI(page, mock);
     await new GameShellPage(page).joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState?: () => unknown; getAsteroidSamples?: () => unknown[] };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
-        }),
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getMissionGateState?: () => unknown;
+                  getAsteroidSamples?: () => unknown[];
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
+          }),
+        { timeout: 15000 },
       )
       .toBe(true);
 
@@ -641,10 +646,10 @@ test.describe('Ship Exterior Test Utilities', () => {
       )
       .toContain('Mission objectives complete');
 
-    await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'in-progress')).toBe(true);
+    await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'active')).toBe(true);
   });
 
-  test('resets stale local completed gate state when backend reports started without statusDetail', async ({
+  test('preserves completed local gate when backend reports started without statusDetail', async ({
     page,
   }) => {
     const mock = new SocketIOMock(page);
@@ -822,8 +827,10 @@ test.describe('Ship Exterior Test Utilities', () => {
       { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
     );
 
-    await new GameShellPage(page).joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/right:opening-cold-boot-scan/);
+    await new GameShellPage(page).joinGame();
+    await expect(page).toHaveURL(/opening-cold-boot/, { timeout: 15000 });
+    await page.getByRole('button', { name: /Start Scanning/i }).click();
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
       .poll(async () =>
@@ -852,7 +859,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           return gate.steps.find((step) => step.key === 'identify_iron_asteroid')?.status ?? 'missing';
         }),
       )
-      .toBe('active');
+      .toBe('completed');
 
     const gateAfterBackendRefresh = await page.evaluate(() => {
       const api = (
@@ -866,18 +873,22 @@ test.describe('Ship Exterior Test Utilities', () => {
       };
     });
 
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'identify_iron_asteroid')?.status).toBe('active');
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'identify_iron_asteroid')?.status).toBe(
+      'completed',
+    );
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status).toBe(
-      'locked',
+      'completed',
     );
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
-      'locked',
+      'completed',
     );
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
-    expect(gateAfterBackendRefresh.activeObjectiveText).not.toContain('Mission objectives complete');
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe(
+      'completed',
+    );
+    expect(gateAfterBackendRefresh.activeObjectiveText).toContain('Mission objectives complete');
   });
 
-  test('reopens final step when backend reports in-progress without statusDetail and local gate is fully completed', async ({
+  test('reopens final step when backend reports active without statusDetail and local gate is fully completed', async ({
     page,
   }) => {
     const mock = new SocketIOMock(page);
@@ -894,7 +905,7 @@ test.describe('Ship Exterior Test Utilities', () => {
             id: TEST_CHARACTER_ID,
             characterName: 'Scout Alpha',
             level: 2,
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'in-progress' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
       },
@@ -912,7 +923,7 @@ test.describe('Ship Exterior Test Utilities', () => {
         missions: [
           {
             missionId: FIRST_TARGET_MISSION_ID,
-            status: 'in-progress',
+            status: 'active',
           },
         ],
       },

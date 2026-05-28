@@ -18,7 +18,7 @@ function configureFlightModeMock(mock: SocketIOMock): void {
           id: TEST_CHARACTER_ID,
           characterName: 'Flight Pilot',
           level: 2,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
         },
       ],
     },
@@ -33,7 +33,7 @@ function configureFlightModeMock(mock: SocketIOMock): void {
       message: '',
       playerName: TEST_PLAYER,
       characterId: TEST_CHARACTER_ID,
-      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
     },
   }));
 

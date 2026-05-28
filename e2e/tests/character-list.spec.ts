@@ -16,7 +16,7 @@ const characterWithStartedMission = {
   id: 'char-3',
   characterName: 'Scout Alpha',
   level: 2,
-  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
 };
 
 const characterWithCompletedMission = {

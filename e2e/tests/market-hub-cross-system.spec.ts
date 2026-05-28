@@ -8,7 +8,7 @@ const CHARACTER = {
   id: 'char-market-cross-1',
   characterName: 'Gate Runner',
   level: 5,
-  missions: [{ missionId: 'first-target', status: 'started' }],
+  missions: [{ missionId: 'first-target', status: 'active' }],
 };
 
 const SHIP_IN_SOL = {

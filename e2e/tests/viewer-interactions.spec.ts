@@ -213,7 +213,7 @@ async function setupViewerInteractionTest(page: any) {
           missions: [
             {
               missionId: 'first-target',
-              status: 'in-progress',
+              status: 'active',
             },
           ],
         },

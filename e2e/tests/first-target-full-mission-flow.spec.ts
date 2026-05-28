@@ -64,7 +64,7 @@ function configureFirstTargetFlowMock(
           id: TEST_CHARACTER_ID,
           characterName: 'Scout Alpha',
           level: 2,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
         },
       ],
     },
@@ -82,7 +82,7 @@ function configureFirstTargetFlowMock(
       missions: [
         {
           missionId: FIRST_TARGET_MISSION_ID,
-          status: 'started',
+          status: 'active',
         },
       ],
     },
@@ -438,7 +438,7 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({ manufacture: 'completed', repair: 'active' });
 
-    await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'in-progress')).toBe(true);
+    await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'active')).toBe(true);
     expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);
 
     await expect

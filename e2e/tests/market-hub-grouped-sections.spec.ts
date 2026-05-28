@@ -8,7 +8,7 @@ const CHARACTER = {
   id: 'char-market-grouped',
   characterName: 'Pathfinder',
   level: 2,
-  missions: [{ missionId: 'first-target', status: 'started' }],
+  missions: [{ missionId: 'first-target', status: 'active' }],
 };
 
 /** Standard-cruise drive: 0.5 AU range. Near Exchange (0.2 AU) is reachable;

@@ -8,7 +8,7 @@ const characterWithJoin = {
   id: 'char-vw-1',
   characterName: 'Astrocartographer',
   level: 2,
-  missions: [{ missionId: 'first-target', status: 'in-progress' }],
+  missions: [{ missionId: 'first-target', status: 'active' }],
 };
 
 function characterListResponse(characters: object[]) {

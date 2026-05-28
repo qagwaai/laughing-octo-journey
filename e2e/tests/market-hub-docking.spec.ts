@@ -8,7 +8,7 @@ const CHARACTER = {
   id: 'char-market-2',
   characterName: 'Dockmaster',
   level: 4,
-  missions: [{ missionId: 'first-target', status: 'started' }],
+  missions: [{ missionId: 'first-target', status: 'active' }],
 };
 
 const SHIP_WITH_POSITION = {

@@ -17,7 +17,7 @@ function configureRepairMock(mock: SocketIOMock, options: { usableShipSpatial: b
           id: CHARACTER_ID,
           characterName: 'Repair Pilot',
           level: 3,
-          missions: [{ missionId: 'first-target', status: 'started' }],
+          missions: [{ missionId: 'first-target', status: 'active' }],
         },
       ],
     },

@@ -115,7 +115,7 @@ async function setupViewerShipsTest(page: any) {
           id: 'char-viewer-1',
           characterName: 'Scout',
           level: 1,
-          missions: [{ missionId: 'first-target', status: 'in-progress' }],
+          missions: [{ missionId: 'first-target', status: 'active' }],
         },
       ],
     },

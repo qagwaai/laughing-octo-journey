@@ -197,7 +197,7 @@ async function setupViewerSceneTest(page: any) {
           missions: [
             {
               missionId: 'first-target',
-              status: 'in-progress',
+              status: 'active',
             },
           ],
         },
@@ -405,7 +405,7 @@ test.describe('Viewer — Scene Rendering', () => {
             missions: [
               {
                 missionId: 'first-target',
-                status: 'in-progress',
+                status: 'active',
               },
             ],
             preferredLocale: 'it',

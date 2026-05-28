@@ -163,7 +163,7 @@ async function setupViewer(page: Page): Promise<void> {
           id: 'char-viewer-zoom-1',
           characterName: 'Scout',
           level: 1,
-          missions: [{ missionId: 'first-target', status: 'in-progress' }],
+          missions: [{ missionId: 'first-target', status: 'active' }],
         },
       ],
     },

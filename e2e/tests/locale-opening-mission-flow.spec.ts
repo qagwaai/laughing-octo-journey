@@ -111,7 +111,7 @@ test.describe('Locale opening and mission flow', () => {
             id: 'char-it-2',
             characterName: 'Astra',
             level: 5,
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
       },
@@ -127,7 +127,7 @@ test.describe('Locale opening and mission flow', () => {
         missions: [
           {
             missionId: FIRST_TARGET_MISSION_ID,
-            status: 'started',
+            status: 'active',
             startedAt: '2026-05-01T10:00:00.000Z',
             updatedAt: '2026-05-01T10:05:00.000Z',
           },

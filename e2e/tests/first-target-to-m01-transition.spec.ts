@@ -83,7 +83,7 @@ async function setupMissionBoardTest(
       {
         ...TEST_CHARACTER,
         // Keep join path deterministic (game-main) regardless of mission-list test data.
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
       },
     ]),
   }));
@@ -142,7 +142,7 @@ async function setupMissionBoardTest(
 
 test.describe('Mission Board — first-target in progress', () => {
   test('shows first-target mission in the active mission list when started', async ({ page }) => {
-    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }];
+    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }];
     await setupMissionBoardTest(page, { missions });
 
     await expect(page.getByText('Mission Log')).toBeVisible({ timeout: 10_000 });
@@ -150,7 +150,7 @@ test.describe('Mission Board — first-target in progress', () => {
   });
 
   test('shows locked catalog missions when first-target is only started', async ({ page }) => {
-    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }];
+    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }];
     await setupMissionBoardTest(page, { missions });
 
     // M-01 should appear in the locked section (not yet available)
@@ -214,7 +214,7 @@ test.describe('Mission Board — after first-target completion', () => {
 
 test.describe('Mission Board — mission title display', () => {
   test('renders mission titles from catalog instead of raw IDs', async ({ page }) => {
-    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'in-progress' }];
+    const missions = [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }];
     await setupMissionBoardTest(page, { missions });
 
     // Should show the human-readable title, not the raw ID

@@ -24,6 +24,17 @@ Repo: laughing-octo-journey
 - Focused integration: `src/app/services/mission-flow.integration.spec.ts` (passing)
 - Unit gate: `npm run test:ci` (passing, 1635 tests)
 
+## Step 5 Evidence (2026-05-28)
+
+1. Added unit/component coverage for canonical mission status mapping and deterministic lane badge counts.
+2. Added component-level lane UI assertion for active/available/completed status badge counts.
+3. Added focused SW-01 Playwright user-path test for unknown backend mission status rendering as contract violation.
+4. Gate sequence evidence:
+- Build gate first: `npm run build` (passing)
+- Unit suite gate second: `npm run test:ci` (passing, 1637 tests)
+- Focused mission-board e2e slice third: `npm run e2e:spec -- e2e/tests/mission-board.spec.ts` (passing, 3 tests)
+- Full e2e suite last: `npm run e2e` (not green in current branch baseline; 54 passed, 77 failed, primarily viewer/scene suites)
+
 ## 1. UI Completion
 
 1. Mission Board renders three lanes:

@@ -12,7 +12,7 @@ const characterWithStartedMission = {
   id: 'char-3',
   characterName: 'Scout Alpha',
   level: 2,
-  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
 };
 
 const characterWithCompletedMission = {
@@ -160,5 +160,46 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(rightMissionBoard.locator('app-guarded-left-menu')).toHaveCount(0);
     await expect(rightMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(0);
     await expect(rightMissionBoard.locator('button[aria-label="Viewer"]')).toHaveCount(0);
+  });
+
+  test('shows contract violation badge when backend sends unknown mission status', async ({ page }) => {
+    const { mock } = await setupMissionBoardTest(page, [characterWithCompletedMission]);
+    const gameShell = new GameShellPage(page);
+
+    mock.on('game-join-request', () => null);
+    mock.on('list-missions-request', () => ({
+      event: 'list-missions-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-4',
+        missions: [
+          {
+            missionId: FIRST_TARGET_MISSION_ID,
+            status: 'completed',
+            statusDetail: JSON.stringify(completedMissionGateState),
+            startedAt: '2026-04-01T10:00:00.000Z',
+            updatedAt: '2026-04-30T00:00:00.000Z',
+          },
+          {
+            missionId: 'sw01-unknown',
+            status: 'abandoned',
+            startedAt: '2026-04-02T10:00:00.000Z',
+            updatedAt: '2026-04-29T00:00:00.000Z',
+          },
+        ],
+      },
+    }));
+
+    await gameShell.joinGame();
+    await expect(page).toHaveURL(/right:mission-board/);
+
+    const rightMissionBoard = page.locator('app-mission-board-page .ops-page-container').first();
+    await expect(rightMissionBoard).toBeVisible();
+
+    const violationBadge = rightMissionBoard.locator('.mission-status[data-status="contract-violation"]');
+    await expect(violationBadge).toHaveCount(1);
+    await expect(violationBadge).toHaveText('Contract Violation');
   });
 });

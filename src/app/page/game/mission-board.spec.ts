@@ -341,6 +341,29 @@ describe('MissionBoardPage', () => {
     expect(displayStatus).toBe('available');
   });
 
+  it('maps canonical active and completed statuses for non-ship mission types', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    const activeStatus = component.getMissionDisplayStatus({
+      missionId: 'custom-active',
+      status: 'active',
+    } as any);
+    const completedStatus = component.getMissionDisplayStatus({
+      missionId: 'custom-completed',
+      status: 'completed',
+    } as any);
+
+    expect(activeStatus).toBe('active');
+    expect(completedStatus).toBe('completed');
+  });
+
   it('returns contract-violation for unknown non-ship mission statuses', () => {
     const { component } = setup({
       socketService,
@@ -666,6 +689,25 @@ describe('MissionBoardPage', () => {
 
       expect(violationBadge).not.toBeNull();
       expect(violationBadge?.textContent?.trim()).toBe('Contract Violation');
+    });
+
+    it('renders canonical lane status badges with deterministic counts', () => {
+      const { fixture, component } = setup({ socketService, sessionService });
+
+      component['missions'].set([
+        { missionId: 'custom-active', status: 'active' },
+        { missionId: 'custom-available', status: 'available' },
+        { missionId: 'custom-completed', status: 'completed' },
+      ] as any);
+      spyOn(component, 'getMissionStageInfo').and.returnValue({ stage: 'Stage 1 of 1', nextStep: 'N/A' });
+
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.querySelectorAll('.mission-status[data-status="active"]').length).toBe(1);
+      expect(el.querySelectorAll('.mission-status[data-status="available"]').length).toBe(1);
+      expect(el.querySelectorAll('.mission-status[data-status="completed"]').length).toBe(1);
+      expect(el.querySelectorAll('.mission-status[data-status="contract-violation"]').length).toBe(0);
     });
   });
 });
