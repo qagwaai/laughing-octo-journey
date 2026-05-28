@@ -1,4 +1,5 @@
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
+import { appLogger } from './logger';
 import { MissionProgressSyncService } from './mission-progress-sync.service';
 import { MissionService } from './mission.service';
 
@@ -216,5 +217,88 @@ describe('MissionProgressSyncService', () => {
 
     expect(result).toBe('skipped');
     expect(missionService.upsertMissionStatus).not.toHaveBeenCalled();
+  });
+
+  it('should translate legacy step statuses before persisting statusDetail', async () => {
+    const missionService = {
+      upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
+    } as unknown as MissionService;
+    const service = new MissionProgressSyncService(missionService);
+
+    const legacyGateState = {
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective',
+      updatedAt: '2026-04-30T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'turned-in' },
+        { key: 'neutralize_identified_asteroid', status: 'in-progress' },
+        { key: 'manufacture_hull_patch_kit', status: 'started' },
+        { key: 'repair_scavenger_pod', status: 'paused' },
+      ],
+    } as unknown as ShipExteriorMissionGateState;
+
+    await service.syncGateState({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      sessionKey: 'session-1',
+      gateState: legacyGateState,
+    });
+
+    expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        status: 'active',
+      }),
+    );
+
+    const upsertPayload = (missionService.upsertMissionStatus as jasmine.Spy).calls.mostRecent().args[0] as {
+      statusDetail: string;
+    };
+    const persistedGateState = JSON.parse(upsertPayload.statusDetail) as {
+      steps: Array<{ key: string; status: string }>;
+    };
+    expect(persistedGateState.steps.map((step) => step.status)).toEqual(['completed', 'active', 'active', 'active']);
+  });
+
+  it('should warn on unknown gate step statuses and coerce them to active', async () => {
+    const missionService = {
+      upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
+    } as unknown as MissionService;
+    const service = new MissionProgressSyncService(missionService);
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    const unknownStatusGateState = {
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective',
+      updatedAt: '2026-04-30T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'mystery' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        { key: 'repair_scavenger_pod', status: 'completed' },
+      ],
+    } as unknown as ShipExteriorMissionGateState;
+
+    await service.syncGateState({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      sessionKey: 'session-1',
+      gateState: unknownStatusGateState,
+    });
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.calls.mostRecent().args[0] as string).toContain('Contract violation: unknown gate step status');
+
+    const upsertPayload = (missionService.upsertMissionStatus as jasmine.Spy).calls.mostRecent().args[0] as {
+      status: string;
+      statusDetail: string;
+    };
+    expect(upsertPayload.status).toBe('active');
+
+    const persistedGateState = JSON.parse(upsertPayload.statusDetail) as {
+      steps: Array<{ key: string; status: string }>;
+    };
+    expect(persistedGateState.steps[0].status).toBe('active');
   });
 });

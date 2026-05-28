@@ -14,6 +14,16 @@ Repo: laughing-octo-journey
 - Build gate: `npm run build` (passing)
 - Unit gate: `npm run test:ci` (passing, 1633 tests)
 
+## Step 4 Evidence (2026-05-28)
+
+1. Mission progress sync now normalizes gate-step statuses at the boundary before upsert.
+2. Legacy gate statuses are translated to canonical gate-step semantics for persisted mission status detail.
+3. Unknown gate-step statuses trigger an explicit contract-violation warning and are coerced to active to prevent invalid mission record writes.
+4. Validation evidence:
+- Focused spec: `src/app/services/mission-progress-sync.service.spec.ts` (passing)
+- Focused integration: `src/app/services/mission-flow.integration.spec.ts` (passing)
+- Unit gate: `npm run test:ci` (passing, 1635 tests)
+
 ## 1. UI Completion
 
 1. Mission Board renders three lanes:
