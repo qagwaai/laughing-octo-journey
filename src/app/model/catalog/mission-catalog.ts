@@ -10,7 +10,7 @@ export interface MissionRewards {
 
 /**
  * Canonical mission definition. All missions in the game are registered here.
- * Prerequisites are mission IDs that must carry status 'COMPLETED'
+ * Prerequisites are mission IDs that must carry status 'completed'
  * before this mission becomes visible to the player.
  */
 export interface MissionDefinition {
@@ -255,5 +255,5 @@ export function resolveNewlyUnlockedMissionIds(
  * Returns true if a mission status string represents a completed mission.
  */
 export function isMissionCompleted(status: string | null | undefined): boolean {
-  return status === 'COMPLETED';
+  return status === 'completed';
 }

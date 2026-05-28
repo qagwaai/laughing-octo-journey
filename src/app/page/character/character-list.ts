@@ -160,7 +160,7 @@ export default class CharacterListPage implements OnDestroy {
   protected getJoinGameLabel(character: PlayerCharacterSummary): string {
     const firstTargetStatus = this.getFirstTargetStatus(character);
     // Keep "Join Game in Progress" for all post-initial mission states.
-    const isInProgress = firstTargetStatus !== null && firstTargetStatus !== 'AVAILABLE';
+    const isInProgress = firstTargetStatus !== null && firstTargetStatus !== 'available';
     return isInProgress ? this.t.character.list.joinInProgressLabel : this.t.character.list.joinLabel;
   }
 
@@ -256,7 +256,7 @@ export default class CharacterListPage implements OnDestroy {
 
     const firstTargetStatus = this.getFirstTargetStatus(character);
     const isFirstTargetInProgress = this.missionService.isMissionInProgress(firstTargetStatus);
-    const isFirstTargetCompleted = firstTargetStatus === 'COMPLETED';
+    const isFirstTargetCompleted = firstTargetStatus === 'completed';
 
     const outlets = isFirstTargetInProgress
       ? { right: ['opening-cold-boot-scan'], left: ['game-main'] }

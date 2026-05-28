@@ -286,7 +286,7 @@ describe('MissionService — error handling & timeout paths', () => {
         requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'wrong-char',
-        missions: [{ missionId: 'm1', status: 'ACTIVE' }],
+        missions: [{ missionId: 'm1', status: 'active' }],
       });
 
       await Promise.resolve();
@@ -297,7 +297,7 @@ describe('MissionService — error handling & timeout paths', () => {
         requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
-        missions: [{ missionId: 'm1', status: 'ACTIVE' }],
+        missions: [{ missionId: 'm1', status: 'active' }],
       });
 
       const result = await promise;
@@ -313,7 +313,7 @@ describe('MissionService — error handling & timeout paths', () => {
         characterId: 'char-1',
         sessionKey: 'session-1',
         missionId: 'first-target',
-        status: 'ACTIVE',
+        status: 'active',
       });
 
       await Promise.resolve();
@@ -339,7 +339,7 @@ describe('MissionService — error handling & timeout paths', () => {
         characterId: 'char-1',
         sessionKey: 'session-1',
         missionId: 'first-target',
-        status: 'COMPLETED',
+        status: 'completed',
       });
 
       let result: any;
@@ -370,7 +370,7 @@ describe('MissionService — error handling & timeout paths', () => {
         characterId: 'char-1',
         sessionKey: 'session-1',
         missionId: 'first-target',
-        status: 'COMPLETED',
+        status: 'completed',
       });
 
       await Promise.resolve();
@@ -382,7 +382,7 @@ describe('MissionService — error handling & timeout paths', () => {
         requestIdentity: upsertMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'wrong-char',
-        mission: { missionId: 'first-target', status: 'COMPLETED' },
+        mission: { missionId: 'first-target', status: 'completed' },
       });
 
       await Promise.resolve();
@@ -393,7 +393,7 @@ describe('MissionService — error handling & timeout paths', () => {
         requestIdentity: upsertMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'char-1',
-        mission: { missionId: 'first-target', status: 'COMPLETED' },
+        mission: { missionId: 'first-target', status: 'completed' },
       });
 
       const result = await promise;
@@ -406,7 +406,7 @@ describe('MissionService — error handling & timeout paths', () => {
         characterId: 'char-1',
         sessionKey: 'session-1',
         missionId: 'first-target',
-        status: 'ACTIVE',
+        status: 'active',
         statusDetail: '{"step":"scan"}',
       });
 
@@ -421,7 +421,7 @@ describe('MissionService — error handling & timeout paths', () => {
         requestIdentity: emittedRequest?.data.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'char-1',
-        mission: { missionId: 'first-target', status: 'ACTIVE' },
+        mission: { missionId: 'first-target', status: 'active' },
       });
 
       const result = await promise;

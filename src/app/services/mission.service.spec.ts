@@ -95,7 +95,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      initialStatus: 'ACTIVE',
+      initialStatus: 'active',
     });
     await Promise.resolve();
 
@@ -109,7 +109,7 @@ describe('MissionService', () => {
       requestIdentity: listMetadata.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
+      missions: [{ missionId: 'first-target', status: 'active' }],
     });
 
     const result = await ensurePromise;
@@ -123,7 +123,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      initialStatus: 'ACTIVE',
+      initialStatus: 'active',
     });
     await Promise.resolve();
 
@@ -141,7 +141,7 @@ describe('MissionService', () => {
 
     expect(socketService.emittedEvents.length).toBe(2);
     expect(socketService.emittedEvents[1].event).toBe(MISSION_ADD_REQUEST_EVENT);
-    expect(socketService.emittedEvents[1].data.status).toBe('ACTIVE');
+    expect(socketService.emittedEvents[1].data.status).toBe('active');
     expect(socketService.emittedEvents[1].data.correlationId).toEqual(jasmine.any(String));
     expect(socketService.emittedEvents[1].data.requestIdentity).toEqual(
       jasmine.objectContaining({
@@ -168,7 +168,7 @@ describe('MissionService', () => {
       requestIdentity: socketService.emittedEvents[1].data.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     const result = await ensurePromise;
@@ -196,7 +196,7 @@ describe('MissionService', () => {
       missions: [],
     });
 
-    expect(socketService.emittedEvents[1].data.status).toBe('AVAILABLE');
+    expect(socketService.emittedEvents[1].data.status).toBe('available');
     const addMetadata = metadataFor(MISSION_ADD_REQUEST_EVENT);
 
     socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
@@ -206,7 +206,7 @@ describe('MissionService', () => {
       requestIdentity: addMetadata.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'AVAILABLE' },
+      mission: { missionId: 'first-target', status: 'available' },
     });
 
     const result = await ensurePromise;
@@ -244,7 +244,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      initialStatus: 'ACTIVE',
+      initialStatus: 'active',
     });
     await Promise.resolve();
 
@@ -293,7 +293,7 @@ describe('MissionService', () => {
       requestIdentity: listMetadata.requestIdentity!,
       playerName: 'OtherPlayer',
       characterId: 'char-1',
-      missions: [{ missionId: 'first-target', status: 'COMPLETED' }],
+      missions: [{ missionId: 'first-target', status: 'completed' }],
     });
 
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, {
@@ -303,7 +303,7 @@ describe('MissionService', () => {
       requestIdentity: listMetadata.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'other-char',
-      missions: [{ missionId: 'first-target', status: 'COMPLETED' }],
+      missions: [{ missionId: 'first-target', status: 'completed' }],
     });
 
     expect(socketService.emittedEvents.length).toBe(1);
@@ -354,7 +354,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      status: 'ACTIVE',
+      status: 'active',
     });
     await Promise.resolve();
 
@@ -366,7 +366,7 @@ describe('MissionService', () => {
         characterId: 'char-1',
         missionId: 'first-target',
         sessionKey: 'session-1',
-        status: 'ACTIVE',
+        status: 'active',
         correlationId: jasmine.any(String),
         correlationSource: 'mission-service.upsertMissionStatus',
         requestIdentity: jasmine.objectContaining({
@@ -386,7 +386,7 @@ describe('MissionService', () => {
       requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
     await Promise.resolve();
 
@@ -397,7 +397,7 @@ describe('MissionService', () => {
       requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     const result = await updatePromise;
@@ -410,7 +410,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: '',
-      status: 'ACTIVE',
+      status: 'active',
     });
 
     expect(result).toBe('invalid-request');
@@ -423,7 +423,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      status: 'ACTIVE',
+      status: 'active',
     });
     await Promise.resolve();
 
@@ -446,7 +446,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      status: 'ACTIVE',
+      status: 'active',
       statusDetail: '{"some":"detail"}',
     });
     await Promise.resolve();
@@ -461,7 +461,7 @@ describe('MissionService', () => {
       requestIdentity: upsertMetadata.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     await updatePromise;
@@ -473,7 +473,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      status: 'ACTIVE',
+      status: 'active',
     });
     await Promise.resolve();
 
@@ -486,7 +486,7 @@ describe('MissionService', () => {
       requestIdentity: upsertMetadata.requestIdentity!,
       playerName: 'OtherPlayer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     socketService.trigger(MISSION_UPSERT_RESPONSE_EVENT, {
@@ -496,7 +496,7 @@ describe('MissionService', () => {
       requestIdentity: upsertMetadata.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     const result = await updatePromise;
@@ -511,7 +511,7 @@ describe('MissionService', () => {
       characterId: 'char-1',
       sessionKey: 'session-1',
       missionId: 'first-target',
-      status: 'ACTIVE',
+      status: 'active',
     });
 
     socketService.trigger('connect', null);
@@ -524,7 +524,7 @@ describe('MissionService', () => {
         requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      mission: { missionId: 'first-target', status: 'ACTIVE' },
+      mission: { missionId: 'first-target', status: 'active' },
     });
 
     const result = await updatePromise;
@@ -591,7 +591,7 @@ describe('MissionService', () => {
         requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
-        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
+        missions: [{ missionId: 'first-target', status: 'active' }],
       });
       await Promise.resolve();
 
@@ -602,7 +602,7 @@ describe('MissionService', () => {
         requestIdentity: socketService.emittedEvents[0].data.requestIdentity,
         playerName: 'Pioneer',
         characterId: 'c-1',
-        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
+        missions: [{ missionId: 'first-target', status: 'active' }],
       });
 
       const result = await resultPromise;
@@ -661,7 +661,7 @@ describe('MissionService', () => {
         requestIdentity: listMetadata.requestIdentity!,
         playerName: 'Pioneer',
         characterId: 'c-1',
-        missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
+        missions: [{ missionId: 'first-target', status: 'available' }],
       });
 
       const result = await resultPromise;
@@ -673,11 +673,11 @@ describe('MissionService', () => {
         playerName: 'Pioneer',
         characterId: 'c-1',
         sessionKey: 's-1',
-        statuses: ['ACTIVE', 'COMPLETED'],
+        statuses: ['active', 'completed'],
       });
       await Promise.resolve();
 
-      expect(socketService.emittedEvents[0].data.statuses).toEqual(['ACTIVE', 'COMPLETED']);
+      expect(socketService.emittedEvents[0].data.statuses).toEqual(['active', 'completed']);
 
       const listMetadata = metadataFor(MISSION_LIST_REQUEST_EVENT);
 

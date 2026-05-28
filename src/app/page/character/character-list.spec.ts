@@ -235,7 +235,7 @@ describe('CharacterListPage', () => {
           {
             id: '1',
             characterName: 'Nova',
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
           },
         ],
       } as any);
@@ -246,7 +246,7 @@ describe('CharacterListPage', () => {
           characterName: 'Nova',
           level: undefined,
           createdAt: undefined,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' }],
+          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
         },
       ]);
     });
@@ -345,7 +345,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'AVAILABLE' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'available' as const }],
       };
       component.navigateToGameJoin(character);
 
@@ -368,7 +368,7 @@ describe('CharacterListPage', () => {
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
@@ -380,7 +380,7 @@ describe('CharacterListPage', () => {
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'COMPLETED' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
@@ -392,7 +392,7 @@ describe('CharacterListPage', () => {
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
@@ -404,7 +404,7 @@ describe('CharacterListPage', () => {
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
@@ -417,7 +417,7 @@ describe('CharacterListPage', () => {
         name: 'Nomad',
         model: 'Scavenger Pod',
         tier: 1,
-        status: 'ACTIVE',
+        status: 'active',
         spatial: {
           solarSystemId: 'sol',
           frame: 'barycentric',
@@ -457,7 +457,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' as const }],
       };
       component.navigateToGameJoin(character);
       await Promise.resolve();
@@ -481,10 +481,10 @@ describe('CharacterListPage', () => {
             joinShip: realShip,
             missionContext: jasmine.objectContaining({
               missionId: FIRST_TARGET_MISSION_ID,
-              missionStatusHint: 'ACTIVE',
+              missionStatusHint: 'active',
               seedPolicy: 'auto',
             }),
-            firstTargetMissionStatus: 'ACTIVE',
+            firstTargetMissionStatus: 'active',
           },
         },
       );
@@ -498,7 +498,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'COMPLETED' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
       };
       component.navigateToGameJoin(character);
 

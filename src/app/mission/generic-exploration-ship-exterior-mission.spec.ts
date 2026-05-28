@@ -95,7 +95,7 @@ describe('GenericExplorationShipExteriorMission', () => {
 
     expect(gateState.steps[0].status).toBe('completed');
     expect(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION.resolveMissionStatusFromGateState(gateState)).toBe(
-      'COMPLETED',
+      'completed',
     );
   });
 });

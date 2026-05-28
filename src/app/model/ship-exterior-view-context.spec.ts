@@ -2,11 +2,11 @@ import { resolveShipExteriorViewSeedPolicy } from './ship-exterior-view-context'
 
 describe('resolveShipExteriorViewSeedPolicy', () => {
   it('should honor explicit new seed policy', () => {
-    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'new', missionStatusHint: 'ACTIVE' })).toBe('new');
+    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'new', missionStatusHint: 'active' })).toBe('new');
   });
 
   it('should honor explicit resume seed policy', () => {
-    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'resume', missionStatusHint: 'COMPLETED' })).toBe('resume');
+    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'resume', missionStatusHint: 'completed' })).toBe('resume');
   });
 
   it('should default auto policy to resume when mission status hint is missing', () => {
@@ -16,8 +16,8 @@ describe('resolveShipExteriorViewSeedPolicy', () => {
   });
 
   it('should resolve status-based behavior for auto policy', () => {
-    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'ACTIVE' })).toBe('resume');
-    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'COMPLETED' })).toBe('resume');
-    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'AVAILABLE' })).toBe('new');
+    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'active' })).toBe('resume');
+    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'completed' })).toBe('resume');
+    expect(resolveShipExteriorViewSeedPolicy({ seedPolicy: 'auto', missionStatusHint: 'available' })).toBe('new');
   });
 });

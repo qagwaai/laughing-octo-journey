@@ -133,7 +133,7 @@ export default class MarketHubPage {
       this.missions().find(
         (m) =>
           m.missionId === MISSION_IDS.m01 &&
-          (m.status === 'AVAILABLE' || m.status === 'ACTIVE'),
+          (m.status === 'available' || m.status === 'active'),
       ) ?? null,
   );
 

@@ -41,7 +41,7 @@ function setup(state?: NavigationState) {
     prepareNavigation: jasmine.createSpy('prepareNavigation').and.callFake(async (context: any) => ({
       playerName: context.playerName,
       joinCharacter: context.joinCharacter,
-      joinShip: { id: 'real-ship-1', name: 'Nomad', model: 'Scavenger Pod', tier: 1, status: 'ACTIVE' },
+      joinShip: { id: 'real-ship-1', name: 'Nomad', model: 'Scavenger Pod', tier: 1, status: 'active' },
       missionContext: {
         missionId: FIRST_TARGET_MISSION_ID,
         ...(context.missionStatus ? { missionStatusHint: context.missionStatus } : {}),
@@ -132,14 +132,14 @@ describe('ColdBootOpeningPage', () => {
       characterId: 'char-1',
       sessionKey: 'session-key',
       missionId: FIRST_TARGET_MISSION_ID,
-      status: 'ACTIVE',
+      status: 'active',
     });
     expect(mockMissionNavigation.prepareNavigation).toHaveBeenCalledWith({
       missionId: FIRST_TARGET_MISSION_ID,
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1', characterName: 'Nova' },
       sessionKey: 'session-key',
-      missionStatus: 'ACTIVE',
+      missionStatus: 'active',
     });
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
@@ -151,7 +151,7 @@ describe('ColdBootOpeningPage', () => {
           joinShip: jasmine.objectContaining({ id: 'real-ship-1' }),
           missionContext: {
             missionId: FIRST_TARGET_MISSION_ID,
-            missionStatusHint: 'ACTIVE',
+            missionStatusHint: 'active',
             seedPolicy: 'auto',
             shipDamagePreset: 'cold-boot-starter-damaged',
           },

@@ -180,7 +180,7 @@ describe('resolveNewlyUnlockedMissionIds', () => {
 
 describe('isMissionCompleted', () => {
   it('should return true for completed status', () => {
-    expect(isMissionCompleted('COMPLETED')).toBe(true);
+    expect(isMissionCompleted('completed')).toBe(true);
   });
 
   it('should return false for turned-in legacy status', () => {
@@ -188,7 +188,7 @@ describe('isMissionCompleted', () => {
   });
 
   it('should return false for in-progress, available, started, locked, and failed', () => {
-    for (const status of ['ACTIVE', 'AVAILABLE', 'ACTIVE', 'locked', 'failed', 'abandoned']) {
+    for (const status of ['active', 'available', 'active', 'locked', 'failed', 'abandoned']) {
       expect(isMissionCompleted(status)).toBe(false);
     }
   });

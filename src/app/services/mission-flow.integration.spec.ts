@@ -237,7 +237,7 @@ describe('Mission integration proof of concept', () => {
         '2026-05-01T00:00:04.000Z',
       ),
     ];
-    const expectedStatuses = ['ACTIVE', 'ACTIVE', 'ACTIVE', 'ACTIVE', 'COMPLETED'] as const;
+    const expectedStatuses = ['active', 'active', 'active', 'active', 'completed'] as const;
 
     for (let index = 0; index < timeline.length; index += 1) {
       const request = await syncGateStateAndAcknowledge(timeline[index]);
@@ -260,7 +260,7 @@ describe('Mission integration proof of concept', () => {
     );
 
     const request = await syncGateStateAndAcknowledge(postManufactureState);
-    expect(request.status).toBe('ACTIVE');
+    expect(request.status).toBe('active');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('active');
@@ -281,7 +281,7 @@ describe('Mission integration proof of concept', () => {
     gateState = applyMissionEvent(gateState, 'repair', '2026-05-01T00:00:04.000Z');
 
     const request = await syncGateStateAndAcknowledge(gateState);
-    expect(request.status).toBe('COMPLETED');
+    expect(request.status).toBe('completed');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.every((step) => step.status === 'completed')).toBe(true);
@@ -300,7 +300,7 @@ describe('Mission integration proof of concept', () => {
     expect(gateAfterWrongOrderEvent).toEqual(initialState);
 
     const request = await syncGateStateAndAcknowledge(gateAfterWrongOrderEvent);
-    expect(request.status).toBe('ACTIVE');
+    expect(request.status).toBe('active');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.filter((step) => step.status === 'completed').length).toBe(0);
@@ -341,7 +341,7 @@ describe('Mission integration proof of concept', () => {
       characterId,
       mission: {
         missionId,
-        status: 'ACTIVE',
+        status: 'active',
         statusDetail: emittedRequest.data.statusDetail,
       },
     });
@@ -359,7 +359,7 @@ describe('Mission integration proof of concept', () => {
         characterId,
         sessionKey,
         missionId,
-        status: 'ACTIVE',
+        status: 'active',
       })
       .then((value) => {
         result = value;

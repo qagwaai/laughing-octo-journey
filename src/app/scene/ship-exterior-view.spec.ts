@@ -147,7 +147,7 @@ describe('ShipExteriorViewScene', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova Prime' },
-      firstTargetMissionStatus: 'ACTIVE',
+      firstTargetMissionStatus: 'active',
     });
 
     expect(component['playerName']()).toBe('Pioneer');
@@ -912,7 +912,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
-      firstTargetMissionStatus: 'AVAILABLE',
+      firstTargetMissionStatus: 'available',
     });
 
     triggerMatchingShipListResponse(mockSocket, {
@@ -1239,7 +1239,7 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
+      missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();
@@ -1269,7 +1269,7 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
+      missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();
@@ -1301,7 +1301,7 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
+      missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();

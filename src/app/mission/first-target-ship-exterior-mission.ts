@@ -306,10 +306,10 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
   resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
     const totalSteps = gateState.steps.length;
     if (totalSteps > 0 && gateState.steps.every((step) => step.status === 'completed')) {
-      return 'COMPLETED';
+      return 'completed';
     }
 
-    return 'ACTIVE';
+    return 'active';
   },
 };
 

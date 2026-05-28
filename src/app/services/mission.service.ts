@@ -232,7 +232,7 @@ export class MissionService {
           characterId,
           missionId,
           sessionKey,
-          status: request.initialStatus ?? 'AVAILABLE',
+          status: request.initialStatus ?? 'available',
           correlationId: createCorrelationId('mission-add'),
           correlationSource: 'mission-service.ensureMissionExists.add',
         };
@@ -455,7 +455,7 @@ export class MissionService {
    * Returns true when the supplied mission status represents an active (in-progress) mission.
    */
   isMissionInProgress(status: MissionStatus | undefined | null): boolean {
-    return status === 'ACTIVE';
+    return status === 'active';
   }
 
   /**

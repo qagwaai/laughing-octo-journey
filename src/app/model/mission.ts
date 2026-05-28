@@ -1,4 +1,4 @@
-export const MISSION_STATUS_VALUES = ['AVAILABLE', 'ACTIVE', 'COMPLETED'] as const;
+export const MISSION_STATUS_VALUES = ['available', 'active', 'completed'] as const;
 
 export type CanonicalMissionStatus = (typeof MISSION_STATUS_VALUES)[number];
 

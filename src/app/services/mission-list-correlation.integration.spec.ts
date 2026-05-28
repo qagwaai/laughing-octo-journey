@@ -129,7 +129,7 @@ describe('mission-list correlation integration', () => {
       requestIdentity: requestFromMissionBoard.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-b',
-      missions: [{ missionId: 'board-mission', status: 'AVAILABLE' }],
+      missions: [{ missionId: 'board-mission', status: 'available' }],
     };
 
     const responseForMissionService: MissionListResponse = {
@@ -139,7 +139,7 @@ describe('mission-list correlation integration', () => {
       requestIdentity: requestFromMissionService.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-a',
-      missions: [{ missionId: 'service-mission', status: 'ACTIVE' }],
+      missions: [{ missionId: 'service-mission', status: 'active' }],
     };
 
     socketService.trigger(MISSION_LIST_RESPONSE_EVENT, responseForMissionBoard);
@@ -154,7 +154,7 @@ describe('mission-list correlation integration', () => {
 
     expect(missionServiceResult).toEqual({
       status: 'loaded',
-      missions: [{ missionId: 'service-mission', status: 'ACTIVE' }],
+      missions: [{ missionId: 'service-mission', status: 'active' }],
     });
   }));
 
@@ -186,7 +186,7 @@ describe('mission-list correlation integration', () => {
       message: 'legacy-char-b',
       playerName: 'Pioneer',
       characterId: 'char-b',
-      missions: [{ missionId: 'board-mission', status: 'AVAILABLE' }],
+      missions: [{ missionId: 'board-mission', status: 'available' }],
     } as unknown as MissionListResponse);
     flushMicrotasks();
 
@@ -198,7 +198,7 @@ describe('mission-list correlation integration', () => {
       message: 'legacy-char-a',
       playerName: 'Pioneer',
       characterId: 'char-a',
-      missions: [{ missionId: 'service-mission', status: 'ACTIVE' }],
+      missions: [{ missionId: 'service-mission', status: 'active' }],
     } as unknown as MissionListResponse);
     flushMicrotasks();
 
@@ -218,13 +218,13 @@ describe('mission-list correlation integration', () => {
       requestIdentity: requestFromMissionService.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-a',
-      missions: [{ missionId: 'service-mission', status: 'ACTIVE' }],
+      missions: [{ missionId: 'service-mission', status: 'active' }],
     } satisfies MissionListResponse);
     flushMicrotasks();
 
     expect(missionServiceResult).toEqual({
       status: 'loaded',
-      missions: [{ missionId: 'service-mission', status: 'ACTIVE' }],
+      missions: [{ missionId: 'service-mission', status: 'active' }],
     });
     expect(missionBoardCallback).toHaveBeenCalledTimes(0);
   }));

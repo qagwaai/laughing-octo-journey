@@ -70,10 +70,10 @@ describe('MissionInitializationStrategy Registration', () => {
 
     const context = resolved.buildMissionContext({
       missionId: 'test-mission',
-      missionStatus: 'ACTIVE',
+      missionStatus: 'active',
     });
 
-    expect(context.missionStatusHint).toBe('ACTIVE');
+    expect(context.missionStatusHint).toBe('active');
   });
 });
 
