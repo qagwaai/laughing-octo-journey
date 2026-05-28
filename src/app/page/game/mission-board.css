@@ -61,14 +61,20 @@
   text-transform: capitalize;
 }
 
-.mission-status[data-status='COMPLETED'] {
+.mission-status[data-status='completed'] {
   color: #6fdc8c;
 }
 
-.mission-status[data-status='ACTIVE'] {
+.mission-status[data-status='active'] {
   color: #f4c842;
 }
 
-.mission-status[data-status='AVAILABLE'] {
+.mission-status[data-status='available'] {
   color: #a8d5ff;
+}
+
+.mission-status[data-status='contract-violation'] {
+  color: #ff8f8f;
+  font-weight: 700;
+  text-transform: uppercase;
 }

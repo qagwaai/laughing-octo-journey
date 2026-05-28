@@ -323,7 +323,7 @@ describe('MissionBoardPage', () => {
     expect(lockedIds).toContain('m-02');
   });
 
-  it('returns mission status directly for non-ship mission types', () => {
+  it('maps canonical status for non-ship mission types', () => {
     const { component } = setup({
       socketService,
       sessionService,
@@ -339,6 +339,42 @@ describe('MissionBoardPage', () => {
     } as any);
 
     expect(displayStatus).toBe('available');
+  });
+
+  it('returns contract-violation for unknown non-ship mission statuses', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    const displayStatus = component.getMissionDisplayStatus({
+      missionId: 'm-01',
+      status: 'abandoned',
+    } as any);
+
+    expect(displayStatus).toBe('contract-violation');
+  });
+
+  it('maps contract violation status to a visible UI label', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    const label = component.getMissionDisplayStatusLabel({
+      missionId: 'm-01',
+      status: 'abandoned',
+    } as any);
+
+    expect(label).toBe('Contract Violation');
   });
 
   it('returns mission title fallback when mission id is unknown', () => {
@@ -616,6 +652,20 @@ describe('MissionBoardPage', () => {
       const el: HTMLElement = fixture.nativeElement;
       const alert = el.querySelector('[role="alert"]');
       expect(alert?.textContent?.trim()).toBe('Load failed');
+    });
+
+    it('renders contract violation badge for unknown mission statuses', () => {
+      const { fixture, component } = setup({ socketService, sessionService });
+
+      component['missions'].set([{ missionId: 'm-01', status: 'abandoned' } as any]);
+      spyOn(component, 'getMissionStageInfo').and.returnValue({ stage: 'Stage 1 of 1', nextStep: 'N/A' });
+
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+      const violationBadge = el.querySelector('.mission-status[data-status="contract-violation"]');
+
+      expect(violationBadge).not.toBeNull();
+      expect(violationBadge?.textContent?.trim()).toBe('Contract Violation');
     });
   });
 });

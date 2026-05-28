@@ -581,6 +581,7 @@ export const en = {
       lockedSectionTitle: 'Locked Missions',
       lockedStatusLabel: 'Locked — complete prerequisites first.',
       availableStatusLabel: 'Available',
+      contractViolationStatusLabel: 'Contract Violation',
       errors: {
         loadMissionsRequiresPlayer: 'Player name is required to load missions.',
         loadMissionsRequiresCharacterId: 'Character id is required to load missions.',

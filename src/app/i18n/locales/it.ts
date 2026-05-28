@@ -413,6 +413,7 @@ export const it: DeepPartial<EnLocale> = {
       updatedAtLabel: 'Aggiornata:',
       stageLabel: 'Fase:',
       nextStepLabel: 'Prossimo passo:',
+      contractViolationStatusLabel: 'Violazione Contratto',
       errors: {
         loadMissionsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare le missioni.',
         loadMissionsRequiresCharacterId: "L'id del personaggio e obbligatorio per caricare le missioni.",

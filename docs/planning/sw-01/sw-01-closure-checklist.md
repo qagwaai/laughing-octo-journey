@@ -4,6 +4,16 @@ Status: Draft
 Date: 2026-05-26
 Repo: laughing-octo-journey
 
+## Step 3 Evidence (2026-05-28)
+
+1. Mission board status display no longer returns raw non-canonical mission values.
+2. Unknown mission statuses now render a visible contract violation state instead of silent fallback.
+3. Mission status styling is normalized to canonical lane values with explicit contract-violation styling.
+4. Validation evidence:
+- Focused spec: `src/app/page/game/mission-board.spec.ts` (passing)
+- Build gate: `npm run build` (passing)
+- Unit gate: `npm run test:ci` (passing, 1633 tests)
+
 ## 1. UI Completion
 
 1. Mission Board renders three lanes:

@@ -18,7 +18,7 @@ import {
   type MissionDefinition,
 } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import type { CharacterMissionProgress } from '../../model/mission';
+import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { type MissionListRequest, type MissionListResponse } from '../../model/mission-list';
 import { MissionBoardService } from '../../services/mission-board.service';
 import { SessionService } from '../../services/session.service';
@@ -38,6 +38,8 @@ interface MissionBoardNavigationState {
   imports: [GuardedLeftMenu, CharacterShipBadge],
 })
 export default class MissionBoardPage {
+  private static readonly CONTRACT_VIOLATION_STATUS = 'contract-violation';
+
   protected readonly t = locale;
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -184,14 +186,20 @@ export default class MissionBoardPage {
   }
 
   getMissionDisplayStatus(mission: CharacterMissionProgress): string {
-    // Non-ship-exterior missions don't have gate steps; return status directly.
-    const catalogEntry = resolveMissionById(mission.missionId);
-    if (catalogEntry && mission.missionId !== 'first-target') {
-      return mission.status ?? 'unknown';
+    if (mission.missionId !== 'first-target') {
+      return this.normalizeCanonicalMissionStatus(mission.status);
     }
+
     const gateState = this.resolveEffectiveMissionGateState(mission);
     const missionDef = resolveShipExteriorMission(mission.missionId);
-    return missionDef.resolveMissionStatusFromGateState(gateState);
+    return this.normalizeCanonicalMissionStatus(missionDef.resolveMissionStatusFromGateState(gateState));
+  }
+
+  getMissionDisplayStatusLabel(mission: CharacterMissionProgress): string {
+    const status = this.getMissionDisplayStatus(mission);
+    return status === MissionBoardPage.CONTRACT_VIOLATION_STATUS
+      ? this.t.game.missionBoard.contractViolationStatusLabel
+      : status;
   }
 
   getMissionTitle(missionId: string): string {
@@ -291,6 +299,14 @@ export default class MissionBoardPage {
 
   private getMissionGateProgressRank(gateState: ShipExteriorMissionGateState): number {
     return gateState.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').length;
+  }
+
+  private normalizeCanonicalMissionStatus(status: unknown): MissionStatus | string {
+    if (status === 'available' || status === 'active' || status === 'completed') {
+      return status;
+    }
+
+    return MissionBoardPage.CONTRACT_VIOLATION_STATUS;
   }
 
   protected formatDate(isoString?: string): string {
