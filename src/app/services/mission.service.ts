@@ -232,7 +232,7 @@ export class MissionService {
           characterId,
           missionId,
           sessionKey,
-          status: request.initialStatus ?? 'available',
+          status: request.initialStatus ?? 'AVAILABLE',
           correlationId: createCorrelationId('mission-add'),
           correlationSource: 'mission-service.ensureMissionExists.add',
         };
@@ -357,7 +357,7 @@ export class MissionService {
     const characterId = request.characterId.trim();
     const missionId = request.missionId.trim();
     const sessionKey = request.sessionKey.trim();
-    const status = request.status.trim();
+    const status = request.status;
 
     if (!playerName || !characterId || !missionId || !sessionKey || !status) {
       return 'invalid-request';
@@ -455,7 +455,7 @@ export class MissionService {
    * Returns true when the supplied mission status represents an active (in-progress) mission.
    */
   isMissionInProgress(status: MissionStatus | undefined | null): boolean {
-    return status === 'started' || status === 'in-progress' || status === 'paused';
+    return status === 'ACTIVE';
   }
 
   /**

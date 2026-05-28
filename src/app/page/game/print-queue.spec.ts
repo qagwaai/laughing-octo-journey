@@ -719,11 +719,11 @@ describe('PrintQueuePage', () => {
         missionId: 'first-target',
         characterId: 'char-1',
         currentStepId: 'manufacture-hull-patch-kit',
-        status: 'in-progress',
+        status: 'ACTIVE',
         steps: [
           {
             id: 'manufacture-hull-patch-kit',
-            status: 'in-progress',
+            status: 'ACTIVE',
             updatedAt: '2026-05-01T00:00:00.000Z',
           },
         ],

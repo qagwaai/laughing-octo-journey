@@ -88,7 +88,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'started' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       },
     });
 
@@ -106,7 +106,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'started' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       },
     });
 
@@ -141,7 +141,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'in-progress' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       },
       joinShip: {
         id: 's-1',
@@ -169,7 +169,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'paused' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       },
     });
 
@@ -182,7 +182,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'completed' }],
+        missions: [{ missionId: 'first-target', status: 'COMPLETED' }],
       },
     });
 
@@ -281,7 +281,7 @@ describe('RepairRetrofitPage', () => {
       joinCharacter: {
         id: 'c-1',
         characterName: 'Nova',
-        missions: [{ missionId: 'first-target', status: 'started' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       },
     });
     const setActiveShipSpy = spyOn(mockSession, 'setActiveShip').and.callThrough();

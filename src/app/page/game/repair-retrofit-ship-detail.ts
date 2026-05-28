@@ -92,8 +92,8 @@ export default class RepairRetrofitShipDetailPage {
       return false;
     }
 
-    const status = missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status?.toLowerCase();
-    return status === 'started' || status === 'in-progress' || status === 'paused';
+    const status = missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status?.toUpperCase();
+    return status === 'ACTIVE';
   }
 
   private hasShipDamageStatusWithoutProfile(): boolean {

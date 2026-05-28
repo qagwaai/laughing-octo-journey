@@ -61,19 +61,14 @@
   text-transform: capitalize;
 }
 
-.mission-status[data-status='completed'] {
+.mission-status[data-status='COMPLETED'] {
   color: #6fdc8c;
 }
 
-.mission-status[data-status='failed'] {
-  color: #ff6b6b;
-}
-
-.mission-status[data-status='in-progress'],
-.mission-status[data-status='started'] {
+.mission-status[data-status='ACTIVE'] {
   color: #f4c842;
 }
 
-.mission-status[data-status='turned-in'] {
+.mission-status[data-status='AVAILABLE'] {
   color: #a8d5ff;
 }

@@ -132,14 +132,14 @@ describe('ColdBootOpeningPage', () => {
       characterId: 'char-1',
       sessionKey: 'session-key',
       missionId: FIRST_TARGET_MISSION_ID,
-      status: 'started',
+      status: 'ACTIVE',
     });
     expect(mockMissionNavigation.prepareNavigation).toHaveBeenCalledWith({
       missionId: FIRST_TARGET_MISSION_ID,
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1', characterName: 'Nova' },
       sessionKey: 'session-key',
-      missionStatus: 'started',
+      missionStatus: 'ACTIVE',
     });
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
@@ -151,7 +151,7 @@ describe('ColdBootOpeningPage', () => {
           joinShip: jasmine.objectContaining({ id: 'real-ship-1' }),
           missionContext: {
             missionId: FIRST_TARGET_MISSION_ID,
-            missionStatusHint: 'started',
+            missionStatusHint: 'ACTIVE',
             seedPolicy: 'auto',
             shipDamagePreset: 'cold-boot-starter-damaged',
           },

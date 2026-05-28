@@ -33,7 +33,7 @@ function setup(options: {
     isMissionInProgress: jasmine
       .createSpy('isMissionInProgress')
       .and.callFake((status: string | undefined | null) =>
-        status === 'started' || status === 'in-progress' || status === 'paused',
+        status === 'ACTIVE' || status === 'ACTIVE' || status === 'ACTIVE',
       ),
     getMissionDamagePreset: jasmine
       .createSpy('getMissionDamagePreset')
@@ -350,7 +350,7 @@ describe('ShipHangarPage', () => {
     const character = {
       id: 'c-1',
       characterName: 'Nova',
-      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' }],
     };
     const { component, mockRouter } = setup({
       socketService,
@@ -376,10 +376,10 @@ describe('ShipHangarPage', () => {
           missionContext: {
             missionId: FIRST_TARGET_MISSION_ID,
             seedPolicy: 'resume',
-            missionStatusHint: 'started',
+            missionStatusHint: 'ACTIVE',
             shipDamagePreset: 'cold-boot-starter-damaged',
           },
-          firstTargetMissionStatus: 'started',
+          firstTargetMissionStatus: 'ACTIVE',
         },
       },
     );

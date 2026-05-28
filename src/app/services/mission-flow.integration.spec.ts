@@ -214,7 +214,7 @@ describe('Mission integration proof of concept', () => {
     return requestPayload;
   }
 
-  it('should sync mission gate progression from started to completed across service boundaries', async () => {
+  it('should sync mission gate progression from ACTIVE to COMPLETED across service boundaries', async () => {
     const timeline: GateState[] = [
       createGateState(missionId, characterId, ['active', 'locked', 'locked', 'locked'], '2026-05-01T00:00:00.000Z'),
       createGateState(missionId, characterId, ['completed', 'active', 'locked', 'locked'], '2026-05-01T00:00:01.000Z'),
@@ -237,7 +237,7 @@ describe('Mission integration proof of concept', () => {
         '2026-05-01T00:00:04.000Z',
       ),
     ];
-    const expectedStatuses = ['started', 'in-progress', 'in-progress', 'in-progress', 'completed'] as const;
+    const expectedStatuses = ['ACTIVE', 'ACTIVE', 'ACTIVE', 'ACTIVE', 'COMPLETED'] as const;
 
     for (let index = 0; index < timeline.length; index += 1) {
       const request = await syncGateStateAndAcknowledge(timeline[index]);
@@ -251,7 +251,7 @@ describe('Mission integration proof of concept', () => {
     expect(socketService.connectCalls).toBe(0);
   });
 
-  it('should keep mission in-progress after manufacture until repair step completes', async () => {
+  it('should keep mission ACTIVE after manufacture until repair step completes', async () => {
     const postManufactureState = createGateState(
       missionId,
       characterId,
@@ -260,14 +260,14 @@ describe('Mission integration proof of concept', () => {
     );
 
     const request = await syncGateStateAndAcknowledge(postManufactureState);
-    expect(request.status).toBe('in-progress');
+    expect(request.status).toBe('ACTIVE');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('active');
     expect(statusDetail.steps.find((step) => step.key === 'repair_scavenger_pod')?.completedAt).toBeUndefined();
   });
 
-  it('should drive mission events scan-launch-manufacture-repair to completed status', async () => {
+  it('should drive mission events scan-launch-manufacture-repair to COMPLETED status', async () => {
     let gateState = createGateState(
       missionId,
       characterId,
@@ -281,7 +281,7 @@ describe('Mission integration proof of concept', () => {
     gateState = applyMissionEvent(gateState, 'repair', '2026-05-01T00:00:04.000Z');
 
     const request = await syncGateStateAndAcknowledge(gateState);
-    expect(request.status).toBe('completed');
+    expect(request.status).toBe('COMPLETED');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.every((step) => step.status === 'completed')).toBe(true);
@@ -300,7 +300,7 @@ describe('Mission integration proof of concept', () => {
     expect(gateAfterWrongOrderEvent).toEqual(initialState);
 
     const request = await syncGateStateAndAcknowledge(gateAfterWrongOrderEvent);
-    expect(request.status).toBe('started');
+    expect(request.status).toBe('ACTIVE');
 
     const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     expect(statusDetail.steps.filter((step) => step.status === 'completed').length).toBe(0);
@@ -341,7 +341,7 @@ describe('Mission integration proof of concept', () => {
       characterId,
       mission: {
         missionId,
-        status: 'in-progress',
+        status: 'ACTIVE',
         statusDetail: emittedRequest.data.statusDetail,
       },
     });
@@ -359,7 +359,7 @@ describe('Mission integration proof of concept', () => {
         characterId,
         sessionKey,
         missionId,
-        status: 'started',
+        status: 'ACTIVE',
       })
       .then((value) => {
         result = value;

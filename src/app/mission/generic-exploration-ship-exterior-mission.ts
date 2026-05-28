@@ -107,12 +107,10 @@ export const GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefin
   },
   resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
     if (gateState.steps.every((step) => step.status === 'completed')) {
-      return 'completed';
+      return 'COMPLETED';
     }
-    if (gateState.steps.some((step) => step.status === 'completed')) {
-      return 'in-progress';
-    }
-    return 'started';
+
+    return 'ACTIVE';
   },
 };
 

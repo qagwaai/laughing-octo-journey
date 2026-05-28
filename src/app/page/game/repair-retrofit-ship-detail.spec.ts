@@ -179,7 +179,7 @@ describe('RepairRetrofitShipDetailPage - initialization', () => {
       playerName: 'Pioneer',
       joinCharacter: {
         id: 'c-1',
-        missions: [{ missionId: 'first-target', status: 'in-progress' }],
+        missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
       } as any,
       joinShip: { id: 's-1', model: 'Scavenger Pod', status: 'intact' } as any,
     });

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
+import type { MissionStatus } from '../model/mission';
 import { MissionService, type UpsertMissionStatusResult } from './mission.service';
 
 /**
@@ -49,16 +50,12 @@ export class MissionProgressSyncService {
   /**
    * Maps gate-step completion progression to mission lifecycle status.
    */
-  private resolveStatusFromGateState(gateState: ShipExteriorMissionGateState): string {
+  private resolveStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {
     const totalSteps = gateState.steps.length;
     if (totalSteps > 0 && gateState.steps.every((step) => step.status === 'completed')) {
-      return 'completed';
+      return 'COMPLETED';
     }
 
-    if (gateState.steps.some((step) => step.status === 'completed' || step.status === 'pending-retry')) {
-      return 'in-progress';
-    }
-
-    return 'started';
+    return 'ACTIVE';
   }
 }

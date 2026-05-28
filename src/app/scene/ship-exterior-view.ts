@@ -1199,8 +1199,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     if (!mission.statusDetail) {
-      const normalizedStatus = mission.status?.trim().toLowerCase();
-      if (normalizedStatus === 'started') {
+      const normalizedStatus = mission.status?.trim().toUpperCase();
+      if (normalizedStatus === 'AVAILABLE') {
         const current = this.missionGateState();
         const currentRank = current ? this.getMissionGateProgressRank(current) : 0;
         const maxRank = current ? current.steps.length : 0;
@@ -1212,7 +1212,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         }
       }
 
-      if (normalizedStatus === 'in-progress' || normalizedStatus === 'paused') {
+      if (normalizedStatus === 'ACTIVE') {
         const reconciled = this.reconcileInProgressGateStateWithoutStatusDetail(this.missionGateState());
         if (reconciled) {
           this.missionGateState.set(reconciled);

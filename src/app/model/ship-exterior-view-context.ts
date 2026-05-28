@@ -21,15 +21,19 @@ export function resolveShipExteriorViewSeedPolicy(params: {
     return params.seedPolicy;
   }
 
-  const status = params.missionStatusHint?.trim().toLowerCase();
+  const status = params.missionStatusHint?.trim().toUpperCase();
   if (!status) {
     // Default to resume so exterior view can rehydrate persisted or backend state
     // even when the caller does not provide a mission status hint.
     return 'resume';
   }
 
-  if (status === 'started' || status === 'in-progress' || status === 'paused') {
+  if (status === 'ACTIVE' || status === 'COMPLETED') {
     return 'resume';
+  }
+
+  if (status === 'AVAILABLE') {
+    return 'new';
   }
 
   return 'new';

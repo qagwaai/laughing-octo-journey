@@ -147,7 +147,7 @@ describe('ShipExteriorViewScene', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova Prime' },
-      firstTargetMissionStatus: 'started',
+      firstTargetMissionStatus: 'ACTIVE',
     });
 
     expect(component['playerName']()).toBe('Pioneer');
@@ -907,12 +907,12 @@ describe('ColdBootScanScene in-progress seeding', () => {
     expect(cbRequest).toBeDefined();
   });
 
-  it('should not request celestial bodies for fresh-seed (completed status) path', () => {
+  it('should not request celestial bodies for fresh-seed (AVAILABLE status) path', () => {
     const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
-      firstTargetMissionStatus: 'completed',
+      firstTargetMissionStatus: 'AVAILABLE',
     });
 
     triggerMatchingShipListResponse(mockSocket, {
@@ -1208,16 +1208,16 @@ describe('ShipExteriorViewScene - subscription cleanup (ngOnDestroy)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe('ShipExteriorViewScene - backend started status guard')
+// describe('ShipExteriorViewScene - backend status reset guard')
 // ---------------------------------------------------------------------------
 
-describe('ShipExteriorViewScene - backend started status guard', () => {
+describe('ShipExteriorViewScene - backend status reset guard', () => {
   afterEach(() => {
     TestBed.resetTestingModule();
     delete (window as any).__shipExteriorTestUtils;
   });
 
-  it('should not reset local gate progress when backend returns stale started status and partial progress exists', async () => {
+  it('should not reset local gate progress when backend returns AVAILABLE and partial progress exists', async () => {
     const { component, mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
@@ -1239,7 +1239,7 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'started' }],
+      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();
@@ -1247,7 +1247,7 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
     expect(component['missionGateState']()).toEqual(partialProgressState);
   });
 
-  it('should reset to initial gate state when started status arrives and there is no local progress yet', async () => {
+  it('should reset to initial gate state when AVAILABLE status arrives and there is no local progress yet', async () => {
     const { component, mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
@@ -1269,7 +1269,7 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'started' }],
+      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();
@@ -1279,7 +1279,7 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
     expect(updated?.steps[1].status).toBe('locked');
   });
 
-  it('should reset stale fully-completed gate state when backend reports started without statusDetail', async () => {
+  it('should reset stale fully-completed gate state when backend reports AVAILABLE without statusDetail', async () => {
     const { component, mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
@@ -1301,7 +1301,7 @@ describe('ShipExteriorViewScene - backend started status guard', () => {
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'started' }],
+      missions: [{ missionId: 'first-target', status: 'AVAILABLE' }],
     });
 
     await component['refreshMissionGateStateFromBackend']();

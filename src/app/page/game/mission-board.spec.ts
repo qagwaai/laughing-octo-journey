@@ -181,8 +181,8 @@ describe('MissionBoardPage', () => {
       correlationId: requestPayload.correlationId!,
       requestIdentity: requestPayload.requestIdentity!,
       missions: [
-        { missionId: 'first-target', status: 'in-progress', startedAt: '2026-04-01T10:00:00Z' },
-        { missionId: 'second-mission', status: 'completed', updatedAt: '2026-04-10T12:00:00Z' },
+        { missionId: 'first-target', status: 'ACTIVE', startedAt: '2026-04-01T10:00:00Z' },
+        { missionId: 'second-mission', status: 'COMPLETED', updatedAt: '2026-04-10T12:00:00Z' },
       ],
     });
 
@@ -314,7 +314,7 @@ describe('MissionBoardPage', () => {
       },
     });
 
-    component['missions'].set([{ missionId: 'first-target', status: 'completed' } as any]);
+    component['missions'].set([{ missionId: 'first-target', status: 'COMPLETED' } as any]);
 
     const availableIds = component['availableCatalogMissions']().map((mission) => mission.id);
     const lockedIds = component['lockedCatalogMissions']().map((mission) => mission.id);
@@ -335,10 +335,10 @@ describe('MissionBoardPage', () => {
 
     const displayStatus = component.getMissionDisplayStatus({
       missionId: 'm-01',
-      status: 'available',
+      status: 'AVAILABLE',
     } as any);
 
-    expect(displayStatus).toBe('available');
+    expect(displayStatus).toBe('AVAILABLE');
   });
 
   it('returns mission title fallback when mission id is unknown', () => {
@@ -379,7 +379,7 @@ describe('MissionBoardPage', () => {
 
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'started',
+        status: 'ACTIVE',
       });
       expect(result).not.toBeNull();
       expect(result.stage).toBe('Stage 1 of 4');
@@ -397,7 +397,7 @@ describe('MissionBoardPage', () => {
 
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'in-progress',
+        status: 'ACTIVE',
         statusDetail: 'not-json',
       });
       expect(result).not.toBeNull();
@@ -427,7 +427,7 @@ describe('MissionBoardPage', () => {
       };
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'started',
+        status: 'ACTIVE',
         statusDetail: serializeMissionGateState(gateState),
       });
       expect(result).not.toBeNull();
@@ -458,7 +458,7 @@ describe('MissionBoardPage', () => {
       };
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'in-progress',
+        status: 'ACTIVE',
         statusDetail: serializeMissionGateState(gateState),
       });
       expect(result).not.toBeNull();
@@ -492,7 +492,7 @@ describe('MissionBoardPage', () => {
       };
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'in-progress',
+        status: 'ACTIVE',
         statusDetail: serializeMissionGateState(gateState),
       });
       expect(result).not.toBeNull();
@@ -525,7 +525,7 @@ describe('MissionBoardPage', () => {
       };
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'in-progress',
+        status: 'ACTIVE',
         statusDetail: serializeMissionGateState(gateState),
       });
       expect(result).not.toBeNull();
@@ -556,7 +556,7 @@ describe('MissionBoardPage', () => {
       };
       const result = component.getMissionStageInfo({
         missionId: 'first-target',
-        status: 'completed',
+        status: 'COMPLETED',
         statusDetail: serializeMissionGateState(gateState),
       });
       expect(result).not.toBeNull();

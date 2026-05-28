@@ -129,13 +129,13 @@ describe('MissionService connectivity integration', () => {
       requestIdentity: requestPayload.requestIdentity!,
       playerName: 'Pioneer',
       characterId: 'char-1',
-      missions: [{ missionId: 'first-target', status: 'started' }],
+      missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
     });
     flushMicrotasks();
 
     expect(result).toEqual({
       status: 'loaded',
-      missions: [{ missionId: 'first-target', status: 'started' }],
+      missions: [{ missionId: 'first-target', status: 'ACTIVE' }],
     });
   }));
 });

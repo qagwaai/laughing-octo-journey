@@ -1,22 +1,8 @@
-export const MISSION_STATUS_VALUES = [
-  'available',
-  'started',
-  'in-progress',
-  'failed',
-  'completed',
-  'locked',
-  'abandoned',
-  'paused',
-  'turned-in',
-] as const;
+export const MISSION_STATUS_VALUES = ['AVAILABLE', 'ACTIVE', 'COMPLETED'] as const;
 
 export type CanonicalMissionStatus = (typeof MISSION_STATUS_VALUES)[number];
 
-/**
- * Allows server-side extensions while preserving canonical values.
- * Example extensions: "expired", "reward-claimed", "timed-out".
- */
-export type MissionStatus = CanonicalMissionStatus | (string & {});
+export type MissionStatus = CanonicalMissionStatus;
 
 export interface CharacterMissionProgress {
   missionId: string;

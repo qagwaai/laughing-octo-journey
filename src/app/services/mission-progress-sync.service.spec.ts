@@ -69,12 +69,12 @@ describe('MissionProgressSyncService', () => {
         characterId: 'char-1',
         sessionKey: 'session-1',
         missionId: 'first-target',
-        status: 'completed',
+        status: 'COMPLETED',
       }),
     );
   });
 
-  it('should derive started, in-progress, and completed mission statuses from gate states', async () => {
+  it('should derive ACTIVE/COMPLETED mission statuses from gate states', async () => {
     const missionService = {
       upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
     } as unknown as MissionService;
@@ -86,24 +86,24 @@ describe('MissionProgressSyncService', () => {
       expectedStatus: string;
     }> = [
       {
-        label: 'started when no step is completed',
+        label: 'ACTIVE when no step is completed',
         statuses: ['active', 'locked', 'locked', 'locked'],
-        expectedStatus: 'started',
+        expectedStatus: 'ACTIVE',
       },
       {
-        label: 'in-progress when any step is completed',
+        label: 'ACTIVE when any step is completed',
         statuses: ['completed', 'active', 'locked', 'locked'],
-        expectedStatus: 'in-progress',
+        expectedStatus: 'ACTIVE',
       },
       {
-        label: 'in-progress when a step is pending-retry',
+        label: 'ACTIVE when a step is pending-retry',
         statuses: ['completed', 'pending-retry', 'locked', 'locked'],
-        expectedStatus: 'in-progress',
+        expectedStatus: 'ACTIVE',
       },
       {
-        label: 'completed when all steps are completed',
+        label: 'COMPLETED when all steps are completed',
         statuses: ['completed', 'completed', 'completed', 'completed'],
-        expectedStatus: 'completed',
+        expectedStatus: 'COMPLETED',
       },
     ];
 
@@ -128,7 +128,7 @@ describe('MissionProgressSyncService', () => {
     }
   });
 
-  it('should derive "started" when steps array is empty', async () => {
+  it('should derive "ACTIVE" when steps array is empty', async () => {
     const missionService = {
       upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
     } as unknown as MissionService;
@@ -149,10 +149,10 @@ describe('MissionProgressSyncService', () => {
       gateState: emptyStepsGateState,
     });
 
-    expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(jasmine.objectContaining({ status: 'started' }));
+    expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(jasmine.objectContaining({ status: 'ACTIVE' }));
   });
 
-  it('should derive "in-progress" when all steps are pending-retry (not "completed")', async () => {
+  it('should derive "ACTIVE" when all steps are pending-retry (not "COMPLETED")', async () => {
     const missionService = {
       upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.returnValue(Promise.resolve('updated')),
     } as unknown as MissionService;
@@ -166,7 +166,7 @@ describe('MissionProgressSyncService', () => {
     });
 
     expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(
-      jasmine.objectContaining({ status: 'in-progress' }),
+      jasmine.objectContaining({ status: 'ACTIVE' }),
     );
   });
 

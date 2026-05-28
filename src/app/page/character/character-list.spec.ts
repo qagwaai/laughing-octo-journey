@@ -235,7 +235,7 @@ describe('CharacterListPage', () => {
           {
             id: '1',
             characterName: 'Nova',
-            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' }],
           },
         ],
       } as any);
@@ -246,7 +246,7 @@ describe('CharacterListPage', () => {
           characterName: 'Nova',
           level: undefined,
           createdAt: undefined,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' }],
+          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' }],
         },
       ]);
     });
@@ -345,7 +345,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'available' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'AVAILABLE' as const }],
       };
       component.navigateToGameJoin(character);
 
@@ -362,55 +362,55 @@ describe('CharacterListPage', () => {
       );
     });
 
-    it('should show the in-progress join label when first-target is started', () => {
+    it('should show the in-progress join label when first-target is ACTIVE', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
-    it('should keep the in-progress join label when first-target is completed', () => {
+    it('should keep the in-progress join label when first-target is COMPLETED', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'COMPLETED' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
-    it('should keep the in-progress join label when first-target is failed', () => {
+    it('should keep the in-progress join label for equivalent ACTIVE lane fixtures', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'failed' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
-    it('should keep the in-progress join label when first-target is abandoned', () => {
+    it('should keep the in-progress join label across duplicate ACTIVE lane fixtures', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
         id: '1',
         characterName: 'Nova',
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'abandoned' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
       };
 
       expect(component['getJoinGameLabel'](character)).toBe('Join Game in Progress');
     });
 
-    it('should navigate directly to game-main and cold-boot-scan when first-target is already started', async () => {
+    it('should navigate directly to game-main and cold-boot-scan when first-target is already ACTIVE', async () => {
       const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
       const realShip: ShipSummary = {
         id: 'real-ship-1',
@@ -457,7 +457,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'started' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'ACTIVE' as const }],
       };
       component.navigateToGameJoin(character);
       await Promise.resolve();
@@ -481,16 +481,16 @@ describe('CharacterListPage', () => {
             joinShip: realShip,
             missionContext: jasmine.objectContaining({
               missionId: FIRST_TARGET_MISSION_ID,
-              missionStatusHint: 'started',
+              missionStatusHint: 'ACTIVE',
               seedPolicy: 'auto',
             }),
-            firstTargetMissionStatus: 'started',
+            firstTargetMissionStatus: 'ACTIVE',
           },
         },
       );
     });
 
-    it('should navigate to game-main and mission-board when first-target is completed', () => {
+    it('should navigate to game-main and mission-board when first-target is COMPLETED', () => {
       const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
@@ -498,7 +498,7 @@ describe('CharacterListPage', () => {
         id: '1',
         characterName: 'Nova',
         level: 5,
-        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'completed' as const }],
+        missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'COMPLETED' as const }],
       };
       component.navigateToGameJoin(character);
 

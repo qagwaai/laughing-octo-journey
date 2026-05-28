@@ -162,7 +162,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
           playerName,
           joinCharacter,
           sessionKey,
-          missionStatus: 'started',
+          missionStatus: 'ACTIVE',
         })
       : null;
 
@@ -193,7 +193,7 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
       characterId,
       sessionKey,
       missionId: FIRST_TARGET_MISSION_ID,
-      status: 'started' as const,
+      status: 'ACTIVE' as const,
     };
   }
 }
