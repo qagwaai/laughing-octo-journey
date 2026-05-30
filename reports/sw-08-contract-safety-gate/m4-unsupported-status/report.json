@@ -1,0 +1,64 @@
+{
+  "mode": "hard-fail",
+  "decision": "hard-fail",
+  "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.json",
+  "backendArtifactPath": "reports/sw-08-contract-safety-gate/m4-fixtures/backend-contract-artifact.m4-drift-unsupported-status.json",
+  "contractCount": 14,
+  "findingCount": 1,
+  "summaryByCategory": {
+    "enum/value mismatch": 1
+  },
+  "summaryByOwnerTag": {
+    "coordinated fix": 1
+  },
+  "summaryBySeverity": {
+    "breaking": 1
+  },
+  "criticalSurfaceCoverage": {
+    "requiredSurfaceIds": [
+      "auth/session",
+      "character/ship",
+      "market/ledger",
+      "mission flows",
+      "item catalog/fabrication",
+      "ship-external-view"
+    ],
+    "presentSurfaceIds": [
+      "auth/session",
+      "character/ship",
+      "item catalog/fabrication",
+      "market/ledger",
+      "mission flows",
+      "ship-external-view"
+    ],
+    "missingSurfaceIds": [],
+    "status": "complete"
+  },
+  "exceptionValidationErrors": [],
+  "exceptionNearExpiry": false,
+  "exceptionApplied": false,
+  "findings": [
+    {
+      "surfaceId": "mission flows",
+      "surfaceLabel": "mission flows",
+      "contractId": "mission.list",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": [
+        "src/app/model/mission-list.ts"
+      ],
+      "backendArtifactPath": "reports/sw-08-contract-safety-gate/m4-fixtures/backend-contract-artifact.m4-drift-unsupported-status.json",
+      "category": "enum/value mismatch",
+      "severity": "breaking",
+      "fieldPath": "response.missions[].status",
+      "detail": "Response enum values changed for response.missions[].status.",
+      "expected": "[\"active\",\"available\",\"completed\"]",
+      "actual": "[\"active\",\"archived\",\"available\",\"completed\"]",
+      "consumerLocation": "src/app/model/mission-list.ts",
+      "producerContractSurface": "mission flows",
+      "producerLocation": "reports/sw-08-contract-safety-gate/m4-fixtures/backend-contract-artifact.m4-drift-unsupported-status.json",
+      "remediationHint": "Coordinate producer and consumer changes together and keep the exception short-lived.",
+      "nextAction": "Align enum values at response.missions[].status or document safe extension policy, then re-run npm run contract:check:stage3."
+    }
+  ],
+  "exception": null
+}

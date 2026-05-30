@@ -1,6 +1,6 @@
 # SW-01 Closure Checklist (Nova)
 
-Status: M3 Closed (Nova)
+Status: M4 Closed (Nova)
 Date: 2026-05-30
 Repo: laughing-octo-journey
 
@@ -40,6 +40,31 @@ Repo: laughing-octo-journey
 4. M4 readiness recommendation:
 - Proceed with dual-gate enforcement using the above telemetry field set as stable diagnostics context.
 - Keep unknown-status lane placement as a hard-fail regression condition.
+
+## M4 Closure Snapshot (Nova)
+
+1. Decision: M4 Closed.
+2. Nova hard-fail gate activation evidence:
+- PR workflow active in `.github/workflows/sw-08-contract-safety-gate.yml`.
+- Hard-fail command in CI: `npm run contract:check:stage3`.
+3. Local reproducibility evidence:
+- Canonical pass: `npm run contract:check:stage3` (pass, findings 0).
+- Drift hard-fail (enum casing mismatch): report `reports/sw-08-contract-safety-gate/m4-enum-casing/report.md`.
+- Drift hard-fail (unsupported status value): report `reports/sw-08-contract-safety-gate/m4-unsupported-status/report.md`.
+- Drift hard-fail (payload shape mismatch): report `reports/sw-08-contract-safety-gate/m4-shape-mismatch/report.md`.
+- Post-drift re-pass: `npm run contract:check:stage3` (pass, findings 0).
+4. Actionable diagnostics confirmed in reports:
+- impacted surface
+- expected vs observed
+- owner/remediation hint
+- next action guidance
+5. M3 strictness non-regression evidence:
+- `npm run test:spec -- "**/mission-board.spec.ts"` passed (41/41).
+- `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` passed (4/4).
+- `npm run build` passed.
+6. M5 recommendation:
+- **Go** for M5 canary validation.
+- Rationale: dual-gate hard-fail behavior is active and reproducible, drift classes fail deterministically with actionable diagnostics, and canonical state re-passes cleanly.
 
 ## 1. UI Completion
 

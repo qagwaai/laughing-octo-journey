@@ -1,0 +1,1092 @@
+{
+  "schemaVersion": 1,
+  "stage": "report-only",
+  "purpose": "Canonical backend contract snapshot used by the frontend SW-08 gate.",
+  "surfaces": [
+    {
+      "id": "auth/session",
+      "label": "auth/session",
+      "ownerTag": "backend remediation",
+      "consumerFiles": [
+        "src/app/model/login.ts",
+        "src/app/model/register.ts",
+        "src/app/model/session.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "auth.login",
+          "kind": "socket",
+          "requestEvent": "login",
+          "responseEvent": "login-response",
+          "consumerFiles": [
+            "src/app/model/login.ts"
+          ],
+          "ownerTag": "backend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "password",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "locale",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "reason",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "PLAYER_NOT_REGISTERED",
+                "PASSWORD_MISMATCH",
+                "UNKNOWN"
+              ]
+            },
+            {
+              "path": "playerId",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "contractId": "auth.register",
+          "kind": "socket",
+          "requestEvent": "register",
+          "responseEvent": "register-response",
+          "consumerFiles": [
+            "src/app/model/register.ts"
+          ],
+          "ownerTag": "backend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "email",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "password",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "locale",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "playerId",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": false
+            }
+          ]
+        },
+        {
+          "contractId": "auth.invalidSession",
+          "kind": "socket",
+          "requestEvent": "invalid-session",
+          "responseEvent": "invalid-session",
+          "consumerFiles": [
+            "src/app/model/session.ts"
+          ],
+          "ownerTag": "backend remediation",
+          "requestFields": [],
+          "responseFields": [
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "character/ship",
+      "label": "character/ship",
+      "ownerTag": "frontend remediation",
+      "consumerFiles": [
+        "src/app/model/character-list.ts",
+        "src/app/model/ship-list-by-owner.ts",
+        "src/app/model/game-join.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "character.list",
+          "kind": "socket",
+          "requestEvent": "character-list-request",
+          "responseEvent": "character-list-response",
+          "consumerFiles": [
+            "src/app/model/character-list.ts"
+          ],
+          "ownerTag": "frontend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characters",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "characters[].id",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characters[].characterName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characters[].credits",
+              "type": "number",
+              "required": false
+            },
+            {
+              "path": "characters[].creditLedger",
+              "type": "array",
+              "required": false
+            }
+          ]
+        },
+        {
+          "contractId": "ship.listByOwner",
+          "kind": "socket",
+          "requestEvent": "ship-list-by-owner-request",
+          "responseEvent": "ship-list-by-owner-response",
+          "consumerFiles": [
+            "src/app/model/ship-list-by-owner.ts"
+          ],
+          "ownerTag": "frontend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "owner.ownerType",
+              "type": "enum",
+              "required": true,
+              "values": [
+                "player-character",
+                "player",
+                "npc",
+                "faction",
+                "unknown"
+              ]
+            },
+            {
+              "path": "owner.characterId",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "owner.playerId",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "owner",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "ships",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "ships[].id",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "ships[].name",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "ships[].model",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "ships[].tier",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "ships[].inventory",
+              "type": "array",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "market/ledger",
+      "label": "market/ledger",
+      "ownerTag": "backend remediation",
+      "consumerFiles": [
+        "src/app/model/market-list.ts",
+        "src/app/model/character-list.ts",
+        "src/app/model/domain/character-economy.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "market.list",
+          "kind": "socket",
+          "requestEvent": "market-list-request",
+          "responseEvent": "market-list-response",
+          "consumerFiles": [
+            "src/app/model/market-list.ts"
+          ],
+          "ownerTag": "backend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "solarSystemId",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "markets",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "markets[].marketId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "markets[].marketName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "markets[].priceMultiplier",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "markets[].driftPercentPerHour",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "markets[].restockIntervalMinutes",
+              "type": "number",
+              "required": true
+            }
+          ]
+        },
+        {
+          "contractId": "character.ledger",
+          "kind": "socket",
+          "requestEvent": "character-list-request",
+          "responseEvent": "character-list-response",
+          "consumerFiles": [
+            "src/app/model/character-list.ts",
+            "src/app/model/domain/character-economy.ts"
+          ],
+          "ownerTag": "backend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "characters[].credits",
+              "type": "number",
+              "required": false
+            },
+            {
+              "path": "characters[].creditLedger",
+              "type": "array",
+              "required": false
+            },
+            {
+              "path": "characters[].creditLedger[].type",
+              "type": "enum",
+              "required": true,
+              "values": [
+                "put",
+                "take"
+              ]
+            },
+            {
+              "path": "characters[].creditLedger[].amount",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "characters[].creditLedger[].description",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characters[].creditLedger[].timestamp",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characters[].creditLedger[].referenceId",
+              "type": "string",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mission flows",
+      "label": "mission flows",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": [
+        "src/app/model/mission-list.ts",
+        "src/app/model/mission-upsert.ts",
+        "src/app/model/launch-item.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "mission.list",
+          "kind": "socket",
+          "requestEvent": "list-missions-request",
+          "responseEvent": "list-missions-response",
+          "consumerFiles": [
+            "src/app/model/mission-list.ts"
+          ],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characterId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "statuses",
+              "type": "array",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characterId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "missions",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "missions[].missionId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "missions[].status",
+              "type": "string",
+              "required": true
+            }
+          ]
+        },
+        {
+          "contractId": "mission.upsert",
+          "kind": "socket",
+          "requestEvent": "mission-upsert-request",
+          "responseEvent": "mission-upsert-response",
+          "consumerFiles": [
+            "src/app/model/mission-upsert.ts",
+            "src/app/model/mission-upsert.model.ts"
+          ],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "mission",
+              "type": "object",
+              "required": true
+            },
+            {
+              "path": "mission.missionId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "mission.status",
+              "type": "enum",
+              "required": true,
+              "values": [
+                "available",
+                "active",
+                "completed"
+              ]
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "mission",
+              "type": "object",
+              "required": false
+            }
+          ]
+        },
+        {
+          "contractId": "mission.launchItem",
+          "kind": "socket",
+          "requestEvent": "launch-item-request",
+          "responseEvent": "launch-item-response",
+          "consumerFiles": [
+            "src/app/model/launch-item.ts"
+          ],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characterId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "shipId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "targetCelestialBodyId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "hotkey",
+              "type": "enum",
+              "required": true,
+              "values": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+              ]
+            },
+            {
+              "path": "itemId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "itemType",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "resolution",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "resolution.outcome",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "target-destroyed",
+                "no-effect"
+              ]
+            },
+            {
+              "path": "resolution.targetDestroyed",
+              "type": "boolean",
+              "required": false
+            },
+            {
+              "path": "resolution.yieldedMaterials",
+              "type": "array",
+              "required": false
+            },
+            {
+              "path": "resolution.yieldedItems",
+              "type": "array",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "item catalog/fabrication",
+      "label": "item catalog/fabrication",
+      "ownerTag": "frontend remediation",
+      "consumerFiles": [
+        "src/app/model/printable-item.ts",
+        "src/app/model/item-upsert.ts",
+        "src/app/model/item-view-specs.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "fabrication.printableItem",
+          "kind": "socket",
+          "requestEvent": "printable-item-request",
+          "responseEvent": "printable-item-response",
+          "consumerFiles": [
+            "src/app/model/printable-item.ts"
+          ],
+          "ownerTag": "frontend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "itemType",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "itemType",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "displayName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "description",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "tier",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "durationMs",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials[].materialKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials[].label",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials[].quantity",
+              "type": "number",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials[].acceptedItemTypes",
+              "type": "array",
+              "required": true
+            },
+            {
+              "path": "requiredMaterials[].acceptedDisplayNames",
+              "type": "array",
+              "required": true
+            }
+          ]
+        },
+        {
+          "contractId": "fabrication.itemUpsert",
+          "kind": "socket",
+          "requestEvent": "item-upsert-request",
+          "responseEvent": "item-upsert-response",
+          "consumerFiles": [
+            "src/app/model/item-upsert.ts"
+          ],
+          "ownerTag": "frontend remediation",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "item",
+              "type": "object",
+              "required": true
+            },
+            {
+              "path": "item.id",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "item.itemType",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "item.displayName",
+              "type": "string",
+              "required": false
+            },
+            {
+              "path": "item.tier",
+              "type": "number",
+              "required": false
+            },
+            {
+              "path": "item.launchable",
+              "type": "boolean",
+              "required": false
+            },
+            {
+              "path": "item.state",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "contained",
+                "deployed",
+                "destroyed"
+              ]
+            },
+            {
+              "path": "item.damageStatus",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "intact",
+                "damaged",
+                "disabled",
+                "destroyed"
+              ]
+            },
+            {
+              "path": "item.container",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "item.spatial",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "item.motion",
+              "type": "object",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "item",
+              "type": "object",
+              "required": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ship-external-view",
+      "label": "ship-external-view",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": [
+        "src/app/model/ship-exterior-view-context.ts",
+        "src/app/model/ship-list-by-owner.ts",
+        "src/app/model/launch-item.ts",
+        "src/app/model/ship-item.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "shipExterior.viewContext",
+          "kind": "state",
+          "requestEvent": "navigation-state",
+          "responseEvent": "navigation-state",
+          "consumerFiles": [
+            "src/app/model/ship-exterior-view-context.ts"
+          ],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            {
+              "path": "seedPolicy",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "auto",
+                "new",
+                "resume"
+              ]
+            },
+            {
+              "path": "missionStatusHint",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "available",
+                "active",
+                "completed"
+              ]
+            },
+            {
+              "path": "shipDamagePreset",
+              "type": "object",
+              "required": false
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "missionId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "seedPolicy",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "auto",
+                "new",
+                "resume"
+              ]
+            },
+            {
+              "path": "shipDamagePreset",
+              "type": "object",
+              "required": false
+            }
+          ]
+        },
+        {
+          "contractId": "shipExterior.launchItem",
+          "kind": "socket",
+          "requestEvent": "launch-item-request",
+          "responseEvent": "launch-item-response",
+          "consumerFiles": [
+            "src/app/model/launch-item.ts",
+            "src/app/model/ship-item.ts"
+          ],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            {
+              "path": "playerName",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "characterId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "shipId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "sessionKey",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "targetCelestialBodyId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "hotkey",
+              "type": "enum",
+              "required": true,
+              "values": [
+                "1",
+                "2",
+                "3",
+                "4",
+                "5"
+              ]
+            },
+            {
+              "path": "itemId",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "itemType",
+              "type": "string",
+              "required": true
+            }
+          ],
+          "responseFields": [
+            {
+              "path": "success",
+              "type": "boolean",
+              "required": true
+            },
+            {
+              "path": "message",
+              "type": "string",
+              "required": true
+            },
+            {
+              "path": "launchedItem",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "resolution",
+              "type": "object",
+              "required": false
+            },
+            {
+              "path": "resolution.outcome",
+              "type": "enum",
+              "required": false,
+              "values": [
+                "target-destroyed",
+                "no-effect"
+              ]
+            },
+            {
+              "path": "resolution.targetDestroyed",
+              "type": "boolean",
+              "required": false
+            },
+            {
+              "path": "resolution.yieldedMaterials",
+              "type": "array",
+              "required": false
+            },
+            {
+              "path": "resolution.yieldedItems",
+              "type": "array",
+              "required": false
+            },
+            {
+              "path": "resolution.targetCelestialBody",
+              "type": "object",
+              "required": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -205,7 +205,7 @@
             { "path": "characterId", "type": "string", "required": true },
             { "path": "missions", "type": "array", "required": true },
             { "path": "missions[].missionId", "type": "string", "required": true },
-            { "path": "missions[].status", "type": "enum", "required": true, "values": ["available", "started", "in-progress", "failed", "completed", "locked", "abandoned", "paused", "turned-in"] }
+            { "path": "missions[].status", "type": "enum", "required": true, "values": ["available", "active", "completed"] }
           ]
         },
         {
@@ -220,7 +220,7 @@
             { "path": "sessionKey", "type": "string", "required": true },
             { "path": "mission", "type": "object", "required": true },
             { "path": "mission.missionId", "type": "string", "required": true },
-            { "path": "mission.status", "type": "enum", "required": true, "values": ["available", "started", "in-progress", "failed", "completed", "locked", "abandoned", "paused", "turned-in"] }
+            { "path": "mission.status", "type": "enum", "required": true, "values": ["available", "active", "completed"] }
           ],
           "responseFields": [
             { "path": "success", "type": "boolean", "required": true },
@@ -335,7 +335,7 @@
           "ownerTag": "coordinated fix",
           "requestFields": [
             { "path": "seedPolicy", "type": "enum", "required": false, "values": ["auto", "new", "resume"] },
-            { "path": "missionStatusHint", "type": "enum", "required": false, "values": ["available", "started", "in-progress", "failed", "completed", "locked", "abandoned", "paused", "turned-in"] },
+            { "path": "missionStatusHint", "type": "enum", "required": false, "values": ["available", "active", "completed"] },
             { "path": "shipDamagePreset", "type": "object", "required": false }
           ],
           "responseFields": [

@@ -154,6 +154,38 @@ M4: Dual gate enforcement (Nova + Forge)
 1. PR with drift/non-canonical status fails in both repos.
 2. Local reproducibility commands documented and validated.
 
+M4 execution update (2026-05-30): Closed in Nova
+- Nova gate activation + CI wiring evidence:
+1. Nova PR hard-fail workflow is active at `.github/workflows/sw-08-contract-safety-gate.yml` and runs `npm run contract:check:stage3`.
+2. `npm run contract:check:stage3` resolves to `node scripts/sw-08-contract-safety-gate.mjs --mode hard-fail`.
+3. Canonical baseline pass confirmed: Decision `pass`, Findings `0`, Critical surface coverage `complete`.
+- Dual-gate parity evidence pattern (Nova local reproducibility):
+1. Canonical pass check executed before drift injection.
+2. Intentional drift checks executed in hard-fail mode for mission status contract surfaces.
+3. Canonical re-pass check executed after drift scenarios.
+- Drift scenarios executed (all hard-fail with actionable diagnostics):
+1. Enum casing mismatch (`Available` vs lowercase canonical):
+	- Report: `reports/sw-08-contract-safety-gate/m4-enum-casing/report.md`
+	- Outcome: `hard-fail`, category `enum/value mismatch`, field `response.missions[].status`, owner `coordinated fix`.
+2. Unsupported status value (`archived`):
+	- Report: `reports/sw-08-contract-safety-gate/m4-unsupported-status/report.md`
+	- Outcome: `hard-fail`, category `enum/value mismatch`, field `response.missions[].status`, owner `coordinated fix`.
+3. Payload shape mismatch (`enum` changed to `string`):
+	- Report: `reports/sw-08-contract-safety-gate/m4-shape-mismatch/report.md`
+	- Outcome: `hard-fail`, categories `type mismatch` + `enum/value mismatch`, field `response.missions[].status`, owner `coordinated fix`.
+- Actionable diagnostics parity confirmed:
+1. Reports include impacted surface (`mission flows`), expected vs observed values, owner/remediation hint, and next action.
+2. Hard-fail behavior blocks drift without warning-only fallback.
+- Post-drift re-pass:
+1. Canonical command rerun after drift checks returns `pass` with Findings `0`.
+- M3 strictness regression check under gate-validated assumptions:
+1. `npm run test:spec -- "**/mission-board.spec.ts"` (pass, 41/41).
+2. `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` (pass, 4/4).
+3. `npm run build` (pass; existing non-blocking cold-boot css budget warning unchanged).
+- M5 readiness recommendation and rationale:
+1. Recommendation: **Go** for M5 canary validation.
+2. Rationale: Nova hard-fail preflight gate is active in PR path, drift classes fail deterministically with actionable diagnostics, canonical state reliably re-passes, and M3 strict violation behavior remains green.
+
 M5: Canary release validation
 - Deliverables:
 1. SW-01 enabled in canary only.
