@@ -66,6 +66,7 @@ When SW-01 drift or UI-contract mismatch appears:
 
 | Date | Repo | Update | Owner |
 | --- | --- | --- | --- |
+| 2026-05-30 | laughing-octo-journey | SW-01 M3 Nova violation-path behavior marked complete with strict visible contract-violation UI, stable telemetry payload fields, and passing component/route smoke evidence | Nova |
 | 2026-05-30 | laughing-octo-journey | SW-01 M2 Nova lane rendering/filtering marked complete with strict unknown-status violation UI + telemetry and passing component/route smoke evidence | Nova |
 | 2026-05-30 | laughing-octo-journey | SW-01 M4 dual gate enforcement marked complete (Forge) with Forge hard-fail + Nova preflight hard-fail gate evidence accepted | Nova |
 | 2026-05-30 | laughing-octo-journey | SW-01 M5 recommendation marked ready based on dual-gate closure and clean post-drift recovery | Orion |
@@ -78,6 +79,7 @@ When SW-01 drift or UI-contract mismatch appears:
 
 ## Change Log
 
+- 2026-05-30: Added Nova M3 closure evidence (strict violation-path behavior complete with telemetry field contract and passing mission-board component + route smoke checks).
 - 2026-05-30: Added Nova M2 closure evidence (lane rendering/filtering complete with strict violation visibility and passing mission-board component + route smoke checks).
 - 2026-05-30: Reflected shared M4 closure state (dual-gate enforcement complete; evidence accepted) and aligned M5 readiness recommendation.
 - 2026-05-30: Reflected shared M3 closure state (cross-repo gate alignment complete; evidence accepted) and aligned M4 readiness recommendation.

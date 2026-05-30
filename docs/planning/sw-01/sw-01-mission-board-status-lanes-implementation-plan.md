@@ -131,6 +131,21 @@ M3: Violation-path behavior (strict fail + visible warning)
 1. Negative tests inject unknown status and assert warning state.
 2. No silent fallback to any lane.
 
+M3 execution update (2026-05-30): Closed in Nova
+- Evidence summary:
+1. Unknown mission statuses are excluded from canonical lane rendering and surfaced only through a visible contract-violation panel in `src/app/page/game/mission-board.html`.
+2. Violation telemetry emits stable diagnostics payload fields in `src/app/page/game/mission-board.ts`: `feature`, `component`, `playerName`, `characterId`, `missionId`, `observedStatus`, `canonicalStatuses`.
+3. Canonical statuses (`available`, `active`, `completed`) continue deterministic lane behavior with no fallback path for non-canonical values.
+4. Negative-path component assertions and route-level violation smoke checks are covered in `src/app/page/game/mission-board.spec.ts` and `e2e/tests/mission-board.spec.ts`.
+- Local verification commands:
+1. `npm run test:spec -- "**/mission-board.spec.ts"` (pass, 41/41).
+2. `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` (pass, 4/4).
+3. `npm run build` (pass; existing non-blocking cold-boot css budget warning unchanged).
+- Recommendation for M4 readiness:
+1. M4 can proceed with gate enforcement using the now-stable violation telemetry field contract.
+2. Treat any reintroduction of unknown-status lane placement as a hard-fail regression in both component and route smoke checks.
+3. Keep canonical lowercase status checks (`available`, `active`, `completed`) as strict acceptance criteria in M4 preflight and CI gate scripts.
+
 M4: Dual gate enforcement (Nova + Forge)
 - Deliverables:
 1. Nova contract preflight check active in CI.

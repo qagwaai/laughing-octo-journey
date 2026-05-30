@@ -1,6 +1,6 @@
 # SW-01 Closure Checklist (Nova)
 
-Status: M2 Closed (Nova)
+Status: M3 Closed (Nova)
 Date: 2026-05-30
 Repo: laughing-octo-journey
 
@@ -21,6 +21,25 @@ Repo: laughing-octo-journey
 4. M3/M4 continuity recommendation:
 - Preserve strict unknown-status no-fallback behavior and diagnostic telemetry fields for downstream gate assertions.
 - Keep lane/filter smoke checks coupled with component negative-path tests for all SW-01 changes.
+
+## M3 Closure Snapshot (Nova)
+
+1. Decision: M3 Closed.
+2. Evidence:
+- `npm run test:spec -- "**/mission-board.spec.ts"` passed (41/41), including unknown-status visible-violation and no-lane-fallback assertions.
+- `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` passed (4/4), including runtime violation visibility smoke coverage.
+- `npm run build` passed (existing cold-boot css budget warning unchanged).
+3. Telemetry contract fields verified in violation path:
+- `feature`
+- `component`
+- `playerName`
+- `characterId`
+- `missionId`
+- `observedStatus`
+- `canonicalStatuses`
+4. M4 readiness recommendation:
+- Proceed with dual-gate enforcement using the above telemetry field set as stable diagnostics context.
+- Keep unknown-status lane placement as a hard-fail regression condition.
 
 ## 1. UI Completion
 
