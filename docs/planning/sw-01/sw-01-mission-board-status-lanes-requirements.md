@@ -48,9 +48,11 @@ Out of scope:
 
 Canonical status enum:
 
-1. AVAILABLE
-2. ACTIVE
-3. COMPLETED
+1. available
+2. active
+3. completed
+
+Canonical data values are lowercase. Any title-case lane labels are presentation-only.
 
 Required behavior:
 

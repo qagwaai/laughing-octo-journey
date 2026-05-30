@@ -49,9 +49,11 @@ Breaking-change approach:
 3. Fail fast on unknown values and surface user-visible warning state.
 
 Proposed canonical status model:
-1. AVAILABLE
-2. ACTIVE
-3. COMPLETED
+1. available
+2. active
+3. completed
+
+Canonical data values are lowercase. UI lane labels may remain title case for readability.
 
 Violation rule:
 1. Any non-canonical status returned from Forge is a contract violation.
@@ -105,6 +107,21 @@ M2: Nova lane rendering and filtering
 - Verification:
 1. Component tests for lane placement and counts.
 2. Route-level mission board smoke tests pass.
+
+M2 execution update (2026-05-30): Closed in Nova
+- Evidence summary:
+1. Mission board lane rendering implemented with deterministic canonical mapping in `src/app/page/game/mission-board.ts` and `src/app/page/game/mission-board.html`.
+2. Unknown mission statuses excluded from canonical lanes and surfaced through visible violation UI and telemetry diagnostics context.
+3. Lane filter controls implemented and persisted (query param when present, storage fallback across navigation) with deterministic transitions.
+4. Component and route smoke coverage expanded in `src/app/page/game/mission-board.spec.ts`, `e2e/tests/mission-board.spec.ts`, and `e2e/page-objects/mission-board.page.ts`.
+- Local verification commands:
+1. `npm run test:spec -- "**/mission-board.spec.ts"` (pass, 41/41).
+2. `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` (pass, 4/4).
+3. `npm run build` (pass; existing non-blocking cold-boot css budget warning unchanged).
+- Recommendation for M3/M4 continuity:
+1. Carry forward strict no-fallback semantics for unknown statuses in all new mission-list UI surfaces.
+2. Keep telemetry payload fields used in M2 (`feature`, `component`, `playerName`, `characterId`, `missionId`, `observedStatus`, `canonicalStatuses`) stable for M3 negative-path assertions and M4 gate diagnostics.
+3. Require both component-level negative tests and route-level smoke checks for any SW-01 lane/filter contract touchpoints.
 
 M3: Violation-path behavior (strict fail + visible warning)
 - Deliverables:

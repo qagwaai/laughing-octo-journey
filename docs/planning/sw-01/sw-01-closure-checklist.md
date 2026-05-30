@@ -1,39 +1,26 @@
 # SW-01 Closure Checklist (Nova)
 
-Status: Draft
-Date: 2026-05-26
+Status: M2 Closed (Nova)
+Date: 2026-05-30
 Repo: laughing-octo-journey
 
-## Step 3 Evidence (2026-05-28)
+## M2 Closure Snapshot (Nova)
 
-1. Mission board status display no longer returns raw non-canonical mission values.
-2. Unknown mission statuses now render a visible contract violation state instead of silent fallback.
-3. Mission status styling is normalized to canonical lane values with explicit contract-violation styling.
-4. Validation evidence:
-- Focused spec: `src/app/page/game/mission-board.spec.ts` (passing)
-- Build gate: `npm run build` (passing)
-- Unit gate: `npm run test:ci` (passing, 1633 tests)
-
-## Step 4 Evidence (2026-05-28)
-
-1. Mission progress sync now normalizes gate-step statuses at the boundary before upsert.
-2. Legacy gate statuses are translated to canonical gate-step semantics for persisted mission status detail.
-3. Unknown gate-step statuses trigger an explicit contract-violation warning and are coerced to active to prevent invalid mission record writes.
-4. Validation evidence:
-- Focused spec: `src/app/services/mission-progress-sync.service.spec.ts` (passing)
-- Focused integration: `src/app/services/mission-flow.integration.spec.ts` (passing)
-- Unit gate: `npm run test:ci` (passing, 1635 tests)
-
-## Step 5 Evidence (2026-05-28)
-
-1. Added unit/component coverage for canonical mission status mapping and deterministic lane badge counts.
-2. Added component-level lane UI assertion for active/available/completed status badge counts.
-3. Added focused SW-01 Playwright user-path test for unknown backend mission status rendering as contract violation.
-4. Gate sequence evidence:
-- Build gate first: `npm run build` (passing)
-- Unit suite gate second: `npm run test:ci` (passing, 1637 tests)
-- Focused mission-board e2e slice third: `npm run e2e:spec -- e2e/tests/mission-board.spec.ts` (passing, 3 tests)
-- Full e2e suite last: `npm run e2e` (not green in current branch baseline; 54 passed, 77 failed, primarily viewer/scene suites)
+1. Decision: M2 Closed.
+2. Evidence:
+- `npm run test:spec -- "**/mission-board.spec.ts"` passed (41/41).
+- `npx playwright test e2e/tests/mission-board.spec.ts --reporter=line` passed (4/4).
+- `npm run build` passed (existing cold-boot css budget warning unchanged).
+3. Implemented artifacts:
+- `src/app/page/game/mission-board.ts`
+- `src/app/page/game/mission-board.html`
+- `src/app/page/game/mission-board.css`
+- `src/app/page/game/mission-board.spec.ts`
+- `e2e/tests/mission-board.spec.ts`
+- `e2e/page-objects/mission-board.page.ts`
+4. M3/M4 continuity recommendation:
+- Preserve strict unknown-status no-fallback behavior and diagnostic telemetry fields for downstream gate assertions.
+- Keep lane/filter smoke checks coupled with component negative-path tests for all SW-01 changes.
 
 ## 1. UI Completion
 
@@ -49,9 +36,9 @@ Repo: laughing-octo-journey
 ## 2. Contract and Violation Behavior
 
 1. UI maps only canonical statuses:
-- AVAILABLE
-- ACTIVE
-- COMPLETED
+- available
+- active
+- completed
 
 2. Unknown statuses trigger visible contract violation state.
 3. Telemetry emits violation event with required metadata.

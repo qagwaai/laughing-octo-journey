@@ -1,6 +1,6 @@
 import { CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -30,7 +30,9 @@ function setup(options: {
   navigationState?: Record<string, unknown>;
   connected?: boolean;
   outlet?: string;
+  queryParams?: Record<string, string>;
 }) {
+  const queryParamMap = convertToParamMap(options.queryParams ?? {});
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: jasmine.createSpy('navigate'),
@@ -44,7 +46,15 @@ function setup(options: {
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
       { provide: Router, useValue: mockRouter },
-      { provide: ActivatedRoute, useValue: { outlet: options.outlet ?? 'left' } },
+      {
+        provide: ActivatedRoute,
+        useValue: {
+          outlet: options.outlet ?? 'left',
+          snapshot: {
+            queryParamMap,
+          },
+        },
+      },
       { provide: ShipExteriorMissionStateService, useValue: createMockMissionStateService() },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -62,6 +72,10 @@ describe('MissionBoardPage', () => {
   let sessionService: MockSessionService;
 
   beforeEach(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.clear();
+    }
+
     socketService = createMockSocketService();
     sessionService = createMockSessionService('test-session-key');
   });
@@ -400,6 +414,68 @@ describe('MissionBoardPage', () => {
     expect(label).toBe('Contract Violation');
   });
 
+  it('hydrates lane filter state from missionStatusFilter query param', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      queryParams: {
+        missionStatusFilter: 'completed',
+      },
+    });
+
+    expect(component['selectedLaneFilter']()).toBe('completed');
+  });
+
+  it('persists lane filter updates to route query params', () => {
+    const character = { id: 'c-1', characterName: 'Nova' };
+    const { component, mockRouter } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: character,
+      },
+    });
+
+    component.setMissionLaneFilter('active');
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([], {
+      relativeTo: jasmine.anything(),
+      queryParams: {
+        missionStatusFilter: 'active',
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+      preserveFragment: true,
+    });
+  });
+
+  it('keeps unknown statuses out of canonical lane counts', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    component['missions'].set([
+      { missionId: 'custom-active', status: 'active' },
+      { missionId: 'custom-completed', status: 'completed' },
+      { missionId: 'custom-unknown', status: 'abandoned' },
+    ] as any);
+
+    expect(component.getMissionLaneCount('available')).toBe(0);
+    expect(component.getMissionLaneCount('active')).toBe(1);
+    expect(component.getMissionLaneCount('completed')).toBe(1);
+    expect(component['visibleUnknownStatusViolations']().length).toBe(1);
+  });
+
   it('returns mission title fallback when mission id is unknown', () => {
     const { component } = setup({ socketService, sessionService });
 
@@ -677,7 +753,77 @@ describe('MissionBoardPage', () => {
       expect(alert?.textContent?.trim()).toBe('Load failed');
     });
 
-    it('renders contract violation badge for unknown mission statuses', () => {
+    it('shows loading state separately from empty and error states', () => {
+      const { fixture } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+        connected: true,
+      });
+
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.textContent).toContain('Loading missions...');
+      expect(el.querySelector('[role="alert"]')).toBeNull();
+      expect(el.textContent).not.toContain('No missions found for this character.');
+    });
+
+    it('renders deterministic lane counts matching rendered lane items', () => {
+      const { fixture, component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+
+      component['missions'].set([
+        { missionId: 'mission-active-1', status: 'active' },
+        { missionId: 'mission-available-1', status: 'available' },
+        { missionId: 'mission-completed-1', status: 'completed' },
+      ] as any);
+      spyOn(component, 'getMissionStageInfo').and.returnValue({ stage: 'Stage 1 of 1', nextStep: 'N/A' });
+
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      const availableCount = Number(el.querySelector('.lane-count[data-lane-count="available"]')?.textContent?.trim());
+      const activeCount = Number(el.querySelector('.lane-count[data-lane-count="active"]')?.textContent?.trim());
+      const completedCount = Number(el.querySelector('.lane-count[data-lane-count="completed"]')?.textContent?.trim());
+
+      expect(availableCount).toBe(el.querySelectorAll('[data-lane-item="available"]').length);
+      expect(activeCount).toBe(el.querySelectorAll('[data-lane-item="active"]').length);
+      expect(completedCount).toBe(el.querySelectorAll('[data-lane-item="completed"]').length);
+    });
+
+    it('renders filter empty state when selected lane has no missions', () => {
+      const { fixture, component } = setup({
+        socketService,
+        sessionService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
+
+      component['missions'].set([{ missionId: 'mission-active-1', status: 'active' }] as any);
+      component.setMissionLaneFilter('completed');
+      spyOn(component, 'getMissionStageInfo').and.returnValue({ stage: 'Stage 1 of 1', nextStep: 'N/A' });
+
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(el.textContent).toContain('No missions match the selected lane filter.');
+      expect(el.querySelectorAll('[data-lane-item="completed"]').length).toBe(0);
+    });
+
+    it('renders contract violation panel for unknown mission statuses without lane fallback', () => {
+      const consoleErrorSpy = spyOn(console, 'error');
       const { fixture, component } = setup({ socketService, sessionService });
 
       component['missions'].set([{ missionId: 'm-01', status: 'abandoned' } as any]);
@@ -687,8 +833,13 @@ describe('MissionBoardPage', () => {
       const el: HTMLElement = fixture.nativeElement;
       const violationBadge = el.querySelector('.mission-status[data-status="contract-violation"]');
 
-      expect(violationBadge).not.toBeNull();
-      expect(violationBadge?.textContent?.trim()).toBe('Contract Violation');
+      expect(violationBadge).toBeNull();
+      expect(el.querySelector('.contract-violation')).not.toBeNull();
+      expect(el.querySelector('.contract-violation')?.textContent).toContain('abandoned');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[mission-board-contract] Contract violation: unknown mission status in mission board lane mapping.',
+        jasmine.objectContaining({ missionId: 'm-01', observedStatus: 'abandoned' }),
+      );
     });
 
     it('renders canonical lane status badges with deterministic counts', () => {
