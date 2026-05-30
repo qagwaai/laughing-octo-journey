@@ -108,11 +108,15 @@ export class GuardedLeftMenu implements OnChanges {
       return;
     }
 
-    const state = this.missionStateService.loadState({
-      missionId: FIRST_TARGET_MISSION_ID,
-      playerName,
-      characterId,
-    });
+    const inMemoryState = this.missionStateService.lastSaved();
+    const state =
+      inMemoryState?.missionId === FIRST_TARGET_MISSION_ID && inMemoryState.characterId === characterId
+        ? inMemoryState
+        : this.missionStateService.loadState({
+            missionId: FIRST_TARGET_MISSION_ID,
+            playerName,
+            characterId,
+          });
 
     const activeCue = resolveActiveFirstTargetCue(state);
     this.activeGuidedRoute.set(activeCue?.route ?? null);

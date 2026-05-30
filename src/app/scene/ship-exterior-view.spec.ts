@@ -281,6 +281,47 @@ describe('ShipExteriorViewScene', () => {
     expect(emptyInventoryWarningCalls.length).toBe(0);
   });
 
+  it('does not warn missing dart drone once first-target neutralize step is completed', () => {
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    const { component } = setup({
+      joinShip: {
+        id: 's-7',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-dart-7', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+      missionContext: {
+        missionId: 'first-target',
+      } as any,
+    } as any);
+
+    component['missionGateState'].set({
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
+      updatedAt: new Date().toISOString(),
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'active' },
+        { key: 'repair_scavenger_pod', status: 'locked' },
+      ],
+    } as any);
+
+    component['updateTargetingCapabilityFromShipList']([
+      {
+        id: 's-7',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-sensor', itemType: 'sensor-array', launchable: false }],
+      },
+    ] as any);
+
+    const missingDroneWarningCalls = warnSpy.calls
+      .allArgs()
+      .filter((args) => args[0] === '[ship-exterior-contract] Scavenger Pod inventory missing Expendable Dart Drone.');
+    expect(missingDroneWarningCalls.length).toBe(0);
+  });
+
   it('should lock a single target after right-click hold when targeting is enabled', () => {
     const { component, fixture } = setup({
       joinShip: {

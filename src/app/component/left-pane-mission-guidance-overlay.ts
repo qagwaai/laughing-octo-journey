@@ -97,11 +97,15 @@ export class LeftPaneMissionGuidanceOverlay {
       return;
     }
 
-    const state = this.missionStateService.loadState({
-      missionId: FIRST_TARGET_MISSION_ID,
-      playerName,
-      characterId,
-    });
+    const inMemoryState = this.missionStateService.lastSaved();
+    const state =
+      inMemoryState?.missionId === FIRST_TARGET_MISSION_ID && inMemoryState.characterId === characterId
+        ? inMemoryState
+        : this.missionStateService.loadState({
+            missionId: FIRST_TARGET_MISSION_ID,
+            playerName,
+            characterId,
+          });
 
     const cue = resolveActiveFirstTargetCue(state);
     this.activeCue.set(cue);

@@ -1665,7 +1665,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     const normalizedShipModel = (ship?.model ?? '').trim().toLowerCase();
-    const droneAbsenceExpectedFromLaunch = shipId.length > 0 && this.knownDroneDepletedShipIds.has(shipId);
+    const droneAbsenceExpectedFromLaunch =
+      (shipId.length > 0 && this.knownDroneDepletedShipIds.has(shipId)) ||
+      this.isDroneAbsenceExpectedFromMissionProgress();
     if (normalizedShipModel === 'scavenger pod' && droneItems.length === 0 && !droneAbsenceExpectedFromLaunch) {
       appLogger.warn('[ship-exterior-contract] Scavenger Pod inventory missing Expendable Dart Drone.', {
         source: params.source,
@@ -1676,6 +1678,25 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         inventoryLaunchableFlags,
       });
     }
+  }
+
+  private isDroneAbsenceExpectedFromMissionProgress(): boolean {
+    if (this.missionDefinition.missionId !== FIRST_TARGET_MISSION_ID) {
+      return false;
+    }
+
+    const gateState = this.missionGateState();
+    const neutralizeStep = gateState?.steps.find((step) => step.key === 'neutralize_identified_asteroid');
+    if (neutralizeStep?.status === 'completed') {
+      return true;
+    }
+
+    const normalizedMissionStatusHint = (
+      this.navigationState.missionContext?.missionStatusHint ?? this.navigationState.firstTargetMissionStatus ?? ''
+    )
+      .trim()
+      .toLowerCase();
+    return normalizedMissionStatusHint === 'completed';
   }
 
   private reportLaunchabilityContractMismatch(
