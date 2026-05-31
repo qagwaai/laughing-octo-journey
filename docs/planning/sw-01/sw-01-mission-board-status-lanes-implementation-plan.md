@@ -194,6 +194,51 @@ M5: Canary release validation
 1. Canary acceptance checklist passes.
 2. No P1/P2 defects for agreed soak window.
 
+M5 execution update (2026-05-30): Not Closed in laughing-octo-journey
+- Joint decision:
+1. M5 is **not closed** in this repo.
+2. M6 recommendation from this repo evidence: **No-Go** until M5 blockers are resolved.
+- Forge report (coordinated evidence captured from Nova repo commands):
+1. Contract gate baseline remains green:
+	- `npm run contract:check:stage3` -> pass, Findings `0`, critical surface coverage `complete`.
+	- `npm run contract:check:stage5` -> pass, Findings `0`, critical surface coverage `complete`.
+2. Canonical status contract remains lowercase-only across current artifacts:
+	- `available`, `active`, `completed`.
+3. Canary rollback drill execution status in this repo:
+	- Blocked: no executable SW-01 canary toggle path found in runtime/workflow files (`src/environments`, `src/app`, `.github/workflows`).
+4. Drift posture:
+	- No contract drift detected in current producer/consumer artifact checks.
+- Nova report:
+1. SW-01 mission-board targeted validations are green:
+	- `npm run test:spec -- "**/mission-board.spec.ts"` -> pass (41/41).
+	- `npm run e2e:spec -- e2e/tests/mission-board.spec.ts` -> pass (4/4).
+	- `npm run e2e:spec -- e2e/tests/first-target-to-m01-transition.spec.ts` -> pass (6/6).
+	- `npm run build` -> pass (existing non-blocking cold-boot css budget warning unchanged).
+2. Violation telemetry payload fields remain stable in `src/app/page/game/mission-board.ts`:
+	- `feature`
+	- `component`
+	- `playerName`
+	- `characterId`
+	- `missionId`
+	- `observedStatus`
+	- `canonicalStatuses`
+3. Canary-only enablement and runtime telemetry soak evidence:
+	- Blocked in this repo by missing executable canary toggle/runbook command path.
+4. Broad e2e sweep signal (non-SW-01 suites):
+	- One full sweep execution ended with interrupted viewer tests (94 passed, 2 interrupted, 36 not run).
+	- Affected specs were outside SW-01 mission-board scope and require separate triage before using full-sweep signal as release confidence.
+- M5 blockers and owners:
+1. **Canary enablement operability gap** (Owner: Forge + Orion)
+	- Missing reproducible command path to enable/disable SW-01 in canary from this repo evidence chain.
+2. **Rollback drill not executable** (Owner: Forge)
+	- Stop condition triggered: rollback drill cannot be validated end-to-end.
+3. **Soak evidence incomplete** (Owner: QA + Orion)
+	- No agreed soak-window artifact bundle attached (P1/P2 incident log extract + telemetry summary).
+- Exit criteria to close M5:
+1. Provide reproducible canary enable/disable command sequence and execute rollback drill with evidence.
+2. Attach soak-window telemetry proving no non-canonical statuses and no P1/P2 defects.
+3. Re-run post-drill canonical checks (`contract:check:stage3`, mission-board spec/e2e smoke) and record green results.
+
 M6: Broad release readiness decision
 - Deliverables:
 1. Go/no-go review notes with explicit risk disposition.

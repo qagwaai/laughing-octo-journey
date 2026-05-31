@@ -1,6 +1,6 @@
 # SW-01 Closure Checklist (Nova)
 
-Status: M4 Closed (Nova)
+Status: M5 Not Closed (Nova)
 Date: 2026-05-30
 Repo: laughing-octo-journey
 
@@ -65,6 +65,34 @@ Repo: laughing-octo-journey
 6. M5 recommendation:
 - **Go** for M5 canary validation.
 - Rationale: dual-gate hard-fail behavior is active and reproducible, drift classes fail deterministically with actionable diagnostics, and canonical state re-passes cleanly.
+
+## M5 Execution Snapshot (Nova + Forge Coordination)
+
+1. Decision: M5 Not Closed.
+2. Forge-side gate evidence (captured in this repo):
+- `npm run contract:check:stage3` passed (findings 0).
+- `npm run contract:check:stage5` passed (findings 0).
+3. Nova validation evidence:
+- `npm run test:spec -- "**/mission-board.spec.ts"` passed (41/41).
+- `npm run e2e:spec -- e2e/tests/mission-board.spec.ts` passed (4/4).
+- `npm run e2e:spec -- e2e/tests/first-target-to-m01-transition.spec.ts` passed (6/6).
+- `npm run build` passed (existing non-blocking cold-boot css budget warning unchanged).
+4. Telemetry payload field stability evidence:
+- `feature`
+- `component`
+- `playerName`
+- `characterId`
+- `missionId`
+- `observedStatus`
+- `canonicalStatuses`
+5. M5 closure blockers:
+- Canary-only enable/disable path is not executable from current repo runbook/commands.
+- Rollback drill cannot be completed with reproducible command evidence.
+- Soak-window artifact bundle (P1/P2 incidents + status telemetry summary) is not attached.
+6. Stop-condition posture:
+- Stop condition 4 is active for this repo evidence chain: rollback drill not executable.
+7. M6 recommendation from current evidence:
+- **No-Go** until rollback drill and soak evidence are complete.
 
 ## 1. UI Completion
 
