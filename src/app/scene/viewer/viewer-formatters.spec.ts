@@ -2,6 +2,8 @@ import type { ViewerBody } from '../../model/solar-system-get';
 import {
   VIEWER_SCENE_DEFAULT_PLANET_COLOR,
   VIEWER_SCENE_DEFAULT_STAR_COLOR,
+  VIEWER_SCENE_GATE_COLOR,
+  VIEWER_SCENE_GATE_ORBIT_COLOR,
   VIEWER_SCENE_MARKET_ORBIT_COLOR,
   VIEWER_SCENE_MARKET_STATION_COLOR,
   VIEWER_SCENE_MOON_BASE_RADIUS,
@@ -14,6 +16,7 @@ import {
   VIEWER_SCENE_STAR_BASE_RADIUS,
   VIEWER_SCENE_STAR_MAX_RADIUS,
   VIEWER_SCENE_STAR_MIN_RADIUS,
+  isGateBody,
   isMarketStationBody,
   isStarBody,
   resolveBodyColor,
@@ -69,6 +72,26 @@ const marketStationBody: ViewerBody = {
   spatial: baseSpatial(160_000_000),
 };
 
+const gateBody: ViewerBody = {
+  id: 'gate-ring-1',
+  bodyType: 'station',
+  displayName: 'Ring Gate Alpha',
+  spatial: baseSpatial(180_000_000),
+  externalObjectDescriptor: {
+    descriptorId: 'gates-ring-gate-alpha',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'gates',
+    objectFamily: 'ring-gate',
+    roleCue: 'navigation',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: 'Ring Gate Alpha',
+    silhouetteProfile: 'ring',
+    materialProfile: 'infrastructure',
+    emissiveProfile: 'navigation',
+  },
+};
+
 describe('viewer-formatters', () => {
   it('detects star bodies', () => {
     expect(isStarBody(starBody)).toBeTrue();
@@ -85,6 +108,32 @@ describe('viewer-formatters', () => {
     expect(isMarketStationBody(planetBody)).toBeFalse();
   });
 
+  it('detects market stations from descriptor family without legacy stationKind', () => {
+    const descriptorStation: ViewerBody = {
+      ...marketStationBody,
+      stationKind: undefined,
+      externalObjectDescriptor: {
+        descriptorId: 'stations-trade-hub-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'stations',
+        objectFamily: 'trade-hub',
+        roleCue: 'trade',
+        factionCue: 'consortium',
+        fallbackTier: 'standard',
+        displayLabel: 'Trade Hub Station',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    };
+    expect(isMarketStationBody(descriptorStation)).toBeTrue();
+  });
+
+  it('detects gate bodies via descriptor domain', () => {
+    expect(isGateBody(gateBody)).toBeTrue();
+    expect(isGateBody(planetBody)).toBeFalse();
+  });
+
   it('uses explicit visualization colors when present', () => {
     expect(resolveBodyColor(starBody)).toBe('#fff5b6');
     expect(resolveBodyColor(planetBody)).toBe('#3399ff');
@@ -97,6 +146,7 @@ describe('viewer-formatters', () => {
     expect(resolveBodyColor(star)).toBe(VIEWER_SCENE_DEFAULT_STAR_COLOR);
     expect(resolveBodyColor(planet)).toBe(VIEWER_SCENE_DEFAULT_PLANET_COLOR);
     expect(resolveBodyColor(marketStation)).toBe(VIEWER_SCENE_MARKET_STATION_COLOR);
+    expect(resolveBodyColor(gateBody)).toBe(VIEWER_SCENE_GATE_COLOR);
   });
 
   it('clamps star radius using luminosity', () => {
@@ -146,6 +196,7 @@ describe('viewer-formatters', () => {
   it('resolves market station orbit color as light green', () => {
     expect(resolveOrbitColor(marketStationBody)).toBe(VIEWER_SCENE_MARKET_ORBIT_COLOR);
     expect(resolveOrbitColor(planetBody)).toBe('#ffffff');
+    expect(resolveOrbitColor(gateBody)).toBe(VIEWER_SCENE_GATE_ORBIT_COLOR);
   });
 
   it('keeps market station orbit positions visible instead of compressing them like moons', () => {

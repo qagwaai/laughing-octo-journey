@@ -25,6 +25,7 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
   resolveAnchoredOrbitSceneProfile,
+  isGateBody,
   isStarBody,
   isMarketStationBody,
   resolveBodyColor,
@@ -54,6 +55,7 @@ interface RenderedBody {
   position: [number, number, number];
   isStar: boolean;
   isMarketStation: boolean;
+  isGate: boolean;
 }
 
 interface RenderedShip {
@@ -272,7 +274,8 @@ export function mapBodiesToRendered(
       radius: resolveBodySceneRadius(body, zoomLevel),
       position,
       isStar: isStarBody(body),
-        isMarketStation: isMarketStationBody(body),
+      isMarketStation: isMarketStationBody(body),
+      isGate: isGateBody(body),
     };
   });
 

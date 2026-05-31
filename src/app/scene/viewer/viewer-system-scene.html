@@ -75,6 +75,8 @@
           ? '#f59e0b'
           : body.bodyType === 'planet'
             ? '#ffffff'
+            : body.isGate
+              ? '#7dd3fc'
             : body.isMarketStation
               ? '#22c55e'
               : body.color
@@ -88,6 +90,8 @@
           ? '#92400e'
           : body.bodyType === 'planet'
             ? '#aab8d0'
+            : body.isGate
+              ? '#0c4a6e'
             : body.isMarketStation
               ? '#14532d'
               : '#000000'
@@ -97,6 +101,8 @@
         ? 0.4
         : body.bodyType === 'planet'
           ? 0.2
+          : body.isGate
+            ? 0.22
           : body.isMarketStation
             ? 0.2
             : 0

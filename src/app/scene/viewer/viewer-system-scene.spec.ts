@@ -48,6 +48,26 @@ const marketStation: ViewerBody = {
   },
 };
 
+const gateBody: ViewerBody = {
+  id: 'gate-ring-alpha',
+  bodyType: 'station',
+  displayName: 'Ring Gate Alpha',
+  spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 170_000_000, y: 0, z: 0 }, epochMs: 0 },
+  externalObjectDescriptor: {
+    descriptorId: 'gates-ring-gate-alpha',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'gates',
+    objectFamily: 'ring-gate',
+    roleCue: 'navigation',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: 'Ring Gate Alpha',
+    silhouetteProfile: 'ring',
+    materialProfile: 'infrastructure',
+    emissiveProfile: 'navigation',
+  },
+};
+
 const distantPlanet: ViewerBody = {
   id: 'planet-2',
   bodyType: 'planet',
@@ -109,6 +129,14 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
   it('returns an empty array when no bodies are provided', () => {
     expect(mapBodiesToRendered([])).toEqual([]);
+  });
+
+  it('maps gate descriptor bodies with gate-specific color', () => {
+    const rendered = mapBodiesToRendered([star, gateBody]);
+    const renderedGate = rendered.find((body) => body.id === 'gate-ring-alpha');
+
+    expect(renderedGate).toBeDefined();
+    expect(renderedGate?.color).toBe('#38bdf8');
   });
 
   it('derives a camera distance range from the scene extent', () => {

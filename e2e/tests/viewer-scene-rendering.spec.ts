@@ -178,6 +178,114 @@ function solarSystemGetResponse(bodies: any[]) {
   };
 }
 
+function withGateDescriptorBodies(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-ring-1',
+      bodyType: 'station',
+      displayName: 'Ring Gate One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 175000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-ring-gate-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'ring-gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'hero',
+        displayLabel: 'Ring Gate One',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+    {
+      id: 'gate-segmented-1',
+      bodyType: 'station',
+      displayName: 'Segmented Arch One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 176500000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-segmented-arch-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'segmented-arch',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Segmented Arch One',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+    {
+      id: 'gate-relay-1',
+      bodyType: 'station',
+      displayName: 'Relay Spindle One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 178000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-relay-spindle-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'relay-spindle',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'minimal',
+        displayLabel: 'Relay Spindle One',
+        silhouetteProfile: 'spire',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
+function withInvalidGateDescriptorBody(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-invalid-1',
+      bodyType: 'station',
+      displayName: 'Invalid Gate Descriptor',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 179000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-invalid-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'trade-hub',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Invalid Gate Descriptor',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
 async function setupViewerSceneTest(page: any) {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
@@ -287,6 +395,26 @@ test.describe('Viewer — Scene Rendering', () => {
     const viewerPage = new ViewerPage(page);
     await expect(viewerPage.sceneCanvas).toBeVisible();
     await expect(viewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('accepts SW-13 gate descriptor families ring-gate, segmented-arch, relay-spindle', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withGateDescriptorBodies(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('rejects invalid SW-13 gate descriptor families at viewer ingest boundary', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withInvalidGateDescriptorBody(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
+    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
   });
 
   test('handles scene load error gracefully', async ({ page }) => {

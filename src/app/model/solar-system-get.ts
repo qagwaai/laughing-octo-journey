@@ -1,5 +1,6 @@
 import { Triple } from './shared/triple';
 import { SolarSystemSummary } from './solar-system-list';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 
 export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';
@@ -57,6 +58,8 @@ export interface ViewerBody {
   localOffsetKm?: Triple;
   /** Optional convenience metric from cluster center to body position in km. */
   distanceFromClusterCenterKm?: number;
+  /** Optional SW-13 external object descriptor for deterministic presentation contracts. */
+  externalObjectDescriptor?: ExternalObjectDescriptor;
   visualization?: ViewerBodyVisualization;
   physicalCatalog?: ViewerBodyPhysicalCatalog;
   orbitalElements?: ViewerBodyOrbitalElements;
@@ -65,6 +68,14 @@ export interface ViewerBody {
   spectralClass?: string;
   luminositySolar?: number;
   massSolar?: number;
+}
+
+export interface ViewerDebrisEntry {
+  material: string;
+  rarity: string;
+  quantity: number;
+  itemType: string;
+  externalObjectDescriptor?: ExternalObjectDescriptor;
 }
 
 export interface SolarSystemGetRequest {

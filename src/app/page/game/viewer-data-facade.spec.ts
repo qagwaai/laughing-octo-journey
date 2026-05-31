@@ -58,6 +58,33 @@ function stationBody(id: string, solarSystemId = 'sol'): ViewerBody {
   };
 }
 
+function asteroidBodyWithDescriptor(id: string): ViewerBody {
+  return {
+    id,
+    bodyType: 'asteroid',
+    displayName: id,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'icrs',
+      positionKm: { x: 10, y: 20, z: 30 },
+      epochMs: 0,
+    },
+    externalObjectDescriptor: {
+      descriptorId: `${id}-descriptor`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'asteroids',
+      objectFamily: 'rocky-irregular',
+      roleCue: 'hazard',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: id,
+      silhouetteProfile: 'irregular',
+      materialProfile: 'rocky',
+      emissiveProfile: 'none',
+    },
+  };
+}
+
 function createHarness(): FacadeHarness {
   const solarSystemService = {
     getSolarSystem: jasmine.createSpy('getSolarSystem'),
@@ -174,6 +201,53 @@ describe('ViewerDataFacade', () => {
     expect(state.bodies.map((body) => body.id)).toEqual(['sol-star', 'station-a']);
     expect(state.ships).toEqual([]);
     expect(services.shipService.listShipsByOwner).not.toHaveBeenCalled();
+  });
+
+  it('rejects payloads with invalid SW-13 descriptors', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [
+          {
+            ...asteroidBodyWithDescriptor('asteroid-a'),
+            externalObjectDescriptor: {
+              ...asteroidBodyWithDescriptor('asteroid-a').externalObjectDescriptor,
+              schemaVersion: 'legacy-v0',
+            },
+          },
+        ],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toContain('viewer-scene-error descriptor-contract');
+    expect(state.bodies).toEqual([]);
+    expect(state.ships).toEqual([]);
+  });
+
+  it('accepts valid SW-13 descriptors and preserves sanitized bodies', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [asteroidBodyWithDescriptor('asteroid-a')],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    const asteroid = state.bodies.find((body) => body.id === 'asteroid-a');
+    expect(state.sceneError).toBeNull();
+    expect(asteroid?.externalObjectDescriptor?.schemaVersion).toBe('sw-13-m0-v1');
+    expect(asteroid?.externalObjectDescriptor?.domain).toBe('asteroids');
   });
 
   it('hydrates market stations when none exist and drops stale responses', () => {

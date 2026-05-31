@@ -1,5 +1,9 @@
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
+import {
+  coerceExternalObjectDescriptor,
+  type ExternalObjectDomain,
+} from '../../model/external-object-descriptor';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
@@ -34,6 +38,20 @@ interface ViewerDataFacadeDeps {
 
 function normalizeToken(value: string | undefined): string {
   return value?.trim().toLowerCase() ?? '';
+}
+
+function resolveExpectedDescriptorDomain(body: ViewerBody): ExternalObjectDomain | undefined {
+  const bodyType = normalizeToken(body.bodyType);
+  if (bodyType === 'asteroid') {
+    return 'asteroids';
+  }
+  if (bodyType === 'gate' || bodyType === 'jump-gate' || bodyType === 'jumpgate') {
+    return 'gates';
+  }
+  if (bodyType === 'station' && normalizeToken(body.stationKind) === 'market') {
+    return 'stations';
+  }
+  return undefined;
 }
 
 const VIEWER_MARKET_DISCOVERY_DISTANCE_AU = 200;
@@ -73,9 +91,18 @@ export class ViewerDataFacade {
         this.deps.setSolarSystem(response.solarSystem ?? null);
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
         const dedupedBodies = this.mergeUniqueBodies(allBodies);
-        this.deps.setBodies(dedupedBodies);
+        const descriptorSanitization = this.sanitizeBodiesForDescriptorContract(dedupedBodies);
+        if (!descriptorSanitization.success) {
+          this.deps.setBodies([]);
+          this.deps.setShips([]);
+          this.deps.setSceneError(`viewer-scene-error descriptor-contract ${descriptorSanitization.message}`);
+          return;
+        }
+
+        const sanitizedBodies = descriptorSanitization.bodies;
+        this.deps.setBodies(sanitizedBodies);
         this.deps.resetSelectionState();
-        this.maybeHydrateMarketStations(dedupedBodies, playerName, sessionKey, solarSystemId);
+        this.maybeHydrateMarketStations(sanitizedBodies, playerName, sessionKey, solarSystemId);
         this.loadShipsForSystem(playerName, sessionKey, solarSystemId);
       },
     );
@@ -95,6 +122,44 @@ export class ViewerDataFacade {
       dedupedBodies.push(body);
     }
     return dedupedBodies;
+  }
+
+  private sanitizeBodiesForDescriptorContract(
+    bodies: ViewerBody[],
+  ): { success: true; bodies: ViewerBody[] } | { success: false; message: string } {
+    const sanitizedBodies: ViewerBody[] = [];
+    for (const body of bodies) {
+      const descriptor = body.externalObjectDescriptor;
+      if (!descriptor) {
+        sanitizedBodies.push(body);
+        continue;
+      }
+
+      const expectedDomain = resolveExpectedDescriptorDomain(body);
+      const descriptorResult = coerceExternalObjectDescriptor(descriptor, expectedDomain);
+      if (!descriptorResult.descriptor) {
+        const message =
+          `invalid externalObjectDescriptor for body ${body.id}` +
+          (descriptorResult.reason ? `: ${descriptorResult.reason}` : '');
+        appLogger.warn('[viewer-descriptor-contract] ' + message, {
+          bodyId: body.id,
+          bodyType: body.bodyType,
+          stationKind: body.stationKind ?? null,
+          expectedDomain: expectedDomain ?? null,
+        });
+        return { success: false, message };
+      }
+
+      sanitizedBodies.push({
+        ...body,
+        externalObjectDescriptor: descriptorResult.descriptor,
+      });
+    }
+
+    return {
+      success: true,
+      bodies: sanitizedBodies,
+    };
   }
 
   private toViewerMarketStationBody(market: MarketSummary): ViewerBody {
