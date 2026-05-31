@@ -45,6 +45,7 @@ Interpretation:
 | SW-14 | In-System Short-Hop Drive | H1/H2 bridge | 5 | 3 | 3 | 4 | 5 | 4.00 | Makes in-system travel practical without removing fuel and route pressure |
 | SW-15 | Minimal Character Bust Builder v0 | H1/H2 bridge | 4 | 4 | 3 | 4 | 5 | 3.60 | Browser-friendly bust customization for player identity and NPC reuse |
 | SW-16 | Ship-External Target Persistence on Re-Entry | H1 | 4 | 2 | 2 | 2 | 5 | 4.30 | Preserve current target when re-entering ship-external-view if target remains valid |
+| SW-17 | Computer Progression (Per-Ship Intelligence Tiers) | H1/H2 bridge | 5 | 3 | 2 | 3 | 5 | 4.20 | 10-tier per-ship computer installation; skill+level-gated tier installs; includes asteroid prescan, pirate identification, market opportunities, route risk, mission scoring, solar weather, and optional light automation |
 | SW-COR | Socket Correlation Contract Hardening | H1 foundation | 5 | 2 | 1 | 2 | 5 | 4.65 | Enforce correlationId echo on all socket request/response pairs; prevent concurrent-request state corruption; SW-08 amendment |
 
 ## Ranked Small-Win Order
@@ -55,21 +56,22 @@ Revised canonical ranking (descending by score):
 3. ~~SW-08 Contract Safety Gate in CI (4.65)~~
 4. ~~SW-COR Socket Correlation Contract Hardening (4.65)~~
 5. ~~SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory (4.55)~~
-6. SW-01 Mission Board Status Lanes (4.50)
+6. ~~SW-01~~ Mission Board Status Lanes (4.50)
 7. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
 8. SW-02 Market Opportunity Pings (4.25)
-9. SW-03 Quick Dock to Trade Flow (4.15)
-10. SW-05 Ship Condition Badges in Hangar (4.05)
-11. SW-06 Discovery Log v1 (4.00)
-12. SW-10 Technology Progress Tree Viewer v0 (4.00)
-13. SW-14 In-System Short-Hop Drive (4.00)
-14. SW-04 Fabrication Queue Timeline (3.85)
-15. SW-07 Spatial Clarity Pack (3.85)
-16. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
-17. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
-18. SW-11 Skill Gating Scaffold (Mining First) (3.75)
-19. SW-13 External Object Presentation Expansion (3.75)
-20. SW-15 Minimal Character Bust Builder v0 (3.60)
+9. SW-17 Computer Progression (Per-Ship Intelligence Tiers) (4.20)
+10. SW-03 Quick Dock to Trade Flow (4.15)
+11. SW-05 Ship Condition Badges in Hangar (4.05)
+12. SW-06 Discovery Log v1 (4.00)
+13. SW-10 Technology Progress Tree Viewer v0 (4.00)
+14. SW-14 In-System Short-Hop Drive (4.00)
+15. SW-04 Fabrication Queue Timeline (3.85)
+16. SW-07 Spatial Clarity Pack (3.85)
+17. SW-12 Minimal Ship-to-Ship Encounter v0 (3.85)
+18. SW-09 NPC Presence v0 (Belt Pirate Runtime) (3.75)
+19. SW-11 Skill Gating Scaffold (Mining First) (3.75)
+20. SW-13 External Object Presentation Expansion (3.75)
+21. SW-15 Minimal Character Bust Builder v0 (3.60)
 
 Tie-break rule used for equal scores: prefer lower risk and fewer dependencies for H1.
 
@@ -80,6 +82,24 @@ Regression override rule:
 - Any opening-loop regression that blocks expected first-action gameplay (for example initial Dart launch availability) should execute before same-scope net-new work.
 - Any regression that removes canonical starter inventory components should execute before same-scope net-new work.
 - Any regression that removes a previously available fire/launch action for canonical starter equipment should execute before same-scope net-new work.
+
+Computer progression policy note:
+- SW-17 is planned as top-5 among active net-new features.
+- Per-ship installation is mandatory; higher computer tiers unlock through combined Computer Systems Installation skill rank and character level gating.
+- Automation remains light-assist only with player confirmation for any action execution.
+
+## SW-17 Planning Artifacts (2026-05-30)
+
+1. [SW-17 Computer Progression Implementation Plan](sw-17/sw-17-computer-progression-implementation-plan.md)
+2. [SW-17 Computer Progression Closure Checklist](sw-17/sw-17-computer-progression-closure-checklist.md)
+
+## Active Top-5 Net-New Features (Post SW-01 Closure)
+
+1. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
+2. SW-02 Market Opportunity Pings (4.25)
+3. SW-17 Computer Progression (Per-Ship Intelligence Tiers) (4.20)
+4. SW-03 Quick Dock to Trade Flow (4.15)
+5. SW-05 Ship Condition Badges in Hangar (4.05)
 
 ## Closure Update (2026-05-25)
 

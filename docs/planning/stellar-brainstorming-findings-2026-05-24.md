@@ -166,6 +166,12 @@ Closure note:
 - Keep this as a separate implementation track because of its higher 3D asset/runtime budget.
 - Value: Strengthens identity and continuity, and can be reused for NPC portrait/bust presentation.
 
+16. Computer Progression (Per-Ship Intelligence Tiers)
+- Add a per-ship installable computer module that unlocks better intelligence features across 10 progression tiers.
+- Installation is gated by character skill progression plus character level thresholds.
+- Keep assistance mostly advisory with opt-in light automation for low-risk actions.
+- Value: strengthens planning, threat awareness, and route economy decisions without reducing player agency.
+
 ## Long-Term Big Bets (Track, Sequence, and De-risk)
 
 1. Mission scripting framework for branching outcomes and authored depth.
@@ -226,6 +232,34 @@ Suggested skill list for initial design backlog:
 10. Drone Operations (expendable/permanent drone effectiveness)
 11. Security and Defense (threat response, damage mitigation)
 12. Command and Fleet Coordination (multi-ship control at later stages)
+13. Computer Systems Installation (maximum installable computer tier per ship)
+
+## Computer Progression Concept (New)
+
+Objective:
+- Introduce a ship computer progression track that scales intelligence support from basic scan clarity to advanced strategic guidance.
+
+Core design rules:
+1. Computer hardware is installed per ship; swapping ships does not transfer installed tier automatically.
+2. Installing higher tiers requires both Computer Systems Installation skill level and character level thresholds.
+3. Intelligence features should improve decision quality first, then add optional light automation.
+
+Proposed tier capability ladder (10 tiers):
+1. Tier 1: Basic scanner readout cleanup and UI signal confidence indicator.
+2. Tier 2: Prescan asteroids (composition likelihood and rough yield confidence).
+3. Tier 3: Pirate signature hints (weak/strong threat classification by local scan profile).
+4. Tier 4: Market opportunity highlights (nearby spread deltas and restock timing hints).
+5. Tier 5: Route risk estimation (hazard score by path segment and expected interruption risk).
+6. Tier 6: Auto-target suggestion (recommended target shortlist by current objective).
+7. Tier 7: Mission suitability scoring (fit score based on cargo, ship state, and location).
+8. Tier 8: Solar weather prediction (localized storm and interference forecast window).
+9. Tier 9: Humor setting and communication tone presets for assistant callouts.
+10. Tier 10: Coordinated advisory mode combining threat, route, and market recommendation stacks.
+
+Automation posture:
+1. Light automation only.
+2. Any automated action should require explicit player confirmation.
+3. No full autonomy for combat, market execution, or mission acceptance in this feature slice.
 
 Rollout shape:
 1. Phase A (H1-compatible)
