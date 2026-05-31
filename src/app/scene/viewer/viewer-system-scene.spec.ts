@@ -188,7 +188,7 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(first).toBeDefined();
     expect(first?.materialColor).toBe('#f59e0b');
     expect(first?.materialEmissive).toBe('#78350f');
-    expect(first?.materialEmissiveIntensity).toBe(0.21);
+    expect(first?.materialEmissiveIntensity).toBeCloseTo(0.2478, 4);
     expect(first?.geometrySegments).toBe(28);
     expect(first).toEqual(second);
   });
@@ -282,6 +282,41 @@ describe('mapShipsToRendered', () => {
     status: 'ACTIVE',
     spatial: null,
   } as unknown as ShipSummary;
+  const frigateDescriptorShip: ShipSummary = {
+    id: 'ship-frigate-1',
+    name: 'Frigate One',
+    model: 'Scavenger Pod',
+    tier: 2,
+    status: 'ACTIVE',
+    externalObjectDescriptor: {
+      descriptorId: 'ships-frigate-1',
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'ships',
+      objectFamily: 'frigate',
+      roleCue: 'combat',
+      factionCue: 'alliance',
+      fallbackTier: 'standard',
+      displayLabel: 'Frigate One',
+      silhouetteProfile: 'wedge',
+      materialProfile: 'alloy',
+      emissiveProfile: 'low',
+    },
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 3.6e8, y: 0, z: 0 },
+      epochMs: 1700000000000,
+    },
+  };
+  const minimalFrigateDescriptorShip: ShipSummary = {
+    ...frigateDescriptorShip,
+    id: 'ship-frigate-minimal-1',
+    externalObjectDescriptor: {
+      ...frigateDescriptorShip.externalObjectDescriptor!,
+      descriptorId: 'ships-frigate-minimal-1',
+      fallbackTier: 'minimal',
+    },
+  };
   const sunOriginShip: ShipSummary = {
     id: 'ship-origin',
     name: 'Sunwreck',
@@ -347,6 +382,24 @@ describe('mapShipsToRendered', () => {
     );
 
     expect(rendered[0].model).toBe('Scavenger Pod');
+  });
+
+  it('applies ship descriptor profile colors for inactive ships', () => {
+    const rendered = mapShipsToRendered([frigateDescriptorShip], null);
+    expect(rendered[0].color).toBe('#6366f1');
+    expect(rendered[0].recognitionDistanceKm).toBeGreaterThan(0);
+  });
+
+  it('keeps active ship color priority while preserving descriptor recognition distance', () => {
+    const rendered = mapShipsToRendered([frigateDescriptorShip], 'ship-frigate-1');
+    expect(rendered[0].color).toBe(VIEWER_SCENE_ACTIVE_SHIP_COLOR);
+    expect(rendered[0].recognitionDistanceKm).toBeGreaterThan(0);
+  });
+
+  it('reduces recognition distance for minimal fallback tier versus standard', () => {
+    const standard = mapShipsToRendered([frigateDescriptorShip], null)[0];
+    const minimal = mapShipsToRendered([minimalFrigateDescriptorShip], null)[0];
+    expect(standard.recognitionDistanceKm).toBeGreaterThan(minimal.recognitionDistanceKm);
   });
 });
 

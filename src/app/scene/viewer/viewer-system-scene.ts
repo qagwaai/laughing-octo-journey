@@ -70,6 +70,7 @@ interface RenderedShip {
   model: string;
   displayName: string;
   color: string;
+  recognitionDistanceKm: number;
   position: [number, number, number];
   isActive: boolean;
   isUnknownSpatial: boolean;
@@ -403,12 +404,16 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
   return ships.map((ship): RenderedShip => {
     const isActive = activeShipId !== null && ship.id === activeShipId;
     const model = coerceShipModel(ship.model);
+    const descriptorProfile = resolveDescriptorRenderProfile(ship.externalObjectDescriptor);
+    const descriptorColor = descriptorProfile?.domain === 'ships' ? descriptorProfile.color : null;
+    const defaultShipColor = isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR;
     if (!isValidShipSpatial(ship.spatial)) {
       return {
         id: ship.id,
         model,
         displayName: ship.name?.trim() || ship.id,
         color: VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+        recognitionDistanceKm: descriptorProfile?.recognitionDistanceKm ?? 40_000,
         position: [...VIEWER_SCENE_UNKNOWN_SHIP_POSITION] as [number, number, number],
         isActive,
         isUnknownSpatial: true,
@@ -426,7 +431,8 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
       id: ship.id,
       model,
       displayName: ship.name?.trim() || ship.id,
-      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : descriptorColor ?? defaultShipColor,
+      recognitionDistanceKm: descriptorProfile?.recognitionDistanceKm ?? 40_000,
       position: scenePos,
       isActive,
       isUnknownSpatial: false,

@@ -58,6 +58,49 @@ describe('viewer-descriptor-selectors', () => {
     );
   });
 
+  it('resolves deterministic ship family profiles', () => {
+    const scout = resolveDescriptorRenderProfile(descriptor('ships', 'scout'));
+    const hauler = resolveDescriptorRenderProfile(descriptor('ships', 'hauler'));
+    const frigate = resolveDescriptorRenderProfile(descriptor('ships', 'frigate'));
+    const interceptor = resolveDescriptorRenderProfile(descriptor('ships', 'interceptor'));
+    const industrial = resolveDescriptorRenderProfile(descriptor('ships', 'industrial'));
+
+    expect(scout).toEqual(jasmine.objectContaining({ domain: 'ships', objectFamily: 'scout' }));
+    expect(hauler).toEqual(jasmine.objectContaining({ domain: 'ships', objectFamily: 'hauler' }));
+    expect(frigate).toEqual(jasmine.objectContaining({ domain: 'ships', objectFamily: 'frigate' }));
+    expect(interceptor).toEqual(jasmine.objectContaining({ domain: 'ships', objectFamily: 'interceptor' }));
+    expect(industrial).toEqual(jasmine.objectContaining({ domain: 'ships', objectFamily: 'industrial' }));
+  });
+
+  it('resolves deterministic station family profiles', () => {
+    const tradeHub = resolveDescriptorRenderProfile(descriptor('stations', 'trade-hub'));
+    const refinery = resolveDescriptorRenderProfile(descriptor('stations', 'refinery'));
+    const navalOutpost = resolveDescriptorRenderProfile(descriptor('stations', 'naval-outpost'));
+    const researchPlatform = resolveDescriptorRenderProfile(descriptor('stations', 'research-platform'));
+
+    expect(tradeHub).toEqual(jasmine.objectContaining({ domain: 'stations', objectFamily: 'trade-hub' }));
+    expect(refinery).toEqual(jasmine.objectContaining({ domain: 'stations', objectFamily: 'refinery' }));
+    expect(navalOutpost).toEqual(jasmine.objectContaining({ domain: 'stations', objectFamily: 'naval-outpost' }));
+    expect(researchPlatform).toEqual(
+      jasmine.objectContaining({ domain: 'stations', objectFamily: 'research-platform' }),
+    );
+  });
+
+  it('applies fallbackTier behavior for hero, standard, and minimal', () => {
+    const hero = resolveDescriptorRenderProfile({ ...descriptor('ships', 'frigate'), fallbackTier: 'hero' });
+    const standard = resolveDescriptorRenderProfile({ ...descriptor('ships', 'frigate'), fallbackTier: 'standard' });
+    const minimal = resolveDescriptorRenderProfile({ ...descriptor('ships', 'frigate'), fallbackTier: 'minimal' });
+
+    expect(hero).not.toBeNull();
+    expect(standard).not.toBeNull();
+    expect(minimal).not.toBeNull();
+
+    expect(hero!.recognitionDistanceKm).toBeGreaterThan(standard!.recognitionDistanceKm);
+    expect(standard!.recognitionDistanceKm).toBeGreaterThan(minimal!.recognitionDistanceKm);
+    expect(hero!.emissiveIntensity).toBeGreaterThan(standard!.emissiveIntensity);
+    expect(minimal!.geometrySegments).toBeLessThan(standard!.geometrySegments);
+  });
+
   it('returns identical profiles for identical inputs', () => {
     const input = descriptor('asteroids', 'rocky-irregular');
     const first = resolveDescriptorRenderProfile(input);

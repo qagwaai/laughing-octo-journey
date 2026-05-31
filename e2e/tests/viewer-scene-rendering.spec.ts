@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import { resolveDescriptorRenderProfile } from '../../src/app/scene/viewer/viewer-descriptor-selectors';
+import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
 
 // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -167,6 +171,21 @@ const ACTIVE_SHIP = {
   },
 };
 
+const M2_DESCRIPTOR_FIXTURE_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'external-object-descriptor-m2-ships-stations.json',
+);
+
+const parsedM2DescriptorFixture = JSON.parse(readFileSync(M2_DESCRIPTOR_FIXTURE_PATH, 'utf8')) as {
+  schemaVersion?: string;
+  descriptors?: ExternalObjectDescriptor[];
+};
+
+const M2_SHIP_STATION_DESCRIPTORS = parsedM2DescriptorFixture.descriptors ?? [];
+
 function solarSystemGetResponse(bodies: any[]) {
   return {
     success: true,
@@ -286,7 +305,7 @@ function withInvalidGateDescriptorBody(baseBodies: any[]) {
   ];
 }
 
-async function setupViewerSceneTest(page: any) {
+async function setupViewerSceneTest(page: any, ownerShips: any[] = [ACTIVE_SHIP]) {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   await mock.setup();
@@ -324,7 +343,7 @@ async function setupViewerSceneTest(page: any) {
       message: '',
       playerName: TEST_PLAYER,
       characterId: 'char-viewer-1',
-      ships: [ACTIVE_SHIP],
+      ships: ownerShips,
     },
   }));
   await gameShell.joinGame();
@@ -360,9 +379,88 @@ async function navigateToSystemScene(page: any, mock: any, bodies: any[] = SOL_S
   await viewerPage.selectSystem('Sol');
 }
 
+function createStationBodyFromDescriptor(descriptor: ExternalObjectDescriptor, index: number): any {
+  return {
+    id: `m2-station-${index + 1}`,
+    bodyType: 'station',
+    displayName: descriptor.displayLabel,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 165000000 + index * 900000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    externalObjectDescriptor: descriptor,
+  };
+}
+
+function createShipFromDescriptor(descriptor: ExternalObjectDescriptor, index: number): any {
+  return {
+    id: `m2-ship-${index + 1}`,
+    name: descriptor.displayLabel,
+    model: 'Scavenger Pod',
+    tier: 2,
+    status: 'ACTIVE',
+    externalObjectDescriptor: descriptor,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 350000000 + index * 750000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+  };
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe('Viewer — Scene Rendering', () => {
+  test('SW-13 M2 full-9 descriptor selector evidence is deterministic and tier-aware', async () => {
+    expect(M2_SHIP_STATION_DESCRIPTORS.length).toBe(9);
+
+    const profiles = M2_SHIP_STATION_DESCRIPTORS.map((descriptor) => {
+      const first = resolveDescriptorRenderProfile(descriptor);
+      const second = resolveDescriptorRenderProfile(descriptor);
+      expect(first).not.toBeNull();
+      expect(first).toEqual(second);
+      return first!;
+    });
+
+    const shipProfiles = profiles.filter((profile) => profile.domain === 'ships');
+    const stationProfiles = profiles.filter((profile) => profile.domain === 'stations');
+
+    expect(shipProfiles.length).toBe(5);
+    expect(stationProfiles.length).toBe(4);
+
+    const tierProbeBase = M2_SHIP_STATION_DESCRIPTORS.find((descriptor) => descriptor.domain === 'ships');
+    expect(tierProbeBase).toBeDefined();
+
+    const hero = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'hero' });
+    const standard = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'standard' });
+    const minimal = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'minimal' });
+
+    expect(hero).not.toBeNull();
+    expect(standard).not.toBeNull();
+    expect(minimal).not.toBeNull();
+    expect(hero!.recognitionDistanceKm).toBeGreaterThan(standard!.recognitionDistanceKm);
+    expect(standard!.recognitionDistanceKm).toBeGreaterThan(minimal!.recognitionDistanceKm);
+  });
+
+  test('SW-13 M2 route-smoke full-9 ship/station descriptor coverage loads viewer scene', async ({ page }) => {
+    const shipDescriptors = M2_SHIP_STATION_DESCRIPTORS.filter((descriptor) => descriptor.domain === 'ships');
+    const stationDescriptors = M2_SHIP_STATION_DESCRIPTORS.filter((descriptor) => descriptor.domain === 'stations');
+
+    const ships = shipDescriptors.map((descriptor, index) => createShipFromDescriptor(descriptor, index));
+    const stationBodies = stationDescriptors.map((descriptor, index) => createStationBodyFromDescriptor(descriptor, index));
+
+    const { mock } = await setupViewerSceneTest(page, ships);
+    await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...stationBodies]);
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+    await expect(page).toHaveURL(/right:viewer-scene/);
+  });
+
   test('renders viewer scene after selecting a solar system', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
 
