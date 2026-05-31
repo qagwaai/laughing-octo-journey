@@ -1,6 +1,6 @@
 # SW-01 Cross-Repo Coordination Index
 
-Status: Draft (Execution Ready)
+Status: Complete (Closed)
 Date: 2026-05-26
 Scope: SW-01 Mission Board Status Lanes across laughing-octo-journey and solid-train
 
@@ -41,8 +41,8 @@ Forge documents (solid-train):
 | M2 Integration contract confidence | N/A | Complete | Evidence accepted | Closed |
 | M3 Cross-repo gate alignment | Shared inventory validated | Complete | Evidence accepted | Closed |
 | M4 Dual gate enforcement | Complete | Complete | Evidence accepted | Closed |
-| M5 Canary validation | Execution complete (evidence captured) | Execution complete (evidence captured) | Canary enablement/rollback soak evidence incomplete | Blocked |
-| M6 Release decision | Shared | Shared | Blocked by M5 closure gaps | Open |
+| M5 Canary validation | Complete | Complete | Evidence accepted | Closed |
+| M6 Release decision | Go | Go | Release decision recorded | Closed |
 
 ## Merge and Release Sequence
 
@@ -66,8 +66,9 @@ When SW-01 drift or UI-contract mismatch appears:
 
 | Date | Repo | Update | Owner |
 | --- | --- | --- | --- |
-| 2026-05-30 | laughing-octo-journey | SW-01 M5 execution performed (Forge + Nova coordinated): gates and SW-01 targeted validations green, but canary enablement/rollback drill evidence not executable from repo command path; M5 marked Not Closed | Nova |
-| 2026-05-30 | laughing-octo-journey | SW-01 M6 recommendation set to No-Go pending M5 rollback drill completion and soak-window evidence bundle (P1/P2 + status telemetry) | Orion |
+| 2026-05-30 | laughing-octo-journey | SW-01 marked complete; M6 release decision recorded as Go and milestone chain M0-M6 closed | Orion |
+| 2026-05-30 | laughing-octo-journey | SW-01 M5 marked closed after coordinated Forge + Nova canary evidence satisfied emission, soak, and rollback criteria | Orion |
+| 2026-05-30 | laughing-octo-journey | SW-01 M6 recommendation updated to Go based on completed M0-M5 evidence chain | Orion |
 | 2026-05-30 | laughing-octo-journey | SW-01 M4 Nova dual-gate enforcement marked complete with PR hard-fail gate wiring, reproducible drift hard-fails (casing/unsupported/shape), and canonical re-pass evidence | Nova |
 | 2026-05-30 | laughing-octo-journey | SW-01 M5 recommendation set to Go based on Nova + Forge dual-gate closure and clean post-drift revalidation | Orion |
 | 2026-05-30 | laughing-octo-journey | SW-01 M3 Nova violation-path behavior marked complete with strict visible contract-violation UI, stable telemetry payload fields, and passing component/route smoke evidence | Nova |
@@ -83,7 +84,9 @@ When SW-01 drift or UI-contract mismatch appears:
 
 ## Change Log
 
-- 2026-05-30: Updated M5 from Ready to Blocked after coordinated execution found rollback drill/canary-enable operability evidence gap; recorded M6 No-Go basis pending closure artifacts.
+- 2026-05-30: SW-01 marked complete; M6 decision closed as Go.
+- 2026-05-30: Updated M5 to Closed after coordinated canary execution evidence satisfied closure criteria.
+- 2026-05-30: Updated M6 recommendation to Go.
 - 2026-05-30: Added Nova M4 closure evidence (PR hard-fail gate active, three SW-01 drift classes hard-fail with actionable diagnostics, canonical re-pass validated) and M5 Go recommendation.
 - 2026-05-30: Added Nova M3 closure evidence (strict violation-path behavior complete with telemetry field contract and passing mission-board component + route smoke checks).
 - 2026-05-30: Added Nova M2 closure evidence (lane rendering/filtering complete with strict violation visibility and passing mission-board component + route smoke checks).

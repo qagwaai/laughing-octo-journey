@@ -29,7 +29,7 @@ Interpretation:
 | ~~SW-R01~~ | Regression Fix: Cold Boot Dart Launch Availability | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Completed 2026-05-25. Restored opening flow so Expendable Dart Drone is available at cold boot launch.|
 | ~~SW-R02~~ | Regression Fix: Missing Starter Ship Inventory Components | H1 critical | 5 | 2 | 1 | 2 | 5 | 4.65 | Completed 2026-05-25. Restored canonical starter inventory: Expendable Dart Drone, Sensor Array, Tractor Beam. |
 | ~~SW-R03~~ | Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory | H1 critical | 5 | 2 | 2 | 2 | 5 | 4.55 | New regression (2026-05-25): inventory item is visible in ship inventory view, but firing Expendable Dart Drone from Scavenger's inventory is unavailable. |
-| SW-01 | Mission Board Status Lanes | H1 | 4 | 2 | 1 | 2 | 5 | 4.50 | High clarity gain, low implementation risk |
+| ~~SW-01~~ | Mission Board Status Lanes | H1 | 4 | 2 | 1 | 2 | 5 | 4.50 | High clarity gain, low implementation risk |
 | SW-02 | Market Opportunity Pings | H1/H2 bridge | 4 | 2 | 2 | 3 | 5 | 4.25 | Gives economy excitement before full dynamic events |
 | SW-03 | Quick Dock to Trade Flow | H1 | 4 | 2 | 2 | 2 | 4 | 4.15 | Strong short-session loop completion |
 | SW-04 | Fabrication Queue Timeline (UI-first) | H1/H2 bridge | 4 | 3 | 2 | 3 | 4 | 3.85 | Visible progression, can later attach persistence |

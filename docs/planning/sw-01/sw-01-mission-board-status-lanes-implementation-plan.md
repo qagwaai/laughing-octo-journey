@@ -1,7 +1,8 @@
 # SW-01 Mission Board Status Lanes Implementation Plan (Nova UI-Led)
 
-Status: Draft (Ready for Execution)
+Status: Complete (Closed)
 Date: 2026-05-26
+Completed: 2026-05-30
 Repo: laughing-octo-journey
 Feature ID: SW-01
 Priority Score Reference: 4.50 (High Value, Low Risk)
@@ -246,6 +247,13 @@ M6: Broad release readiness decision
 - Verification:
 1. All strict checks green.
 2. Contract violation count at or below threshold.
+
+M6 execution update (2026-05-30): Closed in laughing-octo-journey
+- Decision: **Go**.
+- Evidence summary:
+1. M0-M5 closure evidence accepted in cross-repo indexes.
+2. Nova and Forge canary validation criteria satisfied.
+3. SW-01 closure checklists and sign-offs recorded.
 
 ## 7. Test Matrix
 
