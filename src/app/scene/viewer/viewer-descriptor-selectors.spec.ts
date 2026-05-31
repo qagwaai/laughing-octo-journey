@@ -1,5 +1,5 @@
 import type { ExternalObjectDescriptor } from '../../model/external-object-descriptor';
-import { resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
+import { resolveDescriptorRenderProfile, resolveGateApproachMetadata } from './viewer-descriptor-selectors';
 
 function descriptor(domain: ExternalObjectDescriptor['domain'], objectFamily: string): ExternalObjectDescriptor {
   return {
@@ -112,7 +112,91 @@ describe('viewer-descriptor-selectors', () => {
 
   it('does not resolve unknown families or non-target domains', () => {
     expect(resolveDescriptorRenderProfile(descriptor('asteroids', 'unknown-family'))).toBeNull();
-    expect(resolveDescriptorRenderProfile(descriptor('gates', 'ring-gate'))).toBeNull();
+    expect(resolveDescriptorRenderProfile(descriptor('gates', 'unknown-gate-family'))).toBeNull();
     expect(resolveDescriptorRenderProfile(undefined)).toBeNull();
+  });
+
+  it('resolves M3 gate landmark profiles for all gate families', () => {
+    const ringGate = resolveDescriptorRenderProfile(descriptor('gates', 'ring-gate'));
+    const segmentedArch = resolveDescriptorRenderProfile(descriptor('gates', 'segmented-arch'));
+    const relaySpindle = resolveDescriptorRenderProfile(descriptor('gates', 'relay-spindle'));
+
+    expect(ringGate).toEqual(
+      jasmine.objectContaining({
+        domain: 'gates',
+        objectFamily: 'ring-gate',
+        color: '#38bdf8',
+      }),
+    );
+    expect(segmentedArch).toEqual(
+      jasmine.objectContaining({
+        domain: 'gates',
+        objectFamily: 'segmented-arch',
+        color: '#f59e0b',
+      }),
+    );
+    expect(relaySpindle).toEqual(
+      jasmine.objectContaining({
+        domain: 'gates',
+        objectFamily: 'relay-spindle',
+        color: '#a78bfa',
+      }),
+    );
+  });
+
+  it('resolves canonical M3 gate approach metadata and mandatory medium hazard escalation', () => {
+    const ringMetadata = resolveGateApproachMetadata(descriptor('gates', 'ring-gate'));
+    const segmentedMetadata = resolveGateApproachMetadata(descriptor('gates', 'segmented-arch'));
+    const relayMetadata = resolveGateApproachMetadata(descriptor('gates', 'relay-spindle'));
+
+    expect(ringMetadata).toEqual(
+      jasmine.objectContaining({
+        approachCue: 'direct-centerline',
+        landmarkFraming: 'full-ring',
+        navBeaconCue: 'continuous',
+        hazardCue: 'low',
+        warningEscalation: 'none',
+        recommendedStandOffKm: 1400,
+        approachWindowKm: {
+          min: 1000,
+          max: 2200,
+        },
+      }),
+    );
+
+    expect(segmentedMetadata).toEqual(
+      jasmine.objectContaining({
+        approachCue: 'offset-spiral',
+        landmarkFraming: 'segmented-arch',
+        navBeaconCue: 'pulse',
+        hazardCue: 'medium',
+        warningEscalation: 'required',
+        recommendedStandOffKm: 1200,
+        approachWindowKm: {
+          min: 800,
+          max: 1800,
+        },
+      }),
+    );
+
+    expect(relayMetadata).toEqual(
+      jasmine.objectContaining({
+        approachCue: 'vector-handoff',
+        landmarkFraming: 'spindle-column',
+        navBeaconCue: 'triplet',
+        hazardCue: 'medium',
+        warningEscalation: 'required',
+        recommendedStandOffKm: 900,
+        approachWindowKm: {
+          min: 600,
+          max: 1500,
+        },
+      }),
+    );
+
+    expect(segmentedMetadata?.hazardCue).toBe('medium');
+    expect(segmentedMetadata?.warningEscalation).toBe('required');
+    expect(relayMetadata?.hazardCue).toBe('medium');
+    expect(relayMetadata?.warningEscalation).toBe('required');
   });
 });

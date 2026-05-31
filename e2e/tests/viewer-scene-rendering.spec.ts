@@ -5,7 +5,11 @@ import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
-import { resolveDescriptorRenderProfile } from '../../src/app/scene/viewer/viewer-descriptor-selectors';
+import {
+  resolveDescriptorRenderProfile,
+  resolveGateApproachMetadata,
+  type GateApproachMetadata,
+} from '../../src/app/scene/viewer/viewer-descriptor-selectors';
 import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
 
 // ── Test data ──────────────────────────────────────────────────────────────
@@ -186,6 +190,26 @@ const parsedM2DescriptorFixture = JSON.parse(readFileSync(M2_DESCRIPTOR_FIXTURE_
 
 const M2_SHIP_STATION_DESCRIPTORS = parsedM2DescriptorFixture.descriptors ?? [];
 
+const M3_GATE_LANDMARK_FIXTURE_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'external-object-gate-landmark-m3.json',
+);
+
+type GateLandmarkFixtureEntry = {
+  descriptor: ExternalObjectDescriptor;
+  approachMetadata: GateApproachMetadata;
+};
+
+const parsedM3GateLandmarkFixture = JSON.parse(readFileSync(M3_GATE_LANDMARK_FIXTURE_PATH, 'utf8')) as {
+  schemaVersion?: string;
+  gates?: GateLandmarkFixtureEntry[];
+};
+
+const M3_GATE_LANDMARK_ENTRIES = parsedM3GateLandmarkFixture.gates ?? [];
+
 function solarSystemGetResponse(bodies: any[]) {
   return {
     success: true,
@@ -303,6 +327,51 @@ function withInvalidGateDescriptorBody(baseBodies: any[]) {
       },
     },
   ];
+}
+
+function withLegacyGateDescriptorBody(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-legacy-1',
+      bodyType: 'jump-gate',
+      displayName: 'Legacy Gate Descriptor',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 180000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'jump-gate-ring-gate-legacy-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'jump_gate',
+        objectFamily: 'ring_gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Legacy Gate Descriptor',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
+function createGateBodyFromLandmarkEntry(entry: GateLandmarkFixtureEntry, index: number): any {
+  return {
+    id: `m3-gate-${index + 1}`,
+    bodyType: 'station',
+    displayName: entry.descriptor.displayLabel,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 175000000 + index * 1250000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    externalObjectDescriptor: entry.descriptor,
+  };
 }
 
 async function setupViewerSceneTest(page: any, ownerShips: any[] = [ACTIVE_SHIP]) {
@@ -461,6 +530,52 @@ test.describe('Viewer — Scene Rendering', () => {
     await expect(page).toHaveURL(/right:viewer-scene/);
   });
 
+  test('SW-13 M3 gate landmark selector evidence is deterministic, bounded, and hazard-aware', async () => {
+    expect(parsedM3GateLandmarkFixture.schemaVersion).toBe('sw-13-m0-v1');
+    expect(M3_GATE_LANDMARK_ENTRIES.length).toBe(3);
+
+    const families = M3_GATE_LANDMARK_ENTRIES.map((entry) => entry.descriptor.objectFamily).sort();
+    expect(families).toEqual(['relay-spindle', 'ring-gate', 'segmented-arch']);
+
+    for (const entry of M3_GATE_LANDMARK_ENTRIES) {
+      const firstProfile = resolveDescriptorRenderProfile(entry.descriptor);
+      const secondProfile = resolveDescriptorRenderProfile(entry.descriptor);
+      expect(firstProfile).not.toBeNull();
+      expect(firstProfile).toEqual(secondProfile);
+
+      const approachMetadata = resolveGateApproachMetadata(entry.descriptor);
+      expect(approachMetadata).not.toBeNull();
+      expect(approachMetadata).toEqual(entry.approachMetadata);
+
+      const windowMin = approachMetadata!.approachWindowKm.min;
+      const windowMax = approachMetadata!.approachWindowKm.max;
+      const standOffKm = approachMetadata!.recommendedStandOffKm;
+      expect(windowMin).toBeGreaterThan(0);
+      expect(windowMax).toBeGreaterThan(windowMin);
+      expect(standOffKm).toBeGreaterThanOrEqual(windowMin);
+      expect(standOffKm).toBeLessThanOrEqual(windowMax);
+    }
+
+    const mediumHazardEntries = M3_GATE_LANDMARK_ENTRIES.filter((entry) => entry.approachMetadata.hazardCue === 'medium');
+    expect(mediumHazardEntries.length).toBeGreaterThan(0);
+    expect(mediumHazardEntries.every((entry) => entry.approachMetadata.warningEscalation === 'required')).toBe(true);
+  });
+
+  test('SW-13 M3 route-smoke run includes all gate families and gate legend cue', async ({ page }) => {
+    const gateBodies = M3_GATE_LANDMARK_ENTRIES.map((entry, index) => createGateBodyFromLandmarkEntry(entry, index));
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...gateBodies]);
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+    await expect(page.getByTestId('viewer-legend-gate')).toBeVisible();
+
+    const routeRunFamilies = gateBodies.map((body) => body.externalObjectDescriptor.objectFamily).sort();
+    expect(routeRunFamilies).toEqual(['relay-spindle', 'ring-gate', 'segmented-arch']);
+  });
+
   test('renders viewer scene after selecting a solar system', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
 
@@ -509,6 +624,16 @@ test.describe('Viewer — Scene Rendering', () => {
     const { mock } = await setupViewerSceneTest(page);
 
     await navigateToSystemScene(page, mock, withInvalidGateDescriptorBody(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
+    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
+  });
+
+  test('rejects legacy gate descriptor domains and families with no fallback remap', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withLegacyGateDescriptorBody(SOL_SYSTEM_BODIES));
 
     const viewerPage = new ViewerPage(page);
     await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });

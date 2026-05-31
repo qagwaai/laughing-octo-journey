@@ -4,10 +4,32 @@ type DebrisFamily = 'salvage-fragment' | 'wreckage-panel' | 'cargo-canister' | '
 type AsteroidFamily = 'rocky-irregular' | 'metallic-cluster' | 'icy-body' | 'cinematic-hero';
 type ShipFamily = 'scout' | 'hauler' | 'frigate' | 'interceptor' | 'industrial';
 type StationFamily = 'trade-hub' | 'refinery' | 'naval-outpost' | 'research-platform';
+type GateFamily = 'ring-gate' | 'segmented-arch' | 'relay-spindle';
+
+export type GateApproachCue = 'direct-centerline' | 'offset-spiral' | 'vector-handoff';
+export type GateLandmarkFraming = 'full-ring' | 'segmented-arch' | 'spindle-column';
+export type GateNavBeaconCue = 'continuous' | 'pulse' | 'triplet';
+export type GateHazardCue = 'low' | 'medium' | 'high';
+export type GateWarningEscalation = 'none' | 'required';
+
+export interface GateApproachWindowKm {
+  min: number;
+  max: number;
+}
+
+export interface GateApproachMetadata {
+  approachCue: GateApproachCue;
+  landmarkFraming: GateLandmarkFraming;
+  navBeaconCue: GateNavBeaconCue;
+  hazardCue: GateHazardCue;
+  warningEscalation: GateWarningEscalation;
+  recommendedStandOffKm: number;
+  approachWindowKm: GateApproachWindowKm;
+}
 
 export interface DescriptorRenderProfile {
-  domain: 'debris' | 'asteroids' | 'ships' | 'stations';
-  objectFamily: DebrisFamily | AsteroidFamily | ShipFamily | StationFamily;
+  domain: 'debris' | 'asteroids' | 'ships' | 'stations' | 'gates';
+  objectFamily: DebrisFamily | AsteroidFamily | ShipFamily | StationFamily | GateFamily;
   color: string;
   emissive: string;
   emissiveIntensity: number;
@@ -16,7 +38,89 @@ export interface DescriptorRenderProfile {
   radiusScale: number;
   geometrySegments: number;
   recognitionDistanceKm: number;
+  approachMetadata?: GateApproachMetadata;
 }
+
+const GATE_APPROACH_METADATA_BY_FAMILY: Readonly<Record<GateFamily, GateApproachMetadata>> = {
+  'ring-gate': {
+    approachCue: 'direct-centerline',
+    landmarkFraming: 'full-ring',
+    navBeaconCue: 'continuous',
+    hazardCue: 'low',
+    warningEscalation: 'none',
+    recommendedStandOffKm: 1400,
+    approachWindowKm: {
+      min: 1000,
+      max: 2200,
+    },
+  },
+  'segmented-arch': {
+    approachCue: 'offset-spiral',
+    landmarkFraming: 'segmented-arch',
+    navBeaconCue: 'pulse',
+    hazardCue: 'medium',
+    warningEscalation: 'required',
+    recommendedStandOffKm: 1200,
+    approachWindowKm: {
+      min: 800,
+      max: 1800,
+    },
+  },
+  'relay-spindle': {
+    approachCue: 'vector-handoff',
+    landmarkFraming: 'spindle-column',
+    navBeaconCue: 'triplet',
+    hazardCue: 'medium',
+    warningEscalation: 'required',
+    recommendedStandOffKm: 900,
+    approachWindowKm: {
+      min: 600,
+      max: 1500,
+    },
+  },
+};
+
+const GATE_RENDER_PROFILES: Readonly<Record<GateFamily, DescriptorRenderProfile>> = {
+  'ring-gate': {
+    domain: 'gates',
+    objectFamily: 'ring-gate',
+    color: '#38bdf8',
+    emissive: '#0c4a6e',
+    emissiveIntensity: 0.22,
+    roughness: 0.48,
+    metalness: 0.5,
+    radiusScale: 1.18,
+    geometrySegments: 30,
+    recognitionDistanceKm: 175_000,
+    approachMetadata: GATE_APPROACH_METADATA_BY_FAMILY['ring-gate'],
+  },
+  'segmented-arch': {
+    domain: 'gates',
+    objectFamily: 'segmented-arch',
+    color: '#f59e0b',
+    emissive: '#78350f',
+    emissiveIntensity: 0.2,
+    roughness: 0.52,
+    metalness: 0.45,
+    radiusScale: 1.1,
+    geometrySegments: 26,
+    recognitionDistanceKm: 160_000,
+    approachMetadata: GATE_APPROACH_METADATA_BY_FAMILY['segmented-arch'],
+  },
+  'relay-spindle': {
+    domain: 'gates',
+    objectFamily: 'relay-spindle',
+    color: '#a78bfa',
+    emissive: '#581c87',
+    emissiveIntensity: 0.16,
+    roughness: 0.58,
+    metalness: 0.42,
+    radiusScale: 0.98,
+    geometrySegments: 22,
+    recognitionDistanceKm: 145_000,
+    approachMetadata: GATE_APPROACH_METADATA_BY_FAMILY['relay-spindle'],
+  },
+};
 
 const DEBRIS_RENDER_PROFILES: Readonly<Record<DebrisFamily, DescriptorRenderProfile>> = {
   'salvage-fragment': {
@@ -235,7 +339,15 @@ const STATION_RENDER_PROFILES: Readonly<Record<StationFamily, DescriptorRenderPr
 };
 
 function cloneProfile(profile: DescriptorRenderProfile): DescriptorRenderProfile {
-  return { ...profile };
+  return {
+    ...profile,
+    approachMetadata: profile.approachMetadata
+      ? {
+          ...profile.approachMetadata,
+          approachWindowKm: { ...profile.approachMetadata.approachWindowKm },
+        }
+      : undefined,
+  };
 }
 
 function applyFallbackTierBehavior(
@@ -291,5 +403,28 @@ export function resolveDescriptorRenderProfile(
     return profile ? applyFallbackTierBehavior(profile, descriptor.fallbackTier) : null;
   }
 
+  if (descriptor.domain === 'gates') {
+    const profile = GATE_RENDER_PROFILES[descriptor.objectFamily as GateFamily];
+    return profile ? applyFallbackTierBehavior(profile, descriptor.fallbackTier) : null;
+  }
+
   return null;
+}
+
+export function resolveGateApproachMetadata(
+  descriptor: ExternalObjectDescriptor | undefined,
+): GateApproachMetadata | null {
+  if (!descriptor || descriptor.domain !== 'gates') {
+    return null;
+  }
+
+  const profile = resolveDescriptorRenderProfile(descriptor);
+  if (!profile?.approachMetadata) {
+    return null;
+  }
+
+  return {
+    ...profile.approachMetadata,
+    approachWindowKm: { ...profile.approachMetadata.approachWindowKm },
+  };
 }

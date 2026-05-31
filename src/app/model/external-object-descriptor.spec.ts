@@ -60,6 +60,17 @@ describe('external-object-descriptor model', () => {
     expect(result.reason).toContain('invalid for domain gates');
   });
 
+  it('rejects legacy gate domain and family values without fallback remap', () => {
+    const result = coerceExternalObjectDescriptor(
+      makeDescriptor({
+        domain: 'jump_gate' as ExternalObjectDescriptor['domain'],
+        objectFamily: 'ring_gate',
+      }),
+    );
+    expect(result.descriptor).toBeNull();
+    expect(result.reason).toContain('not supported');
+  });
+
   it('validates expected domain constraints', () => {
     const descriptor = makeDescriptor({ domain: 'stations', objectFamily: 'trade-hub' });
     const validation = validateExternalObjectDescriptor(descriptor, 'gates');

@@ -14,6 +14,7 @@ import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
+import { resolveGateApproachMetadata, type GateApproachMetadata } from '../../scene/viewer/viewer-descriptor-selectors';
 import { ViewerDataFacade } from './viewer-data-facade';
 import { resolveNavigationState } from '../navigation-state';
 
@@ -243,6 +244,10 @@ export default class ViewerScenePage implements OnDestroy {
 
     event.preventDefault();
     event.stopPropagation();
+  }
+
+  protected resolveGateApproachMetadata(body: ViewerBody): GateApproachMetadata | null {
+    return resolveGateApproachMetadata(body.externalObjectDescriptor);
   }
 
 }

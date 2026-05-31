@@ -69,6 +69,10 @@
       <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#86efac"></span>
       <span>{{ t.game.viewer.legendMarketOrbit }}</span>
     </div>
+    <div class="viewer-legend__item" data-testid="viewer-legend-gate">
+      <span class="viewer-legend__swatch" style="background:#38bdf8"></span>
+      <span>{{ t.game.viewer.legendGateLandmark }}</span>
+    </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
       <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#fbbf24"></span>
       <span>{{ t.game.viewer.legendActiveShip }}</span>
@@ -114,6 +118,36 @@
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Frame</span><span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch (ms)</span><span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Solar System</span><span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span></div>
+    @if (resolveGateApproachMetadata(body); as gateApproachMetadata) {
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}</span>
+      </div>
+    }
   </div>
   }
 
