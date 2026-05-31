@@ -11,7 +11,7 @@ export interface SolarSystemGetRequestIdentity {
   containerId: string;
 }
 
-export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'station' | string;
+export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'debris' | 'station' | string;
 export type ViewerStationKind = 'market' | string;
 
 export interface ViewerBodyVisualization {
@@ -60,6 +60,8 @@ export interface ViewerBody {
   distanceFromClusterCenterKm?: number;
   /** Optional SW-13 external object descriptor for deterministic presentation contracts. */
   externalObjectDescriptor?: ExternalObjectDescriptor;
+  /** Optional body-local debris payloads; entries may carry SW-13 descriptors. */
+  debris?: ViewerBodyDebrisEntry[];
   visualization?: ViewerBodyVisualization;
   physicalCatalog?: ViewerBodyPhysicalCatalog;
   orbitalElements?: ViewerBodyOrbitalElements;
@@ -76,6 +78,10 @@ export interface ViewerDebrisEntry {
   quantity: number;
   itemType: string;
   externalObjectDescriptor?: ExternalObjectDescriptor;
+}
+
+export interface ViewerBodyDebrisEntry extends ViewerDebrisEntry {
+  id?: string;
 }
 
 export interface SolarSystemGetRequest {

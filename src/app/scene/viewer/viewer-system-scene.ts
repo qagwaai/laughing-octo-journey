@@ -36,6 +36,7 @@ import {
   resolveSceneDistanceFromKm,
 } from './viewer-formatters';
 import { ViewerShipMesh } from './viewer-ship-mesh';
+import { resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -56,6 +57,12 @@ interface RenderedBody {
   isStar: boolean;
   isMarketStation: boolean;
   isGate: boolean;
+  geometrySegments: number;
+  materialColor: string;
+  materialEmissive: string;
+  materialEmissiveIntensity: number;
+  materialRoughness: number;
+  materialMetalness: number;
 }
 
 interface RenderedShip {
@@ -165,6 +172,45 @@ function resolveRenderedExtent(rendered: RenderedBody[]): number {
   return Math.max(maxExtent, 24);
 }
 
+function resolveDefaultMaterialColor(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.bodyType === 'planet') {
+    return '#ffffff';
+  }
+  if (isGate) {
+    return '#7dd3fc';
+  }
+  if (isMarketStation) {
+    return '#22c55e';
+  }
+  return resolveBodyColor(body);
+}
+
+function resolveDefaultMaterialEmissive(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.bodyType === 'planet') {
+    return '#aab8d0';
+  }
+  if (isGate) {
+    return '#0c4a6e';
+  }
+  if (isMarketStation) {
+    return '#14532d';
+  }
+  return '#000000';
+}
+
+function resolveDefaultMaterialEmissiveIntensity(body: ViewerBody, isGate: boolean, isMarketStation: boolean): number {
+  if (body.bodyType === 'planet') {
+    return 0.2;
+  }
+  if (isGate) {
+    return 0.22;
+  }
+  if (isMarketStation) {
+    return 0.2;
+  }
+  return 0;
+}
+
 export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): ViewerSceneCameraDistanceRange {
   const extent = resolveRenderedExtent(mapBodiesToRendered(bodies));
   // Min is always the planet-detail floor — allow zooming right up to bodies.
@@ -265,17 +311,29 @@ export function mapBodiesToRendered(
       }
     }
 
+    const isGate = isGateBody(body);
+    const isMarketStation = isMarketStationBody(body);
+    const descriptorProfile = resolveDescriptorRenderProfile(body.externalObjectDescriptor);
+    const defaultMaterialColor = resolveDefaultMaterialColor(body, isGate, isMarketStation);
+
     return {
       source: body,
       id: body.id,
       bodyType: body.bodyType,
       displayName: body.displayName || body.id,
-      color: resolveBodyColor(body),
-      radius: resolveBodySceneRadius(body, zoomLevel),
+      color: descriptorProfile?.color ?? resolveBodyColor(body),
+      radius: +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(4),
       position,
       isStar: isStarBody(body),
-      isMarketStation: isMarketStationBody(body),
-      isGate: isGateBody(body),
+      isMarketStation,
+      isGate,
+      geometrySegments: descriptorProfile?.geometrySegments ?? 32,
+      materialColor: descriptorProfile?.color ?? defaultMaterialColor,
+      materialEmissive: descriptorProfile?.emissive ?? resolveDefaultMaterialEmissive(body, isGate, isMarketStation),
+      materialEmissiveIntensity:
+        descriptorProfile?.emissiveIntensity ?? resolveDefaultMaterialEmissiveIntensity(body, isGate, isMarketStation),
+      materialRoughness: descriptorProfile?.roughness ?? 0.8,
+      materialMetalness: descriptorProfile?.metalness ?? 0.05,
     };
   });
 

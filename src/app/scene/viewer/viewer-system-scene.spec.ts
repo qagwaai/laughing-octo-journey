@@ -93,6 +93,48 @@ const asteroidB: ViewerBody = {
   physicalCatalog: { estimatedDiameterM: 1200 },
 };
 
+const asteroidHero: ViewerBody = {
+  id: 'asteroid-hero-1',
+  bodyType: 'asteroid',
+  displayName: 'Hero Asteroid',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 360_000_000, y: 0, z: 0 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 2000 },
+  externalObjectDescriptor: {
+    descriptorId: 'asteroids-cinematic-hero-1',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'asteroids',
+    objectFamily: 'cinematic-hero',
+    roleCue: 'hazard',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: 'Hero Asteroid',
+    silhouetteProfile: 'boulder',
+    materialProfile: 'rock',
+    emissiveProfile: 'none',
+  },
+};
+
+const debrisCanister: ViewerBody = {
+  id: 'debris-canister-1',
+  bodyType: 'debris',
+  displayName: 'Cargo Canister Debris',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 360_500_000, y: 0, z: 0 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 200 },
+  externalObjectDescriptor: {
+    descriptorId: 'debris-cargo-canister-1',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'debris',
+    objectFamily: 'cargo-canister',
+    roleCue: 'salvage',
+    factionCue: 'neutral',
+    fallbackTier: 'standard',
+    displayLabel: 'Cargo Canister Debris',
+    silhouetteProfile: 'canister',
+    materialProfile: 'industrial',
+    emissiveProfile: 'none',
+  },
+};
+
 const localProjectionShip: ShipSummary = {
   id: 'ship-local-1',
   name: 'Anchor Ship',
@@ -137,6 +179,30 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
     expect(renderedGate).toBeDefined();
     expect(renderedGate?.color).toBe('#38bdf8');
+  });
+
+  it('applies asteroid descriptor profile rendering deterministically', () => {
+    const first = mapBodiesToRendered([star, asteroidHero]).find((body) => body.id === 'asteroid-hero-1');
+    const second = mapBodiesToRendered([star, asteroidHero]).find((body) => body.id === 'asteroid-hero-1');
+
+    expect(first).toBeDefined();
+    expect(first?.materialColor).toBe('#f59e0b');
+    expect(first?.materialEmissive).toBe('#78350f');
+    expect(first?.materialEmissiveIntensity).toBe(0.21);
+    expect(first?.geometrySegments).toBe(28);
+    expect(first).toEqual(second);
+  });
+
+  it('applies debris descriptor profile rendering deterministically', () => {
+    const first = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
+    const second = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
+
+    expect(first).toBeDefined();
+    expect(first?.materialColor).toBe('#14b8a6');
+    expect(first?.materialEmissive).toBe('#042f2e');
+    expect(first?.materialEmissiveIntensity).toBe(0.12);
+    expect(first?.geometrySegments).toBe(14);
+    expect(first).toEqual(second);
   });
 
   it('derives a camera distance range from the scene extent', () => {

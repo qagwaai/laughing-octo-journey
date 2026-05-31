@@ -66,46 +66,28 @@
   (pointerdown)="onBodyPointerDown($event, body.source)"
   input
 >
-  <ngt-sphere-geometry *args="[body.radius, 32, 32]" />
+  <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
   <ngt-mesh-standard-material
     [color]="
       hoveredBodyId() === body.id
         ? '#ff3b30'
         : targetedBodyId() === body.id
           ? '#f59e0b'
-          : body.bodyType === 'planet'
-            ? '#ffffff'
-            : body.isGate
-              ? '#7dd3fc'
-            : body.isMarketStation
-              ? '#22c55e'
-              : body.color
+          : body.materialColor
     "
-    [roughness]="0.8"
-    [metalness]="0.05"
+    [roughness]="body.materialRoughness"
+    [metalness]="body.materialMetalness"
     [emissive]="
       hoveredBodyId() === body.id
         ? '#8f0000'
         : targetedBodyId() === body.id
           ? '#92400e'
-          : body.bodyType === 'planet'
-            ? '#aab8d0'
-            : body.isGate
-              ? '#0c4a6e'
-            : body.isMarketStation
-              ? '#14532d'
-              : '#000000'
+          : body.materialEmissive
     "
     [emissiveIntensity]="
       hoveredBodyId() === body.id
         ? 0.4
-        : body.bodyType === 'planet'
-          ? 0.2
-          : body.isGate
-            ? 0.22
-          : body.isMarketStation
-            ? 0.2
-            : 0
+        : body.materialEmissiveIntensity
     "
   />
 </ngt-mesh>

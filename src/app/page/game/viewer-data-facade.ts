@@ -42,6 +42,9 @@ function normalizeToken(value: string | undefined): string {
 
 function resolveExpectedDescriptorDomain(body: ViewerBody): ExternalObjectDomain | undefined {
   const bodyType = normalizeToken(body.bodyType);
+  if (bodyType === 'debris') {
+    return 'debris';
+  }
   if (bodyType === 'asteroid') {
     return 'asteroids';
   }

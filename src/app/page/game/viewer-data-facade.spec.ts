@@ -85,6 +85,33 @@ function asteroidBodyWithDescriptor(id: string): ViewerBody {
   };
 }
 
+function debrisBodyWithDescriptor(id: string): ViewerBody {
+  return {
+    id,
+    bodyType: 'debris',
+    displayName: id,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'icrs',
+      positionKm: { x: 14, y: 24, z: 34 },
+      epochMs: 0,
+    },
+    externalObjectDescriptor: {
+      descriptorId: `${id}-descriptor`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'debris',
+      objectFamily: 'cargo-canister',
+      roleCue: 'salvage',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: id,
+      silhouetteProfile: 'canister',
+      materialProfile: 'industrial',
+      emissiveProfile: 'none',
+    },
+  };
+}
+
 function createHarness(): FacadeHarness {
   const solarSystemService = {
     getSolarSystem: jasmine.createSpy('getSolarSystem'),
@@ -248,6 +275,27 @@ describe('ViewerDataFacade', () => {
     expect(state.sceneError).toBeNull();
     expect(asteroid?.externalObjectDescriptor?.schemaVersion).toBe('sw-13-m0-v1');
     expect(asteroid?.externalObjectDescriptor?.domain).toBe('asteroids');
+  });
+
+  it('accepts valid SW-13 debris descriptors and preserves sanitized bodies', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [debrisBodyWithDescriptor('debris-a')],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    const debris = state.bodies.find((body) => body.id === 'debris-a');
+    expect(state.sceneError).toBeNull();
+    expect(debris?.externalObjectDescriptor?.schemaVersion).toBe('sw-13-m0-v1');
+    expect(debris?.externalObjectDescriptor?.domain).toBe('debris');
+    expect(debris?.externalObjectDescriptor?.objectFamily).toBe('cargo-canister');
   });
 
   it('hydrates market stations when none exist and drops stale responses', () => {
