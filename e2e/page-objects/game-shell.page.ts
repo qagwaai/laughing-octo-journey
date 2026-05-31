@@ -36,7 +36,7 @@ export class GameShellPage {
 
   async openMissionBoard() {
     await this.openNav('Mission Board');
-    await expect(this.page).toHaveURL(/left:mission-board/);
+    await expect(this.page).toHaveURL(/right:mission-board/);
   }
 
   async openShipHangar() {

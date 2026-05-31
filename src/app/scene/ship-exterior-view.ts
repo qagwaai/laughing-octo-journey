@@ -1213,7 +1213,13 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       }
 
       if (normalizedStatus === 'ACTIVE') {
-        const reconciled = this.reconcileInProgressGateStateWithoutStatusDetail(this.missionGateState());
+        const current = this.missionGateState();
+        const hasPendingRetry = Boolean(current?.steps.some((step) => step.status === 'pending-retry'));
+        if (!hasPendingRetry) {
+          return;
+        }
+
+        const reconciled = this.reconcileInProgressGateStateWithoutStatusDetail(current);
         if (reconciled) {
           this.missionGateState.set(reconciled);
           this.persistMissionGateState(reconciled);

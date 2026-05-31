@@ -716,6 +716,18 @@ describe('MissionBoardPage', () => {
       expect(el.querySelector('app-guarded-left-menu')).not.toBeNull();
     });
 
+    it('should render character and ship badge only in left mission board outlet', () => {
+      const { fixture: leftFixture } = setup({ socketService, sessionService, outlet: 'left' });
+      leftFixture.detectChanges();
+      const leftEl: HTMLElement = leftFixture.nativeElement;
+      expect(leftEl.querySelector('app-character-ship-badge')).not.toBeNull();
+
+      const { fixture: rightFixture } = setup({ socketService, sessionService, outlet: 'right' });
+      rightFixture.detectChanges();
+      const rightEl: HTMLElement = rightFixture.nativeElement;
+      expect(rightEl.querySelector('app-character-ship-badge')).toBeNull();
+    });
+
     it('should not render guarded left menu in right mission board outlet', () => {
       const { fixture } = setup({ socketService, sessionService, outlet: 'right' });
       fixture.detectChanges();

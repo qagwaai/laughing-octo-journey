@@ -153,7 +153,33 @@ Closure note:
 13. External Object Presentation Expansion
 - Extend ship-external-view to render detailed debris meshes, jump gates, other ship silhouettes, and space stations with clearer identity and scale.
 - Use progressive detail so important objects read well at game distance without flooding the scene with clutter.
+- Expand asteroid look from rocky irregular profiles to cinematic hero-style variants; reduce over-spherical repetition.
+- Keep implementation data-driven (descriptor-first) with balanced-performance fallbacks and no legacy presentation mode.
 - Value: Makes external space feel populated and legible, and supports future encounter and travel systems.
+
+SW-13 high-level feature description:
+1. Debris mesh identity
+- Debris families should visibly communicate salvage category/value at a glance.
+
+2. Ship silhouette families
+- Ships should be distinguishable by role/faction silhouette under normal gameplay distance.
+
+3. Jump gate landmark treatment
+- Gate visuals should be unmistakable for navigation and approach decisions.
+
+4. Station landmark treatment
+- Stations should read as durable infrastructure, not background noise.
+
+5. Asteroid style spectrum
+- Fields should include both rough rocky bodies and occasional cinematic hero asteroids.
+
+6. Delivery guardrails
+- Keep scene architecture close to current structure.
+- Do not perform a full 3D asset overhaul in SW-13.
+- Enforce full cutover with no legacy support paths.
+
+Implementation plan reference:
+- `docs/planning/sw-13/sw-13-external-object-presentation-implementation-plan.md`
 
 14. In-System Short-Hop Drive
 - Introduce a low-level drive that enables practical travel between planets and major bodies inside a solar system.

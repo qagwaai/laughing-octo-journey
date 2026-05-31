@@ -99,6 +99,21 @@ describe('GuardedLeftMenu', () => {
     });
   });
 
+  it('should open mission board in right outlet while keeping game-main in left outlet', () => {
+    component.playerName = 'Pioneer';
+    component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
+
+    component.navigateLeft('mission-board');
+
+    expect(navigateSpy).toHaveBeenCalledWith([{ outlets: { left: ['game-main'], right: ['mission-board'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+  });
+
   it('should publish left-panel navigation context when inputs change', () => {
     component.playerName = 'Pioneer';
     component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;

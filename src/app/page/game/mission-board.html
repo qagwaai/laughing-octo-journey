@@ -8,10 +8,12 @@
         <h1>{{ t.game.missionBoard.title }}</h1>
         <p class="subtitle">{{ t.game.missionBoard.subtitle }}</p>
       </div>
+      @if (showGuardedMenu()) {
       <app-character-ship-badge
         [playerName]="playerName()"
         [joinCharacter]="joinCharacter()"
       ></app-character-ship-badge>
+      }
     </div>
 
     <section class="ops-card">

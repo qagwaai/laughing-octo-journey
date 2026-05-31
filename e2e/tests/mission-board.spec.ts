@@ -118,7 +118,7 @@ test.describe('Mission Board — mission progress display', () => {
     await gameShell.openMissionBoard();
 
     const leftMissionBoard = page.locator('app-mission-board-page .ops-page-container').first();
-    await expect(leftMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(1);
+    await expect(leftMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(0);
 
     const completedLane = missionBoardPage.lane('completed');
     await expect(completedLane).toContainText('Your First Target');

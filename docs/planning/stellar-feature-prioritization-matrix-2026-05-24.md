@@ -46,7 +46,7 @@ Interpretation:
 | SW-15 | Minimal Character Bust Builder v0 | H1/H2 bridge | 4 | 4 | 3 | 4 | 5 | 3.60 | Browser-friendly bust customization for player identity and NPC reuse |
 | SW-16 | Ship-External Target Persistence on Re-Entry | H1 | 4 | 2 | 2 | 2 | 5 | 4.30 | Preserve current target when re-entering ship-external-view if target remains valid |
 | SW-17 | Computer Progression (Per-Ship Intelligence Tiers) | H1/H2 bridge | 5 | 3 | 2 | 3 | 5 | 4.20 | 10-tier per-ship computer installation; skill+level-gated tier installs; includes asteroid prescan, pirate identification, market opportunities, route risk, mission scoring, solar weather, and optional light automation |
-| SW-COR | Socket Correlation Contract Hardening | H1 foundation | 5 | 2 | 1 | 2 | 5 | 4.65 | Enforce correlationId echo on all socket request/response pairs; prevent concurrent-request state corruption; SW-08 amendment |
+| ~~SW-COR~~ | Socket Correlation Contract Hardening | H1 foundation | 5 | 2 | 1 | 2 | 5 | 4.65 | Enforce correlationId echo on all socket request/response pairs; prevent concurrent-request state corruption; SW-08 amendment |
 
 ## Ranked Small-Win Order
 
@@ -56,7 +56,7 @@ Revised canonical ranking (descending by score):
 3. ~~SW-08 Contract Safety Gate in CI (4.65)~~
 4. ~~SW-COR Socket Correlation Contract Hardening (4.65)~~
 5. ~~SW-R03 Regression Fix: Expendable Dart Drone Fire Action from Scavenger Inventory (4.55)~~
-6. ~~SW-01~~ Mission Board Status Lanes (4.50)
+6. ~~SW-01 Mission Board Status Lanes (4.50)~~
 7. SW-16 Ship-External Target Persistence on Re-Entry (4.30)
 8. SW-02 Market Opportunity Pings (4.25)
 9. SW-17 Computer Progression (Per-Ship Intelligence Tiers) (4.20)
@@ -92,6 +92,10 @@ Computer progression policy note:
 
 1. [SW-17 Computer Progression Implementation Plan](sw-17/sw-17-computer-progression-implementation-plan.md)
 2. [SW-17 Computer Progression Closure Checklist](sw-17/sw-17-computer-progression-closure-checklist.md)
+
+## SW-13 Planning Artifacts (2026-05-30)
+
+1. [SW-13 External Object Presentation Expansion Implementation Plan](sw-13/sw-13-external-object-presentation-implementation-plan.md)
 
 ## Active Top-5 Net-New Features (Post SW-01 Closure)
 
