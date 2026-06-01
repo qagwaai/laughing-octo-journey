@@ -12,6 +12,7 @@ import {
 import { generateRandomAsteroidMeshProfile } from '../model/catalog/asteroid-mesh-profiles';
 import type { MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
+import { resolveAsteroidExternalObjectDescriptor } from '../model/ship-exterior-descriptors';
 import type { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { coerceShipInventory } from '../model/ship-list';
@@ -170,6 +171,10 @@ function generateAsteroidSamples(
       scanProgress: 0,
       scanned: false,
       revealedMaterial: preAssignedMaterials?.[i] ?? null,
+      externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
+        sampleId: `sample-a${i + 1}`,
+        revealedMaterial: preAssignedMaterials?.[i] ?? null,
+      }),
       revealedKinematics: null,
       solarSystemLocation,
       clusterCenterKm: resolvedClusterCenterKm,
@@ -266,6 +271,7 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
         ? { positionKm: existingBody.spatial.positionKm }
         : sample.solarSystemLocation;
       const resolvedMaterial = existingBody.composition ?? sample.revealedMaterial;
+      const resolvedFallbackTier = shouldTreatAsScanned ? 'hero' : 'standard';
 
       return {
         ...sample,
@@ -274,6 +280,11 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
         scanProgress: shouldTreatAsScanned ? 100 : 0,
         scanned: shouldTreatAsScanned,
         revealedMaterial: resolvedMaterial,
+        externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
+          sampleId: existingBody.sourceScanId || existingBody.id || sample.id,
+          revealedMaterial: resolvedMaterial,
+          fallbackTier: resolvedFallbackTier,
+        }),
         revealedKinematics: shouldTreatAsScanned ? resolvedKinematics : null,
         capturedKinematics: resolvedKinematics,
         solarSystemLocation: resolvedLocation,

@@ -1351,6 +1351,36 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
     expect(updated?.steps[0].status).toBe('active');
     expect(updated?.steps[1].status).toBe('locked');
   });
+
+  it('should preserve fully-completed local gate state when backend reports ACTIVE without statusDetail', async () => {
+    const { component, mockMission } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+    });
+
+    const allCompletedState: ShipExteriorMissionGateState = {
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Mission objectives complete. Await further directives.',
+      updatedAt: new Date().toISOString(),
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        { key: 'repair_scavenger_pod', status: 'completed' },
+      ],
+    };
+    component['missionGateState'].set(allCompletedState);
+
+    mockMission.listMissions.and.resolveTo({
+      status: 'loaded',
+      missions: [{ missionId: 'first-target', status: 'active' }],
+    });
+
+    await component['refreshMissionGateStateFromBackend']();
+
+    expect(component['missionGateState']()).toEqual(allCompletedState);
+  });
 });
 
 // ---------------------------------------------------------------------------

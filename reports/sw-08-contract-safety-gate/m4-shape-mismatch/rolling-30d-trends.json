@@ -1,0 +1,30 @@
+{
+  "windowDays": 30,
+  "generatedAt": "2026-05-30T23:53:34.567Z",
+  "eventsInWindow": 2,
+  "driftCount": 4,
+  "driftCountByClass": {
+    "type mismatch": 2,
+    "enum/value mismatch": 2
+  },
+  "impactedSurfaceCounts": {
+    "mission flows": 4
+  },
+  "ownerTagCounts": {
+    "coordinated fix": 4
+  },
+  "mttrHours": null,
+  "bypassCount": 0,
+  "expiredBypasses": 0,
+  "nearExpiryBypasses": 0,
+  "repeatOffenders": [],
+  "falsePositiveBaseline": {
+    "proxyRate": 0,
+    "metric": "approved_exception_findings / total_findings",
+    "actionPlan": [
+      "Prioritize top repeat offender surfaces for contract alignment with producer owners.",
+      "Require migration notes when frontend assumptions or consumer inventory fields change.",
+      "Review allowAdditionalValues usage quarterly to ensure it remains narrowly scoped."
+    ]
+  }
+}

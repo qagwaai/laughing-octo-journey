@@ -888,7 +888,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(gateAfterBackendRefresh.activeObjectiveText).toContain('Mission objectives complete');
   });
 
-  test('reopens final step when backend reports active without statusDetail and local gate is fully completed', async ({
+  test('preserves completed gate when backend reports active without statusDetail and local gate is fully completed', async ({
     page,
   }) => {
     const mock = new SocketIOMock(page);
@@ -1096,7 +1096,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           return gate.steps.find((step) => step.key === 'repair_scavenger_pod')?.status ?? 'missing';
         }),
       )
-      .toBe('active');
+      .toBe('completed');
 
     const gateAfterBackendRefresh = await page.evaluate(() => {
       const api = (
@@ -1116,7 +1116,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
       'completed',
     );
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('active');
-    expect(gateAfterBackendRefresh.activeObjectiveText).not.toContain('Mission objectives complete');
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('completed');
+    expect(gateAfterBackendRefresh.activeObjectiveText).toContain('Mission objectives complete');
   });
 });

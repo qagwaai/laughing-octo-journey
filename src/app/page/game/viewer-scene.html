@@ -44,6 +44,34 @@
     <div class="viewer-scene-zoom__value">{{ zoomPercent() }}%</div>
   </div>
 
+  @if (isDevBuild) {
+  <div class="viewer-qa-panel" data-testid="viewer-qa-panel">
+    <div class="viewer-qa-panel__title">Viewer QA</div>
+    <label class="viewer-qa-panel__toggle">
+      <input type="checkbox" [checked]="viewerQaEnabled()" (change)="onViewerQaToggle($event)" />
+      <span>Enable QA Controls</span>
+    </label>
+    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+      <input
+        type="checkbox"
+        [checked]="forceHeroMode()"
+        [disabled]="!viewerQaEnabled()"
+        (change)="onForceHeroToggle($event)"
+      />
+      <span>Force Hero Detail</span>
+    </label>
+    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+      <input
+        type="checkbox"
+        [checked]="showEffectiveRenderProfile()"
+        [disabled]="!viewerQaEnabled()"
+        (change)="onShowRenderProfileToggle($event)"
+      />
+      <span>Show Effective Profile</span>
+    </label>
+  </div>
+  }
+
   @if (focusedPlanet(); as focused) {
   <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
     Focused: {{ focused.displayName }}
@@ -69,6 +97,10 @@
       <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#86efac"></span>
       <span>{{ t.game.viewer.legendMarketOrbit }}</span>
     </div>
+    <div class="viewer-legend__item" data-testid="viewer-legend-gate">
+      <span class="viewer-legend__swatch" style="background:#38bdf8"></span>
+      <span>{{ t.game.viewer.legendGateLandmark }}</span>
+    </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
       <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#fbbf24"></span>
       <span>{{ t.game.viewer.legendActiveShip }}</span>
@@ -92,6 +124,14 @@
       <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
     </div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">ID</span><span class="viewer-detail-pane__value">{{ body.id }}</span></div>
+    @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Descriptor Domain</span><span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Object Family</span><span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Fallback Tier</span><span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Radius Scale</span><span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Segments</span><span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Emissive</span><span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span></div>
+    }
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Spectral Class</span><span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Luminosity (Solar)</span><span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (Solar)</span><span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span></div>
@@ -114,6 +154,36 @@
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Frame</span><span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch (ms)</span><span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Solar System</span><span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span></div>
+    @if (resolveGateApproachMetadata(body); as gateApproachMetadata) {
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
+      </div>
+      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
+        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
+        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}</span>
+      </div>
+    }
   </div>
   }
 

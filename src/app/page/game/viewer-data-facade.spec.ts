@@ -58,6 +58,87 @@ function stationBody(id: string, solarSystemId = 'sol'): ViewerBody {
   };
 }
 
+function asteroidBodyWithDescriptor(id: string): ViewerBody {
+  return {
+    id,
+    bodyType: 'asteroid',
+    displayName: id,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'icrs',
+      positionKm: { x: 10, y: 20, z: 30 },
+      epochMs: 0,
+    },
+    externalObjectDescriptor: {
+      descriptorId: `${id}-descriptor`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'asteroids',
+      objectFamily: 'rocky-irregular',
+      roleCue: 'hazard',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: id,
+      silhouetteProfile: 'irregular',
+      materialProfile: 'rocky',
+      emissiveProfile: 'none',
+    },
+  };
+}
+
+function debrisBodyWithDescriptor(id: string): ViewerBody {
+  return {
+    id,
+    bodyType: 'debris',
+    displayName: id,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'icrs',
+      positionKm: { x: 14, y: 24, z: 34 },
+      epochMs: 0,
+    },
+    externalObjectDescriptor: {
+      descriptorId: `${id}-descriptor`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'debris',
+      objectFamily: 'cargo-canister',
+      roleCue: 'salvage',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: id,
+      silhouetteProfile: 'canister',
+      materialProfile: 'industrial',
+      emissiveProfile: 'none',
+    },
+  };
+}
+
+function gateBodyWithDescriptor(id: string, objectFamily: 'ring-gate' | 'segmented-arch' | 'relay-spindle'): ViewerBody {
+  return {
+    id,
+    bodyType: 'gate',
+    displayName: id,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'icrs',
+      positionKm: { x: 40, y: 50, z: 60 },
+      epochMs: 0,
+    },
+    externalObjectDescriptor: {
+      descriptorId: `${id}-descriptor`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'gates',
+      objectFamily,
+      roleCue: 'navigation',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: id,
+      silhouetteProfile: 'gate',
+      materialProfile: 'infrastructure',
+      emissiveProfile: 'navigation',
+    },
+  };
+}
+
 function createHarness(): FacadeHarness {
   const solarSystemService = {
     getSolarSystem: jasmine.createSpy('getSolarSystem'),
@@ -174,6 +255,175 @@ describe('ViewerDataFacade', () => {
     expect(state.bodies.map((body) => body.id)).toEqual(['sol-star', 'station-a']);
     expect(state.ships).toEqual([]);
     expect(services.shipService.listShipsByOwner).not.toHaveBeenCalled();
+  });
+
+  it('rejects payloads with invalid SW-13 descriptors', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [
+          {
+            ...asteroidBodyWithDescriptor('asteroid-a'),
+            externalObjectDescriptor: {
+              ...asteroidBodyWithDescriptor('asteroid-a').externalObjectDescriptor,
+              schemaVersion: 'legacy-v0',
+            },
+          },
+        ],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toContain('viewer-scene-error descriptor-contract');
+    expect(state.bodies).toEqual([]);
+    expect(state.ships).toEqual([]);
+  });
+
+  it('accepts valid SW-13 descriptors and preserves sanitized bodies', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [asteroidBodyWithDescriptor('asteroid-a')],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    const asteroid = state.bodies.find((body) => body.id === 'asteroid-a');
+    expect(state.sceneError).toBeNull();
+    expect(asteroid?.externalObjectDescriptor?.schemaVersion).toBe('sw-13-m0-v1');
+    expect(asteroid?.externalObjectDescriptor?.domain).toBe('asteroids');
+  });
+
+  it('accepts valid SW-13 debris descriptors and preserves sanitized bodies', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [debrisBodyWithDescriptor('debris-a')],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    const debris = state.bodies.find((body) => body.id === 'debris-a');
+    expect(state.sceneError).toBeNull();
+    expect(debris?.externalObjectDescriptor?.schemaVersion).toBe('sw-13-m0-v1');
+    expect(debris?.externalObjectDescriptor?.domain).toBe('debris');
+    expect(debris?.externalObjectDescriptor?.objectFamily).toBe('cargo-canister');
+  });
+
+  it('accepts M4 dense-scene envelope with 16 descriptors and 3 gate entries', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+
+    const asteroidDescriptors = Array.from({ length: 16 }, (_, index) => asteroidBodyWithDescriptor(`asteroid-${index}`));
+    const gates = [
+      gateBodyWithDescriptor('gate-ring', 'ring-gate'),
+      gateBodyWithDescriptor('gate-segmented', 'segmented-arch'),
+      gateBodyWithDescriptor('gate-relay', 'relay-spindle'),
+    ];
+
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [...asteroidDescriptors, ...gates],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toBeNull();
+    expect(state.bodies.length).toBe(20);
+  });
+
+  it('rejects payloads that exceed the M4 descriptor envelope cap', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+
+    const asteroidDescriptors = Array.from({ length: 17 }, (_, index) => asteroidBodyWithDescriptor(`asteroid-${index}`));
+
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: asteroidDescriptors,
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toContain('viewer-scene-error descriptor-contract');
+    expect(state.sceneError).toContain('descriptor entries exceed max 16');
+    expect(state.bodies).toEqual([]);
+  });
+
+  it('rejects payloads that exceed the M4 gate entry cap', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+
+    const gates = [
+      gateBodyWithDescriptor('gate-ring', 'ring-gate'),
+      gateBodyWithDescriptor('gate-segmented', 'segmented-arch'),
+      gateBodyWithDescriptor('gate-relay', 'relay-spindle'),
+      gateBodyWithDescriptor('gate-ring-two', 'ring-gate'),
+    ];
+
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: gates,
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toContain('viewer-scene-error descriptor-contract');
+    expect(state.sceneError).toContain('gate descriptor entries exceed max 3');
+    expect(state.bodies).toEqual([]);
+  });
+
+  it('rejects gate descriptors that exceed M4 max byte size 328', () => {
+    const { facade, state, services } = createHarness();
+    state.activeCharacterId = null;
+
+    const oversizedGate = gateBodyWithDescriptor('gate-oversized', 'ring-gate');
+    oversizedGate.externalObjectDescriptor = {
+      ...oversizedGate.externalObjectDescriptor!,
+      displayLabel: 'gate-oversized-' + 'x'.repeat(300),
+    };
+
+    services.solarSystemService.getSolarSystem.and.callFake((_request: unknown, cb: (response: any) => void) => {
+      cb({
+        success: true,
+        solarSystem: { id: 'sol', displayName: 'Sol', source: 'curated' },
+        stars: [starBody('sol-star')],
+        bodies: [oversizedGate],
+      });
+    });
+
+    facade.loadSystem('sol');
+
+    expect(state.sceneError).toContain('viewer-scene-error descriptor-contract');
+    expect(state.sceneError).toContain('exceeds max byte size 328');
+    expect(state.bodies).toEqual([]);
   });
 
   it('hydrates market stations when none exist and drops stale responses', () => {

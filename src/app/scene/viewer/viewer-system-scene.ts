@@ -25,6 +25,7 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
   resolveAnchoredOrbitSceneProfile,
+  isGateBody,
   isStarBody,
   isMarketStationBody,
   resolveBodyColor,
@@ -35,6 +36,9 @@ import {
   resolveSceneDistanceFromKm,
 } from './viewer-formatters';
 import { ViewerShipMesh } from './viewer-ship-mesh';
+import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
+
+type BodyGeometryKind = 'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -54,6 +58,18 @@ interface RenderedBody {
   position: [number, number, number];
   isStar: boolean;
   isMarketStation: boolean;
+  isGate: boolean;
+  geometryKind: BodyGeometryKind;
+  geometryScale: [number, number, number];
+  geometryRotation: [number, number, number];
+  geometryDetail: number;
+  geometryTorusTubeRadius: number;
+  geometrySegments: number;
+  materialColor: string;
+  materialEmissive: string;
+  materialEmissiveIntensity: number;
+  materialRoughness: number;
+  materialMetalness: number;
 }
 
 interface RenderedShip {
@@ -61,6 +77,7 @@ interface RenderedShip {
   model: string;
   displayName: string;
   color: string;
+  recognitionDistanceKm: number;
   position: [number, number, number];
   isActive: boolean;
   isUnknownSpatial: boolean;
@@ -123,6 +140,10 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function normalizeToken(value: string | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
 function isAsteroidBody(body: ViewerBody): boolean {
   return body.bodyType?.trim().toLowerCase() === 'asteroid';
 }
@@ -161,6 +182,270 @@ function resolveRenderedExtent(rendered: RenderedBody[]): number {
   }
 
   return Math.max(maxExtent, 24);
+}
+
+function resolveDefaultMaterialColor(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.bodyType === 'planet') {
+    return '#ffffff';
+  }
+  if (isGate) {
+    return '#7dd3fc';
+  }
+  if (isMarketStation) {
+    return '#22c55e';
+  }
+  return resolveBodyColor(body);
+}
+
+function resolveDefaultMaterialEmissive(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.bodyType === 'planet') {
+    return '#aab8d0';
+  }
+  if (isGate) {
+    return '#0c4a6e';
+  }
+  if (isMarketStation) {
+    return '#14532d';
+  }
+  return '#000000';
+}
+
+function resolveDefaultMaterialEmissiveIntensity(body: ViewerBody, isGate: boolean, isMarketStation: boolean): number {
+  if (body.bodyType === 'planet') {
+    return 0.2;
+  }
+  if (isGate) {
+    return 0.22;
+  }
+  if (isMarketStation) {
+    return 0.2;
+  }
+  return 0;
+}
+
+function createDeterministicSeed(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededUnit(seed: number, salt: number): number {
+  const mixed = Math.imul(seed ^ salt, 2246822519) >>> 0;
+  return mixed / 0xffffffff;
+}
+
+function resolveBodyGeometryVariant(
+  body: ViewerBody,
+  descriptorProfile: DescriptorRenderProfile | null,
+  isGate: boolean,
+  isMarketStation: boolean,
+): {
+  kind: BodyGeometryKind;
+  scale: [number, number, number];
+  rotation: [number, number, number];
+} {
+  if (descriptorProfile) {
+    if (descriptorProfile.domain === 'debris') {
+      if (descriptorProfile.objectFamily === 'salvage-fragment') {
+        return {
+          kind: 'icosahedron',
+          scale: [1.05, 0.8, 0.95],
+          rotation: [0.22, 0.36, 0.18],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'wreckage-panel') {
+        return {
+          kind: 'box',
+          scale: [1.9, 0.34, 1.2],
+          rotation: [0.28, 0.16, 0.52],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'cargo-canister') {
+        return {
+          kind: 'capsule',
+          scale: [0.9, 1.25, 0.9],
+          rotation: [0.18, 0.54, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'field-shard') {
+        return {
+          kind: 'octahedron',
+          scale: [0.88, 1.35, 0.88],
+          rotation: [0.12, 0.42, 0.24],
+        };
+      }
+    }
+
+    if (descriptorProfile.domain === 'asteroids') {
+      if (descriptorProfile.objectFamily === 'rocky-irregular') {
+        return {
+          kind: 'icosahedron',
+          scale: [1.12, 0.84, 1.06],
+          rotation: [0.16, 0.31, 0.22],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'metallic-cluster') {
+        return {
+          kind: 'octahedron',
+          scale: [0.96, 1.08, 0.96],
+          rotation: [0.26, 0.44, 0.12],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'icy-body') {
+        return {
+          kind: 'sphere',
+          scale: [1, 1, 1],
+          rotation: [0, 0, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'cinematic-hero') {
+        return {
+          kind: 'icosahedron',
+          scale: [1.35, 0.9, 1.28],
+          rotation: [0.34, 0.22, 0.43],
+        };
+      }
+    }
+
+    if (descriptorProfile.domain === 'stations') {
+      if (descriptorProfile.objectFamily === 'trade-hub') {
+        return {
+          kind: 'box',
+          scale: [1.65, 0.82, 1.65],
+          rotation: [0, 0.14, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'refinery') {
+        return {
+          kind: 'cylinder',
+          scale: [0.92, 1.5, 0.92],
+          rotation: [0, 0.2, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'naval-outpost') {
+        return {
+          kind: 'octahedron',
+          scale: [1.12, 1.48, 1.12],
+          rotation: [0.1, 0.28, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'research-platform') {
+        return {
+          kind: 'torus',
+          scale: [1.36, 1.36, 1.36],
+          rotation: [Math.PI / 2, 0.3, 0],
+        };
+      }
+    }
+
+    if (descriptorProfile.domain === 'gates') {
+      if (descriptorProfile.objectFamily === 'ring-gate') {
+        return {
+          kind: 'torus',
+          scale: [1.8, 1.8, 1.8],
+          rotation: [Math.PI / 2, 0, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'segmented-arch') {
+        return {
+          kind: 'torus',
+          scale: [1.55, 1.55, 1.55],
+          rotation: [Math.PI / 2, 0.34, 0],
+        };
+      }
+      if (descriptorProfile.objectFamily === 'relay-spindle') {
+        return {
+          kind: 'cylinder',
+          scale: [0.8, 2.1, 0.8],
+          rotation: [0, 0.2, 0],
+        };
+      }
+    }
+  }
+
+  if (isGate) {
+    return {
+      kind: 'torus',
+      scale: [1.6, 1.6, 1.6],
+      rotation: [Math.PI / 2, 0, 0],
+    };
+  }
+
+  if (isMarketStation) {
+    return {
+      kind: 'box',
+      scale: [1.5, 0.85, 1.5],
+      rotation: [0, 0.2, 0],
+    };
+  }
+
+  return {
+    kind: 'sphere',
+    scale: [1, 1, 1],
+    rotation: [0, 0, 0],
+  };
+}
+
+function resolveAsteroidGeometryVariant(
+  body: ViewerBody,
+  descriptorProfile: DescriptorRenderProfile | null,
+  baseVariant: {
+    kind: BodyGeometryKind;
+    scale: [number, number, number];
+    rotation: [number, number, number];
+  },
+): {
+  kind: BodyGeometryKind;
+  scale: [number, number, number];
+  rotation: [number, number, number];
+  detail: number;
+} {
+  if (normalizeToken(body.bodyType) !== 'asteroid') {
+    return {
+      kind: baseVariant.kind,
+      scale: [...baseVariant.scale],
+      rotation: [...baseVariant.rotation],
+      detail: baseVariant.kind === 'icosahedron' ? 1 : 0,
+    };
+  }
+
+  const seedSource = body.externalObjectDescriptor?.descriptorId?.trim() || body.id;
+  const seed = createDeterministicSeed(seedSource);
+  const swayA = seededUnit(seed, 0x1a2b3c4d);
+  const swayB = seededUnit(seed, 0x9e3779b9);
+  const swayC = seededUnit(seed, 0x7f4a7c15);
+  const heroBoost =
+    descriptorProfile?.domain === 'asteroids' && descriptorProfile.objectFamily === 'cinematic-hero' ? 1.55 : 1;
+  const skew = 0.12 * heroBoost;
+
+  const variedScale: [number, number, number] = [
+    +(baseVariant.scale[0] * (0.9 + swayA * skew)).toFixed(4),
+    +(baseVariant.scale[1] * (0.88 + swayB * skew)).toFixed(4),
+    +(baseVariant.scale[2] * (0.9 + swayC * skew)).toFixed(4),
+  ];
+
+  const variedRotation: [number, number, number] = [
+    +(baseVariant.rotation[0] + swayA * 0.7).toFixed(4),
+    +(baseVariant.rotation[1] + swayB * 0.7).toFixed(4),
+    +(baseVariant.rotation[2] + swayC * 0.7).toFixed(4),
+  ];
+
+  let kind = baseVariant.kind;
+  if (kind === 'sphere') {
+    kind = swayA > 0.5 ? 'icosahedron' : 'octahedron';
+  }
+
+  const detail = kind === 'icosahedron' && swayB > 0.45 ? 1 : 0;
+
+  return {
+    kind,
+    scale: variedScale,
+    rotation: variedRotation,
+    detail,
+  };
 }
 
 export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): ViewerSceneCameraDistanceRange {
@@ -263,16 +548,37 @@ export function mapBodiesToRendered(
       }
     }
 
+    const isGate = isGateBody(body);
+    const isMarketStation = isMarketStationBody(body);
+    const descriptorProfile = resolveDescriptorRenderProfile(body.externalObjectDescriptor);
+    const baseGeometryVariant = resolveBodyGeometryVariant(body, descriptorProfile, isGate, isMarketStation);
+    const geometryVariant = resolveAsteroidGeometryVariant(body, descriptorProfile, baseGeometryVariant);
+    const defaultMaterialColor = resolveDefaultMaterialColor(body, isGate, isMarketStation);
+    const resolvedRadius = +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(4);
+
     return {
       source: body,
       id: body.id,
       bodyType: body.bodyType,
       displayName: body.displayName || body.id,
-      color: resolveBodyColor(body),
-      radius: resolveBodySceneRadius(body, zoomLevel),
+      color: descriptorProfile?.color ?? resolveBodyColor(body),
+      radius: resolvedRadius,
       position,
       isStar: isStarBody(body),
-        isMarketStation: isMarketStationBody(body),
+      isMarketStation,
+      isGate,
+      geometryKind: geometryVariant.kind,
+      geometryScale: geometryVariant.scale,
+      geometryRotation: geometryVariant.rotation,
+      geometryDetail: geometryVariant.detail,
+      geometryTorusTubeRadius: Math.max(resolvedRadius * 0.2, 0.03),
+      geometrySegments: descriptorProfile?.geometrySegments ?? 32,
+      materialColor: descriptorProfile?.color ?? defaultMaterialColor,
+      materialEmissive: descriptorProfile?.emissive ?? resolveDefaultMaterialEmissive(body, isGate, isMarketStation),
+      materialEmissiveIntensity:
+        descriptorProfile?.emissiveIntensity ?? resolveDefaultMaterialEmissiveIntensity(body, isGate, isMarketStation),
+      materialRoughness: descriptorProfile?.roughness ?? 0.8,
+      materialMetalness: descriptorProfile?.metalness ?? 0.05,
     };
   });
 
@@ -342,12 +648,16 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
   return ships.map((ship): RenderedShip => {
     const isActive = activeShipId !== null && ship.id === activeShipId;
     const model = coerceShipModel(ship.model);
+    const descriptorProfile = resolveDescriptorRenderProfile(ship.externalObjectDescriptor);
+    const descriptorColor = descriptorProfile?.domain === 'ships' ? descriptorProfile.color : null;
+    const defaultShipColor = isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR;
     if (!isValidShipSpatial(ship.spatial)) {
       return {
         id: ship.id,
         model,
         displayName: ship.name?.trim() || ship.id,
         color: VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+        recognitionDistanceKm: descriptorProfile?.recognitionDistanceKm ?? 40_000,
         position: [...VIEWER_SCENE_UNKNOWN_SHIP_POSITION] as [number, number, number],
         isActive,
         isUnknownSpatial: true,
@@ -365,7 +675,8 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
       id: ship.id,
       model,
       displayName: ship.name?.trim() || ship.id,
-      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : descriptorColor ?? defaultShipColor,
+      recognitionDistanceKm: descriptorProfile?.recognitionDistanceKm ?? 40_000,
       position: scenePos,
       isActive,
       isUnknownSpatial: false,

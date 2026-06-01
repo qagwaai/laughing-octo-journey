@@ -169,13 +169,15 @@ test.describe('Locale opening and mission flow', () => {
 
     await gameShell.openMissionBoard();
 
-    await expect(page).toHaveURL(/left:mission-board/, { timeout: 10_000 });
+    const missionBoardRoot = page.locator('app-mission-board-page .ops-page-container').first();
+
+    await expect(page).toHaveURL(/right:mission-board/, { timeout: 10_000 });
     await expect(missionBoardPage.heading).toHaveText('Bacheca missioni');
-    await expect(page.locator('.page-main .subtitle')).toHaveText(
+    await expect(page.locator('app-mission-board-page .page-main .subtitle').first()).toHaveText(
       'Missioni attive e completate per questo personaggio.',
     );
-    await expect(page.locator('.ops-card h2')).toHaveText('Registro missioni');
-    await expect(page.locator('.ops-card > p').first()).toHaveText(
+    await expect(missionBoardRoot.locator('.ops-card h2').first()).toHaveText('Registro missioni');
+    await expect(missionBoardRoot.locator('.ops-card > p').first()).toHaveText(
       'Tutti i progressi missione registrati per questo personaggio.',
     );
   });

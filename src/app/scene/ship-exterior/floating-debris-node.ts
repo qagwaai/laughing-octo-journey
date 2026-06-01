@@ -13,7 +13,9 @@ import {
 } from '@angular/core';
 import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
 import * as THREE from 'three';
+import type { ExternalObjectDescriptor } from '../../model/external-object-descriptor';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
+import { resolveDescriptorRenderProfile } from '../viewer/viewer-descriptor-selectors';
 
 export const FLOATING_DEBRIS_BEFORE_RENDER_FN = new InjectionToken<typeof _beforeRender>(
   'FLOATING_DEBRIS_BEFORE_RENDER_FN',
@@ -33,6 +35,8 @@ export interface FloatingDebrisHoverEvent {
   hovering: boolean;
 }
 
+type DebrisGeometryKind = 'box' | 'capsule' | 'octahedron' | 'icosahedron';
+
 @Component({
   selector: 'app-floating-debris-node',
   template: `
@@ -45,13 +49,26 @@ export interface FloatingDebrisHoverEvent {
         (pointerdown)="onPointerDown($event)"
         (pointerup)="onPointerUp($event)"
       >
-        <ngt-box-geometry *args="[0.5, 0.5, 0.5]" />
+        @switch (geometryKind()) {
+          @case ('capsule') {
+            <ngt-capsule-geometry *args="[0.25, 0.35, 6, 12]" />
+          }
+          @case ('octahedron') {
+            <ngt-octahedron-geometry *args="[0.38, 0]" />
+          }
+          @case ('icosahedron') {
+            <ngt-icosahedron-geometry *args="[0.35, 0]" />
+          }
+          @default {
+            <ngt-box-geometry *args="[0.5, 0.5, 0.5]" />
+          }
+        }
         <ngt-mesh-standard-material
-          [color]="'#5ad9ff'"
-          [emissive]="'#5ad9ff'"
+          [color]="materialColor()"
+          [emissive]="materialEmissive()"
           [emissiveIntensity]="resolveEmissiveIntensity()"
-          [metalness]="0.4"
-          [roughness]="0.35"
+          [metalness]="materialMetalness()"
+          [roughness]="materialRoughness()"
         />
       </ngt-mesh>
 
@@ -82,6 +99,7 @@ export interface FloatingDebrisHoverEvent {
 export class FloatingDebrisNode {
   item = input.required<FloatingDebrisItem>();
   position = input.required<[number, number, number]>();
+  descriptor = input<ExternalObjectDescriptor | null>(null);
   targetingHold = input<boolean>(false);
   targeted = input<boolean>(false);
 
@@ -89,6 +107,31 @@ export class FloatingDebrisNode {
   protected pulsePhase = signal(0);
   protected targetHoldRingOpacity = computed(() => (this.targetingHold() ? 0.92 : 0));
   protected targetedRingOpacity = computed(() => (this.targeted() ? 0.9 : 0));
+  protected descriptorProfile = computed(() => resolveDescriptorRenderProfile(this.descriptor() ?? undefined));
+  protected geometryKind = computed<DebrisGeometryKind>(() => {
+    const profile = this.descriptorProfile();
+    if (!profile || profile.domain !== 'debris') {
+      return 'box';
+    }
+
+    if (profile.objectFamily === 'cargo-canister') {
+      return 'capsule';
+    }
+
+    if (profile.objectFamily === 'field-shard') {
+      return 'octahedron';
+    }
+
+    if (profile.objectFamily === 'salvage-fragment') {
+      return 'icosahedron';
+    }
+
+    return 'box';
+  });
+  protected materialColor = computed(() => this.descriptorProfile()?.color ?? '#5ad9ff');
+  protected materialEmissive = computed(() => this.descriptorProfile()?.emissive ?? '#5ad9ff');
+  protected materialMetalness = computed(() => this.descriptorProfile()?.metalness ?? 0.4);
+  protected materialRoughness = computed(() => this.descriptorProfile()?.roughness ?? 0.35);
   protected Math = Math;
 
   private meshRef = viewChild<ElementRef<THREE.Mesh>>('mesh');
@@ -117,10 +160,11 @@ export class FloatingDebrisNode {
   }
 
   protected resolveEmissiveIntensity(): number {
+    const descriptorEmissive = this.descriptorProfile()?.emissiveIntensity ?? 1.8;
     if (this.targeted()) {
-      return 3.2;
+      return descriptorEmissive + 1.4;
     }
-    return this.hovered() ? 2.6 : 1.8;
+    return this.hovered() ? descriptorEmissive + 0.8 : descriptorEmissive;
   }
 
   protected onPointerDown(event: {

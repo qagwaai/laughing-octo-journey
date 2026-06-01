@@ -61,45 +61,49 @@
 
 @for (body of nonStars(); track body.id) {
 <ngt-mesh [position]="body.position" [name]="body.displayName"
+  [scale]="body.geometryScale"
+  [rotation]="body.geometryRotation"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
   (pointerdown)="onBodyPointerDown($event, body.source)"
   input
 >
-  <ngt-sphere-geometry *args="[body.radius, 32, 32]" />
+  @if (body.geometryKind === 'box') {
+  <ngt-box-geometry *args="[body.radius * 2, body.radius * 2, body.radius * 2]" />
+  } @else if (body.geometryKind === 'icosahedron') {
+  <ngt-icosahedron-geometry *args="[body.radius, body.geometryDetail]" />
+  } @else if (body.geometryKind === 'octahedron') {
+  <ngt-octahedron-geometry *args="[body.radius, 0]" />
+  } @else if (body.geometryKind === 'capsule') {
+  <ngt-capsule-geometry *args="[body.radius * 0.42, body.radius * 1.35, body.geometrySegments, 14]" />
+  } @else if (body.geometryKind === 'cylinder') {
+  <ngt-cylinder-geometry *args="[body.radius * 0.72, body.radius * 0.9, body.radius * 2.2, body.geometrySegments]" />
+  } @else if (body.geometryKind === 'torus') {
+  <ngt-torus-geometry *args="[body.radius * 1.2, body.geometryTorusTubeRadius, body.geometrySegments, body.geometrySegments * 2]" />
+  } @else {
+  <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
+  }
   <ngt-mesh-standard-material
     [color]="
       hoveredBodyId() === body.id
         ? '#ff3b30'
         : targetedBodyId() === body.id
           ? '#f59e0b'
-          : body.bodyType === 'planet'
-            ? '#ffffff'
-            : body.isMarketStation
-              ? '#22c55e'
-              : body.color
+          : body.materialColor
     "
-    [roughness]="0.8"
-    [metalness]="0.05"
+    [roughness]="body.materialRoughness"
+    [metalness]="body.materialMetalness"
     [emissive]="
       hoveredBodyId() === body.id
         ? '#8f0000'
         : targetedBodyId() === body.id
           ? '#92400e'
-          : body.bodyType === 'planet'
-            ? '#aab8d0'
-            : body.isMarketStation
-              ? '#14532d'
-              : '#000000'
+          : body.materialEmissive
     "
     [emissiveIntensity]="
       hoveredBodyId() === body.id
         ? 0.4
-        : body.bodyType === 'planet'
-          ? 0.2
-          : body.isMarketStation
-            ? 0.2
-            : 0
+        : body.materialEmissiveIntensity
     "
   />
 </ngt-mesh>

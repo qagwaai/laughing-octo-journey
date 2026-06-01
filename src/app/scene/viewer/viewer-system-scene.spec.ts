@@ -48,6 +48,26 @@ const marketStation: ViewerBody = {
   },
 };
 
+const gateBody: ViewerBody = {
+  id: 'gate-ring-alpha',
+  bodyType: 'station',
+  displayName: 'Ring Gate Alpha',
+  spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 170_000_000, y: 0, z: 0 }, epochMs: 0 },
+  externalObjectDescriptor: {
+    descriptorId: 'gates-ring-gate-alpha',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'gates',
+    objectFamily: 'ring-gate',
+    roleCue: 'navigation',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: 'Ring Gate Alpha',
+    silhouetteProfile: 'ring',
+    materialProfile: 'infrastructure',
+    emissiveProfile: 'navigation',
+  },
+};
+
 const distantPlanet: ViewerBody = {
   id: 'planet-2',
   bodyType: 'planet',
@@ -71,6 +91,60 @@ const asteroidB: ViewerBody = {
   displayName: 'Asteroid B',
   spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 350_004_000, y: 500, z: -250 }, epochMs: 0 },
   physicalCatalog: { estimatedDiameterM: 1200 },
+};
+
+const asteroidHero: ViewerBody = {
+  id: 'asteroid-hero-1',
+  bodyType: 'asteroid',
+  displayName: 'Hero Asteroid',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 360_000_000, y: 0, z: 0 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 2000 },
+  externalObjectDescriptor: {
+    descriptorId: 'asteroids-cinematic-hero-1',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'asteroids',
+    objectFamily: 'cinematic-hero',
+    roleCue: 'hazard',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: 'Hero Asteroid',
+    silhouetteProfile: 'boulder',
+    materialProfile: 'rock',
+    emissiveProfile: 'none',
+  },
+};
+
+const asteroidHeroVariant: ViewerBody = {
+  ...asteroidHero,
+  id: 'asteroid-hero-2',
+  displayName: 'Hero Asteroid Variant',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 361_000_000, y: 0, z: 0 }, epochMs: 0 },
+  externalObjectDescriptor: {
+    ...(asteroidHero.externalObjectDescriptor as NonNullable<ViewerBody['externalObjectDescriptor']>),
+    descriptorId: 'asteroids-cinematic-hero-2',
+    displayLabel: 'Hero Asteroid Variant',
+  },
+};
+
+const debrisCanister: ViewerBody = {
+  id: 'debris-canister-1',
+  bodyType: 'debris',
+  displayName: 'Cargo Canister Debris',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 360_500_000, y: 0, z: 0 }, epochMs: 0 },
+  physicalCatalog: { estimatedDiameterM: 200 },
+  externalObjectDescriptor: {
+    descriptorId: 'debris-cargo-canister-1',
+    schemaVersion: 'sw-13-m0-v1',
+    domain: 'debris',
+    objectFamily: 'cargo-canister',
+    roleCue: 'salvage',
+    factionCue: 'neutral',
+    fallbackTier: 'standard',
+    displayLabel: 'Cargo Canister Debris',
+    silhouetteProfile: 'canister',
+    materialProfile: 'industrial',
+    emissiveProfile: 'none',
+  },
 };
 
 const localProjectionShip: ShipSummary = {
@@ -109,6 +183,53 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
   it('returns an empty array when no bodies are provided', () => {
     expect(mapBodiesToRendered([])).toEqual([]);
+  });
+
+  it('maps gate descriptor bodies with gate-specific color', () => {
+    const rendered = mapBodiesToRendered([star, gateBody]);
+    const renderedGate = rendered.find((body) => body.id === 'gate-ring-alpha');
+
+    expect(renderedGate).toBeDefined();
+    expect(renderedGate?.color).toBe('#38bdf8');
+    expect(renderedGate?.geometryKind).toBe('torus');
+  });
+
+  it('applies asteroid descriptor profile rendering deterministically', () => {
+    const first = mapBodiesToRendered([star, asteroidHero]).find((body) => body.id === 'asteroid-hero-1');
+    const second = mapBodiesToRendered([star, asteroidHero]).find((body) => body.id === 'asteroid-hero-1');
+
+    expect(first).toBeDefined();
+    expect(first?.materialColor).toBe('#f59e0b');
+    expect(first?.materialEmissive).toBe('#78350f');
+    expect(first?.materialEmissiveIntensity).toBeCloseTo(0.2478, 4);
+    expect(first?.geometrySegments).toBe(28);
+    expect(first).toEqual(second);
+  });
+
+  it('keeps hero asteroid geometry deterministic but non-uniform across descriptor ids', () => {
+    const rendered = mapBodiesToRendered([star, asteroidHero, asteroidHeroVariant]);
+    const firstHero = rendered.find((body) => body.id === 'asteroid-hero-1');
+    const secondHero = rendered.find((body) => body.id === 'asteroid-hero-2');
+
+    expect(firstHero).toBeDefined();
+    expect(secondHero).toBeDefined();
+    expect(firstHero?.geometryKind).toBe(secondHero?.geometryKind);
+    expect(firstHero?.geometryScale).not.toEqual(secondHero?.geometryScale);
+    expect(firstHero?.geometryRotation).not.toEqual(secondHero?.geometryRotation);
+  });
+
+  it('applies debris descriptor profile rendering deterministically', () => {
+    const first = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
+    const second = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
+
+    expect(first).toBeDefined();
+    expect(first?.materialColor).toBe('#14b8a6');
+    expect(first?.materialEmissive).toBe('#042f2e');
+    expect(first?.materialEmissiveIntensity).toBe(0.12);
+    expect(first?.geometrySegments).toBe(14);
+    expect(first?.geometryKind).toBe('capsule');
+    expect(first?.geometryScale).toEqual([0.9, 1.25, 0.9]);
+    expect(first).toEqual(second);
   });
 
   it('derives a camera distance range from the scene extent', () => {
@@ -188,6 +309,41 @@ describe('mapShipsToRendered', () => {
     status: 'ACTIVE',
     spatial: null,
   } as unknown as ShipSummary;
+  const frigateDescriptorShip: ShipSummary = {
+    id: 'ship-frigate-1',
+    name: 'Frigate One',
+    model: 'Scavenger Pod',
+    tier: 2,
+    status: 'ACTIVE',
+    externalObjectDescriptor: {
+      descriptorId: 'ships-frigate-1',
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'ships',
+      objectFamily: 'frigate',
+      roleCue: 'combat',
+      factionCue: 'alliance',
+      fallbackTier: 'standard',
+      displayLabel: 'Frigate One',
+      silhouetteProfile: 'wedge',
+      materialProfile: 'alloy',
+      emissiveProfile: 'low',
+    },
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 3.6e8, y: 0, z: 0 },
+      epochMs: 1700000000000,
+    },
+  };
+  const minimalFrigateDescriptorShip: ShipSummary = {
+    ...frigateDescriptorShip,
+    id: 'ship-frigate-minimal-1',
+    externalObjectDescriptor: {
+      ...frigateDescriptorShip.externalObjectDescriptor!,
+      descriptorId: 'ships-frigate-minimal-1',
+      fallbackTier: 'minimal',
+    },
+  };
   const sunOriginShip: ShipSummary = {
     id: 'ship-origin',
     name: 'Sunwreck',
@@ -253,6 +409,24 @@ describe('mapShipsToRendered', () => {
     );
 
     expect(rendered[0].model).toBe('Scavenger Pod');
+  });
+
+  it('applies ship descriptor profile colors for inactive ships', () => {
+    const rendered = mapShipsToRendered([frigateDescriptorShip], null);
+    expect(rendered[0].color).toBe('#6366f1');
+    expect(rendered[0].recognitionDistanceKm).toBeGreaterThan(0);
+  });
+
+  it('keeps active ship color priority while preserving descriptor recognition distance', () => {
+    const rendered = mapShipsToRendered([frigateDescriptorShip], 'ship-frigate-1');
+    expect(rendered[0].color).toBe(VIEWER_SCENE_ACTIVE_SHIP_COLOR);
+    expect(rendered[0].recognitionDistanceKm).toBeGreaterThan(0);
+  });
+
+  it('reduces recognition distance for minimal fallback tier versus standard', () => {
+    const standard = mapShipsToRendered([frigateDescriptorShip], null)[0];
+    const minimal = mapShipsToRendered([minimalFrigateDescriptorShip], null)[0];
+    expect(standard.recognitionDistanceKm).toBeGreaterThan(minimal.recognitionDistanceKm);
   });
 });
 

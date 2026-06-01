@@ -146,7 +146,7 @@ test.describe('Mission Board — first-target in progress', () => {
     await setupMissionBoardTest(page, { missions });
 
     await expect(page.getByText('Mission Log')).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('ul[aria-label="Mission list"] .mission-item')).toHaveCount(1);
+    await expect(page.locator('.mission-lane[data-lane="active"] [data-lane-item="active"]')).toHaveCount(1);
   });
 
   test('shows locked catalog missions when first-target is only started', async ({ page }) => {
@@ -170,12 +170,12 @@ test.describe('Mission Board — after first-target completion', () => {
     ];
     await setupMissionBoardTest(page, { missions });
 
-    // Available section should exist
-    await expect(page.getByText('Available Missions')).toBeVisible({ timeout: 10_000 });
+    // Available lane should exist
+    await expect(page.getByRole('region', { name: 'Available' })).toBeVisible({ timeout: 10_000 });
     // M-01's title should appear
-    await expect(page.getByText('The Local Hub')).toBeVisible();
+    await expect(page.locator('.mission-lane[data-lane="available"]', { hasText: 'The Local Hub' })).toBeVisible();
     // Status badge should say available
-    await expect(page.locator('[data-status="available"]').first()).toBeVisible();
+    await expect(page.locator('.mission-lane[data-lane="available"] [data-status="available"]').first()).toBeVisible();
   });
 
   test('shows SQ-02 and SQ-03 as available after first-target completes', async ({ page }) => {

@@ -73,7 +73,12 @@ export class GuardedLeftMenu implements OnChanges {
   }
 
   navigateLeft(route: string): void {
-    this.router.navigate([{ outlets: { left: [route] } }], {
+    const outlets =
+      route === 'mission-board'
+        ? { left: ['game-main'], right: ['mission-board'] }
+        : { left: [route] };
+
+    this.router.navigate([{ outlets }], {
       preserveFragment: true,
       state: {
         playerName: this.playerName,

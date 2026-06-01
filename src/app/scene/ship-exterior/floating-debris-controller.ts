@@ -5,6 +5,7 @@ import { SessionService } from '../../services/session.service';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { ItemListByLocationResponse } from '../../model/item-list-by-location';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
+import { resolveDebrisExternalObjectDescriptor } from '../../model/ship-exterior-descriptors';
 import type { Triple } from '../../model/triple';
 
 export const FLOATING_DEBRIS_RADIUS_KM = 50;
@@ -146,6 +147,10 @@ export class FloatingDebrisController {
       id: FloatingDebrisController.COLD_BOOT_TRACTOR_BEAM_ID,
       itemType: TRACTOR_BEAM_ITEM_TYPE,
       displayName: TRACTOR_BEAM_DISPLAY_NAME,
+      externalObjectDescriptor: resolveDebrisExternalObjectDescriptor({
+        itemType: TRACTOR_BEAM_ITEM_TYPE,
+        displayName: TRACTOR_BEAM_DISPLAY_NAME,
+      }),
       positionKm: {
         x: shipPositionKm.x + 5,
         y: shipPositionKm.y,

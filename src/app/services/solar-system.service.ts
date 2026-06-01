@@ -229,6 +229,12 @@ export class SolarSystemService {
           requestWithCorrelation,
         )
       ) {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
+          // Another in-flight request won this response; ignore without contract-variance warning noise.
+          return;
+        }
+
         appLogger.warn(
           `[socket-correlation] Dropping unmatched solar-system-get response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responseRequestId=${response.requestId ?? 'missing'} expectedRequestId=${requestWithCorrelation.requestId ?? 'missing'} responseSolarSystemId=${response.solarSystemId ?? 'missing'} expectedSolarSystemId=${requestWithCorrelation.solarSystemId}`,
         );

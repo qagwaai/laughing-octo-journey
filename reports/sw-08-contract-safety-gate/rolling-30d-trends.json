@@ -1,7 +1,7 @@
 {
   "windowDays": 30,
-  "generatedAt": "2026-05-25T01:40:22.181Z",
-  "eventsInWindow": 21,
+  "generatedAt": "2026-05-31T00:02:54.902Z",
+  "eventsInWindow": 27,
   "driftCount": 36,
   "driftCountByClass": {
     "type mismatch": 5,
@@ -18,7 +18,7 @@
     "frontend remediation": 5,
     "coordinated fix": 5
   },
-  "mttrHours": 0,
+  "mttrHours": 12.93,
   "bypassCount": 2,
   "expiredBypasses": 3,
   "nearExpiryBypasses": 0,

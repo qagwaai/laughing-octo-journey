@@ -1,23 +1,13 @@
 {
   "mode": "hard-fail",
-  "decision": "hard-fail",
-  "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.intentional-mismatch.json",
-  "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-  "contractCount": 3,
-  "findingCount": 3,
-  "summaryByCategory": {
-    "type mismatch": 1,
-    "missing required field": 1,
-    "enum/value mismatch": 1
-  },
-  "summaryByOwnerTag": {
-    "backend remediation": 1,
-    "frontend remediation": 1,
-    "coordinated fix": 1
-  },
-  "summaryBySeverity": {
-    "breaking": 3
-  },
+  "decision": "pass",
+  "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.json",
+  "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.json",
+  "contractCount": 14,
+  "findingCount": 0,
+  "summaryByCategory": {},
+  "summaryByOwnerTag": {},
+  "summaryBySeverity": {},
   "criticalSurfaceCoverage": {
     "requiredSurfaceIds": [
       "auth/session",
@@ -28,85 +18,19 @@
       "ship-external-view"
     ],
     "presentSurfaceIds": [
-      "item catalog/fabrication",
-      "market/ledger",
-      "ship-external-view"
-    ],
-    "missingSurfaceIds": [
       "auth/session",
       "character/ship",
-      "mission flows"
+      "item catalog/fabrication",
+      "market/ledger",
+      "mission flows",
+      "ship-external-view"
     ],
-    "status": "incomplete"
+    "missingSurfaceIds": [],
+    "status": "complete"
   },
   "exceptionValidationErrors": [],
   "exceptionNearExpiry": false,
   "exceptionApplied": false,
-  "findings": [
-    {
-      "surfaceId": "market/ledger",
-      "surfaceLabel": "market/ledger",
-      "contractId": "market.list",
-      "ownerTag": "backend remediation",
-      "consumerFiles": [
-        "src/app/model/market-list.ts"
-      ],
-      "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "category": "type mismatch",
-      "severity": "breaking",
-      "fieldPath": "response.markets[].driftPercentPerHour",
-      "detail": "Response field response.markets[].driftPercentPerHour changed type.",
-      "expected": "number",
-      "actual": "string",
-      "consumerLocation": "src/app/model/market-list.ts",
-      "producerContractSurface": "market/ledger",
-      "producerLocation": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "remediationHint": "Update the backend contract artifact and migration notes, then re-run the gate.",
-      "nextAction": "Align producer and consumer type at response.markets[].driftPercentPerHour and re-run npm run contract:check:stage3."
-    },
-    {
-      "surfaceId": "item catalog/fabrication",
-      "surfaceLabel": "item catalog/fabrication",
-      "contractId": "fabrication.printableItem",
-      "ownerTag": "frontend remediation",
-      "consumerFiles": [
-        "src/app/model/printable-item.ts"
-      ],
-      "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "category": "missing required field",
-      "severity": "breaking",
-      "fieldPath": "response.requiredMaterials[].acceptedDisplayNames",
-      "detail": "Required response field response.requiredMaterials[].acceptedDisplayNames is not marked required by the backend artifact.",
-      "expected": "required",
-      "actual": "false",
-      "consumerLocation": "src/app/model/printable-item.ts",
-      "producerContractSurface": "item catalog/fabrication",
-      "producerLocation": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "remediationHint": "Update frontend consumer mappings and fallback handling, then re-run the gate.",
-      "nextAction": "Restore required field response.requiredMaterials[].acceptedDisplayNames in producer contract or update frontend expectation, then run npm run contract:check:stage3."
-    },
-    {
-      "surfaceId": "ship-external-view",
-      "surfaceLabel": "ship-external-view",
-      "contractId": "shipExterior.launchItem",
-      "ownerTag": "coordinated fix",
-      "consumerFiles": [
-        "src/app/model/launch-item.ts",
-        "src/app/model/ship-item.ts"
-      ],
-      "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "category": "enum/value mismatch",
-      "severity": "breaking",
-      "fieldPath": "response.resolution.outcome",
-      "detail": "Response enum values changed for response.resolution.outcome.",
-      "expected": "[\"no-effect\",\"target-destroyed\"]",
-      "actual": "[\"no-effect\",\"target-eliminated\"]",
-      "consumerLocation": "src/app/model/launch-item.ts, src/app/model/ship-item.ts",
-      "producerContractSurface": "ship-external-view",
-      "producerLocation": "docs/planning/sw-08/backend-contract-artifact.intentional-mismatch.json",
-      "remediationHint": "Coordinate producer and consumer changes together and keep the exception short-lived.",
-      "nextAction": "Align enum values at response.resolution.outcome or document safe extension policy, then re-run npm run contract:check:stage3."
-    }
-  ],
+  "findings": [],
   "exception": null
 }

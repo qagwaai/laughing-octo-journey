@@ -7,6 +7,7 @@ import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 import { ShipItem, coerceShipItem } from './ship-item';
 import { ObservabilityState, SpatialState } from './spatial';
 import { Triple } from './triple';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 
 export { ShipItem } from './ship-item';
 
@@ -43,6 +44,7 @@ export interface ShipSummary {
   driveProfile?: DriveProfileInput | null;
   launchable?: boolean;
   inventory?: ShipItem[];
+  externalObjectDescriptor?: ExternalObjectDescriptor;
   spatial: SpatialState;
   motion?: ShipMotion;
   observability?: ObservabilityState;

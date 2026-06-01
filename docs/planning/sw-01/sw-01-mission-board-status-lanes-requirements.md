@@ -1,7 +1,8 @@
 # SW-01 Mission Board Status Lanes Requirements (Nova UI-Led)
 
-Status: Draft (Execution Ready)
+Status: Complete (Closed)
 Date: 2026-05-26
+Completed: 2026-05-30
 Repo: laughing-octo-journey
 Related repo: solid-train
 Owner: Nova lead (primary), Forge lead (co-owner), QA lead (validation)
@@ -48,9 +49,11 @@ Out of scope:
 
 Canonical status enum:
 
-1. AVAILABLE
-2. ACTIVE
-3. COMPLETED
+1. available
+2. active
+3. completed
+
+Canonical data values are lowercase. Any title-case lane labels are presentation-only.
 
 Required behavior:
 

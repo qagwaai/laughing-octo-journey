@@ -15,6 +15,8 @@ export const VIEWER_SCENE_DEFAULT_PLANET_COLOR = '#9bb1c9';
 export const VIEWER_SCENE_DEFAULT_STAR_COLOR = '#ffedbc';
 export const VIEWER_SCENE_MARKET_STATION_COLOR = '#22c55e';
 export const VIEWER_SCENE_MARKET_ORBIT_COLOR = '#86efac';
+export const VIEWER_SCENE_GATE_COLOR = '#38bdf8';
+export const VIEWER_SCENE_GATE_ORBIT_COLOR = '#7dd3fc';
 export const VIEWER_SCENE_ACTIVE_SHIP_COLOR = '#fbbf24';
 export const VIEWER_SCENE_INACTIVE_SHIP_COLOR = '#3b82f6';
 /** Color for ships whose spatial state is missing or invalid; rendered at a synthetic offset. */
@@ -93,7 +95,23 @@ export function isMoonBody(body: ViewerBody): boolean {
  * Returns true when the body is a station-backed market node.
  */
 export function isMarketStationBody(body: ViewerBody): boolean {
+  const descriptor = body.externalObjectDescriptor;
+  if (descriptor?.domain === 'stations' && descriptor.objectFamily === 'trade-hub') {
+    return true;
+  }
   return normalizeToken(body.bodyType) === 'station' && normalizeToken(body.stationKind) === 'market';
+}
+
+/**
+ * Returns true when the body is represented by the SW-13 gate descriptor family.
+ */
+export function isGateBody(body: ViewerBody): boolean {
+  const descriptor = body.externalObjectDescriptor;
+  if (descriptor?.domain === 'gates') {
+    return true;
+  }
+  const bodyType = normalizeToken(body.bodyType);
+  return bodyType === 'gate' || bodyType === 'jump-gate' || bodyType === 'jumpgate';
 }
 
 /**
@@ -107,6 +125,9 @@ export function resolveBodyColor(body: ViewerBody): string {
   if (isMarketStationBody(body)) {
     return VIEWER_SCENE_MARKET_STATION_COLOR;
   }
+  if (isGateBody(body)) {
+    return VIEWER_SCENE_GATE_COLOR;
+  }
   return isStarBody(body) ? VIEWER_SCENE_DEFAULT_STAR_COLOR : VIEWER_SCENE_DEFAULT_PLANET_COLOR;
 }
 
@@ -116,6 +137,9 @@ export function resolveBodyColor(body: ViewerBody): string {
 export function resolveOrbitColor(body: ViewerBody): string {
   if (isMarketStationBody(body)) {
     return VIEWER_SCENE_MARKET_ORBIT_COLOR;
+  }
+  if (isGateBody(body)) {
+    return VIEWER_SCENE_GATE_ORBIT_COLOR;
   }
   return '#ffffff';
 }

@@ -1,13 +1,13 @@
 # SW-08 Weekly Metrics
 
 - Window (days): 30
-- Generated at: 2026-05-25T01:40:22.181Z
-- Events in window: 21
+- Generated at: 2026-05-31T00:02:54.902Z
+- Events in window: 27
 - Drift count: 36
 - Drift by class: {"type mismatch":5,"missing required field":5,"enum/value mismatch":5}
 - Impacted surfaces: {"market/ledger":5,"item catalog/fabrication":5,"ship-external-view":5}
 - Owner tags: {"backend remediation":5,"frontend remediation":5,"coordinated fix":5}
-- MTTR (hours): 0
+- MTTR (hours): 12.93
 - Bypass count: 2
 - Expired bypasses: 3
 - Near-expiry bypasses: 0

@@ -20,7 +20,7 @@ import { SocketService } from '../../services/socket.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import ViewerScenePage from './viewer-scene';
 
-function setup(navigationState?: Record<string, unknown>) {
+function setup(navigationState?: Record<string, unknown>, queryParams?: Record<string, string>) {
   const socketService: MockSocketService = createMockSocketService();
   const sessionService: MockSessionService = createMockSessionService('test-session-key');
 
@@ -34,8 +34,13 @@ function setup(navigationState?: Record<string, unknown>) {
     get: (key: string) => (key === 'solarSystemId' ? solarSystemIdParam || null : null),
   };
 
+  const queryParamMapMock = {
+    get: (key: string) => queryParams?.[key] ?? null,
+  };
+
   const mockActivatedRoute = {
     paramMap: of(paramMapMock),
+    queryParamMap: of(queryParamMapMock),
   };
 
   TestBed.configureTestingModule({
@@ -55,6 +60,26 @@ function setup(navigationState?: Record<string, unknown>) {
 }
 
 describe('ViewerScenePage', () => {
+  it('enables viewer QA force-hero defaults in dev builds', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    expect(component['isDevBuild']).toBeTrue();
+    expect(component['viewerQaEnabled']()).toBeTrue();
+    expect(component['forceHeroMode']()).toBeTrue();
+    expect(component['showEffectiveRenderProfile']()).toBeTrue();
+  });
+
+  it('applies URL override query params for QA toggles', () => {
+    const { component } = setup(
+      { playerName: 'Pioneer', solarSystemId: 'sol' },
+      { viewerQa: '1', forceHero: '0', showRenderProfile: '0' },
+    );
+
+    expect(component['viewerQaEnabled']()).toBeTrue();
+    expect(component['forceHeroMode']()).toBeFalse();
+    expect(component['showEffectiveRenderProfile']()).toBeFalse();
+  });
+
   it('shows the empty state when no system was provided in navigation state', () => {
     const { component } = setup();
     expect(component['hasSystem']()).toBeFalse();

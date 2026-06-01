@@ -8,92 +8,128 @@
         <h1>{{ t.game.missionBoard.title }}</h1>
         <p class="subtitle">{{ t.game.missionBoard.subtitle }}</p>
       </div>
+      @if (showGuardedMenu()) {
       <app-character-ship-badge
         [playerName]="playerName()"
         [joinCharacter]="joinCharacter()"
       ></app-character-ship-badge>
+      }
     </div>
 
     <section class="ops-card">
       <h2>{{ t.game.missionBoard.sectionTitle }}</h2>
       <p>{{ t.game.missionBoard.sectionDescription }}</p>
 
+      <div class="lane-filter" role="group" [attr.aria-label]="t.game.missionBoard.filterLabel">
+        @for (filter of missionLaneFilters; track filter) {
+        <button
+          type="button"
+          class="lane-filter__button"
+          [class.lane-filter__button--active]="selectedLaneFilter() === filter"
+          [attr.aria-pressed]="selectedLaneFilter() === filter"
+          [attr.data-filter]="filter"
+          (click)="setMissionLaneFilter(filter)"
+        >
+          {{ getMissionLaneFilterLabel(filter) }}
+        </button>
+        }
+      </div>
+
       @if (isLoadingMissions()) {
       <p>{{ t.game.missionBoard.missionLoadingStatus }}</p>
       } @else if (missionListError()) {
       <p role="alert">{{ missionListError() }}</p>
-      } @else if (missions().length === 0 && availableCatalogMissions().length === 0 && lockedCatalogMissions().length
-      === 0) {
+      } @else if (shouldRenderEmptyState()) {
       <p>{{ t.game.missionBoard.missionEmptyStatus }}</p>
       } @else {
-      <!-- Assigned missions from backend -->
-      @if (missions().length > 0) {
-      <ul class="mission-list" aria-label="Mission list">
-        @for (mission of missions(); track mission.missionId) {
-        <li class="mission-item">
-          <p>
-            <strong>{{ t.game.missionBoard.missionIdLabel }}</strong>
-            {{ getMissionTitle(mission.missionId) }}
-          </p>
-          <p>
-            <strong>{{ t.game.missionBoard.statusLabel }}</strong>
-            <span class="mission-status" [attr.data-status]="getMissionDisplayStatus(mission)">
-              {{ getMissionDisplayStatusLabel(mission) }}
-            </span>
-          </p>
-          @if (mission.startedAt) {
-          <p>
-            <strong>{{ t.game.missionBoard.startedAtLabel }}</strong>
-            {{ formatDate(mission.startedAt) }}
-          </p>
-          } @if (mission.updatedAt) {
-          <p>
-            <strong>{{ t.game.missionBoard.updatedAtLabel }}</strong>
-            {{ formatDate(mission.updatedAt) }}
-          </p>
-          } @if (getMissionStageInfo(mission); as stageInfo) {
-          <p>
-            <strong>{{ t.game.missionBoard.stageLabel }}</strong>
-            {{ stageInfo.stage }}
-          </p>
-          <p>
-            <strong>{{ t.game.missionBoard.nextStepLabel }}</strong>
-            {{ stageInfo.nextStep }}
-          </p>
+      @if (shouldRenderLaneSection()) {
+      <section
+        class="contract-violation"
+        role="alert"
+        [attr.aria-live]="visibleUnknownStatusViolations().length > 0 ? 'polite' : null"
+        [hidden]="visibleUnknownStatusViolations().length === 0"
+      >
+        <h3>{{ t.game.missionBoard.contractViolationPanelTitle }}</h3>
+        <p>{{ t.game.missionBoard.contractViolationPanelBody }}</p>
+        <ul aria-label="Contract violation mission statuses">
+          @for (violation of visibleUnknownStatusViolations(); track violation.missionId + ':' + violation.status) {
+          <li>
+            {{ getMissionTitle(violation.missionId) }}: <strong>{{ violation.status }}</strong>
+          </li>
           }
-        </li>
-        }
-      </ul>
-      }
+        </ul>
+      </section>
 
-      <!-- Catalog missions available but not yet assigned -->
-      @if (availableCatalogMissions().length > 0) {
-      <h3>{{ t.game.missionBoard.availableSectionTitle }}</h3>
-      <ul class="mission-list mission-list--available" aria-label="Available missions">
-        @for (mission of availableCatalogMissions(); track mission.id) {
-        <li class="mission-item mission-item--available">
-          <p>
-            <strong>{{ t.game.missionBoard.missionIdLabel }}</strong>
-            {{ mission.title }}
-          </p>
-          <p>
-            <strong>{{ t.game.missionBoard.typeLabel }}</strong>
-            {{ getMissionTypeLabel(mission.type) }}
-          </p>
-          <p>
-            <strong>{{ t.game.missionBoard.statusLabel }}</strong>
-            <span class="mission-status" data-status="available">{{ t.game.missionBoard.availableStatusLabel }}</span>
-          </p>
-          <p>{{ mission.briefing }}</p>
-          @if (mission.rewards.credits) {
-          <p>
-            <strong>{{ t.game.missionBoard.rewardCreditsLabel }}</strong>
-            {{ mission.rewards.credits }} {{ t.game.missionBoard.rewardCreditsSuffix }}
-          </p>
+      <div class="lane-grid">
+        @for (lane of visibleMissionLanes(); track lane) {
+        <section class="mission-lane" [attr.data-lane]="lane" [attr.aria-label]="getMissionLaneTitle(lane)">
+          <header class="mission-lane__header">
+            <h3>{{ getMissionLaneTitle(lane) }}</h3>
+            <span class="lane-count" [attr.data-lane-count]="lane">{{ getMissionLaneCount(lane) }}</span>
+          </header>
+
+          @if (getLaneEntries(lane).length === 0) {
+          <p class="mission-lane__empty">{{ t.game.missionBoard.filterEmptyState }}</p>
+          } @else {
+          <ul class="mission-list" [attr.aria-label]="getMissionLaneTitle(lane)">
+            @for (entry of getLaneEntries(lane); track entry.missionId + ':' + entry.source) {
+            <li class="mission-item" [attr.data-lane-item]="lane" [attr.data-mission-source]="entry.source">
+              <p>
+                <strong>{{ t.game.missionBoard.missionIdLabel }}</strong>
+                {{ entry.title }}
+              </p>
+              <p>
+                <strong>{{ t.game.missionBoard.statusLabel }}</strong>
+                <span class="mission-status" [attr.data-status]="entry.status">{{ getMissionStatusLabel(entry.status) }}</span>
+              </p>
+
+              @if (entry.source === 'assigned' && entry.assignedMission; as mission) {
+              @if (mission.startedAt) {
+              <p>
+                <strong>{{ t.game.missionBoard.startedAtLabel }}</strong>
+                {{ formatDate(mission.startedAt) }}
+              </p>
+              } @if (mission.updatedAt) {
+              <p>
+                <strong>{{ t.game.missionBoard.updatedAtLabel }}</strong>
+                {{ formatDate(mission.updatedAt) }}
+              </p>
+              } @if (getMissionStageInfo(mission); as stageInfo) {
+              <p>
+                <strong>{{ t.game.missionBoard.stageLabel }}</strong>
+                {{ stageInfo.stage }}
+              </p>
+              <p>
+                <strong>{{ t.game.missionBoard.nextStepLabel }}</strong>
+                {{ stageInfo.nextStep }}
+              </p>
+              }
+              }
+
+              @if (entry.source === 'catalog-available' && entry.catalogMission; as mission) {
+              <p>
+                <strong>{{ t.game.missionBoard.typeLabel }}</strong>
+                {{ getMissionTypeLabel(mission.type) }}
+              </p>
+              <p>{{ mission.briefing }}</p>
+              @if (mission.rewards.credits) {
+              <p>
+                <strong>{{ t.game.missionBoard.rewardCreditsLabel }}</strong>
+                {{ mission.rewards.credits }} {{ t.game.missionBoard.rewardCreditsSuffix }}
+              </p>
+              }
+              }
+            </li>
+            }
+          </ul>
           }
-        </li>
+        </section>
         }
-      </ul>
+      </div>
+
+      @if (hasNoResultsForSelectedFilter()) {
+      <p class="filter-empty-state">{{ t.game.missionBoard.filterEmptyState }}</p>
+      }
       }
 
       <!-- Catalog missions still locked -->

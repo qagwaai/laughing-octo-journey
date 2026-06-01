@@ -12,6 +12,7 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
   template: `
     <app-floating-debris-node
       [item]="item"
+      [descriptor]="item.externalObjectDescriptor ?? null"
       [position]="position"
       [targetingHold]="targetingHold"
       [targeted]="targeted"
@@ -116,5 +117,40 @@ describe('FloatingDebrisNode', () => {
 
     expect(node.targetHoldRingOpacity()).toBe(0.92);
     expect(node.targetedRingOpacity()).toBe(0.9);
+  });
+
+  it('resolves descriptor-driven debris profile when descriptor input is provided', () => {
+    const fixture = makeFixture();
+    const host = fixture.componentInstance;
+
+    host.item = {
+      ...host.item,
+      externalObjectDescriptor: {
+        descriptorId: 'debris-cargo-canister-test',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'debris',
+        objectFamily: 'cargo-canister',
+        roleCue: 'salvage',
+        factionCue: 'unattributed',
+        fallbackTier: 'standard',
+        displayLabel: 'Cargo Canister',
+        silhouetteProfile: 'cargo-canister',
+        materialProfile: 'cargo-canister',
+        emissiveProfile: 'medium',
+      },
+    };
+    fixture.detectChanges();
+
+    const node = host.node as unknown as {
+      descriptorProfile: () => { domain: string; objectFamily: string } | null;
+      geometryKind: () => string;
+    };
+    expect(node.descriptorProfile()).toEqual(
+      jasmine.objectContaining({
+        domain: 'debris',
+        objectFamily: 'cargo-canister',
+      }),
+    );
+    expect(node.geometryKind()).toBe('capsule');
   });
 });

@@ -271,11 +271,11 @@ describe('ship-list correlation integration', () => {
       socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
         success: true,
         message: 'wrong-response',
-        correlationId: 'wrong-correlation-id',
+        correlationId: requestPayload.correlationId!,
         requestIdentity: requestPayload.requestIdentity!,
         owner: {
           ownerType: 'player-character',
-          characterId: 'char-a',
+          characterId: 'char-b',
         } as any,
         ships: [],
       } as ShipListByOwnerResponse);
@@ -286,7 +286,7 @@ describe('ship-list correlation integration', () => {
 
       const customEvent = warningSpy.calls.mostRecent().args[0] as CustomEvent;
       expect(customEvent.detail.operation).toBe('ship-list-by-owner');
-      expect(customEvent.detail.responseCorrelationId).toBe('wrong-correlation-id');
+      expect(customEvent.detail.responseCorrelationId).toBe(requestPayload.correlationId);
       expect(customEvent.detail.expectedCorrelationId).toBe(requestPayload.correlationId);
     } finally {
       window.removeEventListener('socket-correlation-warning', listener);

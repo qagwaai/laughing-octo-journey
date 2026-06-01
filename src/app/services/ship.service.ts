@@ -194,6 +194,12 @@ export class ShipService {
           requestWithCorrelation,
         )
       ) {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
+          // Another in-flight request won this response; ignore without contract-variance warning noise.
+          return;
+        }
+
         emitSocketCorrelationWarning('ship-list-by-owner', {
           responseCorrelationId: response.correlationId ?? null,
           responseOwnerType: response.owner?.ownerType ?? null,

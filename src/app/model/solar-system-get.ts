@@ -1,5 +1,6 @@
 import { Triple } from './shared/triple';
 import { SolarSystemSummary } from './solar-system-list';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 
 export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';
@@ -10,7 +11,7 @@ export interface SolarSystemGetRequestIdentity {
   containerId: string;
 }
 
-export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'station' | string;
+export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'debris' | 'station' | string;
 export type ViewerStationKind = 'market' | string;
 
 export interface ViewerBodyVisualization {
@@ -57,6 +58,10 @@ export interface ViewerBody {
   localOffsetKm?: Triple;
   /** Optional convenience metric from cluster center to body position in km. */
   distanceFromClusterCenterKm?: number;
+  /** Optional SW-13 external object descriptor for deterministic presentation contracts. */
+  externalObjectDescriptor?: ExternalObjectDescriptor;
+  /** Optional body-local debris payloads; entries may carry SW-13 descriptors. */
+  debris?: ViewerBodyDebrisEntry[];
   visualization?: ViewerBodyVisualization;
   physicalCatalog?: ViewerBodyPhysicalCatalog;
   orbitalElements?: ViewerBodyOrbitalElements;
@@ -65,6 +70,18 @@ export interface ViewerBody {
   spectralClass?: string;
   luminositySolar?: number;
   massSolar?: number;
+}
+
+export interface ViewerDebrisEntry {
+  material: string;
+  rarity: string;
+  quantity: number;
+  itemType: string;
+  externalObjectDescriptor?: ExternalObjectDescriptor;
+}
+
+export interface ViewerBodyDebrisEntry extends ViewerDebrisEntry {
+  id?: string;
 }
 
 export interface SolarSystemGetRequest {

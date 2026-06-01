@@ -2,4 +2,7 @@ export const environment = {
   production: true,
   apiUrl: 'https://api.example.com',
   logLevel: 'error',
+  viewerQaEnabledByDefault: false,
+  viewerForceHeroByDefault: false,
+  viewerShowEffectiveProfileByDefault: false,
 };

@@ -1,8 +1,20 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import {
+  resolveDescriptorRenderProfile,
+  resolveGateApproachMetadata,
+  type GateApproachMetadata,
+} from '../../src/app/scene/viewer/viewer-descriptor-selectors';
+import {
+  SW13_M4_BALANCED_PERFORMANCE_BUDGET,
+  validateSw13M4DescriptorEnvelope,
+} from '../../src/app/scene/viewer/viewer-performance-guardrails';
+import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
 
 // ── Test data ──────────────────────────────────────────────────────────────
 
@@ -167,6 +179,69 @@ const ACTIVE_SHIP = {
   },
 };
 
+const M2_DESCRIPTOR_FIXTURE_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'external-object-descriptor-m2-ships-stations.json',
+);
+
+const parsedM2DescriptorFixture = JSON.parse(readFileSync(M2_DESCRIPTOR_FIXTURE_PATH, 'utf8')) as {
+  schemaVersion?: string;
+  descriptors?: ExternalObjectDescriptor[];
+};
+
+const M2_SHIP_STATION_DESCRIPTORS = parsedM2DescriptorFixture.descriptors ?? [];
+
+const M3_GATE_LANDMARK_FIXTURE_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'external-object-gate-landmark-m3.json',
+);
+
+type GateLandmarkFixtureEntry = {
+  descriptor: ExternalObjectDescriptor;
+  approachMetadata: GateApproachMetadata;
+};
+
+const parsedM3GateLandmarkFixture = JSON.parse(readFileSync(M3_GATE_LANDMARK_FIXTURE_PATH, 'utf8')) as {
+  schemaVersion?: string;
+  gates?: GateLandmarkFixtureEntry[];
+};
+
+const M3_GATE_LANDMARK_ENTRIES = parsedM3GateLandmarkFixture.gates ?? [];
+
+const M4_SIZE_CONSISTENCY_REPORT_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'sw13-m4-size-consistency-report.json',
+);
+
+const parsedM4SizeConsistencyReport = JSON.parse(readFileSync(M4_SIZE_CONSISTENCY_REPORT_PATH, 'utf8')) as {
+  evidence: {
+    schemaVersions: string[];
+    fallbackTierValues: string[];
+    legacyFieldHits: string[];
+  };
+  summary: {
+    descriptorSizeByDomain: {
+      gates: {
+        max: number;
+      };
+    };
+    descriptorCountByDomain: {
+      gates: number;
+    };
+    lockedSchemaVersion: string;
+    lockedFallbackTiers: string[];
+  };
+};
+
 function solarSystemGetResponse(bodies: any[]) {
   return {
     success: true,
@@ -178,7 +253,160 @@ function solarSystemGetResponse(bodies: any[]) {
   };
 }
 
-async function setupViewerSceneTest(page: any) {
+function withGateDescriptorBodies(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-ring-1',
+      bodyType: 'station',
+      displayName: 'Ring Gate One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 175000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-ring-gate-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'ring-gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'hero',
+        displayLabel: 'Ring Gate One',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+    {
+      id: 'gate-segmented-1',
+      bodyType: 'station',
+      displayName: 'Segmented Arch One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 176500000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-segmented-arch-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'segmented-arch',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Segmented Arch One',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+    {
+      id: 'gate-relay-1',
+      bodyType: 'station',
+      displayName: 'Relay Spindle One',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 178000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-relay-spindle-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'relay-spindle',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'minimal',
+        displayLabel: 'Relay Spindle One',
+        silhouetteProfile: 'spire',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
+function withInvalidGateDescriptorBody(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-invalid-1',
+      bodyType: 'station',
+      displayName: 'Invalid Gate Descriptor',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 179000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'gates-invalid-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'trade-hub',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Invalid Gate Descriptor',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
+function withLegacyGateDescriptorBody(baseBodies: any[]) {
+  return [
+    ...baseBodies,
+    {
+      id: 'gate-legacy-1',
+      bodyType: 'jump-gate',
+      displayName: 'Legacy Gate Descriptor',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 180000000, y: 0, z: 0 },
+        epochMs: 1715000000000,
+      },
+      externalObjectDescriptor: {
+        descriptorId: 'jump-gate-ring-gate-legacy-1',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'jump_gate',
+        objectFamily: 'ring_gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Legacy Gate Descriptor',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    },
+  ];
+}
+
+function createGateBodyFromLandmarkEntry(entry: GateLandmarkFixtureEntry, index: number): any {
+  return {
+    id: `m3-gate-${index + 1}`,
+    bodyType: 'station',
+    displayName: entry.descriptor.displayLabel,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 175000000 + index * 1250000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    externalObjectDescriptor: entry.descriptor,
+  };
+}
+
+async function setupViewerSceneTest(page: any, ownerShips: any[] = [ACTIVE_SHIP]) {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   await mock.setup();
@@ -216,7 +444,7 @@ async function setupViewerSceneTest(page: any) {
       message: '',
       playerName: TEST_PLAYER,
       characterId: 'char-viewer-1',
-      ships: [ACTIVE_SHIP],
+      ships: ownerShips,
     },
   }));
   await gameShell.joinGame();
@@ -252,9 +480,217 @@ async function navigateToSystemScene(page: any, mock: any, bodies: any[] = SOL_S
   await viewerPage.selectSystem('Sol');
 }
 
+function createStationBodyFromDescriptor(descriptor: ExternalObjectDescriptor, index: number): any {
+  return {
+    id: `m2-station-${index + 1}`,
+    bodyType: 'station',
+    displayName: descriptor.displayLabel,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 165000000 + index * 900000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    externalObjectDescriptor: descriptor,
+  };
+}
+
+function createShipFromDescriptor(descriptor: ExternalObjectDescriptor, index: number): any {
+  return {
+    id: `m2-ship-${index + 1}`,
+    name: descriptor.displayLabel,
+    model: 'Scavenger Pod',
+    tier: 2,
+    status: 'ACTIVE',
+    externalObjectDescriptor: descriptor,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 350000000 + index * 750000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+  };
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe('Viewer — Scene Rendering', () => {
+  test('SW-13 M2 full-9 descriptor selector evidence is deterministic and tier-aware', async () => {
+    expect(M2_SHIP_STATION_DESCRIPTORS.length).toBe(9);
+
+    const profiles = M2_SHIP_STATION_DESCRIPTORS.map((descriptor) => {
+      const first = resolveDescriptorRenderProfile(descriptor);
+      const second = resolveDescriptorRenderProfile(descriptor);
+      expect(first).not.toBeNull();
+      expect(first).toEqual(second);
+      return first!;
+    });
+
+    const shipProfiles = profiles.filter((profile) => profile.domain === 'ships');
+    const stationProfiles = profiles.filter((profile) => profile.domain === 'stations');
+
+    expect(shipProfiles.length).toBe(5);
+    expect(stationProfiles.length).toBe(4);
+
+    const tierProbeBase = M2_SHIP_STATION_DESCRIPTORS.find((descriptor) => descriptor.domain === 'ships');
+    expect(tierProbeBase).toBeDefined();
+
+    const hero = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'hero' });
+    const standard = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'standard' });
+    const minimal = resolveDescriptorRenderProfile({ ...tierProbeBase!, fallbackTier: 'minimal' });
+
+    expect(hero).not.toBeNull();
+    expect(standard).not.toBeNull();
+    expect(minimal).not.toBeNull();
+    expect(hero!.recognitionDistanceKm).toBeGreaterThan(standard!.recognitionDistanceKm);
+    expect(standard!.recognitionDistanceKm).toBeGreaterThan(minimal!.recognitionDistanceKm);
+  });
+
+  test('SW-13 M2 route-smoke full-9 ship/station descriptor coverage loads viewer scene', async ({ page }) => {
+    const shipDescriptors = M2_SHIP_STATION_DESCRIPTORS.filter((descriptor) => descriptor.domain === 'ships');
+    const stationDescriptors = M2_SHIP_STATION_DESCRIPTORS.filter((descriptor) => descriptor.domain === 'stations');
+
+    const ships = shipDescriptors.map((descriptor, index) => createShipFromDescriptor(descriptor, index));
+    const stationBodies = stationDescriptors.map((descriptor, index) => createStationBodyFromDescriptor(descriptor, index));
+
+    const { mock } = await setupViewerSceneTest(page, ships);
+    await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...stationBodies]);
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+    await expect(page).toHaveURL(/right:viewer-scene/);
+  });
+
+  test('SW-13 M3 gate landmark selector evidence is deterministic, bounded, and hazard-aware', async () => {
+    expect(parsedM3GateLandmarkFixture.schemaVersion).toBe('sw-13-m0-v1');
+    expect(M3_GATE_LANDMARK_ENTRIES.length).toBe(3);
+
+    const families = M3_GATE_LANDMARK_ENTRIES.map((entry) => entry.descriptor.objectFamily).sort();
+    expect(families).toEqual(['relay-spindle', 'ring-gate', 'segmented-arch']);
+
+    for (const entry of M3_GATE_LANDMARK_ENTRIES) {
+      const firstProfile = resolveDescriptorRenderProfile(entry.descriptor);
+      const secondProfile = resolveDescriptorRenderProfile(entry.descriptor);
+      expect(firstProfile).not.toBeNull();
+      expect(firstProfile).toEqual(secondProfile);
+
+      const approachMetadata = resolveGateApproachMetadata(entry.descriptor);
+      expect(approachMetadata).not.toBeNull();
+      expect(approachMetadata).toEqual(entry.approachMetadata);
+
+      const windowMin = approachMetadata!.approachWindowKm.min;
+      const windowMax = approachMetadata!.approachWindowKm.max;
+      const standOffKm = approachMetadata!.recommendedStandOffKm;
+      expect(windowMin).toBeGreaterThan(0);
+      expect(windowMax).toBeGreaterThan(windowMin);
+      expect(standOffKm).toBeGreaterThanOrEqual(windowMin);
+      expect(standOffKm).toBeLessThanOrEqual(windowMax);
+    }
+
+    const mediumHazardEntries = M3_GATE_LANDMARK_ENTRIES.filter((entry) => entry.approachMetadata.hazardCue === 'medium');
+    expect(mediumHazardEntries.length).toBeGreaterThan(0);
+    expect(mediumHazardEntries.every((entry) => entry.approachMetadata.warningEscalation === 'required')).toBe(true);
+  });
+
+  test('SW-13 M3 route-smoke run includes all gate families and gate legend cue', async ({ page }) => {
+    const gateBodies = M3_GATE_LANDMARK_ENTRIES.map((entry, index) => createGateBodyFromLandmarkEntry(entry, index));
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...gateBodies]);
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+    await expect(page.getByTestId('viewer-legend-gate')).toBeVisible();
+
+    const routeRunFamilies = gateBodies.map((body) => body.externalObjectDescriptor.objectFamily).sort();
+    expect(routeRunFamilies).toEqual(['relay-spindle', 'ring-gate', 'segmented-arch']);
+  });
+
+  test('SW-13 M4 artifact parity locks runtime guardrails to the committed size report', async () => {
+    const report = parsedM4SizeConsistencyReport;
+    expect(report.summary.lockedSchemaVersion).toBe('sw-13-m0-v1');
+    expect(report.evidence.schemaVersions).toEqual(['sw-13-m0-v1']);
+    expect(report.summary.lockedFallbackTiers.slice().sort()).toEqual(['hero', 'minimal', 'standard']);
+    expect(report.evidence.fallbackTierValues.slice().sort()).toEqual(['hero', 'minimal', 'standard']);
+    expect(report.evidence.legacyFieldHits).toEqual([]);
+
+    expect(report.summary.descriptorSizeByDomain.gates.max).toBe(328);
+    expect(report.summary.descriptorCountByDomain.gates).toBe(3);
+
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxDescriptorEntries).toBe(16);
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxGateEntries).toBe(3);
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxGateDescriptorBytes).toBe(
+      report.summary.descriptorSizeByDomain.gates.max,
+    );
+  });
+
+  test('SW-13 M4 dense-scene guardrail is deterministic at the 16-descriptor and 3-gate envelope', async () => {
+    const nonGateDescriptors: ExternalObjectDescriptor[] = Array.from({ length: 16 }, (_, index) => ({
+      descriptorId: `asteroid-envelope-${index + 1}`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'asteroids',
+      objectFamily: 'rocky-irregular',
+      roleCue: 'hazard',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: `Asteroid Envelope ${index + 1}`,
+      silhouetteProfile: 'irregular',
+      materialProfile: 'rocky',
+      emissiveProfile: 'none',
+    }));
+
+    const gateDescriptors = M3_GATE_LANDMARK_ENTRIES.map((entry) => entry.descriptor);
+    expect(gateDescriptors.length).toBe(3);
+
+    const validEnvelope = validateSw13M4DescriptorEnvelope([...nonGateDescriptors, ...gateDescriptors]);
+    expect(validEnvelope.valid).toBe(true);
+    expect(validEnvelope.summary.descriptorEntries).toBe(16);
+    expect(validEnvelope.summary.gateEntries).toBe(3);
+    expect(validEnvelope.summary.largestGateDescriptorBytes).toBeLessThanOrEqual(328);
+
+    const overDescriptorEnvelope = validateSw13M4DescriptorEnvelope([
+      ...nonGateDescriptors,
+      {
+        descriptorId: 'asteroid-envelope-overflow',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'asteroids',
+        objectFamily: 'rocky-irregular',
+        roleCue: 'hazard',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Asteroid Envelope Overflow',
+        silhouetteProfile: 'irregular',
+        materialProfile: 'rocky',
+        emissiveProfile: 'none',
+      },
+      ...gateDescriptors,
+    ]);
+    expect(overDescriptorEnvelope.valid).toBe(false);
+    expect(overDescriptorEnvelope.reason).toContain('descriptor entries exceed max 16');
+
+    const overGateEnvelope = validateSw13M4DescriptorEnvelope([
+      ...nonGateDescriptors,
+      ...gateDescriptors,
+      {
+        descriptorId: 'gate-overflow-entry',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'ring-gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Gate Overflow Entry',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    ]);
+    expect(overGateEnvelope.valid).toBe(false);
+    expect(overGateEnvelope.reason).toContain('gate descriptor entries exceed max 3');
+  });
+
   test('renders viewer scene after selecting a solar system', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
 
@@ -287,6 +723,36 @@ test.describe('Viewer — Scene Rendering', () => {
     const viewerPage = new ViewerPage(page);
     await expect(viewerPage.sceneCanvas).toBeVisible();
     await expect(viewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('accepts SW-13 gate descriptor families ring-gate, segmented-arch, relay-spindle', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withGateDescriptorBodies(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneCanvas).toBeVisible();
+    await expect(viewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('rejects invalid SW-13 gate descriptor families at viewer ingest boundary', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withInvalidGateDescriptorBody(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
+    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
+  });
+
+  test('rejects legacy gate descriptor domains and families with no fallback remap', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+
+    await navigateToSystemScene(page, mock, withLegacyGateDescriptorBody(SOL_SYSTEM_BODIES));
+
+    const viewerPage = new ViewerPage(page);
+    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
+    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
   });
 
   test('handles scene load error gracefully', async ({ page }) => {

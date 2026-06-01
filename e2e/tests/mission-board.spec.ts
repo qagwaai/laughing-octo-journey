@@ -118,14 +118,13 @@ test.describe('Mission Board — mission progress display', () => {
     await gameShell.openMissionBoard();
 
     const leftMissionBoard = page.locator('app-mission-board-page .ops-page-container').first();
-    await expect(leftMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(1);
+    await expect(leftMissionBoard.locator('button[aria-label="Mission Board"]')).toHaveCount(0);
 
-    const missionItem = missionBoardPage.missionItem(0);
-    await expect(missionItem).toContainText('Your First Target');
-    await expect(missionBoardPage.missionStatus(0)).toHaveText('completed');
-    await expect(missionBoardPage.missionStatus(0)).toHaveAttribute('data-status', 'completed');
-    await expect(missionItem).toContainText('Stage 4 of 4 — Complete');
-    await expect(missionItem).toContainText('Mission objectives complete. Await further directives.');
+    const completedLane = missionBoardPage.lane('completed');
+    await expect(completedLane).toContainText('Your First Target');
+    await expect(completedLane.locator('.mission-status[data-status="completed"]')).toHaveCount(1);
+    await expect(completedLane).toContainText('Stage 4 of 4 — Complete');
+    await expect(completedLane).toContainText('Mission objectives complete. Await further directives.');
   });
 
   test('right mission-board does not render guarded menu items after first-target completion', async ({ page }) => {
@@ -176,9 +175,8 @@ test.describe('Mission Board — mission progress display', () => {
         characterId: 'char-4',
         missions: [
           {
-            missionId: FIRST_TARGET_MISSION_ID,
+            missionId: 'sw01-completed-control',
             status: 'completed',
-            statusDetail: JSON.stringify(completedMissionGateState),
             startedAt: '2026-04-01T10:00:00.000Z',
             updatedAt: '2026-04-30T00:00:00.000Z',
           },
@@ -199,7 +197,53 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(rightMissionBoard).toBeVisible();
 
     const violationBadge = rightMissionBoard.locator('.mission-status[data-status="contract-violation"]');
-    await expect(violationBadge).toHaveCount(1);
-    await expect(violationBadge).toHaveText('Contract Violation');
+    await expect(violationBadge).toHaveCount(0);
+    await expect(rightMissionBoard.locator('.contract-violation')).toContainText('Contract Violation Detected');
+    await expect(rightMissionBoard.locator('.contract-violation')).toContainText('sw01-unknown');
+  });
+
+  test('keeps mission lane filter stable across route navigation', async ({ page }) => {
+    const { mock } = await setupMissionBoardTest(page, [characterWithCompletedMission]);
+    const gameShell = new GameShellPage(page);
+    const missionBoardPage = new MissionBoardPage(page);
+
+    mock.on('game-join-request', () => null);
+    mock.on('list-missions-request', () => ({
+      event: 'list-missions-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-4',
+        missions: [
+          {
+            missionId: 'sw01-completed-smoke',
+            status: 'completed',
+            startedAt: '2026-04-01T10:00:00.000Z',
+            updatedAt: '2026-04-30T00:00:00.000Z',
+          },
+          {
+            missionId: 'sw01-active-smoke',
+            status: 'active',
+            startedAt: '2026-04-18T10:00:00.000Z',
+            updatedAt: '2026-04-19T10:00:00.000Z',
+          },
+        ],
+      },
+    }));
+
+    await gameShell.joinGame();
+    await expect(page).toHaveURL(/right:mission-board/);
+
+    await missionBoardPage.filterButton('completed').click();
+    await expect(page).toHaveURL(/missionStatusFilter=completed/);
+    await expect(missionBoardPage.filterButton('completed')).toHaveAttribute('aria-pressed', 'true');
+    await expect(missionBoardPage.laneItems('completed')).toHaveCount(1);
+
+    await gameShell.openShipHangar();
+    await gameShell.openMissionBoard();
+
+    await expect(missionBoardPage.filterButton('completed')).toHaveAttribute('aria-pressed', 'true');
+    await expect(missionBoardPage.laneItems('completed')).toHaveCount(1);
   });
 });
