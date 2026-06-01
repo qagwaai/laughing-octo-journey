@@ -11,6 +11,12 @@ export interface AsteroidScanSample {
   id: string;
   serverCelestialBodyId: string | null;
   meshProfileKey?: string | null;
+  sw13bSeedId?: string | null;
+  sw13bGeneratorVersion?: string | null;
+  sw13bParameterBundleHash?: string | null;
+  sw13bProfilePreset?: string | null;
+  sw13bTargetSurfaces?: Array<'SV' | 'SEV'> | null;
+  sw13bValidationStatus?: string | null;
   position: [number, number, number];
   basePosition: [number, number, number];
   scanProgress: number;

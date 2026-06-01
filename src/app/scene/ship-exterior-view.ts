@@ -672,6 +672,85 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const tier = this.asteroidRenderTiers().get(sample.id) ?? 'background';
     return `TIER // ${tier.toUpperCase()}`;
   });
+  readonly asteroidDebugSw13SeedText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 SEED // ${sample?.sw13bSeedId?.trim() || '---'}`;
+  });
+  readonly asteroidDebugSw13GeneratorText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 GEN // ${sample?.sw13bGeneratorVersion?.trim() || '---'}`;
+  });
+  readonly asteroidDebugSw13BundleHashText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 BUNDLE // ${sample?.sw13bParameterBundleHash?.trim() || '---'}`;
+  });
+  readonly asteroidDebugSw13ProfilePresetText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 PROFILE // ${sample?.sw13bProfilePreset?.trim() || '---'}`;
+  });
+  readonly asteroidDebugSw13SurfacesText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 SURFACES // ${this.formatSw13Surfaces(sample?.sw13bTargetSurfaces ?? null)}`;
+  });
+  readonly asteroidDebugSw13ValidationText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 VALIDATION // ${sample?.sw13bValidationStatus?.trim() || '---'}`;
+  });
+  readonly asteroidDebugSw13TierText = computed(() => {
+    const sample = this.asteroidDebugSample();
+    return `SW13 TIER // ${this.resolveSw13TierFromSeed(sample?.sw13bSeedId ?? null)}`;
+  });
+  readonly asteroidSw13ParitySummaryText = computed(() => {
+    const samples = this.asteroidSamples();
+    if (samples.length === 0) {
+      return 'SW13 PARITY // TOTAL 0 // B 0 H 0 // SV 0 SEV 0 // META 0/0';
+    }
+
+    let baselineCount = 0;
+    let heroCount = 0;
+    let surfaceSvCount = 0;
+    let surfaceSevCount = 0;
+    let metadataCompleteCount = 0;
+
+    for (const sample of samples) {
+      const tier = this.resolveSw13TierFromSeed(sample.sw13bSeedId ?? null);
+      if (tier === 'B') {
+        baselineCount += 1;
+      }
+      if (tier === 'H') {
+        heroCount += 1;
+      }
+
+      const surfaces = sample.sw13bTargetSurfaces ?? [];
+      if (surfaces.includes('SV')) {
+        surfaceSvCount += 1;
+      }
+      if (surfaces.includes('SEV')) {
+        surfaceSevCount += 1;
+      }
+
+      const hasCompleteMetadata =
+        !!sample.sw13bSeedId &&
+        !!sample.sw13bGeneratorVersion &&
+        !!sample.sw13bParameterBundleHash &&
+        !!sample.sw13bProfilePreset &&
+        (sample.sw13bTargetSurfaces?.length ?? 0) > 0 &&
+        !!sample.sw13bValidationStatus;
+      if (hasCompleteMetadata) {
+        metadataCompleteCount += 1;
+      }
+    }
+
+    return [
+      'SW13 PARITY',
+      `TOTAL ${samples.length}`,
+      `B ${baselineCount}`,
+      `H ${heroCount}`,
+      `SV ${surfaceSvCount}`,
+      `SEV ${surfaceSevCount}`,
+      `META ${metadataCompleteCount}/${samples.length}`,
+    ].join(' // ');
+  });
 
   readonly debrisDebugSample = computed<FloatingDebrisItem | null>(() => {
     const targetedId = this.targetedDebrisId();
@@ -713,6 +792,28 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     return { capMultiplier: qualityScaler };
+  }
+
+  private resolveSw13TierFromSeed(seedId: string | null): 'B' | 'H' | '---' {
+    if (!seedId) {
+      return '---';
+    }
+
+    const segments = seedId.split('-');
+    const tier = segments[2]?.trim().toUpperCase();
+    if (tier === 'B' || tier === 'H') {
+      return tier;
+    }
+
+    return '---';
+  }
+
+  private formatSw13Surfaces(surfaces: Array<'SV' | 'SEV'> | null): string {
+    if (!surfaces || surfaces.length === 0) {
+      return '---';
+    }
+
+    return Array.from(new Set(surfaces.map((surface) => surface.trim().toUpperCase()))).join(',');
   }
 
   resolveAsteroidRenderTier(sampleId: string): AsteroidRenderTier {

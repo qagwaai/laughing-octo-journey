@@ -3,6 +3,11 @@ import {
   pickWeightedAsteroidMaterial,
   type AsteroidMaterialProfile,
 } from '../model/catalog/asteroid-materials';
+import {
+  SW13B_M0B_PUBLISHED_ARTIFACTS,
+  type Sw13bAsteroidRegistryEntry,
+  type Sw13bTier,
+} from '../model/sw13b/sw-13b-m0b-asteroid-baseline';
 import { generateRandomAsteroidKinematics } from '../model/math/asteroid-kinematics';
 import {
   DEFAULT_CLUSTER_SPREAD_KM,
@@ -70,6 +75,11 @@ function hasExpendableDartDroneInInventory(rawInventory: unknown): boolean {
 
 const IRON_MATERIAL = ASTEROID_MATERIALS.find((m) => m.material === 'Iron')!;
 
+interface GeneratedAsteroidAssignment {
+  material: AsteroidMaterialProfile;
+  registryEntry: Sw13bAsteroidRegistryEntry;
+}
+
 const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] = [
   {
     key: 'identify_iron_asteroid',
@@ -96,13 +106,49 @@ const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] 
   },
 ];
 
-function generateMaterialAssignments(count: number, random: () => number): AsteroidMaterialProfile[] {
+function materialToSeedToken(material: string): string {
+  return material.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+function resolveRegistryEntry(material: string, tier: Sw13bTier): Sw13bAsteroidRegistryEntry {
+  const token = materialToSeedToken(material);
+  const matches = SW13B_M0B_PUBLISHED_ARTIFACTS.registry.filter(
+    (entry) => entry.seedId.includes(`-${tier}-`) && entry.seedId.split('-')[3] === token,
+  );
+
+  return matches[0] ?? SW13B_M0B_PUBLISHED_ARTIFACTS.registry[0]!;
+}
+
+function resolveSampleTier(index: number, count: number): Sw13bTier {
+  if (count <= 1) {
+    return 'B';
+  }
+
+  if (index === 0) {
+    return 'B';
+  }
+
+  if (index === 1) {
+    return 'H';
+  }
+
+  return index % 5 === 0 ? 'H' : 'B';
+}
+
+function generateMaterialAssignments(count: number, random: () => number): GeneratedAsteroidAssignment[] {
   const materials = Array.from({ length: count }, () => pickWeightedAsteroidMaterial(random));
   if (count > 0 && !materials.some((m) => m.material === 'Iron')) {
     const replaceIndex = Math.floor(random() * count);
     materials[replaceIndex] = IRON_MATERIAL;
   }
-  return materials;
+
+  return materials.map((material, index) => {
+    const tier = resolveSampleTier(index, count);
+    return {
+      material,
+      registryEntry: resolveRegistryEntry(material.material, tier),
+    };
+  });
 }
 
 function hashToSeed(input: string): number {
@@ -140,7 +186,7 @@ function generateAsteroidSamples(
   clusterCenterKm?: Triple,
   random: () => number = Math.random,
   count?: number,
-  preAssignedMaterials?: AsteroidMaterialProfile[],
+  preAssignedAssignments?: GeneratedAsteroidAssignment[],
 ): AsteroidScanSample[] {
   const resolvedCount = count ?? Math.floor(random() * 16) + 5;
   const samples: AsteroidScanSample[] = [];
@@ -166,14 +212,20 @@ function generateAsteroidSamples(
       id: `sample-a${i + 1}`,
       serverCelestialBodyId: null,
       meshProfileKey: generateRandomAsteroidMeshProfile(random).meshProfileKey,
+      sw13bSeedId: preAssignedAssignments?.[i]?.registryEntry.seedId ?? null,
+      sw13bGeneratorVersion: preAssignedAssignments?.[i]?.registryEntry.generatorVersion ?? null,
+      sw13bParameterBundleHash: preAssignedAssignments?.[i]?.registryEntry.parameterBundleHash ?? null,
+      sw13bProfilePreset: preAssignedAssignments?.[i]?.registryEntry.profilePreset ?? null,
+      sw13bTargetSurfaces: preAssignedAssignments?.[i]?.registryEntry.targetSurfaces ?? null,
+      sw13bValidationStatus: preAssignedAssignments?.[i]?.registryEntry.validationStatus ?? null,
       position: basePosition,
       basePosition,
       scanProgress: 0,
       scanned: false,
-      revealedMaterial: preAssignedMaterials?.[i] ?? null,
+      revealedMaterial: preAssignedAssignments?.[i]?.material ?? null,
       externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
         sampleId: `sample-a${i + 1}`,
-        revealedMaterial: preAssignedMaterials?.[i] ?? null,
+        revealedMaterial: preAssignedAssignments?.[i]?.material ?? null,
       }),
       revealedKinematics: null,
       solarSystemLocation,
@@ -227,14 +279,14 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
   },
   createFallbackAsteroidSamples() {
     const count = Math.floor(Math.random() * 16) + 5;
-    const materials = generateMaterialAssignments(count, Math.random);
-    return generateAsteroidSamples(undefined, Math.random, count, materials);
+    const assignments = generateMaterialAssignments(count, Math.random);
+    return generateAsteroidSamples(undefined, Math.random, count, assignments);
   },
   createNewAsteroidSamplesAroundShip({ playerName, characterId, center, launchSeedHint }) {
     const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
     const count = Math.floor(rng() * 16) + 5;
-    const materials = generateMaterialAssignments(count, rng);
-    return generateAsteroidSamples(center, rng, count, materials);
+    const assignments = generateMaterialAssignments(count, rng);
+    return generateAsteroidSamples(center, rng, count, assignments);
   },
   createResumedAsteroidSamples({ playerName, characterId, center, existingBodies, launchSeedHint }) {
     const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
@@ -246,8 +298,8 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
     );
     const randomTarget = Math.floor(rng() * 16) + 5;
     const total = Math.max(activeBodies.length, randomTarget);
-    const materials = generateMaterialAssignments(total, rng);
-    const allSamples = generateAsteroidSamples(center, rng, total, materials);
+    const assignments = generateMaterialAssignments(total, rng);
+    const allSamples = generateAsteroidSamples(center, rng, total, assignments);
 
     return allSamples.map((sample, index) => {
       const existingBody = existingBySourceScanId.get(sample.id) ?? activeBodies[index];

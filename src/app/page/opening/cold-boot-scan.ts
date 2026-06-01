@@ -127,6 +127,32 @@ export default class ColdBootScanPage {
   protected asteroidDebugTierText = computed(
     () => this.shipExteriorView()?.asteroidDebugTierText() ?? 'TIER // ---',
   );
+  protected asteroidDebugSw13SeedText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13SeedText() ?? 'SW13 SEED // ---',
+  );
+  protected asteroidDebugSw13GeneratorText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13GeneratorText() ?? 'SW13 GEN // ---',
+  );
+  protected asteroidDebugSw13BundleHashText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13BundleHashText() ?? 'SW13 BUNDLE // ---',
+  );
+  protected asteroidDebugSw13ProfilePresetText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13ProfilePresetText() ?? 'SW13 PROFILE // ---',
+  );
+  protected asteroidDebugSw13SurfacesText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13SurfacesText() ?? 'SW13 SURFACES // ---',
+  );
+  protected asteroidDebugSw13ValidationText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13ValidationText() ?? 'SW13 VALIDATION // ---',
+  );
+  protected asteroidDebugSw13TierText = computed(
+    () => this.shipExteriorView()?.asteroidDebugSw13TierText() ?? 'SW13 TIER // ---',
+  );
+  protected asteroidSw13ParitySummaryText = computed(
+    () =>
+      this.shipExteriorView()?.asteroidSw13ParitySummaryText() ??
+      'SW13 PARITY // TOTAL 0 // B 0 H 0 // SV 0 SEV 0 // META 0/0',
+  );
 
   protected showDebrisDebugTag = computed(() => this.shipExteriorView()?.showDebrisDebugTag() ?? false);
   protected debrisDebugHeaderText = computed(

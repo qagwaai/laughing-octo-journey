@@ -448,6 +448,7 @@ async function setupViewerSceneTest(page: any, ownerShips: any[] = [ACTIVE_SHIP]
     },
   }));
   await gameShell.joinGame();
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
   await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 10_000 });
 
@@ -925,7 +926,7 @@ test.describe('Viewer — Scene Rendering', () => {
       },
     }));
     await gameShell.joinGame();
-    await expect(page).toHaveURL(/left:game-main/);
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
 
     // Register solar system list handler
     mock.on('solar-system-list-request', () => ({

@@ -267,12 +267,16 @@ describe('ship-list correlation integration', () => {
       );
 
       const requestPayload = socketService.emittedEvents[0].data as ShipListByOwnerRequest;
+      const mismatchedRequestIdentity = {
+        ...(requestPayload.requestIdentity ?? {}),
+        containerId: 'player-character:char-b',
+      };
 
       socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
         success: true,
         message: 'wrong-response',
         correlationId: requestPayload.correlationId!,
-        requestIdentity: requestPayload.requestIdentity!,
+        requestIdentity: mismatchedRequestIdentity as any,
         owner: {
           ownerType: 'player-character',
           characterId: 'char-b',

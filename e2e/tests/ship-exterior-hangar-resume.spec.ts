@@ -230,18 +230,40 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     await expect(page).toHaveURL(/right:ship-exterior-view/);
 
     await expect
-      .poll(async () =>
-        page.evaluate((sampleId) => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-              };
-            }
-          ).__shipExteriorTestUtils;
-          const sample = api?.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
-          return sample ? { scanned: sample.scanned, scanProgress: sample.scanProgress } : null;
-        }, scannedSampleId),
+      .poll(
+        async () =>
+          page.evaluate((sampleId) => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getAsteroidSamples?: () => Array<{ id: string }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return (
+              typeof api?.getAsteroidSamples === 'function' &&
+              api.getAsteroidSamples().some((candidate) => candidate.id === sampleId)
+            );
+          }, scannedSampleId),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate((sampleId) => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            const sample = api?.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
+            return sample ? { scanned: sample.scanned, scanProgress: sample.scanProgress } : null;
+          }, scannedSampleId),
+        { timeout: 15_000 },
       )
       .toEqual({ scanned: true, scanProgress: 100 });
   });

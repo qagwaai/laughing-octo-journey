@@ -293,6 +293,37 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     expect(samples.every((sample) => !!sample.meshProfileKey)).toBe(true);
   });
 
+  it('should attach SW-13B registry metadata to newly generated asteroid samples', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 1_000, y: 2_000, z: 3_000 },
+      launchSeedHint: 42,
+    });
+
+    expect(samples.length).toBeGreaterThan(0);
+    expect(samples.every((sample) => !!sample.sw13bSeedId)).toBe(true);
+    expect(samples.every((sample) => !!sample.sw13bGeneratorVersion)).toBe(true);
+    expect(samples.every((sample) => !!sample.sw13bParameterBundleHash)).toBe(true);
+    expect(samples.every((sample) => !!sample.sw13bProfilePreset)).toBe(true);
+    expect(samples.every((sample) => sample.sw13bTargetSurfaces?.length === 2)).toBe(true);
+  });
+
+  it('should include both baseline and hero SW-13B seed tiers when multiple samples are generated', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 1_000, y: 2_000, z: 3_000 },
+      launchSeedHint: 42,
+    });
+
+    const baseline = samples.filter((sample) => sample.sw13bSeedId?.includes('-B-')).length;
+    const hero = samples.filter((sample) => sample.sw13bSeedId?.includes('-H-')).length;
+
+    expect(baseline).toBeGreaterThan(0);
+    expect(hero).toBeGreaterThan(0);
+  });
+
   it('should refresh but not remove samples for succeeded but non-destroyed launch', () => {
     const resolution = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveLaunchItemResponse({
       response: {

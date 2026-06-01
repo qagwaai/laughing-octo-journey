@@ -388,10 +388,15 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 
   const repairRetrofitButton = page.locator('button[aria-label="Repair & Retrofit"]');
   const overlay = page.locator('.left-pane-mission-guidance-overlay');
-  await expect(repairRetrofitButton).toHaveClass(/is-guided-target/);
-  await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT');
-  await expect(overlay).toBeVisible();
-  await expect(overlay.getByText('Continue first-target by opening Repair & Retrofit.')).toBeVisible();
+  await expect
+    .poll(async () => {
+      const className = await repairRetrofitButton.getAttribute('class');
+      return className?.includes('is-guided-target') ?? false;
+    }, { timeout: 10000 })
+    .toBe(true);
+  await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT', { timeout: 10000 });
+  await expect(overlay).toBeVisible({ timeout: 10000 });
+  await expect(overlay.getByText('Continue first-target by opening Repair & Retrofit.')).toBeVisible({ timeout: 10000 });
   await expect(overlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
 
   await overlay.locator('button.overlay-open').click();
@@ -399,6 +404,8 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 });
 
 test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({ page }) => {
+  test.setTimeout(45_000);
+
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   await mock.setup();

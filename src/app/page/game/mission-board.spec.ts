@@ -32,6 +32,8 @@ function setup(options: {
   outlet?: string;
   queryParams?: Record<string, string>;
 }) {
+  TestBed.resetTestingModule();
+
   const queryParamMap = convertToParamMap(options.queryParams ?? {});
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),

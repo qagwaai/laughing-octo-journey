@@ -919,6 +919,60 @@ describe('ShipExteriorViewScene', () => {
     expect(component['flightModeEnabled']()).toBeFalse();
     expect(component['flightPointerLocked']()).toBeFalse();
   });
+
+  it('should expose SW-13B metadata lines for the focused asteroid sample', () => {
+    const { component, fixture } = setup();
+
+    component['asteroidSamples'].set([
+      makeSample('sample-a1', {
+        sw13bSeedId: 'sw13b-m0b-B-iron-001',
+        sw13bGeneratorVersion: 'sw13b-codegen-v1',
+        sw13bParameterBundleHash: 'sha256:abc123',
+        sw13bProfilePreset: 'baseline',
+        sw13bTargetSurfaces: ['SV', 'SEV'],
+        sw13bValidationStatus: 'validated',
+      }),
+    ]);
+    component['targetedAsteroidId'].set('sample-a1');
+    fixture.detectChanges();
+
+    expect(component['asteroidDebugSw13SeedText']()).toBe('SW13 SEED // sw13b-m0b-B-iron-001');
+    expect(component['asteroidDebugSw13TierText']()).toBe('SW13 TIER // B');
+    expect(component['asteroidDebugSw13GeneratorText']()).toBe('SW13 GEN // sw13b-codegen-v1');
+    expect(component['asteroidDebugSw13BundleHashText']()).toBe('SW13 BUNDLE // sha256:abc123');
+    expect(component['asteroidDebugSw13ProfilePresetText']()).toBe('SW13 PROFILE // baseline');
+    expect(component['asteroidDebugSw13SurfacesText']()).toBe('SW13 SURFACES // SV,SEV');
+    expect(component['asteroidDebugSw13ValidationText']()).toBe('SW13 VALIDATION // validated');
+  });
+
+  it('should report SW-13B parity counts across generated asteroid samples', () => {
+    const { component, fixture } = setup();
+
+    component['asteroidSamples'].set([
+      makeSample('sample-a1', {
+        sw13bSeedId: 'sw13b-m0b-B-iron-001',
+        sw13bGeneratorVersion: 'sw13b-codegen-v1',
+        sw13bParameterBundleHash: 'sha256:h1',
+        sw13bProfilePreset: 'baseline',
+        sw13bTargetSurfaces: ['SV', 'SEV'],
+        sw13bValidationStatus: 'validated',
+      }),
+      makeSample('sample-a2', {
+        sw13bSeedId: 'sw13b-m0b-H-iron-002',
+        sw13bGeneratorVersion: 'sw13b-codegen-v1',
+        sw13bParameterBundleHash: 'sha256:h2',
+        sw13bProfilePreset: 'hero',
+        sw13bTargetSurfaces: ['SV'],
+        sw13bValidationStatus: 'validated',
+      }),
+      makeSample('sample-a3'),
+    ]);
+    fixture.detectChanges();
+
+    expect(component['asteroidSw13ParitySummaryText']()).toBe(
+      'SW13 PARITY // TOTAL 3 // B 1 // H 1 // SV 2 // SEV 1 // META 2/3',
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

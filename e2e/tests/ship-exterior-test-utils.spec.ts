@@ -167,15 +167,17 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        }),
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function';
+          }),
+        { timeout: 15_000 },
       )
       .toBe(true);
 
@@ -833,15 +835,17 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        }),
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function';
+          }),
+        { timeout: 15_000 },
       )
       .toBe(true);
 
@@ -1070,15 +1074,17 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        }),
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function';
+          }),
+        { timeout: 15_000 },
       )
       .toBe(true);
 
