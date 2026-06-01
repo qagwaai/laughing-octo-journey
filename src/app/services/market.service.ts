@@ -123,6 +123,12 @@ export class MarketService {
             requestWithCorrelation,
           )
         ) {
+          const responseCorrelationId = response.correlationId?.trim() ?? '';
+          if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
+            // Another in-flight request won this response; ignore without contract-variance warning noise.
+            return;
+          }
+
           appLogger.warn(
             `[socket-correlation] Dropping unmatched market-list-by-location response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responsePlayerName=${response.playerName ?? 'missing'} expectedPlayerName=${requestWithCorrelation.playerName} responseSolarSystemId=${response.solarSystemId ?? 'missing'} expectedSolarSystemId=${requestWithCorrelation.solarSystemId}`,
           );

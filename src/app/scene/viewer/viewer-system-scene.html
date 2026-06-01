@@ -61,12 +61,28 @@
 
 @for (body of nonStars(); track body.id) {
 <ngt-mesh [position]="body.position" [name]="body.displayName"
+  [scale]="body.geometryScale"
+  [rotation]="body.geometryRotation"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
   (pointerdown)="onBodyPointerDown($event, body.source)"
   input
 >
+  @if (body.geometryKind === 'box') {
+  <ngt-box-geometry *args="[body.radius * 2, body.radius * 2, body.radius * 2]" />
+  } @else if (body.geometryKind === 'icosahedron') {
+  <ngt-icosahedron-geometry *args="[body.radius, body.geometryDetail]" />
+  } @else if (body.geometryKind === 'octahedron') {
+  <ngt-octahedron-geometry *args="[body.radius, 0]" />
+  } @else if (body.geometryKind === 'capsule') {
+  <ngt-capsule-geometry *args="[body.radius * 0.42, body.radius * 1.35, body.geometrySegments, 14]" />
+  } @else if (body.geometryKind === 'cylinder') {
+  <ngt-cylinder-geometry *args="[body.radius * 0.72, body.radius * 0.9, body.radius * 2.2, body.geometrySegments]" />
+  } @else if (body.geometryKind === 'torus') {
+  <ngt-torus-geometry *args="[body.radius * 1.2, body.geometryTorusTubeRadius, body.geometrySegments, body.geometrySegments * 2]" />
+  } @else {
   <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
+  }
   <ngt-mesh-standard-material
     [color]="
       hoveredBodyId() === body.id

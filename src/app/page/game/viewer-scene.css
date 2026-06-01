@@ -78,6 +78,42 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
+.viewer-qa-panel {
+  position: absolute;
+  top: 1.2rem;
+  right: 4.9rem;
+  z-index: 10020;
+  min-width: 210px;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(15, 26, 44, 0.92);
+  border: 1px solid rgba(170, 214, 255, 0.28);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.viewer-qa-panel__title {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #b9dafc;
+  margin-bottom: 0.45rem;
+}
+
+.viewer-qa-panel__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: #e6f2ff;
+  margin-top: 0.35rem;
+}
+
+.viewer-qa-panel__toggle--disabled {
+  opacity: 0.55;
+}
+
 .viewer-focus-pill__type {
   margin-left: 0.35rem;
   color: #c5d9f4;
@@ -216,5 +252,11 @@
     bottom: 2.7rem;
     max-height: min(38vh, 280px);
     overflow: auto;
+  }
+
+  .viewer-qa-panel {
+    top: 0.7rem;
+    right: 4rem;
+    min-width: 185px;
   }
 }

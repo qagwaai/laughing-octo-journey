@@ -17,6 +17,7 @@ import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import type { SessionService } from '../../services/session.service';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
 
 interface ViewerDataFacadeDeps {
   solarSystemService: SolarSystemService;
@@ -131,6 +132,7 @@ export class ViewerDataFacade {
     bodies: ViewerBody[],
   ): { success: true; bodies: ViewerBody[] } | { success: false; message: string } {
     const sanitizedBodies: ViewerBody[] = [];
+    const sanitizedDescriptors = [];
     for (const body of bodies) {
       const descriptor = body.externalObjectDescriptor;
       if (!descriptor) {
@@ -157,6 +159,14 @@ export class ViewerDataFacade {
         ...body,
         externalObjectDescriptor: descriptorResult.descriptor,
       });
+      sanitizedDescriptors.push(descriptorResult.descriptor);
+    }
+
+    const envelopeValidation = validateSw13M4DescriptorEnvelope(sanitizedDescriptors);
+    if (!envelopeValidation.valid) {
+      const message = `M4 descriptor envelope check failed: ${envelopeValidation.reason ?? 'unknown'}`;
+      appLogger.warn('[viewer-descriptor-contract] ' + message, envelopeValidation.summary);
+      return { success: false, message };
     }
 
     return {

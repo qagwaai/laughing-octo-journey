@@ -114,6 +114,18 @@ const asteroidHero: ViewerBody = {
   },
 };
 
+const asteroidHeroVariant: ViewerBody = {
+  ...asteroidHero,
+  id: 'asteroid-hero-2',
+  displayName: 'Hero Asteroid Variant',
+  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 361_000_000, y: 0, z: 0 }, epochMs: 0 },
+  externalObjectDescriptor: {
+    ...(asteroidHero.externalObjectDescriptor as NonNullable<ViewerBody['externalObjectDescriptor']>),
+    descriptorId: 'asteroids-cinematic-hero-2',
+    displayLabel: 'Hero Asteroid Variant',
+  },
+};
+
 const debrisCanister: ViewerBody = {
   id: 'debris-canister-1',
   bodyType: 'debris',
@@ -179,6 +191,7 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
     expect(renderedGate).toBeDefined();
     expect(renderedGate?.color).toBe('#38bdf8');
+    expect(renderedGate?.geometryKind).toBe('torus');
   });
 
   it('applies asteroid descriptor profile rendering deterministically', () => {
@@ -193,6 +206,18 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(first).toEqual(second);
   });
 
+  it('keeps hero asteroid geometry deterministic but non-uniform across descriptor ids', () => {
+    const rendered = mapBodiesToRendered([star, asteroidHero, asteroidHeroVariant]);
+    const firstHero = rendered.find((body) => body.id === 'asteroid-hero-1');
+    const secondHero = rendered.find((body) => body.id === 'asteroid-hero-2');
+
+    expect(firstHero).toBeDefined();
+    expect(secondHero).toBeDefined();
+    expect(firstHero?.geometryKind).toBe(secondHero?.geometryKind);
+    expect(firstHero?.geometryScale).not.toEqual(secondHero?.geometryScale);
+    expect(firstHero?.geometryRotation).not.toEqual(secondHero?.geometryRotation);
+  });
+
   it('applies debris descriptor profile rendering deterministically', () => {
     const first = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
     const second = mapBodiesToRendered([star, debrisCanister]).find((body) => body.id === 'debris-canister-1');
@@ -202,6 +227,8 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(first?.materialEmissive).toBe('#042f2e');
     expect(first?.materialEmissiveIntensity).toBe(0.12);
     expect(first?.geometrySegments).toBe(14);
+    expect(first?.geometryKind).toBe('capsule');
+    expect(first?.geometryScale).toEqual([0.9, 1.25, 0.9]);
     expect(first).toEqual(second);
   });
 

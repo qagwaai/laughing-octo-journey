@@ -44,6 +44,34 @@
     <div class="viewer-scene-zoom__value">{{ zoomPercent() }}%</div>
   </div>
 
+  @if (isDevBuild) {
+  <div class="viewer-qa-panel" data-testid="viewer-qa-panel">
+    <div class="viewer-qa-panel__title">Viewer QA</div>
+    <label class="viewer-qa-panel__toggle">
+      <input type="checkbox" [checked]="viewerQaEnabled()" (change)="onViewerQaToggle($event)" />
+      <span>Enable QA Controls</span>
+    </label>
+    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+      <input
+        type="checkbox"
+        [checked]="forceHeroMode()"
+        [disabled]="!viewerQaEnabled()"
+        (change)="onForceHeroToggle($event)"
+      />
+      <span>Force Hero Detail</span>
+    </label>
+    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+      <input
+        type="checkbox"
+        [checked]="showEffectiveRenderProfile()"
+        [disabled]="!viewerQaEnabled()"
+        (change)="onShowRenderProfileToggle($event)"
+      />
+      <span>Show Effective Profile</span>
+    </label>
+  </div>
+  }
+
   @if (focusedPlanet(); as focused) {
   <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
     Focused: {{ focused.displayName }}
@@ -96,6 +124,14 @@
       <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
     </div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">ID</span><span class="viewer-detail-pane__value">{{ body.id }}</span></div>
+    @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Descriptor Domain</span><span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Object Family</span><span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Fallback Tier</span><span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Radius Scale</span><span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Segments</span><span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span></div>
+      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Emissive</span><span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span></div>
+    }
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Spectral Class</span><span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Luminosity (Solar)</span><span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span></div>
     <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (Solar)</span><span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span></div>

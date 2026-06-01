@@ -10,6 +10,10 @@ import {
   resolveGateApproachMetadata,
   type GateApproachMetadata,
 } from '../../src/app/scene/viewer/viewer-descriptor-selectors';
+import {
+  SW13_M4_BALANCED_PERFORMANCE_BUDGET,
+  validateSw13M4DescriptorEnvelope,
+} from '../../src/app/scene/viewer/viewer-performance-guardrails';
 import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
 
 // ── Test data ──────────────────────────────────────────────────────────────
@@ -209,6 +213,34 @@ const parsedM3GateLandmarkFixture = JSON.parse(readFileSync(M3_GATE_LANDMARK_FIX
 };
 
 const M3_GATE_LANDMARK_ENTRIES = parsedM3GateLandmarkFixture.gates ?? [];
+
+const M4_SIZE_CONSISTENCY_REPORT_PATH = join(
+  process.cwd(),
+  'docs',
+  'planning',
+  'sw-13',
+  'sw13-m4-size-consistency-report.json',
+);
+
+const parsedM4SizeConsistencyReport = JSON.parse(readFileSync(M4_SIZE_CONSISTENCY_REPORT_PATH, 'utf8')) as {
+  evidence: {
+    schemaVersions: string[];
+    fallbackTierValues: string[];
+    legacyFieldHits: string[];
+  };
+  summary: {
+    descriptorSizeByDomain: {
+      gates: {
+        max: number;
+      };
+    };
+    descriptorCountByDomain: {
+      gates: number;
+    };
+    lockedSchemaVersion: string;
+    lockedFallbackTiers: string[];
+  };
+};
 
 function solarSystemGetResponse(bodies: any[]) {
   return {
@@ -574,6 +606,89 @@ test.describe('Viewer — Scene Rendering', () => {
 
     const routeRunFamilies = gateBodies.map((body) => body.externalObjectDescriptor.objectFamily).sort();
     expect(routeRunFamilies).toEqual(['relay-spindle', 'ring-gate', 'segmented-arch']);
+  });
+
+  test('SW-13 M4 artifact parity locks runtime guardrails to the committed size report', async () => {
+    const report = parsedM4SizeConsistencyReport;
+    expect(report.summary.lockedSchemaVersion).toBe('sw-13-m0-v1');
+    expect(report.evidence.schemaVersions).toEqual(['sw-13-m0-v1']);
+    expect(report.summary.lockedFallbackTiers.slice().sort()).toEqual(['hero', 'minimal', 'standard']);
+    expect(report.evidence.fallbackTierValues.slice().sort()).toEqual(['hero', 'minimal', 'standard']);
+    expect(report.evidence.legacyFieldHits).toEqual([]);
+
+    expect(report.summary.descriptorSizeByDomain.gates.max).toBe(328);
+    expect(report.summary.descriptorCountByDomain.gates).toBe(3);
+
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxDescriptorEntries).toBe(16);
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxGateEntries).toBe(3);
+    expect(SW13_M4_BALANCED_PERFORMANCE_BUDGET.maxGateDescriptorBytes).toBe(
+      report.summary.descriptorSizeByDomain.gates.max,
+    );
+  });
+
+  test('SW-13 M4 dense-scene guardrail is deterministic at the 16-descriptor and 3-gate envelope', async () => {
+    const nonGateDescriptors: ExternalObjectDescriptor[] = Array.from({ length: 16 }, (_, index) => ({
+      descriptorId: `asteroid-envelope-${index + 1}`,
+      schemaVersion: 'sw-13-m0-v1',
+      domain: 'asteroids',
+      objectFamily: 'rocky-irregular',
+      roleCue: 'hazard',
+      factionCue: 'neutral',
+      fallbackTier: 'standard',
+      displayLabel: `Asteroid Envelope ${index + 1}`,
+      silhouetteProfile: 'irregular',
+      materialProfile: 'rocky',
+      emissiveProfile: 'none',
+    }));
+
+    const gateDescriptors = M3_GATE_LANDMARK_ENTRIES.map((entry) => entry.descriptor);
+    expect(gateDescriptors.length).toBe(3);
+
+    const validEnvelope = validateSw13M4DescriptorEnvelope([...nonGateDescriptors, ...gateDescriptors]);
+    expect(validEnvelope.valid).toBe(true);
+    expect(validEnvelope.summary.descriptorEntries).toBe(16);
+    expect(validEnvelope.summary.gateEntries).toBe(3);
+    expect(validEnvelope.summary.largestGateDescriptorBytes).toBeLessThanOrEqual(328);
+
+    const overDescriptorEnvelope = validateSw13M4DescriptorEnvelope([
+      ...nonGateDescriptors,
+      {
+        descriptorId: 'asteroid-envelope-overflow',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'asteroids',
+        objectFamily: 'rocky-irregular',
+        roleCue: 'hazard',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Asteroid Envelope Overflow',
+        silhouetteProfile: 'irregular',
+        materialProfile: 'rocky',
+        emissiveProfile: 'none',
+      },
+      ...gateDescriptors,
+    ]);
+    expect(overDescriptorEnvelope.valid).toBe(false);
+    expect(overDescriptorEnvelope.reason).toContain('descriptor entries exceed max 16');
+
+    const overGateEnvelope = validateSw13M4DescriptorEnvelope([
+      ...nonGateDescriptors,
+      ...gateDescriptors,
+      {
+        descriptorId: 'gate-overflow-entry',
+        schemaVersion: 'sw-13-m0-v1',
+        domain: 'gates',
+        objectFamily: 'ring-gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'standard',
+        displayLabel: 'Gate Overflow Entry',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    ]);
+    expect(overGateEnvelope.valid).toBe(false);
+    expect(overGateEnvelope.reason).toContain('gate descriptor entries exceed max 3');
   });
 
   test('renders viewer scene after selecting a solar system', async ({ page }) => {

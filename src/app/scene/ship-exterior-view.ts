@@ -626,8 +626,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     if (!sample?.scanned) {
       return 'DETAIL // pre-scan low (0-1)';
     }
-
-      return 'DETAIL // post-scan mesh swap (rock profile)';
+    return 'DETAIL // post-scan mesh swap (rock profile)';
   });
   readonly asteroidRenderTiers = computed<Map<string, AsteroidRenderTier>>(() => {
     const camera = this.store?.snapshot.camera;

@@ -2,6 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal, CUSTOM_EL
 import { Router, ActivatedRoute } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
+import {
+  EXTERNAL_OBJECT_SCHEMA_VERSION,
+  type ExternalObjectDescriptor,
+  type ExternalObjectDomain,
+} from '../../model/external-object-descriptor';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -14,14 +19,143 @@ import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
-import { resolveGateApproachMetadata, type GateApproachMetadata } from '../../scene/viewer/viewer-descriptor-selectors';
+import {
+  resolveDescriptorRenderProfile,
+  resolveGateApproachMetadata,
+  type DescriptorRenderProfile,
+  type GateApproachMetadata,
+} from '../../scene/viewer/viewer-descriptor-selectors';
 import { ViewerDataFacade } from './viewer-data-facade';
 import { resolveNavigationState } from '../navigation-state';
+import { environment } from '../../../environments/environment';
 
 interface ViewerSceneNavigationState {
   playerName?: string;
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;
+}
+
+function normalizeToken(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+function parseBooleanQueryFlag(value: string | null): boolean | null {
+  if (value === null) {
+    return null;
+  }
+
+  const normalized = normalizeToken(value);
+  if (normalized === '1' || normalized === 'true' || normalized === 'on' || normalized === 'yes') {
+    return true;
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'off' || normalized === 'no') {
+    return false;
+  }
+
+  return null;
+}
+
+function inferShipFamily(model: string | undefined): string {
+  const normalizedModel = normalizeToken(model);
+  if (normalizedModel.includes('frigate')) {
+    return 'frigate';
+  }
+  if (normalizedModel.includes('hauler') || normalizedModel.includes('cargo')) {
+    return 'hauler';
+  }
+  if (normalizedModel.includes('interceptor') || normalizedModel.includes('fighter')) {
+    return 'interceptor';
+  }
+  if (normalizedModel.includes('industrial') || normalizedModel.includes('miner')) {
+    return 'industrial';
+  }
+  return 'scout';
+}
+
+function createViewerQaDescriptor(
+  id: string,
+  domain: ExternalObjectDomain,
+  objectFamily: string,
+  label: string,
+): ExternalObjectDescriptor {
+  return {
+    descriptorId: `qa-${domain}-${id}`,
+    schemaVersion: EXTERNAL_OBJECT_SCHEMA_VERSION,
+    domain,
+    objectFamily,
+    roleCue: 'qa-manual-test',
+    factionCue: 'neutral',
+    fallbackTier: 'hero',
+    displayLabel: label,
+    silhouetteProfile: 'qa-hero',
+    materialProfile: 'qa-hero',
+    emissiveProfile: 'qa-hero',
+  };
+}
+
+function toForceHeroViewerBody(body: ViewerBody): ViewerBody {
+  if (body.externalObjectDescriptor) {
+    return {
+      ...body,
+      externalObjectDescriptor: {
+        ...body.externalObjectDescriptor,
+        fallbackTier: 'hero',
+      },
+    };
+  }
+
+  const bodyType = normalizeToken(body.bodyType);
+  if (bodyType === 'asteroid') {
+    return {
+      ...body,
+      externalObjectDescriptor: createViewerQaDescriptor(body.id, 'asteroids', 'cinematic-hero', body.displayName),
+    };
+  }
+
+  if (bodyType === 'debris') {
+    return {
+      ...body,
+      externalObjectDescriptor: createViewerQaDescriptor(body.id, 'debris', 'field-shard', body.displayName),
+    };
+  }
+
+  if (bodyType === 'gate' || bodyType === 'jump-gate' || bodyType === 'jumpgate') {
+    return {
+      ...body,
+      externalObjectDescriptor: createViewerQaDescriptor(body.id, 'gates', 'ring-gate', body.displayName),
+    };
+  }
+
+  if (bodyType === 'station') {
+    return {
+      ...body,
+      externalObjectDescriptor: createViewerQaDescriptor(body.id, 'stations', 'trade-hub', body.displayName),
+    };
+  }
+
+  return body;
+}
+
+function toForceHeroShip(ship: ShipSummary): ShipSummary {
+  if (ship.externalObjectDescriptor) {
+    return {
+      ...ship,
+      externalObjectDescriptor: {
+        ...ship.externalObjectDescriptor,
+        fallbackTier: 'hero',
+      },
+    };
+  }
+
+  return {
+    ...ship,
+    externalObjectDescriptor: createViewerQaDescriptor(
+      ship.id,
+      'ships',
+      inferShipFamily(ship.model),
+      ship.name?.trim() || ship.id,
+    ),
+  };
 }
 
 @Component({
@@ -40,6 +174,7 @@ interface ViewerSceneNavigationState {
  */
 export default class ViewerScenePage implements OnDestroy {
   protected readonly t = locale;
+  protected readonly isDevBuild = !environment.production;
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
@@ -61,6 +196,9 @@ export default class ViewerScenePage implements OnDestroy {
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
   protected zoomLevel = signal<number>(78);
+  protected viewerQaEnabled = signal(this.isDevBuild && environment.viewerQaEnabledByDefault);
+  protected forceHeroMode = signal(this.isDevBuild && environment.viewerForceHeroByDefault);
+  protected showEffectiveRenderProfile = signal(this.isDevBuild && environment.viewerShowEffectiveProfileByDefault);
 
   protected zoomPercent = computed<number>(() => Math.round(this.zoomLevel()));
 
@@ -71,6 +209,22 @@ export default class ViewerScenePage implements OnDestroy {
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
+
+  protected readonly effectiveSceneBodies = computed<ViewerBody[]>(() => {
+    if (!(this.viewerQaEnabled() && this.forceHeroMode())) {
+      return this.bodies();
+    }
+
+    return this.bodies().map((body) => toForceHeroViewerBody(body));
+  });
+
+  protected readonly effectiveSceneShips = computed<ShipSummary[]>(() => {
+    if (!(this.viewerQaEnabled() && this.forceHeroMode())) {
+      return this.ships();
+    }
+
+    return this.ships().map((ship) => toForceHeroShip(ship));
+  });
 
   private readonly viewerDataFacade = new ViewerDataFacade({
     solarSystemService: this.solarSystemService,
@@ -94,10 +248,10 @@ export default class ViewerScenePage implements OnDestroy {
   });
 
   protected sceneInputs = computed<ViewerSystemSceneInputs>(() => ({
-    bodies: this.bodies(),
+    bodies: this.effectiveSceneBodies(),
     summary: this.solarSystem(),
     targetBodyId: this.viewerTargetService.targetBodyId(),
-    ships: this.ships(),
+    ships: this.effectiveSceneShips(),
     activeShipId: this.sessionService.activeShip()?.id ?? null,
   }));
 
@@ -111,6 +265,26 @@ export default class ViewerScenePage implements OnDestroy {
       this.solarSystemId.set(id);
       if (id) {
         this.loadSystem();
+      }
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      if (!this.isDevBuild) {
+        return;
+      }
+
+      const qaOverride = parseBooleanQueryFlag(params.get('viewerQa'));
+      const forceHeroOverride = parseBooleanQueryFlag(params.get('forceHero'));
+      const showProfileOverride = parseBooleanQueryFlag(params.get('showRenderProfile'));
+
+      if (qaOverride !== null) {
+        this.viewerQaEnabled.set(qaOverride);
+      }
+      if (forceHeroOverride !== null) {
+        this.forceHeroMode.set(forceHeroOverride);
+      }
+      if (showProfileOverride !== null) {
+        this.showEffectiveRenderProfile.set(showProfileOverride);
       }
     });
   }
@@ -248,6 +422,37 @@ export default class ViewerScenePage implements OnDestroy {
 
   protected resolveGateApproachMetadata(body: ViewerBody): GateApproachMetadata | null {
     return resolveGateApproachMetadata(body.externalObjectDescriptor);
+  }
+
+  protected resolveBodyRenderProfile(body: ViewerBody): DescriptorRenderProfile | null {
+    return resolveDescriptorRenderProfile(body.externalObjectDescriptor);
+  }
+
+  protected onViewerQaToggle(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.viewerQaEnabled.set(target.checked);
+  }
+
+  protected onForceHeroToggle(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.forceHeroMode.set(target.checked);
+  }
+
+  protected onShowRenderProfileToggle(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    this.showEffectiveRenderProfile.set(target.checked);
   }
 
 }
