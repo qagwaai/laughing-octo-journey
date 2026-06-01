@@ -55,6 +55,11 @@ import {
 import { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
+  resolveAsteroidExternalObjectDescriptor,
+  resolveShipExternalObjectDescriptorFromModel,
+  SHIP_EXTERIOR_SW13_FAMILY_BASELINE,
+} from '../model/ship-exterior-descriptors';
+import {
   resolveShipExteriorViewSeedPolicy,
   type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
@@ -118,6 +123,7 @@ import { ShipExteriorMissionProgressController } from './ship-exterior/ship-exte
 import { ShipExteriorSessionController } from './ship-exterior/ship-exterior-session-controller';
 import { registerShipExteriorTestUtils, unregisterShipExteriorTestUtils } from './ship-exterior/ship-exterior-test-utils';
 import { TractorBeamAudioController } from './ship-exterior/tractor-beam-audio-controller';
+import { resolveDescriptorRenderProfile } from './viewer/viewer-descriptor-selectors';
 import {
   resolveTractorBeamVisualState as buildTractorBeamVisualState,
   type TractorBeamAnimationState,
@@ -145,6 +151,16 @@ function interpolateTemplate(template: string, params: Record<string, string | n
     const value = params[key];
     return value === undefined ? '' : String(value);
   });
+}
+
+function resolveDescriptorDetailLevel(segments: number): number {
+  if (segments >= 26) {
+    return 2;
+  }
+  if (segments >= 20) {
+    return 1;
+  }
+  return 0;
 }
 
 @Component({
@@ -702,9 +718,55 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   resolveAsteroidRenderTier(sampleId: string): AsteroidRenderTier {
     return this.asteroidRenderTiers().get(sampleId) ?? 'background';
   }
+
+  readonly sw13ShipExteriorFamilyCoverageSummary = computed(() => {
+    const asteroidFamilies = new Set<string>();
+    for (const sample of this.asteroidSamples()) {
+      const descriptor =
+        sample.externalObjectDescriptor ??
+        resolveAsteroidExternalObjectDescriptor({
+          sampleId: sample.id,
+          revealedMaterial: sample.revealedMaterial,
+          fallbackTier: sample.scanned ? 'hero' : 'standard',
+        });
+      asteroidFamilies.add(descriptor.objectFamily);
+    }
+
+    const debrisFamilies = new Set<string>();
+    for (const debris of this.floatingDebrisItems()) {
+      if (debris.externalObjectDescriptor?.domain === 'debris') {
+        debrisFamilies.add(debris.externalObjectDescriptor.objectFamily);
+      }
+    }
+
+    const activeShipModel = this.shipModel();
+    const shipDescriptor = resolveShipExternalObjectDescriptorFromModel({ model: activeShipModel });
+
+    return {
+      asteroidsSeen: Array.from(asteroidFamilies).sort(),
+      debrisSeen: Array.from(debrisFamilies).sort(),
+      activeShipFamily: shipDescriptor.objectFamily,
+      baseline: SHIP_EXTERIOR_SW13_FAMILY_BASELINE,
+    };
+  });
+
   resolveAsteroidDetailOverride(sample: AsteroidScanSample): number | null {
     const tier = this.resolveAsteroidRenderTier(sample.id);
-    return resolveAsteroidTierDetailOverride(tier, sample.scanned);
+    const tierDetail = resolveAsteroidTierDetailOverride(tier, sample.scanned);
+    const descriptor =
+      sample.externalObjectDescriptor ??
+      resolveAsteroidExternalObjectDescriptor({
+        sampleId: sample.id,
+        revealedMaterial: sample.revealedMaterial,
+        fallbackTier: sample.scanned ? 'hero' : 'standard',
+      });
+    const descriptorProfile = resolveDescriptorRenderProfile(descriptor);
+    if (!descriptorProfile || descriptorProfile.domain !== 'asteroids') {
+      return tierDetail;
+    }
+
+    const descriptorDetail = resolveDescriptorDetailLevel(descriptorProfile.geometrySegments);
+    return Math.max(tierDetail ?? 0, descriptorDetail);
   }
   readonly showPropertiesPanel = computed(
     () => (!!this.hoveredScannedAsteroid() || !!this.hoveredDebrisItem()) && !this.propertiesPanelHidden(),
@@ -1890,6 +1952,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           ...sample,
           scanProgress: 100,
           scanned: true,
+          externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
+            sampleId: sample.id,
+            revealedMaterial: {
+              rarity: 'Common',
+              material: 'Iron',
+              textureColor: '#8f8f8f',
+            },
+            fallbackTier: 'hero',
+          }),
           revealedMaterial: {
             rarity: 'Common',
             material: 'Iron',
@@ -2849,6 +2920,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
           position: animatedPosition,
           scanProgress: nextProgress,
           scanned: completedNow,
+          externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
+            sampleId: sample.id,
+            revealedMaterial,
+            fallbackTier: completedNow ? 'hero' : 'standard',
+          }),
           revealedMaterial,
           revealedKinematics,
         };

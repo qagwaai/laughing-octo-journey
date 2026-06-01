@@ -1,5 +1,6 @@
 import { Injectable, signal, type Signal } from '@angular/core';
 import type { FloatingDebrisItem } from '../model/floating-debris-item';
+import { resolveDebrisExternalObjectDescriptor } from '../model/ship-exterior-descriptors';
 import type { ShipItem } from '../model/ship-item';
 
 @Injectable({
@@ -67,6 +68,10 @@ export class FloatingDebrisStateService {
       id: item.id,
       itemType: item.itemType,
       displayName: item.displayName || item.itemType,
+      externalObjectDescriptor: resolveDebrisExternalObjectDescriptor({
+        itemType: item.itemType,
+        displayName: item.displayName,
+      }),
       positionKm: {
         x: item.spatial.positionKm.x,
         y: item.spatial.positionKm.y,

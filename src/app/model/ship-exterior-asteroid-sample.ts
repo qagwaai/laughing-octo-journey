@@ -4,6 +4,7 @@
 import type { AsteroidKinematics } from './asteroid-kinematics';
 import type { AsteroidMaterialProfile } from './asteroid-materials';
 import type { CelestialBodyLocation } from './celestial-body-location';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import type { Triple } from './triple';
 
 export interface AsteroidScanSample {
@@ -14,6 +15,7 @@ export interface AsteroidScanSample {
   basePosition: [number, number, number];
   scanProgress: number;
   scanned: boolean;
+  externalObjectDescriptor?: ExternalObjectDescriptor | null;
   revealedMaterial: AsteroidMaterialProfile | null;
   revealedKinematics: AsteroidKinematics | null;
   capturedKinematics: AsteroidKinematics;

@@ -46,8 +46,9 @@ describe('FloatingDebrisStateService', () => {
   it('should map and store valid ship items', () => {
     service.upsertFromShipItems([createShipItem()]);
 
-    expect(service.getAll()).toEqual([
-      {
+    expect(service.getAll().length).toBe(1);
+    expect(service.getAll()[0]).toEqual(
+      jasmine.objectContaining({
         id: 'item-1',
         itemType: 'debris_scrap',
         displayName: 'Debris Scrap',
@@ -55,8 +56,11 @@ describe('FloatingDebrisStateService', () => {
         velocityKmPerSec: { x: 0.1, y: 0.2, z: 0.3 },
         state: 'deployed',
         damageStatus: 'intact',
-      },
-    ]);
+        externalObjectDescriptor: jasmine.objectContaining({
+          domain: 'debris',
+        }),
+      }),
+    );
   });
 
   it('should update existing item when same id is received', () => {
@@ -73,8 +77,9 @@ describe('FloatingDebrisStateService', () => {
       }),
     ]);
 
-    expect(service.getAll()).toEqual([
-      {
+    expect(service.getAll().length).toBe(1);
+    expect(service.getAll()[0]).toEqual(
+      jasmine.objectContaining({
         id: 'item-1',
         itemType: 'debris_scrap',
         displayName: 'Updated Debris',
@@ -82,8 +87,11 @@ describe('FloatingDebrisStateService', () => {
         velocityKmPerSec: { x: 0.1, y: 0.2, z: 0.3 },
         state: 'deployed',
         damageStatus: 'intact',
-      },
-    ]);
+        externalObjectDescriptor: jasmine.objectContaining({
+          domain: 'debris',
+        }),
+      }),
+    );
   });
 
   it('should ignore invalid items without spatial position (negative)', () => {

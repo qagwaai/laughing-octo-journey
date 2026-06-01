@@ -55,6 +55,7 @@
   @for (debris of floatingDebrisItems(); track debris.id) {
   <app-floating-debris-node
     [item]="debris"
+    [descriptor]="debris.externalObjectDescriptor ?? null"
     [position]="debrisScenePosition(debris)"
     [targetingHold]="targetHoldCandidateId() === debris.id"
     [targeted]="isDebrisTargeted(debris.id)"
