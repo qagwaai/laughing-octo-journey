@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { Euler, Quaternion, Vector3 } from 'three';
+import { BufferGeometry, Color, Euler, IcosahedronGeometry, Quaternion, Vector3 } from 'three';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -38,7 +38,7 @@ import {
 import { ViewerShipMesh } from './viewer-ship-mesh';
 import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 
-type BodyGeometryKind = 'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus';
+type BodyGeometryKind = 'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus' | 'rock-deformed';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -65,6 +65,11 @@ interface RenderedBody {
   geometryDetail: number;
   geometryTorusTubeRadius: number;
   geometrySegments: number;
+  rockSeed: string | null;
+  rockDisplacement: number;
+  rockCraterCount: number;
+  rockLobeStrength: number;
+  rockMinRadiusRatio: number;
   materialColor: string;
   materialEmissive: string;
   materialEmissiveIntensity: number;
@@ -402,6 +407,11 @@ function resolveAsteroidGeometryVariant(
   scale: [number, number, number];
   rotation: [number, number, number];
   detail: number;
+  rockSeed: string | null;
+  rockDisplacement: number;
+  rockCraterCount: number;
+  rockLobeStrength: number;
+  rockMinRadiusRatio: number;
 } {
   if (normalizeToken(body.bodyType) !== 'asteroid') {
     return {
@@ -409,6 +419,11 @@ function resolveAsteroidGeometryVariant(
       scale: [...baseVariant.scale],
       rotation: [...baseVariant.rotation],
       detail: baseVariant.kind === 'icosahedron' ? 1 : 0,
+      rockSeed: null,
+      rockDisplacement: 0,
+      rockCraterCount: 0,
+      rockLobeStrength: 0,
+      rockMinRadiusRatio: 0.78,
     };
   }
 
@@ -418,13 +433,13 @@ function resolveAsteroidGeometryVariant(
   const swayB = seededUnit(seed, 0x9e3779b9);
   const swayC = seededUnit(seed, 0x7f4a7c15);
   const heroBoost =
-    descriptorProfile?.domain === 'asteroids' && descriptorProfile.objectFamily === 'cinematic-hero' ? 1.55 : 1;
-  const skew = 0.12 * heroBoost;
+    descriptorProfile?.domain === 'asteroids' && descriptorProfile.objectFamily === 'cinematic-hero' ? 1.65 : 1;
+  const skew = heroBoost > 1 ? 0.052 : 0.036;
 
   const variedScale: [number, number, number] = [
-    +(baseVariant.scale[0] * (0.9 + swayA * skew)).toFixed(4),
-    +(baseVariant.scale[1] * (0.88 + swayB * skew)).toFixed(4),
-    +(baseVariant.scale[2] * (0.9 + swayC * skew)).toFixed(4),
+    +(baseVariant.scale[0] * (0.985 + swayA * skew + (heroBoost > 1 ? 0.012 : 0))).toFixed(4),
+    +(baseVariant.scale[1] * (0.98 + swayB * skew - (heroBoost > 1 ? 0.01 : 0))).toFixed(4),
+    +(baseVariant.scale[2] * (0.985 + swayC * skew + (heroBoost > 1 ? 0.01 : 0))).toFixed(4),
   ];
 
   const variedRotation: [number, number, number] = [
@@ -434,18 +449,191 @@ function resolveAsteroidGeometryVariant(
   ];
 
   let kind = baseVariant.kind;
-  if (kind === 'sphere') {
-    kind = swayA > 0.5 ? 'icosahedron' : 'octahedron';
+  if (kind === 'sphere' || kind === 'icosahedron' || kind === 'octahedron') {
+    kind = descriptorProfile?.objectFamily === 'icy-body' ? 'sphere' : 'rock-deformed';
   }
 
-  const detail = kind === 'icosahedron' && swayB > 0.45 ? 1 : 0;
+  const resolvedScale: [number, number, number] =
+    kind === 'rock-deformed'
+      ? [
+          +(1 + (swayA - 0.5) * (heroBoost > 1 ? 0.1 : 0.07)).toFixed(4),
+          +(1 + (swayB - 0.5) * (heroBoost > 1 ? 0.08 : 0.06)).toFixed(4),
+          +(1 + (swayC - 0.5) * (heroBoost > 1 ? 0.1 : 0.07)).toFixed(4),
+        ]
+      : variedScale;
+
+  const detail = kind === 'rock-deformed' ? (heroBoost > 1 ? 3 : 2) : 0;
+  const rockSeed = kind === 'rock-deformed' ? seedSource : null;
+  const rockDisplacement = kind === 'rock-deformed' ? +(0.125 + swayA * 0.06 + (heroBoost > 1 ? 0.075 : 0)).toFixed(4) : 0;
+  const rockCraterCount = kind === 'rock-deformed' ? Math.max(4, Math.floor(4 + swayC * 3 + (heroBoost > 1 ? 4 : 0))) : 0;
+  const rockLobeStrength = kind === 'rock-deformed' ? +(heroBoost > 1 ? 0.62 + swayB * 0.18 : 0.3 + swayB * 0.12).toFixed(4) : 0;
+  const rockMinRadiusRatio = kind === 'rock-deformed' ? (heroBoost > 1 ? 0.46 : 0.56) : 0.78;
 
   return {
     kind,
-    scale: variedScale,
+    scale: resolvedScale,
     rotation: variedRotation,
     detail,
+    rockSeed,
+    rockDisplacement,
+    rockCraterCount,
+    rockLobeStrength,
+    rockMinRadiusRatio,
   };
+}
+
+function resolveAsteroidMaterialColorVariant(body: ViewerBody, baseColor: string): string {
+  if (normalizeToken(body.bodyType) !== 'asteroid') {
+    return baseColor;
+  }
+
+  const seedSource = body.externalObjectDescriptor?.descriptorId?.trim() || body.id;
+  const seed = createDeterministicSeed(seedSource);
+  const color = new Color(baseColor);
+  const hueShift = (seededUnit(seed, 0x88aabbcc) - 0.5) * 0.03;
+  const saturationShift = (seededUnit(seed, 0xccbbaa88) - 0.5) * 0.12;
+  const lightnessShift = (seededUnit(seed, 0x13fa77bd) - 0.5) * 0.14;
+  color.offsetHSL(hueShift, saturationShift, lightnessShift);
+
+  return `#${color.getHexString()}`;
+}
+
+function createUnitVectorFromSeed(seed: number, salt: number): [number, number, number] {
+  const x = seededUnit(seed, salt) * 2 - 1;
+  const y = seededUnit(seed, salt + 1) * 2 - 1;
+  const z = seededUnit(seed, salt + 2) * 2 - 1;
+  const length = Math.hypot(x, y, z) || 1;
+  return [x / length, y / length, z / length];
+}
+
+function buildDeterministicRockGeometry(params: {
+  radius: number;
+  detail: number;
+  seed: string;
+  displacement: number;
+  craterCount: number;
+  lobeStrength: number;
+  minRadiusRatio: number;
+}): BufferGeometry {
+  const geometry = new IcosahedronGeometry(params.radius, params.detail);
+  const position = geometry.getAttribute('position');
+  const seed = createDeterministicSeed(params.seed);
+  const lobeAxisPrimary = createUnitVectorFromSeed(seed, 0x13579bdf);
+  const lobeAxisSecondary = createUnitVectorFromSeed(seed, 0x2468ace1);
+  const lobeAxisTertiary = createUnitVectorFromSeed(seed, 0x5aa55aa5);
+  const phaseA = seededUnit(seed, 0x1001) * Math.PI * 2;
+  const phaseB = seededUnit(seed, 0x1002) * Math.PI * 2;
+  const phaseC = seededUnit(seed, 0x1003) * Math.PI * 2;
+  const phaseD = seededUnit(seed, 0x1004) * Math.PI * 2;
+  const phaseE = seededUnit(seed, 0x1005) * Math.PI * 2;
+  const craterCenters = Array.from({ length: params.craterCount }, (_, index) => {
+    const center = createUnitVectorFromSeed(seed, 0x91e10da5 + index * 17);
+    const radius = 0.08 + seededUnit(seed, 0x7f4a7c15 + index * 13) * 0.12;
+    const depth = 0.018 + seededUnit(seed, 0x9e3779b9 + index * 19) * 0.028;
+    return {
+      center,
+      radius,
+      depth,
+    };
+  });
+  const dentCenters = Array.from({ length: 4 }, (_, index) => {
+    const center = createUnitVectorFromSeed(seed, 0x37a24d1f + index * 23);
+    const radius = 0.21 + seededUnit(seed, 0x12f0aa90 + index * 29) * 0.18;
+    const depth = 0.02 + seededUnit(seed, 0x89a23ec1 + index * 31) * 0.022;
+    return { center, radius, depth };
+  });
+  const massifCenters = Array.from({ length: 3 }, (_, index) => {
+    const center = createUnitVectorFromSeed(seed, 0x5522aa11 + index * 37);
+    const radius = 0.34 + seededUnit(seed, 0x71b91c30 + index * 41) * 0.2;
+    const amplitude = (seededUnit(seed, 0x66778899 + index * 43) - 0.42) * 0.26;
+    return { center, radius, amplitude };
+  });
+  const facetCuts = Array.from({ length: 5 }, (_, index) => {
+    const normal = createUnitVectorFromSeed(seed, 0x31f2a047 + index * 47);
+    const offset = 0.12 + seededUnit(seed, 0x713a1001 + index * 53) * 0.16;
+    const depth = 0.03 + seededUnit(seed, 0x9ac41f03 + index * 59) * 0.06;
+    const softness = 0.08 + seededUnit(seed, 0x2d17b3c1 + index * 61) * 0.12;
+    return { normal, offset, depth, softness };
+  });
+
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index);
+    const y = position.getY(index);
+    const z = position.getZ(index);
+    const length = Math.hypot(x, y, z) || 1;
+    const nx = x / length;
+    const ny = y / length;
+    const nz = z / length;
+
+    const macro =
+      Math.sin((nx * 2.7 + ny * 0.8 + nz * 0.45) + phaseA) +
+      Math.sin((ny * 2.4 + nz * 0.7 + nx * 0.35) + phaseB) +
+      Math.sin((nz * 2.9 + nx * 0.6 + ny * 0.3) + phaseC);
+    const meso =
+      Math.sin((nx - ny * 0.75 + nz * 0.32) * 5.4 + phaseD) * 0.45 +
+      Math.sin((ny - nz * 0.7 + nx * 0.28) * 5.1 + phaseE) * 0.38;
+    const shelf =
+      (Math.abs(Math.sin((nx * 3.6 + ny * 1.7 + nz * 1.2) + phaseB)) - 0.5) * 2 +
+      (Math.abs(Math.sin((ny * 3.1 + nz * 1.6 + nx * 1.1) + phaseD)) - 0.5) * 1.4;
+    const lobePrimary = nx * lobeAxisPrimary[0] + ny * lobeAxisPrimary[1] + nz * lobeAxisPrimary[2];
+    const lobeSecondary = nx * lobeAxisSecondary[0] + ny * lobeAxisSecondary[1] + nz * lobeAxisSecondary[2];
+    const lobeTertiary = nx * lobeAxisTertiary[0] + ny * lobeAxisTertiary[1] + nz * lobeAxisTertiary[2];
+    const lobe =
+      Math.pow(Math.max(0, lobePrimary), 2.3) * params.lobeStrength * 0.95 -
+      Math.pow(Math.max(0, -lobeSecondary), 2.2) * params.lobeStrength * 0.72 +
+      Math.pow(Math.max(0, lobeTertiary), 1.8) * params.lobeStrength * 0.42 -
+      Math.pow(Math.max(0, -lobeTertiary), 1.6) * params.lobeStrength * 0.28;
+    let massif = 0;
+    for (const field of massifCenters) {
+      const dot = nx * field.center[0] + ny * field.center[1] + nz * field.center[2];
+      const angularDistance = 1 - dot;
+      if (angularDistance < field.radius) {
+        const t = 1 - angularDistance / field.radius;
+        massif += field.amplitude * t * t;
+      }
+    }
+    let displacement =
+      macro * params.displacement * 0.14 +
+      meso * params.displacement * 0.11 +
+      shelf * params.displacement * 0.06 +
+      lobe * 0.18 +
+      massif;
+
+    for (const dent of dentCenters) {
+      const dot = nx * dent.center[0] + ny * dent.center[1] + nz * dent.center[2];
+      const angularDistance = 1 - dot;
+      if (angularDistance < dent.radius) {
+        const t = 1 - angularDistance / dent.radius;
+        displacement -= t * t * dent.depth;
+      }
+    }
+
+    for (const crater of craterCenters) {
+      const dot = nx * crater.center[0] + ny * crater.center[1] + nz * crater.center[2];
+      const angularDistance = 1 - dot;
+      if (angularDistance < crater.radius) {
+        const t = 1 - angularDistance / crater.radius;
+        displacement -= t * t * crater.depth;
+      }
+    }
+
+    for (const facet of facetCuts) {
+      const dot = nx * facet.normal[0] + ny * facet.normal[1] + nz * facet.normal[2];
+      const over = dot - facet.offset;
+      if (over > 0) {
+        const t = Math.min(1, over / facet.softness);
+        displacement -= facet.depth * t * t;
+      }
+    }
+
+    displacement = Math.max(-0.42, Math.min(0.34, displacement));
+    const radius = Math.max(params.radius * params.minRadiusRatio, params.radius * (1 + displacement));
+    position.setXYZ(index, nx * radius, ny * radius, nz * radius);
+  }
+
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): ViewerSceneCameraDistanceRange {
@@ -554,6 +742,10 @@ export function mapBodiesToRendered(
     const baseGeometryVariant = resolveBodyGeometryVariant(body, descriptorProfile, isGate, isMarketStation);
     const geometryVariant = resolveAsteroidGeometryVariant(body, descriptorProfile, baseGeometryVariant);
     const defaultMaterialColor = resolveDefaultMaterialColor(body, isGate, isMarketStation);
+    const resolvedMaterialColor = resolveAsteroidMaterialColorVariant(
+      body,
+      descriptorProfile?.color ?? defaultMaterialColor,
+    );
     const resolvedRadius = +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(4);
 
     return {
@@ -573,12 +765,23 @@ export function mapBodiesToRendered(
       geometryDetail: geometryVariant.detail,
       geometryTorusTubeRadius: Math.max(resolvedRadius * 0.2, 0.03),
       geometrySegments: descriptorProfile?.geometrySegments ?? 32,
-      materialColor: descriptorProfile?.color ?? defaultMaterialColor,
+      rockSeed: geometryVariant.rockSeed,
+      rockDisplacement: geometryVariant.rockDisplacement,
+      rockCraterCount: geometryVariant.rockCraterCount,
+      rockLobeStrength: geometryVariant.rockLobeStrength,
+      rockMinRadiusRatio: geometryVariant.rockMinRadiusRatio,
+      materialColor: resolvedMaterialColor,
       materialEmissive: descriptorProfile?.emissive ?? resolveDefaultMaterialEmissive(body, isGate, isMarketStation),
       materialEmissiveIntensity:
         descriptorProfile?.emissiveIntensity ?? resolveDefaultMaterialEmissiveIntensity(body, isGate, isMarketStation),
-      materialRoughness: descriptorProfile?.roughness ?? 0.8,
-      materialMetalness: descriptorProfile?.metalness ?? 0.05,
+      materialRoughness:
+        normalizeToken(body.bodyType) === 'asteroid'
+          ? Math.min(0.98, (descriptorProfile?.roughness ?? 0.84) + seededUnit(createDeterministicSeed(body.id), 0x44) * 0.1)
+          : descriptorProfile?.roughness ?? 0.8,
+      materialMetalness:
+        normalizeToken(body.bodyType) === 'asteroid'
+          ? Math.max(0.01, (descriptorProfile?.metalness ?? 0.08) + (seededUnit(createDeterministicSeed(body.id), 0x55) - 0.5) * 0.04)
+          : descriptorProfile?.metalness ?? 0.05,
     };
   });
 
@@ -732,6 +935,7 @@ export class ViewerSystemScene {
   private lastProcessedTargetBodyId: string | null = null;
   private persistentLookTarget = new Vector3(0, 0, 0);
   private settledCameraPosition: Vector3 | null = null;
+  private rockGeometryCache = new Map<string, BufferGeometry>();
 
   bodies = input<ViewerBody[]>([]);
   summary = input<SolarSystemSummary | null>(null);
@@ -776,6 +980,36 @@ export class ViewerSystemScene {
     }
     return allNonStars.filter((body) => focusIds.has(body.id));
   });
+
+  protected resolveRockGeometry(body: RenderedBody): BufferGeometry {
+    const seed = body.rockSeed ?? body.id;
+    const key = [
+      seed,
+      body.radius.toFixed(4),
+      body.geometryDetail,
+      body.rockDisplacement.toFixed(4),
+      body.rockCraterCount,
+      body.rockLobeStrength.toFixed(4),
+      body.rockMinRadiusRatio.toFixed(4),
+    ].join('|');
+    const cached = this.rockGeometryCache.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const geometry = buildDeterministicRockGeometry({
+      radius: body.radius,
+      detail: Math.max(1, body.geometryDetail),
+      seed,
+      displacement: body.rockDisplacement || 0.12,
+      craterCount: body.rockCraterCount || 8,
+      lobeStrength: body.rockLobeStrength || 0.1,
+      minRadiusRatio: body.rockMinRadiusRatio || 0.78,
+    });
+    this.rockGeometryCache.set(key, geometry);
+    return geometry;
+  }
+
   protected readonly orbitEllipses = computed<OrbitEllipse[]>(() => {
     const byId = new Map<string, RenderedBody>(this.rendered().map((body) => [body.id, body]));
     const hoveredId = this.hoveredBodyId();

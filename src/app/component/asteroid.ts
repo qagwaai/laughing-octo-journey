@@ -21,6 +21,8 @@ import {
   type AsteroidMeshGeometryKind,
   type AsteroidMeshProfile,
 } from '../model/catalog/asteroid-mesh-profiles';
+import { buildSw13bGeneratedVisualSample } from '../model/sw13b/asteroid-visual-generator';
+import { computeSw13bVisualMetrics } from '../model/sw13b/asteroid-visual-metrics';
 import { AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { CelestialBodyLocation } from '../model/math/celestial-body-location';
 import { Triple } from '../model/shared/triple';
@@ -39,6 +41,13 @@ export interface AsteroidPointerButtonEvent {
 export type AsteroidGeometryKind = AsteroidMeshGeometryKind;
 
 export interface AsteroidRevealProfile extends AsteroidMeshProfile {}
+
+export type AsteroidRockRevealGeometry = Exclude<AsteroidGeometryKind, 'rock'>;
+
+export interface AsteroidRockRevealSelection {
+  geometry: AsteroidRockRevealGeometry;
+  detail: number;
+}
 
 const MORPH_PULSE_DURATION_SECONDS = 0.28;
 
@@ -145,6 +154,44 @@ export function resolveAsteroidEmissiveIntensity(
   return 0.8 + (revealedMaterial?.emissiveBoost ?? 0);
 }
 
+export function resolveAsteroidRockRevealSelection(params: {
+  asteroidId: string;
+  meshProfileKey: string | null;
+}): AsteroidRockRevealSelection {
+  const seedSuffix = params.meshProfileKey?.trim() ? params.meshProfileKey.trim() : params.asteroidId;
+  let ordinalHash = 0;
+  for (let i = 0; i < seedSuffix.length; i += 1) {
+    ordinalHash = (ordinalHash + seedSuffix.charCodeAt(i) * (i + 1)) % 1000;
+  }
+
+  const ordinal = String(Math.max(1, ordinalHash)).padStart(3, '0');
+  const syntheticSeed = `AST-SV-B-carbon-RK-${ordinal}-r1`;
+  const sample = buildSw13bGeneratedVisualSample({
+    seedId: syntheticSeed,
+    surface: 'SV',
+  });
+  const metrics = computeSw13bVisualMetrics(sample);
+
+  if (metrics.sphericityProxy < 0.42 || metrics.silhouetteComplexityScore > 0.42) {
+    return {
+      geometry: 'dodecahedron',
+      detail: 2,
+    };
+  }
+
+  if (metrics.silhouetteComplexityScore > 0.34 || metrics.featureDensity > 0.2) {
+    return {
+      geometry: 'icosahedron',
+      detail: 2,
+    };
+  }
+
+  return {
+    geometry: 'octahedron',
+    detail: 0,
+  };
+}
+
 @Component({
   selector: 'app-asteroid',
   templateUrl: './asteroid.html',
@@ -198,6 +245,14 @@ export class Asteroid {
       this.detailOverride(),
     ),
   );
+  protected activeRockReveal = computed(() =>
+    resolveAsteroidRockRevealSelection({
+      asteroidId: this.asteroidId(),
+      meshProfileKey: this.meshProfileKey(),
+    }),
+  );
+  protected activeRockGeometry = computed(() => this.activeRockReveal().geometry);
+  protected activeRockDetail = computed(() => this.activeRockReveal().detail);
   protected meshScale = computed<[number, number, number]>(() => {
     const base = this.scanned() ? 1.08 : this.hovered() ? 1.03 : 1;
     const profileScale = this.revealProfile().scale;

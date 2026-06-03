@@ -15,7 +15,13 @@
     } @else if (activeGeometry() === 'octahedron') {
     <ngt-octahedron-geometry *args="[0.55, activeDetail()]" />
     } @else if (activeGeometry() === 'rock') {
-    <ngt-sphere-geometry *args="[0.55, 20, 20]" />
+      @if (activeRockGeometry() === 'dodecahedron') {
+    <ngt-dodecahedron-geometry *args="[0.55, activeRockDetail()]" />
+      } @else if (activeRockGeometry() === 'icosahedron') {
+    <ngt-icosahedron-geometry *args="[0.55, activeRockDetail()]" />
+      } @else {
+    <ngt-octahedron-geometry *args="[0.55, activeRockDetail()]" />
+      }
     } @else {
     <ngt-dodecahedron-geometry *args="[0.55, activeDetail()]" />
     }

@@ -12,6 +12,7 @@ import {
   resolveAsteroidMaterialColor,
   resolveAsteroidPbrMetalness,
   resolveAsteroidPbrRoughness,
+  resolveAsteroidRockRevealSelection,
   resolveAsteroidSweepOpacity,
   type AsteroidHoverEvent,
 } from './asteroid';
@@ -350,6 +351,7 @@ describe('Asteroid', () => {
     fixture.detectChanges();
 
     expect((component as any).activeGeometry()).toBe('rock');
+    expect(['dodecahedron', 'icosahedron', 'octahedron']).toContain((component as any).activeRockGeometry());
   });
 
   it('should resolve PBR values from revealed material only after scan', () => {
@@ -475,6 +477,31 @@ describe('resolveAsteroidGeometryDetail', () => {
   it('should promote non-octahedron to detail 2 when scanned', () => {
     expect(resolveAsteroidGeometryDetail('dodecahedron', 0, true)).toBe(2);
     expect(resolveAsteroidGeometryDetail('icosahedron', 1, true)).toBe(2);
+  });
+});
+
+describe('resolveAsteroidRockRevealSelection', () => {
+  it('should resolve to a deterministic rocky primitive for the same key', () => {
+    const first = resolveAsteroidRockRevealSelection({
+      asteroidId: 'sample-a',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+    });
+    const second = resolveAsteroidRockRevealSelection({
+      asteroidId: 'sample-a',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+    });
+
+    expect(first).toEqual(second);
+    expect(['dodecahedron', 'icosahedron', 'octahedron']).toContain(first.geometry);
+  });
+
+  it('should resolve fallback selection from asteroid id when profile key is absent', () => {
+    const selection = resolveAsteroidRockRevealSelection({
+      asteroidId: 'sample-no-key',
+      meshProfileKey: null,
+    });
+
+    expect(['dodecahedron', 'icosahedron', 'octahedron']).toContain(selection.geometry);
   });
 });
 

@@ -1,6 +1,16 @@
 <ngt-color *args="['#02060f']" attach="background" />
 <ngt-ambient-light [intensity]="0.15" />
-<ngt-point-light [position]="[0, 0, 0]" [intensity]="2.5" [distance]="120" [decay]="2" />
+<ngt-point-light [position]="[0, 0, 0]" [intensity]="2.05" [distance]="120" [decay]="2" />
+<ngt-directional-light
+  [position]="[26, 18, 14]"
+  [intensity]="0.46"
+  [color]="'#d6dff0'"
+/>
+<ngt-directional-light
+  [position]="[-22, 10, -20]"
+  [intensity]="0.42"
+  [color]="'#6f87ad'"
+/>
 <ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08, enableZoom: false }" />
 
 <ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
@@ -70,6 +80,8 @@
 >
   @if (body.geometryKind === 'box') {
   <ngt-box-geometry *args="[body.radius * 2, body.radius * 2, body.radius * 2]" />
+  } @else if (body.geometryKind === 'rock-deformed') {
+  <ngt-primitive attach="geometry" *args="[resolveRockGeometry(body)]" />
   } @else if (body.geometryKind === 'icosahedron') {
   <ngt-icosahedron-geometry *args="[body.radius, body.geometryDetail]" />
   } @else if (body.geometryKind === 'octahedron') {
@@ -105,6 +117,7 @@
         ? 0.4
         : body.materialEmissiveIntensity
     "
+    [flatShading]="body.geometryKind === 'rock-deformed'"
   />
 </ngt-mesh>
 }

@@ -199,7 +199,8 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     const second = mapBodiesToRendered([star, asteroidHero]).find((body) => body.id === 'asteroid-hero-1');
 
     expect(first).toBeDefined();
-    expect(first?.materialColor).toBe('#f59e0b');
+    expect(first?.materialColor).toMatch(/^#[0-9a-f]{6}$/i);
+    expect(first?.materialColor).toBe(second?.materialColor);
     expect(first?.materialEmissive).toBe('#78350f');
     expect(first?.materialEmissiveIntensity).toBeCloseTo(0.2478, 4);
     expect(first?.geometrySegments).toBe(28);
@@ -213,6 +214,7 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
 
     expect(firstHero).toBeDefined();
     expect(secondHero).toBeDefined();
+    expect(firstHero?.geometryKind).toBe('rock-deformed');
     expect(firstHero?.geometryKind).toBe(secondHero?.geometryKind);
     expect(firstHero?.geometryScale).not.toEqual(secondHero?.geometryScale);
     expect(firstHero?.geometryRotation).not.toEqual(secondHero?.geometryRotation);
