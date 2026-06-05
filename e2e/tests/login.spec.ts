@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { LoginPage } from '../page-objects/login.page';
 
+const REMEMBERED_PLAYER_HANDLE_STORAGE_KEY = 'auth.rememberedPlayerHandle';
+
 test.describe('Login', () => {
   let loginPage: LoginPage;
 
@@ -46,5 +48,24 @@ test.describe('Login', () => {
   test('register link navigates to registration', async ({ page }) => {
     await loginPage.registerLink.click();
     await expect(page).toHaveURL(/(left:registration)/);
+  });
+
+  test('focuses player name when no remembered username exists', async ({ page }) => {
+    await expect
+      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
+      .toBe('playerName');
+  });
+
+  test('focuses password when remembered username exists', async ({ page }) => {
+    await page.addInitScript((storageKey) => {
+      window.localStorage.setItem(storageKey, 'RememberedPilot');
+    }, REMEMBERED_PLAYER_HANDLE_STORAGE_KEY);
+
+    await loginPage.goto();
+
+    await expect(loginPage.playerNameInput).toHaveValue('RememberedPilot');
+    await expect
+      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
+      .toBe('password');
   });
 });

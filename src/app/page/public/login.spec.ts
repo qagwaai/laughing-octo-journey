@@ -69,6 +69,21 @@ describe('LoginPage', () => {
     expect(component['loginForm'].value.playerName).toBe('RememberedPilot');
   });
 
+  it('should focus password input when remembered player name exists', () => {
+    window.localStorage.setItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY, 'RememberedPilot');
+    const { fixture } = setup({ socketService, sessionService });
+
+    const activeElement = fixture.nativeElement.ownerDocument.activeElement as HTMLElement | null;
+    expect(activeElement?.id).toBe('password');
+  });
+
+  it('should focus player name input when remembered player name does not exist', () => {
+    const { fixture } = setup({ socketService, sessionService });
+
+    const activeElement = fixture.nativeElement.ownerDocument.activeElement as HTMLElement | null;
+    expect(activeElement?.id).toBe('playerName');
+  });
+
   it('should initialise with no messages and not submitting', () => {
     const { component } = setup({ socketService, sessionService });
     expect(component['isSubmitting']()).toBe(false);

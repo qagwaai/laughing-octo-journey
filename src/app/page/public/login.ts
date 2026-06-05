@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { resolveNavigationState } from '../navigation-state';
@@ -29,7 +29,7 @@ interface LoginNavigationState {
 /**
  * Login page that authenticates user credentials and applies locale preference.
  */
-export default class LoginPage implements OnDestroy {
+export default class LoginPage implements OnDestroy, AfterViewInit {
   protected readonly t = locale;
   protected readonly supportedLocaleCodes = supportedLocaleCodes;
   private authService = inject(AuthService);
@@ -44,6 +44,8 @@ export default class LoginPage implements OnDestroy {
       ? this.navigationState.preferredLocale
       : currentLocaleCode;
   private rememberedPlayerName = readRememberedPlayerHandle();
+  @ViewChild('playerNameInput') private playerNameInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('passwordInput') private passwordInput?: ElementRef<HTMLInputElement>;
 
   protected loginForm = this.fb.group({
     playerName: [this.rememberedPlayerName ?? '', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
@@ -55,6 +57,17 @@ export default class LoginPage implements OnDestroy {
   protected successMessage = signal<string | null>(null);
   protected errorMessage = signal<string | null>(null);
   protected canNavigateToRegister = signal(false);
+
+  private focusInitialInput(): void {
+    const targetInput = this.rememberedPlayerName ? this.passwordInput?.nativeElement : this.playerNameInput?.nativeElement;
+    targetInput?.focus();
+  }
+
+  ngAfterViewInit(): void {
+    this.focusInitialInput();
+    queueMicrotask(() => this.focusInitialInput());
+    setTimeout(() => this.focusInitialInput());
+  }
 
   /**
    * Validates credentials, sends login request, and routes to character list on success.

@@ -17,6 +17,7 @@
       <label for="playerName">{{ t.public.login.playerNameLabel }}</label>
       <input
         id="playerName"
+        #playerNameInput
         type="text"
         formControlName="playerName"
         [placeholder]="t.public.login.playerNamePlaceholder"
@@ -33,6 +34,7 @@
       <label for="password">{{ t.public.login.passwordLabel }}</label>
       <input
         id="password"
+        #passwordInput
         type="password"
         formControlName="password"
         [placeholder]="t.public.login.passwordPlaceholder"
