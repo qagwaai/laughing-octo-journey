@@ -13,7 +13,9 @@ import {
   resolveAsteroidPbrMetalness,
   resolveAsteroidPbrRoughness,
   resolveAsteroidRockRevealSelection,
+  resolveAsteroidRockGeometry,
   resolveAsteroidSweepOpacity,
+  resolveAsteroidVisualState,
   type AsteroidHoverEvent,
 } from './asteroid';
 
@@ -128,11 +130,11 @@ describe('Asteroid', () => {
     expect(z).toBeGreaterThan(x);
   });
 
-  it('should remove scan rings after completion when morph pulse has finished', () => {
+  it('should remove scan rings after completion when morph pulse has finished and asteroid is not hovered', () => {
     fixture.componentRef.setInput('scanned', true);
     fixture.detectChanges();
 
-    (component as any).emitHover(true);
+    (component as any).emitHover(false);
     (component as any).morphPulseElapsedSeconds.set(0.28);
 
     expect((component as any).morphPulse()).toBe(0);
@@ -380,8 +382,8 @@ describe('Asteroid', () => {
 });
 
 describe('resolveAsteroidMaterialColor', () => {
-  it('should prioritize scanned color', () => {
-    expect(resolveAsteroidMaterialColor(0, false, true, null)).toBe('#8df7b2');
+  it('should keep the hover highlight after scan', () => {
+    expect(resolveAsteroidMaterialColor(0, false, true, null)).toBe('#8de8ff');
   });
 
   it('should use selected material color when scanned', () => {
@@ -391,7 +393,7 @@ describe('resolveAsteroidMaterialColor', () => {
         material: 'Silver',
         textureColor: '#cad5e3',
       }),
-    ).toBe('#cad5e3');
+    ).toBe('#8de8ff');
   });
 
   it('should use hover color while scanning', () => {
@@ -432,6 +434,50 @@ describe('resolveAsteroidSweepOpacity', () => {
 
   it('should hide sweep line when not hovered', () => {
     expect(resolveAsteroidSweepOpacity(false)).toBe(0);
+  });
+});
+
+describe('resolveAsteroidVisualState', () => {
+  it('should prioritize targeted over targeting/hover/scanning/scanned', () => {
+    const state = resolveAsteroidVisualState({
+      hovered: true,
+      targetingHold: true,
+      targeted: true,
+      scanProgress: 62,
+      scanned: true,
+      tier: 'hero',
+    });
+
+    expect(state.interaction).toBe('targeted');
+    expect(state.tier).toBe('hero');
+  });
+
+  it('should resolve targeting when hold is active but not targeted', () => {
+    const state = resolveAsteroidVisualState({
+      hovered: true,
+      targetingHold: true,
+      targeted: false,
+      scanProgress: 62,
+      scanned: true,
+      tier: 'near',
+    });
+
+    expect(state.interaction).toBe('targeting');
+    expect(state.tier).toBe('near');
+  });
+
+  it('should resolve scanned when no interaction is active', () => {
+    const state = resolveAsteroidVisualState({
+      hovered: false,
+      targetingHold: false,
+      targeted: false,
+      scanProgress: 100,
+      scanned: true,
+      tier: 'background',
+    });
+
+    expect(state.interaction).toBe('scanned');
+    expect(state.tier).toBe('background');
   });
 });
 
@@ -485,10 +531,12 @@ describe('resolveAsteroidRockRevealSelection', () => {
     const first = resolveAsteroidRockRevealSelection({
       asteroidId: 'sample-a',
       meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
     });
     const second = resolveAsteroidRockRevealSelection({
       asteroidId: 'sample-a',
       meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
     });
 
     expect(first).toEqual(second);
@@ -499,9 +547,104 @@ describe('resolveAsteroidRockRevealSelection', () => {
     const selection = resolveAsteroidRockRevealSelection({
       asteroidId: 'sample-no-key',
       meshProfileKey: null,
+      renderTier: 'hero',
     });
 
     expect(['dodecahedron', 'icosahedron', 'octahedron']).toContain(selection.geometry);
+  });
+
+  it('should boost rock reveal detail for hero-tier samples', () => {
+    const selection = resolveAsteroidRockRevealSelection({
+      asteroidId: 'sample-hero',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'hero',
+    });
+
+    expect(selection.detail).toBeGreaterThan(0);
+  });
+
+  it('should boost rock reveal detail when hero detail is forced after scan', () => {
+    const selection = resolveAsteroidRockRevealSelection({
+      asteroidId: 'sample-forced-hero',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
+      forceHeroDetail: true,
+    });
+
+    expect(selection.detail).toBeGreaterThan(0);
+  });
+
+  it('should build a spikier hero rock geometry than background geometry', () => {
+    const heroGeometry = resolveAsteroidRockGeometry({
+      asteroidId: 'sample-hero',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'hero',
+      detail: 3,
+    });
+    const backgroundGeometry = resolveAsteroidRockGeometry({
+      asteroidId: 'sample-hero',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
+      detail: 3,
+    });
+
+    const heroPosition = heroGeometry.getAttribute('position');
+    const backgroundPosition = backgroundGeometry.getAttribute('position');
+
+    let heroRadiusSpread = 0;
+    for (let index = 0; index < heroPosition.count; index += 1) {
+      const radius = Math.hypot(heroPosition.getX(index), heroPosition.getY(index), heroPosition.getZ(index));
+      heroRadiusSpread = Math.max(heroRadiusSpread, radius);
+    }
+
+    let backgroundRadiusSpread = 0;
+    for (let index = 0; index < backgroundPosition.count; index += 1) {
+      const radius = Math.hypot(
+        backgroundPosition.getX(index),
+        backgroundPosition.getY(index),
+        backgroundPosition.getZ(index),
+      );
+      backgroundRadiusSpread = Math.max(backgroundRadiusSpread, radius);
+    }
+
+    expect(heroRadiusSpread).toBeGreaterThan(backgroundRadiusSpread);
+  });
+
+  it('should force hero-level deformation when requested on background tier', () => {
+    const forcedHeroGeometry = resolveAsteroidRockGeometry({
+      asteroidId: 'sample-forced-hero-geometry',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
+      detail: 3,
+      forceHeroDetail: true,
+    });
+    const backgroundGeometry = resolveAsteroidRockGeometry({
+      asteroidId: 'sample-forced-hero-geometry',
+      meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.10,0.95',
+      renderTier: 'background',
+      detail: 3,
+    });
+
+    const forcedPosition = forcedHeroGeometry.getAttribute('position');
+    const backgroundPosition = backgroundGeometry.getAttribute('position');
+
+    let forcedRadiusSpread = 0;
+    for (let index = 0; index < forcedPosition.count; index += 1) {
+      const radius = Math.hypot(forcedPosition.getX(index), forcedPosition.getY(index), forcedPosition.getZ(index));
+      forcedRadiusSpread = Math.max(forcedRadiusSpread, radius);
+    }
+
+    let backgroundRadiusSpread = 0;
+    for (let index = 0; index < backgroundPosition.count; index += 1) {
+      const radius = Math.hypot(
+        backgroundPosition.getX(index),
+        backgroundPosition.getY(index),
+        backgroundPosition.getZ(index),
+      );
+      backgroundRadiusSpread = Math.max(backgroundRadiusSpread, radius);
+    }
+
+    expect(forcedRadiusSpread).toBeGreaterThan(backgroundRadiusSpread);
   });
 });
 
@@ -557,6 +700,6 @@ describe('resolveAsteroidEmissiveIntensity', () => {
         metalness: 0.64,
         emissiveBoost: 0.45,
       }),
-    ).toBeCloseTo(1.25);
+    ).toBeCloseTo(1.4);
   });
 });

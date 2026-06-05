@@ -1,6 +1,6 @@
 # SW-13B M1B/M2B Visual Implementation Plan (Nova)
 
-Status: In Progress (M1B visual checkpoint accepted; M2B parity follow-up pending)
+Status: In Progress (Phase C complete for M1B/M2B; Phase D hardening in progress)
 Date: 2026-06-02
 Owner: Nova
 Feature: SW-13B Asteroids
@@ -24,7 +24,7 @@ Policy lock: Code-generated asteroids only; no marketplace or commissioned asset
    - Existing known warning unchanged: `cold-boot-scan.css` budget +483 bytes.
 5. Scope note:
    - This checkpoint records M1B visual acceptance.
-   - M2B cross-surface parity/documentation follow-up remains tracked by this plan.
+   - M2B cross-surface parity closure is completed; Phase D hardening remains tracked by this plan.
 
 ## 1) Purpose
 
@@ -144,6 +144,9 @@ Initial threshold policy (tunable during execution):
 3. Delta report:
    - Compare current run to prior accepted run for drift detection.
 
+Published evidence pack document:
+- `docs/planning/sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md`
+
 ## 9) Execution Sequence
 
 ## Phase A: Foundation (Shared)
@@ -174,17 +177,32 @@ Initial threshold policy (tunable during execution):
 
 ## 10) Test and Validation Plan
 
+Status checkpoint (2026-06-04): Complete.
+
 1. Unit tests (Jasmine/Karma):
-   - Deterministic parameter bundle resolution.
-   - Deterministic geometry metrics for fixed seeds.
-   - Threshold gate behavior.
-2. Integration tests:
-   - Asteroid component consumes generated rocky geometry.
-   - Fallback transitions maintain identity semantics.
-3. Focused e2e (Playwright):
-   - Visual-state smoke checks at fixed camera presets for SV and SEV.
-4. Build gate:
-   - npm run build must pass with no new SW-13B errors.
+   - Completed: Added targeted SW-13B assertions for post-scan hero deformation stability and viewer QA/force-hero branch behavior.
+   - Completed: Updated affected asteroid expectations to align with current visual-state logic.
+   - Current full-suite status: `npm run test:ci` passed with 1726 tests completed.
+2. Coverage baseline and delta (from latest `test:ci`):
+   - Statements: 77.51% (8232/10620).
+   - Branches: 65.46% (3889/5941).
+   - Functions: 78.99% (1677/2123).
+   - Lines: 77.75% (7943/10215).
+   - Improvement in this pass: `viewer-scene.ts` branch coverage improved from 57.14% to 76.62%.
+3. Integration validation:
+   - Completed in this pass: Asteroid component and viewer scene integration paths validated via focused unit/integration specs.
+   - Remaining focus: Continue branch coverage expansion in low-coverage game-page modules.
+4. Focused e2e (Playwright):
+   - Scope: Visual-state smoke coverage for both surfaces (SV and SEV), including scan completion, hover/target state transitions, and hero-detail parity checks.
+   - Execution: Run targeted specs first (`npm run e2e:spec -- <spec-path>`), then full suite (`npm run e2e`) before milestone closure.
+   - Evidence: Preserve deterministic screenshot/report artifacts from Playwright report for SW-13B acceptance pack.
+   - Status (2026-06-04): Initial baseline captured via full run (`npx playwright test --reporter=line`) with 141/141 passed in 3.3m; log artifact saved at `.tmp/e2e-clean-2026-06-04.log`.
+5. Post-completion follow-on targets (coverage hardening order):
+   - `src/app/page/game/ship-view-inventory.ts`.
+   - `src/app/page/game/ship-view-specs.ts`.
+   - `src/app/page/game/viewer-data-facade.ts`.
+6. Build gate:
+   - Required and currently green: `npm run build` passes with no new SW-13B errors (existing known CSS budget warning unchanged).
 
 ## 11) Deliverables
 
@@ -193,6 +211,7 @@ Initial threshold policy (tunable during execution):
 3. M1B visual validation artifact + spec + updated execution brief.
 4. M2B visual validation artifact + spec + updated execution brief.
 5. Evidence pack (screenshots + metric reports) for both surfaces.
+   - Published baseline package: `docs/planning/sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md`
 
 ## 12) Exit Criteria for M1B/M2B Visual Re-acceptance
 
@@ -201,3 +220,21 @@ Initial threshold policy (tunable during execution):
 3. Baseline and hero tiers are visually distinguishable at gameplay distance.
 4. Fallback behavior preserves visual identity semantics.
 5. No marketplace/commissioned dependencies; no legacy fallback path retained.
+
+## 13) Finalization Summary (2026-06-04)
+
+Completion decision:
+- Phase C (M1B + M2B visual closure): complete.
+- Phase D (hardening): in progress and non-blocking for Phase C closure.
+
+Closure checklist:
+1. M1B runtime + visual acceptance artifact is published and linked: complete.
+2. M2B runtime + visual acceptance artifact is published and linked: complete.
+3. Cross-surface baseline e2e run completed (`npx playwright test --reporter=line`): complete (141/141).
+4. Evidence pack document published for deterministic screenshots/metrics references: complete.
+5. Build and unit/integration gates are green for this baseline: complete.
+
+Remaining tracked work (Phase D):
+1. Coverage hardening in selected game-page modules.
+2. Additional seed-level metric drift reporting granularity.
+3. Performance tuning under existing SW-13B hardening policy.

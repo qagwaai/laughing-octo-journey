@@ -15,13 +15,7 @@
     } @else if (activeGeometry() === 'octahedron') {
     <ngt-octahedron-geometry *args="[0.55, activeDetail()]" />
     } @else if (activeGeometry() === 'rock') {
-      @if (activeRockGeometry() === 'dodecahedron') {
-    <ngt-dodecahedron-geometry *args="[0.55, activeRockDetail()]" />
-      } @else if (activeRockGeometry() === 'icosahedron') {
-    <ngt-icosahedron-geometry *args="[0.55, activeRockDetail()]" />
-      } @else {
-    <ngt-octahedron-geometry *args="[0.55, activeRockDetail()]" />
-      }
+    <ngt-primitive attach="geometry" *args="[activeRockPrimitiveGeometry()]" />
     } @else {
     <ngt-dodecahedron-geometry *args="[0.55, activeDetail()]" />
     }
@@ -29,8 +23,9 @@
       [color]="materialColor()"
       [roughness]="pbrRoughness()"
       [metalness]="pbrMetalness()"
-      [emissive]="scanned() ? revealedMaterialColor() : hovered() ? '#16404a' : '#0f141d'"
+      [emissive]="emissiveColor()"
       [emissiveIntensity]="resolvedEmissiveIntensity()"
+      [flatShading]="activeGeometry() === 'rock'"
     />
   </ngt-mesh>
 </ngt-group>

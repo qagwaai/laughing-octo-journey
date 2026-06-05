@@ -99,6 +99,11 @@ Closeout notes:
 3. Backend contract change required in this pass: no.
 4. OpenAPI drift check result: no drift between localhost and GitHub openapi.yaml after LF normalization.
 
+## SW-13B Cross-Surface Evidence Linkage
+
+- Phase C combined evidence pack (M1B + M2B):
+  - `docs/planning/sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md`
+
 ## Orion Consumption Checklist
 
 Use this section as the authoritative handoff runbook for Orion.

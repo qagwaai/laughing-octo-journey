@@ -394,6 +394,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   readonly showQuickTargetIronControl = computed(
     () => !environment.production && this.missionDefinition.missionId === FIRST_TARGET_MISSION_ID,
   );
+  protected forceAllAsteroidsHeroForTest = signal(false);
   readonly missionObjectiveText = computed(() => {
     const gateState = this.missionGateState();
     if (gateState) {
@@ -645,6 +646,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     return 'DETAIL // post-scan mesh swap (rock profile)';
   });
   readonly asteroidRenderTiers = computed<Map<string, AsteroidRenderTier>>(() => {
+    if (this.forceAllAsteroidsHeroForTest()) {
+      return new Map(this.asteroidSamples().map((sample) => [sample.id, 'hero' as AsteroidRenderTier]));
+    }
+
     const camera = this.store?.snapshot.camera;
     const cameraPosition: [number, number, number] = camera
       ? [camera.position.x, camera.position.y, camera.position.z]
@@ -2094,6 +2099,59 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.evaluateMissionGateForCompletedSamples([scannedIronSample.id]);
     this.targetedAsteroidId.set(scannedIronSample.id);
     this.setLaunchToast(`Test scan complete. Target locked: ${scannedIronSample.id.toUpperCase()}.`, 'success', null);
+  }
+
+  scanAllAsteroidsToHeroForTest(): void {
+    if (!this.showQuickTargetIronControl()) {
+      return;
+    }
+
+    if (!this.canTargetAsteroids()) {
+      this.setLaunchToast('Targeting unavailable. Ensure the ship has an expendable dart drone.', 'error', null);
+      return;
+    }
+
+    const samples = this.asteroidSamples();
+    if (samples.length === 0) {
+      this.setLaunchToast('No asteroid samples available for test scan.', 'error', null);
+      return;
+    }
+
+    this.forceAllAsteroidsHeroForTest.set(true);
+
+    const completedSampleIds: string[] = [];
+    this.asteroidSamples.update((existingSamples) =>
+      existingSamples.map((sample) => {
+        const revealedMaterial = sample.revealedMaterial ?? pickWeightedAsteroidMaterial();
+        const revealedKinematics = sample.revealedKinematics ?? sample.capturedKinematics;
+        completedSampleIds.push(sample.id);
+
+        if (sample.serverCelestialBodyId) {
+          this.emitCelestialBodyUpsert(sample, 'active', revealedMaterial, revealedKinematics);
+        } else {
+          this.pendingActiveStateUpserts.add(sample.id);
+        }
+
+        return {
+          ...sample,
+          scanProgress: 100,
+          scanned: true,
+          externalObjectDescriptor: resolveAsteroidExternalObjectDescriptor({
+            sampleId: sample.id,
+            revealedMaterial,
+            fallbackTier: 'hero',
+          }),
+          revealedMaterial,
+          revealedKinematics,
+        };
+      }),
+    );
+
+    this.persistAsteroidSamples();
+    this.retryPendingMissionProgressSync();
+    this.evaluateMissionGateForCompletedSamples(completedSampleIds);
+    this.targetedAsteroidId.set(samples[0].id);
+    this.setLaunchToast(`Test scan complete. All ${samples.length} asteroids elevated to Hero tier.`, 'success', null);
   }
 
   private resolveTargetCelestialBodyIdForLaunch(targetedSampleId: string): string | null {

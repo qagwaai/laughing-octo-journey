@@ -1,12 +1,22 @@
 <ngt-color *args="['#041118']" attach="background" />
 
-<ngt-ambient-light [intensity]="0.38" />
+<ngt-ambient-light [intensity]="0.32" />
 <ngt-directional-light
   [position]="sunScenePosition()"
   [intensity]="solarDirectionalLightIntensity()"
   [color]="sunConfig().color"
 />
-<ngt-point-light [position]="[-2.5, 0.5, 1.5]" [intensity]="1.35" [color]="'#5ad9ff'" />
+<ngt-directional-light
+  [position]="[18, 14, 10]"
+  [intensity]="0.34"
+  [color]="'#dce7f6'"
+/>
+<ngt-directional-light
+  [position]="[-14, 8, -16]"
+  [intensity]="0.28"
+  [color]="'#6d89ad'"
+/>
+<ngt-point-light [position]="[-2.5, 0.5, 1.5]" [intensity]="1.12" [color]="'#5ad9ff'" />
 
 <ngts-orbit-controls [options]="{ minDistance: 3, maxDistance: 14, enablePan: false, enabled: !flightModeEnabled() }" />
 

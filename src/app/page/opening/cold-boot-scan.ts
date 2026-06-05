@@ -191,6 +191,10 @@ export default class ColdBootScanPage {
     this.shipExteriorView()?.selectFirstScannedIronTargetForTest();
   }
 
+  protected scanAllAsteroidsToHeroForTest(): void {
+    this.shipExteriorView()?.scanAllAsteroidsToHeroForTest();
+  }
+
   protected toggleFlightMode(): void {
     this.shipExteriorView()?.toggleFlightMode();
   }

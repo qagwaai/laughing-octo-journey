@@ -1,7 +1,7 @@
 # SW-13B M2B ship-external-view Execution Brief (Nova)
 
-Status: Executed (M2B ship-external-view runtime validation complete)
-Date: 2026-06-02
+Status: Executed (M2B ship-external-view validation complete; Phase D hardening pending)
+Date: 2026-06-02 (updated 2026-06-04)
 Feature: SW-13B Asteroid M2B
 Policy: Code-generation-only asteroid delivery
 
@@ -104,6 +104,31 @@ npx playwright test e2e/tests/first-target-fabrication-menu-cue.spec.ts e2e/test
 
 Result:
 - 26 passed
+
+5. Full Playwright baseline (Phase C closeout)
+
+```bash
+npx playwright test --reporter=line
+```
+
+Result:
+- 141 passed (3.3m)
+- Baseline log: `.tmp/e2e-clean-2026-06-04.log`
+
+Evidence pack linkage:
+- `docs/planning/sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md`
+
+## Completion Checklist (2026-06-04)
+
+1. Deterministic generation validation in ship-external-view: complete.
+2. Baseline/hero readability validation in ship-external-view: complete.
+3. Fallback behavior validation in ship-external-view: complete.
+4. Focused e2e subset and full Playwright baseline captured: complete.
+5. Cross-surface evidence-pack linkage recorded for closure package: complete.
+
+Finalization state:
+- M2B execution is complete for Phase C closure.
+- Remaining SW-13B work is tracked in Phase D hardening, outside this brief's closure scope.
 
 ## Constraint Check
 

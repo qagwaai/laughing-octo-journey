@@ -1,7 +1,7 @@
 # SW-13B M1B Stellar Viewer Execution Brief (Nova)
 
 Status: Accepted (M1B Stellar Viewer visual + runtime validation complete)
-Date: 2026-06-02
+Date: 2026-06-02 (context updated 2026-06-04)
 Feature: SW-13B Asteroid M1B
 Policy: Code-generation-only asteroid delivery
 
@@ -136,3 +136,8 @@ Result:
 3. Backend contract change required in this pass: no.
 4. Marketplace asteroid dependencies introduced: no.
 5. Commissioned asteroid dependencies introduced: no.
+
+## Cross-Surface Evidence Linkage
+
+- Phase C combined evidence pack (M1B + M2B):
+   - `docs/planning/sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md`

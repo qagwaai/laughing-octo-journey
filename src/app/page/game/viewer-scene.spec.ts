@@ -570,4 +570,157 @@ describe('ViewerScenePage', () => {
     expect((router as unknown as { navigate: jasmine.Spy }).navigate).not.toHaveBeenCalled();
     expect(component['planetTransitionTimer']).toBeNull();
   }));
+
+  it('maps effective scene bodies to force-hero descriptors when QA mode is enabled', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['bodies'].set([
+      {
+        id: 'body-asteroid',
+        bodyType: 'asteroid',
+        displayName: 'A-01',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      },
+      {
+        id: 'body-debris',
+        bodyType: 'debris',
+        displayName: 'Debris-01',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 2, y: 0, z: 0 }, epochMs: 0 },
+      },
+      {
+        id: 'body-gate',
+        bodyType: 'jump-gate',
+        displayName: 'Gate-01',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 3, y: 0, z: 0 }, epochMs: 0 },
+      },
+      {
+        id: 'body-station',
+        bodyType: 'station',
+        displayName: 'Station-01',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 4, y: 0, z: 0 }, epochMs: 0 },
+      },
+      {
+        id: 'body-planet',
+        bodyType: 'planet',
+        displayName: 'Planet-01',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 5, y: 0, z: 0 }, epochMs: 0 },
+      },
+    ] as any);
+
+    const effective = component['effectiveSceneBodies']();
+    expect(effective.find((b) => b.id === 'body-asteroid')?.externalObjectDescriptor?.domain).toBe('asteroids');
+    expect(effective.find((b) => b.id === 'body-debris')?.externalObjectDescriptor?.domain).toBe('debris');
+    expect(effective.find((b) => b.id === 'body-gate')?.externalObjectDescriptor?.domain).toBe('gates');
+    expect(effective.find((b) => b.id === 'body-station')?.externalObjectDescriptor?.domain).toBe('stations');
+    expect(effective.find((b) => b.id === 'body-planet')?.externalObjectDescriptor).toBeUndefined();
+  });
+
+  it('maps effective scene ships to hero descriptors and infers family for descriptor-less ships', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['ships'].set([
+      {
+        id: 'ship-existing',
+        name: 'Existing Ship',
+        model: 'Scavenger Pod',
+        tier: 1,
+        status: 'ACTIVE',
+        externalObjectDescriptor: {
+          descriptorId: 'existing-descriptor',
+          schemaVersion: 'sw-13-m0-v1',
+          domain: 'ships',
+          objectFamily: 'scout',
+          roleCue: 'default',
+          factionCue: 'neutral',
+          fallbackTier: 'minimal',
+          displayLabel: 'Existing Ship',
+          silhouetteProfile: 'default',
+          materialProfile: 'default',
+          emissiveProfile: 'default',
+        },
+      },
+      {
+        id: 'ship-inferred',
+        name: 'War Pike',
+        model: 'Heavy Frigate',
+        tier: 2,
+        status: 'ACTIVE',
+      },
+    ] as any);
+
+    const effective = component['effectiveSceneShips']();
+    expect(effective.find((s) => s.id === 'ship-existing')?.externalObjectDescriptor?.fallbackTier).toBe('hero');
+    expect(effective.find((s) => s.id === 'ship-inferred')?.externalObjectDescriptor).toEqual(
+      jasmine.objectContaining({ domain: 'ships', objectFamily: 'frigate', fallbackTier: 'hero' }),
+    );
+  });
+
+  it('keeps original scene bodies and ships when QA mode is disabled', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    component['viewerQaEnabled'].set(false);
+    component['forceHeroMode'].set(true);
+
+    const bodies = [
+      {
+        id: 'body-1',
+        bodyType: 'asteroid',
+        displayName: 'Asteroid-1',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      },
+    ] as any;
+    const ships = [{ id: 'ship-1', model: 'Scavenger Pod' }] as any;
+
+    component['bodies'].set(bodies);
+    component['ships'].set(ships);
+
+    expect(component['effectiveSceneBodies']()).toBe(bodies);
+    expect(component['effectiveSceneShips']()).toBe(ships);
+  });
+
+  it('ignores QA toggle events for non-input targets and applies input checkbox state', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+
+    component['onViewerQaToggle']({ target: {} } as unknown as Event);
+    component['onForceHeroToggle']({ target: {} } as unknown as Event);
+    component['onShowRenderProfileToggle']({ target: {} } as unknown as Event);
+
+    expect(component['viewerQaEnabled']()).toBeTrue();
+    expect(component['forceHeroMode']()).toBeTrue();
+    expect(component['showEffectiveRenderProfile']()).toBeTrue();
+
+    const viewerQaInput = document.createElement('input');
+    viewerQaInput.type = 'checkbox';
+    viewerQaInput.checked = false;
+    component['onViewerQaToggle']({ target: viewerQaInput } as unknown as Event);
+
+    const forceHeroInput = document.createElement('input');
+    forceHeroInput.type = 'checkbox';
+    forceHeroInput.checked = false;
+    component['onForceHeroToggle']({ target: forceHeroInput } as unknown as Event);
+
+    const profileInput = document.createElement('input');
+    profileInput.type = 'checkbox';
+    profileInput.checked = false;
+    component['onShowRenderProfileToggle']({ target: profileInput } as unknown as Event);
+
+    expect(component['viewerQaEnabled']()).toBeFalse();
+    expect(component['forceHeroMode']()).toBeFalse();
+    expect(component['showEffectiveRenderProfile']()).toBeFalse();
+  });
+
+  it('does not start planet transition when solar system id is missing', fakeAsync(() => {
+    const { component } = setup();
+    const router = TestBed.inject(Router);
+
+    component['onPlanetViewRequest']({
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+    });
+    tick(160);
+
+    expect(component['isPlanetTransitioning']()).toBeFalse();
+    expect((router as unknown as { navigate: jasmine.Spy }).navigate).not.toHaveBeenCalled();
+  }));
 });
