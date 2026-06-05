@@ -59,6 +59,13 @@ import {
   resolveShipExternalObjectDescriptorFromModel,
   SHIP_EXTERIOR_SW13_FAMILY_BASELINE,
 } from '../model/ship-exterior-descriptors';
+import type {
+  MarketListByLocationRequest,
+  MarketListByLocationResponse,
+  MarketRouteFeedEncounterShip,
+  MarketRouteFeedGate,
+  MarketRouteFeedStation,
+} from '../model/market-list';
 import {
   resolveShipExteriorViewSeedPolicy,
   type ShipExteriorViewMissionContext,
@@ -72,6 +79,7 @@ import {
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../model/ship-list-by-owner';
 import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import { appLogger } from '../services/logger';
+import { MarketService } from '../services/market.service';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import {
@@ -123,6 +131,8 @@ import { ShipExteriorMissionProgressController } from './ship-exterior/ship-exte
 import { ShipExteriorSessionController } from './ship-exterior/ship-exterior-session-controller';
 import { registerShipExteriorTestUtils, unregisterShipExteriorTestUtils } from './ship-exterior/ship-exterior-test-utils';
 import { TractorBeamAudioController } from './ship-exterior/tractor-beam-audio-controller';
+import { collectShipExteriorRouteFeeds } from './ship-exterior/ship-exterior-route-feed-adapter';
+import { ViewerShipMesh } from './viewer/viewer-ship-mesh';
 import { resolveDescriptorRenderProfile } from './viewer/viewer-descriptor-selectors';
 import {
   resolveTractorBeamVisualState as buildTractorBeamVisualState,
@@ -146,6 +156,34 @@ interface LaunchHotkeySlot {
   launching: boolean;
 }
 
+interface ShipExteriorRouteSceneGate {
+  id: string;
+  displayName: string;
+  position: [number, number, number];
+  descriptorColor: string;
+  emissive: string;
+  emissiveIntensity: number;
+  tubeRadius: number;
+}
+
+interface ShipExteriorRouteSceneStation {
+  id: string;
+  displayName: string;
+  position: [number, number, number];
+  descriptorColor: string;
+  emissive: string;
+  emissiveIntensity: number;
+  scale: [number, number, number];
+}
+
+interface ShipExteriorRouteSceneEncounterShip {
+  id: string;
+  displayName: string;
+  model: string;
+  position: [number, number, number];
+  color: string;
+}
+
 function interpolateTemplate(template: string, params: Record<string, string | number>): string {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
     const value = params[key];
@@ -166,7 +204,7 @@ function resolveDescriptorDetailLevel(segments: number): number {
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
-  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode],
+  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode, ViewerShipMesh],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -209,12 +247,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private static readonly FLIGHT_MAX_PITCH_RAD = Math.PI * 0.48;
   private static readonly SCENE_ENVIRONMENT_INTENSITY = 0.35;
   private static readonly QUALITY_SCALER_CAP_MULTIPLIER_THRESHOLD = 0.9;
+  private static readonly ROUTE_FEED_DISCOVERY_DISTANCE_AU = 0.35;
+  private static readonly ROUTE_FEED_DISCOVERY_LIMIT = 75;
+  private static readonly ROUTE_FEED_SCENE_UNITS_PER_KM = 1 / 160_000;
+  private static readonly ROUTE_FEED_MAX_SCENE_DISTANCE = 28;
 
   private router = inject(Router);
   private socketService = inject(SocketService);
   private shipExteriorSocketService = inject(ShipExteriorSocketService);
   private sessionService = inject(SessionService);
   private missionService = inject(MissionService);
+  private marketService = inject(MarketService);
   private asteroidStateService = inject(ShipExteriorAsteroidStateService);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private floatingDebrisStateService = inject(FloatingDebrisStateService);
@@ -506,6 +549,71 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   protected hoveredDebrisId = signal<string | null>(null);
   protected activeTarget = signal<{ kind: 'asteroid' | 'debris'; id: string } | null>(null);
   protected floatingDebrisItems = computed<FloatingDebrisItem[]>(() => this.floatingDebrisStateService.items());
+  private routeFeedGates = signal<MarketRouteFeedGate[]>([]);
+  private routeFeedStations = signal<MarketRouteFeedStation[]>([]);
+  private routeFeedEncounterShips = signal<MarketRouteFeedEncounterShip[]>([]);
+  readonly routeSceneGates = computed<ShipExteriorRouteSceneGate[]>(() =>
+    this.routeFeedGates()
+      .map((gate) => {
+        const position = this.projectRouteFeedScenePosition(gate.spatial.positionKm);
+        if (!position) {
+          return null;
+        }
+
+        const profile = resolveDescriptorRenderProfile(gate.descriptor);
+        return {
+          id: gate.gateId,
+          displayName: gate.descriptor.displayLabel || gate.gateId,
+          position,
+          descriptorColor: profile?.color ?? '#38bdf8',
+          emissive: profile?.emissive ?? '#0c4a6e',
+          emissiveIntensity: profile?.emissiveIntensity ?? 0.22,
+          tubeRadius: Math.max(0.03, (profile?.radiusScale ?? 1) * 0.045),
+        };
+      })
+      .filter((row): row is ShipExteriorRouteSceneGate => row !== null),
+  );
+  readonly routeSceneStations = computed<ShipExteriorRouteSceneStation[]>(() =>
+    this.routeFeedStations()
+      .map((station) => {
+        const position = this.projectRouteFeedScenePosition(station.spatial.positionKm);
+        if (!position) {
+          return null;
+        }
+
+        const profile = resolveDescriptorRenderProfile(station.descriptor);
+        const radiusScale = profile?.radiusScale ?? 1;
+        return {
+          id: station.marketId,
+          displayName: station.siteName?.trim() || station.marketName?.trim() || station.marketId,
+          position,
+          descriptorColor: profile?.color ?? '#22c55e',
+          emissive: profile?.emissive ?? '#14532d',
+          emissiveIntensity: profile?.emissiveIntensity ?? 0.2,
+          scale: [radiusScale * 0.58, radiusScale * 0.64, radiusScale * 0.58],
+        };
+      })
+      .filter((row): row is ShipExteriorRouteSceneStation => row !== null),
+  );
+  readonly routeSceneEncounterShips = computed<ShipExteriorRouteSceneEncounterShip[]>(() =>
+    this.routeFeedEncounterShips()
+      .map((encounterShip) => {
+        const position = this.projectRouteFeedScenePosition(encounterShip.spatial.positionKm);
+        if (!position) {
+          return null;
+        }
+
+        const profile = resolveDescriptorRenderProfile(encounterShip.descriptor);
+        return {
+          id: encounterShip.shipId,
+          displayName: encounterShip.shipName?.trim() || encounterShip.shipId,
+          model: encounterShip.model,
+          position,
+          color: profile?.color ?? '#ef4444',
+        };
+      })
+      .filter((row): row is ShipExteriorRouteSceneEncounterShip => row !== null),
+  );
   protected tractorBeamVisual = computed<TractorBeamVisualState | null>(() => this.resolveTractorBeamVisualState());
   protected asteroidSamples = signal<AsteroidScanSample[]>([]);
   private readonly activeSensorArrayCapabilities = computed<ItemTierCapabilities | null>(() =>
@@ -1785,6 +1893,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.activeShipLocationKm.set(matchingShip?.spatial?.positionKm ?? null);
     this.flightController.syncCurrentLocationFromShip(matchingShip?.spatial?.positionKm ?? null);
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
+    this.refreshContractBackedRouteFeeds();
     this.launchableInventory.set(this.resolveLaunchableInventory(normalizedInventory));
     if (matchingShip) {
       this.navigationState.joinShip = {
@@ -2292,6 +2401,70 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         this.updateTargetingCapabilityFromShipList(shipResponse.ships);
       },
     );
+  }
+
+  private refreshContractBackedRouteFeeds(): void {
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const solarSystemId = this.activeSolarSystemId().trim();
+    const positionKm = this.activeShipLocationKm();
+    const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+    const shipId = this.activeShipId().trim();
+
+    if (!playerName || !sessionKey || !solarSystemId || !positionKm) {
+      this.routeFeedGates.set([]);
+      this.routeFeedStations.set([]);
+      this.routeFeedEncounterShips.set([]);
+      return;
+    }
+
+    const request: MarketListByLocationRequest = {
+      playerName,
+      sessionKey,
+      solarSystemId,
+      positionKm,
+      distanceAu: ShipExteriorViewScene.ROUTE_FEED_DISCOVERY_DISTANCE_AU,
+      limit: ShipExteriorViewScene.ROUTE_FEED_DISCOVERY_LIMIT,
+      locationTypes: ['station', 'free-floating'],
+      ...(characterId ? { characterId } : {}),
+      ...(shipId ? { shipId } : {}),
+    };
+
+    this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
+      if (!response.success) {
+        this.routeFeedGates.set([]);
+        this.routeFeedStations.set([]);
+        this.routeFeedEncounterShips.set([]);
+        return;
+      }
+
+      const feeds = collectShipExteriorRouteFeeds(response.markets ?? []);
+      this.routeFeedGates.set(feeds.gates);
+      this.routeFeedStations.set(feeds.stations);
+      this.routeFeedEncounterShips.set(feeds.encounterShips);
+    });
+  }
+
+  private projectRouteFeedScenePosition(positionKm: Triple): [number, number, number] | null {
+    const ship = this.activeShipLocationKm();
+    if (!ship) {
+      return null;
+    }
+
+    const dx = (positionKm.x - ship.x) * ShipExteriorViewScene.ROUTE_FEED_SCENE_UNITS_PER_KM;
+    const dy = (positionKm.y - ship.y) * ShipExteriorViewScene.ROUTE_FEED_SCENE_UNITS_PER_KM;
+    const dz = (positionKm.z - ship.z) * ShipExteriorViewScene.ROUTE_FEED_SCENE_UNITS_PER_KM;
+    const magnitude = Math.hypot(dx, dy, dz);
+    if (!Number.isFinite(magnitude)) {
+      return null;
+    }
+
+    if (magnitude <= ShipExteriorViewScene.ROUTE_FEED_MAX_SCENE_DISTANCE) {
+      return [dx, dy, dz];
+    }
+
+    const scale = ShipExteriorViewScene.ROUTE_FEED_MAX_SCENE_DISTANCE / magnitude;
+    return [dx * scale, dy * scale, dz * scale];
   }
 
   private setLaunchToast(message: string, tone: 'success' | 'error', seed: number | null): void {

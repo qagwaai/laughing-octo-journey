@@ -1,5 +1,7 @@
 import { SpatialState } from './spatial';
 import { Triple } from './triple';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
+import type { ShipOwnerDescriptor } from './ship-owner';
 
 export const MARKET_LIST_REQUEST_EVENT = 'market-list-request';
 export const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';
@@ -33,10 +35,7 @@ export interface MarketSummary {
   marketName: string;
   siteType: string;
   siteName: string;
-  route?: {
-    kind: 'in-system' | 'gate-route' | 'no-route';
-    hops?: number;
-  };
+  route?: MarketRoute;
   isStarterMarket?: boolean;
   spatial: SpatialState;
   trajectory?: {
@@ -58,6 +57,56 @@ export interface MarketSummary {
   priceMultiplier: number;
   driftPercentPerHour: number;
   restockIntervalMinutes: number;
+}
+
+export interface MarketRouteFeedGate {
+  gateId: string;
+  sourceSystemId: string;
+  destSystemId: string;
+  traversalCostAu: number;
+  traversalTimeHours: number;
+  spatial: SpatialState;
+  descriptor: ExternalObjectDescriptor;
+  approachMetadata: {
+    approachCue: string;
+    landmarkFraming: string;
+    navBeaconCue: string;
+    hazardCue: string;
+    warningEscalation: string;
+    recommendedStandOffKm: number;
+    approachWindowKm: {
+      min: number;
+      max: number;
+    };
+  };
+}
+
+export interface MarketRouteFeedStation {
+  marketId: string;
+  solarSystemId: string;
+  marketName: string;
+  siteType: 'station';
+  siteName: string;
+  spatial: SpatialState;
+  descriptor: ExternalObjectDescriptor;
+}
+
+export interface MarketRouteFeedEncounterShip {
+  shipId: string;
+  shipName: string;
+  model: string;
+  tier: number;
+  ownership: Pick<ShipOwnerDescriptor, 'ownerType' | 'npcId' | 'factionId'>;
+  spatial: SpatialState;
+  descriptor: ExternalObjectDescriptor;
+}
+
+export interface MarketRoute {
+  kind: 'in-system' | 'gate-route' | 'no-route';
+  hops?: number;
+  gates?: MarketRouteFeedGate[];
+  stations?: MarketRouteFeedStation[];
+  encounterShips?: MarketRouteFeedEncounterShip[];
 }
 
 /**

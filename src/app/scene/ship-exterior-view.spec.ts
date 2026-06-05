@@ -5,6 +5,10 @@ import { Router } from '@angular/router';
 import { createMockMissionService, createMockSessionService, createMockSocketService } from '../../testing';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 import { CELESTIAL_BODY_LIST_REQUEST_EVENT, CELESTIAL_BODY_LIST_RESPONSE_EVENT } from '../model/celestial-body-list';
+import {
+  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
+} from '../model/market-list';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../model/ship-list-by-owner';
 import { MissionService } from '../services/mission.service';
@@ -442,6 +446,175 @@ describe('ShipExteriorViewScene', () => {
     expect(intensity).toBeGreaterThanOrEqual(0.02);
     expect(intensity).toBeLessThan(0.16);
     expect(intensity).toBeGreaterThan(0.05);
+  });
+
+  it('hydrates contract-backed gates, stations, and encounter ships from market route feed', () => {
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+    });
+
+    triggerMatchingShipListResponse(mockSocket, {
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 'ship-1',
+          model: 'Scavenger Pod',
+          inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', launchable: true }],
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 100_000_000, y: 0, z: 0 },
+            epochMs: 1,
+          },
+        },
+      ],
+    });
+
+    const marketRequest = mockSocket.emittedEvents.find((entry) => entry.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT);
+    expect(marketRequest).toBeDefined();
+
+    triggerMatchingMarketListByLocationResponse(mockSocket, {
+      playerName: 'Pioneer',
+      solarSystemId: 'sol',
+      positionKm: { x: 100_000_000, y: 0, z: 0 },
+      distanceAu: 0.35,
+      markets: [
+        {
+          marketId: 'market-1',
+          solarSystemId: 'sol',
+          marketName: 'Ceres Exchange',
+          siteType: 'station',
+          siteName: 'Ceres Main',
+          isStarterMarket: true,
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 100_010_000, y: 0, z: 0 },
+            epochMs: 1,
+          },
+          trajectory: null,
+          distanceAu: 0.01,
+          isDocked: false,
+          priceMultiplier: 1,
+          driftPercentPerHour: 0,
+          restockIntervalMinutes: 60,
+          route: {
+            kind: 'gate-route',
+            hops: 1,
+            gates: [
+              {
+                gateId: 'gate-sol-ceres',
+                sourceSystemId: 'sol',
+                destSystemId: 'ceres',
+                traversalCostAu: 0.5,
+                traversalTimeHours: 1,
+                spatial: {
+                  solarSystemId: 'sol',
+                  frame: 'barycentric',
+                  positionKm: { x: 100_020_000, y: 0, z: 0 },
+                  epochMs: 1,
+                },
+                descriptor: {
+                  descriptorId: 'gates-ring-gate',
+                  schemaVersion: 'sw-13-m0-v1',
+                  domain: 'gates',
+                  objectFamily: 'ring-gate',
+                  roleCue: 'navigation',
+                  factionCue: 'neutral',
+                  fallbackTier: 'standard',
+                  displayLabel: 'Sol-Ceres Gate',
+                  silhouetteProfile: 'ring',
+                  materialProfile: 'infrastructure',
+                  emissiveProfile: 'navigation',
+                },
+                approachMetadata: {
+                  approachCue: 'direct-centerline',
+                  landmarkFraming: 'full-ring',
+                  navBeaconCue: 'continuous',
+                  hazardCue: 'low',
+                  warningEscalation: 'none',
+                  recommendedStandOffKm: 1400,
+                  approachWindowKm: { min: 1000, max: 2200 },
+                },
+              },
+            ],
+            stations: [
+              {
+                marketId: 'station-sol-main',
+                solarSystemId: 'sol',
+                marketName: 'Sol Main Exchange',
+                siteType: 'station',
+                siteName: 'Sol Main',
+                spatial: {
+                  solarSystemId: 'sol',
+                  frame: 'barycentric',
+                  positionKm: { x: 100_030_000, y: 0, z: 0 },
+                  epochMs: 1,
+                },
+                descriptor: {
+                  descriptorId: 'stations-trade-hub',
+                  schemaVersion: 'sw-13-m0-v1',
+                  domain: 'stations',
+                  objectFamily: 'trade-hub',
+                  roleCue: 'landmark',
+                  factionCue: 'neutral',
+                  fallbackTier: 'standard',
+                  displayLabel: 'Sol Main Station',
+                  silhouetteProfile: 'hub',
+                  materialProfile: 'industrial',
+                  emissiveProfile: 'station',
+                },
+              },
+            ],
+            encounterShips: [
+              {
+                shipId: 'encounter-ship-1',
+                shipName: 'Corsair',
+                model: 'Raider',
+                tier: 2,
+                ownership: {
+                  ownerType: 'npc-pirate',
+                  npcId: 'npc-corsair',
+                  factionId: 'faction-pirate',
+                },
+                spatial: {
+                  solarSystemId: 'sol',
+                  frame: 'barycentric',
+                  positionKm: { x: 100_040_000, y: 0, z: 0 },
+                  epochMs: 1,
+                },
+                descriptor: {
+                  descriptorId: 'ships-frigate',
+                  schemaVersion: 'sw-13-m0-v1',
+                  domain: 'ships',
+                  objectFamily: 'frigate',
+                  roleCue: 'threat',
+                  factionCue: 'pirate',
+                  fallbackTier: 'standard',
+                  displayLabel: 'Corsair',
+                  silhouetteProfile: 'frigate',
+                  materialProfile: 'military',
+                  emissiveProfile: 'combat',
+                },
+              },
+            ],
+          },
+        },
+      ],
+      isDocked: false,
+      dockedMarketId: null,
+    });
+
+    expect(component['routeSceneGates']().length).toBe(1);
+    expect(component['routeSceneStations']().length).toBe(1);
+    expect(component['routeSceneEncounterShips']().length).toBe(1);
   });
 
   it('should expose five hotkey slots sorted alphabetically and capped to first five launchables', () => {
@@ -1274,6 +1447,25 @@ function triggerMatchingCelestialBodyListResponse(
     | undefined;
 
   mockSocket.triggerEvent(CELESTIAL_BODY_LIST_RESPONSE_EVENT, {
+    success: true,
+    message: '',
+    correlationId: request?.correlationId,
+    requestIdentity: request?.requestIdentity,
+    ...overrides,
+  });
+}
+
+function triggerMatchingMarketListByLocationResponse(
+  mockSocket: MockSocketWithLaunch,
+  overrides: Record<string, unknown>,
+): void {
+  const request = [...mockSocket.emittedEvents]
+    .reverse()
+    .find((entry) => entry.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)?.data as
+    | { correlationId?: string; requestIdentity?: unknown }
+    | undefined;
+
+  mockSocket.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
     success: true,
     message: '',
     correlationId: request?.correlationId,

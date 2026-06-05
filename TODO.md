@@ -119,6 +119,7 @@ Remaining uncovered branches in locale.ts (10/34) are primarily global object gu
 
 ## Features
 
+- [x] SW-13C: ship-exterior now consumes contract-backed route feeds (gates, stations, encounter ships) from `market-list-by-location` and renders them in-scene (validated by unit + focused e2e + build).
 - [ ] Market Hub initial implementation — sell/buy items, credit balance display
 - [ ] Character credits backend integration — source balance from session/join response; keep in sync via a `credits-update` socket event (see `character-economy.ts`)
 - [ ] Mission reward credits — wire credit payout to client economy model on mission completion
