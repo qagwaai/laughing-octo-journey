@@ -22,6 +22,7 @@ import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-gu
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
+import { RenderStatsService } from './services/render-stats.service';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -35,6 +36,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
       height: 100vh;
       width: 100vw;
       & .stats {
+        display: none;
         position: static !important;
 
         & canvas {
@@ -72,11 +74,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected router = inject(Router);
   protected openingAudio = inject(OpeningAudioService);
   protected contractVarianceNotifier = inject(ContractVarianceNotifierService);
+  protected renderStats = inject(RenderStatsService);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
   protected color = signal('#ff0000');
-  protected stats = signal(false);
+  protected stats = this.renderStats.enabled;
+  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
   protected follow = signal(true);
   protected lockX = signal(false);
   protected lockY = signal(false);
@@ -110,6 +114,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private startX = 0;
   private lookHintTimerId: number | null = null;
   private splitTransitionTimerId: number | null = null;
+  private statsSyncTimerId: number | null = null;
   private navigationSubscription: Subscription;
   private readonly onStartScanningListener = () => this.animateSplitToStartScanningLayout();
 
@@ -132,6 +137,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       .subscribe((url) => {
         const isColdBootPrimary = url.includes('opening-cold-boot') && !url.includes('right:');
         this.configureColdBootLookHint(isColdBootPrimary);
+        this.scheduleStatsVisibilitySync();
       });
   }
 
@@ -172,18 +178,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
 
     window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
+    this.onStatsChange(this.stats());
 
-    // Hide stats by default - run outside Angular zone then back inside for DOM manipulation
-    this.ngZone.runOutsideAngular(() => {
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          const statsElement = this.host.nativeElement.querySelector('.stats');
-          if (statsElement) {
-            statsElement.style.display = 'none';
-          }
-        });
-      }, 1000);
-    });
   }
 
   reset() {
@@ -197,10 +193,26 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   onStatsChange(value: boolean) {
-    var statsElement = this.host.nativeElement.querySelector('.stats');
-    if (statsElement) {
-      statsElement.style.display = value ? 'block' : 'none';
+    this.renderStats.setEnabled(value);
+    this.applyStatsVisibility(value);
+  }
+
+  private applyStatsVisibility(value: boolean): void {
+    const statsElements = this.host.nativeElement.querySelectorAll('.stats');
+    statsElements.forEach((element: HTMLElement) => {
+      element.style.display = value ? 'block' : 'none';
+    });
+  }
+
+  private scheduleStatsVisibilitySync(): void {
+    if (this.statsSyncTimerId !== null) {
+      window.clearTimeout(this.statsSyncTimerId);
     }
+
+    this.statsSyncTimerId = window.setTimeout(() => {
+      this.applyStatsVisibility(this.stats());
+      this.statsSyncTimerId = null;
+    }, 0);
   }
 
   onAudioHooksChange(value: boolean) {
@@ -289,6 +301,10 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     window.removeEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
     this.clearSplitTransitionTimer();
     this.clearLookHintTimer();
+    if (this.statsSyncTimerId !== null) {
+      clearTimeout(this.statsSyncTimerId);
+      this.statsSyncTimerId = null;
+    }
     this.navigationSubscription.unsubscribe();
   }
 

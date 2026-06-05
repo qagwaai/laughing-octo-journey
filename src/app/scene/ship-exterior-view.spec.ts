@@ -185,6 +185,27 @@ describe('ShipExteriorViewScene', () => {
     expect(component.resolveAsteroidRenderTier('sample-b')).toBe('hero');
   });
 
+  it('should scan every loaded asteroid to hero tier for dev testing after first-target completion without dart inventory', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 's-hero-all-complete',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-mining-laser', itemType: 'basic-mining-laser' }],
+      },
+      firstTargetMissionStatus: 'completed',
+    });
+
+    component['asteroidSamples'].set([makeSample('sample-c'), makeSample('sample-d')]);
+
+    component.scanAllAsteroidsToHeroForTest();
+
+    const samples = component['asteroidSamples']();
+    expect(component['forceAllAsteroidsHeroForTest']()).toBeTrue();
+    expect(samples.every((sample) => sample.scanned && sample.scanProgress === 100)).toBeTrue();
+    expect(component.resolveAsteroidRenderTier('sample-c')).toBe('hero');
+    expect(component.resolveAsteroidRenderTier('sample-d')).toBe('hero');
+  });
+
   it('should disable targeting for wrong model even with expendable-dart-drone inventory', () => {
     const { component } = setup({
       joinShip: {

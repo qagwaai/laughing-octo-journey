@@ -359,6 +359,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     getPlayerName: () => this.playerName(),
     getCharacterId: () => this.navigationState.joinCharacter?.id?.trim() ?? null,
     getActiveShipId: () => this.activeShipId() || null,
+    getHasTractorBeamInInventory: () => {
+      const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
+      return (activeShip?.inventory ?? []).some(
+        (item) => item.itemType === ShipExteriorViewScene.TRACTOR_BEAM_ITEM_TYPE && item.state !== 'destroyed',
+      );
+    },
     getShipPositionKm: () => this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm(),
     getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
   });
@@ -2103,11 +2109,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   scanAllAsteroidsToHeroForTest(): void {
     if (!this.showQuickTargetIronControl()) {
-      return;
-    }
-
-    if (!this.canTargetAsteroids()) {
-      this.setLaunchToast('Targeting unavailable. Ensure the ship has an expendable dart drone.', 'error', null);
       return;
     }
 

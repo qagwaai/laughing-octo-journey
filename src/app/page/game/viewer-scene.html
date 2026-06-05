@@ -6,7 +6,7 @@
   } @else if (!hasSystem()) {
   <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
   } @else {
-  <ngt-canvas shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }">
+  <ngt-canvas [stats]="persistentStatsOptions" shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }">
     <app-viewer-system-scene
       *canvasContent
       [bodies]="sceneInputs().bodies"

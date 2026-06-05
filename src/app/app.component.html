@@ -58,7 +58,7 @@
     } @else {
       <ngt-canvas
         #canvas
-        [stats]="{ parent: host, domClass: 'stats' }"
+        [stats]="persistentStatsOptions"
         shadows
         [camera]="{ position: [5, 5, 5] }"
         [lookAt]="[0, 0, 0]"

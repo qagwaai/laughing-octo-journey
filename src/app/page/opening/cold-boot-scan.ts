@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { NgtCanvas } from 'angular-three/dom';
+import { NgtsStats } from 'angular-three-soba/stats';
 import ShipExteriorViewScene from '../../scene/ship-exterior-view';
+import { RenderStatsService } from '../../services/render-stats.service';
 
 const DEFAULT_HOTKEY_SLOTS: ReadonlyArray<{
   hotkey: 1 | 2 | 3 | 4 | 5;
@@ -20,14 +22,17 @@ const DEFAULT_HOTKEY_SLOTS: ReadonlyArray<{
   selector: 'app-cold-boot-scan-page',
   templateUrl: './cold-boot-scan.html',
   styleUrls: ['./cold-boot-scan.css'],
-  imports: [NgtCanvas, ShipExteriorViewScene],
+  imports: [NgtCanvas, NgtsStats, ShipExteriorViewScene],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 /**
  * Host page for ship-exterior scan scene, exposing scene state to template bindings.
  */
 export default class ColdBootScanPage {
+  protected host = inject(ElementRef);
+  private renderStats = inject(RenderStatsService);
   private shipExteriorView = viewChild(ShipExteriorViewScene);
+  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
 
   protected showPropertiesPanel = computed(() => this.shipExteriorView()?.showPropertiesPanel() ?? false);
   protected showPropertiesPanelReveal = computed(() => this.shipExteriorView()?.showPropertiesPanelReveal() ?? false);

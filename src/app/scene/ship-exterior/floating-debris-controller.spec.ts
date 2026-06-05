@@ -16,6 +16,7 @@ interface CapturedRequest {
 function createDeps(overrides: Partial<{
   playerName: string;
   shipId: string | null;
+  hasTractorBeamInInventory: boolean;
   sessionKey: string | null;
   positionKm: Triple | null;
   solarSystemId: string;
@@ -49,6 +50,7 @@ function createDeps(overrides: Partial<{
     getPlayerName: () => overrides.playerName ?? 'Pilot',
     getCharacterId: () => 'char-1',
     getActiveShipId: () => (overrides.shipId === undefined ? 'ship-1' : overrides.shipId),
+    getHasTractorBeamInInventory: () => overrides.hasTractorBeamInInventory ?? false,
     getShipPositionKm: () => (overrides.positionKm === undefined ? { x: 1, y: 2, z: 3 } : overrides.positionKm),
     getSolarSystemId: () => overrides.solarSystemId ?? 'sol-1',
     setInterval: (handler, intervalMs) => {
@@ -138,6 +140,18 @@ describe('FloatingDebrisController', () => {
     const all = stateService.getAll();
     expect(all.length).toBe(1);
     expect(all[0].id).toBe('server-1');
+  });
+
+  it('does not seed a fallback Tractor Beam when the ship already has one in inventory', () => {
+    const { controller, calls, stateService } = createDeps({ hasTractorBeamInInventory: true });
+
+    controller.start();
+
+    expect(stateService.getAll().length).toBe(0);
+
+    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
+
+    expect(stateService.getAll().length).toBe(0);
   });
 
   it('does not seed again on a subsequent empty response', () => {

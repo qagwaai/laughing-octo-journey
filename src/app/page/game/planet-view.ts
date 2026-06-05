@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, HostListener, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, HostListener, inject, signal, ElementRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
+import { NgtsStats } from 'angular-three-soba/stats';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
+import { RenderStatsService } from '../../services/render-stats.service';
 import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
 
 interface PlanetViewNavigationState {
@@ -20,15 +22,17 @@ interface PlanetViewNavigationState {
   templateUrl: './planet-view.html',
   styleUrls: ['./planet-view.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, PlanetViewScene],
+  imports: [NgtCanvas, NgtsStats, PlanetViewScene],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export default class PlanetViewPage {
   protected readonly t = locale;
+  protected host = inject(ElementRef);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
+  private renderStats = inject(RenderStatsService);
 
   private navigationState: PlanetViewNavigationState = resolveNavigationState<PlanetViewNavigationState>(
     this.router,
@@ -38,6 +42,7 @@ export default class PlanetViewPage {
   protected solarSystem = signal<SolarSystemSummary | null>(this.navigationState.solarSystem ?? null);
   protected solarSystemId = signal<string | null>(null);
   protected selectedBodyId = signal<string | null>(null);
+  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
   protected bodies = signal<ViewerBody[]>(this.navigationState.bodies ?? []);
 
   protected zoomLevel = signal<number>(18);

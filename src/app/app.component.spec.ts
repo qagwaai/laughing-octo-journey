@@ -5,6 +5,7 @@ import { Subject } from 'rxjs';
 
 import { AppComponent } from './app.component';
 import { OpeningAudioService } from './services';
+import { RenderStatsService } from './services/render-stats.service';
 
 function createOpeningAudioMock() {
   return {
@@ -69,12 +70,16 @@ describe('AppComponent', () => {
 
   it('should toggle stats visibility in onStatsChange', () => {
     const { component } = setup();
+    const renderStats = TestBed.inject(RenderStatsService);
     const statsElement = (component as any).host.nativeElement.querySelector('.stats') as HTMLElement;
 
-    expect(statsElement).toBeTruthy();
+    expect(renderStats.enabled()).toBeFalse();
+    expect(statsElement.style.display).toBe('');
     (component as any).onStatsChange(false);
+    expect(renderStats.enabled()).toBeFalse();
     expect(statsElement.style.display).toBe('none');
     (component as any).onStatsChange(true);
+    expect(renderStats.enabled()).toBeTrue();
     expect(statsElement.style.display).toBe('block');
   });
 

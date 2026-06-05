@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, CUSTOM_ELEMENTS_SCHEMA, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, CUSTOM_ELEMENTS_SCHEMA, OnDestroy, ElementRef } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
+import { NgtsStats } from 'angular-three-soba/stats';
 import { locale } from '../../i18n/locale';
 import {
   EXTERNAL_OBJECT_SCHEMA_VERSION,
@@ -17,6 +18,7 @@ import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
+import { RenderStatsService } from '../../services/render-stats.service';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import {
@@ -163,7 +165,7 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
   templateUrl: './viewer-scene.html',
   styleUrls: ['./viewer-scene.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, ViewerSystemScene],
+  imports: [NgtCanvas, NgtsStats, ViewerSystemScene],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 /**
@@ -175,6 +177,7 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
 export default class ViewerScenePage implements OnDestroy {
   protected readonly t = locale;
   protected readonly isDevBuild = !environment.production;
+  protected host = inject(ElementRef);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
@@ -182,6 +185,7 @@ export default class ViewerScenePage implements OnDestroy {
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
   private socketService = inject(SocketService);
+  private renderStats = inject(RenderStatsService);
 
   private navigationState: ViewerSceneNavigationState = resolveNavigationState<ViewerSceneNavigationState>(this.router);
 
@@ -201,6 +205,7 @@ export default class ViewerScenePage implements OnDestroy {
   protected showEffectiveRenderProfile = signal(this.isDevBuild && environment.viewerShowEffectiveProfileByDefault);
 
   protected zoomPercent = computed<number>(() => Math.round(this.zoomLevel()));
+  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
 
   protected hasSystem = computed(() => this.solarSystemId() !== null);
 
