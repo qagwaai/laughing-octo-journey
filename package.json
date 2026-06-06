@@ -64,7 +64,7 @@
     "@pmndrs/cannon-worker-api": "^2.4.0",
     "@pmndrs/vanilla": "^1.24.0",
     "angular-three": "^4.0.0",
-    "angular-three-cannon": "^4.2.1",
+    "angular-three-cannon": "^4.2.2",
     "angular-three-postprocessing": "^4.2.1",
     "angular-three-soba": "^4.0.0",
     "angular-three-tweakpane": "^4.2.1",
