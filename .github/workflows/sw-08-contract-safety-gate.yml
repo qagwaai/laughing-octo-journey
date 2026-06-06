@@ -9,6 +9,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   hard-fail:
     runs-on: ubuntu-latest

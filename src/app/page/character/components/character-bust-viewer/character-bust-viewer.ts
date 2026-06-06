@@ -466,6 +466,10 @@ export class CharacterBustViewerComponent {
   }
 
   private beginPointerInteraction(event: PointerEvent): void {
+    if (this.shouldIgnoreFramePointerEvent(event)) {
+      return;
+    }
+
     event.preventDefault();
     const mode: BustPointerDragMode = event.button === 2 ? 'scene' : 'rotate';
     this.pointerDragStates.set(event.pointerId, { mode, lastClientY: event.clientY });
@@ -530,5 +534,15 @@ export class CharacterBustViewerComponent {
 
   private clampSceneYOffset(value: number): number {
     return Math.min(1.5, Math.max(-0.5, value));
+  }
+
+  private shouldIgnoreFramePointerEvent(event: PointerEvent): boolean {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return false;
+    }
+
+    // Overlay controls inside the frame should keep native button click behavior.
+    return target.closest('.bust-viewer__controls') !== null;
   }
 }

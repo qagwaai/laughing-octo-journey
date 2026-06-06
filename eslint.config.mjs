@@ -26,6 +26,10 @@ export default [
     },
     rules: {
       ...tseslintPlugin.configs.recommended.rules,
+      'no-eval': 'error',
+      'no-implied-eval': 'error',
+      'no-new-func': 'error',
+      'no-script-url': 'error',
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
