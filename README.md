@@ -103,3 +103,15 @@ Implementation files:
 - Reusable cockpit glass/crack layer: `src/app/scene/hud/cracked-cockpit-window.ts`
 - Cold Boot scene composition: `src/app/scene/hud/cold-boot-hud-scene.ts`
 - Audio hooks service: `src/app/services/opening-audio.service.ts`
+
+## License and Commercial Use
+
+This repository is provided under an **All Rights Reserved** model.
+
+- See [LICENSE](LICENSE) for binding legal terms.
+- See [NOTICE](NOTICE) for owner and commercial licensing contact details.
+- Contributions are governed by [CONTRIBUTING.md](CONTRIBUTING.md).
+- Third-party components are tracked in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
+
+Commercial use is prohibited unless you obtain a separate written commercial license from the repository owner.
+For commercial licensing requests, contact: qagwaai@gmail.com
