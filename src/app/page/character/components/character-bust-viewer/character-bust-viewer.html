@@ -1,0 +1,308 @@
+<section class="bust-viewer" data-testid="character-bust-viewer" [attr.data-ready]="viewerReady()">
+  <header class="bust-viewer__header">
+    <div>
+      <p class="bust-viewer__eyebrow">{{ t.character.setup.bust.viewer.title }}</p>
+      <h3 class="bust-viewer__title">{{ t.character.setup.bust.viewer.subtitle }}</h3>
+      <p class="bust-viewer__copy">{{ hintText() }}</p>
+    </div>
+
+    <div class="bust-viewer__asset" data-testid="character-bust-viewer-asset-root">
+      {{ assetRootText() }}
+    </div>
+  </header>
+
+  <div
+    class="bust-viewer__frame"
+    (pointerdown)="framePointerHandlers.pointerdown($event)"
+    (pointermove)="framePointerHandlers.pointermove($event)"
+    (pointerup)="framePointerHandlers.pointerup($event)"
+    (pointercancel)="framePointerHandlers.pointercancel($event)"
+    (contextmenu)="framePointerHandlers.contextmenu($event)"
+    (wheel)="framePointerHandlers.wheel()"
+  >
+    <ngt-canvas class="bust-viewer__canvas" shadows [camera]="cameraOptions()">
+      <ng-container *canvasContent>
+        <ngts-orbit-controls [options]="orbitOptions()" />
+
+        <ngt-ambient-light [intensity]="0.66" />
+        <ngt-hemisphere-light [args]="['#e3f0ff', '#10203a', 1.55]" />
+        <ngt-directional-light [position]="[4, 7, 8]" [intensity]="1.8" [color]="'#fff8ee'" />
+        <ngt-directional-light [position]="[-6, 2, -4]" [intensity]="0.75" [color]="'#91b8ff'" />
+        <ngt-point-light [position]="[0, 1.6, 4.5]" [intensity]="1.2" [distance]="16" [color]="'#ffd4a3'" />
+
+        <ngt-group [position]="[0, sceneYOffset(), 0]">
+          <ngt-mesh [position]="[0, -0.94, 0]" [scale]="profile().shoulderScale">
+            <ngt-cylinder-geometry *args="[0.82, 1.02, 1.0, 24, 1]" />
+            <ngt-mesh-standard-material [color]="profile().shirtColor" [roughness]="0.9" [metalness]="0.02" />
+          </ngt-mesh>
+
+          <ngt-mesh [position]="[0, -0.24, 0.03]" [scale]="profile().neckScale">
+            <ngt-cylinder-geometry *args="[0.36, 0.42, 1.0, 24, 1]" />
+            <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.88" [metalness]="0.01" />
+          </ngt-mesh>
+
+          <ngt-group [position]="[0, 0.42, 0]" [scale]="profile().headScale">
+            <ngt-mesh [scale]="profile().faceScale">
+              <ngt-sphere-geometry *args="[1, 40, 32]" />
+              <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.82" [metalness]="0.03" />
+            </ngt-mesh>
+
+            <ngt-mesh [position]="profile().cheekOffset" [scale]="profile().cheekScale">
+              <ngt-sphere-geometry *args="[1, 24, 18]" />
+              <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.88" [metalness]="0.01" />
+            </ngt-mesh>
+            <ngt-mesh [position]="[-profile().cheekOffset[0], profile().cheekOffset[1], profile().cheekOffset[2]]" [scale]="profile().cheekScale">
+              <ngt-sphere-geometry *args="[1, 24, 18]" />
+              <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.88" [metalness]="0.01" />
+            </ngt-mesh>
+
+            <ngt-group [position]="profile().hairOffset">
+              <ngt-mesh [scale]="profile().hairScale">
+                <ngt-sphere-geometry *args="[1.02, 44, 28]" />
+                <ngt-mesh-standard-material [color]="profile().hairColorHex" [roughness]="0.52" [metalness]="profile().hairSheen" />
+              </ngt-mesh>
+              @if (profile().hairStyle === 'long-loose') {
+              <ngt-mesh [position]="[0, -0.42, -0.18]" [scale]="[0.78, 0.82, 1.12]">
+                <ngt-capsule-geometry *args="[0.46, 1.5, 5, 12]" />
+                <ngt-mesh-standard-material [color]="profile().hairColorHex" [roughness]="0.58" [metalness]="0.08" />
+              </ngt-mesh>
+              }
+              @if (profile().hairStyle === 'braided') {
+              <ngt-mesh [position]="[-0.56, -0.2, -0.05]" [rotation]="[0, 0.2, 0.35]" [scale]="[0.2, 0.92, 0.2]">
+                <ngt-capsule-geometry *args="[0.28, 1.45, 4, 10]" />
+                <ngt-mesh-standard-material [color]="profile().hairColorHex" [roughness]="0.6" [metalness]="0.05" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0.56, -0.2, -0.05]" [rotation]="[0, -0.2, -0.35]" [scale]="[0.2, 0.92, 0.2]">
+                <ngt-capsule-geometry *args="[0.28, 1.45, 4, 10]" />
+                <ngt-mesh-standard-material [color]="profile().hairColorHex" [roughness]="0.6" [metalness]="0.05" />
+              </ngt-mesh>
+              }
+              @if (profile().hairStyle === 'shaved') {
+              <ngt-mesh [scale]="[0.98, 0.64, 1.0]">
+                <ngt-sphere-geometry *args="[1.0, 24, 18]" />
+                <ngt-mesh-standard-material [color]="profile().hairColorHex" [roughness]="0.36" [metalness]="0.15" />
+              </ngt-mesh>
+              }
+            </ngt-group>
+
+            <ngt-group [position]="[-profile().earOffset[0], profile().earOffset[1], profile().earOffset[2]]" [rotation]="profile().earRotation" [scale]="profile().earScale">
+              <ngt-mesh>
+                <ngt-sphere-geometry *args="[1, 18, 16]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.88" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0.08, -0.02, 0.06]" [scale]="[0.62, 0.54, 0.64]">
+                <ngt-sphere-geometry *args="[1, 14, 12]" />
+                <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.92" [metalness]="0.01" />
+              </ngt-mesh>
+            </ngt-group>
+            <ngt-group [position]="[profile().earOffset[0], profile().earOffset[1], profile().earOffset[2]]" [rotation]="[profile().earRotation[0], -profile().earRotation[1], -profile().earRotation[2]]" [scale]="profile().earScale">
+              <ngt-mesh>
+                <ngt-sphere-geometry *args="[1, 18, 16]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.88" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[-0.08, -0.02, 0.06]" [scale]="[0.62, 0.54, 0.64]">
+                <ngt-sphere-geometry *args="[1, 14, 12]" />
+                <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.92" [metalness]="0.01" />
+              </ngt-mesh>
+            </ngt-group>
+
+            <ngt-group [position]="profile().eyeSocketOffset">
+              <ngt-group [position]="[-0.28, 0, 0]">
+                <ngt-mesh [scale]="profile().eyeSocketScale">
+                  <ngt-sphere-geometry *args="[1, 18, 14]" />
+                  <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.95" [metalness]="0.01" [transparent]="true" [opacity]="0.9" />
+                </ngt-mesh>
+                <ngt-mesh [position]="[0, -0.03, 0.03]" [scale]="profile().eyeLidScale">
+                  <ngt-sphere-geometry *args="[1, 18, 14]" />
+                  <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.9" [metalness]="0.01" />
+                </ngt-mesh>
+                <ngt-group [position]="[-0.01, 0.02, 0.13]" [scale]="profile().eyeScale">
+                  <ngt-mesh>
+                    <ngt-sphere-geometry *args="[0.14, 18, 14]" />
+                    <ngt-mesh-standard-material [color]="'#f6fbff'" [roughness]="0.35" [metalness]="0.01" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[0, 0, 0.08]" [scale]="profile().eyeIrisScale">
+                    <ngt-sphere-geometry *args="[0.1, 16, 12]" />
+                    <ngt-mesh-standard-material [color]="profile().eyeColorHex" [roughness]="0.46" [metalness]="0.02" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[0, 0, 0.15]" [scale]="profile().eyePupilScale">
+                    <ngt-sphere-geometry *args="[0.1, 16, 12]" />
+                    <ngt-mesh-standard-material [color]="'#101010'" [roughness]="0.25" [metalness]="0.02" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[-0.04, 0.04, 0.18]" [scale]="profile().eyeHighlightScale">
+                    <ngt-sphere-geometry *args="[0.08, 12, 10]" />
+                    <ngt-mesh-standard-material [color]="'#ffffff'" [roughness]="0.2" [metalness]="0.02" />
+                  </ngt-mesh>
+                </ngt-group>
+              </ngt-group>
+              <ngt-group [position]="[0.28, 0, 0]">
+                <ngt-mesh [scale]="profile().eyeSocketScale">
+                  <ngt-sphere-geometry *args="[1, 18, 14]" />
+                  <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.95" [metalness]="0.01" [transparent]="true" [opacity]="0.9" />
+                </ngt-mesh>
+                <ngt-mesh [position]="[0, -0.03, 0.03]" [scale]="profile().eyeLidScale">
+                  <ngt-sphere-geometry *args="[1, 18, 14]" />
+                  <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.9" [metalness]="0.01" />
+                </ngt-mesh>
+                <ngt-group [position]="[0.01, 0.02, 0.13]" [scale]="profile().eyeScale">
+                  <ngt-mesh>
+                    <ngt-sphere-geometry *args="[0.14, 18, 14]" />
+                    <ngt-mesh-standard-material [color]="'#f6fbff'" [roughness]="0.35" [metalness]="0.01" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[0, 0, 0.08]" [scale]="profile().eyeIrisScale">
+                    <ngt-sphere-geometry *args="[0.1, 16, 12]" />
+                    <ngt-mesh-standard-material [color]="profile().eyeColorHex" [roughness]="0.46" [metalness]="0.02" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[0, 0, 0.15]" [scale]="profile().eyePupilScale">
+                    <ngt-sphere-geometry *args="[0.1, 16, 12]" />
+                    <ngt-mesh-standard-material [color]="'#101010'" [roughness]="0.25" [metalness]="0.02" />
+                  </ngt-mesh>
+                  <ngt-mesh [position]="[0.04, 0.04, 0.18]" [scale]="profile().eyeHighlightScale">
+                    <ngt-sphere-geometry *args="[0.08, 12, 10]" />
+                    <ngt-mesh-standard-material [color]="'#ffffff'" [roughness]="0.2" [metalness]="0.02" />
+                  </ngt-mesh>
+                </ngt-group>
+              </ngt-group>
+            </ngt-group>
+
+            <ngt-group [position]="[0, profile().noseOffset[1] + 0.02, profile().noseOffset[2]]">
+              <ngt-mesh [position]="[0, 0.08, 0.02]" [scale]="profile().noseBridgeScale">
+                <ngt-capsule-geometry *args="[0.35, 0.9, 5, 10]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.88" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, -0.02, 0.12]" [scale]="profile().noseTipScale">
+                <ngt-sphere-geometry *args="[1, 16, 12]" />
+                <ngt-mesh-standard-material [color]="profile().skinColor" [roughness]="0.9" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[-0.07, -0.06, 0.15]" [scale]="profile().noseNostrilScale">
+                <ngt-sphere-geometry *args="[1, 12, 10]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.6" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0.07, -0.06, 0.15]" [scale]="profile().noseNostrilScale">
+                <ngt-sphere-geometry *args="[1, 12, 10]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.6" [metalness]="0.01" />
+              </ngt-mesh>
+            </ngt-group>
+
+            <ngt-group [position]="profile().beardOffset" [scale]="profile().beardScale">
+              <ngt-mesh>
+                <ngt-sphere-geometry *args="[1.0, 30, 22]" />
+                <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.98" [metalness]="0.01" [transparent]="true" [opacity]="profile().beardOpacity" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, 0.14, 0.16]" [scale]="[0.96, 0.46, 0.92]">
+                <ngt-sphere-geometry *args="[1.0, 28, 20]" />
+                <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.98" [metalness]="0.01" [transparent]="true" [opacity]="0.2" />
+              </ngt-mesh>
+            </ngt-group>
+
+            <ngt-mesh [position]="[-0.34, profile().browOffset[1], 0.66]" [rotation]="[0, 0, profile().expressionPreset === 'stern' || profile().expressionPreset === 'focused' ? -0.24 : 0.1]" [scale]="[0.4, 0.1, 0.1]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.66" [metalness]="0.02" />
+            </ngt-mesh>
+            <ngt-mesh [position]="[0.34, profile().browOffset[1], 0.66]" [rotation]="[0, 0, profile().expressionPreset === 'stern' || profile().expressionPreset === 'focused' ? 0.24 : -0.1]" [scale]="[0.4, 0.1, 0.1]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.66" [metalness]="0.02" />
+            </ngt-mesh>
+
+            <ngt-group [position]="profile().mouthOffset" [rotation]="[0, 0, profile().expressionPreset === 'smirk' ? -0.24 : profile().expressionPreset === 'warm' ? 0.1 : 0.03]" [scale]="profile().mouthScale">
+              <ngt-mesh>
+                <ngt-torus-geometry *args="[1, 0.16, 12, 28, profile().mouthArc]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.7" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, 0.02, 0.07]" [scale]="profile().lipScale">
+                <ngt-torus-geometry *args="[1, 0.12, 8, 24, profile().lipArc]" />
+                <ngt-mesh-standard-material [color]="'#7a4438'" [roughness]="0.58" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, -0.04, 0.1]" [scale]="[0.22, 0.08, 0.06]">
+                <ngt-box-geometry *args="[1, 1, 1]" />
+                <ngt-mesh-standard-material [color]="'#f5d9c9'" [roughness]="0.5" [metalness]="0.01" />
+              </ngt-mesh>
+            </ngt-group>
+
+            <ngt-mesh [position]="[-0.34, profile().browOffset[1], 0.66]" [rotation]="[0, 0, profile().expressionPreset === 'stern' || profile().expressionPreset === 'focused' ? -0.24 : 0.1]" [scale]="[0.4, 0.1, 0.1]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.66" [metalness]="0.02" />
+            </ngt-mesh>
+            <ngt-mesh [position]="[0.34, profile().browOffset[1], 0.66]" [rotation]="[0, 0, profile().expressionPreset === 'stern' || profile().expressionPreset === 'focused' ? 0.24 : -0.1]" [scale]="[0.4, 0.1, 0.1]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().hairShadowHex" [roughness]="0.66" [metalness]="0.02" />
+            </ngt-mesh>
+
+            <ngt-group [position]="profile().mouthOffset" [rotation]="[0, 0, profile().expressionPreset === 'smirk' ? -0.24 : profile().expressionPreset === 'warm' ? 0.1 : 0.03]" [scale]="profile().mouthScale">
+              <ngt-mesh>
+                <ngt-torus-geometry *args="[1, 0.16, 12, 28, profile().mouthArc]" />
+                <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.7" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, 0.02, 0.07]" [scale]="profile().lipScale">
+                <ngt-torus-geometry *args="[1, 0.12, 8, 24, profile().lipArc]" />
+                <ngt-mesh-standard-material [color]="'#7a4438'" [roughness]="0.58" [metalness]="0.01" />
+              </ngt-mesh>
+              <ngt-mesh [position]="[0, -0.04, 0.1]" [scale]="[0.22, 0.08, 0.06]">
+                <ngt-box-geometry *args="[1, 1, 1]" />
+                <ngt-mesh-standard-material [color]="'#f5d9c9'" [roughness]="0.5" [metalness]="0.01" />
+              </ngt-mesh>
+            </ngt-group>
+
+            @if (profile().accessory === 'visor') {
+            <ngt-mesh [position]="[0, 0.53, 0.56]" [scale]="[1.16, 0.14, 0.82]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().accentColor" [roughness]="0.28" [metalness]="0.08" [transparent]="true" [opacity]="0.75" />
+            </ngt-mesh>
+            }
+            @if (profile().accessory === 'goggles') {
+            <ngt-mesh [position]="[0, 0.51, 0.58]" [scale]="[1.08, 0.16, 0.62]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().accentColor" [roughness]="0.44" [metalness]="0.12" />
+            </ngt-mesh>
+            }
+            @if (profile().accessory === 'headband') {
+            <ngt-mesh [position]="[0, 0.68, 0.48]" [scale]="[1.18, 0.14, 1.02]">
+              <ngt-box-geometry *args="[1, 1, 1]" />
+              <ngt-mesh-standard-material [color]="profile().accentColor" [roughness]="0.56" [metalness]="0.02" />
+            </ngt-mesh>
+            }
+            @if (profile().accessory === 'hood') {
+            <ngt-mesh [position]="[0, 0.08, -0.1]" [scale]="[1.3, 1.28, 1.18]">
+              <ngt-sphere-geometry *args="[1, 32, 22]" />
+              <ngt-mesh-standard-material [color]="profile().accentColor" [roughness]="0.9" [metalness]="0.02" [transparent]="true" [opacity]="0.6" />
+            </ngt-mesh>
+            }
+
+            <ngt-mesh [position]="[0, -0.02, 0.61]" [scale]="[0.24, 0.24, 0.24]">
+              <ngt-sphere-geometry *args="[0.12, 14, 10]" />
+              <ngt-mesh-standard-material [color]="profile().skinShadow" [roughness]="0.8" [metalness]="0.01" />
+            </ngt-mesh>
+          </ngt-group>
+        </ngt-group>
+      </ng-container>
+    </ngt-canvas>
+
+    <div class="bust-viewer__controls" role="group" [attr.aria-label]="t.character.setup.bust.viewer.controlsLabel">
+      @for (preset of cameraPresets; track preset.preset) {
+      <button
+        type="button"
+        class="bust-viewer__preset-button"
+        [class.bust-viewer__preset-button--active]="cameraPreset() === preset.preset"
+        [attr.aria-pressed]="cameraPreset() === preset.preset"
+        [attr.data-testid]="'character-bust-viewer-preset-' + preset.preset"
+        (click)="selectCameraPreset(preset.preset)"
+      >
+        {{ cameraPresetLabel(preset.preset) }}
+      </button>
+      }
+      <button type="button" class="bust-viewer__reset-button" data-testid="character-bust-viewer-reset" (click)="resetOrientation()">
+        {{ t.character.setup.bust.viewer.resetLabel }}
+      </button>
+    </div>
+  </div>
+
+  <footer class="bust-viewer__footer">
+    <div class="bust-viewer__state" data-testid="character-bust-viewer-state">{{ describeCameraState() }}</div>
+    <div class="bust-viewer__meta">
+      <span>{{ t.character.setup.bust.viewer.faceShapeLabel }}: {{ profile().faceLabel }}</span>
+      <span>{{ t.character.setup.bust.viewer.expressionLabel }}: {{ profile().expressionLabel }}</span>
+      <span>{{ t.character.setup.bust.viewer.sceneYOffsetLabel }}: {{ sceneYOffset().toFixed(2) }}</span>
+      <span>{{ t.character.setup.bust.viewer.assetStatusLabel }}</span>
+    </div>
+  </footer>
+</section>

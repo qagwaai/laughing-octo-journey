@@ -1,0 +1,189 @@
+:host {
+  display: block;
+}
+
+.bust-viewer {
+  --panel-bg: rgba(6, 16, 28, 0.78);
+  --panel-border: rgba(174, 217, 255, 0.24);
+  --ink-strong: #f1f7ff;
+  --ink-soft: #bfd0e4;
+  --accent: #ff9b49;
+  --accent-strong: #ffcf8b;
+  --control-bg: rgba(16, 28, 42, 0.82);
+  --control-border: rgba(174, 217, 255, 0.22);
+
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 8%, rgba(255, 155, 73, 0.16), transparent 32%),
+    radial-gradient(circle at 80% 26%, rgba(112, 198, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(9, 18, 31, 0.94), rgba(5, 12, 22, 0.92));
+  border: 1px solid var(--panel-border);
+  color: var(--ink-strong);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.3);
+}
+
+.bust-viewer__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+.bust-viewer__eyebrow {
+  margin: 0 0 0.15rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-strong);
+}
+
+.bust-viewer__title {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.bust-viewer__copy {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  max-width: 42rem;
+}
+
+.bust-viewer__asset {
+  align-self: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e7f2ff;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.bust-viewer__frame {
+  position: relative;
+  min-height: 360px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 199, 120, 0.18), transparent 24%),
+    linear-gradient(180deg, rgba(7, 14, 24, 0.98), rgba(6, 11, 19, 0.98));
+  border: 1px solid rgba(190, 223, 255, 0.2);
+}
+
+.bust-viewer__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  touch-action: none;
+}
+
+.bust-viewer__controls {
+  position: absolute;
+  inset: auto 0.8rem 0.8rem 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding: 0.65rem;
+  border-radius: 14px;
+  background: rgba(7, 14, 24, 0.72);
+  border: 1px solid rgba(173, 214, 255, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.bust-viewer__preset-button,
+.bust-viewer__reset-button {
+  border-radius: 999px;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+  color: var(--ink-strong);
+  padding: 0.52rem 0.85rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.bust-viewer__preset-button:hover,
+.bust-viewer__reset-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 209, 147, 0.75);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.bust-viewer__preset-button--active {
+  background: linear-gradient(135deg, rgba(255, 155, 73, 0.24), rgba(255, 207, 139, 0.18));
+  border-color: rgba(255, 207, 139, 0.84);
+  color: #fff7ec;
+}
+
+.bust-viewer__reset-button {
+  margin-left: auto;
+  background: rgba(84, 124, 162, 0.18);
+}
+
+.bust-viewer__footer {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.bust-viewer__state {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(173, 214, 255, 0.16);
+  background: rgba(9, 18, 30, 0.72);
+  color: #edf5ff;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.bust-viewer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.bust-viewer__meta span {
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 760px) {
+  .bust-viewer {
+    padding: 0.85rem;
+  }
+
+  .bust-viewer__header {
+    flex-direction: column;
+  }
+
+  .bust-viewer__asset {
+    white-space: normal;
+  }
+
+  .bust-viewer__frame {
+    min-height: 320px;
+  }
+
+  .bust-viewer__controls {
+    inset-inline: 0.6rem;
+  }
+
+  .bust-viewer__reset-button {
+    margin-left: 0;
+  }
+}

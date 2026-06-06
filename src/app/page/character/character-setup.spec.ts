@@ -33,6 +33,7 @@ import {
   type ShipListByOwnerResponse,
 } from '../../model/ship-list-by-owner';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
+import { CharacterBustPreviewStateService } from '../../services/character-bust-preview-state.service';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -175,6 +176,7 @@ function setup(options: {
   const navigationState: SetupState = options.setupState ?? { playerName: 'Pioneer' };
 
   const mockRouter = {
+    url: '/knot(left:character-setup)',
     getCurrentNavigation: () => ({ extras: { state: navigationState } }),
     navigate: jasmine.createSpy('navigate'),
   };
@@ -522,7 +524,8 @@ describe('CharacterSetupPage', () => {
         apparelAccent: 'visor',
       });
 
-      expect(component['previewDescriptor']()).toEqual(
+      const previewState = TestBed.inject(CharacterBustPreviewStateService);
+      expect(previewState.descriptor()).toEqual(
         jasmine.objectContaining({
           faceShape: 'square',
           skinTone: 'tan',
@@ -534,6 +537,13 @@ describe('CharacterSetupPage', () => {
           apparelAccent: 'visor',
         }),
       );
+    });
+
+    it('should render the dedicated 3D bust viewer', () => {
+      const { fixture } = setup({ socketService, sessionService });
+
+      expect(fixture.nativeElement.querySelector('[data-testid="character-bust-viewer"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[data-testid="character-bust-viewer-state"]')).not.toBeNull();
     });
 
     it('should keep user on setup page when bust save returns blocked-save response', async () => {

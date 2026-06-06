@@ -1,0 +1,15 @@
+<section class="character-bust-preview-pane" data-testid="character-bust-preview-pane">
+  <header class="character-bust-preview-pane__header">
+    <p class="character-bust-preview-pane__eyebrow">{{ t.character.setup.bust.viewer.title }}</p>
+    <h2 class="character-bust-preview-pane__title">{{ t.character.setup.bust.viewer.subtitle }}</h2>
+    <p class="character-bust-preview-pane__copy">{{ t.character.setup.bust.viewer.hint }}</p>
+  </header>
+
+  @if (descriptor(); as currentDescriptor) {
+    <app-character-bust-viewer [descriptor]="currentDescriptor" />
+  } @else {
+    <div class="character-bust-preview-pane__empty" role="status">
+      {{ t.character.setup.bust.viewer.assetStatusLabel }}
+    </div>
+  }
+</section>

@@ -47,6 +47,7 @@
       <section class="bust-builder-panel" aria-label="{{ t.character.setup.bust.sectionTitle }}">
         <h2>{{ t.character.setup.bust.sectionTitle }}</h2>
         <p class="bust-subtitle">{{ t.character.setup.bust.sectionSubtitle }}</p>
+        <p class="bust-right-pane-note">{{ t.character.setup.bust.previewTitle }} is displayed in the right pane.</p>
 
         <div class="selector-grid">
           <div class="form-group">
@@ -120,28 +121,6 @@
               }
             </select>
           </div>
-        </div>
-
-        <div class="preview-card">
-          <p class="preview-title">{{ t.character.setup.bust.previewTitle }}</p>
-          <div class="avatar-shell" [attr.data-face-shape]="previewDescriptor().faceShape">
-            <div class="avatar-face" [style.background]="skinToneSwatch(previewDescriptor().skinTone)">
-              <div class="avatar-hair" [style.background]="hairColorSwatch(previewDescriptor().hairColor)"></div>
-              <div class="avatar-eyes">
-                <span class="eye-dot" [style.background]="eyeColorSwatch(previewDescriptor().eyeColor)"></span>
-                <span class="eye-dot" [style.background]="eyeColorSwatch(previewDescriptor().eyeColor)"></span>
-              </div>
-              <div class="avatar-expression" [attr.data-expression]="previewDescriptor().expressionPreset"></div>
-            </div>
-          </div>
-          <p class="preview-meta">
-            {{ t.character.setup.bust.expressionLabel }}: {{ formatBustOptionLabel(previewDescriptor().expressionPreset)
-            }}
-          </p>
-          <p class="preview-meta">
-            {{ t.character.setup.bust.apparelAccentLabel }}: {{ formatBustOptionLabel(previewDescriptor().apparelAccent)
-            }}
-          </p>
         </div>
       </section>
 

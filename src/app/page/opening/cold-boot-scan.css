@@ -186,11 +186,6 @@
   pointer-events: none;
 }
 
-.ship-exterior-launch-debug p {
-  margin: 0;
-  line-height: 1.2;
-}
-
 .ship-exterior-socket-debug {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
@@ -205,32 +200,6 @@
   letter-spacing: 0.06em;
   z-index: 19;
   pointer-events: none;
-}
-
-.ship-exterior-socket-debug p {
-  margin: 0;
-  line-height: 1.2;
-}
-
-.ship-exterior-launch-id-debug {
-  position: absolute;
-  left: var(--ship-hotkey-offset-x);
-  bottom: calc(var(--ship-hotkey-offset-y) + 4.0rem);
-  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-  padding: 0.24rem 0.45rem;
-  border-radius: 0.4rem;
-  border: 1px dashed rgba(129, 255, 208, 0.55);
-  background: linear-gradient(165deg, rgba(7, 36, 33, 0.88), rgba(7, 22, 21, 0.92));
-  color: #d9fff2;
-  font-size: 0.5rem;
-  letter-spacing: 0.06em;
-  z-index: 19;
-  pointer-events: none;
-}
-
-.ship-exterior-launch-id-debug p {
-  margin: 0;
-  line-height: 1.2;
 }
 
 .ship-exterior-launch-toast {
