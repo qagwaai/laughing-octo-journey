@@ -133,7 +133,7 @@ test.describe('Character Add — from character list', () => {
     });
 
     await characterListPage.clickSetup();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('Nova Prime');
     await characterSetupPage.clickSubmit();
@@ -186,11 +186,134 @@ test.describe('Character Add — from character list', () => {
     await expect(characterListPage.characterName(0)).toHaveText('Nova Prime');
   });
 
+  test('renders the 3D bust viewer and switches camera presets', async ({ page }) => {
+    const { characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
+
+    await characterListPage.clickSetup();
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+    await expect(characterSetupPage.bustViewer).toBeVisible();
+    await expect(characterSetupPage.bustViewerAssetRoot).toContainText('src/assets/models/characters/busts/sw15/');
+
+    await expect(characterSetupPage.bustViewerState).toContainText('Three-quarter');
+
+    await characterSetupPage.clickBustViewerPreset('front');
+    await expect(characterSetupPage.bustViewerPresetButton('front')).toHaveAttribute('aria-pressed', 'true');
+    await expect(characterSetupPage.bustViewerState).toContainText('Front');
+
+    await characterSetupPage.clickBustViewerReset();
+    await expect(characterSetupPage.bustViewerPresetButton('three-quarter')).toHaveAttribute('aria-pressed', 'true');
+    await expect(characterSetupPage.bustViewerState).toContainText('Three-quarter');
+  });
+
+  test.describe('mobile bust viewer interactions', () => {
+    test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+    test('supports touch drag rotate and pinch zoom', async ({ page }) => {
+      const { characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
+
+      await characterListPage.clickSetup();
+      await expect(page).toHaveURL(/right:character-bust-preview/);
+
+      const canvas = characterSetupPage.bustViewer.locator('canvas');
+      await expect(canvas).toBeVisible();
+
+      const initialState = (await characterSetupPage.bustViewerState.textContent()) ?? '';
+      const box = await canvas.boundingBox();
+      expect(box).not.toBeNull();
+      if (!box) {
+        return;
+      }
+
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+
+      await canvas.dispatchEvent('pointerdown', {
+        pointerType: 'touch',
+        pointerId: 1,
+        isPrimary: true,
+        clientX: centerX - 60,
+        clientY: centerY,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointermove', {
+        pointerType: 'touch',
+        pointerId: 1,
+        isPrimary: true,
+        clientX: centerX + 70,
+        clientY: centerY + 24,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointerup', {
+        pointerType: 'touch',
+        pointerId: 1,
+        isPrimary: true,
+        clientX: centerX + 70,
+        clientY: centerY + 24,
+        buttons: 0,
+      });
+
+      await expect(characterSetupPage.bustViewerState).not.toHaveText(initialState);
+
+      const dragState = (await characterSetupPage.bustViewerState.textContent()) ?? '';
+
+      await canvas.dispatchEvent('pointerdown', {
+        pointerType: 'touch',
+        pointerId: 2,
+        isPrimary: true,
+        clientX: centerX - 46,
+        clientY: centerY - 18,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointerdown', {
+        pointerType: 'touch',
+        pointerId: 3,
+        isPrimary: false,
+        clientX: centerX + 46,
+        clientY: centerY + 18,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointermove', {
+        pointerType: 'touch',
+        pointerId: 2,
+        isPrimary: true,
+        clientX: centerX - 70,
+        clientY: centerY - 28,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointermove', {
+        pointerType: 'touch',
+        pointerId: 3,
+        isPrimary: false,
+        clientX: centerX + 70,
+        clientY: centerY + 28,
+        buttons: 1,
+      });
+      await canvas.dispatchEvent('pointerup', {
+        pointerType: 'touch',
+        pointerId: 2,
+        isPrimary: true,
+        clientX: centerX - 70,
+        clientY: centerY - 28,
+        buttons: 0,
+      });
+      await canvas.dispatchEvent('pointerup', {
+        pointerType: 'touch',
+        pointerId: 3,
+        isPrimary: false,
+        clientX: centerX + 70,
+        clientY: centerY + 28,
+        buttons: 0,
+      });
+
+      await expect(characterSetupPage.bustViewerState).not.toHaveText(dragState);
+    });
+  });
+
   test('shows character-name validation errors in setup form', async ({ page }) => {
     const { characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
 
     await characterListPage.clickSetup();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('A');
     await characterSetupPage.characterNameInput.blur();
@@ -222,7 +345,7 @@ test.describe('Character Add — from character list', () => {
     await expect(characterListPage.characterItems).toHaveCount(1);
 
     await characterListPage.clickSetup();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('  nova   prime  ');
     await characterSetupPage.characterNameInput.blur();
@@ -264,7 +387,7 @@ test.describe('Character Add — from character list', () => {
     });
 
     await characterListPage.clickSetup();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('Nova Prime');
     await characterSetupPage.clickSubmit();

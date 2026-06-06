@@ -43,8 +43,40 @@ export class CharacterSetupPage {
     return this.page.locator('.warning-message');
   }
 
+  get bustPreviewPane() {
+    return this.page.locator('[data-testid="character-bust-preview-pane"]');
+  }
+
+  get bustViewer() {
+    return this.page.locator('[data-testid="character-bust-viewer"]');
+  }
+
+  bustViewerPresetButton(preset: 'front' | 'three-quarter' | 'left-profile' | 'right-profile') {
+    return this.page.locator(`[data-testid="character-bust-viewer-preset-${preset}"]`);
+  }
+
+  get bustViewerResetButton() {
+    return this.page.locator('[data-testid="character-bust-viewer-reset"]');
+  }
+
+  get bustViewerState() {
+    return this.page.locator('[data-testid="character-bust-viewer-state"]');
+  }
+
+  get bustViewerAssetRoot() {
+    return this.page.locator('[data-testid="character-bust-viewer-asset-root"]');
+  }
+
   async fillCharacterName(name: string) {
     await this.characterNameInput.fill(name);
+  }
+
+  async clickBustViewerPreset(preset: 'front' | 'three-quarter' | 'left-profile' | 'right-profile') {
+    await this.bustViewerPresetButton(preset).click();
+  }
+
+  async clickBustViewerReset() {
+    await this.bustViewerResetButton.click();
   }
 
   async clickSubmit() {

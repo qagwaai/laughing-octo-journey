@@ -250,6 +250,12 @@ const rightOutletRoutes: Routes = [
     loadComponent: () => import('./page/game/mission-board'),
     canActivate: [authGuard],
   },
+  {
+    path: 'character-bust-preview',
+    outlet: 'right',
+    loadComponent: () => import('./page/character/character-bust-preview-pane'),
+    canActivate: [authGuard],
+  },
 ];
 
 const routes: Routes = [

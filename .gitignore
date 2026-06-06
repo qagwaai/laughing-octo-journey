@@ -3,6 +3,7 @@
 # Compiled output
 /dist
 /tmp
+/.tmp
 /out-tsc
 /bazel-out
 
@@ -40,6 +41,23 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment and local secret material
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+.secrets.baseline
 
 test-results
 playwright-report

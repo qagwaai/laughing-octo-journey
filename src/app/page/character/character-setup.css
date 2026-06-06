@@ -156,6 +156,12 @@ select:focus {
   color: var(--ink-soft);
 }
 
+.bust-right-pane-note {
+  margin: 0 0 0.9rem 0;
+  font-size: 0.82rem;
+  color: rgba(185, 209, 223, 0.92);
+}
+
 .selector-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

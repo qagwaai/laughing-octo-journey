@@ -46,6 +46,10 @@
     "export:ships": "node scripts/export-scavenger-pod-glb.mjs"
   },
   "private": true,
+  "engines": {
+    "node": "20.19.x",
+    "npm": "10.9.x"
+  },
   "dependencies": {
     "@angular/animations": "^21.0.6",
     "@angular/common": "^21.0.6",
@@ -92,7 +96,6 @@
     "@types/three": "^0.182.0",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
-    "angular-three-plugin": "^4.2.1",
     "eslint": "^10.3.0",
     "jasmine-core": "^6.2.0",
     "karma": "^6.4.4",
@@ -108,6 +111,9 @@
     "tailwindcss": "^4.1.11",
     "typescript": "~5.9.3"
   },
+  "overrides": {
+    "vite": "7.3.2"
+  },
   "prettier": {
     "printWidth": 120,
     "singleQuote": true,
@@ -118,5 +124,5 @@
       "prettier-plugin-tailwindcss"
     ]
   },
-  "packageManager": "npm@10"
+  "packageManager": "npm@10.9.2"
 }

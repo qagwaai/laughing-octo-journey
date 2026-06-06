@@ -29,6 +29,7 @@ import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../..
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { CharacterService } from '../../services/character.service';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
+import { CharacterBustPreviewStateService } from '../../services/character-bust-preview-state.service';
 import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
@@ -74,6 +75,7 @@ export default class CharacterSetupPage implements OnDestroy {
   private router = inject(Router);
   private characterService = inject(CharacterService);
   private bustAdapter = inject(BustDescriptorAdapterService);
+  private previewState = inject(CharacterBustPreviewStateService);
   private gameSessionService = inject(GameSessionService);
   private socketService = inject(SocketService);
   private shipService = inject(ShipService);
@@ -109,7 +111,6 @@ export default class CharacterSetupPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected warningMessage = signal<string | null>(null);
   protected isSubmitting = signal(false);
-  protected previewDescriptor = signal<BustDescriptorInput>(DEFAULT_BUST_DESCRIPTOR);
   protected pendingBustCharacterId = signal<string | null>(null);
   protected bustValidationErrors = signal<Array<{ field: string; reason: string; rejectedValue: unknown }>>([]);
   protected bustBlockedSave = signal<BustBlockedSaveResponse | null>(null);
@@ -152,6 +153,7 @@ export default class CharacterSetupPage implements OnDestroy {
   constructor() {
     this.initializeSuggestedName();
     this.syncPreviewDescriptor();
+    this.ensureBustPreviewPaneActive();
 
     this.bustFormSubscription = this.characterForm.valueChanges.subscribe(() => {
       this.syncPreviewDescriptor();
@@ -502,7 +504,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
   private syncPreviewDescriptor(): void {
     const value = this.characterForm.getRawValue();
-    this.previewDescriptor.set({
+    this.previewState.updateDescriptor({
       presetVersion: BUST_DEFAULT_PRESET_VERSION,
       faceShape: (value.faceShape ?? DEFAULT_BUST_DESCRIPTOR.faceShape) as BustFaceShape,
       skinTone: (value.skinTone ?? DEFAULT_BUST_DESCRIPTOR.skinTone) as BustSkinTone,
@@ -529,7 +531,7 @@ export default class CharacterSetupPage implements OnDestroy {
     }
 
     try {
-      const descriptor = this.previewDescriptor();
+      const descriptor = this.previewState.descriptor() ?? DEFAULT_BUST_DESCRIPTOR;
       const response = await firstValueFrom(
         isEditMode
           ? this.bustAdapter.updateCharacterBust({ playerName, sessionKey, characterId, descriptor })
@@ -565,5 +567,17 @@ export default class CharacterSetupPage implements OnDestroy {
     this.unsubscribeAddResponse?.();
     this.unsubscribeInvalidSession?.();
     this.bustFormSubscription?.unsubscribe();
+    this.previewState.clear();
+  }
+
+  private ensureBustPreviewPaneActive(): void {
+    if (this.router.url.includes('right:character-bust-preview')) {
+      return;
+    }
+
+    void this.router.navigate(
+      [{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }],
+      { preserveFragment: true, replaceUrl: true },
+    );
   }
 }

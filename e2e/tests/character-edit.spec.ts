@@ -67,7 +67,7 @@ test.describe('Character Edit — setup save redirect', () => {
     await expect(characterListPage.characterName(0)).toHaveText('Zara Voss');
 
     await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('Zara Prime');
     await characterSetupPage.clickSubmit();
@@ -85,6 +85,18 @@ test.describe('Character Edit — setup save redirect', () => {
       }),
     );
     expect(shipListRequestCount).toBe(0);
+  });
+
+  test('renders the 3D bust viewer in edit mode', async ({ page }) => {
+    const { characterListPage, characterSetupPage } = await setupCharacterEditTest(page);
+
+    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.editButton(0).click();
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+
+    await expect(characterSetupPage.bustViewer).toBeVisible();
+    await expect(characterSetupPage.bustViewerAssetRoot).toContainText('src/assets/models/characters/busts/sw15/');
+    await expect(characterSetupPage.bustViewerState).toContainText('Three-quarter');
   });
 
   test('blocks edit when renaming to another existing character name', async ({ page }) => {
@@ -111,7 +123,7 @@ test.describe('Character Edit — setup save redirect', () => {
 
     await expect(characterListPage.characterItems).toHaveCount(2);
     await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
     await characterSetupPage.fillCharacterName('  atlas   commander ');
     await characterSetupPage.characterNameInput.blur();
