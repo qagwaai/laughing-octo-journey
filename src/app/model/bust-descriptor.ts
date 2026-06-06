@@ -105,8 +105,9 @@ export interface BustValidationErrorResponse {
 export interface CharacterBustCreateRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   characterId: string;
   descriptor: BustDescriptorInput;
 }
@@ -128,8 +129,9 @@ export interface CharacterBustCreateResponse {
 export interface CharacterBustReadRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   characterId: string;
 }
 
@@ -150,8 +152,9 @@ export interface CharacterBustReadResponse {
 export interface CharacterBustUpdateRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   characterId: string;
   descriptor: BustDescriptorInput;
 }
@@ -176,8 +179,9 @@ export interface CharacterBustUpdateResponse {
 export interface NpcBustCreateRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   npcId: string;
   deterministicSeed: string;
   presetVersion?: string;
@@ -202,8 +206,9 @@ export interface NpcBustCreateResponse {
 export interface NpcBustReadRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   npcId: string;
 }
 
@@ -225,8 +230,9 @@ export interface NpcBustReadResponse {
 export interface NpcBustUpdateRequest {
   playerName: string;
   sessionKey: string;
-  correlationId: string;
-  requestIdentity: BustRequestIdentity;
+  correlationId?: string;
+  correlationSource?: string;
+  requestIdentity?: BustRequestIdentity;
   npcId: string;
   deterministicSeed: string;
   presetVersion?: string;

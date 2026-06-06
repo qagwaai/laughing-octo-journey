@@ -2,8 +2,22 @@
 // TODO(M1): Implement BustDescriptorAdapter against Forge character-bust-* and npc-bust-* endpoints.
 // TODO(M2): Implement BustDescriptorViewModel mapping for bust builder panel controls.
 
+import type { Observable } from 'rxjs';
+
 import type {
   BustDescriptor,
+  CharacterBustCreateRequest,
+  CharacterBustCreateResponse,
+  CharacterBustReadRequest,
+  CharacterBustReadResponse,
+  CharacterBustUpdateRequest,
+  CharacterBustUpdateResponse,
+  NpcBustCreateRequest,
+  NpcBustCreateResponse,
+  NpcBustReadRequest,
+  NpcBustReadResponse,
+  NpcBustUpdateRequest,
+  NpcBustUpdateResponse,
   BustDescriptorInput,
   BustDescriptorOverrides,
   BustValidationErrorResponse,
@@ -15,9 +29,17 @@ import type {
  * Must not bypass Forge normalization or add ad hoc fallback correction.
  */
 export interface BustDescriptorAdapter {
-  // TODO(M1): loadCharacterBust(characterId: string): Observable<BustDescriptor | null>
-  // TODO(M1): saveCharacterBust(characterId: string, descriptor: BustDescriptorInput): Observable<BustDescriptor | BustValidationErrorResponse>
-  // TODO(M1): loadNpcBust(npcId: string): Observable<BustDescriptor | null>
+  createCharacterBust(
+    request: CharacterBustCreateRequest,
+  ): Observable<CharacterBustCreateResponse | BustValidationErrorResponse>;
+  readCharacterBust(request: CharacterBustReadRequest): Observable<CharacterBustReadResponse>;
+  updateCharacterBust(
+    request: CharacterBustUpdateRequest,
+  ): Observable<CharacterBustUpdateResponse | BustValidationErrorResponse>;
+
+  createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateResponse | BustValidationErrorResponse>;
+  readNpcBust(request: NpcBustReadRequest): Observable<NpcBustReadResponse>;
+  updateNpcBust(request: NpcBustUpdateRequest): Observable<NpcBustUpdateResponse | BustValidationErrorResponse>;
 }
 
 /**
