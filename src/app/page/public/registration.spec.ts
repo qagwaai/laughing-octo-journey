@@ -72,6 +72,16 @@ describe('RegistrationPage', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should render Angular Three footer mark as external link', () => {
+    const { fixture } = setup({ socketService, sessionService });
+    const link = fixture.nativeElement.querySelector('a.angular-three-mark') as HTMLAnchorElement | null;
+
+    expect(link).withContext('Angular Three footer link should exist').not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://angularthree.org');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toContain('noopener');
+  });
+
   it('should initialise with no messages and not submitting', () => {
     const { component } = setup({ socketService, sessionService });
     expect(component['isSubmitting']()).toBe(false);

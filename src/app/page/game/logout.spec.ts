@@ -94,5 +94,15 @@ describe('LogoutPage', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement).toBeTruthy();
     });
+
+    it('should render Angular Three footer mark as external link', () => {
+      const { fixture } = setup({ sessionService });
+      const link = fixture.nativeElement.querySelector('a.angular-three-mark') as HTMLAnchorElement | null;
+
+      expect(link).withContext('Angular Three footer link should exist').not.toBeNull();
+      expect(link?.getAttribute('href')).toBe('https://angularthree.org');
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toContain('noopener');
+    });
   });
 });
