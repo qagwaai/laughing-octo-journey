@@ -1,11 +1,24 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
+import {
+  type BustBlockedSaveReason,
+  type BustBlockedSaveResponse,
+  type BustDescriptorInput,
+  type BustExpressionPreset,
+  type BustFaceShape,
+  type BustHairColor,
+  type BustHairStyle,
+  type BustSkinTone,
+  type CharacterBustCreateTerminalResponse,
+  type CharacterBustUpdateTerminalResponse,
+} from '../../model/bust-descriptor';
 import {
   normalizeCharacterName,
   pickSuggestedCharacterName,
@@ -15,6 +28,7 @@ import { generateDeterministicStarterShipUpdate } from '../../model/domain/start
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { CharacterService } from '../../services/character.service';
+import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
@@ -30,6 +44,19 @@ interface CharacterSetupNavigationState {
 
 const LAST_CHARACTER_NAME_SUGGESTION_STORAGE_KEY = 'character.setup.lastSuggestedName';
 const STARTER_SHIP_PROVISIONING_TIMEOUT_MS = 3000;
+const BUST_DEFAULT_PRESET_VERSION = 'sw-15-m2-a-v1';
+
+const DEFAULT_BUST_DESCRIPTOR: BustDescriptorInput = {
+  presetVersion: BUST_DEFAULT_PRESET_VERSION,
+  faceShape: 'oval',
+  skinTone: 'medium',
+  hairStyle: 'short-crop',
+  hairColor: 'brown',
+  eyeStyle: 'almond',
+  eyeColor: 'green',
+  expressionPreset: 'focused',
+  apparelAccent: 'collar',
+};
 
 @Component({
   selector: 'app-character-setup-page',
@@ -46,12 +73,14 @@ export default class CharacterSetupPage implements OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private characterService = inject(CharacterService);
+  private bustAdapter = inject(BustDescriptorAdapterService);
   private gameSessionService = inject(GameSessionService);
   private socketService = inject(SocketService);
   private shipService = inject(ShipService);
   private sessionService = inject(SessionService);
   private unsubscribeAddResponse?: () => void;
   private unsubscribeInvalidSession?: () => void;
+  private bustFormSubscription?: Subscription;
   private setupState: CharacterSetupNavigationState = resolveNavigationState<CharacterSetupNavigationState>(
     this.router,
   );
@@ -65,6 +94,14 @@ export default class CharacterSetupPage implements OnDestroy {
       this.editCharacter()?.characterName ?? '',
       [Validators.required, Validators.minLength(2), Validators.maxLength(24)],
     ],
+    faceShape: [DEFAULT_BUST_DESCRIPTOR.faceShape, Validators.required],
+    skinTone: [DEFAULT_BUST_DESCRIPTOR.skinTone, Validators.required],
+    hairStyle: [DEFAULT_BUST_DESCRIPTOR.hairStyle, Validators.required],
+    hairColor: [DEFAULT_BUST_DESCRIPTOR.hairColor, Validators.required],
+    eyeStyle: [DEFAULT_BUST_DESCRIPTOR.eyeStyle, Validators.required],
+    eyeColor: [DEFAULT_BUST_DESCRIPTOR.eyeColor, Validators.required],
+    expressionPreset: [DEFAULT_BUST_DESCRIPTOR.expressionPreset, Validators.required],
+    apparelAccent: [DEFAULT_BUST_DESCRIPTOR.apparelAccent, Validators.required],
   });
 
   protected isSaved = signal(false);
@@ -72,9 +109,35 @@ export default class CharacterSetupPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected warningMessage = signal<string | null>(null);
   protected isSubmitting = signal(false);
+  protected previewDescriptor = signal<BustDescriptorInput>(DEFAULT_BUST_DESCRIPTOR);
+  protected pendingBustCharacterId = signal<string | null>(null);
+  protected bustValidationErrors = signal<Array<{ field: string; reason: string; rejectedValue: unknown }>>([]);
+  protected bustBlockedSave = signal<BustBlockedSaveResponse | null>(null);
   protected existingCharacters = signal<{ id: string; characterName: string }[]>(
     this.setupState.existingCharacters ?? [],
   );
+  protected readonly faceShapeOptions: BustFaceShape[] = ['oval', 'round', 'square', 'angular', 'narrow'];
+  protected readonly skinToneOptions: BustSkinTone[] = ['pale', 'light', 'medium', 'tan', 'dark', 'deep'];
+  protected readonly hairStyleOptions: BustHairStyle[] = [
+    'short-crop',
+    'mid-fade',
+    'long-loose',
+    'braided',
+    'shaved',
+    'slicked',
+  ];
+  protected readonly hairColorOptions: BustHairColor[] = ['black', 'brown', 'auburn', 'blonde', 'silver', 'white', 'red'];
+  protected readonly eyeStyleOptions = ['narrow', 'wide', 'almond', 'hooded', 'round'] as const;
+  protected readonly eyeColorOptions = ['brown', 'hazel', 'green', 'blue', 'grey', 'amber', 'violet'] as const;
+  protected readonly expressionPresetOptions: BustExpressionPreset[] = [
+    'neutral',
+    'focused',
+    'smirk',
+    'stern',
+    'warm',
+    'weary',
+  ];
+  protected readonly apparelAccentOptions = ['none', 'collar', 'hood', 'visor', 'goggles', 'headband'] as const;
 
   protected duplicateNameError(): string | null {
     const control = this.characterForm.get('characterName');
@@ -88,6 +151,12 @@ export default class CharacterSetupPage implements OnDestroy {
 
   constructor() {
     this.initializeSuggestedName();
+    this.syncPreviewDescriptor();
+
+    this.bustFormSubscription = this.characterForm.valueChanges.subscribe(() => {
+      this.syncPreviewDescriptor();
+      this.clearBustResponseState();
+    });
 
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
@@ -125,6 +194,7 @@ export default class CharacterSetupPage implements OnDestroy {
     this.errorMessage.set(null);
     this.successMessage.set(null);
     this.warningMessage.set(null);
+    this.clearBustResponseState();
     this.isSaved.set(false);
     this.unsubscribeAddResponse?.();
 
@@ -144,10 +214,23 @@ export default class CharacterSetupPage implements OnDestroy {
         this.isSaved.set(true);
         this.successMessage.set(response.message);
         this.errorMessage.set(null);
+        const persistedCharacterId = isEditMode
+          ? this.editCharacter()?.id?.trim() ?? ''
+          : (response as CharacterAddResponse).characterId?.trim() ?? '';
+
         if (!isEditMode) {
           const addResponse = response as CharacterAddResponse;
           await this.createStarterShipForCharacter(addResponse.characterId);
         }
+
+        if (persistedCharacterId) {
+          const isBustSaved = await this.persistCharacterBustDescriptor(persistedCharacterId, isEditMode);
+          if (!isBustSaved) {
+            this.isSaved.set(false);
+            return;
+          }
+        }
+
         this.navigateToCharacterList();
       } else {
         this.isSaved.set(false);
@@ -178,6 +261,75 @@ export default class CharacterSetupPage implements OnDestroy {
     };
     this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
       void handleSaveResponse(response);
+    });
+  }
+
+  protected formatBustOptionLabel(value: string): string {
+    return value
+      .split('-')
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+  }
+
+  protected hairColorSwatch(value: string): string {
+    const map: Record<string, string> = {
+      black: '#1a1a1f',
+      brown: '#4e3428',
+      auburn: '#7a2f20',
+      blonde: '#cba45a',
+      silver: '#b6bcc5',
+      white: '#eef2f6',
+      red: '#9f2118',
+    };
+    return map[value] ?? '#4e3428';
+  }
+
+  protected eyeColorSwatch(value: string): string {
+    const map: Record<string, string> = {
+      brown: '#5f3f2f',
+      hazel: '#6e6a2d',
+      green: '#2f6d49',
+      blue: '#2b5d9b',
+      grey: '#66717d',
+      amber: '#b36a1f',
+      violet: '#5c4da1',
+    };
+    return map[value] ?? '#2f6d49';
+  }
+
+  protected skinToneSwatch(value: BustSkinTone): string {
+    const map: Record<BustSkinTone, string> = {
+      pale: '#f2d7c3',
+      light: '#e5c2a4',
+      medium: '#c59673',
+      tan: '#ac7a58',
+      dark: '#7f5238',
+      deep: '#583826',
+    };
+    return map[value];
+  }
+
+  protected blockedSaveReasonLabel(reason: BustBlockedSaveReason): string {
+    const key = this.t.character.setup.bust.blockedSaveReasons[reason];
+    return key ?? reason;
+  }
+
+  protected retryBustSave(): void {
+    const characterId = this.pendingBustCharacterId()?.trim();
+    if (!characterId || this.isSubmitting()) {
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.errorMessage.set(null);
+    this.warningMessage.set(null);
+    this.clearBustResponseState();
+
+    void this.persistCharacterBustDescriptor(characterId, this.isEditMode()).finally(() => {
+      this.isSubmitting.set(false);
+      if (!this.bustBlockedSave() && this.bustValidationErrors().length === 0) {
+        this.navigateToCharacterList();
+      }
     });
   }
 
@@ -348,8 +500,70 @@ export default class CharacterSetupPage implements OnDestroy {
     });
   }
 
+  private syncPreviewDescriptor(): void {
+    const value = this.characterForm.getRawValue();
+    this.previewDescriptor.set({
+      presetVersion: BUST_DEFAULT_PRESET_VERSION,
+      faceShape: (value.faceShape ?? DEFAULT_BUST_DESCRIPTOR.faceShape) as BustFaceShape,
+      skinTone: (value.skinTone ?? DEFAULT_BUST_DESCRIPTOR.skinTone) as BustSkinTone,
+      hairStyle: (value.hairStyle ?? DEFAULT_BUST_DESCRIPTOR.hairStyle) as BustHairStyle,
+      hairColor: (value.hairColor ?? DEFAULT_BUST_DESCRIPTOR.hairColor) as BustHairColor,
+      eyeStyle: (value.eyeStyle ?? DEFAULT_BUST_DESCRIPTOR.eyeStyle) as BustDescriptorInput['eyeStyle'],
+      eyeColor: (value.eyeColor ?? DEFAULT_BUST_DESCRIPTOR.eyeColor) as BustDescriptorInput['eyeColor'],
+      expressionPreset: (value.expressionPreset ??
+        DEFAULT_BUST_DESCRIPTOR.expressionPreset) as BustExpressionPreset,
+      apparelAccent: (value.apparelAccent ?? DEFAULT_BUST_DESCRIPTOR.apparelAccent) as BustDescriptorInput['apparelAccent'],
+    });
+  }
+
+  private clearBustResponseState(): void {
+    this.bustValidationErrors.set([]);
+    this.bustBlockedSave.set(null);
+  }
+
+  private async persistCharacterBustDescriptor(characterId: string, isEditMode: boolean): Promise<boolean> {
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    if (!playerName || !sessionKey || !characterId.trim()) {
+      return true;
+    }
+
+    try {
+      const descriptor = this.previewDescriptor();
+      const response = await firstValueFrom(
+        isEditMode
+          ? this.bustAdapter.updateCharacterBust({ playerName, sessionKey, characterId, descriptor })
+          : this.bustAdapter.createCharacterBust({ playerName, sessionKey, characterId, descriptor }),
+      );
+
+      if (response.success) {
+        this.pendingBustCharacterId.set(null);
+        this.clearBustResponseState();
+        return true;
+      }
+
+      this.pendingBustCharacterId.set(characterId);
+
+      if ('blockedSave' in response) {
+        this.bustBlockedSave.set(response as BustBlockedSaveResponse);
+        this.warningMessage.set(this.t.character.setup.messages.bustSaveBlocked);
+        return false;
+      }
+
+      this.bustValidationErrors.set(response.validationErrors);
+      this.errorMessage.set(this.t.character.setup.messages.bustSaveValidationFailed);
+      return false;
+    } catch (error) {
+      appLogger.error('Failed to persist character bust descriptor.', error);
+      this.warningMessage.set(this.t.character.setup.messages.bustSaveUnexpectedError);
+      this.pendingBustCharacterId.set(characterId);
+      return false;
+    }
+  }
+
   ngOnDestroy(): void {
     this.unsubscribeAddResponse?.();
     this.unsubscribeInvalidSession?.();
+    this.bustFormSubscription?.unsubscribe();
   }
 }

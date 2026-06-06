@@ -5,19 +5,20 @@
 import type { Observable } from 'rxjs';
 
 import type {
+  BustBlockedSaveResponse,
   BustDescriptor,
   CharacterBustCreateRequest,
-  CharacterBustCreateResponse,
+  CharacterBustCreateTerminalResponse,
   CharacterBustReadRequest,
   CharacterBustReadResponse,
   CharacterBustUpdateRequest,
-  CharacterBustUpdateResponse,
+  CharacterBustUpdateTerminalResponse,
   NpcBustCreateRequest,
-  NpcBustCreateResponse,
+  NpcBustCreateTerminalResponse,
   NpcBustReadRequest,
   NpcBustReadResponse,
   NpcBustUpdateRequest,
-  NpcBustUpdateResponse,
+  NpcBustUpdateTerminalResponse,
   BustDescriptorInput,
   BustDescriptorOverrides,
   BustValidationErrorResponse,
@@ -31,15 +32,15 @@ import type {
 export interface BustDescriptorAdapter {
   createCharacterBust(
     request: CharacterBustCreateRequest,
-  ): Observable<CharacterBustCreateResponse | BustValidationErrorResponse>;
+  ): Observable<CharacterBustCreateTerminalResponse>;
   readCharacterBust(request: CharacterBustReadRequest): Observable<CharacterBustReadResponse>;
   updateCharacterBust(
     request: CharacterBustUpdateRequest,
-  ): Observable<CharacterBustUpdateResponse | BustValidationErrorResponse>;
+  ): Observable<CharacterBustUpdateTerminalResponse>;
 
-  createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateResponse | BustValidationErrorResponse>;
+  createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateTerminalResponse>;
   readNpcBust(request: NpcBustReadRequest): Observable<NpcBustReadResponse>;
-  updateNpcBust(request: NpcBustUpdateRequest): Observable<NpcBustUpdateResponse | BustValidationErrorResponse>;
+  updateNpcBust(request: NpcBustUpdateRequest): Observable<NpcBustUpdateTerminalResponse>;
 }
 
 /**
@@ -57,7 +58,8 @@ export interface BustDescriptorViewModel {
  */
 export type BustSaveResult =
   | { ok: true; descriptor: BustDescriptor }
-  | { ok: false; validationErrorResponse: BustValidationErrorResponse };
+  | { ok: false; validationErrorResponse: BustValidationErrorResponse }
+  | { ok: false; blockedSaveResponse: BustBlockedSaveResponse };
 
 // Explicitly reference types to prevent dead-code removal before M1/M2 implementations land.
 type _UnusedUntilM1 = BustDescriptorInput | BustDescriptorOverrides;

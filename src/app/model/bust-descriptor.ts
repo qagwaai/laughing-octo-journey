@@ -96,6 +96,29 @@ export interface BustValidationErrorResponse {
   validationErrors: BustValidationError[];
 }
 
+export type BustBlockedSaveReason =
+  | 'PLAYER_NOT_REGISTERED'
+  | 'CHARACTER_NOT_FOUND'
+  | 'CHARACTER_BUST_NOT_FOUND'
+  | 'NPC_BUST_NOT_FOUND'
+  | 'DATABASE_ERROR';
+
+export interface BustBlockedSave {
+  reason: BustBlockedSaveReason;
+  retryable: boolean;
+}
+
+/**
+ * Response emitted when request shape is valid but persistence preconditions block the write.
+ */
+export interface BustBlockedSaveResponse {
+  success: false;
+  message: string;
+  correlationId: string;
+  requestIdentity: BustRequestIdentity;
+  blockedSave: BustBlockedSave;
+}
+
 // ---------------------------------------------------------------------------
 // Playable-character bust socket contracts
 // Endpoint: /socket/character-bust-create (operationId: socketCharacterBustCreate)
@@ -114,7 +137,7 @@ export interface CharacterBustCreateRequest {
 
 /** Mirrors Forge component CharacterBustCreateResponse. */
 export interface CharacterBustCreateResponse {
-  success: boolean;
+  success: true;
   message: string;
   correlationId: string;
   requestIdentity: BustRequestIdentity;
@@ -122,6 +145,11 @@ export interface CharacterBustCreateResponse {
   characterId: string;
   descriptor: BustDescriptor;
 }
+
+export type CharacterBustCreateTerminalResponse =
+  | CharacterBustCreateResponse
+  | BustBlockedSaveResponse
+  | BustValidationErrorResponse;
 
 // Endpoint: /socket/character-bust-read (operationId: socketCharacterBustRead)
 
@@ -161,7 +189,7 @@ export interface CharacterBustUpdateRequest {
 
 /** Mirrors Forge component CharacterBustUpdateResponse. */
 export interface CharacterBustUpdateResponse {
-  success: boolean;
+  success: true;
   message: string;
   correlationId: string;
   requestIdentity: BustRequestIdentity;
@@ -169,6 +197,11 @@ export interface CharacterBustUpdateResponse {
   characterId: string;
   descriptor: BustDescriptor;
 }
+
+export type CharacterBustUpdateTerminalResponse =
+  | CharacterBustUpdateResponse
+  | BustBlockedSaveResponse
+  | BustValidationErrorResponse;
 
 // ---------------------------------------------------------------------------
 // NPC bust socket contracts
@@ -190,7 +223,7 @@ export interface NpcBustCreateRequest {
 
 /** Mirrors Forge component NpcBustCreateResponse. appliedOverrides is a string[] of override field names. */
 export interface NpcBustCreateResponse {
-  success: boolean;
+  success: true;
   message: string;
   correlationId: string;
   requestIdentity: BustRequestIdentity;
@@ -199,6 +232,11 @@ export interface NpcBustCreateResponse {
   descriptor: BustDescriptor;
   appliedOverrides?: string[];
 }
+
+export type NpcBustCreateTerminalResponse =
+  | NpcBustCreateResponse
+  | BustBlockedSaveResponse
+  | BustValidationErrorResponse;
 
 // Endpoint: /socket/npc-bust-read (operationId: socketNpcBustRead)
 
@@ -241,7 +279,7 @@ export interface NpcBustUpdateRequest {
 
 /** Mirrors Forge component NpcBustUpdateResponse. */
 export interface NpcBustUpdateResponse {
-  success: boolean;
+  success: true;
   message: string;
   correlationId: string;
   requestIdentity: BustRequestIdentity;
@@ -250,3 +288,8 @@ export interface NpcBustUpdateResponse {
   descriptor: BustDescriptor;
   appliedOverrides?: string[];
 }
+
+export type NpcBustUpdateTerminalResponse =
+  | NpcBustUpdateResponse
+  | BustBlockedSaveResponse
+  | BustValidationErrorResponse;

@@ -15,19 +15,18 @@ import {
   NPC_BUST_UPDATE_REQUEST_EVENT,
   NPC_BUST_UPDATE_RESPONSE_EVENT,
   type BustRequestIdentity,
-  type BustValidationErrorResponse,
   type CharacterBustCreateRequest,
-  type CharacterBustCreateResponse,
+  type CharacterBustCreateTerminalResponse,
   type CharacterBustReadRequest,
   type CharacterBustReadResponse,
   type CharacterBustUpdateRequest,
-  type CharacterBustUpdateResponse,
+  type CharacterBustUpdateTerminalResponse,
   type NpcBustCreateRequest,
-  type NpcBustCreateResponse,
+  type NpcBustCreateTerminalResponse,
   type NpcBustReadRequest,
   type NpcBustReadResponse,
   type NpcBustUpdateRequest,
-  type NpcBustUpdateResponse,
+  type NpcBustUpdateTerminalResponse,
 } from '../model/bust-descriptor';
 import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity } from './socket-correlation';
@@ -75,7 +74,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
 
   createCharacterBust(
     request: CharacterBustCreateRequest,
-  ): Observable<CharacterBustCreateResponse | BustValidationErrorResponse> {
+  ): Observable<CharacterBustCreateTerminalResponse> {
     return this.sendBustRequest(
       request,
       CHARACTER_BUST_CREATE_REQUEST_EVENT,
@@ -101,7 +100,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
 
   updateCharacterBust(
     request: CharacterBustUpdateRequest,
-  ): Observable<CharacterBustUpdateResponse | BustValidationErrorResponse> {
+  ): Observable<CharacterBustUpdateTerminalResponse> {
     return this.sendBustRequest(
       request,
       CHARACTER_BUST_UPDATE_REQUEST_EVENT,
@@ -113,7 +112,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
     );
   }
 
-  createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateResponse | BustValidationErrorResponse> {
+  createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateTerminalResponse> {
     return this.sendBustRequest(
       request,
       NPC_BUST_CREATE_REQUEST_EVENT,
@@ -137,7 +136,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
     );
   }
 
-  updateNpcBust(request: NpcBustUpdateRequest): Observable<NpcBustUpdateResponse | BustValidationErrorResponse> {
+  updateNpcBust(request: NpcBustUpdateRequest): Observable<NpcBustUpdateTerminalResponse> {
     return this.sendBustRequest(
       request,
       NPC_BUST_UPDATE_REQUEST_EVENT,

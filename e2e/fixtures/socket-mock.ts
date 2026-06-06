@@ -25,6 +25,41 @@ function withRequestCorrelation(responseData: unknown, requestData: unknown): un
   return enriched;
 }
 
+function buildDefaultResponse(eventName: string, eventData: unknown): { event: string; data: unknown } | null {
+  if (!isObject(eventData)) {
+    return null;
+  }
+
+  if (eventName === 'character-bust-create' || eventName === 'character-bust-update') {
+    const descriptorInput = isObject(eventData['descriptor']) ? eventData['descriptor'] : null;
+    const descriptor = {
+      schemaVersion: 'sw-15-m0-v1',
+      presetVersion: (descriptorInput?.['presetVersion'] as string | undefined) ?? 'sw-15-m2-a-v1',
+      faceShape: (descriptorInput?.['faceShape'] as string | undefined) ?? 'oval',
+      skinTone: (descriptorInput?.['skinTone'] as string | undefined) ?? 'medium',
+      hairStyle: (descriptorInput?.['hairStyle'] as string | undefined) ?? 'short-crop',
+      hairColor: (descriptorInput?.['hairColor'] as string | undefined) ?? 'brown',
+      eyeStyle: (descriptorInput?.['eyeStyle'] as string | undefined) ?? 'almond',
+      eyeColor: (descriptorInput?.['eyeColor'] as string | undefined) ?? 'green',
+      expressionPreset: (descriptorInput?.['expressionPreset'] as string | undefined) ?? 'focused',
+      apparelAccent: (descriptorInput?.['apparelAccent'] as string | undefined) ?? 'collar',
+    };
+
+    return {
+      event: `${eventName}-response`,
+      data: {
+        success: true,
+        message: `${eventName} ok`,
+        playerName: (eventData['playerName'] as string | undefined) ?? 'Pioneer',
+        characterId: (eventData['characterId'] as string | undefined) ?? 'character-1',
+        descriptor,
+      },
+    };
+  }
+
+  return null;
+}
+
 /**
  * Minimal socket.io v4 polling-transport mock for Playwright tests.
  *
@@ -179,8 +214,17 @@ export class SocketIOMock {
                   }
                   this.push(response.event, responseData);
                 }
-              } else if (this.debugEnabled) {
-                console.log(`[socket-mock] no handler registered for event: ${eventName}`);
+              } else {
+                const response = buildDefaultResponse(eventName, eventData);
+                if (response !== null) {
+                  const responseData = withRequestCorrelation(response.data, eventData);
+                  if (this.debugEnabled) {
+                    console.log(`[socket-mock] default response: ${response.event}`);
+                  }
+                  this.push(response.event, responseData);
+                } else if (this.debugEnabled) {
+                  console.log(`[socket-mock] no handler registered for event: ${eventName}`);
+                }
               }
             } catch {
               // ignore malformed packets

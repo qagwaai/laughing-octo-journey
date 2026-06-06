@@ -12,19 +12,19 @@ import {
   NPC_BUST_READ_RESPONSE_EVENT,
   NPC_BUST_UPDATE_REQUEST_EVENT,
   NPC_BUST_UPDATE_RESPONSE_EVENT,
+  type CharacterBustCreateTerminalResponse,
   type BustValidationErrorResponse,
   type CharacterBustCreateRequest,
-  type CharacterBustCreateResponse,
   type CharacterBustReadRequest,
   type CharacterBustReadResponse,
   type CharacterBustUpdateRequest,
-  type CharacterBustUpdateResponse,
+  type CharacterBustUpdateTerminalResponse,
   type NpcBustCreateRequest,
-  type NpcBustCreateResponse,
+  type NpcBustCreateTerminalResponse,
   type NpcBustReadRequest,
   type NpcBustReadResponse,
   type NpcBustUpdateRequest,
-  type NpcBustUpdateResponse,
+  type NpcBustUpdateTerminalResponse,
 } from '../model/bust-descriptor';
 import { SocketService } from './socket.service';
 import { BustDescriptorAdapterService } from './bust-descriptor-adapter.service';
@@ -99,7 +99,7 @@ describe('BustDescriptorAdapterService', () => {
         apparelAccent: 'none',
       },
     };
-    let received: CharacterBustCreateResponse | BustValidationErrorResponse | undefined;
+    let received: CharacterBustCreateTerminalResponse | undefined;
 
     service.createCharacterBust(request).subscribe((response) => {
       received = response;
@@ -222,7 +222,7 @@ describe('BustDescriptorAdapterService', () => {
         apparelAccent: 'collar',
       },
     };
-    let received: CharacterBustUpdateResponse | BustValidationErrorResponse | undefined;
+    let received: CharacterBustUpdateTerminalResponse | undefined;
 
     service.updateCharacterBust(request).subscribe((response) => {
       received = response;
@@ -235,7 +235,7 @@ describe('BustDescriptorAdapterService', () => {
       containerId: 'character-1',
     });
 
-    const response: CharacterBustUpdateResponse = {
+    const response: CharacterBustUpdateTerminalResponse = {
       success: true,
       message: 'updated',
       correlationId: requestPayload.correlationId!,
@@ -269,7 +269,7 @@ describe('BustDescriptorAdapterService', () => {
       npcId: 'npc-merchant-001',
       deterministicSeed: 'faction:trade|role:merchant|id:001',
     };
-    let received: NpcBustCreateResponse | BustValidationErrorResponse | undefined;
+    let received: NpcBustCreateTerminalResponse | undefined;
 
     service.createNpcBust(request).subscribe((response) => {
       received = response;
@@ -278,7 +278,7 @@ describe('BustDescriptorAdapterService', () => {
     expect(socketService.emittedEvents[0].eventName).toBe(NPC_BUST_CREATE_REQUEST_EVENT);
     const requestPayload = socketService.emittedEvents[0].payload as NpcBustCreateRequest;
 
-    const response: NpcBustCreateResponse = {
+    const response: NpcBustCreateTerminalResponse = {
       success: true,
       message: 'ok',
       correlationId: requestPayload.correlationId!,
@@ -355,7 +355,7 @@ describe('BustDescriptorAdapterService', () => {
         expressionPreset: 'stern',
       },
     };
-    let received: NpcBustUpdateResponse | BustValidationErrorResponse | undefined;
+    let received: NpcBustUpdateTerminalResponse | undefined;
 
     service.updateNpcBust(request).subscribe((response) => {
       received = response;
@@ -388,7 +388,7 @@ describe('BustDescriptorAdapterService', () => {
   });
 
   it('isolates concurrent NPC update requests under out-of-order responses', () => {
-    const received: Record<string, NpcBustUpdateResponse | BustValidationErrorResponse | undefined> = {};
+    const received: Record<string, NpcBustUpdateTerminalResponse | undefined> = {};
 
     service
       .updateNpcBust({
@@ -415,7 +415,7 @@ describe('BustDescriptorAdapterService', () => {
     const firstPayload = socketService.emittedEvents[0].payload as NpcBustUpdateRequest;
     const secondPayload = socketService.emittedEvents[1].payload as NpcBustUpdateRequest;
 
-    const secondResponse: NpcBustUpdateResponse = {
+    const secondResponse: NpcBustUpdateTerminalResponse = {
       success: true,
       message: 'second',
       correlationId: secondPayload.correlationId!,
@@ -436,7 +436,7 @@ describe('BustDescriptorAdapterService', () => {
       },
       appliedOverrides: [],
     };
-    const firstResponse: NpcBustUpdateResponse = {
+    const firstResponse: NpcBustUpdateTerminalResponse = {
       success: true,
       message: 'first',
       correlationId: firstPayload.correlationId!,

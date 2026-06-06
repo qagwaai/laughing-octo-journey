@@ -1,6 +1,7 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { Observable, of } from 'rxjs';
 
 import {
   createMockSessionService,
@@ -21,12 +22,17 @@ import {
   type CharacterEditResponse,
 } from '../../model/character-edit';
 import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
+import {
+  type CharacterBustCreateTerminalResponse,
+  type CharacterBustUpdateTerminalResponse,
+} from '../../model/bust-descriptor';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
   type ShipListByOwnerResponse,
 } from '../../model/ship-list-by-owner';
+import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -34,6 +40,11 @@ import CharacterSetupPage from './character-setup';
 
 type MockSocketServiceWithUpsert = MockSocketService & {
   upsertShip(request: any, onResponse?: (r: any) => void): void;
+};
+
+type MockBustAdapter = {
+  createCharacterBust: jasmine.Spy<(request: any) => Observable<CharacterBustCreateTerminalResponse>>;
+  updateCharacterBust: jasmine.Spy<(request: any) => Observable<CharacterBustUpdateTerminalResponse>>;
 };
 
 const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000002';
@@ -60,6 +71,63 @@ interface SetupState {
   mode?: 'create' | 'edit';
   editCharacter?: { id: string; characterName: string; level?: number };
   existingCharacters?: { id: string; characterName: string }[];
+}
+
+function createMockBustAdapter(): MockBustAdapter {
+  return {
+    createCharacterBust: jasmine.createSpy('createCharacterBust').and.callFake((request: { characterId: string }) =>
+      of({
+        success: true,
+        message: 'bust created',
+        correlationId: 'bust-corr-create',
+        requestIdentity: {
+          operation: 'character-bust-create',
+          entityType: 'character-bust',
+          containerId: request.characterId,
+        },
+        playerName: 'Pioneer',
+        characterId: request.characterId,
+        descriptor: {
+          schemaVersion: 'sw-15-m0-v1',
+          presetVersion: 'v1',
+          faceShape: 'oval',
+          skinTone: 'medium',
+          hairStyle: 'short-crop',
+          hairColor: 'brown',
+          eyeStyle: 'almond',
+          eyeColor: 'green',
+          expressionPreset: 'focused',
+          apparelAccent: 'collar',
+        },
+      } as CharacterBustCreateTerminalResponse),
+    ),
+    updateCharacterBust: jasmine.createSpy('updateCharacterBust').and.callFake((request: { characterId: string }) =>
+      of({
+        success: true,
+        message: 'bust updated',
+        correlationId: 'bust-corr-update',
+        requestIdentity: {
+          operation: 'character-bust-update',
+          entityType: 'character-bust',
+          containerId: request.characterId,
+        },
+        playerName: 'Pioneer',
+        characterId: request.characterId,
+        descriptor: {
+          schemaVersion: 'sw-15-m0-v1',
+          presetVersion: 'v1',
+          faceShape: 'oval',
+          skinTone: 'medium',
+          hairStyle: 'short-crop',
+          hairColor: 'brown',
+          eyeStyle: 'almond',
+          eyeColor: 'green',
+          expressionPreset: 'focused',
+          apparelAccent: 'collar',
+        },
+      } as CharacterBustUpdateTerminalResponse),
+    ),
+  };
 }
 
 function createShipListResponse(params?: {
@@ -101,6 +169,7 @@ function createShipListResponse(params?: {
 function setup(options: {
   socketService: MockSocketServiceWithUpsert;
   sessionService: MockSessionService;
+  bustAdapter?: MockBustAdapter;
   setupState?: SetupState;
 }) {
   const navigationState: SetupState = options.setupState ?? { playerName: 'Pioneer' };
@@ -115,6 +184,7 @@ function setup(options: {
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: BustDescriptorAdapterService, useValue: options.bustAdapter ?? createMockBustAdapter() },
       { provide: Router, useValue: mockRouter },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -262,8 +332,8 @@ describe('CharacterSetupPage', () => {
       );
     });
 
-    it('should handle successful character-edit response in edit mode', () => {
-      const { component, mockRouter } = setup({
+    it('should handle successful character-edit response in edit mode', async () => {
+      const { component, mockRouter, fixture } = setup({
         socketService,
         sessionService,
         setupState: {
@@ -286,6 +356,8 @@ describe('CharacterSetupPage', () => {
         characterId: 'c-1',
         characterName: 'Nova-Prime',
       } satisfies CharacterEditResponse);
+
+      await fixture.whenStable();
 
       expect(component['isSubmitting']()).toBe(false);
       expect(component['isSaved']()).toBe(true);
@@ -391,7 +463,7 @@ describe('CharacterSetupPage', () => {
     });
 
     it('should handle successful character-add response', async () => {
-      const { component, mockRouter } = setup({ socketService, sessionService });
+      const { component, mockRouter, fixture } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
       const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
@@ -424,7 +496,7 @@ describe('CharacterSetupPage', () => {
         message: 'ok',
         playerName: 'Pioneer',
       });
-      await Promise.resolve();
+      await fixture.whenStable();
 
       expect(component['isSubmitting']()).toBe(false);
       expect(component['isSaved']()).toBe(true);
@@ -436,8 +508,99 @@ describe('CharacterSetupPage', () => {
       });
     });
 
+    it('should sync selector controls to live preview descriptor', () => {
+      const { component } = setup({ socketService, sessionService });
+
+      component['characterForm'].patchValue({
+        faceShape: 'square',
+        skinTone: 'tan',
+        hairStyle: 'braided',
+        hairColor: 'red',
+        eyeStyle: 'wide',
+        eyeColor: 'amber',
+        expressionPreset: 'smirk',
+        apparelAccent: 'visor',
+      });
+
+      expect(component['previewDescriptor']()).toEqual(
+        jasmine.objectContaining({
+          faceShape: 'square',
+          skinTone: 'tan',
+          hairStyle: 'braided',
+          hairColor: 'red',
+          eyeStyle: 'wide',
+          eyeColor: 'amber',
+          expressionPreset: 'smirk',
+          apparelAccent: 'visor',
+        }),
+      );
+    });
+
+    it('should keep user on setup page when bust save returns blocked-save response', async () => {
+      const bustAdapter = createMockBustAdapter();
+      bustAdapter.createCharacterBust.and.returnValue(
+        of({
+          success: false,
+          message: 'Bust save blocked',
+          correlationId: 'blocked-corr',
+          requestIdentity: {
+            operation: 'character-bust-create',
+            entityType: 'character-bust',
+            containerId: 'c-1',
+          },
+          blockedSave: {
+            reason: 'DATABASE_ERROR',
+            retryable: true,
+          },
+        } satisfies CharacterBustCreateTerminalResponse),
+      );
+
+      const { component, mockRouter } = setup({ socketService, sessionService, bustAdapter });
+      component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
+      component.saveCharacter();
+      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
+
+      socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
+        success: true,
+        message: "Character 'Nova-Prime' created.",
+        correlationId: addRequest.correlationId!,
+        requestIdentity: addRequest.requestIdentity!,
+        playerName: 'Pioneer',
+        characterName: 'Nova-Prime',
+        characterId: 'c-1',
+      } satisfies CharacterAddResponse);
+
+      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
+        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
+        | undefined;
+
+      socketService.triggerEvent(
+        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+        createShipListResponse({
+          correlationId: shipListRequest?.correlationId,
+          requestIdentity: shipListRequest?.requestIdentity,
+        }),
+      );
+      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(component['bustBlockedSave']()).toEqual(
+        jasmine.objectContaining({
+          blockedSave: jasmine.objectContaining({ reason: 'DATABASE_ERROR', retryable: true }),
+        }),
+      );
+      expect(component['warningMessage']()).toBe('Character data saved, but bust profile save was blocked.');
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+    });
+
     it('should handle failed character-add response', () => {
-      const { component, mockRouter } = setup({ socketService, sessionService });
+      const { component, mockRouter, fixture } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
       const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
@@ -631,7 +794,7 @@ describe('CharacterSetupPage', () => {
     });
 
     it('should defer navigation until starter ship provisioning settles', async () => {
-      const { component, mockRouter } = setup({ socketService, sessionService });
+      const { component, mockRouter, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
@@ -654,7 +817,7 @@ describe('CharacterSetupPage', () => {
         message: 'ok',
         playerName: 'Pioneer',
       });
-      await Promise.resolve();
+      await fixture.whenStable();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
         preserveFragment: true,

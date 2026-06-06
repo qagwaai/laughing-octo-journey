@@ -44,6 +44,107 @@
         }
       </div>
 
+      <section class="bust-builder-panel" aria-label="{{ t.character.setup.bust.sectionTitle }}">
+        <h2>{{ t.character.setup.bust.sectionTitle }}</h2>
+        <p class="bust-subtitle">{{ t.character.setup.bust.sectionSubtitle }}</p>
+
+        <div class="selector-grid">
+          <div class="form-group">
+            <label for="faceShape">{{ t.character.setup.bust.faceShapeLabel }}</label>
+            <select id="faceShape" formControlName="faceShape">
+              @for (option of faceShapeOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="skinTone">{{ t.character.setup.bust.skinToneLabel }}</label>
+            <select id="skinTone" formControlName="skinTone">
+              @for (option of skinToneOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="hairStyle">{{ t.character.setup.bust.hairStyleLabel }}</label>
+            <select id="hairStyle" formControlName="hairStyle">
+              @for (option of hairStyleOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="hairColor">{{ t.character.setup.bust.hairColorLabel }}</label>
+            <select id="hairColor" formControlName="hairColor">
+              @for (option of hairColorOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="eyeStyle">{{ t.character.setup.bust.eyeStyleLabel }}</label>
+            <select id="eyeStyle" formControlName="eyeStyle">
+              @for (option of eyeStyleOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="eyeColor">{{ t.character.setup.bust.eyeColorLabel }}</label>
+            <select id="eyeColor" formControlName="eyeColor">
+              @for (option of eyeColorOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="expressionPreset">{{ t.character.setup.bust.expressionLabel }}</label>
+            <select id="expressionPreset" formControlName="expressionPreset">
+              @for (option of expressionPresetOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="apparelAccent">{{ t.character.setup.bust.apparelAccentLabel }}</label>
+            <select id="apparelAccent" formControlName="apparelAccent">
+              @for (option of apparelAccentOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="preview-card">
+          <p class="preview-title">{{ t.character.setup.bust.previewTitle }}</p>
+          <div class="avatar-shell" [attr.data-face-shape]="previewDescriptor().faceShape">
+            <div class="avatar-face" [style.background]="skinToneSwatch(previewDescriptor().skinTone)">
+              <div class="avatar-hair" [style.background]="hairColorSwatch(previewDescriptor().hairColor)"></div>
+              <div class="avatar-eyes">
+                <span class="eye-dot" [style.background]="eyeColorSwatch(previewDescriptor().eyeColor)"></span>
+                <span class="eye-dot" [style.background]="eyeColorSwatch(previewDescriptor().eyeColor)"></span>
+              </div>
+              <div class="avatar-expression" [attr.data-expression]="previewDescriptor().expressionPreset"></div>
+            </div>
+          </div>
+          <p class="preview-meta">
+            {{ t.character.setup.bust.expressionLabel }}: {{ formatBustOptionLabel(previewDescriptor().expressionPreset)
+            }}
+          </p>
+          <p class="preview-meta">
+            {{ t.character.setup.bust.apparelAccentLabel }}: {{ formatBustOptionLabel(previewDescriptor().apparelAccent)
+            }}
+          </p>
+        </div>
+      </section>
+
       <button
         type="submit"
         [disabled]="characterForm.invalid || isSubmitting() || isDuplicateNameBlockingSubmit()"
@@ -59,6 +160,32 @@
 
     @if (errorMessage()) {
     <div class="status-message error-message">{{ errorMessage() }}</div>
+    } @if (bustValidationErrors().length) {
+    <div class="status-message error-message">
+      <strong>{{ t.character.setup.bust.validationTitle }}</strong>
+      <ul class="validation-list">
+        @for (error of bustValidationErrors(); track $index) {
+        <li>{{ error.field }} - {{ error.reason }} ({{ error.rejectedValue }})</li>
+        }
+      </ul>
+    </div>
+    } @if (bustBlockedSave()) {
+    <div class="status-message warning-message blocked-save-message">
+      <strong>{{ t.character.setup.bust.blockedSaveTitle }}</strong>
+      <p>{{ blockedSaveReasonLabel(bustBlockedSave()!.blockedSave.reason) }}</p>
+      <p>
+        {{ bustBlockedSave()!.blockedSave.retryable ? t.character.setup.bust.retryableLabel :
+        t.character.setup.bust.notRetryableLabel }}
+      </p>
+      <button
+        type="button"
+        class="retry-btn"
+        [disabled]="isSubmitting()"
+        (click)="retryBustSave()"
+      >
+        {{ t.character.setup.bust.retrySaveLabel }}
+      </button>
+    </div>
     } @if (warningMessage()) {
     <div class="status-message warning-message">{{ warningMessage() }}</div>
     } @if (isSaved() && successMessage()) {
