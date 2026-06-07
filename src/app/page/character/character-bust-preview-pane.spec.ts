@@ -16,7 +16,7 @@ describe('CharacterBustPreviewPaneComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[data-testid="character-bust-preview-pane"]')).not.toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Dedicated SW-15 bust path reserved.');
+    expect(fixture.nativeElement.textContent).toContain('Dedicated SW-15 portrait asset path reserved.');
   });
 
   it('renders the bust viewer when a descriptor is set', async () => {
@@ -40,6 +40,6 @@ describe('CharacterBustPreviewPaneComponent', () => {
     const fixture = TestBed.createComponent(CharacterBustPreviewPaneComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('[data-testid="character-bust-viewer"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="character-preview-image"]')).not.toBeNull();
   });
 });
