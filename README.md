@@ -30,7 +30,7 @@ This is a template to get started with Angular Three.
 
 ## Features
 
-- Angular 19
+- Angular 21
 - Angular Three v3
 - THREE.js 0.171
 - `.glsl` loader setup
