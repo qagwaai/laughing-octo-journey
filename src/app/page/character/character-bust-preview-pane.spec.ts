@@ -35,6 +35,9 @@ describe('CharacterBustPreviewPaneComponent', () => {
       eyeColor: 'green',
       expressionPreset: 'focused',
       apparelAccent: 'collar',
+      facialHair: 'none',
+      scar: 'none',
+      tattoo: 'none',
     });
 
     const fixture = TestBed.createComponent(CharacterBustPreviewPaneComponent);

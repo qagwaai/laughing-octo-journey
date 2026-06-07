@@ -18,6 +18,7 @@
 
     @if (currentSrc(); as currentSrcValue) {
       <img
+        #currentImage
         class="character-preview-image__image character-preview-image__image--current"
         [class.character-preview-image__image--loaded]="currentLoaded()"
         [src]="currentSrcValue"
