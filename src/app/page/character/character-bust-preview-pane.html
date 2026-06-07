@@ -6,7 +6,7 @@
   </header>
 
   @if (descriptor(); as currentDescriptor) {
-    <app-character-bust-viewer [descriptor]="currentDescriptor" />
+    <app-character-preview-image [descriptor]="currentDescriptor" />
   } @else {
     <div class="character-bust-preview-pane__empty" role="status">
       {{ t.character.setup.bust.viewer.assetStatusLabel }}

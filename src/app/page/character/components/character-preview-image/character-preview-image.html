@@ -1,0 +1,45 @@
+<section class="character-preview-image" data-testid="character-preview-image" [attr.data-status]="statusLabel()">
+  <header class="character-preview-image__header">
+    <div>
+      <p class="character-preview-image__eyebrow">{{ t.character.setup.bust.viewer.title }}</p>
+      <h3 class="character-preview-image__title">{{ t.character.setup.bust.viewer.subtitle }}</h3>
+      <p class="character-preview-image__copy">{{ t.character.setup.bust.viewer.hint }}</p>
+    </div>
+
+    <div class="character-preview-image__asset" data-testid="character-preview-image-asset-name">
+      {{ debugLabel() }}
+    </div>
+  </header>
+
+  <div class="character-preview-image__frame">
+    @if (previousSrc(); as previousSrcValue) {
+      <img class="character-preview-image__image character-preview-image__image--previous" [src]="previousSrcValue" alt="" aria-hidden="true" />
+    }
+
+    @if (currentSrc(); as currentSrcValue) {
+      <img
+        class="character-preview-image__image character-preview-image__image--current"
+        [class.character-preview-image__image--loaded]="currentLoaded()"
+        [src]="currentSrcValue"
+        [alt]="debugLabel()"
+        (load)="handleImageLoad()"
+        (error)="handleImageError()"
+      />
+    }
+
+    @if (missingFilename(); as missingName) {
+      <div class="character-preview-image__missing" role="status">
+        not-found - {{ missingName }}
+      </div>
+    }
+  </div>
+
+  <footer class="character-preview-image__footer">
+    <div class="character-preview-image__state" data-testid="character-preview-image-state">{{ debugLabel() }}</div>
+    <div class="character-preview-image__meta">
+      <span>{{ t.character.setup.bust.viewer.faceShapeLabel }}: {{ descriptor().faceShape }}</span>
+      <span>{{ t.character.setup.bust.viewer.expressionLabel }}: {{ descriptor().expressionPreset }}</span>
+      <span>{{ t.character.setup.bust.viewer.assetStatusLabel }}</span>
+    </div>
+  </footer>
+</section>
