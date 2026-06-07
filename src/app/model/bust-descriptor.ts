@@ -25,7 +25,10 @@ export type BustEyeStyle = 'narrow' | 'wide' | 'almond' | 'hooded' | 'round';
 export type BustEyeColor = 'brown' | 'hazel' | 'green' | 'blue' | 'grey' | 'amber' | 'violet';
 export type BustExpressionPreset = 'neutral' | 'focused' | 'smirk' | 'stern' | 'warm' | 'weary';
 export type BustApparelAccent = 'none' | 'collar' | 'hood' | 'visor' | 'goggles' | 'headband';
-export type BustSchemaVersion = 'sw-15-m0-v1';
+export type BustFacialHair = 'none' | 'stubble' | 'short-beard' | 'full-beard' | 'goatee';
+export type BustScar = 'none' | 'cheek-left' | 'cheek-right' | 'brow-left' | 'brow-right' | 'chin';
+export type BustTattoo = 'none' | 'temple-left' | 'temple-right' | 'neck-left' | 'neck-right';
+export type BustSchemaVersion = 'sw-15-m1-v1';
 
 /**
  * Write-side descriptor for create/update requests. schemaVersion is server-assigned
@@ -41,6 +44,9 @@ export interface BustDescriptorInput {
   eyeColor: BustEyeColor;
   expressionPreset: BustExpressionPreset;
   apparelAccent: BustApparelAccent;
+  facialHair: BustFacialHair;
+  scar: BustScar;
+  tattoo: BustTattoo;
 }
 
 /**
@@ -66,6 +72,9 @@ export interface BustDescriptorOverrides {
   eyeColor?: BustEyeColor;
   expressionPreset?: BustExpressionPreset;
   apparelAccent?: BustApparelAccent;
+  facialHair?: BustFacialHair;
+  scar?: BustScar;
+  tattoo?: BustTattoo;
 }
 
 export interface BustRequestIdentity {

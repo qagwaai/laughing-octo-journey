@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, signal, viewChild } from '@angular/core';
 import type { BustDescriptorInput } from '../../../../model/bust-descriptor';
 import { locale } from '../../../../i18n/locale';
 
@@ -19,6 +19,9 @@ export function buildPortraitFilename(descriptor: BustDescriptorInput): string {
     descriptor.eyeColor,
     descriptor.expressionPreset,
     descriptor.apparelAccent,
+    descriptor.facialHair,
+    descriptor.scar,
+    descriptor.tattoo,
   ].join('__') + '.jpeg';
 }
 
@@ -32,6 +35,7 @@ export default class CharacterPreviewImageComponent {
   protected readonly t = locale;
 
   descriptor = input.required<BustDescriptorInput>();
+  private readonly currentImageElement = viewChild<ElementRef<HTMLImageElement>>('currentImage');
 
   protected readonly portraitFilename = computed(() => buildPortraitFilename(this.descriptor()));
   protected readonly portraitSrc = computed(() => `${PORTRAIT_BASE_PATH}/${this.portraitFilename()}`);
@@ -48,7 +52,7 @@ export default class CharacterPreviewImageComponent {
       const nextSrc = this.portraitSrc();
       const nextFilename = this.portraitFilename();
 
-      if (this.currentSrc() === nextSrc && this.missingFilename() !== nextFilename) {
+      if (this.currentSrc() === nextSrc) {
         return;
       }
 
@@ -60,11 +64,35 @@ export default class CharacterPreviewImageComponent {
       this.currentLoaded.set(false);
       this.missingFilename.set(null);
 
+      queueMicrotask(() => {
+        this.syncCurrentImageState();
+      });
+
       if (this.previousClearHandle !== null) {
         clearTimeout(this.previousClearHandle);
         this.previousClearHandle = null;
       }
     });
+  }
+
+  private syncCurrentImageState(): void {
+    const currentImage = this.currentImageElement()?.nativeElement;
+
+    if (!currentImage || !this.currentSrc() || this.currentLoaded() || this.missingFilename()) {
+      return;
+    }
+
+    // Browsers can resolve a cached image before Angular observes the load event.
+    if (!currentImage.complete) {
+      return;
+    }
+
+    if (currentImage.naturalWidth > 0) {
+      this.handleImageLoad();
+      return;
+    }
+
+    this.handleImageError();
   }
 
   protected readonly debugLabel = computed(() => {

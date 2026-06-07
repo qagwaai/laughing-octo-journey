@@ -86,7 +86,7 @@ describe('CharacterBustViewerComponent', () => {
     expect(component['viewerReady']()).toBeTrue();
     expect(component['cameraState']().preset).toBe(CHARACTER_BUST_INITIAL_CAMERA_PRESET);
 
-    component.selectCameraPreset('front');
+    component['selectCameraPreset']('front');
     expect(component['cameraState']().preset).toBe('front');
     expect(camera.position.toArray()).toEqual([0, 1.1, 5.15]);
     expect(controls.target.toArray()).toEqual([0, 0.95, 0]);
@@ -108,8 +108,8 @@ describe('CharacterBustViewerComponent', () => {
 
     (component as any).orbitControlsRef = () => ({ controls: () => controls });
 
-    component.selectCameraPreset('left-profile');
-    component.resetOrientation();
+    component['selectCameraPreset']('left-profile');
+    component['resetOrientation']();
 
     expect(component['cameraPreset']()).toBe(CHARACTER_BUST_INITIAL_CAMERA_PRESET);
     expect(controls.reset).toHaveBeenCalled();

@@ -8,14 +8,19 @@ import { resolveNavigationState } from '../navigation-state';
 import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import {
+  type BustApparelAccent,
   type BustBlockedSaveReason,
   type BustBlockedSaveResponse,
   type BustDescriptorInput,
   type BustExpressionPreset,
   type BustFaceShape,
+  type BustFacialHair,
   type BustHairColor,
   type BustHairStyle,
+  type CharacterBustReadResponse,
+  type BustScar,
   type BustSkinTone,
+  type BustTattoo,
   type CharacterBustCreateTerminalResponse,
   type CharacterBustUpdateTerminalResponse,
 } from '../../model/bust-descriptor';
@@ -57,6 +62,9 @@ const DEFAULT_BUST_DESCRIPTOR: BustDescriptorInput = {
   eyeColor: 'green',
   expressionPreset: 'focused',
   apparelAccent: 'collar',
+  facialHair: 'none',
+  scar: 'none',
+  tattoo: 'none',
 };
 
 @Component({
@@ -104,6 +112,9 @@ export default class CharacterSetupPage implements OnDestroy {
     eyeColor: [DEFAULT_BUST_DESCRIPTOR.eyeColor, Validators.required],
     expressionPreset: [DEFAULT_BUST_DESCRIPTOR.expressionPreset, Validators.required],
     apparelAccent: [DEFAULT_BUST_DESCRIPTOR.apparelAccent, Validators.required],
+    facialHair: [DEFAULT_BUST_DESCRIPTOR.facialHair, Validators.required],
+    scar: [DEFAULT_BUST_DESCRIPTOR.scar, Validators.required],
+    tattoo: [DEFAULT_BUST_DESCRIPTOR.tattoo, Validators.required],
   });
 
   protected isSaved = signal(false);
@@ -138,7 +149,10 @@ export default class CharacterSetupPage implements OnDestroy {
     'warm',
     'weary',
   ];
-  protected readonly apparelAccentOptions = ['none', 'collar', 'hood', 'visor', 'goggles', 'headband'] as const;
+  protected readonly apparelAccentOptions: BustApparelAccent[] = ['none', 'collar', 'hood', 'visor', 'goggles', 'headband'];
+  protected readonly facialHairOptions: BustFacialHair[] = ['none', 'stubble', 'short-beard', 'full-beard', 'goatee'];
+  protected readonly scarOptions: BustScar[] = ['none', 'cheek-left', 'cheek-right', 'brow-left', 'brow-right', 'chin'];
+  protected readonly tattooOptions: BustTattoo[] = ['none', 'temple-left', 'temple-right', 'neck-left', 'neck-right'];
 
   protected duplicateNameError(): string | null {
     const control = this.characterForm.get('characterName');
@@ -154,6 +168,7 @@ export default class CharacterSetupPage implements OnDestroy {
     this.initializeSuggestedName();
     this.syncPreviewDescriptor();
     this.ensureBustPreviewPaneActive();
+    this.initializeEditModeBustDescriptor();
 
     this.bustFormSubscription = this.characterForm.valueChanges.subscribe(() => {
       this.syncPreviewDescriptor();
@@ -515,12 +530,54 @@ export default class CharacterSetupPage implements OnDestroy {
       expressionPreset: (value.expressionPreset ??
         DEFAULT_BUST_DESCRIPTOR.expressionPreset) as BustExpressionPreset,
       apparelAccent: (value.apparelAccent ?? DEFAULT_BUST_DESCRIPTOR.apparelAccent) as BustDescriptorInput['apparelAccent'],
+      facialHair: (value.facialHair ?? DEFAULT_BUST_DESCRIPTOR.facialHair) as BustDescriptorInput['facialHair'],
+      scar: (value.scar ?? DEFAULT_BUST_DESCRIPTOR.scar) as BustDescriptorInput['scar'],
+      tattoo: (value.tattoo ?? DEFAULT_BUST_DESCRIPTOR.tattoo) as BustDescriptorInput['tattoo'],
     });
   }
 
   private clearBustResponseState(): void {
     this.bustValidationErrors.set([]);
     this.bustBlockedSave.set(null);
+  }
+
+  private initializeEditModeBustDescriptor(): void {
+    if (!this.isEditMode()) {
+      return;
+    }
+
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const characterId = this.editCharacter()?.id?.trim() ?? '';
+
+    if (!playerName || !sessionKey || !characterId) {
+      return;
+    }
+
+    void firstValueFrom(this.bustAdapter.readCharacterBust({ playerName, sessionKey, characterId }))
+      .then((response: CharacterBustReadResponse) => {
+        if (!response.success || !response.descriptor) {
+          return;
+        }
+
+        this.characterForm.patchValue({
+          faceShape: response.descriptor.faceShape,
+          skinTone: response.descriptor.skinTone,
+          hairStyle: response.descriptor.hairStyle,
+          hairColor: response.descriptor.hairColor,
+          eyeStyle: response.descriptor.eyeStyle,
+          eyeColor: response.descriptor.eyeColor,
+          expressionPreset: response.descriptor.expressionPreset,
+          apparelAccent: response.descriptor.apparelAccent,
+          facialHair: response.descriptor.facialHair,
+          scar: response.descriptor.scar,
+          tattoo: response.descriptor.tattoo,
+        });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        appLogger.warn(`Unable to preload existing bust descriptor for edit mode: ${message}`);
+      });
   }
 
   private async persistCharacterBustDescriptor(characterId: string, isEditMode: boolean): Promise<boolean> {

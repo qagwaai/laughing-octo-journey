@@ -15,7 +15,7 @@ Replace the 3D procedural bust viewer with a 2D asset-based character preview. T
 
 ## Full Characteristic Set
 
-The following characteristics are the **complete intended set** for the character descriptor. Fields marked `[planned]` are not yet in the TypeScript model or Forge schema but must be accounted for in the asset naming scheme now so the pipeline does not need to change when they land.
+The following characteristics are the **active full set** for the character descriptor and filename scheme.
 
 | Field | Type | Current Values | Cardinality |
 |---|---|---|---|
@@ -27,15 +27,12 @@ The following characteristics are the **complete intended set** for the characte
 | `eyeColor` | `BustEyeColor` | brown, hazel, green, blue, grey, amber, violet | 7 |
 | `expressionPreset` | `BustExpressionPreset` | neutral, focused, smirk, stern, warm, weary | 6 |
 | `apparelAccent` | `BustApparelAccent` | none, collar, hood, visor, goggles, headband | 6 |
-| `facialHair` | `BustFacialHair` [planned] | none, stubble, short-beard, full-beard, goatee | 5 |
-| `scar` | `BustScar` [planned] | none, cheek-left, cheek-right, brow-left, brow-right, chin | 6 |
-| `tattoo` | `BustTattoo` [planned] | none, temple-left, temple-right, neck-left, neck-right | 5 |
+| `facialHair` | `BustFacialHair` | none, stubble, short-beard, full-beard, goatee | 5 |
+| `scar` | `BustScar` | none, cheek-left, cheek-right, brow-left, brow-right, chin | 6 |
+| `tattoo` | `BustTattoo` | none, temple-left, temple-right, neck-left, neck-right | 5 |
 
-**Full theoretical combination space (current 8 fields):**
-5 × 6 × 6 × 7 × 5 × 7 × 6 × 6 = **1,587,600**
-
-**Full theoretical combination space (all 11 fields including planned):**
-×5 × 6 × 5 = **238,140,000**
+**Full theoretical combination space (all 11 fields):**
+5 × 6 × 6 × 7 × 5 × 7 × 6 × 6 × 5 × 6 × 5 = **238,140,000**
 
 This number rules out full per-combination coverage. The design below handles this.
 
@@ -49,15 +46,15 @@ Each asset is a JPEG named by the **exact descriptor values** in a fixed field o
 
 ```
 public/images/portraits/
-  {faceShape}__{skinTone}__{hairStyle}__{hairColor}__{eyeStyle}__{eyeColor}__{expressionPreset}__{apparelAccent}.jpeg
+  {faceShape}__{skinTone}__{hairStyle}__{hairColor}__{eyeStyle}__{eyeColor}__{expressionPreset}__{apparelAccent}__{facialHair}__{scar}__{tattoo}.jpeg
 ```
 
 **Delimiter:** double underscore (`__`) between fields, hyphen (`-`) within field values.
 **Extension:** `.jpeg` always.
 **Example (full path):**
-`oval__medium__short-crop__brown__almond__green__focused__collar.jpeg`
+`oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg`
 
-When planned fields (`facialHair`, `scar`, `tattoo`) are added they can be appended after `apparelAccent` with the same delimiter. For the current pass, the viewer only resolves the full 8-field name.
+The viewer resolves the full 11-field name.
 
 ---
 
@@ -67,12 +64,12 @@ To unblock frontend development and validate the naming scheme end-to-end, gener
 
 | Filename | Description |
 |---|---|
-| `square__pale__long-loose__auburn__round__grey__smirk__headband.jpeg` | Curated sample |
-| `round__tan__slicked__red__wide__blue__warm__goggles.jpeg` | Curated sample |
-| `round__dark__shaved__white__almond__violet__weary__none.jpeg` | Curated sample |
-| `oval__medium__short-crop__brown__almond__green__focused__collar.jpeg` | Default form state sample |
-| `narrow__light__mid-fade__black__narrow__hazel__neutral__hood.jpeg` | Curated sample |
-| `angular__deep__braided__silver__hooded__amber__stern__visor.jpeg` | Curated sample |
+| `square__pale__long-loose__auburn__round__grey__smirk__headband__none__none__none.jpeg` | Curated sample |
+| `round__tan__slicked__red__wide__blue__warm__goggles__none__none__none.jpeg` | Curated sample |
+| `round__dark__shaved__white__almond__violet__weary__none__none__none.jpeg` | Curated sample |
+| `oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg` | Default form state sample |
+| `narrow__light__mid-fade__black__narrow__hazel__neutral__hood__none__none__none.jpeg` | Curated sample |
+| `angular__deep__braided__silver__hooded__amber__stern__visor__none__none__none.jpeg` | Curated sample |
 
 **Recommended image spec for AI generation:**
 - Square crop, 512×512 or 1024×1024
@@ -126,7 +123,7 @@ src/app/page/character/components/character-preview-image/
 2. Wire it into `CharacterBustPreviewPaneComponent` in place of `CharacterBustViewerComponent`.
 3. Remove `CharacterBustViewerComponent` and its 3D scene geometry, profile computation, and the `character-bust-viewer` directory.
 4. Remove unused Three.js / angular-three imports if no other scene uses them (check before deleting).
-5. Place the 6 PoC JPEGs under `src/assets/portraits/`.
+5. Place the 6 PoC JPEGs under `public/images/portraits/`.
 6. Confirm the fallback chain resolves correctly for the default descriptor.
 7. Run `npm run build` and focused Playwright tests.
 
@@ -135,5 +132,4 @@ src/app/page/character/components/character-preview-image/
 ## Open Questions (record, not blocking)
 
 - Should `presetVersion` encode the asset generation batch so old descriptors can be re-mapped to updated art without a breaking schema change?
-- When `facialHair`, `scar`, and `tattoo` land on Forge, should Nova add them to the filename scheme in the same PR that adds the TypeScript types?
 - Should the portraits directory live in `public/portraits/` instead of `src/assets/portraits/` given Angular's asset handling?

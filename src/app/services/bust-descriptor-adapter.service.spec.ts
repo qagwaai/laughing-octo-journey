@@ -29,6 +29,26 @@ import {
 import { SocketService } from './socket.service';
 import { BustDescriptorAdapterService } from './bust-descriptor-adapter.service';
 
+const DEFAULT_BUST_DESCRIPTOR_INPUT = {
+  presetVersion: 'v1',
+  faceShape: 'oval' as const,
+  skinTone: 'medium' as const,
+  hairStyle: 'short-crop' as const,
+  hairColor: 'brown' as const,
+  eyeStyle: 'almond' as const,
+  eyeColor: 'green' as const,
+  expressionPreset: 'neutral' as const,
+  apparelAccent: 'none' as const,
+  facialHair: 'none' as const,
+  scar: 'none' as const,
+  tattoo: 'none' as const,
+};
+
+const DEFAULT_BUST_DESCRIPTOR = {
+  schemaVersion: 'sw-15-m1-v1' as const,
+  ...DEFAULT_BUST_DESCRIPTOR_INPUT,
+};
+
 type Listener<T = unknown> = (payload: T) => void;
 
 class MockSocketService {
@@ -87,17 +107,7 @@ describe('BustDescriptorAdapterService', () => {
       playerName: 'PilotOne',
       sessionKey: 'session-123',
       characterId: 'character-1',
-      descriptor: {
-        presetVersion: 'v1',
-        faceShape: 'oval',
-        skinTone: 'medium',
-        hairStyle: 'short-crop',
-        hairColor: 'brown',
-        eyeStyle: 'almond',
-        eyeColor: 'green',
-        expressionPreset: 'neutral',
-        apparelAccent: 'none',
-      },
+      descriptor: DEFAULT_BUST_DESCRIPTOR_INPUT,
     };
     let received: CharacterBustCreateTerminalResponse | undefined;
 
@@ -163,16 +173,7 @@ describe('BustDescriptorAdapterService', () => {
       playerName: 'PilotOne',
       characterId: 'character-1',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
-        faceShape: 'oval',
-        skinTone: 'medium',
-        hairStyle: 'short-crop',
-        hairColor: 'brown',
-        eyeStyle: 'almond',
-        eyeColor: 'green',
-        expressionPreset: 'neutral',
-        apparelAccent: 'none',
+        ...DEFAULT_BUST_DESCRIPTOR,
       },
     } satisfies CharacterBustReadResponse);
 
@@ -185,18 +186,7 @@ describe('BustDescriptorAdapterService', () => {
       requestIdentity: requestPayload.requestIdentity!,
       playerName: 'PilotOne',
       characterId: 'character-1',
-      descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
-        faceShape: 'oval',
-        skinTone: 'medium',
-        hairStyle: 'short-crop',
-        hairColor: 'brown',
-        eyeStyle: 'almond',
-        eyeColor: 'green',
-        expressionPreset: 'neutral',
-        apparelAccent: 'none',
-      },
+      descriptor: DEFAULT_BUST_DESCRIPTOR,
     };
 
     socketService.trigger(CHARACTER_BUST_READ_RESPONSE_EVENT, response);
@@ -211,7 +201,7 @@ describe('BustDescriptorAdapterService', () => {
       sessionKey: 'session-123',
       characterId: 'character-1',
       descriptor: {
-        presetVersion: 'v1',
+        ...DEFAULT_BUST_DESCRIPTOR_INPUT,
         faceShape: 'square',
         skinTone: 'tan',
         hairStyle: 'mid-fade',
@@ -243,8 +233,7 @@ describe('BustDescriptorAdapterService', () => {
       playerName: 'PilotOne',
       characterId: 'character-1',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
+        ...DEFAULT_BUST_DESCRIPTOR,
         faceShape: 'square',
         skinTone: 'tan',
         hairStyle: 'mid-fade',
@@ -286,8 +275,7 @@ describe('BustDescriptorAdapterService', () => {
       npcId: 'npc-merchant-001',
       deterministicSeed: 'faction:trade|role:merchant|id:001',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
+        ...DEFAULT_BUST_DESCRIPTOR,
         faceShape: 'round',
         skinTone: 'light',
         hairStyle: 'slicked',
@@ -325,8 +313,7 @@ describe('BustDescriptorAdapterService', () => {
       npcId: 'npc-merchant-001',
       deterministicSeed: 'faction:trade|role:merchant|id:001',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
+        ...DEFAULT_BUST_DESCRIPTOR,
         faceShape: 'round',
         skinTone: 'light',
         hairStyle: 'slicked',
@@ -423,8 +410,7 @@ describe('BustDescriptorAdapterService', () => {
       npcId: 'npc-merchant-002',
       deterministicSeed: 'seed-2',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
+        ...DEFAULT_BUST_DESCRIPTOR,
         faceShape: 'round',
         skinTone: 'light',
         hairStyle: 'slicked',
@@ -444,16 +430,7 @@ describe('BustDescriptorAdapterService', () => {
       npcId: 'npc-merchant-001',
       deterministicSeed: 'seed-1',
       descriptor: {
-        schemaVersion: 'sw-15-m0-v1',
-        presetVersion: 'v1',
-        faceShape: 'oval',
-        skinTone: 'medium',
-        hairStyle: 'short-crop',
-        hairColor: 'brown',
-        eyeStyle: 'almond',
-        eyeColor: 'green',
-        expressionPreset: 'neutral',
-        apparelAccent: 'none',
+        ...DEFAULT_BUST_DESCRIPTOR,
       },
       appliedOverrides: [],
     };

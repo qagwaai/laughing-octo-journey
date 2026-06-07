@@ -121,6 +121,33 @@
               }
             </select>
           </div>
+
+          <div class="form-group">
+            <label for="facialHair">{{ t.character.setup.bust.facialHairLabel }}</label>
+            <select id="facialHair" formControlName="facialHair">
+              @for (option of facialHairOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="scar">{{ t.character.setup.bust.scarLabel }}</label>
+            <select id="scar" formControlName="scar">
+              @for (option of scarOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="tattoo">{{ t.character.setup.bust.tattooLabel }}</label>
+            <select id="tattoo" formControlName="tattoo">
+              @for (option of tattooOptions; track option) {
+              <option [value]="option">{{ formatBustOptionLabel(option) }}</option>
+              }
+            </select>
+          </div>
         </div>
       </section>
 

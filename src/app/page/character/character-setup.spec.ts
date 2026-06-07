@@ -23,6 +23,7 @@ import {
 } from '../../model/character-edit';
 import { CHARACTER_NAME_SUGGESTIONS } from '../../model/character-name-suggestions';
 import {
+  type CharacterBustReadResponse,
   type CharacterBustCreateTerminalResponse,
   type CharacterBustUpdateTerminalResponse,
 } from '../../model/bust-descriptor';
@@ -44,6 +45,7 @@ type MockSocketServiceWithUpsert = MockSocketService & {
 };
 
 type MockBustAdapter = {
+  readCharacterBust: jasmine.Spy<(request: any) => Observable<CharacterBustReadResponse>>;
   createCharacterBust: jasmine.Spy<(request: any) => Observable<CharacterBustCreateTerminalResponse>>;
   updateCharacterBust: jasmine.Spy<(request: any) => Observable<CharacterBustUpdateTerminalResponse>>;
 };
@@ -53,6 +55,22 @@ const TEST_REQUEST_IDENTITY = {
   operation: 'test-op',
   entityType: 'test-entity',
   containerId: 'test-container',
+};
+
+const TEST_BUST_DESCRIPTOR = {
+  schemaVersion: 'sw-15-m1-v1' as const,
+  presetVersion: 'v1',
+  faceShape: 'oval' as const,
+  skinTone: 'medium' as const,
+  hairStyle: 'short-crop' as const,
+  hairColor: 'brown' as const,
+  eyeStyle: 'almond' as const,
+  eyeColor: 'green' as const,
+  expressionPreset: 'focused' as const,
+  apparelAccent: 'collar' as const,
+  facialHair: 'none' as const,
+  scar: 'none' as const,
+  tattoo: 'none' as const,
 };
 
 function createExtendedMockSocketService(): MockSocketServiceWithUpsert {
@@ -76,6 +94,21 @@ interface SetupState {
 
 function createMockBustAdapter(): MockBustAdapter {
   return {
+    readCharacterBust: jasmine.createSpy('readCharacterBust').and.callFake((request: { characterId: string }) =>
+      of({
+        success: true,
+        message: 'bust read',
+        correlationId: 'bust-corr-read',
+        requestIdentity: {
+          operation: 'character-bust-read',
+          entityType: 'character-bust',
+          containerId: request.characterId,
+        },
+        playerName: 'Pioneer',
+        characterId: request.characterId,
+        descriptor: TEST_BUST_DESCRIPTOR,
+      } as CharacterBustReadResponse),
+    ),
     createCharacterBust: jasmine.createSpy('createCharacterBust').and.callFake((request: { characterId: string }) =>
       of({
         success: true,
@@ -88,18 +121,7 @@ function createMockBustAdapter(): MockBustAdapter {
         },
         playerName: 'Pioneer',
         characterId: request.characterId,
-        descriptor: {
-          schemaVersion: 'sw-15-m0-v1',
-          presetVersion: 'v1',
-          faceShape: 'oval',
-          skinTone: 'medium',
-          hairStyle: 'short-crop',
-          hairColor: 'brown',
-          eyeStyle: 'almond',
-          eyeColor: 'green',
-          expressionPreset: 'focused',
-          apparelAccent: 'collar',
-        },
+        descriptor: TEST_BUST_DESCRIPTOR,
       } as CharacterBustCreateTerminalResponse),
     ),
     updateCharacterBust: jasmine.createSpy('updateCharacterBust').and.callFake((request: { characterId: string }) =>
@@ -114,18 +136,7 @@ function createMockBustAdapter(): MockBustAdapter {
         },
         playerName: 'Pioneer',
         characterId: request.characterId,
-        descriptor: {
-          schemaVersion: 'sw-15-m0-v1',
-          presetVersion: 'v1',
-          faceShape: 'oval',
-          skinTone: 'medium',
-          hairStyle: 'short-crop',
-          hairColor: 'brown',
-          eyeStyle: 'almond',
-          eyeColor: 'green',
-          expressionPreset: 'focused',
-          apparelAccent: 'collar',
-        },
+        descriptor: TEST_BUST_DESCRIPTOR,
       } as CharacterBustUpdateTerminalResponse),
     ),
   };
@@ -194,6 +205,7 @@ function setup(options: {
 
   const fixture = TestBed.createComponent(CharacterSetupPage);
   fixture.detectChanges();
+  mockRouter.navigate.calls.reset();
   return { component: fixture.componentInstance, fixture, mockRouter };
 }
 
@@ -272,6 +284,71 @@ describe('CharacterSetupPage', () => {
     expect(component['isEditMode']()).toBe(true);
     expect(component['characterForm'].value.characterName).toBe('Nova-Prime');
     expect(component['playerName']()).toBe('Pioneer');
+  });
+
+  it('should preload existing bust descriptor values in edit mode', async () => {
+    const bustAdapter = createMockBustAdapter();
+    bustAdapter.readCharacterBust.and.returnValue(
+      of({
+        success: true,
+        message: 'bust read',
+        correlationId: 'bust-corr-read',
+        requestIdentity: {
+          operation: 'character-bust-read',
+          entityType: 'character-bust',
+          containerId: 'c-1',
+        },
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        descriptor: {
+          ...TEST_BUST_DESCRIPTOR,
+          faceShape: 'square',
+          facialHair: 'goatee',
+          scar: 'chin',
+          tattoo: 'neck-right',
+        },
+      } as CharacterBustReadResponse),
+    );
+
+    const { component, fixture } = setup({
+      socketService,
+      sessionService,
+      bustAdapter,
+      setupState: {
+        playerName: 'Pioneer',
+        mode: 'edit',
+        editCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+      },
+    });
+
+    await fixture.whenStable();
+
+    const previewState = TestBed.inject(CharacterBustPreviewStateService);
+
+    expect(bustAdapter.readCharacterBust).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        playerName: 'Pioneer',
+        sessionKey: 'test-session-key',
+        characterId: 'c-1',
+      }),
+    );
+    expect(component['characterForm'].getRawValue()).toEqual(
+      jasmine.objectContaining({
+        characterName: 'Nova-Prime',
+        faceShape: 'square',
+        facialHair: 'goatee',
+        scar: 'chin',
+        tattoo: 'neck-right',
+      }),
+    );
+    expect(previewState.descriptor()).toEqual(
+      jasmine.objectContaining({
+        faceShape: 'square',
+        facialHair: 'goatee',
+        scar: 'chin',
+        tattoo: 'neck-right',
+      }),
+    );
   });
 
   it('should initialize with unsaved and idle state', () => {
@@ -522,6 +599,9 @@ describe('CharacterSetupPage', () => {
         eyeColor: 'amber',
         expressionPreset: 'smirk',
         apparelAccent: 'visor',
+        facialHair: 'full-beard',
+        scar: 'cheek-left',
+        tattoo: 'neck-left',
       });
 
       const previewState = TestBed.inject(CharacterBustPreviewStateService);
@@ -535,15 +615,48 @@ describe('CharacterSetupPage', () => {
           eyeColor: 'amber',
           expressionPreset: 'smirk',
           apparelAccent: 'visor',
+          facialHair: 'full-beard',
+          scar: 'cheek-left',
+          tattoo: 'neck-left',
         }),
       );
     });
 
-    it('should render the dedicated 3D bust viewer', () => {
+    it('should render selector controls for all 11 bust characteristics', () => {
       const { fixture } = setup({ socketService, sessionService });
 
-      expect(fixture.nativeElement.querySelector('[data-testid="character-bust-viewer"]')).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('[data-testid="character-bust-viewer-state"]')).not.toBeNull();
+      const fieldIds = [
+        'faceShape',
+        'skinTone',
+        'hairStyle',
+        'hairColor',
+        'eyeStyle',
+        'eyeColor',
+        'expressionPreset',
+        'apparelAccent',
+        'facialHair',
+        'scar',
+        'tattoo',
+      ];
+
+      for (const fieldId of fieldIds) {
+        expect(fixture.nativeElement.querySelector(`#${fieldId}`)).withContext(fieldId).not.toBeNull();
+      }
+    });
+
+    it('should initialize preview state for the routed 2D portrait pane', () => {
+      setup({ socketService, sessionService });
+
+      const previewState = TestBed.inject(CharacterBustPreviewStateService);
+      expect(previewState.descriptor()).toEqual(
+        jasmine.objectContaining({
+          faceShape: 'oval',
+          apparelAccent: 'collar',
+          facialHair: 'none',
+          scar: 'none',
+          tattoo: 'none',
+        }),
+      );
     });
 
     it('should keep user on setup page when bust save returns blocked-save response', async () => {
