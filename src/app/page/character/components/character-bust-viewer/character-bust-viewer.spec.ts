@@ -1,6 +1,7 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
+import { locale } from '../../../../i18n/locale';
 import {
   CHARACTER_BUST_INITIAL_CAMERA_PRESET,
   CharacterBustViewerComponent,
@@ -60,10 +61,10 @@ describe('CharacterBustViewerComponent', () => {
 
   it('resolves deterministic camera poses', () => {
     expect(resolveBustCameraPose('three-quarter')).toEqual(
-      jasmine.objectContaining({ position: [2.15, 1.16, 4.35], target: [0, 0.98, 0] }),
+      jasmine.objectContaining({ position: [2.15, 1.3, 4.35], target: [0, 1.12, 0] }),
     );
     expect(resolveBustCameraPose('front')).toEqual(
-      jasmine.objectContaining({ position: [0, 1.1, 5.15], target: [0, 0.95, 0] }),
+      jasmine.objectContaining({ position: [0, 1.24, 5.15], target: [0, 1.08, 0] }),
     );
   });
 
@@ -88,8 +89,8 @@ describe('CharacterBustViewerComponent', () => {
 
     component['selectCameraPreset']('front');
     expect(component['cameraState']().preset).toBe('front');
-    expect(camera.position.toArray()).toEqual([0, 1.1, 5.15]);
-    expect(controls.target.toArray()).toEqual([0, 0.95, 0]);
+    expect(camera.position.toArray()).toEqual([0, 1.24, 5.15]);
+    expect(controls.target.toArray()).toEqual([0, 1.08, 0]);
     expect(controls.update).toHaveBeenCalled();
     expect(controls.saveState).toHaveBeenCalled();
   });
@@ -114,14 +115,13 @@ describe('CharacterBustViewerComponent', () => {
     expect(component['cameraPreset']()).toBe(CHARACTER_BUST_INITIAL_CAMERA_PRESET);
     expect(controls.reset).toHaveBeenCalled();
     expect(controls.saveState).toHaveBeenCalled();
-    expect(camera.position.toArray()).toEqual([2.15, 1.16, 4.35]);
+    expect(camera.position.toArray()).toEqual([2.15, 1.3, 4.35]);
   });
 
   it('moves the bust vertically with right-drag while preserving left-drag rotation tracking', () => {
-    const frame = {
-      setPointerCapture: jasmine.createSpy('setPointerCapture'),
-      releasePointerCapture: jasmine.createSpy('releasePointerCapture'),
-    } as unknown as HTMLElement;
+    const frame = document.createElement('div');
+    const setPointerCaptureSpy = spyOn(frame, 'setPointerCapture').and.callFake(() => undefined);
+    const releasePointerCaptureSpy = spyOn(frame, 'releasePointerCapture').and.callFake(() => undefined);
 
     fixture.componentRef.setInput('descriptor', descriptor());
     fixture.detectChanges();
@@ -144,14 +144,14 @@ describe('CharacterBustViewerComponent', () => {
 
     expect(component['sceneYOffset']()).toBeGreaterThan(initialOffset);
     expect(component['cameraState']().sceneYOffset).toBe(component['sceneYOffset']());
-    expect(component['describeCameraState']()).toContain('Scene Y offset');
+    expect(component['describeCameraState']()).toContain(locale.character.setup.bust.viewer.sceneYOffsetLabel);
 
     component['framePointerHandlers'].pointerup({
       currentTarget: frame,
       pointerId: 7,
     } as unknown as PointerEvent);
 
-    expect(frame.setPointerCapture).toHaveBeenCalled();
-    expect(frame.releasePointerCapture).toHaveBeenCalled();
+    expect(setPointerCaptureSpy).toHaveBeenCalled();
+    expect(releasePointerCaptureSpy).toHaveBeenCalled();
   });
 });

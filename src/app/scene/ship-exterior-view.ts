@@ -1923,12 +1923,11 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       launchable: item.launchable,
     }));
     const shipRecord = ship as Record<string, unknown> | null;
-    const inventoryItemIds = Array.isArray(shipRecord?.['inventoryItemIds'])
-      ? (shipRecord?.['inventoryItemIds'] as unknown[])
-      : [];
-    const inventoryIds = Array.isArray(shipRecord?.['inventoryIds']) ? (shipRecord?.['inventoryIds'] as unknown[]) : [];
+    const inventoryItemIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryItemIds');
+    const inventoryIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryIds');
+    const inventoryRefIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryRefIds');
     const hasInventoryArray = Array.isArray(ship?.inventory);
-    const hasLegacyInventoryIds = inventoryItemIds.length > 0 || inventoryIds.length > 0;
+    const hasLegacyInventoryIds = inventoryItemIds.length > 0 || inventoryIds.length > 0 || inventoryRefIds.length > 0;
 
     const shipId = ship?.id?.trim() ?? '';
     const emptyInventoryExpectedFromLaunch = shipId.length > 0 && this.knownDroneDepletedShipIds.has(shipId);
@@ -1949,6 +1948,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         hasInventoryArray,
         inventoryItemIdsCount: inventoryItemIds.length,
         inventoryIdsCount: inventoryIds.length,
+        inventoryRefIdsCount: inventoryRefIds.length,
       });
     }
 
@@ -2036,12 +2036,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       ? this.asteroidSamples().find((sample) => sample.id === targetedSampleId) ?? null
       : null;
     const shipRecord = (navigationShip as unknown as Record<string, unknown> | null) ?? null;
-    const inventoryItemIds = Array.isArray(shipRecord?.['inventoryItemIds'])
-      ? ((shipRecord?.['inventoryItemIds'] as unknown[]).filter((value) => typeof value === 'string') as string[])
-      : [];
-    const inventoryIds = Array.isArray(shipRecord?.['inventoryIds'])
-      ? ((shipRecord?.['inventoryIds'] as unknown[]).filter((value) => typeof value === 'string') as string[])
-      : [];
+    const inventoryItemIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryItemIds');
+    const inventoryIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryIds');
+    const inventoryRefIds = this.resolveInventoryReferenceIds(shipRecord, 'inventoryRefIds');
 
     return {
       shipId: this.activeShipId(),
@@ -2053,13 +2050,27 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       launchableInventoryItemTypes: launchableInventory.map((item) => item.itemType),
       shipInventoryItemIdsCount: inventoryItemIds.length,
       shipInventoryIdsCount: inventoryIds.length,
+      shipInventoryRefIdsCount: inventoryRefIds.length,
       shipInventoryItemIds: inventoryItemIds,
       shipInventoryIds: inventoryIds,
+      shipInventoryRefIds: inventoryRefIds,
       targetedSampleId,
       targetedSampleServerCelestialBodyId: targetedSample?.serverCelestialBodyId ?? null,
       targetedSampleScanned: targetedSample?.scanned ?? null,
       targetedSampleMaterial: targetedSample?.revealedMaterial?.material ?? null,
     };
+  }
+
+  private resolveInventoryReferenceIds(
+    shipRecord: Record<string, unknown> | null,
+    key: 'inventoryItemIds' | 'inventoryIds' | 'inventoryRefIds',
+  ): string[] {
+    const raw = shipRecord?.[key];
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+
+    return raw.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
   }
 
   private serializeLaunchDebugValue(value: unknown): string {

@@ -561,6 +561,14 @@ export class SocketService {
           return;
         }
 
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        // Multiple item-upsert requests can legitimately be in flight at once.
+        // Ignore responses targeted at other correlations without surfacing
+        // a contract warning for this listener.
+        if (responseCorrelationId && responseCorrelationId !== correlationId) {
+          return;
+        }
+
         if (!isItemUpsertResponseForRequest(response, correlationId, requestIdentity)) {
           appLogger.warn(
             `[socket-correlation] Dropping mismatched item-upsert response. expectedCorrelationId=${correlationId} expectedEntityType=${requestIdentity.entityType} expectedContainerId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseEntityType=${response.item?.itemType ?? 'missing'} responseContainerId=${response.item?.container?.containerId ?? 'missing'}`,

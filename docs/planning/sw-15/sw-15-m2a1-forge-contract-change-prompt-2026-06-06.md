@@ -2,7 +2,7 @@
 Forge, implement the SW-15 contract change for three new character bust descriptor fields: facialHair, scar, and tattoo.
 
 Context and source documents:
-- c:/Development/Projects/Github/laughing-octo-journey/docs/planning/sw-15/sw-15-m3-character-preview-2d-design.md
+- c:/Development/Projects/Github/laughing-octo-journey/docs/planning/sw-15/sw-15-m2a1-character-preview-2d-design.md
 - c:/Development/Projects/Github/laughing-octo-journey/src/app/model/bust-descriptor.ts
 - c:/Development/Projects/Github/laughing-octo-journey/docs/planning/sw-15/sw-15-m0v-verification-note.md
 

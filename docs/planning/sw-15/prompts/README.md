@@ -1,6 +1,6 @@
 # SW-15 Prompt Pack
 
-This directory contains Midjourney-ready prompt docs for the six proof-of-technology portrait assets defined in the SW-15 M3 2D character preview brief.
+This directory contains Midjourney-ready prompt docs for the six proof-of-technology portrait assets defined in the SW-15 M2A1 2D character preview brief.
 
 ## Prompt Rules
 

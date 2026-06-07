@@ -87,16 +87,16 @@ test.describe('Character Edit — setup save redirect', () => {
     expect(shipListRequestCount).toBe(0);
   });
 
-  test('renders the 3D bust viewer in edit mode', async ({ page }) => {
+  test('renders the 2D portrait preview in edit mode', async ({ page }) => {
     const { characterListPage, characterSetupPage } = await setupCharacterEditTest(page);
 
     await expect(characterListPage.characterItems).toHaveCount(1);
     await characterListPage.editButton(0).click();
     await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
 
-    await expect(characterSetupPage.bustViewer).toBeVisible();
-    await expect(characterSetupPage.bustViewerAssetRoot).toContainText('src/assets/models/characters/busts/sw15/');
-    await expect(characterSetupPage.bustViewerState).toContainText('Three-quarter');
+    await expect(characterSetupPage.previewImage).toBeVisible();
+    await expect(characterSetupPage.previewImageAssetName).toContainText('.jpeg');
+    await expect(characterSetupPage.previewImageState).toContainText('.jpeg');
   });
 
   test('blocks edit when renaming to another existing character name', async ({ page }) => {
@@ -131,5 +131,35 @@ test.describe('Character Edit — setup save redirect', () => {
     await expect(characterSetupPage.submitButton).toBeDisabled();
     await expect(characterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
     expect(editRequestCount).toBe(0);
+  });
+
+  test('shows server-side edit error and stays on setup page', async ({ page }) => {
+    const { mock, characterListPage, characterSetupPage } = await setupCharacterEditTest(page);
+
+    let editRequestCount = 0;
+    mock.on('character-edit-request', () => {
+      editRequestCount += 1;
+      return {
+        event: 'character-edit-response',
+        data: {
+          success: false,
+          message: 'Character name already exists.',
+          playerName: TEST_PLAYER,
+          characterId: 'char-edit-001',
+        },
+      };
+    });
+
+    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.editButton(0).click();
+    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+
+    await characterSetupPage.fillCharacterName('Zara Prime');
+    await characterSetupPage.clickSubmit();
+
+    expect(editRequestCount).toBe(1);
+    await expect(characterSetupPage.errorMessage).toContainText('Character name already exists.');
+    await expect(characterSetupPage.successMessage).not.toBeVisible();
+    await expect(page).toHaveURL(/left:character-setup/);
   });
 });

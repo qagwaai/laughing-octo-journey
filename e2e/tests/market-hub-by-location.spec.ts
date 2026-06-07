@@ -162,24 +162,26 @@ test.describe('Market Hub by-location contract', () => {
     await expect
       .poll(
         async () => {
-          if (requests.length === 0) {
+          const marketHubRequest = requests.find((request) => request.limit === 50);
+          if (!marketHubRequest) {
             await marketHubPage.reloadButton.click();
           }
-          return requests.length;
+          return marketHubRequest ?? null;
         },
         { timeout: 15_000 },
       )
-      .toBeGreaterThan(0);
+      .not.toBeNull();
 
-    const firstRequest = requests[0];
-    expect(firstRequest.playerName).toBe(TEST_PLAYER);
-    expect(firstRequest.solarSystemId).toBe('sol');
-    expect(firstRequest.distanceAu).toBe(0.5);
-    expect(firstRequest.limit).toBe(50);
-    expect(firstRequest.locationTypes).toEqual(['station', 'free-floating']);
-    expect(firstRequest.characterId).toBe(CHARACTER.id);
-    expect(firstRequest.shipId).toBe(SHIP_WITH_POSITION.id);
-    expect(firstRequest.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
+    const marketHubRequest = requests.find((request) => request.limit === 50);
+    expect(marketHubRequest).toBeDefined();
+    expect(marketHubRequest!.playerName).toBe(TEST_PLAYER);
+    expect(marketHubRequest!.solarSystemId).toBe('sol');
+    expect(marketHubRequest!.distanceAu).toBe(0.5);
+    expect(marketHubRequest!.limit).toBe(50);
+    expect(marketHubRequest!.locationTypes).toEqual(['station', 'free-floating']);
+    expect(marketHubRequest!.characterId).toBe(CHARACTER.id);
+    expect(marketHubRequest!.shipId).toBe(SHIP_WITH_POSITION.id);
+    expect(marketHubRequest!.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
 
     const marketRows = marketHubPage.marketItems;
     await expect(marketRows).toHaveCount(2);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, NgZone, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
@@ -80,6 +80,7 @@ const DEFAULT_BUST_DESCRIPTOR: BustDescriptorInput = {
 export default class CharacterSetupPage implements OnDestroy {
   protected readonly t = locale;
   private fb = inject(FormBuilder);
+  private ngZone = inject(NgZone);
   private router = inject(Router);
   private characterService = inject(CharacterService);
   private bustAdapter = inject(BustDescriptorAdapterService);
@@ -91,6 +92,9 @@ export default class CharacterSetupPage implements OnDestroy {
   private unsubscribeAddResponse?: () => void;
   private unsubscribeInvalidSession?: () => void;
   private bustFormSubscription?: Subscription;
+  private bustAutoSavePending = false;
+  private bustAutoSaveReady = false;
+  private bustAutoSaveDescriptorSignature: string | null = null;
   private setupState: CharacterSetupNavigationState = resolveNavigationState<CharacterSetupNavigationState>(
     this.router,
   );
@@ -173,6 +177,7 @@ export default class CharacterSetupPage implements OnDestroy {
     this.bustFormSubscription = this.characterForm.valueChanges.subscribe(() => {
       this.syncPreviewDescriptor();
       this.clearBustResponseState();
+      this.queueBustAutoSave();
     });
 
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
@@ -235,20 +240,25 @@ export default class CharacterSetupPage implements OnDestroy {
           ? this.editCharacter()?.id?.trim() ?? ''
           : (response as CharacterAddResponse).characterId?.trim() ?? '';
 
-        if (!isEditMode) {
-          const addResponse = response as CharacterAddResponse;
-          await this.createStarterShipForCharacter(addResponse.characterId);
-        }
-
         if (persistedCharacterId) {
-          const isBustSaved = await this.persistCharacterBustDescriptor(persistedCharacterId, isEditMode);
-          if (!isBustSaved) {
-            this.isSaved.set(false);
-            return;
+          if (isEditMode) {
+            const isBustSaved = await this.persistCharacterBustDescriptor(persistedCharacterId, true);
+            if (!isBustSaved) {
+              this.isSaved.set(false);
+              return;
+            }
+          } else {
+            // Do not strand the user on setup if the backend bust create response never arrives.
+            this.persistCharacterBustDescriptorInBackground(persistedCharacterId);
           }
         }
 
         this.navigateToCharacterList();
+
+        if (!isEditMode) {
+          const addResponse = response as CharacterAddResponse;
+          void this.createStarterShipForCharacter(addResponse.characterId);
+        }
       } else {
         this.isSaved.set(false);
         this.successMessage.set(null);
@@ -266,7 +276,7 @@ export default class CharacterSetupPage implements OnDestroy {
         sessionKey: this.sessionService.getSessionKey()!,
       };
       this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
-        void handleSaveResponse(response);
+        void this.ngZone.run(() => handleSaveResponse(response));
       });
       return;
     }
@@ -277,7 +287,7 @@ export default class CharacterSetupPage implements OnDestroy {
       sessionKey: this.sessionService.getSessionKey()!,
     };
     this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
-      void handleSaveResponse(response);
+      void this.ngZone.run(() => handleSaveResponse(response));
     });
   }
 
@@ -440,7 +450,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
   navigateToCharacterList(): void {
     const playerName = this.playerName() || this.characterForm.value.characterName || '';
-    this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+    this.router.navigate([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
       preserveFragment: true,
       state: { playerName },
     });
@@ -541,6 +551,48 @@ export default class CharacterSetupPage implements OnDestroy {
     this.bustBlockedSave.set(null);
   }
 
+  private queueBustAutoSave(): void {
+    if (!this.shouldAutoSaveBustDescriptor()) {
+      return;
+    }
+
+    const descriptorSignature = this.bustDescriptorSignature(this.previewState.descriptor() ?? DEFAULT_BUST_DESCRIPTOR);
+    if (descriptorSignature === this.bustAutoSaveDescriptorSignature || this.bustAutoSavePending) {
+      return;
+    }
+
+    this.bustAutoSavePending = true;
+    void Promise.resolve().then(async () => {
+      this.bustAutoSavePending = false;
+
+      if (!this.shouldAutoSaveBustDescriptor()) {
+        return;
+      }
+
+      const characterId = this.editCharacter()?.id?.trim() ?? '';
+      if (!characterId) {
+        return;
+      }
+
+      const currentSignature = this.bustDescriptorSignature(this.previewState.descriptor() ?? DEFAULT_BUST_DESCRIPTOR);
+      if (currentSignature === this.bustAutoSaveDescriptorSignature) {
+        return;
+      }
+
+      if (await this.persistCharacterBustDescriptor(characterId, true)) {
+        this.bustAutoSaveDescriptorSignature = currentSignature;
+      }
+    });
+  }
+
+  private shouldAutoSaveBustDescriptor(): boolean {
+    return this.isEditMode() && this.bustAutoSaveReady && !this.isSubmitting();
+  }
+
+  private bustDescriptorSignature(descriptor: BustDescriptorInput): string {
+    return JSON.stringify(descriptor);
+  }
+
   private initializeEditModeBustDescriptor(): void {
     if (!this.isEditMode()) {
       return;
@@ -560,6 +612,8 @@ export default class CharacterSetupPage implements OnDestroy {
           return;
         }
 
+        this.bustAutoSaveDescriptorSignature = this.bustDescriptorSignature(response.descriptor);
+
         this.characterForm.patchValue({
           faceShape: response.descriptor.faceShape,
           skinTone: response.descriptor.skinTone,
@@ -577,6 +631,16 @@ export default class CharacterSetupPage implements OnDestroy {
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         appLogger.warn(`Unable to preload existing bust descriptor for edit mode: ${message}`);
+      })
+      .finally(() => {
+        if (this.isEditMode()) {
+          this.bustAutoSaveReady = true;
+          if (this.bustAutoSaveDescriptorSignature === null) {
+            this.bustAutoSaveDescriptorSignature = this.bustDescriptorSignature(
+              this.previewState.descriptor() ?? DEFAULT_BUST_DESCRIPTOR,
+            );
+          }
+        }
       });
   }
 
@@ -598,6 +662,7 @@ export default class CharacterSetupPage implements OnDestroy {
       if (response.success) {
         this.pendingBustCharacterId.set(null);
         this.clearBustResponseState();
+        this.bustAutoSaveDescriptorSignature = this.bustDescriptorSignature(descriptor);
         return true;
       }
 
@@ -618,6 +683,14 @@ export default class CharacterSetupPage implements OnDestroy {
       this.pendingBustCharacterId.set(characterId);
       return false;
     }
+  }
+
+  private persistCharacterBustDescriptorInBackground(characterId: string): void {
+    void this.persistCharacterBustDescriptor(characterId, false).then((isBustSaved) => {
+      if (!isBustSaved) {
+        appLogger.warn(`Character bust descriptor save did not complete before redirect for character ${characterId}.`);
+      }
+    });
   }
 
   ngOnDestroy(): void {

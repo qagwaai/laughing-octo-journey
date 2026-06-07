@@ -3,15 +3,15 @@ import { CharacterBustPreviewStateService } from '../../services/character-bust-
 import CharacterBustPreviewPaneComponent from './character-bust-preview-pane';
 
 describe('CharacterBustPreviewPaneComponent', () => {
-  beforeEach(() => {
-    TestBed.inject(CharacterBustPreviewStateService).clear();
-  });
-
-  it('renders empty state when no descriptor is set', async () => {
+  beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CharacterBustPreviewPaneComponent],
     }).compileComponents();
 
+    TestBed.inject(CharacterBustPreviewStateService).clear();
+  });
+
+  it('renders empty state when no descriptor is set', async () => {
     const fixture = TestBed.createComponent(CharacterBustPreviewPaneComponent);
     fixture.detectChanges();
 
@@ -20,10 +20,6 @@ describe('CharacterBustPreviewPaneComponent', () => {
   });
 
   it('renders the bust viewer when a descriptor is set', async () => {
-    await TestBed.configureTestingModule({
-      imports: [CharacterBustPreviewPaneComponent],
-    }).compileComponents();
-
     const state = TestBed.inject(CharacterBustPreviewStateService);
     state.updateDescriptor({
       presetVersion: 'sw-15-m2-a-v1',
