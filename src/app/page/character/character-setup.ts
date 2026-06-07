@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, NgZone, OnDestroy, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
@@ -80,6 +80,7 @@ const DEFAULT_BUST_DESCRIPTOR: BustDescriptorInput = {
 export default class CharacterSetupPage implements OnDestroy {
   protected readonly t = locale;
   private fb = inject(FormBuilder);
+  private ngZone = inject(NgZone);
   private router = inject(Router);
   private characterService = inject(CharacterService);
   private bustAdapter = inject(BustDescriptorAdapterService);
@@ -239,20 +240,25 @@ export default class CharacterSetupPage implements OnDestroy {
           ? this.editCharacter()?.id?.trim() ?? ''
           : (response as CharacterAddResponse).characterId?.trim() ?? '';
 
-        if (!isEditMode) {
-          const addResponse = response as CharacterAddResponse;
-          await this.createStarterShipForCharacter(addResponse.characterId);
-        }
-
         if (persistedCharacterId) {
-          const isBustSaved = await this.persistCharacterBustDescriptor(persistedCharacterId, isEditMode);
-          if (!isBustSaved) {
-            this.isSaved.set(false);
-            return;
+          if (isEditMode) {
+            const isBustSaved = await this.persistCharacterBustDescriptor(persistedCharacterId, true);
+            if (!isBustSaved) {
+              this.isSaved.set(false);
+              return;
+            }
+          } else {
+            // Do not strand the user on setup if the backend bust create response never arrives.
+            this.persistCharacterBustDescriptorInBackground(persistedCharacterId);
           }
         }
 
         this.navigateToCharacterList();
+
+        if (!isEditMode) {
+          const addResponse = response as CharacterAddResponse;
+          void this.createStarterShipForCharacter(addResponse.characterId);
+        }
       } else {
         this.isSaved.set(false);
         this.successMessage.set(null);
@@ -270,7 +276,7 @@ export default class CharacterSetupPage implements OnDestroy {
         sessionKey: this.sessionService.getSessionKey()!,
       };
       this.unsubscribeAddResponse = this.characterService.editCharacter(request, (response: CharacterEditResponse) => {
-        void handleSaveResponse(response);
+        void this.ngZone.run(() => handleSaveResponse(response));
       });
       return;
     }
@@ -281,7 +287,7 @@ export default class CharacterSetupPage implements OnDestroy {
       sessionKey: this.sessionService.getSessionKey()!,
     };
     this.unsubscribeAddResponse = this.characterService.addCharacter(request, (response: CharacterAddResponse) => {
-      void handleSaveResponse(response);
+      void this.ngZone.run(() => handleSaveResponse(response));
     });
   }
 
@@ -444,7 +450,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
   navigateToCharacterList(): void {
     const playerName = this.playerName() || this.characterForm.value.characterName || '';
-    this.router.navigate([{ outlets: { left: ['character-list'] } }], {
+    this.router.navigate([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
       preserveFragment: true,
       state: { playerName },
     });
@@ -677,6 +683,14 @@ export default class CharacterSetupPage implements OnDestroy {
       this.pendingBustCharacterId.set(characterId);
       return false;
     }
+  }
+
+  private persistCharacterBustDescriptorInBackground(characterId: string): void {
+    void this.persistCharacterBustDescriptor(characterId, false).then((isBustSaved) => {
+      if (!isBustSaved) {
+        appLogger.warn(`Character bust descriptor save did not complete before redirect for character ${characterId}.`);
+      }
+    });
   }
 
   ngOnDestroy(): void {

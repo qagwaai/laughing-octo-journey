@@ -1,7 +1,7 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { Observable, of } from 'rxjs';
+import { NEVER, Observable, of } from 'rxjs';
 
 import {
   createMockSessionService,
@@ -491,7 +491,7 @@ describe('CharacterSetupPage', () => {
       expect(component['isSaved']()).toBe(true);
       expect(component['successMessage']()).toBe("Character 'Nova-Prime' updated.");
       expect(component['errorMessage']()).toBeNull();
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
         preserveFragment: true,
         state: { playerName: 'Pioneer' },
       });
@@ -605,35 +605,50 @@ describe('CharacterSetupPage', () => {
         characterName: 'Nova-Prime',
         characterId: 'c-1',
       } satisfies CharacterAddResponse);
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
-        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
-        | undefined;
-
-      expect(mockRouter.navigate).not.toHaveBeenCalled();
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
       await fixture.whenStable();
 
       expect(component['isSubmitting']()).toBe(false);
       expect(component['isSaved']()).toBe(true);
       expect(component['successMessage']()).toBe("Character 'Nova-Prime' created.");
       expect(component['errorMessage']()).toBeNull();
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
         preserveFragment: true,
         state: { playerName: 'Pioneer' },
       });
+    });
+
+    it('should navigate after create even if bust save does not settle', async () => {
+      const bustAdapter = createMockBustAdapter();
+      bustAdapter.createCharacterBust.and.returnValue(NEVER);
+
+      const { component, mockRouter, fixture } = setup({ socketService, sessionService, bustAdapter });
+      component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
+      component.saveCharacter();
+      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
+
+      socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
+        success: true,
+        message: "Character 'Nova-Prime' created.",
+        correlationId: addRequest.correlationId!,
+        requestIdentity: addRequest.requestIdentity!,
+        playerName: 'Pioneer',
+        characterName: 'Nova-Prime',
+        characterId: 'c-1',
+      } satisfies CharacterAddResponse);
+
+      await fixture.whenStable();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
+        preserveFragment: true,
+        state: { playerName: 'Pioneer' },
+      });
+      expect(bustAdapter.createCharacterBust).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'test-session-key',
+          characterId: 'c-1',
+        }),
+      );
     });
 
     it('should sync selector controls to live preview descriptor', () => {
@@ -708,15 +723,15 @@ describe('CharacterSetupPage', () => {
       );
     });
 
-    it('should keep user on setup page when bust save returns blocked-save response', async () => {
+    it('should keep user on setup page when edit bust save returns blocked-save response', async () => {
       const bustAdapter = createMockBustAdapter();
-      bustAdapter.createCharacterBust.and.returnValue(
+      bustAdapter.updateCharacterBust.and.returnValue(
         of({
           success: false,
           message: 'Bust save blocked',
           correlationId: 'blocked-corr',
           requestIdentity: {
-            operation: 'character-bust-create',
+            operation: 'character-bust-update',
             entityType: 'character-bust',
             containerId: 'c-1',
           },
@@ -727,37 +742,29 @@ describe('CharacterSetupPage', () => {
         } satisfies CharacterBustCreateTerminalResponse),
       );
 
-      const { component, mockRouter } = setup({ socketService, sessionService, bustAdapter });
+      const { component, mockRouter } = setup({
+        socketService,
+        sessionService,
+        bustAdapter,
+        setupState: {
+          playerName: 'Pioneer',
+          mode: 'edit',
+          editCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+      });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
-      const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterAddRequest;
+      const editRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterEditRequest;
 
-      socketService.triggerEvent(CHARACTER_ADD_RESPONSE_EVENT, {
+      socketService.triggerEvent(CHARACTER_EDIT_RESPONSE_EVENT, {
         success: true,
-        message: "Character 'Nova-Prime' created.",
-        correlationId: addRequest.correlationId!,
-        requestIdentity: addRequest.requestIdentity!,
+        message: "Character 'Nova-Prime' updated.",
+        correlationId: editRequest.correlationId!,
+        requestIdentity: editRequest.requestIdentity!,
         playerName: 'Pioneer',
-        characterName: 'Nova-Prime',
         characterId: 'c-1',
-      } satisfies CharacterAddResponse);
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
-        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
-        | undefined;
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
+        characterName: 'Nova-Prime',
+      } satisfies CharacterEditResponse);
 
       await Promise.resolve();
       await Promise.resolve();
@@ -810,7 +817,7 @@ describe('CharacterSetupPage', () => {
       component['playerName'].set('Pioneer');
       component.navigateToCharacterList();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
         preserveFragment: true,
         state: { playerName: 'Pioneer' },
       });
@@ -822,7 +829,7 @@ describe('CharacterSetupPage', () => {
       component['characterForm'].patchValue({ characterName: 'Nova' });
       component.navigateToCharacterList();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
         preserveFragment: true,
         state: { playerName: 'Nova' },
       });
@@ -877,9 +884,10 @@ describe('CharacterSetupPage', () => {
       } satisfies CharacterAddResponse);
     }
 
-    it('should emit owner-scoped ship list after successful character-add', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should emit owner-scoped ship list after successful character-add', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListEmit = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT);
       expect(shipListEmit).toBeDefined();
@@ -895,9 +903,10 @@ describe('CharacterSetupPage', () => {
       );
     });
 
-    it('should set warningMessage when ship-list-response fails', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should set warningMessage when ship-list-response fails', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
         | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
@@ -917,9 +926,10 @@ describe('CharacterSetupPage', () => {
       expect(component['warningMessage']()).toBe('Character created, but starter ship could not be resolved yet.');
     });
 
-    it('should set warningMessage when ship-list-response has no ships', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should set warningMessage when ship-list-response has no ships', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
         | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
@@ -937,9 +947,10 @@ describe('CharacterSetupPage', () => {
       expect(component['warningMessage']()).toBe('Character created, but no starter ship record was returned.');
     });
 
-    it('should emit ship-upsert-request when ship-list-response succeeds with a ship', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should emit ship-upsert-request when ship-list-response succeeds with a ship', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
         | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
@@ -965,41 +976,21 @@ describe('CharacterSetupPage', () => {
       ]);
     });
 
-    it('should defer navigation until starter ship provisioning settles', async () => {
+    it('should navigate before starter ship provisioning settles', async () => {
       const { component, mockRouter, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
-
-      const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
-        | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
-        | undefined;
-
-      expect(mockRouter.navigate).not.toHaveBeenCalled();
-
-      socketService.triggerEvent(
-        SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-        createShipListResponse({
-          correlationId: shipListRequest?.correlationId,
-          requestIdentity: shipListRequest?.requestIdentity,
-        }),
-      );
-      expect(mockRouter.navigate).not.toHaveBeenCalled();
-
-      socketService.triggerOnce(SHIP_UPSERT_RESPONSE_EVENT, {
-        success: true,
-        message: 'ok',
-        playerName: 'Pioneer',
-      });
       await fixture.whenStable();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-list'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
         preserveFragment: true,
         state: { playerName: 'Pioneer' },
       });
     });
 
-    it('should set warningMessage when ship-upsert-response fails', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should set warningMessage when ship-upsert-response fails', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
         | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }
@@ -1021,10 +1012,11 @@ describe('CharacterSetupPage', () => {
       expect(component['warningMessage']()).toBe('Character created, but starter ship position update failed.');
     });
 
-    it('should clear warningMessage after successful ship upsert', () => {
-      const { component } = setup({ socketService, sessionService });
+    it('should clear warningMessage after successful ship upsert', async () => {
+      const { component, fixture } = setup({ socketService, sessionService });
       component['warningMessage'].set('Previous warning');
       triggerSuccessfulCharacterAdd(component, 'c-1');
+      await fixture.whenStable();
 
       const shipListRequest = socketService.emittedEvents.find((e) => e.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as
         | { correlationId?: string; requestIdentity?: ShipListByOwnerResponse['requestIdentity'] }

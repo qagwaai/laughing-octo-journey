@@ -436,6 +436,7 @@ describe('SocketService', () => {
 
     it('should register canonical response listener and resolve only matching item-upsert responses', () => {
       jasmine.clock().install();
+      const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
@@ -535,6 +536,7 @@ describe('SocketService', () => {
       const canonicalCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
       canonicalCallbacks[0]?.(mismatchResponse);
       expect(callbackResponse).toBeUndefined();
+      expect(dispatchSpy).not.toHaveBeenCalled();
 
       canonicalCallbacks[0]?.(fakeResponse);
       jasmine.clock().tick(1000);
@@ -542,6 +544,91 @@ describe('SocketService', () => {
 
       expect(callbackResponse).toEqual(fakeResponse);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
+    });
+
+    it('should warn on same-correlation item-upsert identity mismatch', () => {
+      jasmine.clock().install();
+      const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+
+      const emittedEvents: Array<{ event: string; payload: unknown }> = [];
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
+
+      const mockSocket = {
+        connected: true,
+        emit: (event: string, data?: unknown) => {
+          emittedEvents.push({ event, payload: data });
+        },
+        once: (_event: string, _callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
+        },
+        off: (event: string, callback?: Function) => {
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
+        disconnect: () => {},
+      };
+      service['socket'] = mockSocket as any;
+
+      const request: ItemUpsertRequest = {
+        playerName: 'Pioneer',
+        sessionKey: 'session-123',
+        item: {
+          itemType: 'magnesium',
+          displayName: 'Magnesium',
+          state: 'contained',
+          damageStatus: 'intact',
+          container: { containerType: 'ship', containerId: 'ship-1' },
+          owningCharacterId: 'char-1',
+        },
+      };
+
+      let callbackResponse: unknown;
+      service.upsertItem(request, (response) => {
+        callbackResponse = response;
+      });
+
+      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload as ItemUpsertRequest;
+      const correlationId = requestPayload.correlationId!;
+
+      const sameCorrelationMismatchResponse = {
+        success: true,
+        message: 'mismatch',
+        playerName: 'Pioneer',
+        correlationId,
+        requestIdentity: {
+          operation: 'item-upsert',
+          entityType: 'silicon',
+          containerId: 'ship-1',
+        },
+        item: {
+          ...request.item,
+          itemType: 'silicon',
+          id: 'item-2',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      };
+
+      const canonicalCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
+      canonicalCallbacks[0]?.(sameCorrelationMismatchResponse);
+
+      expect(callbackResponse).toBeUndefined();
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        jasmine.objectContaining({
+          type: 'socket-correlation-warning',
+        }),
+      );
     });
 
     it('should emit only canonical item-upsert request when no response arrives', () => {
