@@ -326,6 +326,36 @@ describe('ShipExteriorViewScene', () => {
     expect(emptyInventoryWarningCalls.length).toBe(0);
   });
 
+  it('warns empty-inventory payload when legacy inventoryRefIds are present', () => {
+    const warnSpy = spyOn(appLogger, 'warn');
+
+    const { component } = setup({
+      joinShip: {
+        id: 's-6b',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'i-dart-6b', itemType: 'expendable-dart-drone', launchable: true }],
+      },
+    });
+
+    component['updateTargetingCapabilityFromShipList']([
+      {
+        id: 's-6b',
+        model: 'Scavenger Pod',
+        inventory: [],
+        inventoryRefIds: ['s-6b-dart-ref'],
+      },
+    ] as any);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[ship-exterior-contract] Ship list response contains ship with empty inventory payload.',
+      jasmine.objectContaining({
+        source: 'ship-list-response',
+        shipId: 's-6b',
+        inventoryRefIdsCount: 1,
+      }),
+    );
+  });
+
   it('does not warn missing dart drone once first-target neutralize step is completed', () => {
     const warnSpy = spyOn(appLogger, 'warn');
 

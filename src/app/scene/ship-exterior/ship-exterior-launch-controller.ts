@@ -33,6 +33,8 @@ interface ShipExteriorLaunchControllerDeps {
  * mission gate persistence, toast feedback, and post-launch refresh requests.
  */
 export class ShipExteriorLaunchController {
+  private static readonly MISSION_PROGRESS_UPSERT_AFTER_REWARD_DELAY_MS = 150;
+
   constructor(private readonly deps: ShipExteriorLaunchControllerDeps) {}
 
   private normalizeMaterialToken(value: string): string {
@@ -142,11 +144,14 @@ export class ShipExteriorLaunchController {
       if (launchEvaluation.changed) {
         this.deps.setMissionGateState(launchEvaluation.gateState);
         this.deps.persistMissionGateState(launchEvaluation.gateState);
-        this.deps.enqueueMissionProgressUpsert({
-          gateState: launchEvaluation.gateState,
-          completedStepKey: launchEvaluation.completedStepKey,
-          toastMessage: launchEvaluation.completionToastMessage,
-        });
+        this.enqueueMissionProgressUpsertWithContentionBackoff(
+          {
+            gateState: launchEvaluation.gateState,
+            completedStepKey: launchEvaluation.completedStepKey,
+            toastMessage: launchEvaluation.completionToastMessage,
+          },
+          materialRewards.length > 0,
+        );
         this.deps.invokePluginHook('onLaunch', { response, gateState: launchEvaluation.gateState });
         if (launchEvaluation.completionToastMessage) {
           toastMessage = `${toastMessage} ${launchEvaluation.completionToastMessage}`;
@@ -158,5 +163,24 @@ export class ShipExteriorLaunchController {
     if (missionResolution.shouldRefreshAfterLaunch) {
       this.deps.queuePostLaunchRefresh();
     }
+  }
+
+  private enqueueMissionProgressUpsertWithContentionBackoff(
+    item: {
+      gateState: ShipExteriorMissionGateState;
+      completedStepKey: string | null;
+      toastMessage: string | null;
+    },
+    shouldDelay: boolean,
+  ): void {
+    if (!shouldDelay) {
+      this.deps.enqueueMissionProgressUpsert(item);
+      return;
+    }
+
+    // Launch success can trigger immediate item-upsert writes for material rewards.
+    // Briefly delaying mission-upsert reduces optimistic concurrency collisions on the
+    // same character aggregate while preserving user-visible progress behavior.
+    setTimeout(() => this.deps.enqueueMissionProgressUpsert(item), ShipExteriorLaunchController.MISSION_PROGRESS_UPSERT_AFTER_REWARD_DELAY_MS);
   }
 }
