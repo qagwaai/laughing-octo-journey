@@ -1,4 +1,4 @@
-# SW-15 M3 — 2D Character Preview Design
+# SW-15 M2A1 — 2D Character Preview Design
 
 **Date:** 2026-06-06
 **Status:** Proposal — awaiting PoC asset generation

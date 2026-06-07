@@ -351,6 +351,55 @@ describe('CharacterSetupPage', () => {
     );
   });
 
+  it('should auto-persist bust changes in edit mode after selector changes', async () => {
+    const bustAdapter = createMockBustAdapter();
+    bustAdapter.readCharacterBust.and.returnValue(
+      of({
+        success: true,
+        message: 'bust read',
+        correlationId: 'bust-corr-read',
+        requestIdentity: {
+          operation: 'character-bust-read',
+          entityType: 'character-bust',
+          containerId: 'c-1',
+        },
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        descriptor: TEST_BUST_DESCRIPTOR,
+      } as CharacterBustReadResponse),
+    );
+
+    const { component, fixture } = setup({
+      socketService,
+      sessionService,
+      bustAdapter,
+      setupState: {
+        playerName: 'Pioneer',
+        mode: 'edit',
+        editCharacter: { id: 'c-1', characterName: 'Nova-Prime' },
+      },
+    });
+
+    await fixture.whenStable();
+    bustAdapter.updateCharacterBust.calls.reset();
+
+    component['characterForm'].patchValue({ facialHair: 'goatee' });
+
+    await Promise.resolve();
+    await fixture.whenStable();
+
+    expect(bustAdapter.updateCharacterBust).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        playerName: 'Pioneer',
+        sessionKey: 'test-session-key',
+        characterId: 'c-1',
+        descriptor: jasmine.objectContaining({
+          facialHair: 'goatee',
+        }),
+      }),
+    );
+  });
+
   it('should initialize with unsaved and idle state', () => {
     const { component } = setup({ socketService, sessionService });
     expect(component['isSaved']()).toBe(false);

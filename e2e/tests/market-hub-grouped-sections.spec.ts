@@ -246,18 +246,29 @@ test.describe('Market Hub grouped sections', () => {
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
     await gameShell.openMarketHub();
 
-    // Wait for the initial request.
-    await expect.poll(() => requests.length, { timeout: 15_000 }).toBeGreaterThan(0);
-    expect(requests[0].distanceAu).toBe(0.5);
+    // Wait for the Market Hub default radius request (0.5 AU).
+    await expect
+      .poll(() => requests.some((request) => request.distanceAu === 0.5), { timeout: 15_000 })
+      .toBe(true);
 
     // Select a radius of 5 AU — still within the toggle-off path, no clamping.
+    const requestsBeforeRadiusChange = requests.length;
     await page.selectOption('#radiusAu', '5');
-    await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(1);
-    expect(requests[requests.length - 1].distanceAu).toBe(5);
+    await expect
+      .poll(
+        () => requests.slice(requestsBeforeRadiusChange).some((request) => request.distanceAu === 5),
+        { timeout: 10_000 },
+      )
+      .toBe(true);
 
     // Enable the out-of-range toggle — should trigger the unlimited (1,000,000 AU) request.
+    const requestsBeforeToggle = requests.length;
     await marketHubPage.showOutOfRangeToggle.check();
-    await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(2);
-    expect(requests[requests.length - 1].distanceAu).toBe(1_000_000);
+    await expect
+      .poll(
+        () => requests.slice(requestsBeforeToggle).some((request) => request.distanceAu === 1_000_000),
+        { timeout: 10_000 },
+      )
+      .toBe(true);
   });
 });

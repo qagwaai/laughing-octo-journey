@@ -43,12 +43,28 @@ export class CharacterSetupPage {
     return this.page.locator('.warning-message');
   }
 
+  get retryBustSaveButton() {
+    return this.page.locator('.retry-btn');
+  }
+
   get bustPreviewPane() {
     return this.page.locator('[data-testid="character-bust-preview-pane"]');
   }
 
+  get previewImage() {
+    return this.page.locator('[data-testid="character-preview-image"]');
+  }
+
+  get previewImageAssetName() {
+    return this.page.locator('[data-testid="character-preview-image-asset-name"]');
+  }
+
+  get previewImageState() {
+    return this.page.locator('[data-testid="character-preview-image-state"]');
+  }
+
   get bustViewer() {
-    return this.page.locator('[data-testid="character-bust-viewer"]');
+    return this.previewImage;
   }
 
   bustViewerPresetButton(preset: 'front' | 'three-quarter' | 'left-profile' | 'right-profile') {
@@ -60,15 +76,33 @@ export class CharacterSetupPage {
   }
 
   get bustViewerState() {
-    return this.page.locator('[data-testid="character-bust-viewer-state"]');
+    return this.previewImageState;
   }
 
   get bustViewerAssetRoot() {
-    return this.page.locator('[data-testid="character-bust-viewer-asset-root"]');
+    return this.previewImageAssetName;
   }
 
   async fillCharacterName(name: string) {
     await this.characterNameInput.fill(name);
+  }
+
+  async selectBustOption(
+    field:
+      | 'faceShape'
+      | 'skinTone'
+      | 'hairStyle'
+      | 'hairColor'
+      | 'eyeStyle'
+      | 'eyeColor'
+      | 'expressionPreset'
+      | 'apparelAccent'
+      | 'facialHair'
+      | 'scar'
+      | 'tattoo',
+    value: string,
+  ) {
+    await this.page.selectOption(`#${field}`, value);
   }
 
   async clickBustViewerPreset(preset: 'front' | 'three-quarter' | 'left-profile' | 'right-profile') {
@@ -81,6 +115,10 @@ export class CharacterSetupPage {
 
   async clickSubmit() {
     await this.submitButton.click();
+  }
+
+  async clickRetryBustSave() {
+    await this.retryBustSaveButton.click();
   }
 
   async clickViewCharacterList() {

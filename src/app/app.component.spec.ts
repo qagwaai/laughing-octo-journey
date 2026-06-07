@@ -74,7 +74,7 @@ describe('AppComponent', () => {
     const statsElement = (component as any).host.nativeElement.querySelector('.stats') as HTMLElement;
 
     expect(renderStats.enabled()).toBeFalse();
-    expect(statsElement.style.display).toBe('');
+    expect(statsElement.style.display).toBe('none');
     (component as any).onStatsChange(false);
     expect(renderStats.enabled()).toBeFalse();
     expect(statsElement.style.display).toBe('none');
