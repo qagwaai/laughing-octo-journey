@@ -42,6 +42,10 @@ function setup(options: {
   bustReadResponse?: CharacterBustReadResponse;
   sessionKey?: string | null;
 } = {}) {
+  const resolvedSessionKey = Object.prototype.hasOwnProperty.call(options, 'sessionKey')
+    ? (options.sessionKey ?? null)
+    : 'session-key';
+
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: jasmine.createSpy('navigate'),
@@ -52,7 +56,8 @@ function setup(options: {
       .and.returnValue(of(options.bustReadResponse ?? TEST_BUST_RESPONSE)),
   };
   const mockSessionService = {
-    getSessionKey: jasmine.createSpy('getSessionKey').and.returnValue(options.sessionKey ?? 'session-key'),
+    getSessionKey: jasmine.createSpy('getSessionKey').and.returnValue(resolvedSessionKey),
+    activeShip: () => null,
   };
 
   TestBed.configureTestingModule({

@@ -14,6 +14,7 @@ import { LoginRequest, LoginResponse } from '../../model/login';
 import { readRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
+import { ExternalAnchorItem, ExternalAnchorsComponent } from '../../component/external-anchors';
 
 interface LoginNavigationState {
   preferredLocale?: string;
@@ -24,7 +25,7 @@ interface LoginNavigationState {
   templateUrl: './login.html',
   styleUrls: ['./login.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ExternalAnchorsComponent],
 })
 /**
  * Login page that authenticates user credentials and applies locale preference.
@@ -32,6 +33,13 @@ interface LoginNavigationState {
 export default class LoginPage implements OnDestroy, AfterViewInit {
   protected readonly t = locale;
   protected readonly supportedLocaleCodes = supportedLocaleCodes;
+  protected readonly footerAnchors: ReadonlyArray<ExternalAnchorItem> = [
+    {
+      href: 'https://angularthree.org',
+      text: 'Angular Three',
+      ariaLabel: 'Visit Angular Three website',
+    },
+  ];
   private authService = inject(AuthService);
   private sessionService = inject(SessionService);
   private fb = inject(FormBuilder);
