@@ -120,6 +120,7 @@ export const it: DeepPartial<EnLocale> = {
           },
         },
         faceShapeLabel: 'Forma viso',
+        presetVersionLabel: 'Versione preset',
         skinToneLabel: 'Tono pelle',
         hairStyleLabel: 'Stile capelli',
         hairColorLabel: 'Colore capelli',
@@ -609,6 +610,19 @@ export const it: DeepPartial<EnLocale> = {
       sectionTitle: 'Panoramica profilo',
       sectionDescription:
         'Modulo di esempio: mostra cronologia grado, distintivi di specializzazione e assegnazione corrente.',
+      portrait: {
+        sectionTitle: 'Feed ritratto 2D',
+        sectionDescription: 'Ritratto generato dal descrittore di setup attualmente salvato per il personaggio.',
+        imageAlt: 'Render ritratto personaggio',
+        loadingLabel: 'Caricamento descrittore ritratto...',
+        waitingLabel: 'Il descrittore ritratto non e ancora disponibile per questo personaggio.',
+        unavailableLabel: 'Immagine ritratto non disponibile per il descrittore corrente.',
+      },
+      attributes: {
+        sectionTitle: 'Attributi profilo',
+        sectionDescription: 'Attributi di setup del personaggio in sola lettura attualmente persistiti per questo pilota.',
+        emptyLabel: 'Nessun attributo profilo disponibile al momento.',
+      },
       credits: {
         sectionTitle: 'Crediti',
         balanceLabel: 'Saldo',

@@ -2,17 +2,17 @@
 // Contract source: Forge solid-train PR #2 (agents/sw-15-m0-contract-lock-feature).
 // No runtime behavior. Adapter and view-model implementations are deferred to M1/M2.
 
-export const CHARACTER_BUST_CREATE_REQUEST_EVENT = 'character-bust-create';
+export const CHARACTER_BUST_CREATE_REQUEST_EVENT = 'character-bust-create-request';
 export const CHARACTER_BUST_CREATE_RESPONSE_EVENT = 'character-bust-create-response';
-export const CHARACTER_BUST_READ_REQUEST_EVENT = 'character-bust-read';
+export const CHARACTER_BUST_READ_REQUEST_EVENT = 'character-bust-read-request';
 export const CHARACTER_BUST_READ_RESPONSE_EVENT = 'character-bust-read-response';
-export const CHARACTER_BUST_UPDATE_REQUEST_EVENT = 'character-bust-update';
+export const CHARACTER_BUST_UPDATE_REQUEST_EVENT = 'character-bust-update-request';
 export const CHARACTER_BUST_UPDATE_RESPONSE_EVENT = 'character-bust-update-response';
-export const NPC_BUST_CREATE_REQUEST_EVENT = 'npc-bust-create';
+export const NPC_BUST_CREATE_REQUEST_EVENT = 'npc-bust-create-request';
 export const NPC_BUST_CREATE_RESPONSE_EVENT = 'npc-bust-create-response';
-export const NPC_BUST_READ_REQUEST_EVENT = 'npc-bust-read';
+export const NPC_BUST_READ_REQUEST_EVENT = 'npc-bust-read-request';
 export const NPC_BUST_READ_RESPONSE_EVENT = 'npc-bust-read-response';
-export const NPC_BUST_UPDATE_REQUEST_EVENT = 'npc-bust-update';
+export const NPC_BUST_UPDATE_REQUEST_EVENT = 'npc-bust-update-request';
 export const NPC_BUST_UPDATE_RESPONSE_EVENT = 'npc-bust-update-response';
 
 // Domain enum types — aligned to Forge BustDescriptor schema (bust-descriptor.schema.json).

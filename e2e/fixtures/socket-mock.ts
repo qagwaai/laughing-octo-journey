@@ -30,7 +30,12 @@ function buildDefaultResponse(eventName: string, eventData: unknown): { event: s
     return null;
   }
 
-  if (eventName === 'character-bust-create' || eventName === 'character-bust-update') {
+  if (
+    eventName === 'character-bust-create' ||
+    eventName === 'character-bust-update' ||
+    eventName === 'character-bust-create-request' ||
+    eventName === 'character-bust-update-request'
+  ) {
     const descriptorInput = isObject(eventData['descriptor']) ? eventData['descriptor'] : null;
     const descriptor = {
       schemaVersion: 'sw-15-m0-v1',
@@ -45,8 +50,12 @@ function buildDefaultResponse(eventName: string, eventData: unknown): { event: s
       apparelAccent: (descriptorInput?.['apparelAccent'] as string | undefined) ?? 'collar',
     };
 
+    const responseEvent = eventName.endsWith('-request')
+      ? `${eventName.slice(0, -'-request'.length)}-response`
+      : `${eventName}-response`;
+
     return {
-      event: `${eventName}-response`,
+      event: responseEvent,
       data: {
         success: true,
         message: `${eventName} ok`,

@@ -1,25 +1,73 @@
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { of } from 'rxjs';
 
 import type { CreditLedgerEntry } from '../../model/domain/character-economy';
+import type { CharacterBustReadResponse } from '../../model/bust-descriptor';
+import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
+import { SessionService } from '../../services/session.service';
 import CharacterProfilePage from './character-profile';
 
-function setup(options: { navigationState?: Record<string, unknown> } = {}) {
+const TEST_BUST_RESPONSE: CharacterBustReadResponse = {
+  success: true,
+  message: 'ok',
+  correlationId: 'corr-1',
+  requestIdentity: {
+    operation: 'character-bust-read',
+    entityType: 'character-bust',
+    containerId: 'c-1',
+  },
+  playerName: 'Pioneer',
+  characterId: 'c-1',
+  descriptor: {
+    schemaVersion: 'sw-15-m1-v1',
+    presetVersion: 'sw-15-m2-a-v1',
+    faceShape: 'oval',
+    skinTone: 'medium',
+    hairStyle: 'short-crop',
+    hairColor: 'brown',
+    eyeStyle: 'almond',
+    eyeColor: 'green',
+    expressionPreset: 'focused',
+    apparelAccent: 'collar',
+    facialHair: 'none',
+    scar: 'none',
+    tattoo: 'none',
+  },
+};
+
+function setup(options: {
+  navigationState?: Record<string, unknown>;
+  bustReadResponse?: CharacterBustReadResponse;
+  sessionKey?: string | null;
+} = {}) {
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: jasmine.createSpy('navigate'),
   };
+  const mockBustAdapter = {
+    readCharacterBust: jasmine
+      .createSpy('readCharacterBust')
+      .and.returnValue(of(options.bustReadResponse ?? TEST_BUST_RESPONSE)),
+  };
+  const mockSessionService = {
+    getSessionKey: jasmine.createSpy('getSessionKey').and.returnValue(options.sessionKey ?? 'session-key'),
+  };
 
   TestBed.configureTestingModule({
     imports: [CharacterProfilePage],
-    providers: [{ provide: Router, useValue: mockRouter }],
+    providers: [
+      { provide: Router, useValue: mockRouter },
+      { provide: BustDescriptorAdapterService, useValue: mockBustAdapter },
+      { provide: SessionService, useValue: mockSessionService },
+    ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });
 
   const fixture = TestBed.createComponent(CharacterProfilePage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture };
+  return { component: fixture.componentInstance, fixture, mockBustAdapter };
 }
 
 describe('CharacterProfilePage', () => {
@@ -39,6 +87,60 @@ describe('CharacterProfilePage', () => {
     const { component } = setup();
     expect(component['playerName']()).toBe('');
     expect(component['joinCharacter']()).toBeNull();
+  });
+
+  it('should load bust descriptor for portrait/attributes when character context is available', async () => {
+    const { component, fixture, mockBustAdapter } = setup({
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    await fixture.whenStable();
+
+    expect(mockBustAdapter.readCharacterBust).toHaveBeenCalledWith({
+      playerName: 'Pioneer',
+      sessionKey: 'session-key',
+      characterId: 'c-1',
+    });
+    expect(component['bustDescriptor']()?.presetVersion).toBe('sw-15-m2-a-v1');
+    expect(component['portraitSrc']()).toContain('/images/portraits/');
+    expect(component['bustAttributes']().length).toBe(12);
+  });
+
+  it('should not request bust descriptor when session is unavailable', async () => {
+    const { fixture, mockBustAdapter } = setup({
+      sessionKey: null,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    await fixture.whenStable();
+
+    expect(mockBustAdapter.readCharacterBust).not.toHaveBeenCalled();
+  });
+
+  it('should hydrate portrait/attributes from cached bust descriptor when available', async () => {
+    localStorage.setItem('character-bust-cache::c-1', JSON.stringify(TEST_BUST_RESPONSE.descriptor));
+
+    const { component, fixture } = setup({
+      sessionKey: null,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+    });
+
+    await fixture.whenStable();
+
+    expect(component['bustDescriptor']()?.presetVersion).toBe('sw-15-m2-a-v1');
+    expect(component['portraitSrc']()).toContain('/images/portraits/');
+    expect(component['bustAttributes']().length).toBe(12);
+
+    localStorage.removeItem('character-bust-cache::c-1');
   });
 
   describe('credits display', () => {

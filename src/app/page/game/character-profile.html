@@ -24,6 +24,52 @@
       <p>{{ t.game.characterProfile.sectionDescription }}</p>
     </section>
 
+    <section class="ops-card portrait-section">
+      <h2>{{ t.game.characterProfile.portrait.sectionTitle }}</h2>
+      <p>{{ t.game.characterProfile.portrait.sectionDescription }}</p>
+
+      <div class="portrait-window" data-testid="character-profile-portrait-window">
+        <div class="portrait-window__scanline"></div>
+        @if (bustDescriptorLoading()) {
+        <p class="portrait-window__empty">{{ t.game.characterProfile.portrait.loadingLabel }}</p>
+        } @else if (portraitSrc(); as portraitSrcValue) {
+        <img
+          class="portrait-window__image"
+          [src]="portraitSrcValue"
+          [alt]="t.game.characterProfile.portrait.imageAlt"
+          (load)="handlePortraitLoad()"
+          (error)="handlePortraitError()"
+        />
+        @if (portraitLoadFailed()) {
+        <p class="portrait-window__empty">{{ t.game.characterProfile.portrait.unavailableLabel }}</p>
+        }
+        } @else {
+        <p class="portrait-window__empty">
+          {{ bustDescriptorLoadFailed() ? t.game.characterProfile.portrait.unavailableLabel :
+          t.game.characterProfile.portrait.waitingLabel }}
+        </p>
+        }
+      </div>
+    </section>
+
+    <section class="ops-card attributes-section">
+      <h2>{{ t.game.characterProfile.attributes.sectionTitle }}</h2>
+      <p>{{ t.game.characterProfile.attributes.sectionDescription }}</p>
+
+      @if ((bustAttributes()).length === 0) {
+      <p class="attributes-empty">{{ t.game.characterProfile.attributes.emptyLabel }}</p>
+      } @else {
+      <dl class="attributes-grid">
+        @for (attribute of bustAttributes(); track attribute.label) {
+        <div class="attribute-row">
+          <dt>{{ attribute.label }}</dt>
+          <dd>{{ attribute.value }}</dd>
+        </div>
+        }
+      </dl>
+      }
+    </section>
+
     <section class="ops-card credits-section">
       <h2>{{ t.game.characterProfile.credits.sectionTitle }}</h2>
       <p class="credits-balance">

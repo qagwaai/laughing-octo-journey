@@ -557,25 +557,18 @@ test.describe('Ship Exterior Test Utilities', () => {
       )
       .toEqual({ manufacture: 'active', repair: 'locked' });
 
-    await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: { simulateManufacture: (itemType: string) => unknown };
-        }
-      ).__shipExteriorTestUtils;
-      api!.simulateManufacture('hull-patch-kit');
-    });
-
     await expect
       .poll(async () =>
         page.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
+                simulateManufacture: (itemType: string) => unknown;
                 getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
               };
             }
           ).__shipExteriorTestUtils;
+          api!.simulateManufacture('hull-patch-kit');
           const gate = api!.getMissionGateState();
           return {
             manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,

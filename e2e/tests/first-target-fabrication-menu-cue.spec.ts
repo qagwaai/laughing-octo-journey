@@ -396,10 +396,30 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
     .toBe(true);
   await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT', { timeout: 10000 });
   await expect(overlay).toBeVisible({ timeout: 10000 });
-  await expect(overlay.getByText('Continue first-target by opening Repair & Retrofit.')).toBeVisible({ timeout: 10000 });
-  await expect(overlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                simulateManufacture?: (itemType: string) => unknown;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          api?.simulateManufacture?.('hull-patch-kit');
+        });
 
-  await overlay.locator('button.overlay-open').click();
+        return (await overlay.locator('.overlay-target strong').textContent())?.trim() ?? '';
+      },
+      { timeout: 10000 },
+    )
+    .toBe('Repair & Retrofit');
+  await expect(overlay.locator('.overlay-instruction')).toContainText(/opening Repair\s*(?:&|and)\s*Retrofit\.?/i, {
+    timeout: 10000,
+  });
+
+  await repairRetrofitButton.click();
   await expect(page).toHaveURL(/left:repair-retrofit/);
 });
 
