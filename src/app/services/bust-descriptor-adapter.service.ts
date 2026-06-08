@@ -62,6 +62,11 @@ function hasMatchingCorrelation(
     return false;
   }
 
+  // Some backend routes only echo correlationId and omit requestIdentity.
+  if (!response.requestIdentity) {
+    return true;
+  }
+
   return matchesBasicRequestIdentity(
     response.requestIdentity as BustRequestIdentity | undefined,
     expectedRequestIdentity,

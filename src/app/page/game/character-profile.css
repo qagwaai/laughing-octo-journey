@@ -38,6 +38,105 @@
   border: 1px solid rgba(140, 190, 255, 0.25);
 }
 
+.portrait-section,
+.attributes-section {
+  position: relative;
+}
+
+.portrait-window {
+  position: relative;
+  margin-top: 0.75rem;
+  width: min(100%, 520px);
+  height: 320px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 220, 255, 0.65);
+  background:
+    radial-gradient(circle at 25% 20%, rgba(80, 170, 255, 0.22), transparent 44%),
+    linear-gradient(160deg, rgba(7, 18, 34, 0.96), rgba(12, 34, 58, 0.92));
+  overflow: hidden;
+  box-shadow: inset 0 0 28px rgba(65, 140, 255, 0.28), 0 0 34px rgba(25, 120, 170, 0.2);
+}
+
+.portrait-window__scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(153, 225, 255, 0.08) 0,
+    rgba(153, 225, 255, 0.08) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  opacity: 0.38;
+}
+
+.portrait-window__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portrait-window__empty {
+  margin: 0;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: calc(100% - 2rem);
+  color: #b9d9ff;
+  font-size: 0.95rem;
+}
+
+.attributes-grid {
+  margin: 0.75rem 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.attribute-row {
+  margin: 0;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(135, 195, 255, 0.16);
+  background: rgba(17, 34, 62, 0.45);
+  border-radius: 6px;
+}
+
+.attribute-row dt {
+  margin: 0;
+  color: #9cc4ff;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.attribute-row dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #e8f2ff;
+  word-break: break-word;
+}
+
+.attributes-empty {
+  margin: 0.75rem 0 0;
+  color: #b4cfff;
+}
+
+@media (max-width: 780px) {
+  .portrait-window {
+    height: 250px;
+  }
+
+  .attributes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .credits-section h2 {
   margin: 0 0 0.5rem 0;
 }

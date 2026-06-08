@@ -323,7 +323,7 @@ test.describe('Character Add — from character list', () => {
     expect(itemUpsertRequestCount).toBe(0);
   });
 
-  test('shows blocked-save warning for bust create and recovers after retry', async ({ page }) => {
+  test('continues to character list when bust create is blocked in background save', async ({ page }) => {
     const { mock, characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
 
     let bustCreateAttemptCount = 0;
@@ -376,7 +376,7 @@ test.describe('Character Add — from character list', () => {
       },
     }));
 
-    mock.on('character-bust-create', (request) => {
+    mock.on('character-bust-create-request', (request) => {
       bustCreateAttemptCount += 1;
       if (bustCreateAttemptCount === 1) {
         return {
@@ -412,17 +412,7 @@ test.describe('Character Add — from character list', () => {
     await characterSetupPage.fillCharacterName('Nova Retry');
     await characterSetupPage.clickSubmit();
 
-    await expect(
-      page
-        .locator('.warning-message')
-        .filter({ hasText: 'Character data saved, but bust profile save was blocked.' }),
-    ).toHaveCount(1);
-    await expect(characterSetupPage.retryBustSaveButton).toBeVisible();
-    await expect(page).toHaveURL(/left:character-setup/);
-
-    await characterSetupPage.clickRetryBustSave();
-
     await expect(page).toHaveURL(/left:character-list/);
-    expect(bustCreateAttemptCount).toBe(2);
+    await expect.poll(() => bustCreateAttemptCount).toBe(1);
   });
 });

@@ -199,6 +199,7 @@ export const en = {
           },
         },
         faceShapeLabel: 'Face Shape',
+        presetVersionLabel: 'Preset Version',
         skinToneLabel: 'Skin Tone',
         hairStyleLabel: 'Hair Style',
         hairColorLabel: 'Hair Color',
@@ -599,6 +600,19 @@ export const en = {
       subtitle: 'Identity records, progression milestones, and mission reputation.',
       sectionTitle: 'Profile Snapshot',
       sectionDescription: 'Sample module: display rank history, specialization badges, and current assignment.',
+      portrait: {
+        sectionTitle: '2D Portrait Feed',
+        sectionDescription: 'Live portrait generated from the currently saved character setup descriptor.',
+        imageAlt: 'Character portrait render',
+        loadingLabel: 'Loading portrait descriptor...',
+        waitingLabel: 'Portrait descriptor is not available yet for this character.',
+        unavailableLabel: 'Portrait image unavailable for the current descriptor.',
+      },
+      attributes: {
+        sectionTitle: 'Profile Attributes',
+        sectionDescription: 'Read-only character setup attributes currently persisted for this pilot.',
+        emptyLabel: 'No profile attributes are currently available.',
+      },
       credits: {
         sectionTitle: 'Credits',
         balanceLabel: 'Balance',

@@ -28,6 +28,7 @@ import {
   normalizeCharacterName,
   pickSuggestedCharacterName,
 } from '../../model/character-name-suggestions';
+import { writeCachedCharacterBustDescriptor } from '../../model/character-bust-cache';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
@@ -663,6 +664,7 @@ export default class CharacterSetupPage implements OnDestroy {
         this.pendingBustCharacterId.set(null);
         this.clearBustResponseState();
         this.bustAutoSaveDescriptorSignature = this.bustDescriptorSignature(descriptor);
+        writeCachedCharacterBustDescriptor(characterId, descriptor);
         return true;
       }
 
@@ -686,6 +688,9 @@ export default class CharacterSetupPage implements OnDestroy {
   }
 
   private persistCharacterBustDescriptorInBackground(characterId: string): void {
+    const descriptor = this.previewState.descriptor() ?? DEFAULT_BUST_DESCRIPTOR;
+    writeCachedCharacterBustDescriptor(characterId, descriptor);
+
     void this.persistCharacterBustDescriptor(characterId, false).then((isBustSaved) => {
       if (!isBustSaved) {
         appLogger.warn(`Character bust descriptor save did not complete before redirect for character ${characterId}.`);

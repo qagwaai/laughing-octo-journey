@@ -195,6 +195,34 @@ describe('BustDescriptorAdapterService', () => {
     expect(socketService.listenerCount(CHARACTER_BUST_READ_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('reads character bust when backend omits requestIdentity but correlationId matches', () => {
+    const request: CharacterBustReadRequest = {
+      playerName: 'PilotOne',
+      sessionKey: 'session-123',
+      characterId: 'character-1',
+    };
+    let received: CharacterBustReadResponse | undefined;
+
+    service.readCharacterBust(request).subscribe((response) => {
+      received = response;
+    });
+
+    const requestPayload = socketService.emittedEvents[0].payload as CharacterBustReadRequest;
+    const response = {
+      success: true,
+      message: 'ok',
+      correlationId: requestPayload.correlationId!,
+      playerName: 'PilotOne',
+      characterId: 'character-1',
+      descriptor: DEFAULT_BUST_DESCRIPTOR,
+    } as CharacterBustReadResponse;
+
+    socketService.trigger(CHARACTER_BUST_READ_RESPONSE_EVENT, response);
+
+    expect(received).toEqual(response);
+    expect(socketService.listenerCount(CHARACTER_BUST_READ_RESPONSE_EVENT)).toBe(0);
+  });
+
   it('updates character busts with correct request identity and response routing', () => {
     const request: CharacterBustUpdateRequest = {
       playerName: 'PilotOne',
