@@ -1,6 +1,6 @@
 # SW-15 Prompt Pack
 
-This directory contains Midjourney-ready prompt docs for the six proof-of-technology portrait assets defined in the SW-15 M2A1 2D character preview brief.
+This directory contains Midjourney-ready prompt docs for the SW-15 portrait asset set plus coverage-planning notes for the active 11-field filename contract.
 
 ## Prompt Rules
 
@@ -28,6 +28,7 @@ We have been using this negative prompt tail during iteration to suppress unread
 
 ## Files
 
+- `balanced-coverage-matrix.md`
 - `placeholder.md`
 - `medium.md`
 - `pale.md`
@@ -39,6 +40,10 @@ We have been using this negative prompt tail during iteration to suppress unread
 - `square__pale__long-loose__auburn__round__grey__smirk__headband.md`
 - `round__dark__shaved__white__almond__violet__weary__none.md`
 - `oval__tan__long-loose__black__round__hazel__warm__none__short-beard__cheek-right__temple-left.md`
+- `angular__deep__braided__blonde__hooded__blue__stern__collar__stubble__brow-left__neck-right.md`
+- `narrow__deep__short-crop__auburn__almond__grey__smirk__goggles__full-beard__cheek-left__temple-right.md`
+- `square__light__mid-fade__silver__narrow__amber__neutral__hood__goatee__brow-right__neck-left.md`
+- `round__medium__slicked__black__hooded__brown__focused__visor__none__chin__none.md`
 - `oval__medium__short-crop__brown.md`
 
 Each file includes the target JPEG filename, descriptor coverage, and a prompt tuned for front-facing bust generation in the Stellar setting.
