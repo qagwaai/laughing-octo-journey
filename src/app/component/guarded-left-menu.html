@@ -1,7 +1,8 @@
 <nav
   class="ops-menu"
   [class.is-expanded]="isExpanded()"
-  [class.is-pinned]="isPinned()"
+  [class.is-pinned]="menuMode() === 'pinned'"
+  [class.is-keep-mini]="menuMode() === 'keep-mini'"
   (mouseenter)="onMouseEnter()"
   (mouseleave)="onMouseLeave()"
 >
@@ -9,11 +10,11 @@
     type="button"
     class="pin-toggle"
     (click)="togglePinned()"
-    [attr.aria-pressed]="isPinned()"
-    [attr.aria-label]="isPinned() ? 'Unpin operations menu' : 'Pin operations menu'"
+    [attr.aria-pressed]="menuToggleAriaPressed()"
+    [attr.aria-label]="menuToggleAriaLabel()"
   >
-    <span class="menu-icon" aria-hidden="true">{{ isPinned() ? '◧' : '◨' }}</span>
-    <span class="menu-label">{{ isPinned() ? 'Unpin Menu' : 'Pin Menu' }}</span>
+    <span class="menu-icon" aria-hidden="true">{{ menuToggleIcon() }}</span>
+    <span class="menu-label">{{ menuToggleLabel() }}</span>
   </button>
 
   @for (item of menuItems; track item.route) {
