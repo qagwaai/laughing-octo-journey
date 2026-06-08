@@ -657,6 +657,10 @@ export default class RepairRetrofitItemsPage {
         ship: {
           id: ship.id,
           status: mapOverallStatusToShipStatus(nextProfile.overallStatus),
+          model: ship.model,
+          tier: ship.tier,
+          launchable: ship.launchable,
+          inventory: ship.inventory ?? [],
           damageProfile: nextProfile,
           spatial: ship.spatial,
         },

@@ -1,15 +1,14 @@
 import {
   buildSw13bGeneratedVisualSample,
+  buildSw13bDeterministicScreenshotManifest,
   buildSw13bPhaseASeedSet,
   buildSw13bPhaseAVisualSamples,
-  parseSw13bVisualSeed,
-} from './asteroid-visual-generator';
-import {
   computeSw13bVisualMetrics,
   evaluateSw13bHeroBaselineSeparation,
   evaluateSw13bRockyVisualGate,
-} from './asteroid-visual-metrics';
-import { buildSw13bDeterministicScreenshotManifest, SW13B_CAMERA_PRESETS } from './asteroid-visual-screenshot-harness';
+  parseSw13bVisualSeed,
+  SW13B_CAMERA_PRESETS,
+} from './asteroid-visual-foundation';
 
 describe('SW-13B visual foundation (Phase A)', () => {
   it('builds a deterministic 24-seed set (12 baseline + 12 hero)', () => {

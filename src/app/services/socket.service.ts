@@ -39,6 +39,22 @@ import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 
 const ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
+const SHIP_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
+const DEFAULT_NO_RESPONSE_LOG_DELAY_MS = 3000;
+
+function buildDomainPipelineKey(input: {
+  operation?: string;
+  entityType?: string;
+  containerId?: string;
+  characterId?: string;
+}): string {
+  return [
+    normalizeIdentityValue(input.operation),
+    normalizeIdentityValue(input.entityType),
+    normalizeIdentityValue(input.containerId),
+    normalizeIdentityValue(input.characterId),
+  ].join('|');
+}
 
 function buildDefaultItemUpsertRequestIdentity(request: ItemUpsertRequest): ItemUpsertRequestIdentity {
   return {
@@ -280,6 +296,7 @@ function isCelestialBodyListResponseForRequest(
 export class SocketService {
   public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
   private socket: Socket | null = null;
+  private readonly domainPipelineByKey = new Map<string, Promise<void>>();
 
   // Signal to track connection state
   protected isConnected = signal(false);
@@ -338,6 +355,43 @@ export class SocketService {
       this.socket = null;
       this.isConnected.set(false);
     }
+
+    this.domainPipelineByKey.clear();
+  }
+
+  private enqueueDomainOperation(domainKey: string, operation: () => Promise<void>): void {
+    const previous = this.domainPipelineByKey.get(domainKey);
+    let next: Promise<void>;
+    if (!previous) {
+      next = operation()
+        .catch((error: unknown) => {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          appLogger.error(`[socket-pipeline] Domain operation failed. domainKey=${domainKey} error=${errorMessage}`);
+        })
+        .finally(() => {
+          if (this.domainPipelineByKey.get(domainKey) === next) {
+            this.domainPipelineByKey.delete(domainKey);
+          }
+        });
+
+      this.domainPipelineByKey.set(domainKey, next);
+      return;
+    }
+
+    next = previous
+      .catch(() => undefined)
+      .then(() => operation())
+      .catch((error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        appLogger.error(`[socket-pipeline] Domain operation failed. domainKey=${domainKey} error=${errorMessage}`);
+      })
+      .finally(() => {
+        if (this.domainPipelineByKey.get(domainKey) === next) {
+          this.domainPipelineByKey.delete(domainKey);
+        }
+      });
+
+    this.domainPipelineByKey.set(domainKey, next);
   }
 
   /**
@@ -366,8 +420,20 @@ export class SocketService {
     request: CelestialBodyUpsertRequest,
     onResponse?: (response: CelestialBodyUpsertResponse) => void,
   ): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.createdByCharacterId,
+    });
     const requestWithCorrelation: CelestialBodyUpsertRequest = {
       ...request,
       correlationId,
@@ -375,53 +441,82 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
+    this.enqueueDomainOperation(domainKey, () => {
+      return new Promise<void>((resolve) => {
+        let handled = false;
+        let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribe: (() => void) | null = null;
 
-    if (onResponse) {
-      const handleResponse = (response: CelestialBodyUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (
-          !isCelestialBodyUpsertResponseForRequest(
-            response,
-            correlationId,
-            requestIdentity,
-            requestWithCorrelation,
-          )
-        ) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} expectedRequestCharacterId=${requestIdentity.characterId ?? 'missing'} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'} responseRequestCharacterId=${response.requestIdentity?.characterId ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'celestial-body-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseSourceScanId: response.celestialBody?.sourceScanId ?? null,
-                  responseCatalogId: response.celestialBody?.catalogId ?? null,
-                },
-              }),
-            );
+        const complete = () => {
+          if (handled) {
+            return;
           }
-          return;
-        }
 
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
+          handled = true;
+          if (noResponseTimer) {
+            clearTimeout(noResponseTimer);
+            noResponseTimer = null;
+          }
 
-      unsubscribe = this.on(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT, handleResponse);
-    }
+          unsubscribe?.();
+          unsubscribe = null;
+          resolve();
+        };
 
-    this.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+        const handleResponse = (response: CelestialBodyUpsertResponse) => {
+          if (handled) {
+            return;
+          }
+
+          if (
+            !isCelestialBodyUpsertResponseForRequest(
+              response,
+              correlationId,
+              requestIdentity,
+              requestWithCorrelation,
+            )
+          ) {
+            appLogger.warn(
+              `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} expectedRequestCharacterId=${requestIdentity.characterId ?? 'missing'} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'} responseRequestCharacterId=${response.requestIdentity?.characterId ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: {
+                    operation: 'celestial-body-upsert',
+                    correlationId,
+                    expectedRequestIdentity: requestIdentity,
+                    responseCorrelationId: response.correlationId ?? null,
+                    responseSourceScanId: response.celestialBody?.sourceScanId ?? null,
+                    responseCatalogId: response.celestialBody?.catalogId ?? null,
+                  },
+                }),
+              );
+            }
+            return;
+          }
+
+          onResponse?.(response);
+          complete();
+        };
+
+        socket.on(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT, handleResponse);
+        unsubscribe = () => socket.off(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT, handleResponse);
+
+        noResponseTimer = setTimeout(() => {
+          if (handled) {
+            return;
+          }
+
+          appLogger.error(
+            `No celestial-body-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestSourceScanId=${requestWithCorrelation.celestialBody?.sourceScanId ?? 'unknown'} playerName=${requestWithCorrelation.playerName ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+          );
+          complete();
+        }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
+
+        socket.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+      });
+    });
   }
 
   /**
@@ -431,8 +526,20 @@ export class SocketService {
     request: CelestialBodyListRequest,
     onResponse?: (response: CelestialBodyListResponse) => void,
   ): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-list');
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyListRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.createdByCharacterId,
+    });
     const requestWithCorrelation: CelestialBodyListRequest = {
       ...request,
       correlationId,
@@ -440,53 +547,92 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
+    this.enqueueDomainOperation(domainKey, () => {
+      return new Promise<void>((resolve) => {
+        let handled = false;
+        let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribe: (() => void) | null = null;
 
-    if (onResponse) {
-      const handleResponse = (response: CelestialBodyListResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched celestial-body-list response. expectedCorrelationId=${correlationId} expectedSolarSystemId=${requestIdentity.entityType} responseCorrelationId=${response.correlationId ?? 'missing'} responseSolarSystemId=${response.solarSystemId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'celestial-body-list',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseSolarSystemId: response.solarSystemId ?? null,
-                },
-              }),
-            );
+        const complete = () => {
+          if (handled) {
+            return;
           }
-          return;
-        }
 
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
+          handled = true;
+          if (noResponseTimer) {
+            clearTimeout(noResponseTimer);
+            noResponseTimer = null;
+          }
 
-      unsubscribe = this.on(CELESTIAL_BODY_LIST_RESPONSE_EVENT, handleResponse);
-    }
+          unsubscribe?.();
+          unsubscribe = null;
+          resolve();
+        };
 
-    this.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, requestWithCorrelation);
+        const handleResponse = (response: CelestialBodyListResponse) => {
+          if (handled) {
+            return;
+          }
+
+          if (!isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
+            appLogger.warn(
+              `[socket-correlation] Dropping mismatched celestial-body-list response. expectedCorrelationId=${correlationId} expectedSolarSystemId=${requestIdentity.entityType} responseCorrelationId=${response.correlationId ?? 'missing'} responseSolarSystemId=${response.solarSystemId ?? 'missing'}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: {
+                    operation: 'celestial-body-list',
+                    correlationId,
+                    expectedRequestIdentity: requestIdentity,
+                    responseCorrelationId: response.correlationId ?? null,
+                    responseSolarSystemId: response.solarSystemId ?? null,
+                  },
+                }),
+              );
+            }
+            return;
+          }
+
+          onResponse?.(response);
+          complete();
+        };
+
+        unsubscribe = this.on(CELESTIAL_BODY_LIST_RESPONSE_EVENT, handleResponse);
+        noResponseTimer = setTimeout(() => {
+          if (handled) {
+            return;
+          }
+
+          appLogger.error(
+            `No celestial-body-list response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} playerName=${requestWithCorrelation.playerName ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+          );
+          complete();
+        }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
+
+        socket.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, requestWithCorrelation);
+      });
+    });
   }
 
   /**
    * Emit a ship upsert request and optionally handle a one-time response.
    */
   upsertShip(request: ShipUpsertRequest, onResponse?: (response: ShipUpsertResponse) => void): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('ship-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultShipUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.characterId,
+    });
     const shipUpsertWithCorrelation: ShipUpsertRequest = {
       ...request,
       correlationId,
@@ -494,55 +640,100 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
+    this.enqueueDomainOperation(domainKey, () => {
+      return new Promise<void>((resolve) => {
+        let handled = false;
+        let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribe: (() => void) | null = null;
 
-    if (onResponse) {
-      const handleResponse = (response: ShipUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isShipUpsertResponseForRequest(response, correlationId, requestIdentity, shipUpsertWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedPlayerName=${shipUpsertWithCorrelation.playerName} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} expectedRequestEntityType=${requestIdentity.entityType ?? 'missing'} expectedRequestContainerId=${requestIdentity.containerId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'} responseRequestEntityType=${response.requestIdentity?.entityType ?? 'missing'} responseRequestContainerId=${response.requestIdentity?.containerId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'ship-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseShipId: response.ship?.id ?? null,
-                  responseCharacterId: response.characterId ?? null,
-                  responsePlayerName: response.playerName ?? null,
-                },
-              }),
-            );
+        const complete = () => {
+          if (handled) {
+            return;
           }
-          return;
-        }
 
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
+          handled = true;
+          if (noResponseTimer) {
+            clearTimeout(noResponseTimer);
+            noResponseTimer = null;
+          }
 
-      unsubscribe = this.on(SHIP_UPSERT_RESPONSE_EVENT, handleResponse);
-    }
+          unsubscribe?.();
+          unsubscribe = null;
+          resolve();
+        };
 
-    this.emit(SHIP_UPSERT_REQUEST_EVENT, shipUpsertWithCorrelation);
+        const handleResponse = (response: ShipUpsertResponse) => {
+          if (handled) {
+            return;
+          }
+
+          const responseCorrelationId = response.correlationId?.trim() ?? '';
+          if (responseCorrelationId && responseCorrelationId !== correlationId) {
+            return;
+          }
+
+          if (!isShipUpsertResponseForRequest(response, correlationId, requestIdentity, shipUpsertWithCorrelation)) {
+            appLogger.warn(
+              `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedPlayerName=${shipUpsertWithCorrelation.playerName} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} expectedRequestEntityType=${requestIdentity.entityType ?? 'missing'} expectedRequestContainerId=${requestIdentity.containerId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'} responseRequestEntityType=${response.requestIdentity?.entityType ?? 'missing'} responseRequestContainerId=${response.requestIdentity?.containerId ?? 'missing'}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: {
+                    operation: 'ship-upsert',
+                    correlationId,
+                    expectedRequestIdentity: requestIdentity,
+                    responseCorrelationId: response.correlationId ?? null,
+                    responseShipId: response.ship?.id ?? null,
+                    responseCharacterId: response.characterId ?? null,
+                    responsePlayerName: response.playerName ?? null,
+                  },
+                }),
+              );
+            }
+            return;
+          }
+
+          onResponse?.(response);
+          complete();
+        };
+
+        socket.on(SHIP_UPSERT_RESPONSE_EVENT, handleResponse);
+        unsubscribe = () => socket.off(SHIP_UPSERT_RESPONSE_EVENT, handleResponse);
+        noResponseTimer = setTimeout(() => {
+          if (handled) {
+            return;
+          }
+
+          appLogger.error(
+            `No ship-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestShipId=${shipUpsertWithCorrelation.ship?.id ?? 'unknown'} playerName=${shipUpsertWithCorrelation.playerName ?? 'unknown'} source=${shipUpsertWithCorrelation.correlationSource ?? 'unknown'}`,
+          );
+          complete();
+        }, SHIP_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
+
+        socket.emit(SHIP_UPSERT_REQUEST_EVENT, shipUpsertWithCorrelation);
+      });
+    });
   }
 
   /**
    * Emit an item upsert request and optionally handle a one-time response.
    */
   upsertItem(request: ItemUpsertRequest, onResponse?: (response: ItemUpsertResponse) => void): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('item-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultItemUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.item?.owningCharacterId ?? undefined,
+    });
     const requestWithCorrelation: ItemUpsertRequest = {
       ...request,
       correlationId,
@@ -550,82 +741,98 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
-    let unsubscribeCanonical: (() => void) | null = null;
+    this.enqueueDomainOperation(domainKey, () => {
+      return new Promise<void>((resolve) => {
+        let handled = false;
+        let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribeCanonical: (() => void) | null = null;
 
-    const clearTimers = () => {
-      if (noResponseTimer) {
-        clearTimeout(noResponseTimer);
-        noResponseTimer = null;
-      }
-
-      if (unsubscribeCanonical) {
-        unsubscribeCanonical();
-        unsubscribeCanonical = null;
-      }
-    };
-
-    if (onResponse) {
-      const handleResponse = (response: ItemUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
-        const responseCorrelationId = response.correlationId?.trim() ?? '';
-        // Multiple item-upsert requests can legitimately be in flight at once.
-        // Ignore responses targeted at other correlations without surfacing
-        // a contract warning for this listener.
-        if (responseCorrelationId && responseCorrelationId !== correlationId) {
-          return;
-        }
-
-        if (!isItemUpsertResponseForRequest(response, correlationId, requestIdentity)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched item-upsert response. expectedCorrelationId=${correlationId} expectedEntityType=${requestIdentity.entityType} expectedContainerId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseEntityType=${response.item?.itemType ?? 'missing'} responseContainerId=${response.item?.container?.containerId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'item-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseItemType: response.item?.itemType ?? null,
-                  responseContainerId: response.item?.container?.containerId ?? null,
-                },
-              }),
-            );
+        const complete = () => {
+          if (handled) {
+            return;
           }
-          return;
-        }
 
-        handled = true;
-        clearTimers();
-        onResponse(response);
-      };
+          handled = true;
+          if (noResponseTimer) {
+            clearTimeout(noResponseTimer);
+            noResponseTimer = null;
+          }
 
-      unsubscribeCanonical = this.on(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
+          if (unsubscribeCanonical) {
+            unsubscribeCanonical();
+            unsubscribeCanonical = null;
+          }
 
-      noResponseTimer = setTimeout(() => {
-        if (handled) {
-          return;
-        }
+          resolve();
+        };
 
-        appLogger.error(
-          `No item-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
-        );
-      }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
-    }
+        const handleResponse = (response: ItemUpsertResponse) => {
+          if (handled) {
+            return;
+          }
 
-    this.emit(ITEM_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+          const responseCorrelationId = response.correlationId?.trim() ?? '';
+          // Multiple item-upsert requests can legitimately be in flight at once.
+          // Ignore responses targeted at other correlations without surfacing
+          // a contract warning for this listener.
+          if (responseCorrelationId && responseCorrelationId !== correlationId) {
+            return;
+          }
+
+          if (!isItemUpsertResponseForRequest(response, correlationId, requestIdentity)) {
+            appLogger.warn(
+              `[socket-correlation] Dropping mismatched item-upsert response. expectedCorrelationId=${correlationId} expectedEntityType=${requestIdentity.entityType} expectedContainerId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseEntityType=${response.item?.itemType ?? 'missing'} responseContainerId=${response.item?.container?.containerId ?? 'missing'}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: {
+                    operation: 'item-upsert',
+                    correlationId,
+                    expectedRequestIdentity: requestIdentity,
+                    responseCorrelationId: response.correlationId ?? null,
+                    responseItemType: response.item?.itemType ?? null,
+                    responseContainerId: response.item?.container?.containerId ?? null,
+                  },
+                }),
+              );
+            }
+            return;
+          }
+
+          onResponse?.(response);
+          complete();
+        };
+
+        socket.on(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
+        unsubscribeCanonical = () => socket.off(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
+
+        noResponseTimer = setTimeout(() => {
+          if (handled) {
+            return;
+          }
+
+          appLogger.error(
+            `No item-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+          );
+          complete();
+        }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
+
+        socket.emit(ITEM_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+      });
+    });
   }
 
   /**
    * Emit a launch item request and optionally handle a one-time response.
    */
   launchItem(request: LaunchItemRequest, onResponse?: (response: LaunchItemResponse) => void): LaunchItemRequest {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return request;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('launch-item');
     const requestIdentity = request.requestIdentity ?? buildDefaultLaunchItemRequestIdentity(request);
     const requestWithCorrelation: LaunchItemRequest = {
@@ -635,47 +842,87 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    if (onResponse) {
-      const handleResponse = (response: LaunchItemResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isLaunchItemResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'launch-item',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseItemId: response.itemId ?? null,
-                  responseItemType: response.itemType ?? null,
-                  responseShipId: response.shipId ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
-
-      unsubscribe = this.on(LAUNCH_ITEM_RESPONSE_EVENT, handleResponse);
+    if (!onResponse) {
+      socket.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
+      return requestWithCorrelation;
     }
 
-    this.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: requestIdentity.characterId,
+    });
+
+    this.enqueueDomainOperation(domainKey, () => {
+      return new Promise<void>((resolve) => {
+        let handled = false;
+        let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribe: (() => void) | null = null;
+
+        const complete = () => {
+          if (handled) {
+            return;
+          }
+
+          handled = true;
+          if (noResponseTimer) {
+            clearTimeout(noResponseTimer);
+            noResponseTimer = null;
+          }
+
+          unsubscribe?.();
+          unsubscribe = null;
+          resolve();
+        };
+
+        const handleResponse = (response: LaunchItemResponse) => {
+          if (handled) {
+            return;
+          }
+
+          if (!isLaunchItemResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
+            appLogger.warn(
+              `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: {
+                    operation: 'launch-item',
+                    correlationId,
+                    expectedRequestIdentity: requestIdentity,
+                    responseCorrelationId: response.correlationId ?? null,
+                    responseItemId: response.itemId ?? null,
+                    responseItemType: response.itemType ?? null,
+                    responseShipId: response.shipId ?? null,
+                  },
+                }),
+              );
+            }
+            return;
+          }
+
+          onResponse(response);
+          complete();
+        };
+
+        socket.on(LAUNCH_ITEM_RESPONSE_EVENT, handleResponse);
+        unsubscribe = () => socket.off(LAUNCH_ITEM_RESPONSE_EVENT, handleResponse);
+        noResponseTimer = setTimeout(() => {
+          if (handled) {
+            return;
+          }
+
+          appLogger.error(
+            `No launch-item response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} itemId=${requestIdentity.itemId ?? 'missing'} characterId=${requestIdentity.characterId ?? 'missing'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+          );
+          complete();
+        }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
+
+        socket.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
+      });
+    });
     return requestWithCorrelation;
   }
 
@@ -691,13 +938,12 @@ export class SocketService {
       return () => {};
     }
 
-    this.socket.on(eventName, callback);
+    const socketAtSubscription = this.socket;
+    socketAtSubscription.on(eventName, callback);
 
     // Return unsubscribe function
     return () => {
-      if (this.socket) {
-        this.socket.off(eventName, callback);
-      }
+      socketAtSubscription.off(eventName, callback);
     };
   }
 
