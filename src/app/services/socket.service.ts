@@ -296,7 +296,18 @@ export class SocketService {
    */
   connect(url: string, options?: any): void {
     if (this.socket?.connected) {
-      appLogger.warn('Socket already connected');
+      appLogger.debug('Socket connect skipped: already connected');
+      return;
+    }
+
+    if (this.socket?.active) {
+      appLogger.debug('Socket connect skipped: connection already in progress');
+      return;
+    }
+
+    if (this.socket) {
+      this.socket.connect();
+      this.connectionError.set(null);
       return;
     }
 

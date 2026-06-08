@@ -91,6 +91,7 @@ import {
   type ShipExteriorMissionStateContext,
 } from '../services/ship-exterior-mission-state.service';
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
+import { SocketLifecycleService } from '../services/socket-lifecycle.service';
 import { SocketService } from '../services/socket.service';
 import {
   assignAsteroidRenderTiers,
@@ -254,6 +255,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private router = inject(Router);
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
   private shipExteriorSocketService = inject(ShipExteriorSocketService);
   private sessionService = inject(SessionService);
   private missionService = inject(MissionService);
@@ -1201,7 +1203,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.flightController.initializeCurrentLocation(this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 });
-    this.socketService.connect(this.socketService.serverUrl);
+    this.socketLifecycleService.ensureConnected();
     this.installSceneEnvironment();
     this.initializeMissionGateState();
     this.refreshMissionGateStateFromBackend();

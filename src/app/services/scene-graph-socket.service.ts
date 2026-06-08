@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SocketService } from './socket.service';
+import { SocketLifecycleService } from './socket-lifecycle.service';
 
 @Injectable({ providedIn: 'root' })
 /**
@@ -7,12 +8,13 @@ import { SocketService } from './socket.service';
  */
 export class SceneGraphSocketService {
   private socketService = inject(SocketService);
+  private socketLifecycleService = inject(SocketLifecycleService);
 
   /**
    * Connects to the socket server and subscribes to generic scene messages.
    */
   connectAndSubscribeMessages(onMessage: (data: unknown) => void): () => void {
-    this.socketService.connect('http://localhost:3000');
+    this.socketLifecycleService.ensureConnected();
     return this.socketService.on('message', onMessage);
   }
 

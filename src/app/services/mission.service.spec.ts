@@ -1,7 +1,9 @@
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT } from '../model/mission-add';
 import { MISSION_LIST_REQUEST_EVENT, MISSION_LIST_RESPONSE_EVENT } from '../model/mission-list';
 import { MISSION_UPSERT_REQUEST_EVENT, MISSION_UPSERT_RESPONSE_EVENT } from '../model/mission-upsert.model';
+import { SocketLifecycleService } from './socket-lifecycle.service';
 import { MissionService } from './mission.service';
+import { createMockSocketLifecycleService, type MockSocketLifecycleService } from '../../testing';
 
 type Listener = (payload: any) => void;
 
@@ -58,11 +60,13 @@ class MockSocketService {
 
 describe('MissionService', () => {
   let socketService: MockSocketService;
+  let socketLifecycleService: MockSocketLifecycleService;
   let service: MissionService;
 
   beforeEach(() => {
     socketService = new MockSocketService();
-    service = new MissionService(socketService as never);
+    socketLifecycleService = createMockSocketLifecycleService(socketService);
+    service = new MissionService(socketService as never, socketLifecycleService as unknown as SocketLifecycleService);
   });
 
   function metadataFor(eventName: string): { correlationId: string; requestIdentity: unknown } {

@@ -26,6 +26,7 @@ import {
 } from '../model/mission-upsert.model';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
+import { SocketLifecycleService } from './socket-lifecycle.service';
 
 function buildDefaultMissionListRequestIdentity(request: MissionListRequest): MissionListRequestIdentity {
   return {
@@ -163,7 +164,10 @@ export interface ListMissionsResult {
 export class MissionService {
   private static readonly RESPONSE_TIMEOUT_MS = 5000;
 
-  constructor(private socketService: SocketService) {}
+  constructor(
+    private socketService: SocketService,
+    private socketLifecycleService: SocketLifecycleService,
+  ) {}
 
   /**
    * Ensures a mission exists by listing first, then adding only when absent.
@@ -429,7 +433,7 @@ export class MissionService {
       return Promise.resolve(true);
     }
 
-    this.socketService.connect(this.socketService.serverUrl);
+    this.socketLifecycleService.ensureConnected();
 
     return new Promise<boolean>((resolve) => {
       let resolved = false;

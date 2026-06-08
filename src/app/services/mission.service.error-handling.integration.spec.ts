@@ -2,7 +2,9 @@ import { TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT } from '../model/mission-add';
 import { MISSION_LIST_RESPONSE_EVENT } from '../model/mission-list';
 import { MISSION_UPSERT_REQUEST_EVENT, MISSION_UPSERT_RESPONSE_EVENT } from '../model/mission-upsert.model';
+import { SocketLifecycleService } from './socket-lifecycle.service';
 import { MissionService } from './mission.service';
+import { createMockSocketLifecycleService, type MockSocketLifecycleService } from '../../testing';
 
 type Listener = (payload: any) => void;
 
@@ -59,14 +61,13 @@ class MockSocketService {
 
 describe('MissionService — error handling & timeout paths', () => {
   let socketService: MockSocketService;
+  let socketLifecycleService: MockSocketLifecycleService;
   let service: MissionService;
 
   beforeEach(() => {
     socketService = new MockSocketService();
-    TestBed.configureTestingModule({
-      providers: [MissionService, { provide: 'SocketService', useValue: socketService }],
-    });
-    service = new MissionService(socketService as never);
+    socketLifecycleService = createMockSocketLifecycleService(socketService);
+    service = new MissionService(socketService as never, socketLifecycleService as unknown as SocketLifecycleService);
   });
 
   function metadataFor(eventName: string): { correlationId: string; requestIdentity: unknown } {
