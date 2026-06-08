@@ -43,6 +43,7 @@ describe('GuardedLeftMenu', () => {
     fixture = TestBed.createComponent(GuardedLeftMenu);
     component = fixture.componentInstance;
     contextService = TestBed.inject(LeftPanelNavigationContextService);
+    contextService.setMenuMode('unpinned');
   });
 
   afterEach(() => {
@@ -51,7 +52,7 @@ describe('GuardedLeftMenu', () => {
   });
 
   it('should default to minimized and unpinned', () => {
-    expect((component as any).isPinned()).toBeFalse();
+    expect((component as any).menuMode()).toBe('unpinned');
     expect((component as any).isExpanded()).toBeFalse();
   });
 
@@ -63,25 +64,86 @@ describe('GuardedLeftMenu', () => {
     expect((component as any).isExpanded()).toBeFalse();
   });
 
-  it('should stay expanded when pinned and persist that state', () => {
+  it('should cycle through menu modes: unpinned -> pinned -> keep-mini -> unpinned', () => {
     (component as any).togglePinned();
-
-    expect((component as any).isPinned()).toBeTrue();
+    expect((component as any).menuMode()).toBe('pinned');
     expect((component as any).isExpanded()).toBeTrue();
-    expect(sessionStorage.getItem('guarded-left-menu:pinned')).toBe('true');
 
-    (component as any).onMouseLeave();
-    expect((component as any).isExpanded()).toBeTrue();
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+    expect((component as any).isExpanded()).toBeFalse();
+
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('unpinned');
+    expect((component as any).isExpanded()).toBeFalse();
   });
 
-  it('should restore pinned state from session storage', async () => {
+  it('should expose toggle UI state for each menu mode', () => {
+    expect((component as any).menuMode()).toBe('unpinned');
+    expect((component as any).menuToggleLabel()).toBe('Pin Menu');
+    expect((component as any).menuToggleIcon()).toBe('◨');
+    expect((component as any).menuToggleAriaPressed()).toBe('false');
+
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('pinned');
+    expect((component as any).menuToggleLabel()).toBe('Keep Mini');
+    expect((component as any).menuToggleIcon()).toBe('◧');
+    expect((component as any).menuToggleAriaPressed()).toBe('true');
+
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+    expect((component as any).menuToggleLabel()).toBe('Unpin Menu');
+    expect((component as any).menuToggleIcon()).toBe('◫');
+    expect((component as any).menuToggleAriaPressed()).toBe('mixed');
+  });
+
+  it('should not expand on hover when keep-mini is active', () => {
+    (component as any).togglePinned();
+    (component as any).togglePinned();
+
+    (component as any).onMouseEnter();
+    expect((component as any).isExpanded()).toBeFalse();
+
+    (component as any).onMouseLeave();
+    expect((component as any).isExpanded()).toBeFalse();
+  });
+
+  it('should clear hover expansion when switching from hovered unpinned to keep-mini', () => {
+    (component as any).onMouseEnter();
+    expect((component as any).isExpanded()).toBeTrue();
+
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('pinned');
+    expect((component as any).isExpanded()).toBeTrue();
+
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+    expect((component as any).isExpanded()).toBeFalse();
+
+    (component as any).onMouseEnter();
+    expect((component as any).isExpanded()).toBeFalse();
+  });
+
+  it('should always start unpinned after reload even when storage has legacy pinned value', async () => {
     sessionStorage.setItem('guarded-left-menu:pinned', 'true');
 
     const restoredFixture = TestBed.createComponent(GuardedLeftMenu);
     const restoredComponent = restoredFixture.componentInstance;
 
-    expect((restoredComponent as any).isPinned()).toBeTrue();
-    expect((restoredComponent as any).isExpanded()).toBeTrue();
+    expect((restoredComponent as any).menuMode()).toBe('unpinned');
+    expect((restoredComponent as any).isExpanded()).toBeFalse();
+  });
+
+  it('should keep keep-mini mode across component recreation in the same app session', () => {
+    (component as any).togglePinned();
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+
+    const recreatedFixture = TestBed.createComponent(GuardedLeftMenu);
+    const recreatedComponent = recreatedFixture.componentInstance;
+
+    expect((recreatedComponent as any).menuMode()).toBe('keep-mini');
+    expect((recreatedComponent as any).isExpanded()).toBeFalse();
   });
 
   it('should navigate with preserved player and character state', () => {
@@ -99,6 +161,17 @@ describe('GuardedLeftMenu', () => {
     });
   });
 
+  it('should preserve keep-mini mode after standard route navigation', () => {
+    (component as any).togglePinned();
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+
+    component.navigateLeft('market-hub');
+
+    expect((component as any).menuMode()).toBe('keep-mini');
+    expect((component as any).isExpanded()).toBeFalse();
+  });
+
   it('should open mission board in right outlet while keeping game-main in left outlet', () => {
     component.playerName = 'Pioneer';
     component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
@@ -112,6 +185,17 @@ describe('GuardedLeftMenu', () => {
         joinCharacter: { id: 'c-1', characterName: 'Nova' },
       },
     });
+  });
+
+  it('should preserve keep-mini mode after mission-board navigation', () => {
+    (component as any).togglePinned();
+    (component as any).togglePinned();
+    expect((component as any).menuMode()).toBe('keep-mini');
+
+    component.navigateLeft('mission-board');
+
+    expect((component as any).menuMode()).toBe('keep-mini');
+    expect((component as any).isExpanded()).toBeFalse();
   });
 
   it('should publish left-panel navigation context when inputs change', () => {

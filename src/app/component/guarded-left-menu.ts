@@ -16,8 +16,6 @@ import { resolveActiveFirstTargetCue } from './first-target-nav-guidance';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 
-const MENU_PIN_STORAGE_KEY = 'guarded-left-menu:pinned';
-
 interface GuardedMenuItem {
   route: string;
   label: string;
@@ -60,10 +58,15 @@ export class GuardedLeftMenu implements OnChanges {
     { route: 'fabrication-lab', label: 'Fabrication Lab', icon: 'FL' },
     { route: 'logout', label: 'Logout', icon: 'LO', logout: true },
   ];
-  protected isPinned = signal(this.readPinnedState());
+  protected readonly menuMode = this.leftPanelContext.menuMode;
   protected isHovered = signal(false);
   protected activeGuidedRoute = signal<'fabrication-lab' | 'repair-retrofit' | null>(null);
-  protected isExpanded = computed(() => this.isPinned() || this.isHovered());
+  protected isExpanded = computed(() => {
+    const mode = this.menuMode();
+    if (mode === 'pinned') return true;
+    if (mode === 'keep-mini') return false;
+    return this.isHovered();
+  });
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['playerName'] || changes['joinCharacter']) {
@@ -88,17 +91,55 @@ export class GuardedLeftMenu implements OnChanges {
   }
 
   protected onMouseEnter(): void {
+    if (this.menuMode() === 'keep-mini') return;
     this.isHovered.set(true);
   }
 
   protected onMouseLeave(): void {
+    if (this.menuMode() === 'keep-mini') return;
     this.isHovered.set(false);
   }
 
   protected togglePinned(): void {
-    const nextPinned = !this.isPinned();
-    this.isPinned.set(nextPinned);
-    this.writePinnedState(nextPinned);
+    const currentMode = this.menuMode();
+    if (currentMode === 'unpinned') {
+      this.leftPanelContext.setMenuMode('pinned');
+      return;
+    }
+    if (currentMode === 'pinned') {
+      this.leftPanelContext.setMenuMode('keep-mini');
+      this.isHovered.set(false);
+      return;
+    }
+    this.leftPanelContext.setMenuMode('unpinned');
+  }
+
+  protected menuToggleIcon(): string {
+    const mode = this.menuMode();
+    if (mode === 'unpinned') return '◨';
+    if (mode === 'pinned') return '◧';
+    return '◫';
+  }
+
+  protected menuToggleLabel(): string {
+    const mode = this.menuMode();
+    if (mode === 'unpinned') return 'Pin Menu';
+    if (mode === 'pinned') return 'Keep Mini';
+    return 'Unpin Menu';
+  }
+
+  protected menuToggleAriaLabel(): string {
+    const mode = this.menuMode();
+    if (mode === 'unpinned') return 'Pin operations menu';
+    if (mode === 'pinned') return 'Keep operations menu mini';
+    return 'Unpin operations menu';
+  }
+
+  protected menuToggleAriaPressed(): 'true' | 'false' | 'mixed' {
+    const mode = this.menuMode();
+    if (mode === 'unpinned') return 'false';
+    if (mode === 'pinned') return 'true';
+    return 'mixed';
   }
 
   protected isGuidanceActiveForItem(route: string): boolean {
@@ -127,19 +168,4 @@ export class GuardedLeftMenu implements OnChanges {
     this.activeGuidedRoute.set(activeCue?.route ?? null);
   }
 
-  private readPinnedState(): boolean {
-    try {
-      return sessionStorage.getItem(MENU_PIN_STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  }
-
-  private writePinnedState(isPinned: boolean): void {
-    try {
-      sessionStorage.setItem(MENU_PIN_STORAGE_KEY, String(isPinned));
-    } catch {
-      // Ignore storage failures and keep in-memory state only.
-    }
-  }
 }
