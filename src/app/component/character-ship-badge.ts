@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, Input } from '@an
 import { Router } from '@angular/router';
 import { locale } from '../i18n/locale';
 import { PlayerCharacterSummary } from '../model/character-list';
+import { ShipSummary } from '../model/ship-list';
 import { SessionService } from '../services/session.service';
 
 @Component({
@@ -13,12 +14,20 @@ import { SessionService } from '../services/session.service';
 export class CharacterShipBadge {
   private router = inject(Router);
   private sessionService = inject(SessionService);
+  private activeShipSource: unknown = this.sessionService.activeShip;
 
   @Input() playerName = '';
   @Input() joinCharacter: PlayerCharacterSummary | null = null;
 
   protected readonly t = locale.common.characterShipBadge;
-  readonly activeShip = this.sessionService.activeShip;
+  readonly activeShip = (): ShipSummary | null => {
+    if (typeof this.activeShipSource === 'function') {
+      const value = this.activeShipSource();
+      return (value as ShipSummary | null) ?? null;
+    }
+
+    return null;
+  };
   readonly activeShipDisplayName = computed(() => {
     const ship = this.activeShip();
     if (!ship) {

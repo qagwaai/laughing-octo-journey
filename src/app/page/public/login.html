@@ -65,15 +65,6 @@
       <a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.login.registerLink }}</a>
     </p>
 
-    <a
-      class="angular-three-mark"
-      href="https://angularthree.org"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Visit Angular Three website"
-    >
-      <span class="angular-three-orb" aria-hidden="true"></span>
-      <span class="angular-three-text">Angular Three</span>
-    </a>
+    <app-external-anchors [anchors]="footerAnchors"></app-external-anchors>
   </form>
 </div>
