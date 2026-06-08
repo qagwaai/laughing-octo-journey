@@ -190,3 +190,20 @@ Validation outcome:
 
 Current gate:
 - Item 3 complete.
+
+## Item 4 Progress Record (Disconnect Pending State Cleanup)
+
+Implementation outcome:
+- Added explicit pending-operation bookkeeping in `src/app/services/socket.service.ts` via correlation-id keyed cancel callbacks.
+- `disconnect()` now cancels and clears pending operations before socket teardown, so listener/timer cleanup is deterministic instead of waiting for no-response timers.
+- Each queued request path now registers pending cleanup and clears that pending state on normal completion.
+
+Validation status:
+- Added focused unit coverage in `src/app/services/socket.service.spec.ts` to verify pending response listeners are canceled immediately on disconnect.
+- TypeScript diagnostics on touched files are clean.
+- Full unit test execution is green.
+- Full e2e execution is green.
+- Manual testing completed and passed.
+
+Current gate:
+- Item 4 complete.

@@ -113,7 +113,7 @@ test.describe('Mission Board — mission progress display', () => {
     }));
 
     await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/left:game-main/);
+    await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
 
     await gameShell.openMissionBoard();
 

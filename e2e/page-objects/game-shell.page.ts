@@ -11,7 +11,10 @@ export class GameShellPage {
   }
 
   async joinGame(text?: string) {
-    await this.joinButton(text).click();
+    const button = this.joinButton(text);
+    await expect(button).toBeVisible({ timeout: 15_000 });
+    await expect(button).toBeEnabled({ timeout: 15_000 });
+    await button.click();
   }
 
   navButton(label: string) {

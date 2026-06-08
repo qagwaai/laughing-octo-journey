@@ -297,6 +297,7 @@ export class SocketService {
   public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
   private socket: Socket | null = null;
   private readonly domainPipelineByKey = new Map<string, Promise<void>>();
+  private readonly pendingOperationCancelByCorrelationId = new Map<string, () => void>();
 
   // Signal to track connection state
   protected isConnected = signal(false);
@@ -350,6 +351,8 @@ export class SocketService {
    * Disconnect from the Socket.IO server
    */
   disconnect(): void {
+    this.cancelPendingOperations('disconnect');
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -357,6 +360,33 @@ export class SocketService {
     }
 
     this.domainPipelineByKey.clear();
+  }
+
+  private registerPendingOperation(correlationId: string, cancelOperation: () => void): void {
+    this.pendingOperationCancelByCorrelationId.set(correlationId, cancelOperation);
+  }
+
+  private clearPendingOperation(correlationId: string): void {
+    this.pendingOperationCancelByCorrelationId.delete(correlationId);
+  }
+
+  private cancelPendingOperations(reason: string): void {
+    const pendingOperations = Array.from(this.pendingOperationCancelByCorrelationId.entries());
+    if (pendingOperations.length === 0) {
+      return;
+    }
+
+    this.pendingOperationCancelByCorrelationId.clear();
+    for (const [, cancelOperation] of pendingOperations) {
+      try {
+        cancelOperation();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        appLogger.error(`[socket-pending] Failed to cancel pending operation. reason=${reason} error=${errorMessage}`);
+      }
+    }
+
+    appLogger.warn(`[socket-pending] Cleared pending operations. reason=${reason} count=${pendingOperations.length}`);
   }
 
   private enqueueDomainOperation(domainKey: string, operation: () => Promise<void>): void {
@@ -453,6 +483,7 @@ export class SocketService {
           }
 
           handled = true;
+          this.clearPendingOperation(correlationId);
           if (noResponseTimer) {
             clearTimeout(noResponseTimer);
             noResponseTimer = null;
@@ -514,6 +545,8 @@ export class SocketService {
           complete();
         }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
 
+        this.registerPendingOperation(correlationId, complete);
+
         socket.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, requestWithCorrelation);
       });
     });
@@ -559,6 +592,7 @@ export class SocketService {
           }
 
           handled = true;
+          this.clearPendingOperation(correlationId);
           if (noResponseTimer) {
             clearTimeout(noResponseTimer);
             noResponseTimer = null;
@@ -610,6 +644,8 @@ export class SocketService {
           complete();
         }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
 
+        this.registerPendingOperation(correlationId, complete);
+
         socket.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, requestWithCorrelation);
       });
     });
@@ -652,6 +688,7 @@ export class SocketService {
           }
 
           handled = true;
+          this.clearPendingOperation(correlationId);
           if (noResponseTimer) {
             clearTimeout(noResponseTimer);
             noResponseTimer = null;
@@ -711,6 +748,8 @@ export class SocketService {
           complete();
         }, SHIP_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
 
+        this.registerPendingOperation(correlationId, complete);
+
         socket.emit(SHIP_UPSERT_REQUEST_EVENT, shipUpsertWithCorrelation);
       });
     });
@@ -753,6 +792,7 @@ export class SocketService {
           }
 
           handled = true;
+          this.clearPendingOperation(correlationId);
           if (noResponseTimer) {
             clearTimeout(noResponseTimer);
             noResponseTimer = null;
@@ -818,6 +858,8 @@ export class SocketService {
           complete();
         }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
 
+        this.registerPendingOperation(correlationId, complete);
+
         socket.emit(ITEM_UPSERT_REQUEST_EVENT, requestWithCorrelation);
       });
     });
@@ -866,6 +908,7 @@ export class SocketService {
           }
 
           handled = true;
+          this.clearPendingOperation(correlationId);
           if (noResponseTimer) {
             clearTimeout(noResponseTimer);
             noResponseTimer = null;
@@ -919,6 +962,8 @@ export class SocketService {
           );
           complete();
         }, DEFAULT_NO_RESPONSE_LOG_DELAY_MS);
+
+        this.registerPendingOperation(correlationId, complete);
 
         socket.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
       });

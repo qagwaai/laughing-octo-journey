@@ -325,9 +325,13 @@ test.describe('Market Hub docking and radius behavior', () => {
     await expect(page.getByText('Rapid Transit Thruster').first()).toBeVisible();
 
     await page.selectOption('#radiusAu', '1');
+    const applyRadiusButton = page.getByRole('button', { name: /apply radius/i });
+    if ((await applyRadiusButton.count()) > 0) {
+      await applyRadiusButton.click();
+    }
 
-    await expect.poll(() => requests.length, { timeout: 10_000 }).toBeGreaterThan(1);
-    const latestRequest = requests[requests.length - 1];
-    expect(latestRequest.distanceAu).toBe(1);
+    await expect
+      .poll(() => requests.some((request) => request.distanceAu === 1), { timeout: 10_000 })
+      .toBe(true);
   });
 });

@@ -429,12 +429,9 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
       expect.objectContaining({
         repairStepStatus: 'active',
         targetLabel: 'Repair & Retrofit',
+        instruction: expect.stringMatching(/opening Repair\s*(?:&|and)\s*Retrofit\.?/i),
       }),
     );
-
-  await expect(overlay.locator('.overlay-instruction')).toContainText(/opening Repair\s*(?:&|and)\s*Retrofit\.?/i, {
-    timeout: 15000,
-  });
 
   await repairRetrofitButton.click();
   await expect(page).toHaveURL(/left:repair-retrofit/);

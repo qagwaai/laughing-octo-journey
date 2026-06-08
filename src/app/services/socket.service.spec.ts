@@ -1667,6 +1667,57 @@ describe('SocketService', () => {
       expect(() => service.disconnect()).not.toThrow();
       expect(service.getIsConnected()).toBe(false);
     });
+
+    it('should cancel pending response listeners immediately on disconnect', () => {
+      let offCalled = 0;
+      const onEvents = new Map<string, Array<(data: unknown) => void>>();
+
+      const mockSocket = {
+        connected: true,
+        emit: (_event: string, _data?: unknown) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
+        on: (event: string, callback: (data: unknown) => void) => {
+          const callbacks = onEvents.get(event) ?? [];
+          callbacks.push(callback);
+          onEvents.set(event, callbacks);
+        },
+        off: (event: string, callback?: Function) => {
+          offCalled += 1;
+          if (!callback) {
+            onEvents.delete(event);
+            return;
+          }
+
+          const callbacks = onEvents.get(event) ?? [];
+          onEvents.set(
+            event,
+            callbacks.filter((candidate) => candidate !== callback),
+          );
+        },
+        disconnect: () => {},
+      };
+      service['socket'] = mockSocket as any;
+
+      service.upsertItem(
+        {
+          playerName: 'Pioneer',
+          sessionKey: 'session-123',
+          item: {
+            itemType: 'hull-patch-kit',
+            displayName: 'Hull Patch Kit',
+            state: 'contained',
+            damageStatus: 'intact',
+            container: { containerType: 'ship', containerId: 'ship-1' },
+            owningCharacterId: 'char-1',
+          },
+        },
+        () => {},
+      );
+
+      expect(offCalled).toBe(0);
+      service.disconnect();
+      expect(offCalled).toBe(1);
+    });
   });
 
   describe('setupConnectionListeners', () => {
