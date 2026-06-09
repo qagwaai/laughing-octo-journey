@@ -2,11 +2,18 @@
 
 ## Implementation Status (Updated 2026-06-08)
 - Validation checkpoint complete: all unit tests and full e2e are green after Phase 0 facade changes.
+- Validation checkpoint refreshed: all unit tests and full e2e are green after Phase 1 input-adapter extraction.
+- Validation checkpoint refreshed again: all unit tests and full e2e are green after Phase 2 route-feed extraction slice.
+- Manual validation pass is now in progress on top of the green automated baseline.
 - Targeted e2e stabilization landed for `character-profile` join bootstrap race (`e2e/tests/character-profile.spec.ts`) and targeted spec is green.
 - Phase 1 started and first slice completed:
   - Added `ship-exterior-input-adapter.ts` to encapsulate window/document listener attach/detach lifecycle.
   - Integrated adapter into `ship-exterior-view.ts` (`ngOnInit` now calls adapter `attach()`, `ngOnDestroy` calls `detach()`).
   - Added unit coverage in `ship-exterior-input-adapter.spec.ts` for attach, detach, idempotent attach, and no-op detach guards.
+- Phase 2 started and first slice completed:
+  - Extracted route feed render layer from `ship-exterior-view.html` into `ship-exterior-route-feed-layer.ts`.
+  - Integrated new layer component into scene template and component imports.
+  - Added unit coverage in `ship-exterior-route-feed-layer.spec.ts` for encounter ship rendering counts.
 
 ## Scope
 Reviewed files:

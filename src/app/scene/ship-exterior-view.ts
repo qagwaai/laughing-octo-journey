@@ -134,7 +134,12 @@ import { ShipExteriorSessionController } from './ship-exterior/ship-exterior-ses
 import { registerShipExteriorTestUtils, unregisterShipExteriorTestUtils } from './ship-exterior/ship-exterior-test-utils';
 import { TractorBeamAudioController } from './ship-exterior/tractor-beam-audio-controller';
 import { collectShipExteriorRouteFeeds } from './ship-exterior/ship-exterior-route-feed-adapter';
-import { ViewerShipMesh } from './viewer/viewer-ship-mesh';
+import {
+  ShipExteriorRouteFeedLayer,
+  type ShipExteriorRouteSceneEncounterShip,
+  type ShipExteriorRouteSceneGate,
+  type ShipExteriorRouteSceneStation,
+} from './ship-exterior/ship-exterior-route-feed-layer';
 import { resolveDescriptorRenderProfile } from './viewer/viewer-descriptor-selectors';
 import {
   resolveTractorBeamVisualState as buildTractorBeamVisualState,
@@ -158,34 +163,6 @@ interface LaunchHotkeySlot {
   launching: boolean;
 }
 
-interface ShipExteriorRouteSceneGate {
-  id: string;
-  displayName: string;
-  position: [number, number, number];
-  descriptorColor: string;
-  emissive: string;
-  emissiveIntensity: number;
-  tubeRadius: number;
-}
-
-interface ShipExteriorRouteSceneStation {
-  id: string;
-  displayName: string;
-  position: [number, number, number];
-  descriptorColor: string;
-  emissive: string;
-  emissiveIntensity: number;
-  scale: [number, number, number];
-}
-
-interface ShipExteriorRouteSceneEncounterShip {
-  id: string;
-  displayName: string;
-  model: string;
-  position: [number, number, number];
-  color: string;
-}
-
 function interpolateTemplate(template: string, params: Record<string, string | number>): string {
   return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => {
     const value = params[key];
@@ -206,7 +183,7 @@ function resolveDescriptorDetailLevel(segments: number): number {
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
-  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode, ViewerShipMesh],
+  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode, ShipExteriorRouteFeedLayer],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
