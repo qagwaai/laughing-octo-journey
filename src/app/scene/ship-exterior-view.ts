@@ -112,6 +112,7 @@ import { ShipDamageController } from './ship-exterior/ship-damage-controller';
 import { ShipExteriorBootstrapController } from './ship-exterior/ship-exterior-bootstrap-controller';
 import { ShipExteriorCelestialBodyController } from './ship-exterior/ship-exterior-celestial-body-controller';
 import { ShipExteriorFlightController } from './ship-exterior/ship-exterior-flight-controller';
+import { ShipExteriorInputAdapter } from './ship-exterior/ship-exterior-input-adapter';
 import {
   ASTRONOMICAL_UNIT_KM,
   DEFAULT_SHIP_SUN_DISTANCE_KM,
@@ -413,6 +414,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     getShipPositionKm: () => this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm(),
     getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
   });
+  private inputAdapter: ShipExteriorInputAdapter | null = null;
   private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
   private previousFloatingDebrisCount = 0;
   private readonly missionGateStateSync = effect(() => {
@@ -1202,6 +1204,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
+    this.inputAdapter = new ShipExteriorInputAdapter(
+      {
+        onWindowPointerDown: this.onWindowPointerDown,
+        onWindowPointerUp: this.onWindowPointerUp,
+        onWindowContextMenu: this.onWindowContextMenu,
+        onWindowKeyDown: this.onWindowKeyDown,
+        onWindowKeyUp: this.onWindowKeyUp,
+        onWindowMouseMove: this.onWindowMouseMove,
+        onSocketCorrelationWarning: this.onSocketCorrelationWarning,
+        onPointerLockChange: this.onPointerLockChange,
+      },
+      window,
+      document,
+    );
     this.flightController.initializeCurrentLocation(this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 });
     this.socketLifecycleService.ensureConnected();
     this.installSceneEnvironment();
@@ -1241,14 +1257,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const scanTickMs = this.activeSensorArrayCapabilities()?.scanTickMs ?? ShipExteriorViewScene.SCAN_TICK_MS;
     this.sessionController.startScanLoop(() => this.tickScene(), scanTickMs);
     this.flightController.start();
-    window.addEventListener('pointerdown', this.onWindowPointerDown);
-    window.addEventListener('pointerup', this.onWindowPointerUp);
-    window.addEventListener('contextmenu', this.onWindowContextMenu);
-    window.addEventListener('keydown', this.onWindowKeyDown);
-    window.addEventListener('keyup', this.onWindowKeyUp);
-    window.addEventListener('mousemove', this.onWindowMouseMove);
-    window.addEventListener('socket-correlation-warning', this.onSocketCorrelationWarning as EventListener);
-    document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    this.inputAdapter.attach();
   }
 
   private resolveSeedPolicy(): 'new' | 'resume' {
@@ -1625,14 +1634,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.sessionController.dispose();
     this.flightController.dispose();
     this.disposeSceneEnvironment();
-    window.removeEventListener('pointerdown', this.onWindowPointerDown);
-    window.removeEventListener('pointerup', this.onWindowPointerUp);
-    window.removeEventListener('contextmenu', this.onWindowContextMenu);
-    window.removeEventListener('keydown', this.onWindowKeyDown);
-    window.removeEventListener('keyup', this.onWindowKeyUp);
-    window.removeEventListener('mousemove', this.onWindowMouseMove);
-    window.removeEventListener('socket-correlation-warning', this.onSocketCorrelationWarning as EventListener);
-    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
+    this.inputAdapter?.detach();
+    this.inputAdapter = null;
     this.hotkeyFlashController.dispose();
     this.launchToastController.dispose();
   }
