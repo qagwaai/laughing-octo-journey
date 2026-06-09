@@ -19,6 +19,12 @@ interface RepairHookPayload {
   gateState: ShipExteriorMissionGateState;
 }
 
+interface MissionProgressUpsertPayload {
+  gateState: ShipExteriorMissionGateState;
+  completedStepKey: string | null;
+  toastMessage: string | null;
+}
+
 export interface ShipExteriorViewTestApi {
   getMissionGateState(): ShipExteriorMissionGateState | null;
   getMissionObjectiveText(): string;
@@ -54,6 +60,7 @@ export interface RegisterShipExteriorTestUtilsContext {
   tickScene: () => void;
   persistAsteroidSamples: () => void;
   evaluateMissionGateForCompletedSamples: (sampleIds: readonly string[]) => void;
+  enqueueMissionProgressUpsert: (payload: MissionProgressUpsertPayload) => void;
   invokePluginOnManufacture: (payload: ManufactureHookPayload) => void;
   invokePluginOnRepair: (payload: RepairHookPayload) => void;
   launchFromHotkeySlot: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
@@ -161,6 +168,11 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
       if (evaluation.changed) {
         context.setMissionGateState(evaluation.gateState);
         context.persistMissionGateState(evaluation.gateState);
+        context.enqueueMissionProgressUpsert({
+          gateState: evaluation.gateState,
+          completedStepKey: evaluation.completedStepKey,
+          toastMessage: evaluation.completionToastMessage,
+        });
         context.invokePluginOnManufacture({
           manufacturedItemType: itemType,
           gateState: evaluation.gateState,
@@ -199,6 +211,11 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
       if (evaluation.changed) {
         context.setMissionGateState(evaluation.gateState);
         context.persistMissionGateState(evaluation.gateState);
+        context.enqueueMissionProgressUpsert({
+          gateState: evaluation.gateState,
+          completedStepKey: evaluation.completedStepKey,
+          toastMessage: evaluation.completionToastMessage,
+        });
         context.invokePluginOnRepair({ repairKind, gateState: evaluation.gateState });
       }
       return cloneForTest(context.getMissionGateState());

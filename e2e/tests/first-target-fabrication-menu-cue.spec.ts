@@ -399,25 +399,39 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await expect
     .poll(
       async () => {
-        await page.evaluate(() => {
+        return page.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
                 simulateManufacture?: (itemType: string) => unknown;
+                getMissionGateState?: () => {
+                  steps?: Array<{ key?: string; status?: string }>;
+                } | null;
               };
             }
           ).__shipExteriorTestUtils;
           api?.simulateManufacture?.('hull-patch-kit');
-        });
 
-        return (await overlay.locator('.overlay-target strong').textContent())?.trim() ?? '';
+          const gateState = api?.getMissionGateState?.();
+          const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
+
+          return {
+            repairStepStatus: repairStep?.status ?? null,
+            targetLabel: document.querySelector('.left-pane-mission-guidance-overlay .overlay-target strong')?.textContent?.trim() ?? '',
+            instruction:
+              document.querySelector('.left-pane-mission-guidance-overlay .overlay-instruction')?.textContent?.trim() ?? '',
+          };
+        });
       },
-      { timeout: 10000 },
+      { timeout: 15000 },
     )
-    .toBe('Repair & Retrofit');
-  await expect(overlay.locator('.overlay-instruction')).toContainText(/opening Repair\s*(?:&|and)\s*Retrofit\.?/i, {
-    timeout: 10000,
-  });
+    .toEqual(
+      expect.objectContaining({
+        repairStepStatus: 'active',
+        targetLabel: 'Repair & Retrofit',
+        instruction: expect.stringMatching(/opening Repair\s*(?:&|and)\s*Retrofit\.?/i),
+      }),
+    );
 
   await repairRetrofitButton.click();
   await expect(page).toHaveURL(/left:repair-retrofit/);

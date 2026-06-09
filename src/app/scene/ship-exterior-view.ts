@@ -1223,19 +1223,20 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     );
     this.floatingDebrisController.start();
     const seedPolicy = this.resolveSeedPolicy();
-    if (seedPolicy === 'new') {
+    const restoredPersistedAsteroids = this.restorePersistedAsteroidSamples();
+    if (restoredPersistedAsteroids) {
+      this.refreshShipStateAfterLaunch();
+    } else if (seedPolicy === 'new') {
       this.clearPersistedAsteroidSamples();
       this.clearPersistedMissionGateState();
       this.initializeMissionGateState();
-    }
-    if (seedPolicy === 'resume') {
+      this.bootstrapController.seedAsteroidsAroundStarterShip();
+    } else {
       if (!this.restorePersistedAsteroidSamples()) {
         this.bootstrapController.seedAsteroidsForInProgressMission();
       } else {
         this.refreshShipStateAfterLaunch();
       }
-    } else {
-      this.bootstrapController.seedAsteroidsAroundStarterShip();
     }
     const scanTickMs = this.activeSensorArrayCapabilities()?.scanTickMs ?? ShipExteriorViewScene.SCAN_TICK_MS;
     this.sessionController.startScanLoop(() => this.tickScene(), scanTickMs);
@@ -2726,6 +2727,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       tickScene: () => this.tickScene(),
       persistAsteroidSamples: () => this.persistAsteroidSamples(),
       evaluateMissionGateForCompletedSamples: (sampleIds) => this.evaluateMissionGateForCompletedSamples(sampleIds),
+      enqueueMissionProgressUpsert: (payload) => this.missionProgressController.enqueueMissionProgressUpsert(payload),
       invokePluginOnManufacture: (payload) => this.invokePluginHook('onManufacture', payload),
       invokePluginOnRepair: (payload) => this.invokePluginHook('onRepair', payload),
       launchFromHotkeySlot: (hotkey) => this.launchFromHotkeySlot(hotkey),

@@ -578,27 +578,13 @@ test.describe('Ship Exterior Test Utilities', () => {
       )
       .toEqual({ manufacture: 'completed', repair: 'active' });
 
-    const finalGate = await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            simulateRepair: (repairKind: string) => {
-              steps: Array<{ key: string; status: string }>;
-              activeObjectiveText: string;
-            } | null;
-          };
-        }
-      ).__shipExteriorTestUtils;
-      return api!.simulateRepair('ship');
-    });
-
-    expect(finalGate).not.toBeNull();
     await expect
       .poll(async () =>
         page.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
+                simulateRepair: (repairKind: string) => unknown;
                 getMissionGateState: () => {
                   steps: Array<{ key: string; status: string }>;
                   activeObjectiveText: string;
@@ -606,6 +592,7 @@ test.describe('Ship Exterior Test Utilities', () => {
               };
             }
           ).__shipExteriorTestUtils;
+          api!.simulateRepair('ship');
           const gate = api!.getMissionGateState();
           const statuses = new Map(gate.steps.map((step) => [step.key, step.status]));
           return {

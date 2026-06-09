@@ -3,269 +3,56 @@ import { io, Socket } from 'socket.io-client';
 import {
   CELESTIAL_BODY_LIST_REQUEST_EVENT,
   CELESTIAL_BODY_LIST_RESPONSE_EVENT,
-  type CelestialBodyListRequestIdentity,
   CelestialBodyListRequest,
-  CelestialBodyListResponse,
+  CelestialBodyListResponse
 } from '../model/celestial-body-list';
 import {
   CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
   CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
-  type CelestialBodyUpsertRequestIdentity,
   CelestialBodyUpsertRequest,
-  CelestialBodyUpsertResponse,
+  CelestialBodyUpsertResponse
 } from '../model/celestial-body-upsert';
 import {
   ITEM_UPSERT_REQUEST_EVENT,
   ITEM_UPSERT_RESPONSE_EVENT,
-  type ItemUpsertRequestIdentity,
   ItemUpsertRequest,
-  ItemUpsertResponse,
+  ItemUpsertResponse
 } from '../model/item-upsert';
 import {
   LAUNCH_ITEM_REQUEST_EVENT,
   LAUNCH_ITEM_RESPONSE_EVENT,
-  type LaunchItemRequestIdentity,
   LaunchItemRequest,
-  LaunchItemResponse,
+  LaunchItemResponse
 } from '../model/launch-item';
 import {
   SHIP_UPSERT_REQUEST_EVENT,
   SHIP_UPSERT_RESPONSE_EVENT,
-  type ShipUpsertRequestIdentity,
   ShipUpsertRequest,
   ShipUpsertResponse,
 } from '../model/ship-upsert';
 import { appLogger } from './logger';
-import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
+import { createCorrelationId } from './socket-correlation';
+import { emitSocketCorrelationWarning } from './socket-correlation-warning';
+import {
+  buildDefaultCelestialBodyListRequestIdentity,
+  buildDefaultCelestialBodyUpsertRequestIdentity,
+  buildDefaultItemUpsertRequestIdentity,
+  buildDefaultLaunchItemRequestIdentity,
+  buildDefaultShipUpsertRequestIdentity,
+  buildDomainPipelineKey,
+} from './socket-domain-identity';
+import { SocketRequestLifecycle } from './socket-request-lifecycle';
+import {
+  isCelestialBodyListResponseForRequest,
+  isCelestialBodyUpsertResponseForRequest,
+  isItemUpsertResponseForRequest,
+  isLaunchItemResponseForRequest,
+  isShipUpsertResponseForRequest,
+} from './socket-response-matchers';
 
 const ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
-
-function buildDefaultItemUpsertRequestIdentity(request: ItemUpsertRequest): ItemUpsertRequestIdentity {
-  return {
-    operation: 'item-upsert',
-    entityType: request.item?.itemType?.trim() || 'unknown-item-type',
-    containerId: request.item?.container?.containerId?.trim() || 'unknown-container',
-  };
-}
-
-function matchesRequestIdentity(
-  left: ItemUpsertRequestIdentity | undefined,
-  right: ItemUpsertRequestIdentity | undefined,
-): boolean {
-  return matchesBasicRequestIdentity(left, right);
-}
-
-function isItemUpsertResponseForRequest(
-  response: ItemUpsertResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: ItemUpsertRequestIdentity,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
-    return false;
-  }
-
-  if (!response.requestIdentity) {
-    return false;
-  }
-
-  return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-}
-
-function buildDefaultShipUpsertRequestIdentity(request: ShipUpsertRequest): ShipUpsertRequestIdentity {
-  return {
-    operation: 'ship-upsert',
-    entityType: 'ship',
-    containerId: request.ship?.id?.trim() || 'unknown-ship-id',
-  };
-}
-
-function matchesShipRequestIdentity(
-  left: ShipUpsertRequestIdentity | undefined,
-  right: ShipUpsertRequestIdentity | undefined,
-): boolean {
-  if (!left || !right) {
-    return false;
-  }
-
-  return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
-  );
-}
-
-function isShipUpsertResponseForRequest(
-  response: ShipUpsertResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: ShipUpsertRequestIdentity,
-  _expectedRequest: ShipUpsertRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
-    return false;
-  }
-
-  if (!response.requestIdentity) {
-    return false;
-  }
-
-  return matchesShipRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-}
-
-function buildDefaultLaunchItemRequestIdentity(request: LaunchItemRequest): LaunchItemRequestIdentity {
-  return {
-    operation: 'launch-item',
-    entityType: request.itemType?.trim() || 'unknown-item-type',
-    containerId: request.shipId?.trim() || 'unknown-container',
-    itemId: request.itemId?.trim() || undefined,
-    hotkey: request.hotkey,
-    targetCelestialBodyId: request.targetCelestialBodyId?.trim() || undefined,
-    characterId: request.characterId?.trim() || undefined,
-  };
-}
-
-function matchesLaunchRequestIdentity(
-  left: LaunchItemRequestIdentity | undefined,
-  right: LaunchItemRequestIdentity | undefined,
-): boolean {
-  if (!left || !right) {
-    return false;
-  }
-
-  return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId) &&
-    normalizeIdentityValue(left.itemId) === normalizeIdentityValue(right.itemId) &&
-    (left.hotkey ?? null) === (right.hotkey ?? null) &&
-    normalizeIdentityValue(left.targetCelestialBodyId) === normalizeIdentityValue(right.targetCelestialBodyId) &&
-    normalizeIdentityValue(left.characterId) === normalizeIdentityValue(right.characterId)
-  );
-}
-
-function isLaunchItemResponseForRequest(
-  response: LaunchItemResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: LaunchItemRequestIdentity,
-  _expectedRequest: LaunchItemRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
-    return false;
-  }
-
-  if (!response.requestIdentity) {
-    return false;
-  }
-
-  return matchesLaunchRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-}
-
-function buildDefaultCelestialBodyUpsertRequestIdentity(
-  request: CelestialBodyUpsertRequest,
-): CelestialBodyUpsertRequestIdentity {
-  return {
-    operation: 'celestial-body-upsert',
-    entityType: 'celestial-body',
-    containerId: request.celestialBody?.id?.trim() || 'unknown-celestial-body',
-  };
-}
-
-function matchesCelestialBodyUpsertRequestIdentity(
-  left: CelestialBodyUpsertRequestIdentity | undefined,
-  right: CelestialBodyUpsertRequestIdentity | undefined,
-): boolean {
-  if (!left || !right) {
-    return false;
-  }
-
-  return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
-  );
-}
-
-function isCelestialBodyUpsertResponseForRequest(
-  response: CelestialBodyUpsertResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: CelestialBodyUpsertRequestIdentity,
-  _expectedRequest: CelestialBodyUpsertRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
-    return false;
-  }
-
-  if (!response.requestIdentity) {
-    return false;
-  }
-
-  return matchesCelestialBodyUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-}
-
-function buildCelestialBodyListRequestKey(input: {
-  playerName?: string;
-  solarSystemId?: string;
-  distanceKm?: number;
-  positionKm?: { x: number; y: number; z: number };
-}): string {
-  const px = input.positionKm?.x ?? null;
-  const py = input.positionKm?.y ?? null;
-  const pz = input.positionKm?.z ?? null;
-  return [
-    normalizeIdentityValue(input.playerName),
-    normalizeIdentityValue(input.solarSystemId),
-    String(input.distanceKm ?? ''),
-    String(px ?? ''),
-    String(py ?? ''),
-    String(pz ?? ''),
-  ].join('|');
-}
-
-function buildDefaultCelestialBodyListRequestIdentity(
-  request: CelestialBodyListRequest,
-): CelestialBodyListRequestIdentity {
-  return {
-    operation: 'celestial-body-list',
-    entityType: 'celestial-body',
-    containerId: request.solarSystemId?.trim() || 'unknown-solar-system',
-  };
-}
-
-function matchesCelestialBodyListRequestIdentity(
-  left: CelestialBodyListRequestIdentity | undefined,
-  right: CelestialBodyListRequestIdentity | undefined,
-): boolean {
-  if (!left || !right) {
-    return false;
-  }
-
-  return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
-  );
-}
-
-function isCelestialBodyListResponseForRequest(
-  response: CelestialBodyListResponse,
-  expectedCorrelationId: string,
-  expectedRequestIdentity: CelestialBodyListRequestIdentity,
-  _expectedRequest: CelestialBodyListRequest,
-): boolean {
-  const responseCorrelationId = response.correlationId?.trim() ?? '';
-  if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
-    return false;
-  }
-
-  if (!response.requestIdentity) {
-    return false;
-  }
-
-  return matchesCelestialBodyListRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-}
+const SHIP_UPSERT_NO_RESPONSE_LOG_DELAY_MS = 3000;
+const DEFAULT_NO_RESPONSE_LOG_DELAY_MS = 3000;
 
 /**
  * Socket.IO Service
@@ -280,6 +67,7 @@ function isCelestialBodyListResponseForRequest(
 export class SocketService {
   public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
   private socket: Socket | null = null;
+  private readonly requestLifecycle = new SocketRequestLifecycle();
 
   // Signal to track connection state
   protected isConnected = signal(false);
@@ -333,11 +121,15 @@ export class SocketService {
    * Disconnect from the Socket.IO server
    */
   disconnect(): void {
+    this.requestLifecycle.cancelPendingOperations('disconnect');
+
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
       this.isConnected.set(false);
     }
+
+    this.requestLifecycle.clearDomainPipeline();
   }
 
   /**
@@ -366,8 +158,20 @@ export class SocketService {
     request: CelestialBodyUpsertRequest,
     onResponse?: (response: CelestialBodyUpsertResponse) => void,
   ): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.createdByCharacterId,
+    });
     const requestWithCorrelation: CelestialBodyUpsertRequest = {
       ...request,
       correlationId,
@@ -375,53 +179,36 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    if (onResponse) {
-      const handleResponse = (response: CelestialBodyUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (
-          !isCelestialBodyUpsertResponseForRequest(
-            response,
-            correlationId,
-            requestIdentity,
-            requestWithCorrelation,
-          )
-        ) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} expectedRequestCharacterId=${requestIdentity.characterId ?? 'missing'} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'} responseRequestCharacterId=${response.requestIdentity?.characterId ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'celestial-body-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseSourceScanId: response.celestialBody?.sourceScanId ?? null,
-                  responseCatalogId: response.celestialBody?.catalogId ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
-
-      unsubscribe = this.on(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT, handleResponse);
-    }
-
-    this.emit(CELESTIAL_BODY_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+    this.requestLifecycle.runQueuedRequestWithResponse<CelestialBodyUpsertRequest, CelestialBodyUpsertResponse>({
+      socket,
+      domainKey,
+      correlationId,
+      requestEvent: CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
+      responseEvent: CELESTIAL_BODY_UPSERT_RESPONSE_EVENT,
+      requestPayload: requestWithCorrelation,
+      timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
+      isResponseForRequest: (response) =>
+        isCelestialBodyUpsertResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      onResponseMatched: (response) => onResponse?.(response),
+      onResponseMismatched: (response) => {
+        appLogger.warn(
+          `[socket-correlation] Dropping mismatched celestial-body-upsert response. expectedCorrelationId=${correlationId} expectedSourceScanId=${requestIdentity.containerId} expectedCatalogId=${requestIdentity.entityType} expectedRequestCharacterId=${requestIdentity.characterId ?? 'missing'} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseSourceScanId=${response.celestialBody?.sourceScanId ?? 'missing'} responseCatalogId=${response.celestialBody?.catalogId ?? 'missing'} responseRequestCharacterId=${response.requestIdentity?.characterId ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'}`,
+        );
+        emitSocketCorrelationWarning({
+          operation: 'celestial-body-upsert',
+          correlationId,
+          expectedRequestIdentity: requestIdentity,
+          responseCorrelationId: response.correlationId ?? null,
+          responseSourceScanId: response.celestialBody?.sourceScanId ?? null,
+          responseCatalogId: response.celestialBody?.catalogId ?? null,
+        });
+      },
+      onTimeout: () => {
+        appLogger.error(
+          `No celestial-body-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestSourceScanId=${requestWithCorrelation.celestialBody?.sourceScanId ?? 'unknown'} playerName=${requestWithCorrelation.playerName ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+      },
+    });
   }
 
   /**
@@ -431,8 +218,20 @@ export class SocketService {
     request: CelestialBodyListRequest,
     onResponse?: (response: CelestialBodyListResponse) => void,
   ): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-list');
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyListRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.createdByCharacterId,
+    });
     const requestWithCorrelation: CelestialBodyListRequest = {
       ...request,
       correlationId,
@@ -440,53 +239,55 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    if (onResponse) {
-      const handleResponse = (response: CelestialBodyListResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched celestial-body-list response. expectedCorrelationId=${correlationId} expectedSolarSystemId=${requestIdentity.entityType} responseCorrelationId=${response.correlationId ?? 'missing'} responseSolarSystemId=${response.solarSystemId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'celestial-body-list',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseSolarSystemId: response.solarSystemId ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
-
-      unsubscribe = this.on(CELESTIAL_BODY_LIST_RESPONSE_EVENT, handleResponse);
-    }
-
-    this.emit(CELESTIAL_BODY_LIST_REQUEST_EVENT, requestWithCorrelation);
+    this.requestLifecycle.runQueuedRequestWithResponse<CelestialBodyListRequest, CelestialBodyListResponse>({
+      socket,
+      domainKey,
+      correlationId,
+      requestEvent: CELESTIAL_BODY_LIST_REQUEST_EVENT,
+      responseEvent: CELESTIAL_BODY_LIST_RESPONSE_EVENT,
+      requestPayload: requestWithCorrelation,
+      timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
+      isResponseForRequest: (response) =>
+        isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      onResponseMatched: (response) => onResponse?.(response),
+      onResponseMismatched: (response) => {
+        appLogger.warn(
+          `[socket-correlation] Dropping mismatched celestial-body-list response. expectedCorrelationId=${correlationId} expectedSolarSystemId=${requestIdentity.entityType} responseCorrelationId=${response.correlationId ?? 'missing'} responseSolarSystemId=${response.solarSystemId ?? 'missing'}`,
+        );
+        emitSocketCorrelationWarning({
+          operation: 'celestial-body-list',
+          correlationId,
+          expectedRequestIdentity: requestIdentity,
+          responseCorrelationId: response.correlationId ?? null,
+          responseSolarSystemId: response.solarSystemId ?? null,
+        });
+      },
+      onTimeout: () => {
+        appLogger.error(
+          `No celestial-body-list response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} playerName=${requestWithCorrelation.playerName ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+      },
+    });
   }
 
   /**
    * Emit a ship upsert request and optionally handle a one-time response.
    */
   upsertShip(request: ShipUpsertRequest, onResponse?: (response: ShipUpsertResponse) => void): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('ship-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultShipUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.characterId,
+    });
     const shipUpsertWithCorrelation: ShipUpsertRequest = {
       ...request,
       correlationId,
@@ -494,55 +295,61 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    if (onResponse) {
-      const handleResponse = (response: ShipUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isShipUpsertResponseForRequest(response, correlationId, requestIdentity, shipUpsertWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedPlayerName=${shipUpsertWithCorrelation.playerName} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} expectedRequestEntityType=${requestIdentity.entityType ?? 'missing'} expectedRequestContainerId=${requestIdentity.containerId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'} responseRequestEntityType=${response.requestIdentity?.entityType ?? 'missing'} responseRequestContainerId=${response.requestIdentity?.containerId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'ship-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseShipId: response.ship?.id ?? null,
-                  responseCharacterId: response.characterId ?? null,
-                  responsePlayerName: response.playerName ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
-
-      unsubscribe = this.on(SHIP_UPSERT_RESPONSE_EVENT, handleResponse);
-    }
-
-    this.emit(SHIP_UPSERT_REQUEST_EVENT, shipUpsertWithCorrelation);
+    this.requestLifecycle.runQueuedRequestWithResponse<ShipUpsertRequest, ShipUpsertResponse>({
+      socket,
+      domainKey,
+      correlationId,
+      requestEvent: SHIP_UPSERT_REQUEST_EVENT,
+      responseEvent: SHIP_UPSERT_RESPONSE_EVENT,
+      requestPayload: shipUpsertWithCorrelation,
+      timeoutMs: SHIP_UPSERT_NO_RESPONSE_LOG_DELAY_MS,
+      isResponseForRequest: (response) =>
+        isShipUpsertResponseForRequest(response, correlationId, requestIdentity, shipUpsertWithCorrelation),
+      shouldIgnoreMismatch: (response) => {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
+      onResponseMatched: (response) => onResponse?.(response),
+      onResponseMismatched: (response) => {
+        appLogger.warn(
+          `[socket-correlation] Dropping mismatched ship-upsert response. expectedCorrelationId=${correlationId} expectedShipId=${requestIdentity.containerId} expectedPlayerName=${shipUpsertWithCorrelation.playerName} expectedRequestOperation=${requestIdentity.operation ?? 'missing'} expectedRequestEntityType=${requestIdentity.entityType ?? 'missing'} expectedRequestContainerId=${requestIdentity.containerId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseShipId=${response.ship?.id ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'} responsePlayerName=${response.playerName ?? 'missing'} responseRequestOperation=${response.requestIdentity?.operation ?? 'missing'} responseRequestEntityType=${response.requestIdentity?.entityType ?? 'missing'} responseRequestContainerId=${response.requestIdentity?.containerId ?? 'missing'}`,
+        );
+        emitSocketCorrelationWarning({
+          operation: 'ship-upsert',
+          correlationId,
+          expectedRequestIdentity: requestIdentity,
+          responseCorrelationId: response.correlationId ?? null,
+          responseShipId: response.ship?.id ?? null,
+          responseCharacterId: response.characterId ?? null,
+          responsePlayerName: response.playerName ?? null,
+        });
+      },
+      onTimeout: () => {
+        appLogger.error(
+          `No ship-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestShipId=${shipUpsertWithCorrelation.ship?.id ?? 'unknown'} playerName=${shipUpsertWithCorrelation.playerName ?? 'unknown'} source=${shipUpsertWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+      },
+    });
   }
 
   /**
    * Emit an item upsert request and optionally handle a one-time response.
    */
   upsertItem(request: ItemUpsertRequest, onResponse?: (response: ItemUpsertResponse) => void): void {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('item-upsert');
     const requestIdentity = request.requestIdentity ?? buildDefaultItemUpsertRequestIdentity(request);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: request.item?.owningCharacterId ?? undefined,
+    });
     const requestWithCorrelation: ItemUpsertRequest = {
       ...request,
       correlationId,
@@ -550,82 +357,54 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let noResponseTimer: ReturnType<typeof setTimeout> | null = null;
-    let unsubscribeCanonical: (() => void) | null = null;
-
-    const clearTimers = () => {
-      if (noResponseTimer) {
-        clearTimeout(noResponseTimer);
-        noResponseTimer = null;
-      }
-
-      if (unsubscribeCanonical) {
-        unsubscribeCanonical();
-        unsubscribeCanonical = null;
-      }
-    };
-
-    if (onResponse) {
-      const handleResponse = (response: ItemUpsertResponse) => {
-        if (handled) {
-          return;
-        }
-
+    this.requestLifecycle.runQueuedRequestWithResponse<ItemUpsertRequest, ItemUpsertResponse>({
+      socket,
+      domainKey,
+      correlationId,
+      requestEvent: ITEM_UPSERT_REQUEST_EVENT,
+      responseEvent: ITEM_UPSERT_RESPONSE_EVENT,
+      requestPayload: requestWithCorrelation,
+      timeoutMs: ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS,
+      isResponseForRequest: (response) => isItemUpsertResponseForRequest(response, correlationId, requestIdentity),
+      shouldIgnoreMismatch: (response) => {
         const responseCorrelationId = response.correlationId?.trim() ?? '';
         // Multiple item-upsert requests can legitimately be in flight at once.
         // Ignore responses targeted at other correlations without surfacing
         // a contract warning for this listener.
-        if (responseCorrelationId && responseCorrelationId !== correlationId) {
-          return;
-        }
-
-        if (!isItemUpsertResponseForRequest(response, correlationId, requestIdentity)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched item-upsert response. expectedCorrelationId=${correlationId} expectedEntityType=${requestIdentity.entityType} expectedContainerId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseEntityType=${response.item?.itemType ?? 'missing'} responseContainerId=${response.item?.container?.containerId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'item-upsert',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseItemType: response.item?.itemType ?? null,
-                  responseContainerId: response.item?.container?.containerId ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        clearTimers();
-        onResponse(response);
-      };
-
-      unsubscribeCanonical = this.on(ITEM_UPSERT_RESPONSE_EVENT, handleResponse);
-
-      noResponseTimer = setTimeout(() => {
-        if (handled) {
-          return;
-        }
-
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
+      onResponseMatched: (response) => onResponse?.(response),
+      onResponseMismatched: (response) => {
+        appLogger.warn(
+          `[socket-correlation] Dropping mismatched item-upsert response. expectedCorrelationId=${correlationId} expectedEntityType=${requestIdentity.entityType} expectedContainerId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseEntityType=${response.item?.itemType ?? 'missing'} responseContainerId=${response.item?.container?.containerId ?? 'missing'}`,
+        );
+        emitSocketCorrelationWarning({
+          operation: 'item-upsert',
+          correlationId,
+          expectedRequestIdentity: requestIdentity,
+          responseCorrelationId: response.correlationId ?? null,
+          responseItemType: response.item?.itemType ?? null,
+          responseContainerId: response.item?.container?.containerId ?? null,
+        });
+      },
+      onTimeout: () => {
         appLogger.error(
           `No item-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestId=${requestWithCorrelation.item?.id ?? 'new-item'} itemType=${requestWithCorrelation.item?.itemType ?? 'unknown'} state=${requestWithCorrelation.item?.state ?? 'unknown'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
         );
-      }, ITEM_UPSERT_NO_RESPONSE_LOG_DELAY_MS);
-    }
-
-    this.emit(ITEM_UPSERT_REQUEST_EVENT, requestWithCorrelation);
+      },
+    });
   }
 
   /**
    * Emit a launch item request and optionally handle a one-time response.
    */
   launchItem(request: LaunchItemRequest, onResponse?: (response: LaunchItemResponse) => void): LaunchItemRequest {
+    const socket = this.socket;
+    if (!socket) {
+      appLogger.warn('Socket not initialized. Use connect() first');
+      return request;
+    }
+
     const correlationId = request.correlationId?.trim() || createCorrelationId('launch-item');
     const requestIdentity = request.requestIdentity ?? buildDefaultLaunchItemRequestIdentity(request);
     const requestWithCorrelation: LaunchItemRequest = {
@@ -635,47 +414,49 @@ export class SocketService {
       requestIdentity,
     };
 
-    let handled = false;
-    let unsubscribe: (() => void) | null = null;
-
-    if (onResponse) {
-      const handleResponse = (response: LaunchItemResponse) => {
-        if (handled) {
-          return;
-        }
-
-        if (!isLaunchItemResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation)) {
-          appLogger.warn(
-            `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
-          );
-          if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-            window.dispatchEvent(
-              new CustomEvent('socket-correlation-warning', {
-                detail: {
-                  operation: 'launch-item',
-                  correlationId,
-                  expectedRequestIdentity: requestIdentity,
-                  responseCorrelationId: response.correlationId ?? null,
-                  responseItemId: response.itemId ?? null,
-                  responseItemType: response.itemType ?? null,
-                  responseShipId: response.shipId ?? null,
-                },
-              }),
-            );
-          }
-          return;
-        }
-
-        handled = true;
-        unsubscribe?.();
-        unsubscribe = null;
-        onResponse(response);
-      };
-
-      unsubscribe = this.on(LAUNCH_ITEM_RESPONSE_EVENT, handleResponse);
+    if (!onResponse) {
+      socket.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
+      return requestWithCorrelation;
     }
 
-    this.emit(LAUNCH_ITEM_REQUEST_EVENT, requestWithCorrelation);
+    const domainKey = buildDomainPipelineKey({
+      operation: requestIdentity.operation,
+      entityType: requestIdentity.entityType,
+      containerId: requestIdentity.containerId,
+      characterId: requestIdentity.characterId,
+    });
+
+    this.requestLifecycle.runQueuedRequestWithResponse<LaunchItemRequest, LaunchItemResponse>({
+      socket,
+      domainKey,
+      correlationId,
+      requestEvent: LAUNCH_ITEM_REQUEST_EVENT,
+      responseEvent: LAUNCH_ITEM_RESPONSE_EVENT,
+      requestPayload: requestWithCorrelation,
+      timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
+      isResponseForRequest: (response) =>
+        isLaunchItemResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      onResponseMatched: (response) => onResponse(response),
+      onResponseMismatched: (response) => {
+        appLogger.warn(
+          `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
+        );
+        emitSocketCorrelationWarning({
+          operation: 'launch-item',
+          correlationId,
+          expectedRequestIdentity: requestIdentity,
+          responseCorrelationId: response.correlationId ?? null,
+          responseItemId: response.itemId ?? null,
+          responseItemType: response.itemType ?? null,
+          responseShipId: response.shipId ?? null,
+        });
+      },
+      onTimeout: () => {
+        appLogger.error(
+          `No launch-item response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} itemId=${requestIdentity.itemId ?? 'missing'} characterId=${requestIdentity.characterId ?? 'missing'} source=${requestWithCorrelation.correlationSource ?? 'unknown'}`,
+        );
+      },
+    });
     return requestWithCorrelation;
   }
 
@@ -691,13 +472,12 @@ export class SocketService {
       return () => {};
     }
 
-    this.socket.on(eventName, callback);
+    const socketAtSubscription = this.socket;
+    socketAtSubscription.on(eventName, callback);
 
     // Return unsubscribe function
     return () => {
-      if (this.socket) {
-        this.socket.off(eventName, callback);
-      }
+      socketAtSubscription.off(eventName, callback);
     };
   }
 
