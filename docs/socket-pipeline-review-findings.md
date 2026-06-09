@@ -9,7 +9,9 @@ Scope: Architectural review of src/app/services/socket.service.ts for clean, mai
 - Automated validation: green (focused socket spec and full test suite in latest run).
 - Manual validation: completed and passed for item 1 functionality.
 - Rollout item 2 (focused queue semantics and teardown tests): completed.
-- Decision: proceed to rollout item 3 (extend pipeline to remaining methods).
+- Rollout items 3-6: completed.
+- Final validation gate: full unit and full e2e green.
+- Overall review status: fully closed.
 
 ## Constraints Captured Before Review
 
@@ -207,3 +209,78 @@ Validation status:
 
 Current gate:
 - Item 4 complete.
+
+## Item 5 Progress Record (Boilerplate Drift Reduction)
+
+Implementation outcome:
+- Added a shared queued request-response helper in `src/app/services/socket.service.ts` to centralize listener registration, timeout handling, pending-operation registration/cleanup, and socket emit flow.
+- Migrated repeated boilerplate in these methods to the shared helper:
+  - `upsertCelestialBody`
+  - `listCelestialBodies`
+  - `upsertShip`
+  - `upsertItem`
+  - `launchItem`
+- Preserved method-specific behavior (match predicates, mismatch filtering/logging, timeout logs, and response callbacks) while reducing duplicated control flow.
+
+Validation status:
+- TypeScript diagnostics on touched files are clean.
+- Full unit test execution is green.
+- Full e2e execution is green.
+
+Current gate:
+- Item 5 complete.
+
+## Item 6 Planning Record (SocketService File Decomposition)
+
+Objective:
+- Decompose src/app/services/socket.service.ts into smaller modules while preserving behavior and public API compatibility.
+
+Proposed decomposition targets:
+1. socket-request-lifecycle.ts
+  - shared queued request-response lifecycle helper(s)
+  - pending-operation register/clear/cancel orchestration hooks
+2. socket-domain-identity.ts
+  - domain key builders and default request identity builders
+  - identity comparison helpers
+3. socket-response-matchers.ts
+  - is*ResponseForRequest match predicates by operation
+4. socket.service.ts (kept as orchestration facade)
+  - connect/disconnect lifecycle
+  - emit/on/off public API
+  - operation methods delegating to extracted helpers
+
+Safety constraints:
+- Keep event names, request/response payload shape, and correlation behavior unchanged.
+- Keep current mismatch warning payloads and timeout error logs unchanged.
+- Preserve disconnect cancellation semantics added in item 4.
+
+Validation plan:
+1. TypeScript diagnostics clean across touched files.
+2. Full unit test execution green.
+3. Full e2e execution green.
+4. Manual sanity check of join/ship exterior/market flows.
+
+Implementation progress:
+- Extracted domain identity/default-request builders from `src/app/services/socket.service.ts` into `src/app/services/socket-domain-identity.ts`.
+- Extracted response matcher predicates from `src/app/services/socket.service.ts` into `src/app/services/socket-response-matchers.ts`.
+- Updated `src/app/services/socket.service.ts` to import these helpers and removed the duplicated in-file helper block, reducing file size and coupling.
+- Extracted queued request lifecycle and pending-operation orchestration from `src/app/services/socket.service.ts` into `src/app/services/socket-request-lifecycle.ts`.
+- Updated `src/app/services/socket.service.ts` to delegate queued request execution and pending cancellation to the new lifecycle helper.
+- Extracted repeated socket-correlation warning event dispatch into `src/app/services/socket-correlation-warning.ts`.
+- Updated mismatch handlers in `src/app/services/socket.service.ts` to use the shared warning dispatch helper while preserving warning detail payload fields.
+- Added focused helper unit tests in `src/app/services/socket-correlation-warning.spec.ts`.
+
+Validation status:
+- TypeScript diagnostics clean for:
+  - `src/app/services/socket.service.ts`
+  - `src/app/services/socket-domain-identity.ts`
+  - `src/app/services/socket-response-matchers.ts`
+  - `src/app/services/socket-request-lifecycle.ts`
+  - `src/app/services/socket-correlation-warning.ts`
+  - `src/app/services/socket-correlation-warning.spec.ts`
+- Full unit test execution is green.
+- Full e2e execution is green.
+- Runtime re-validation after decomposition pass 3 completed.
+
+Current gate:
+- Item 6 decomposition pass 3 complete and closed.

@@ -939,9 +939,12 @@ test.describe('Viewer — Scene Rendering', () => {
       },
     }));
 
-    // Navigate to Viewer (use English label which is set first, more reliable)
-    await page.locator('button[aria-label="Viewer"]').click();
-    await expect(page).toHaveURL(/left:viewer/);
+    // Navigate to Viewer only after guarded menu is ready in the post-join shell.
+    const viewerButton = page.locator('app-guarded-left-menu button[aria-label="Viewer"]').first();
+    await expect(viewerButton).toBeVisible({ timeout: 10_000 });
+    await expect(viewerButton).toBeEnabled({ timeout: 10_000 });
+    await viewerButton.click();
+    await expect(page).toHaveURL(/left:viewer/, { timeout: 10_000 });
 
     // Register scene response handler
     mock.on('solar-system-get-request', () => ({
