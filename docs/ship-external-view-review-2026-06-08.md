@@ -1,10 +1,12 @@
 # Ship External View Architecture Review (2026-06-08)
 
 ## Implementation Status (Updated 2026-06-08)
+- Validation checkpoint refreshed for current Phase 3 slice: all unit tests and full e2e are green.
+- Additional manual validation pass is now in progress.
 - Validation checkpoint complete: all unit tests and full e2e are green after Phase 0 facade changes.
 - Validation checkpoint refreshed: all unit tests and full e2e are green after Phase 1 input-adapter extraction.
 - Validation checkpoint refreshed again: all unit tests and full e2e are green after Phase 2 route-feed extraction slice.
-- Manual validation pass is now in progress on top of the green automated baseline.
+- Manual validation pass complete: extra manual tests are green on top of the automated baseline.
 - Targeted e2e stabilization landed for `character-profile` join bootstrap race (`e2e/tests/character-profile.spec.ts`) and targeted spec is green.
 - Phase 1 started and first slice completed:
   - Added `ship-exterior-input-adapter.ts` to encapsulate window/document listener attach/detach lifecycle.
@@ -14,6 +16,10 @@
   - Extracted route feed render layer from `ship-exterior-view.html` into `ship-exterior-route-feed-layer.ts`.
   - Integrated new layer component into scene template and component imports.
   - Added unit coverage in `ship-exterior-route-feed-layer.spec.ts` for encounter ship rendering counts.
+- Phase 3 started and first slice completed:
+  - Added `ship-exterior-state-facade.ts` to consolidate navigation/session inventory mutation paths.
+  - Routed ship-list synchronization, launch-consume updates, and launch-reward updates through the new facade.
+  - Added focused unit coverage in `ship-exterior-state-facade.spec.ts` for sync, consume, and reward mutation flows.
 
 ## Scope
 Reviewed files:

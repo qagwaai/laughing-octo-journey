@@ -130,6 +130,7 @@ import {
 } from './ship-exterior/ship-exterior-formatters';
 import { ShipExteriorLaunchController } from './ship-exterior/ship-exterior-launch-controller';
 import { ShipExteriorMissionProgressController } from './ship-exterior/ship-exterior-mission-progress-controller';
+import { ShipExteriorStateFacade } from './ship-exterior/ship-exterior-state-facade';
 import { ShipExteriorSessionController } from './ship-exterior/ship-exterior-session-controller';
 import { registerShipExteriorTestUtils, unregisterShipExteriorTestUtils } from './ship-exterior/ship-exterior-test-utils';
 import { TractorBeamAudioController } from './ship-exterior/tractor-beam-audio-controller';
@@ -390,6 +391,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     },
     getShipPositionKm: () => this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm(),
     getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
+  });
+  private readonly stateFacade = new ShipExteriorStateFacade({
+    getNavigationShip: () => this.navigationState.joinShip ?? null,
+    setNavigationShip: (ship) => {
+      this.navigationState.joinShip = ship;
+    },
+    getSessionShip: () => this.sessionService.activeShip(),
+    setSessionShip: (ship) => this.sessionService.setActiveShip(ship),
+    resolveLaunchableInventory: (rawInventory) => this.resolveLaunchableInventory(rawInventory),
+    resolveTargetingCapabilityFromInventory: (inventory) =>
+      this.missionDefinition.resolveTargetingCapabilityFromInventory(inventory),
+    setLaunchableInventory: (inventory) => this.launchableInventory.set(inventory),
+    setHasExpendableDartDrone: (hasDrone) => this.hasExpendableDartDrone.set(hasDrone),
   });
   private inputAdapter: ShipExteriorInputAdapter | null = null;
   private missionGateState = signal<ShipExteriorMissionGateState | null>(null);
@@ -1877,13 +1891,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.flightController.syncCurrentLocationFromShip(matchingShip?.spatial?.positionKm ?? null);
     this.activeSolarSystemId.set(matchingShip?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID);
     this.refreshContractBackedRouteFeeds();
-    this.launchableInventory.set(this.resolveLaunchableInventory(normalizedInventory));
-    if (matchingShip) {
-      this.navigationState.joinShip = {
-        ...matchingShip,
-        inventory: normalizedInventory,
-      };
-    }
+    this.stateFacade.syncNavigationShipFromShipList(matchingShip, normalizedInventory);
     this.shipDamageController.resolveFromShipSummary(matchingShip);
   }
 
@@ -2498,35 +2506,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       return;
     }
 
-    let didRemoveFromNavigationInventory = false;
-    let didRemoveFromSessionInventory = false;
-
-    const navShip = this.navigationState.joinShip;
-    if (navShip && navShip.id === shipId) {
-      const filteredInventory = (navShip.inventory ?? []).filter(
-        (item) => !candidateConsumedItemIds.includes(item.id),
-      );
-      didRemoveFromNavigationInventory = filteredInventory.length !== (navShip.inventory ?? []).length;
-      const updatedNavigationShip: ShipSummary = {
-        ...navShip,
-        inventory: filteredInventory,
-      };
-      this.navigationState.joinShip = updatedNavigationShip;
-      this.launchableInventory.set(this.resolveLaunchableInventory(filteredInventory));
-      this.hasExpendableDartDrone.set(this.missionDefinition.resolveTargetingCapabilityFromInventory(filteredInventory));
-    }
-
-    const activeShip = this.sessionService.activeShip();
-    if (activeShip && activeShip.id === shipId) {
-      const filteredInventory = (activeShip.inventory ?? []).filter(
-        (item) => !candidateConsumedItemIds.includes(item.id),
-      );
-      didRemoveFromSessionInventory = filteredInventory.length !== (activeShip.inventory ?? []).length;
-      this.sessionService.setActiveShip({
-        ...activeShip,
-        inventory: filteredInventory,
-      });
-    }
+    const inventoryMutation = this.stateFacade.removeConsumedLaunchItems(shipId, candidateConsumedItemIds);
 
     const consumedItemId = candidateConsumedItemIds[0];
     this.lastConsumedLaunchItemId = consumedItemId;
@@ -2534,7 +2514,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     if (launchedItemType === ShipExteriorViewScene.EXPENDABLE_DART_DRONE_ITEM_TYPE) {
       this.knownDroneDepletedShipIds.add(shipId);
     }
-    if (!didRemoveFromNavigationInventory && !didRemoveFromSessionInventory) {
+    if (!inventoryMutation.didMutateNavigationInventory && !inventoryMutation.didMutateSessionInventory) {
       appLogger.warn('[ship-exterior-launch-contract] Consumed launch item was not found in local inventory state.', {
         shipId,
         consumedItemId,
@@ -2620,31 +2600,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
     this.persistLaunchMaterialRewards(rewardItems, shipId);
 
-    const navShip = this.navigationState.joinShip;
-    if (navShip && navShip.id === shipId) {
-      const updatedNavigationShip: ShipSummary = {
-        ...navShip,
-        inventory: [...(navShip.inventory ?? []), ...rewardItems],
-      };
-      this.navigationState.joinShip = updatedNavigationShip;
-      this.launchableInventory.set(this.resolveLaunchableInventory(updatedNavigationShip.inventory));
-      this.hasExpendableDartDrone.set(
-        this.missionDefinition.resolveTargetingCapabilityFromInventory(updatedNavigationShip.inventory),
-      );
-    }
-
-    const activeShip = this.sessionService.activeShip();
-    if (activeShip && activeShip.id === shipId) {
-      this.sessionService.setActiveShip({
-        ...activeShip,
-        inventory: [...(activeShip.inventory ?? []), ...rewardItems],
-      });
-      return;
-    }
-
-    if (this.navigationState.joinShip && this.navigationState.joinShip.id === shipId) {
-      this.sessionService.setActiveShip(this.navigationState.joinShip);
-    }
+    this.stateFacade.appendLaunchRewardItems(shipId, rewardItems);
   }
 
   private persistLaunchMaterialRewards(rewardItems: readonly ShipItem[], shipId: string): void {
