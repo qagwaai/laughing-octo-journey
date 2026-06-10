@@ -66,4 +66,81 @@ describe('ShipExteriorRouteFeedLayer', () => {
     const meshes = fixture.debugElement.queryAll(By.css('app-viewer-ship-mesh'));
     expect(meshes.length).toBe(0);
   });
+
+  it('renders one gate torus per gate feed item', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    const host = fixture.componentInstance;
+    host.gates = [
+      {
+        id: 'gate-1',
+        displayName: 'Gate One',
+        descriptorColor: '#22c55e',
+        emissive: '#14532d',
+        emissiveIntensity: 0.4,
+        tubeRadius: 0.2,
+        position: [0, 0, 0],
+      },
+      {
+        id: 'gate-2',
+        displayName: 'Gate Two',
+        descriptorColor: '#3b82f6',
+        emissive: '#1e3a8a',
+        emissiveIntensity: 0.5,
+        tubeRadius: 0.25,
+        position: [2, 0, 0],
+      },
+    ];
+
+    fixture.detectChanges();
+
+    const geometries = fixture.debugElement.queryAll(By.css('ngt-torus-geometry'));
+    expect(geometries.length).toBe(2);
+  });
+
+  it('renders one station octahedron per station feed item and updates when inputs change', () => {
+    const fixture = TestBed.createComponent(HostComponent);
+    const host = fixture.componentInstance;
+    host.stations = [
+      {
+        id: 'station-1',
+        displayName: 'Station One',
+        descriptorColor: '#f97316',
+        emissive: '#7c2d12',
+        emissiveIntensity: 0.45,
+        position: [1, 0, 0],
+        scale: [1, 1, 1],
+      },
+      {
+        id: 'station-2',
+        displayName: 'Station Two',
+        descriptorColor: '#eab308',
+        emissive: '#713f12',
+        emissiveIntensity: 0.5,
+        position: [3, 0, 0],
+        scale: [1.1, 1.1, 1.1],
+      },
+    ];
+
+    fixture.detectChanges();
+
+    let geometries = fixture.debugElement.queryAll(By.css('ngt-octahedron-geometry'));
+    expect(geometries.length).toBe(2);
+
+    host.stations = [
+      {
+        id: 'station-3',
+        displayName: 'Station Three',
+        descriptorColor: '#a855f7',
+        emissive: '#581c87',
+        emissiveIntensity: 0.55,
+        position: [5, 0, 0],
+        scale: [0.9, 0.9, 0.9],
+      },
+    ];
+
+    fixture.detectChanges();
+
+    geometries = fixture.debugElement.queryAll(By.css('ngt-octahedron-geometry'));
+    expect(geometries.length).toBe(1);
+  });
 });

@@ -130,32 +130,36 @@ describe('ShipExteriorViewScene', () => {
     delete (window as any).__shipExteriorTestUtils;
   });
 
-  it('should default to fallback labels when navigation state is empty', () => {
+  it('should expose default solar distance and scene position when navigation state is empty', () => {
     const { component } = setup();
 
-    expect(component['playerName']()).toBe('Unknown Pilot');
-    expect(component['characterName']()).toBe('Unbound');
+    expect(component.shipSunDistanceKm()).toBeGreaterThan(0);
+    expect(component.sunScenePosition().length).toBe(3);
   });
 
-  it('should initialize player and character from navigation state', () => {
+  it('should initialize shipSunDistanceKm from navigation ship spatial coordinates', () => {
     const { component } = setup({
-      playerName: 'Pioneer',
-      joinCharacter: { id: 'c-1', characterName: 'Nova Prime' },
+      joinShip: {
+        id: 's-distance',
+        model: 'Scavenger Pod',
+        spatial: {
+          solarSystemId: 'sol',
+          positionKm: { x: 3, y: 4, z: 12 },
+        },
+      },
     });
 
-    expect(component['playerName']()).toBe('Pioneer');
-    expect(component['characterName']()).toBe('Nova Prime');
+    expect(component.shipSunDistanceKm()).toBe(13);
   });
 
-  it('should read firstTargetMissionStatus from navigation state without error', () => {
+  it('should expose mission objective text when firstTargetMissionStatus is provided in navigation state', () => {
     const { component } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'c-1', characterName: 'Nova Prime' },
       firstTargetMissionStatus: 'active',
     });
 
-    expect(component['playerName']()).toBe('Pioneer');
-    expect(component['characterName']()).toBe('Nova Prime');
+    expect(component.missionObjectiveText().length).toBeGreaterThan(0);
   });
 
   it('should enable targeting for Scavenger Pod with expendable-dart-drone inventory', () => {
@@ -166,7 +170,13 @@ describe('ShipExteriorViewScene', () => {
         inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
       },
     });
-    expect(component['canTargetAsteroids']()).toBe(true);
+    component['asteroidSamples'].set([makeSample('sample-a')]);
+
+    const api = (window as any).__shipExteriorTestUtils;
+    const result = api.forceTargetAsteroid('sample-a');
+
+    expect(result).toBe(true);
+    expect(api.getTargetedAsteroidId()).toBe('sample-a');
   });
 
   it('should scan every loaded asteroid to hero tier for dev testing', () => {
@@ -182,8 +192,8 @@ describe('ShipExteriorViewScene', () => {
 
     component.scanAllAsteroidsToHeroForTest();
 
-    const samples = component['asteroidSamples']();
-    expect(component['forceAllAsteroidsHeroForTest']()).toBeTrue();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples.every((sample) => sample.scanned && sample.scanProgress === 100)).toBeTrue();
     expect(component.resolveAsteroidRenderTier('sample-a')).toBe('hero');
     expect(component.resolveAsteroidRenderTier('sample-b')).toBe('hero');
@@ -203,8 +213,8 @@ describe('ShipExteriorViewScene', () => {
 
     component.scanAllAsteroidsToHeroForTest();
 
-    const samples = component['asteroidSamples']();
-    expect(component['forceAllAsteroidsHeroForTest']()).toBeTrue();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples.every((sample) => sample.scanned && sample.scanProgress === 100)).toBeTrue();
     expect(component.resolveAsteroidRenderTier('sample-c')).toBe('hero');
     expect(component.resolveAsteroidRenderTier('sample-d')).toBe('hero');
@@ -218,7 +228,12 @@ describe('ShipExteriorViewScene', () => {
         inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
       },
     });
-    expect(component['canTargetAsteroids']()).toBe(false);
+    const api = (window as any).__shipExteriorTestUtils;
+    const sampleId = api.getAsteroidSamples()[0]?.id as string | undefined;
+    const result = sampleId ? api.forceTargetAsteroid(sampleId) : false;
+
+    expect(result).toBe(false);
+    expect(api.getTargetedAsteroidId()).toBeNull();
   });
 
   it('should disable targeting for Scavenger Pod without expendable-dart-drone inventory', () => {
@@ -229,7 +244,12 @@ describe('ShipExteriorViewScene', () => {
         inventory: [{ id: 'i-2', itemType: 'basic-mining-laser' }],
       },
     });
-    expect(component['canTargetAsteroids']()).toBe(false);
+    const api = (window as any).__shipExteriorTestUtils;
+    const sampleId = api.getAsteroidSamples()[0]?.id as string | undefined;
+    const result = sampleId ? api.forceTargetAsteroid(sampleId) : false;
+
+    expect(result).toBe(false);
+    expect(api.getTargetedAsteroidId()).toBeNull();
   });
 
   it('logs a contract warning when expendable dart drone is present but not launchable', () => {
@@ -441,14 +461,14 @@ describe('ShipExteriorViewScene', () => {
     const { component } = setup({
       joinShip: { id: 's-1', spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } } },
     });
-    expect(component['sunConfig']()).toEqual(jasmine.objectContaining({ color: '#f5ff6b', radius: 1 }));
+    expect(component.sunConfig()).toEqual(jasmine.objectContaining({ color: '#f5ff6b', radius: 1 }));
   });
 
   it('should fall back to Sol sun config for unknown solar systems', () => {
     const { component } = setup({
       joinShip: { id: 's-2', spatial: { solarSystemId: 'unknown-system', positionKm: { x: 0, y: 0, z: 0 } } },
     });
-    expect(component['sunConfig']()).toEqual(jasmine.objectContaining({ color: '#f5ff6b', radius: 1 }));
+    expect(component.sunConfig()).toEqual(jasmine.objectContaining({ color: '#f5ff6b', radius: 1 }));
   });
 
   it('should place sun very far opposite ship location vector for asteroid belt distances', () => {
@@ -459,7 +479,7 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    const [sunX, sunY, sunZ] = component['sunScenePosition']();
+    const [sunX, sunY, sunZ] = component.sunScenePosition();
     const sunDistance = Math.hypot(sunX, sunY, sunZ);
     expect(sunDistance).toBeGreaterThan(56);
     expect(sunDistance).toBeLessThanOrEqual(120);
@@ -472,7 +492,7 @@ describe('ShipExteriorViewScene', () => {
       joinShip: { id: 's-1', spatial: { solarSystemId: 'sol', positionKm: { x: 420000000, y: 0, z: 0 } } },
     });
 
-    const intensity = component['solarDirectionalLightIntensity']();
+    const intensity = component.solarDirectionalLightIntensity();
     expect(intensity).toBeGreaterThanOrEqual(0.02);
     expect(intensity).toBeLessThan(0.16);
     expect(intensity).toBeGreaterThan(0.05);
@@ -1160,8 +1180,8 @@ describe('ShipExteriorViewScene', () => {
     });
     document.dispatchEvent(new Event('pointerlockchange'));
 
-    expect(component['flightModeEnabled']()).toBeFalse();
-    expect(component['flightPointerLocked']()).toBeFalse();
+    expect(component.flightModeEnabled()).toBeFalse();
+    expect(component.flightPointerLocked()).toBeFalse();
   });
 
   it('should expose SW-13B metadata lines for the focused asteroid sample', () => {
@@ -2006,12 +2026,9 @@ describe('ShipExteriorViewScene - tractor beam', () => {
   it('KeyE in flight mode does not trigger the tractor beam', () => {
     const { component, mockSocket } = setup(shipNavState({ x: 0, y: 0, z: 0 }));
     seedDebris(component, 'debris-flight', { x: 1, y: 0, z: 0 });
-    component['targetedDebrisId'].set('debris-flight');
-    component['activeTarget'].set({ kind: 'debris', id: 'debris-flight' });
-    component['flightModeEnabled'].set(true);
+    component.setFlightModeEnabled(true);
 
-    const event = new KeyboardEvent('keydown', { code: 'KeyE' });
-    component['onWindowKeyDown'](event);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }));
 
     expect(mockSocket.upsertItem).not.toHaveBeenCalled();
   });

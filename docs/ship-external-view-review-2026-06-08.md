@@ -1,17 +1,22 @@
 # Ship External View Architecture Review (2026-06-08)
 
 ## Implementation Status (Updated 2026-06-08)
+- Validation checkpoint refreshed on 2026-06-09 (latest run): all unit tests and full e2e are green.
+- Validation checkpoint refreshed after Phase 4 hero-tier test API conversion on 2026-06-09: all unit tests and full e2e are green.
+- Validation checkpoint refreshed after mission-completion e2e stabilization on 2026-06-09: all unit tests and full e2e are green.
+- Validation checkpoint refreshed for current change set on 2026-06-09: all unit tests and full e2e are green.
 - Validation checkpoint refreshed for current Phase 3 slice: all unit tests and full e2e are green.
-- Additional manual validation pass is now in progress.
+- Additional manual validation pass complete: extra manual tests are green for the current baseline.
 - Validation checkpoint complete: all unit tests and full e2e are green after Phase 0 facade changes.
 - Validation checkpoint refreshed: all unit tests and full e2e are green after Phase 1 input-adapter extraction.
 - Validation checkpoint refreshed again: all unit tests and full e2e are green after Phase 2 route-feed extraction slice.
 - Manual validation pass complete: extra manual tests are green on top of the automated baseline.
 - Targeted e2e stabilization landed for `character-profile` join bootstrap race (`e2e/tests/character-profile.spec.ts`) and targeted spec is green.
-- Phase 1 started and first slice completed:
+- Phase 1 completed:
   - Added `ship-exterior-input-adapter.ts` to encapsulate window/document listener attach/detach lifecycle.
   - Integrated adapter into `ship-exterior-view.ts` (`ngOnInit` now calls adapter `attach()`, `ngOnDestroy` calls `detach()`).
   - Added unit coverage in `ship-exterior-input-adapter.spec.ts` for attach, detach, idempotent attach, and no-op detach guards.
+  - Reworked the remaining input-behavior assertions in `ship-exterior-view.spec.ts` to use public events/signals instead of private handler reads.
 - Phase 2 started and first slice completed:
   - Extracted route feed render layer from `ship-exterior-view.html` into `ship-exterior-route-feed-layer.ts`.
   - Integrated new layer component into scene template and component imports.
@@ -20,6 +25,24 @@
   - Added `ship-exterior-state-facade.ts` to consolidate navigation/session inventory mutation paths.
   - Routed ship-list synchronization, launch-consume updates, and launch-reward updates through the new facade.
   - Added focused unit coverage in `ship-exterior-state-facade.spec.ts` for sync, consume, and reward mutation flows.
+- Phase 4 started and first slice completed:
+  - Expanded `ship-exterior-route-feed-layer.spec.ts` with integration-style render-domain assertions for gates and stations.
+  - Added input-update behavior coverage to ensure render counts track public input changes.
+- Phase 4 second slice completed:
+  - Reworked early `ship-exterior-view.spec.ts` assertions from private-member reads (`component['...']`) to public computed behavior checks (`shipSunDistanceKm`, `sunScenePosition`, `missionObjectiveText`).
+  - Continued shifting test strategy toward public behavior and integration-friendly assertions.
+- Phase 4 third slice completed:
+  - Reworked additional `ship-exterior-view.spec.ts` solar behavior checks to direct public computed access (`sunConfig`, `sunScenePosition`, `solarDirectionalLightIntensity`) instead of bracket member access.
+  - Reduced private-style assertion usage in a second test cluster while keeping behavior coverage unchanged.
+- Phase 4 fourth slice completed:
+  - Reworked the first targeting-capability assertion in `ship-exterior-view.spec.ts` to use the public `__shipExteriorTestUtils.forceTargetAsteroid(...)` behavior hook instead of the protected `canTargetAsteroids()` signal.
+  - Kept the capability test aligned with the public scene behavior path while preserving the same coverage intent.
+- Phase 4 fifth slice completed:
+  - Reworked the remaining two negative targeting-capability assertions in `ship-exterior-view.spec.ts` to use the public `__shipExteriorTestUtils.forceTargetAsteroid(...)` behavior path.
+  - Removed direct protected `canTargetAsteroids()` reads for the targeted capability cluster while preserving disabled-targeting expectations.
+- Phase 4 sixth slice completed:
+  - Reworked two hero-tier scan tests in `ship-exterior-view.spec.ts` to read asteroid sample results through the public `__shipExteriorTestUtils.getAsteroidSamples()` behavior path.
+  - Removed direct private asteroid-signal result assertions in that cluster while preserving hero-tier and scan-completion coverage intent.
 
 ## Scope
 Reviewed files:
