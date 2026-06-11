@@ -7,6 +7,41 @@ import type {
   UpsertMissionStatusResult,
 } from '../app/services/mission.service';
 
+type AsyncMethod<TReq, TRes> = (req: TReq) => Promise<TRes>;
+type SpyLike<T extends (...args: unknown[]) => unknown> = T & {
+  and?: { resolveTo(value: Awaited<ReturnType<T>>): void };
+  mockResolvedValue?: (value: Awaited<ReturnType<T>>) => unknown;
+};
+
+function createCompatibleSpy(name: string): any {
+  const g = globalThis as any;
+  if (g.jasmine?.createSpy) {
+    return g.jasmine.createSpy(name);
+  }
+  if (g.vi?.fn) {
+    return g.vi.fn();
+  }
+  throw new Error(`No supported test spy framework available for ${name}`);
+}
+
+function setSpyResolvedValue(spy: any, value: unknown): void {
+  if (spy?.and?.resolveTo) {
+    spy.and.resolveTo(value);
+    return;
+  }
+  if (spy?.mockResolvedValue) {
+    spy.mockResolvedValue(value);
+    return;
+  }
+  if (spy?.and?.returnValue) {
+    spy.and.returnValue(Promise.resolve(value));
+    return;
+  }
+  if (spy?.mockImplementation) {
+    spy.mockImplementation(() => Promise.resolve(value));
+  }
+}
+
 /**
  * Canonical MockMissionService for use in spec files.
  * All methods are jasmine spies that resolve to reasonable defaults.
@@ -19,17 +54,23 @@ import type {
  *   missionService.upsertMissionStatus.and.resolveTo('updated');
  */
 export interface MockMissionService {
-  ensureMissionExists: jasmine.Spy<(req: EnsureMissionExistsRequest) => Promise<EnsureMissionExistsResult>>;
-  listMissions: jasmine.Spy<(req: MissionListRequest) => Promise<ListMissionsResult>>;
-  upsertMissionStatus: jasmine.Spy<(req: MissionUpsertRequest) => Promise<UpsertMissionStatusResult>>;
+  ensureMissionExists: SpyLike<AsyncMethod<EnsureMissionExistsRequest, EnsureMissionExistsResult>>;
+  listMissions: SpyLike<AsyncMethod<MissionListRequest, ListMissionsResult>>;
+  upsertMissionStatus: SpyLike<AsyncMethod<MissionUpsertRequest, UpsertMissionStatusResult>>;
 }
 
 export function createMockMissionService(): MockMissionService {
+  const ensureMissionExists = createCompatibleSpy('ensureMissionExists');
+  const listMissions = createCompatibleSpy('listMissions');
+  const upsertMissionStatus = createCompatibleSpy('upsertMissionStatus');
+
+  setSpyResolvedValue(ensureMissionExists, 'already-exists');
+  setSpyResolvedValue(listMissions, { status: 'loaded', missions: [] } satisfies ListMissionsResult);
+  setSpyResolvedValue(upsertMissionStatus, 'updated');
+
   return {
-    ensureMissionExists: jasmine.createSpy('ensureMissionExists').and.resolveTo('already-exists'),
-    listMissions: jasmine
-      .createSpy('listMissions')
-      .and.resolveTo({ status: 'loaded', missions: [] } satisfies ListMissionsResult),
-    upsertMissionStatus: jasmine.createSpy('upsertMissionStatus').and.resolveTo('updated'),
+    ensureMissionExists,
+    listMissions,
+    upsertMissionStatus,
   };
 }
