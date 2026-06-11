@@ -70,7 +70,7 @@ describe('SocketService', () => {
 
   describe('emit', () => {
     it('should warn if socket is not initialized', () => {
-      const warnSpy = spyOn(console, 'warn');
+      const warnSpy = vi.spyOn(console, 'warn');
       service['socket'] = null;
       service.emit('test', { data: 'test' });
 
@@ -192,12 +192,12 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onEvents.has(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT)).toBeTrue();
+      expect(onEvents.has(CELESTIAL_BODY_UPSERT_RESPONSE_EVENT)).toBe(true);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([CELESTIAL_BODY_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.upsertCelestialBody',
           requestIdentity: {
             operation: 'celestial-body-upsert',
@@ -233,7 +233,7 @@ describe('SocketService', () => {
       expect(callbackResponse).toEqual(fakeResponse);
     });
 
-    it('should serialize celestial-body upserts for the same domain key', (done) => {
+    it('should serialize celestial-body upserts for the same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -312,13 +312,11 @@ describe('SocketService', () => {
         celestialBody: request.celestialBody,
       });
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([
-          CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
-          CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
-        ]);
-        done();
-      }, 0);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([
+        CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
+        CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
+      ]);
     });
 
   });
@@ -368,12 +366,12 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onEvents.has(CELESTIAL_BODY_LIST_RESPONSE_EVENT)).toBeTrue();
+      expect(onEvents.has(CELESTIAL_BODY_LIST_RESPONSE_EVENT)).toBe(true);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([CELESTIAL_BODY_LIST_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.listCelestialBodies',
           requestIdentity: {
             operation: 'celestial-body-list',
@@ -417,7 +415,7 @@ describe('SocketService', () => {
       expect(callbackResponse).toEqual(fakeResponse);
     });
 
-    it('should serialize celestial-body list requests for the same domain key', (done) => {
+    it('should serialize celestial-body list requests for the same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -476,13 +474,11 @@ describe('SocketService', () => {
         celestialBodies: [],
       });
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([
-          CELESTIAL_BODY_LIST_REQUEST_EVENT,
-          CELESTIAL_BODY_LIST_REQUEST_EVENT,
-        ]);
-        done();
-      }, 0);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([
+        CELESTIAL_BODY_LIST_REQUEST_EVENT,
+        CELESTIAL_BODY_LIST_REQUEST_EVENT,
+      ]);
     });
   });
 
@@ -543,12 +539,12 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onEvents.has(SHIP_UPSERT_RESPONSE_EVENT)).toBeTrue();
+      expect(onEvents.has(SHIP_UPSERT_RESPONSE_EVENT)).toBe(true);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.upsertShip',
           requestIdentity: {
             operation: 'ship-upsert',
@@ -588,7 +584,7 @@ describe('SocketService', () => {
       expect(callbackResponse).toEqual(fakeResponse);
     });
 
-    it('should serialize ship upserts for the same domain key', (done) => {
+    it('should serialize ship upserts for the same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -656,13 +652,11 @@ describe('SocketService', () => {
         ship: { ...baseRequest.ship, shipName: 'Starter Ship' },
       });
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_REQUEST_EVENT]);
-        done();
-      }, 0);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should unblock queued ship upserts after timeout for same domain key', (done) => {
+    it('should unblock queued ship upserts after timeout for same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -718,22 +712,20 @@ describe('SocketService', () => {
 
       expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT]);
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_REQUEST_EVENT]);
-        done();
-      }, 3200);
+      await new Promise((resolve) => setTimeout(resolve, 3200));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_REQUEST_EVENT]);
     });
 
   });
 
   describe('upsertItem', () => {
     afterEach(() => {
-      jasmine.clock().uninstall();
+      vi.useRealTimers();
     });
 
     it('should register canonical response listener and resolve only matching item-upsert responses', () => {
-      jasmine.clock().install();
-      const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+      vi.useFakeTimers();
+      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
@@ -785,13 +777,13 @@ describe('SocketService', () => {
 
       const emittedEventNames = emittedEvents.map((entry) => entry.event);
 
-      expect(onEvents.has(ITEM_UPSERT_RESPONSE_EVENT)).toBeTrue();
-      expect(onEvents.has('upsert-item-response')).toBeFalse();
+      expect(onEvents.has(ITEM_UPSERT_RESPONSE_EVENT)).toBe(true);
+      expect(onEvents.has('upsert-item-response')).toBe(false);
       expect(emittedEventNames).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.upsertItem',
           requestIdentity: {
             operation: 'item-upsert',
@@ -836,7 +828,7 @@ describe('SocketService', () => {
       expect(dispatchSpy).not.toHaveBeenCalled();
 
       canonicalCallbacks[0]?.(fakeResponse);
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
       canonicalCallbacks[0]?.({ success: true, message: 'duplicate', playerName: 'Pioneer' });
 
       expect(callbackResponse).toEqual(fakeResponse);
@@ -844,8 +836,8 @@ describe('SocketService', () => {
     });
 
     it('should warn on same-correlation item-upsert identity mismatch', () => {
-      jasmine.clock().install();
-      const dispatchSpy = spyOn(window, 'dispatchEvent').and.callThrough();
+      vi.useFakeTimers();
+      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
@@ -922,14 +914,14 @@ describe('SocketService', () => {
 
       expect(callbackResponse).toBeUndefined();
       expect(dispatchSpy).toHaveBeenCalledWith(
-        jasmine.objectContaining({
+        expect.objectContaining({
           type: 'socket-correlation-warning',
         }),
       );
     });
 
     it('should emit only canonical item-upsert request when no response arrives', () => {
-      jasmine.clock().install();
+      vi.useFakeTimers();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
 
@@ -961,19 +953,19 @@ describe('SocketService', () => {
       service.upsertItem(request, () => {});
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.upsertItem',
         }),
       );
 
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
 
     it('should use canonical item-upsert for existing item updates when no response arrives', () => {
-      jasmine.clock().install();
+      vi.useFakeTimers();
 
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
 
@@ -1009,18 +1001,18 @@ describe('SocketService', () => {
 
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.upsertItem',
         }),
       );
 
-      jasmine.clock().tick(1000);
+      vi.advanceTimersByTime(1000);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should serialize item upserts for the same domain key', (done) => {
+    it('should serialize item upserts for the same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -1085,13 +1077,11 @@ describe('SocketService', () => {
         },
       });
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
-        done();
-      }, 0);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should unblock queued item upserts after timeout for same domain key', (done) => {
+    it('should unblock queued item upserts after timeout for same domain key', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
 
       const mockSocket = {
@@ -1124,10 +1114,8 @@ describe('SocketService', () => {
 
       expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
-        done();
-      }, 3200);
+      await new Promise((resolve) => setTimeout(resolve, 3200));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
     });
 
     it('should allow different item domain keys to emit without serialization', () => {
@@ -1230,7 +1218,7 @@ describe('SocketService', () => {
       expect(emittedAfterDisconnect.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT]);
     });
 
-    it('should ignore late timed-out response and still process next queued response', (done) => {
+    it('should ignore late timed-out response and still process next queued response', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
       const capturedCallbacks: Array<(data: unknown) => void> = [];
@@ -1283,48 +1271,46 @@ describe('SocketService', () => {
       });
 
       const firstPayload = emittedEvents[0]?.payload as ItemUpsertRequest;
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
+      await new Promise((resolve) => setTimeout(resolve, 3200));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_REQUEST_EVENT]);
 
-        // Invoke stale callback reference for the first request after timeout.
-        capturedCallbacks[0]?.({
-          success: true,
-          message: 'late response',
-          playerName: 'Pioneer',
-          correlationId: firstPayload.correlationId,
-          requestIdentity: firstPayload.requestIdentity,
-          item: {
-            ...baseRequest.item,
-            id: 'item-1',
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z',
-          },
-        });
-        expect(secondResponse).toBeUndefined();
+      // Invoke stale callback reference for the first request after timeout.
+      capturedCallbacks[0]?.({
+        success: true,
+        message: 'late response',
+        playerName: 'Pioneer',
+        correlationId: firstPayload.correlationId,
+        requestIdentity: firstPayload.requestIdentity,
+        item: {
+          ...baseRequest.item,
+          id: 'item-1',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      });
+      expect(secondResponse).toBeUndefined();
 
-        const secondPayload = emittedEvents[1]?.payload as ItemUpsertRequest;
-        const liveCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
-        liveCallbacks[0]?.({
-          success: true,
+      const secondPayload = emittedEvents[1]?.payload as ItemUpsertRequest;
+      const liveCallbacks = onEvents.get(ITEM_UPSERT_RESPONSE_EVENT) ?? [];
+      liveCallbacks[0]?.({
+        success: true,
+        message: 'second response',
+        playerName: 'Pioneer',
+        correlationId: secondPayload.correlationId,
+        requestIdentity: secondPayload.requestIdentity,
+        item: {
+          ...baseRequest.item,
+          id: 'item-2',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        },
+      });
+      expect(secondResponse).toEqual(
+        expect.objectContaining({
           message: 'second response',
-          playerName: 'Pioneer',
           correlationId: secondPayload.correlationId,
-          requestIdentity: secondPayload.requestIdentity,
-          item: {
-            ...baseRequest.item,
-            id: 'item-2',
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z',
-          },
-        });
-        expect(secondResponse).toEqual(
-          jasmine.objectContaining({
-            message: 'second response',
-            correlationId: secondPayload.correlationId,
-          }),
-        );
-        done();
-      }, 3200);
+        }),
+      );
     });
   });
 
@@ -1376,12 +1362,12 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      expect(onEvents.has(LAUNCH_ITEM_RESPONSE_EVENT)).toBeTrue();
+      expect(onEvents.has(LAUNCH_ITEM_RESPONSE_EVENT)).toBe(true);
       expect(emittedEvents.map((entry) => entry.event)).toEqual([LAUNCH_ITEM_REQUEST_EVENT]);
       expect(emittedEvents[0]?.payload).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.launchItem',
           requestIdentity: {
             operation: 'launch-item',
@@ -1420,7 +1406,7 @@ describe('SocketService', () => {
       expect(callbackResponse).toEqual(fakeResponse);
     });
 
-    it('should serialize launch-item requests for the same domain key when callback is provided', (done) => {
+    it('should serialize launch-item requests for the same domain key when callback is provided', async () => {
       const emittedEvents: Array<{ event: string; payload: unknown }> = [];
       const onEvents = new Map<string, Array<(data: unknown) => void>>();
 
@@ -1477,13 +1463,11 @@ describe('SocketService', () => {
         requestIdentity: firstPayload.requestIdentity!,
       });
 
-      setTimeout(() => {
-        expect(emittedEvents.map((entry) => entry.event)).toEqual([
-          LAUNCH_ITEM_REQUEST_EVENT,
-          LAUNCH_ITEM_REQUEST_EVENT,
-        ]);
-        done();
-      }, 0);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([
+        LAUNCH_ITEM_REQUEST_EVENT,
+        LAUNCH_ITEM_REQUEST_EVENT,
+      ]);
     });
 
     it('should emit launch-item immediately when no response callback is provided', () => {
@@ -1515,9 +1499,9 @@ describe('SocketService', () => {
       const returnedRequest = service.launchItem(request);
 
       expect(returnedRequest).toEqual(
-        jasmine.objectContaining({
+        expect.objectContaining({
           ...request,
-          correlationId: jasmine.any(String),
+          correlationId: expect.any(String),
           correlationSource: 'socket.launchItem',
           requestIdentity: {
             operation: 'launch-item',
@@ -1536,7 +1520,7 @@ describe('SocketService', () => {
 
   describe('on', () => {
     it('should warn if socket not initialized', () => {
-      const warnSpy = spyOn(console, 'warn');
+      const warnSpy = vi.spyOn(console, 'warn');
       service['socket'] = null;
       const unsubscribe = service.on('test', () => {});
 
@@ -1573,7 +1557,7 @@ describe('SocketService', () => {
 
   describe('once', () => {
     it('should warn if socket not initialized', () => {
-      const warnSpy = spyOn(console, 'warn');
+      const warnSpy = vi.spyOn(console, 'warn');
       service['socket'] = null;
       service.once('test', () => {});
 
