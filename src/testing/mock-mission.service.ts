@@ -7,10 +7,22 @@ import type {
   UpsertMissionStatusResult,
 } from '../app/services/mission.service';
 
-type AsyncMethod<TReq, TRes> = (req: TReq) => Promise<TRes>;
-type SpyLike<T extends (...args: unknown[]) => unknown> = T & {
-  and?: { resolveTo(value: Awaited<ReturnType<T>>): void };
-  mockResolvedValue?: (value: Awaited<ReturnType<T>>) => unknown;
+type SpyLike<TReq, TRes> = ((req: TReq) => Promise<TRes>) & {
+  // Jasmine shape (used by legacy Karma specs)
+  and: {
+    resolveTo(value: TRes): void;
+    returnValue(value: Promise<TRes>): void;
+  };
+  calls: {
+    count(): number;
+    allArgs(): unknown[][];
+    mostRecent(): { args: unknown[] };
+    argsFor(index: number): unknown[];
+    reset(): void;
+  };
+  // Vitest shape (used by migrated Vitest suites)
+  mockResolvedValue(value: TRes): unknown;
+  mockImplementation(fn: (req: TReq) => Promise<TRes>): unknown;
 };
 
 function createCompatibleSpy(name: string): any {
@@ -54,9 +66,9 @@ function setSpyResolvedValue(spy: any, value: unknown): void {
  *   missionService.upsertMissionStatus.and.resolveTo('updated');
  */
 export interface MockMissionService {
-  ensureMissionExists: SpyLike<AsyncMethod<EnsureMissionExistsRequest, EnsureMissionExistsResult>>;
-  listMissions: SpyLike<AsyncMethod<MissionListRequest, ListMissionsResult>>;
-  upsertMissionStatus: SpyLike<AsyncMethod<MissionUpsertRequest, UpsertMissionStatusResult>>;
+  ensureMissionExists: SpyLike<EnsureMissionExistsRequest, EnsureMissionExistsResult>;
+  listMissions: SpyLike<MissionListRequest, ListMissionsResult>;
+  upsertMissionStatus: SpyLike<MissionUpsertRequest, UpsertMissionStatusResult>;
 }
 
 export function createMockMissionService(): MockMissionService {

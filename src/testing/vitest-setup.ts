@@ -16,7 +16,7 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 // jsdom canvas support is partial; provide a minimal 2D context for libraries
 // that touch canvas during module initialization.
 if (typeof globalThis.HTMLCanvasElement !== 'undefined') {
-  const canvasProto = globalThis.HTMLCanvasElement.prototype as HTMLCanvasElement['prototype'] & {
+  const canvasProto = globalThis.HTMLCanvasElement.prototype as {
     getContext: (contextId: string) => unknown;
   };
 
