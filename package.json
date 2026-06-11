@@ -23,6 +23,9 @@
     "test:ci": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test --watch=false --code-coverage",
     "test:debug": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test --browsers=Chrome --watch",
     "test:spec": "node --disable-warning=DEP0169 ./node_modules/@angular/cli/bin/ng.js test --watch=false --include",
+    "test:vitest": "vitest run --config vitest.config.mts",
+    "test:vitest:watch": "vitest --config vitest.config.mts",
+    "test:vitest:ci": "vitest run --config vitest.config.mts --coverage",
     "e2e": "playwright test",
     "e2e:spec": "playwright test --reporter=line",
     "e2e:ui": "playwright test --ui",
@@ -86,6 +89,8 @@
     "zone.js": "^0.16.2"
   },
   "devDependencies": {
+    "@analogjs/vite-plugin-angular": "^2.6.0",
+    "@analogjs/vitest-angular": "^2.6.0",
     "@angular/build": "^21.2.14",
     "@angular/cli": "^21.2.14",
     "@angular/compiler-cli": "^21.2.16",
@@ -96,8 +101,10 @@
     "@types/three": "^0.182.0",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.60.1",
+    "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^10.4.1",
     "jasmine-core": "^6.2.0",
+    "jsdom": "^29.1.1",
     "karma": "^6.4.4",
     "karma-chrome-launcher": "^3.2.0",
     "karma-coverage": "^2.2.1",
@@ -109,7 +116,8 @@
     "prettier-plugin-organize-imports": "^4.1.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4.1.11",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.8"
   },
   "overrides": {
     "vite": "7.3.2"
