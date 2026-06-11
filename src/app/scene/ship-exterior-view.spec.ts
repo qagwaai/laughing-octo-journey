@@ -163,16 +163,16 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should enable targeting for Scavenger Pod with expendable-dart-drone inventory', () => {
-    const { component } = setup({
+    setup({
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
         inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone' }],
       },
     });
-    component['asteroidSamples'].set([makeSample('sample-a')]);
 
     const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a')]);
     const result = api.forceTargetAsteroid('sample-a');
 
     expect(result).toBe(true);
@@ -188,11 +188,11 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a'), makeSample('sample-b')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a'), makeSample('sample-b')]);
 
     component.scanAllAsteroidsToHeroForTest();
 
-    const api = (window as any).__shipExteriorTestUtils;
     const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples.every((sample) => sample.scanned && sample.scanProgress === 100)).toBeTrue();
     expect(component.resolveAsteroidRenderTier('sample-a')).toBe('hero');
@@ -209,11 +209,11 @@ describe('ShipExteriorViewScene', () => {
       firstTargetMissionStatus: 'completed',
     });
 
-    component['asteroidSamples'].set([makeSample('sample-c'), makeSample('sample-d')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-c'), makeSample('sample-d')]);
 
     component.scanAllAsteroidsToHeroForTest();
 
-    const api = (window as any).__shipExteriorTestUtils;
     const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples.every((sample) => sample.scanned && sample.scanProgress === 100)).toBeTrue();
     expect(component.resolveAsteroidRenderTier('sample-c')).toBe('hero');
@@ -276,7 +276,7 @@ describe('ShipExteriorViewScene', () => {
   it('does not warn missing dart drone when a dart was just consumed by launch', () => {
     const warnSpy = spyOn(appLogger, 'warn');
 
-    const { component } = setup({
+    const { mockSocket } = setup({
       joinShip: {
         id: 's-5',
         model: 'Scavenger Pod',
@@ -284,7 +284,8 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['consumeLaunchedItemFromInventory']({
+    const api = (window as any).__shipExteriorTestUtils;
+    api.simulateLaunchItemResponse({
       success: true,
       message: 'ok',
       playerName: 'Pilot',
@@ -302,13 +303,17 @@ describe('ShipExteriorViewScene', () => {
       itemType: 'expendable-dart-drone',
     });
 
-    component['updateTargetingCapabilityFromShipList']([
-      {
-        id: 's-5',
-        model: 'Scavenger Pod',
-        inventory: [],
-      },
-    ] as any);
+    triggerMatchingShipListResponse(mockSocket, {
+      playerName: 'Pilot',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 's-5',
+          model: 'Scavenger Pod',
+          inventory: [],
+        },
+      ],
+    });
 
     const missingDroneWarningCalls = warnSpy.calls
       .allArgs()
@@ -324,7 +329,7 @@ describe('ShipExteriorViewScene', () => {
   it('does not warn empty-inventory payload for explicit empty inventory array', () => {
     const warnSpy = spyOn(appLogger, 'warn');
 
-    const { component } = setup({
+    const { mockSocket } = setup({
       joinShip: {
         id: 's-6',
         model: 'Scavenger Pod',
@@ -332,13 +337,17 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['updateTargetingCapabilityFromShipList']([
-      {
-        id: 's-6',
-        model: 'Scavenger Pod',
-        inventory: [],
-      },
-    ] as any);
+    triggerMatchingShipListResponse(mockSocket, {
+      playerName: 'Pilot',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 's-6',
+          model: 'Scavenger Pod',
+          inventory: [],
+        },
+      ],
+    });
 
     const emptyInventoryWarningCalls = warnSpy.calls
       .allArgs()
@@ -349,7 +358,7 @@ describe('ShipExteriorViewScene', () => {
   it('warns empty-inventory payload when legacy inventoryRefIds are present', () => {
     const warnSpy = spyOn(appLogger, 'warn');
 
-    const { component } = setup({
+    setup({
       joinShip: {
         id: 's-6b',
         model: 'Scavenger Pod',
@@ -357,14 +366,15 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['updateTargetingCapabilityFromShipList']([
+    const api = (window as any).__shipExteriorTestUtils;
+    api.simulateShipListTargetingCapabilityUpdate([
       {
         id: 's-6b',
         model: 'Scavenger Pod',
         inventory: [],
         inventoryRefIds: ['s-6b-dart-ref'],
       },
-    ] as any);
+    ]);
 
     expect(warnSpy).toHaveBeenCalledWith(
       '[ship-exterior-contract] Ship list response contains ship with empty inventory payload.',
@@ -379,7 +389,7 @@ describe('ShipExteriorViewScene', () => {
   it('does not warn missing dart drone once first-target neutralize step is completed', () => {
     const warnSpy = spyOn(appLogger, 'warn');
 
-    const { component } = setup({
+    const { mockSocket } = setup({
       joinShip: {
         id: 's-7',
         model: 'Scavenger Pod',
@@ -390,7 +400,8 @@ describe('ShipExteriorViewScene', () => {
       } as any,
     } as any);
 
-    component['missionGateState'].set({
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setMissionGateState({
       missionId: 'first-target',
       characterId: 'char-1',
       activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab (requires 1 iron).',
@@ -403,13 +414,17 @@ describe('ShipExteriorViewScene', () => {
       ],
     } as any);
 
-    component['updateTargetingCapabilityFromShipList']([
-      {
-        id: 's-7',
-        model: 'Scavenger Pod',
-        inventory: [{ id: 'i-sensor', itemType: 'sensor-array', launchable: false }],
-      },
-    ] as any);
+    triggerMatchingShipListResponse(mockSocket, {
+      playerName: 'Pilot',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 's-7',
+          model: 'Scavenger Pod',
+          inventory: [{ id: 'i-sensor', itemType: 'sensor-array', launchable: false }],
+        },
+      ],
+    });
 
     const missingDroneWarningCalls = warnSpy.calls
       .allArgs()
@@ -418,7 +433,7 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should lock a single target after right-click hold when targeting is enabled', () => {
-    const { component, fixture } = setup({
+    const { fixture } = setup({
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
@@ -426,10 +441,9 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a2'), makeSample('sample-a4')]);
-    fixture.detectChanges();
-
     const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a2'), makeSample('sample-a4')]);
+    fixture.detectChanges();
 
     api.forceTargetAsteroid('sample-a2');
     expect(api.getTargetedAsteroidId()).toBe('sample-a2');
@@ -439,7 +453,7 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should not lock target when targeting is disabled', () => {
-    const { component, fixture } = setup({
+    const { fixture } = setup({
       joinShip: {
         id: 's-1',
         model: 'Scavenger Pod',
@@ -447,10 +461,9 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a3')]);
-    fixture.detectChanges();
-
     const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a3')]);
+    fixture.detectChanges();
     const result = api.forceTargetAsteroid('sample-a3');
 
     expect(result).toBe(false);
@@ -662,9 +675,8 @@ describe('ShipExteriorViewScene', () => {
       dockedMarketId: null,
     });
 
-    expect(component['routeSceneGates']().length).toBe(1);
-    expect(component['routeSceneStations']().length).toBe(1);
-    expect(component['routeSceneEncounterShips']().length).toBe(1);
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getRouteFeedCounts()).toEqual({ gates: 1, stations: 1, encounterShips: 1 });
   });
 
   it('should expose five hotkey slots sorted alphabetically and capped to first five launchables', () => {
@@ -685,11 +697,12 @@ describe('ShipExteriorViewScene', () => {
     });
 
     // Set a target with a serverCelestialBodyId so hotkeys are enabled
-    component['asteroidSamples'].set([makeSample('sample-a2', { serverCelestialBodyId: 'server-cb-1' })]);
-    component['targetedAsteroidId'].set('sample-a2');
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a2', { serverCelestialBodyId: 'server-cb-1' })]);
+    api.setTargetedAsteroidId('sample-a2');
     fixture.detectChanges();
 
-    const slots = component['launchHotkeySlots']();
+    const slots = api.getLaunchHotkeySlots() as Array<{ label: string; enabled: boolean }>;
     expect(slots.map((slot) => slot.label)).toEqual([
       'Alpha Tool',
       'Beta Tool',
@@ -712,7 +725,8 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    const slots = component['launchHotkeySlots']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const slots = api.getLaunchHotkeySlots() as Array<{ label: string; enabled: boolean }>;
     expect(slots.map((slot) => slot.label)).toEqual(['Expendabl...', 'Survey Probe', 'empty', 'empty', 'empty']);
     expect(slots.every((slot) => !slot.enabled)).toBe(true);
   });
@@ -736,8 +750,9 @@ describe('ShipExteriorViewScene', () => {
     expect(mockSocket.launchItem).not.toHaveBeenCalled();
 
     // Set a target with serverCelestialBodyId so hotkeys become enabled
-    component['asteroidSamples'].set([makeSample('sample-a4', { serverCelestialBodyId: 'server-cb-4' })]);
-    component['targetedAsteroidId'].set('sample-a4');
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a4', { serverCelestialBodyId: 'server-cb-4' })]);
+    api.forceTargetAsteroid('sample-a4');
     fixture.detectChanges();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: '1' }));
@@ -759,8 +774,9 @@ describe('ShipExteriorViewScene', () => {
     });
     mockSocket.connected = true;
 
-    component['asteroidSamples'].set([makeSample('sample-a5', { serverCelestialBodyId: 'server-cb-5' })]);
-    component['targetedAsteroidId'].set('sample-a5');
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a5', { serverCelestialBodyId: 'server-cb-5' })]);
+    api.setTargetedAsteroidId('sample-a5');
     fixture.detectChanges();
 
     window.dispatchEvent(new KeyboardEvent('keydown', { key: '2' }));
@@ -783,12 +799,12 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a3'), makeSample('sample-a1')]);
-    component['targetedAsteroidId'].set('sample-a3');
-    component['activeScanAsteroidId'].set('sample-a3');
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a3'), makeSample('sample-a1')]);
+    api.setTargetedAsteroidId('sample-a3');
     fixture.detectChanges();
 
-    component['handleLaunchItemResponse']({
+    api.simulateLaunchItemResponse({
       success: true,
       message: 'Launch successful: target destroyed and materials yielded',
       correlationId: '00000000-0000-4000-8000-000000000005',
@@ -809,9 +825,9 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    expect(component['asteroidSamples']().some((s) => s.id === 'sample-a3')).toBe(false);
-    expect(component['targetedAsteroidId']()).toBeNull();
-    expect(component['activeScanAsteroidId']()).toBeNull();
+    expect((api.getAsteroidSamples() as AsteroidScanSample[]).some((s) => s.id === 'sample-a3')).toBe(false);
+    expect(api.getTargetedAsteroidId()).toBeNull();
+    expect(api.getActiveScanAsteroidId()).toBeNull();
     expect(component.activeLaunchToast()).toEqual(jasmine.objectContaining({ tone: 'success' }));
   });
 
@@ -840,17 +856,18 @@ describe('ShipExteriorViewScene', () => {
       inventory: [{ id: 'i-1', itemType: 'expendable-dart-drone', displayName: 'Expendable Dart Drone' } as any],
     } as any);
 
-    component['asteroidSamples'].set([
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([
       makeSample('sample-a3', {
         serverCelestialBodyId: 'sample-a3',
         revealedMaterial: { material: 'Iron', rarity: 'Common', textureColor: '#8f99a7' },
         scanned: true,
       }),
     ]);
-    component['targetedAsteroidId'].set('sample-a3');
+    api.setTargetedAsteroidId('sample-a3');
     fixture.detectChanges();
 
-    component['handleLaunchItemResponse']({
+    api.simulateLaunchItemResponse({
       success: true,
       message: 'Target destroyed',
       correlationId: '00000000-0000-4000-8000-000000000005',
@@ -885,11 +902,12 @@ describe('ShipExteriorViewScene', () => {
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a2')]);
-    component['targetedAsteroidId'].set('sample-a2');
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a2')]);
+    api.setTargetedAsteroidId('sample-a2');
     fixture.detectChanges();
 
-    component['handleLaunchItemResponse']({
+    api.simulateLaunchItemResponse({
       success: true,
       message: 'Launch completed with no effect',
       correlationId: '00000000-0000-4000-8000-000000000005',
@@ -910,8 +928,8 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    expect(component['asteroidSamples']().some((s) => s.id === 'sample-a2')).toBe(true);
-    expect(component['targetedAsteroidId']()).toBe('sample-a2');
+    expect((api.getAsteroidSamples() as AsteroidScanSample[]).some((s) => s.id === 'sample-a2')).toBe(true);
+    expect(api.getTargetedAsteroidId()).toBe('sample-a2');
     expect(component.activeLaunchToast()?.tone).toBe('success');
   });
 
@@ -924,7 +942,8 @@ describe('ShipExteriorViewScene', () => {
 
     fixture.detectChanges();
 
-    component['handleLaunchItemResponse']({
+    const api = (window as any).__shipExteriorTestUtils;
+    api.simulateLaunchItemResponse({
       success: false,
       message: 'Launch item is not launchable',
       correlationId: '00000000-0000-4000-8000-000000000005',
@@ -947,14 +966,16 @@ describe('ShipExteriorViewScene', () => {
     const { component } = setup({
       joinCharacter: { id: 'c-1', characterName: '  Echo  ' },
     });
-    expect(component['characterName']()).toBe('Echo');
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getCharacterName()).toBe('Echo');
   });
 
   it('should fallback character name to Unbound when blank', () => {
     const { component } = setup({
       joinCharacter: { id: 'c-2', characterName: '   ' },
     });
-    expect(component['characterName']()).toBe('Unbound');
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getCharacterName()).toBe('Unbound');
   });
 
   it('should seed asteroid samples via socket on initialization', () => {
@@ -973,7 +994,8 @@ describe('ShipExteriorViewScene', () => {
       ships: [],
     });
 
-    const samples = component['asteroidSamples']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples.length).toBeGreaterThanOrEqual(5);
   });
 
@@ -986,10 +1008,10 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a2'), makeSample('sample-a1')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a2'), makeSample('sample-a1')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a2');
     const samples = api.tickScanTicks(3);
 
@@ -1007,10 +1029,10 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a4')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a4')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a4');
     const samples = api.tickScanTicks(100);
 
@@ -1031,17 +1053,17 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-tiered')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-tiered')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-tiered');
     const samples = api.tickScanTicks(24);
 
     const target = samples.find((sample: AsteroidScanSample) => sample.id === 'sample-tiered');
     expect(target?.scanProgress).toBe(100);
     expect(target?.scanned).toBe(true);
-    expect(component['activeSensorArrayCapabilities']()?.tier).toBe(20);
+    expect(api.getActiveSensorArrayTier()).toBe(20);
   });
 
   it('should reset scan progress when cursor leaves active asteroid', () => {
@@ -1053,16 +1075,16 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a1')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a1')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a1');
     api.tickScanTicks(1);
     api.unhoverAsteroid('sample-a1');
 
-    expect(component['activeScanAsteroidId']()).toBeNull();
-    const sample = component['asteroidSamples']().find((s) => s.id === 'sample-a1');
+    expect(api.getActiveScanAsteroidId()).toBeNull();
+    const sample = (api.getAsteroidSamples() as AsteroidScanSample[]).find((s) => s.id === 'sample-a1');
     expect(sample?.scanProgress).toBe(0);
   });
 
@@ -1075,25 +1097,27 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a1'), makeSample('sample-a3')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a1'), makeSample('sample-a3')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a1');
     api.tickScanTicks(12);
     api.hoverAsteroid('sample-a3');
 
-    const previous = component['asteroidSamples']().find((s) => s.id === 'sample-a1');
-    const active = component['asteroidSamples']().find((s) => s.id === 'sample-a3');
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
+    const previous = samples.find((s) => s.id === 'sample-a1');
+    const active = samples.find((s) => s.id === 'sample-a3');
     expect(previous?.scanProgress).toBe(0);
-    expect(component['activeScanAsteroidId']()).toBe('sample-a3');
+    expect(api.getActiveScanAsteroidId()).toBe('sample-a3');
     expect(active?.scanProgress).toBe(0);
   });
 
   it('should report complete status when all asteroid scans finish', () => {
     const { component, fixture } = setup();
 
-    component['asteroidSamples'].set([
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([
       makeSample('sample-a1', { scanProgress: 100, scanned: true }),
       makeSample('sample-a2', { scanProgress: 100, scanned: true }),
       makeSample('sample-a3', { scanProgress: 100, scanned: true }),
@@ -1102,7 +1126,7 @@ describe('ShipExteriorViewScene', () => {
     ]);
     fixture.detectChanges();
 
-    expect(component['scanStatusLine']()).toBe('SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED');
+    expect(api.getScanStatusLine()).toBe('SCAN COMPLETE // ALL 5 SAMPLES CATALOGUED');
   });
 
   it('should block hover scanning and show an error toast when no sensor-array is installed', () => {
@@ -1114,33 +1138,33 @@ describe('ShipExteriorViewScene', () => {
       },
     });
 
-    component['asteroidSamples'].set([makeSample('sample-a1')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a1')]);
     fixture.detectChanges();
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a1');
     api.tickScanTicks(5);
 
-    expect(component['activeScanAsteroidId']()).toBeNull();
-    expect(component['asteroidSamples']()[0].scanProgress).toBe(0);
-    expect(component['activeLaunchToast']()?.message).toContain('Sensor array unavailable');
-    expect(component['activeLaunchToast']()?.tone).toBe('error');
+    expect(api.getActiveScanAsteroidId()).toBeNull();
+    expect((api.getAsteroidSamples() as AsteroidScanSample[])[0]?.scanProgress).toBe(0);
+    expect(api.getActiveLaunchToast()?.message).toContain('Sensor array unavailable');
+    expect(api.getActiveLaunchToast()?.tone).toBe('error');
   });
 
   it('should suppress hover scanning while flight mode is enabled', () => {
     const { component, fixture } = setup();
 
-    component['asteroidSamples'].set([makeSample('sample-a1')]);
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-a1')]);
     fixture.detectChanges();
 
     component.setFlightModeEnabled(true);
 
-    const api = (window as any).__shipExteriorTestUtils;
     api.hoverAsteroid('sample-a1');
     api.tickScanTicks(8);
 
-    expect(component['activeScanAsteroidId']()).toBeNull();
-    expect(component['asteroidSamples']()[0].scanProgress).toBe(0);
+    expect(api.getActiveScanAsteroidId()).toBeNull();
+    expect((api.getAsteroidSamples() as AsteroidScanSample[])[0]?.scanProgress).toBe(0);
   });
 
   it('should update ship location using quantized flight checkpoints', () => {
@@ -1158,7 +1182,8 @@ describe('ShipExteriorViewScene', () => {
     }
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }));
 
-    const location = component['activeShipLocationKm']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const location = api.getActiveShipLocationKm() as { x: number; y: number; z: number } | null;
     expect(location).not.toBeNull();
     expect(Math.abs(location!.z)).toBeGreaterThan(0);
     expect(Math.abs(location!.z % 10)).toBe(0);
@@ -1185,9 +1210,10 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should expose SW-13B metadata lines for the focused asteroid sample', () => {
-    const { component, fixture } = setup();
+    const { fixture } = setup();
 
-    component['asteroidSamples'].set([
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([
       makeSample('sample-a1', {
         sw13bSeedId: 'sw13b-m0b-B-iron-001',
         sw13bGeneratorVersion: 'sw13b-codegen-v1',
@@ -1197,22 +1223,32 @@ describe('ShipExteriorViewScene', () => {
         sw13bValidationStatus: 'validated',
       }),
     ]);
-    component['targetedAsteroidId'].set('sample-a1');
+    api.setTargetedAsteroidId('sample-a1');
     fixture.detectChanges();
 
-    expect(component['asteroidDebugSw13SeedText']()).toBe('SW13 SEED // sw13b-m0b-B-iron-001');
-    expect(component['asteroidDebugSw13TierText']()).toBe('SW13 TIER // B');
-    expect(component['asteroidDebugSw13GeneratorText']()).toBe('SW13 GEN // sw13b-codegen-v1');
-    expect(component['asteroidDebugSw13BundleHashText']()).toBe('SW13 BUNDLE // sha256:abc123');
-    expect(component['asteroidDebugSw13ProfilePresetText']()).toBe('SW13 PROFILE // baseline');
-    expect(component['asteroidDebugSw13SurfacesText']()).toBe('SW13 SURFACES // SV,SEV');
-    expect(component['asteroidDebugSw13ValidationText']()).toBe('SW13 VALIDATION // validated');
+    const sw13 = api.getSw13DebugText() as {
+      seed: string;
+      tier: string;
+      generator: string;
+      bundleHash: string;
+      profilePreset: string;
+      surfaces: string;
+      validation: string;
+    };
+    expect(sw13.seed).toBe('SW13 SEED // sw13b-m0b-B-iron-001');
+    expect(sw13.tier).toBe('SW13 TIER // B');
+    expect(sw13.generator).toBe('SW13 GEN // sw13b-codegen-v1');
+    expect(sw13.bundleHash).toBe('SW13 BUNDLE // sha256:abc123');
+    expect(sw13.profilePreset).toBe('SW13 PROFILE // baseline');
+    expect(sw13.surfaces).toBe('SW13 SURFACES // SV,SEV');
+    expect(sw13.validation).toBe('SW13 VALIDATION // validated');
   });
 
   it('should report SW-13B parity counts across generated asteroid samples', () => {
-    const { component, fixture } = setup();
+    const { fixture } = setup();
 
-    component['asteroidSamples'].set([
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([
       makeSample('sample-a1', {
         sw13bSeedId: 'sw13b-m0b-B-iron-001',
         sw13bGeneratorVersion: 'sw13b-codegen-v1',
@@ -1233,7 +1269,8 @@ describe('ShipExteriorViewScene', () => {
     ]);
     fixture.detectChanges();
 
-    expect(component['asteroidSw13ParitySummaryText']()).toBe(
+    const sw13 = api.getSw13DebugText() as { paritySummary: string };
+    expect(sw13.paritySummary).toBe(
       'SW13 PARITY // TOTAL 3 // B 1 // H 1 // SV 2 // SEV 1 // META 2/3',
     );
   });
@@ -1285,7 +1322,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
   });
 
   it('should fall back to random seeding when auth context is missing', () => {
-    const { component } = setup();
+    setup();
     // No playerName, characterId, or session key — falls back immediately
 
     mockSocket_triggerIfRegistered((window as any).__shipExteriorTestUtils, SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
@@ -1297,11 +1334,12 @@ describe('ColdBootScanScene in-progress seeding', () => {
     // The fallback samples are produced synchronously before socket calls
     // (component has no auth context, so it seeds fallback immediately)
     // Check that asteroidSamples is populated after init
-    expect(component['asteroidSamples']().length).toBeGreaterThanOrEqual(5);
+    const api = (window as any).__shipExteriorTestUtils;
+    expect((api.getAsteroidSamples() as AsteroidScanSample[]).length).toBeGreaterThanOrEqual(5);
   });
 
   it('should fall back to random seeding when ship has no location', () => {
-    const { component, mockSocket } = setup({
+    const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
@@ -1313,12 +1351,14 @@ describe('ColdBootScanScene in-progress seeding', () => {
       ships: [{ id: 'ship-1', model: 'Scavenger Pod' }], // no spatial
     });
 
-    expect(component['asteroidSamples']().length).toBeGreaterThanOrEqual(5);
-    expect(component['asteroidSamples']().every((s) => !s.scanned)).toBe(true);
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
+    expect(samples.length).toBeGreaterThanOrEqual(5);
+    expect(samples.every((s) => !s.scanned)).toBe(true);
   });
 
   it('should mark fetched celestial bodies as already-scanned in the merged set', () => {
-    const { component, mockSocket } = setup({
+    const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
@@ -1348,14 +1388,15 @@ describe('ColdBootScanScene in-progress seeding', () => {
       celestialBodies: [existingBody],
     });
 
-    const samples = component['asteroidSamples']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     const scannedSamples = samples.filter((s) => s.scanned);
     expect(scannedSamples.length).toBeGreaterThanOrEqual(1);
     expect(scannedSamples[0].revealedMaterial).toEqual(jasmine.objectContaining({ material: 'Nickel-Iron' }));
   });
 
   it('should leave top-up asteroids as unscanned fresh samples', () => {
-    const { component, mockSocket } = setup({
+    const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
@@ -1385,7 +1426,8 @@ describe('ColdBootScanScene in-progress seeding', () => {
       celestialBodies: [existingBody],
     });
 
-    const samples = component['asteroidSamples']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples[0].scanned).toBe(true);
     const topUp = samples.slice(1);
     expect(topUp.length).toBeGreaterThan(0);
@@ -1393,7 +1435,7 @@ describe('ColdBootScanScene in-progress seeding', () => {
   });
 
   it('should produce at least as many samples as existing bodies when random target is smaller', () => {
-    const { component, mockSocket } = setup({
+    const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
@@ -1424,11 +1466,12 @@ describe('ColdBootScanScene in-progress seeding', () => {
     });
 
     // total = max(existingBodies.length=8, randomTarget>=5) >= 8
-    expect(component['asteroidSamples']().length).toBeGreaterThanOrEqual(8);
+    const api = (window as any).__shipExteriorTestUtils;
+    expect((api.getAsteroidSamples() as AsteroidScanSample[]).length).toBeGreaterThanOrEqual(8);
   });
 
   it('should include all unscanned top-up samples when random target exceeds existing count', () => {
-    const { component, mockSocket } = setup({
+    const { mockSocket } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
@@ -1458,7 +1501,8 @@ describe('ColdBootScanScene in-progress seeding', () => {
       ],
     });
 
-    const samples = component['asteroidSamples']();
+    const api = (window as any).__shipExteriorTestUtils;
+    const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     // 1 existing body + ≥4 random top-up (randomTarget ≥ 5)
     expect(samples.length).toBeGreaterThanOrEqual(5);
     expect(samples.filter((s) => !s.scanned).length).toBeGreaterThanOrEqual(4);
@@ -1596,10 +1640,11 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
   });
 
   it('should not reset local gate progress when backend returns AVAILABLE and partial progress exists', async () => {
-    const { component, mockMission } = setup({
+    const { mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
     });
+    const api = (window as any).__shipExteriorTestUtils;
 
     const partialProgressState: ShipExteriorMissionGateState = {
       missionId: 'first-target',
@@ -1613,23 +1658,24 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
         { key: 'repair_scavenger_pod', status: 'locked' },
       ],
     };
-    component['missionGateState'].set(partialProgressState);
+    api.setMissionGateState(partialProgressState);
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
       missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
-    await component['refreshMissionGateStateFromBackend']();
+    await api.refreshMissionGateStateFromBackend();
 
-    expect(component['missionGateState']()).toEqual(partialProgressState);
+    expect(api.getMissionGateState()).toEqual(partialProgressState);
   });
 
   it('should reset to initial gate state when AVAILABLE status arrives and there is no local progress yet', async () => {
-    const { component, mockMission } = setup({
+    const { mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
     });
+    const api = (window as any).__shipExteriorTestUtils;
 
     const freshState: ShipExteriorMissionGateState = {
       missionId: 'first-target',
@@ -1643,25 +1689,26 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
         { key: 'repair_scavenger_pod', status: 'locked' },
       ],
     };
-    component['missionGateState'].set(freshState);
+    api.setMissionGateState(freshState);
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
       missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
-    await component['refreshMissionGateStateFromBackend']();
+    await api.refreshMissionGateStateFromBackend();
 
-    const updated = component['missionGateState']();
+    const updated = api.getMissionGateState();
     expect(updated?.steps[0].status).toBe('active');
     expect(updated?.steps[1].status).toBe('locked');
   });
 
   it('should reset stale fully-completed gate state when backend reports AVAILABLE without statusDetail', async () => {
-    const { component, mockMission } = setup({
+    const { mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
     });
+    const api = (window as any).__shipExteriorTestUtils;
 
     const allCompletedState: ShipExteriorMissionGateState = {
       missionId: 'first-target',
@@ -1675,25 +1722,26 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
         { key: 'repair_scavenger_pod', status: 'completed' },
       ],
     };
-    component['missionGateState'].set(allCompletedState);
+    api.setMissionGateState(allCompletedState);
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
       missions: [{ missionId: 'first-target', status: 'available' }],
     });
 
-    await component['refreshMissionGateStateFromBackend']();
+    await api.refreshMissionGateStateFromBackend();
 
-    const updated = component['missionGateState']();
+    const updated = api.getMissionGateState();
     expect(updated?.steps[0].status).toBe('active');
     expect(updated?.steps[1].status).toBe('locked');
   });
 
   it('should preserve fully-completed local gate state when backend reports ACTIVE without statusDetail', async () => {
-    const { component, mockMission } = setup({
+    const { mockMission } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
     });
+    const api = (window as any).__shipExteriorTestUtils;
 
     const allCompletedState: ShipExteriorMissionGateState = {
       missionId: 'first-target',
@@ -1707,16 +1755,16 @@ describe('ShipExteriorViewScene - backend status reset guard', () => {
         { key: 'repair_scavenger_pod', status: 'completed' },
       ],
     };
-    component['missionGateState'].set(allCompletedState);
+    api.setMissionGateState(allCompletedState);
 
     mockMission.listMissions.and.resolveTo({
       status: 'loaded',
       missions: [{ missionId: 'first-target', status: 'active' }],
     });
 
-    await component['refreshMissionGateStateFromBackend']();
+    await api.refreshMissionGateStateFromBackend();
 
-    expect(component['missionGateState']()).toEqual(allCompletedState);
+    expect(api.getMissionGateState()).toEqual(allCompletedState);
   });
 });
 

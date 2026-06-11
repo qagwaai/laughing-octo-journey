@@ -2648,17 +2648,50 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       missionDefinition: this.missionDefinition,
       getMissionGateState: () => this.missionGateState(),
       setMissionGateState: (gateState) => this.missionGateState.set(gateState),
+      refreshMissionGateStateFromBackend: () => this.refreshMissionGateStateFromBackend(),
       persistMissionGateState: (gateState) => this.persistMissionGateState(gateState),
       getMissionObjectiveText: () => this.missionObjectiveText(),
       getAsteroidSamples: () => this.asteroidSamples(),
+      setAsteroidSamples: (samples) => this.asteroidSamples.set(samples),
       updateAsteroidSamples: (updater) => this.asteroidSamples.update(updater),
       getActiveShipInventoryItemTypes: () => {
         const activeShip = this.sessionService.activeShip() ?? this.navigationState.joinShip ?? null;
         return (activeShip?.inventory ?? []).map((item) => item.itemType);
       },
+      getActiveShipLocationKm: () => this.activeShipLocationKm(),
+      getCharacterName: () => this.characterName(),
+      getRouteFeedCounts: () => ({
+        gates: this.routeSceneGates().length,
+        stations: this.routeSceneStations().length,
+        encounterShips: this.routeSceneEncounterShips().length,
+      }),
+      getLaunchHotkeySlots: () =>
+        this.launchHotkeySlots().map((slot) => ({
+          hotkey: slot.hotkey,
+          label: slot.label,
+          enabled: slot.enabled,
+          launching: slot.launching,
+          itemType: slot.item?.itemType ?? null,
+        })),
+      getActiveSensorArrayTier: () => this.activeSensorArrayCapabilities()?.tier ?? null,
       getTargetedAsteroidId: () => this.targetedAsteroidId(),
+      getActiveScanAsteroidId: () => this.activeScanAsteroidId(),
+      getScanStatusLine: () => this.scanStatusLine(),
+      getSw13DebugText: () => ({
+        seed: this.asteroidDebugSw13SeedText(),
+        tier: this.asteroidDebugSw13TierText(),
+        generator: this.asteroidDebugSw13GeneratorText(),
+        bundleHash: this.asteroidDebugSw13BundleHashText(),
+        profilePreset: this.asteroidDebugSw13ProfilePresetText(),
+        surfaces: this.asteroidDebugSw13SurfacesText(),
+        validation: this.asteroidDebugSw13ValidationText(),
+        paritySummary: this.asteroidSw13ParitySummaryText(),
+      }),
+      getActiveLaunchToast: () => this.activeLaunchToast(),
       onAsteroidHoverChange: (event) => this.onAsteroidHoverChange(event),
       canTargetAsteroids: () => this.canTargetAsteroids(),
+      updateTargetingCapabilityFromShipList: (ships) =>
+        this.updateTargetingCapabilityFromShipList(ships as ShipSummary[] | undefined),
       setTargetedAsteroidId: (sampleId) => this.targetedAsteroidId.set(sampleId),
       tickScene: () => this.tickScene(),
       persistAsteroidSamples: () => this.persistAsteroidSamples(),
@@ -2666,6 +2699,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       enqueueMissionProgressUpsert: (payload) => this.missionProgressController.enqueueMissionProgressUpsert(payload),
       invokePluginOnManufacture: (payload) => this.invokePluginHook('onManufacture', payload),
       invokePluginOnRepair: (payload) => this.invokePluginHook('onRepair', payload),
+      handleLaunchItemResponse: (response) => this.handleLaunchItemResponse(response as LaunchItemResponse),
       launchFromHotkeySlot: (hotkey) => this.launchFromHotkeySlot(hotkey),
       clearLaunchToast: () => this.launchToastController.clear(),
     });

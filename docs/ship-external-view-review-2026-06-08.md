@@ -1,6 +1,15 @@
 # Ship External View Architecture Review (2026-06-08)
 
 ## Implementation Status (Updated 2026-06-08)
+- Validation checkpoint refreshed after Phase 4 backend refresh public-hook conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed on 2026-06-09 (latest): unit tests are green.
+- Validation checkpoint refreshed after Phase 4 ship-list capability bridge conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed after Phase 4 cold-boot seeding public-hook conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed after Phase 4 early setup-path public-hook conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed after Phase 4 SW-13/flight-location public-hook conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed on 2026-06-09 (latest): unit tests are green.
+- Validation checkpoint refreshed after Phase 4 warning-path behavior conversion on 2026-06-09: focused ship-exterior unit suite is green.
+- Validation checkpoint refreshed after expanded Phase 4 public test-utils bridge conversion on 2026-06-09: focused ship-exterior unit suite remains green.
 - Validation checkpoint refreshed on 2026-06-09 (latest run): all unit tests and full e2e are green.
 - Validation checkpoint refreshed after Phase 4 hero-tier test API conversion on 2026-06-09: all unit tests and full e2e are green.
 - Validation checkpoint refreshed after mission-completion e2e stabilization on 2026-06-09: all unit tests and full e2e are green.
@@ -43,6 +52,30 @@
 - Phase 4 sixth slice completed:
   - Reworked two hero-tier scan tests in `ship-exterior-view.spec.ts` to read asteroid sample results through the public `__shipExteriorTestUtils.getAsteroidSamples()` behavior path.
   - Removed direct private asteroid-signal result assertions in that cluster while preserving hero-tier and scan-completion coverage intent.
+- Phase 4 seventh slice completed:
+  - Expanded `ship-exterior-test-utils.ts` and `ship-exterior-view.ts` test bridge hooks to expose public read/write helpers for route-feed counts, hotkey slots, character name, scan state, sensor tier, and launch toast state.
+  - Reworked a broad scan/hotkey/route assertion cluster in `ship-exterior-view.spec.ts` onto those public helper hooks.
+- Phase 4 eighth slice completed:
+  - Added `simulateLaunchItemResponse(...)` to the public test-utils bridge and reworked launch-response unit tests off direct private `handleLaunchItemResponse(...)` invocation.
+  - Kept launch outcome coverage intact while reducing private-style method coupling in a high-traffic test block.
+- Phase 4 ninth slice completed:
+  - Reworked warning-path tests in `ship-exterior-view.spec.ts` to use public launch-response simulation and ship-list socket response behavior where harness-stable.
+  - Reduced direct private method usage in the warning cluster while retaining one legacy inventoryRefIds assertion on direct unit path due socket-harness mismatch.
+- Phase 4 tenth slice completed:
+  - Expanded the public `ship-exterior-test-utils` bridge with active ship location and consolidated SW-13 debug/parity text getters.
+  - Reworked flight-location and SW-13 metadata/parity tests in `ship-exterior-view.spec.ts` to consume public bridge hooks instead of direct private computed reads.
+- Phase 4 eleventh slice completed:
+  - Reworked the remaining early targeting/hero setup cluster in `ship-exterior-view.spec.ts` to use `__shipExteriorTestUtils.setAsteroidSamples(...)` instead of direct private `asteroidSamples.set(...)` setup writes.
+  - Kept behavior coverage unchanged while removing another small batch of private bracket setup access.
+- Phase 4 twelfth slice completed:
+  - Reworked cold-boot seeding sample assertions in `ship-exterior-view.spec.ts` to read asteroid data through `__shipExteriorTestUtils.getAsteroidSamples()` instead of direct private signal reads.
+  - Reduced another dense private-read cluster while preserving seeding/resume behavior expectations.
+- Phase 4 thirteenth slice completed:
+  - Added `simulateShipListTargetingCapabilityUpdate(...)` to the public `ship-exterior-test-utils` bridge and wired it through `ship-exterior-view.ts`.
+  - Reworked the remaining early legacy inventoryRefIds warning test to use the public bridge hook instead of direct private `updateTargetingCapabilityFromShipList(...)` invocation.
+- Phase 4 fourteenth slice completed:
+  - Added `refreshMissionGateStateFromBackend()` to the public `ship-exterior-test-utils` bridge and wired it through `ship-exterior-view.ts`.
+  - Reworked the backend status reset guard spec cluster to use public mission gate setters/getters and public refresh hook instead of private `missionGateState` / `refreshMissionGateStateFromBackend` access.
 
 ## Scope
 Reviewed files:
