@@ -9,7 +9,7 @@ export default defineConfig(() => ({
     environment: 'jsdom',
     setupFiles: ['src/testing/vitest-setup.ts'],
     include: ['src/**/*.vitest.ts'],
-    reporters: ['default'],
+    reporters: ['agent'],
     passWithNoTests: true,
     coverage: {
       provider: 'v8',
