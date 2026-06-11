@@ -45,11 +45,22 @@ export async function loginViaUI(page: Page, mock: SocketIOMock): Promise<void> 
 
   await page.locator('#playerName').fill(TEST_PLAYER);
   await page.locator('#password').fill(TEST_PASSWORD);
-  await page.locator('button[type="submit"]').click();
+
+  // Prefer keyboard submit to avoid transient pointer interception from overlays.
+  await page.locator('#password').press('Enter');
 
   // Deliver a deterministic login response even if the emit happened just
   // before socket.connected flipped true.
   mock.push('login-response', loginResponse);
+
+  try {
+    await expect(page).toHaveURL(/left:character-list/, { timeout: 5_000 });
+    return;
+  } catch {
+    // Some forms only submit on explicit button click; keep a click fallback.
+    await page.locator('button[type="submit"]').click({ timeout: 5_000 });
+    mock.push('login-response', loginResponse);
+  }
 
   // Wait for Angular SPA route change in the URL.
   await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });

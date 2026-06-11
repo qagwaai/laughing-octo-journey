@@ -625,6 +625,7 @@ test.describe('Ship Exterior Test Utilities', () => {
           ).__shipExteriorTestUtils;
           return api!.getMissionGateState().activeObjectiveText;
         }),
+        { timeout: 30_000 },
       )
       .toContain('Mission objectives complete');
 

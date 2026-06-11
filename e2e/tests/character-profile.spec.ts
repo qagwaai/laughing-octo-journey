@@ -88,10 +88,11 @@ async function setupCharacterProfileTest(page: Page, mode: 'immediate' | 'delaye
   }));
 
   mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: shipListByOwnerResponse(),
-  }));
+  let capturedShipListByOwnerRequest: Record<string, unknown> | null = null;
+  mock.on('ship-list-by-owner-request', (request) => {
+    capturedShipListByOwnerRequest = request as Record<string, unknown>;
+    return null;
+  });
 
   let capturedBustReadRequest: Record<string, unknown> | null = null;
   if (mode === 'immediate') {
@@ -110,7 +111,15 @@ async function setupCharacterProfileTest(page: Page, mode: 'immediate' | 'delaye
 
   const gameShell = new GameShellPage(page);
   await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/);
+
+  await expect.poll(() => !!capturedShipListByOwnerRequest, { timeout: 10_000 }).toBe(true);
+  mock.push('ship-list-by-owner-response', {
+    ...shipListByOwnerResponse(),
+    correlationId: capturedShipListByOwnerRequest!['correlationId'] as string,
+    requestIdentity: capturedShipListByOwnerRequest!['requestIdentity'] as Record<string, unknown>,
+  });
+
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
   await gameShell.openNav('Character Profile');
   await expect(page).toHaveURL(/left:character-profile/);

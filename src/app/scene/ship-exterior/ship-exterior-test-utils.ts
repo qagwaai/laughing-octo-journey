@@ -27,18 +27,42 @@ interface MissionProgressUpsertPayload {
 
 export interface ShipExteriorViewTestApi {
   getMissionGateState(): ShipExteriorMissionGateState | null;
+  setMissionGateState(gateState: ShipExteriorMissionGateState): void;
+  refreshMissionGateStateFromBackend(): Promise<void>;
   getMissionObjectiveText(): string;
   getAsteroidSamples(): AsteroidScanSample[];
+  setAsteroidSamples(samples: AsteroidScanSample[]): void;
   getActiveShipInventoryItemTypes(): string[];
+  getActiveShipLocationKm(): { x: number; y: number; z: number } | null;
+  getCharacterName(): string;
+  getRouteFeedCounts(): { gates: number; stations: number; encounterShips: number };
+  getLaunchHotkeySlots(): Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean; launching: boolean; itemType: string | null }>;
+  getActiveSensorArrayTier(): number | null;
   getTargetedAsteroidId(): string | null;
+  setTargetedAsteroidId(sampleId: string | null): void;
+  getActiveScanAsteroidId(): string | null;
+  getScanStatusLine(): string;
+  getSw13DebugText(): {
+    seed: string;
+    tier: string;
+    generator: string;
+    bundleHash: string;
+    profilePreset: string;
+    surfaces: string;
+    validation: string;
+    paritySummary: string;
+  };
+  getActiveLaunchToast(): { message: string; tone: string } | null;
   hoverAsteroid(sampleId: string): boolean;
   unhoverAsteroid(sampleId: string): boolean;
   forceTargetAsteroid(sampleId: string): boolean;
+  simulateShipListTargetingCapabilityUpdate(ships: unknown[] | undefined): void;
   tickScanTicks(ticks?: number): AsteroidScanSample[];
   forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null;
   simulateDebrisCollection(remainingDebrisCount?: number): ShipExteriorMissionGateState | null;
   simulateManufacture(itemType: string): ShipExteriorMissionGateState | null;
   simulateRepair(repairKind: string): ShipExteriorMissionGateState | null;
+  simulateLaunchItemResponse(response: unknown): void;
   launchFromHotkey(hotkey: 1 | 2 | 3 | 4 | 5): void;
   clearToast(): void;
 }
@@ -48,21 +72,43 @@ export interface RegisterShipExteriorTestUtilsContext {
   missionDefinition: ShipExteriorMissionDefinition;
   getMissionGateState: () => ShipExteriorMissionGateState | null;
   setMissionGateState: (gateState: ShipExteriorMissionGateState) => void;
+  refreshMissionGateStateFromBackend: () => Promise<void>;
   persistMissionGateState: (gateState: ShipExteriorMissionGateState) => void;
   getMissionObjectiveText: () => string;
   getAsteroidSamples: () => AsteroidScanSample[];
+  setAsteroidSamples: (samples: AsteroidScanSample[]) => void;
   updateAsteroidSamples: (updater: (samples: AsteroidScanSample[]) => AsteroidScanSample[]) => void;
   getActiveShipInventoryItemTypes: () => string[];
+  getActiveShipLocationKm: () => { x: number; y: number; z: number } | null;
+  getCharacterName: () => string;
+  getRouteFeedCounts: () => { gates: number; stations: number; encounterShips: number };
+  getLaunchHotkeySlots: () => Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean; launching: boolean; itemType: string | null }>;
+  getActiveSensorArrayTier: () => number | null;
   getTargetedAsteroidId: () => string | null;
+  setTargetedAsteroidId: (sampleId: string | null) => void;
+  getActiveScanAsteroidId: () => string | null;
+  getScanStatusLine: () => string;
+  getSw13DebugText: () => {
+    seed: string;
+    tier: string;
+    generator: string;
+    bundleHash: string;
+    profilePreset: string;
+    surfaces: string;
+    validation: string;
+    paritySummary: string;
+  };
+  getActiveLaunchToast: () => { message: string; tone: string } | null;
   onAsteroidHoverChange: (event: AsteroidHoverEvent) => void;
   canTargetAsteroids: () => boolean;
-  setTargetedAsteroidId: (sampleId: string) => void;
+  updateTargetingCapabilityFromShipList: (ships: unknown[] | undefined) => void;
   tickScene: () => void;
   persistAsteroidSamples: () => void;
   evaluateMissionGateForCompletedSamples: (sampleIds: readonly string[]) => void;
   enqueueMissionProgressUpsert: (payload: MissionProgressUpsertPayload) => void;
   invokePluginOnManufacture: (payload: ManufactureHookPayload) => void;
   invokePluginOnRepair: (payload: RepairHookPayload) => void;
+  handleLaunchItemResponse: (response: unknown) => void;
   launchFromHotkeySlot: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
   clearLaunchToast: () => void;
 }
@@ -83,10 +129,33 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
       const gateState = context.getMissionGateState();
       return gateState ? cloneForTest(gateState) : null;
     },
+    setMissionGateState: (gateState: ShipExteriorMissionGateState) => {
+      context.setMissionGateState(cloneForTest(gateState));
+    },
+    refreshMissionGateStateFromBackend: async () => {
+      await context.refreshMissionGateStateFromBackend();
+    },
     getMissionObjectiveText: () => context.getMissionObjectiveText(),
     getAsteroidSamples: () => cloneForTest(context.getAsteroidSamples()),
+    setAsteroidSamples: (samples: AsteroidScanSample[]) => context.setAsteroidSamples(cloneForTest(samples)),
     getActiveShipInventoryItemTypes: () => context.getActiveShipInventoryItemTypes(),
+    getActiveShipLocationKm: () => {
+      const location = context.getActiveShipLocationKm();
+      return location ? cloneForTest(location) : null;
+    },
+    getCharacterName: () => context.getCharacterName(),
+    getRouteFeedCounts: () => context.getRouteFeedCounts(),
+    getLaunchHotkeySlots: () => cloneForTest(context.getLaunchHotkeySlots()),
+    getActiveSensorArrayTier: () => context.getActiveSensorArrayTier(),
     getTargetedAsteroidId: () => context.getTargetedAsteroidId(),
+    setTargetedAsteroidId: (sampleId: string | null) => context.setTargetedAsteroidId(sampleId),
+    getActiveScanAsteroidId: () => context.getActiveScanAsteroidId(),
+    getScanStatusLine: () => context.getScanStatusLine(),
+    getSw13DebugText: () => cloneForTest(context.getSw13DebugText()),
+    getActiveLaunchToast: () => {
+      const toast = context.getActiveLaunchToast();
+      return toast ? cloneForTest(toast) : null;
+    },
     hoverAsteroid: (sampleId: string) => {
       const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
       if (!exists) {
@@ -110,6 +179,9 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
       }
       context.setTargetedAsteroidId(sampleId);
       return true;
+    },
+    simulateShipListTargetingCapabilityUpdate: (ships: unknown[] | undefined) => {
+      context.updateTargetingCapabilityFromShipList(cloneForTest(ships));
     },
     tickScanTicks: (ticks: number = 1) => {
       const safeTicks = Math.max(1, Math.min(500, Math.floor(ticks)));
@@ -219,6 +291,9 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
         context.invokePluginOnRepair({ repairKind, gateState: evaluation.gateState });
       }
       return cloneForTest(context.getMissionGateState());
+    },
+    simulateLaunchItemResponse: (response: unknown) => {
+      context.handleLaunchItemResponse(cloneForTest(response));
     },
     launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => {
       context.launchFromHotkeySlot(hotkey);

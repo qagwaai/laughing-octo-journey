@@ -4,37 +4,37 @@
   </ngt-canvas>
 
   <section class="ship-exterior-objective" aria-live="polite">
-    <p>{{ shipConditionLine() }}</p>
-    <p>{{ missionObjectiveText() }}</p>
+    <p>{{ objectivePanel().shipConditionLine }}</p>
+    <p>{{ objectivePanel().missionObjectiveText }}</p>
   </section>
 
   <section class="ship-exterior-flight-panel" aria-live="polite">
     <header class="ship-exterior-flight-panel__header">
-      <p>{{ flightStatusLine() }}</p>
+      <p>{{ flightPanel().statusLine }}</p>
       <button
         type="button"
         class="ship-exterior-flight-panel__toggle"
-        [class.ship-exterior-flight-panel__toggle--active]="flightModeEnabled()"
-        [title]="flightModeEnabled() ? 'Press ESC to exit flight mode and release the mouse' : 'Click to enable flight; click view to lock mouse'"
+        [class.ship-exterior-flight-panel__toggle--active]="flightPanel().enabled"
+        [title]="flightPanel().enabled ? 'Press ESC to exit flight mode and release the mouse' : 'Click to enable flight; click view to lock mouse'"
         (click)="toggleFlightMode()"
       >
-        {{ flightModeEnabled() ? 'DISABLE FLIGHT' : 'ENABLE FLIGHT' }}
+        {{ flightPanel().enabled ? 'DISABLE FLIGHT' : 'ENABLE FLIGHT' }}
       </button>
     </header>
-    <p>{{ flightCoordsLine() }}</p>
-    <p>{{ flightViewDirectionLine() }}</p>
-      <p>{{ flightMovementVectorsLine() }}</p>
-    <p>{{ framePressureLine() }}</p>
-    <p>{{ qualityScalerLine() }}</p>
-    <p>{{ flightSpeedLine() }}</p>
-    <p>{{ flightControlLine() }}</p>
-    @if (flightModeEnabled()) {
+    <p>{{ flightPanel().coordsLine }}</p>
+    <p>{{ flightPanel().viewDirectionLine }}</p>
+      <p>{{ flightPanel().movementVectorsLine }}</p>
+    <p>{{ flightPanel().framePressureLine }}</p>
+    <p>{{ flightPanel().qualityScalerLine }}</p>
+    <p>{{ flightPanel().speedLine }}</p>
+    <p>{{ flightPanel().controlLine }}</p>
+    @if (flightPanel().enabled) {
     <p class="ship-exterior-flight-panel__hint">ESC EXITS FLIGHT MODE // RELEASES MOUSE</p>
     }
 
     <div class="ship-exterior-flight-panel__settings">
       <label class="ship-exterior-flight-panel__checkbox">
-        <input type="checkbox" [checked]="flightInvertY()" (change)="onFlightInvertYChange($event)" />
+        <input type="checkbox" [checked]="flightPanel().invertY" (change)="onFlightInvertYChange($event)" />
         INVERT Y
       </label>
       <label class="ship-exterior-flight-panel__slider">
@@ -43,18 +43,18 @@
           type="range"
           min="10"
           max="70"
-          [value]="flightMouseSensitivitySlider()"
+          [value]="flightPanel().sensitivitySlider"
           (input)="onFlightSensitivityInput($event)"
         />
       </label>
-      <span class="ship-exterior-flight-panel__lock">{{ flightPointerLocked() ? 'MOUSE LOCKED' : 'MOUSE FREE' }}</span>
+      <span class="ship-exterior-flight-panel__lock">{{ flightPanel().pointerLocked ? 'MOUSE LOCKED' : 'MOUSE FREE' }}</span>
     </div>
 
-    @if (showAnyDebugTag()) {
+    @if (debugPanel().showAnyTag) {
     <section class="ship-exterior-asteroid-debug" aria-live="polite">
       <header class="ship-exterior-asteroid-debug__header">
         <span class="ship-exterior-asteroid-debug__title">
-          {{ showAsteroidDebugTag() ? asteroidDebugHeaderText() : debrisDebugHeaderText() }}
+          {{ debugPanel().showAsteroidTag ? debugPanel().asteroidHeaderText : debugPanel().debrisHeaderText }}
         </span>
         <button
           type="button"
@@ -65,49 +65,49 @@
         </button>
       </header>
       @if (!debugCollapsed()) {
-        @if (showAsteroidDebugTag()) {
-          <p>{{ asteroidDebugMaterialText() }}</p>
-          <p>{{ asteroidDebugPbrText() }}</p>
-          <p>{{ asteroidDebugDetailRuleText() }}</p>
-          <p>{{ asteroidDebugTierText() }}</p>
-          <p>{{ asteroidDebugSw13SeedText() }}</p>
-          <p>{{ asteroidDebugSw13TierText() }}</p>
-          <p>{{ asteroidDebugSw13GeneratorText() }}</p>
-          <p>{{ asteroidDebugSw13BundleHashText() }}</p>
-          <p>{{ asteroidDebugSw13ProfilePresetText() }}</p>
-          <p>{{ asteroidDebugSw13SurfacesText() }}</p>
-          <p>{{ asteroidDebugSw13ValidationText() }}</p>
-          <p>{{ asteroidSw13ParitySummaryText() }}</p>
+        @if (debugPanel().showAsteroidTag) {
+          <p>{{ debugPanel().asteroidMaterialText }}</p>
+          <p>{{ debugPanel().asteroidPbrText }}</p>
+          <p>{{ debugPanel().asteroidDetailRuleText }}</p>
+          <p>{{ debugPanel().asteroidTierText }}</p>
+          <p>{{ debugPanel().asteroidSw13SeedText }}</p>
+          <p>{{ debugPanel().asteroidSw13TierText }}</p>
+          <p>{{ debugPanel().asteroidSw13GeneratorText }}</p>
+          <p>{{ debugPanel().asteroidSw13BundleHashText }}</p>
+          <p>{{ debugPanel().asteroidSw13ProfilePresetText }}</p>
+          <p>{{ debugPanel().asteroidSw13SurfacesText }}</p>
+          <p>{{ debugPanel().asteroidSw13ValidationText }}</p>
+          <p>{{ debugPanel().asteroidSw13ParitySummaryText }}</p>
         } @else {
-          <p>{{ debrisDebugDisplayNameText() }}</p>
-          <p>{{ debrisDebugPositionText() }}</p>
+          <p>{{ debugPanel().debrisDisplayNameText }}</p>
+          <p>{{ debugPanel().debrisPositionText }}</p>
         }
       }
     </section>
     }
   </section>
 
-  @if (launchInventoryDebugLine(); as launchDebug) {
+  @if (launchPanel().launchInventoryDebugLine; as launchDebug) {
   <section class="ship-exterior-launch-debug" aria-live="polite">
     <p>{{ launchDebug }}</p>
   </section>
   }
 
-  @if (socketCorrelationDebugLine(); as socketDebug) {
+  @if (launchPanel().socketCorrelationDebugLine; as socketDebug) {
   <section class="ship-exterior-socket-debug" aria-live="polite">
-    <p>{{ socketContractViolationCounterLine() }}</p>
+    <p>{{ launchPanel().socketContractViolationCounterLine }}</p>
     <p>{{ socketDebug }}</p>
   </section>
   }
 
-  @if (launchIdentityDebugLine(); as launchIdentityDebug) {
+  @if (launchPanel().launchIdentityDebugLine; as launchIdentityDebug) {
   <section class="ship-exterior-launch-id-debug" aria-live="polite">
     <p>{{ launchIdentityDebug }}</p>
   </section>
   }
 
   <section class="ship-exterior-hotkey-row" aria-label="Launch hotkeys">
-    @for (slot of launchHotkeySlots(); track slot.hotkey) {
+    @for (slot of launchPanel().hotkeySlots; track slot.hotkey) {
     <button
       type="button"
       class="ship-exterior-hotkey-tile"
@@ -119,7 +119,7 @@
       <span class="ship-exterior-hotkey-tile__key">{{ slot.hotkey }}</span>
       <span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
     </button>
-    } @if (showQuickTargetIronControl()) {
+    } @if (launchPanel().showQuickTargetIronControl) {
     <button type="button" class="ship-exterior-test-target-button" (click)="quickTargetIronAsteroidForTest()">
       TARGET IRON
     </button>
@@ -129,7 +129,7 @@
     }
   </section>
 
-  @if (activeLaunchToast(); as toast) {
+  @if (launchPanel().activeLaunchToast; as toast) {
   <section
     class="ship-exterior-launch-toast"
     [class.ship-exterior-launch-toast--success]="toast.tone === 'success'"
@@ -142,38 +142,38 @@
     <span class="ship-exterior-launch-toast__seed">seed {{ toast.seed }}</span>
     }
   </section>
-  } @if (showPropertiesPanel()) {
+  } @if (propertiesPanel().showPanel) {
   <section class="ship-exterior-properties-panel" aria-live="polite">
     <header class="ship-exterior-properties-panel__header">
-      <h3>{{ propertiesPanelTitle() }}</h3>
+      <h3>{{ propertiesPanel().panelTitle }}</h3>
       <button type="button" class="ship-exterior-properties-panel__toggle" (click)="hidePropertiesPanel()">HIDE</button>
     </header>
 
     <div class="ship-exterior-properties-panel__body">
-      @if (showAsteroidProperties()) {
-        <p>{{ propertiesMaterialText() }}</p>
-        <p>{{ propertiesRarityText() }}</p>
-        <p>{{ propertiesVelocityText() }}</p>
-        <p>{{ propertiesSpinText() }}</p>
-        <p>{{ propertiesMassText() }}</p>
-        <p>{{ propertiesDiameterText() }}</p>
-        <p>{{ propertiesLocationText() }}</p>
-        <p>{{ propertiesClusterText() }}</p>
-        <p>{{ propertiesOffsetText() }}</p>
-      } @else if (showDebrisProperties()) {
-        <p>{{ debrisPropertiesItemTypeText() }}</p>
-        <p>{{ debrisPropertiesNameText() }}</p>
-        <p>{{ debrisPropertiesPositionText() }}</p>
-        <p>{{ debrisPropertiesDistanceText() }}</p>
-        <p>{{ debrisPropertiesStateText() }}</p>
-        @if (showTractorBeamCapabilityDetails()) {
-        <p>{{ tractorBeamCapabilityText() }}</p>
-        <p>{{ tractorBeamTimingText() }}</p>
+      @if (propertiesPanel().showAsteroidProperties) {
+        <p>{{ propertiesPanel().asteroid.materialText }}</p>
+        <p>{{ propertiesPanel().asteroid.rarityText }}</p>
+        <p>{{ propertiesPanel().asteroid.velocityText }}</p>
+        <p>{{ propertiesPanel().asteroid.spinText }}</p>
+        <p>{{ propertiesPanel().asteroid.massText }}</p>
+        <p>{{ propertiesPanel().asteroid.diameterText }}</p>
+        <p>{{ propertiesPanel().asteroid.locationText }}</p>
+        <p>{{ propertiesPanel().asteroid.clusterText }}</p>
+        <p>{{ propertiesPanel().asteroid.offsetText }}</p>
+      } @else if (propertiesPanel().showDebrisProperties) {
+        <p>{{ propertiesPanel().debris.itemTypeText }}</p>
+        <p>{{ propertiesPanel().debris.nameText }}</p>
+        <p>{{ propertiesPanel().debris.positionText }}</p>
+        <p>{{ propertiesPanel().debris.distanceText }}</p>
+        <p>{{ propertiesPanel().debris.stateText }}</p>
+        @if (propertiesPanel().showTractorBeamCapabilityDetails) {
+        <p>{{ propertiesPanel().debris.tractorBeamCapabilityText }}</p>
+        <p>{{ propertiesPanel().debris.tractorBeamTimingText }}</p>
         }
       }
     </div>
   </section>
-  } @else if (showPropertiesPanelReveal()) {
+  } @else if (propertiesPanel().showReveal) {
   <button type="button" class="ship-exterior-properties-reveal" (click)="revealPropertiesPanel()">
     SHOW PROPERTIES
   </button>

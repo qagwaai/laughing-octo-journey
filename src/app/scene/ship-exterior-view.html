@@ -25,39 +25,11 @@
   <app-sol [position]="sunScenePosition()" [sunColor]="sunConfig().color" [radius]="sunConfig().radius" />
 
   <ngt-group [position]="[0, 0, -1.5]">
-  @for (gate of routeSceneGates(); track gate.id) {
-  <ngt-group [position]="gate.position" [name]="gate.displayName">
-    <ngt-mesh [rotation]="[Math.PI / 2, 0, 0]">
-      <ngt-torus-geometry *args="[1.35, gate.tubeRadius, 20, 48]" />
-      <ngt-mesh-standard-material
-        [color]="gate.descriptorColor"
-        [emissive]="gate.emissive"
-        [emissiveIntensity]="gate.emissiveIntensity"
-        [roughness]="0.48"
-        [metalness]="0.5"
-      />
-    </ngt-mesh>
-  </ngt-group>
-  }
-  @for (station of routeSceneStations(); track station.id) {
-  <ngt-group [position]="station.position" [name]="station.displayName" [scale]="station.scale">
-    <ngt-mesh>
-      <ngt-octahedron-geometry *args="[0.62, 0]" />
-      <ngt-mesh-standard-material
-        [color]="station.descriptorColor"
-        [emissive]="station.emissive"
-        [emissiveIntensity]="station.emissiveIntensity"
-        [roughness]="0.62"
-        [metalness]="0.34"
-      />
-    </ngt-mesh>
-  </ngt-group>
-  }
-  @for (encounterShip of routeSceneEncounterShips(); track encounterShip.id) {
-  <ngt-group [position]="encounterShip.position" [name]="encounterShip.displayName">
-    <app-viewer-ship-mesh [model]="encounterShip.model" [color]="encounterShip.color" [targeted]="false" [isActive]="false" />
-  </ngt-group>
-  }
+  <app-ship-exterior-route-feed-layer
+    [gates]="routeSceneGates()"
+    [stations]="routeSceneStations()"
+    [encounterShips]="routeSceneEncounterShips()"
+  />
   @for (sample of asteroidSamples(); track sample.id) {
   <app-asteroid
     [asteroidId]="sample.id"

@@ -1,4 +1,4 @@
-# `oval__medium__short-crop__brown__almond__green__focused__collar.jpeg`
+# `oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg`
 
 ## Purpose
 
@@ -14,6 +14,9 @@ Full default-path descriptor sample aligned to the SW-15 naming scheme.
 - `eyeColor`: `green`
 - `expressionPreset`: `focused`
 - `apparelAccent`: `collar`
+- `facialHair`: `none`
+- `scar`: `none`
+- `tattoo`: `none`
 
 ## Prompt
 

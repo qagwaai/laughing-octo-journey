@@ -44,6 +44,7 @@ We have been using this negative prompt tail during iteration to suppress unread
 - `narrow__deep__short-crop__auburn__almond__grey__smirk__goggles__full-beard__cheek-left__temple-right.md`
 - `square__light__mid-fade__silver__narrow__amber__neutral__hood__goatee__brow-right__neck-left.md`
 - `round__medium__slicked__black__hooded__brown__focused__visor__none__chin__none.md`
+- `oval__medium__short-crop__brown__almond__green__focused__collar__goatee__none__none.md`
 - `oval__medium__short-crop__brown.md`
 
 Each file includes the target JPEG filename, descriptor coverage, and a prompt tuned for front-facing bust generation in the Stellar setting.
