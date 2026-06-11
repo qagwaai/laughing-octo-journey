@@ -7,10 +7,18 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@pmndrs/vanilla': '@pmndrs/vanilla/index.js',
+      '@pmndrs/cannon-worker-api': '@pmndrs/cannon-worker-api/dist/index.js',
     },
   },
   ssr: {
-    noExternal: ['three', '@pmndrs/vanilla', 'angular-three', 'angular-three-postprocessing'],
+    noExternal: [
+      'three',
+      '@pmndrs/vanilla',
+      '@pmndrs/cannon-worker-api',
+      'angular-three',
+      'angular-three-postprocessing',
+      'angular-three-cannon',
+    ],
   },
   test: {
     globals: true,
@@ -19,7 +27,15 @@ export default defineConfig(() => ({
     include: ['src/**/*.vitest.ts'],
     server: {
       deps: {
-        inline: ['three', /^three\/examples\/.+/, '@pmndrs/vanilla', /@pmndrs\/vanilla\/?.*/],
+        inline: [
+          'three',
+          /^three\/examples\/.+/,
+          '@pmndrs/vanilla',
+          /@pmndrs\/vanilla\/?.*/,
+          '@pmndrs/cannon-worker-api',
+          /@pmndrs\/cannon-worker-api\/?.*/,
+          'angular-three-cannon',
+        ],
       },
     },
     reporters: ['agent'],
