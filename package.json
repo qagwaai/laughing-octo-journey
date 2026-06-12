@@ -79,7 +79,7 @@
     "ngxtension": "^7.0.2",
     "rxjs": "~7.8.1",
     "socket.io-client": "^4.8.3",
-    "stats-gl": "^2.2.8",
+    "stats-gl": "^4.1.0",
     "three": "^0.182.0",
     "three-custom-shader-material": "^6.4.0",
     "three-mesh-bvh": "^0.9.10",
