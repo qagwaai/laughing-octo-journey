@@ -4,9 +4,6 @@ import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
-import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
-import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import {
   type BustApparelAccent,
   type BustBlockedSaveReason,
@@ -17,30 +14,31 @@ import {
   type BustFacialHair,
   type BustHairColor,
   type BustHairStyle,
-  type CharacterBustReadResponse,
   type BustScar,
   type BustSkinTone,
   type BustTattoo,
-  type CharacterBustCreateTerminalResponse,
-  type CharacterBustUpdateTerminalResponse,
+  type CharacterBustReadResponse
 } from '../../model/bust-descriptor';
+import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
+import { writeCachedCharacterBustDescriptor } from '../../model/character-bust-cache';
+import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
+import { PlayerCharacterSummary } from '../../model/character-list';
 import {
   normalizeCharacterName,
   pickSuggestedCharacterName,
 } from '../../model/character-name-suggestions';
-import { writeCachedCharacterBustDescriptor } from '../../model/character-bust-cache';
-import { PlayerCharacterSummary } from '../../model/character-list';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
-import { CharacterService } from '../../services/character.service';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { CharacterBustPreviewStateService } from '../../services/character-bust-preview-state.service';
+import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
+import { resolveNavigationState } from '../navigation-state';
 
 interface CharacterSetupNavigationState {
   playerName?: string;
