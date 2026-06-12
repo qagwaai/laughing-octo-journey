@@ -305,10 +305,52 @@ Coverage remediation slice #1 (viewer helpers, 2026-06-11):
   - Functions: 79.91% (from 79.40%, +0.51)
   - Lines: 78.71% (from 77.74%, +0.97)
 
+Coverage remediation slice #2 (opening + notifier/shadow services, 2026-06-11):
+- Added branch-focused opening flow tests in:
+  - `src/app/page/opening/cold-boot.vitest.ts`
+  - Covered constructor audio enablement branches, timed stage/audio cue branches, pending guard, and destroy cleanup.
+- Added opening audio hook lifecycle tests in:
+  - `src/app/services/opening-audio.service.vitest.ts`
+  - Covered gesture hook install/remove and disable side-effects.
+- Added new service specs for previously low-coverage services:
+  - `src/app/services/consumed-item-shadow.service.vitest.ts`
+  - `src/app/services/contract-variance-notifier.service.vitest.ts`
+- Full coverage re-run result after slice #2:
+  - Statements: 79.70% (from 78.52%, +1.18)
+  - Branches: 68.17% (from 67.05%, +1.12)
+  - Functions: 81.27% (from 79.91%, +1.36)
+  - Lines: 79.88% (from 78.71%, +1.17)
+
+Coverage remediation slice #3 (item catalog fallback/normalization, 2026-06-11):
+- Added new service spec:
+  - `src/app/services/item-catalog.service.vitest.ts`
+  - Covered primary load, fallback endpoint retry, nested payload normalization, and all-endpoints-fail behavior.
+- Full coverage re-run result after slice #3:
+  - Statements: 79.94% (from 79.70%, +0.24)
+  - Branches: 68.38% (from 68.17%, +0.21)
+  - Functions: 81.61% (from 81.27%, +0.34)
+  - Lines: 80.12% (from 79.88%, +0.24)
+  - Suite result: 137/137 files, 1861/1861 tests passing.
+
+Coverage remediation slice #4 (small service/util guards, 2026-06-11):
+- Added focused tests:
+  - `src/app/services/item-catalog.service.vitest.ts` (additional normalize/endpoint branch paths)
+  - `src/app/services/item-catalog-util.vitest.ts`
+  - `src/app/services/missing-item-toast.service.vitest.ts`
+  - `src/app/services/viewer-target.service.vitest.ts`
+  - `src/app/services/logger.vitest.ts`
+- Full coverage re-run result after slice #4:
+  - Statements: 80.00% (from 79.94%, +0.06)
+  - Branches: 68.41% (from 68.38%, +0.03)
+  - Functions: 81.73% (from 81.61%, +0.12)
+  - Lines: 80.17% (from 80.12%, +0.05)
+  - Suite result: 141/141 files, 1870/1870 tests passing.
+  - Current gate blockers: branches (needs 75), lines (needs 85).
+
 Phase 7 immediate remediation targets (next slice):
-- Add focused Vitest coverage for viewer scene modules under `src/app/scene/viewer/`.
-- Add branch-focused tests for high-traffic services under `src/app/services/` where branch coverage is below threshold.
-- Add opening-flow branch tests for `src/app/page/opening/` runtime guards.
+- Add branch-focused tests for high-traffic services with large branch denominators (for example `character.service.ts`, `ship.service.ts`, `market.service.ts`).
+- Add additional branch coverage in scene orchestration paths under `src/app/scene/` and `src/app/scene/ship-exterior/` where branch totals are large.
+- Continue targeted coverage on `src/app/page/opening/` and related service guards only where branch-denominator impact is meaningful.
 
 Phase 7 execution checklist:
 - [x] Start CI cutover with dedicated Vitest unit workflow.

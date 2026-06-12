@@ -181,6 +181,10 @@ describe('OpeningAudioService', () => {
     expect(service.isArmed()).toBe(false);
   });
 
+  it('should expose audio hooks disabled by default', () => {
+    expect(service.isAudioHooksEnabled()).toBe(false);
+  });
+
   it('should initialize with cinematic bed stopped', () => {
     expect(service.isCinematicBedRunning()).toBe(false);
   });
@@ -196,6 +200,42 @@ describe('OpeningAudioService', () => {
     } as unknown as SpeechSynthesis);
 
     expect(service.isSpeechSynthesisAvailable()).toBe(true);
+  });
+
+  it('should install gesture hooks when audio hooks are enabled', () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+    service.setAudioHooksEnabled(true);
+
+    expect(service.isAudioHooksEnabled()).toBe(true);
+    expect(addEventListenerSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function), { passive: true });
+    expect(addEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+  });
+
+  it('should remove gesture hooks and cancel speech when audio hooks are disabled', () => {
+    const speechSynthesis = {
+      cancel: vi.fn(),
+      speak: vi.fn(),
+    } as unknown as SpeechSynthesis;
+    assignSpeechSynthesis(speechSynthesis);
+    const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+    service.setAudioHooksEnabled(true);
+    service.setAudioHooksEnabled(false);
+
+    expect(service.isAudioHooksEnabled()).toBe(false);
+    expect(speechSynthesis.cancel).toHaveBeenCalled();
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
+  });
+
+  it('should not install gesture hooks when already armed', async () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+    await armService();
+
+    service.setAudioHooksEnabled(true);
+
+    expect(addEventListenerSpy).not.toHaveBeenCalled();
   });
 
   it('should fail to arm when no audio context constructor is available', async () => {
