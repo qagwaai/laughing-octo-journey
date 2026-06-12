@@ -20,6 +20,8 @@ import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { resolveAsteroidExternalObjectDescriptor } from '../model/ship-exterior-descriptors';
 import type { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
+import type { LaunchItemResponse } from '../model/launch-item';
+import type { CelestialBodyListItem } from '../model/celestial-body-list';
 import { coerceShipInventory } from '../model/ship-list';
 import {
   registerMissionInitializationStrategy,
@@ -257,13 +259,19 @@ function generateAsteroidSamples(
 
 export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   missionId: FIRST_TARGET_MISSION_ID,
-  canTargetAsteroids(params) {
+  canTargetAsteroids(params: { shipModel: string; hasExpendableDartDrone: boolean }) {
     return params.shipModel === 'Scavenger Pod' && params.hasExpendableDartDrone;
   },
-  resolveTargetingCapabilityFromInventory(rawInventory) {
+  resolveTargetingCapabilityFromInventory(rawInventory: unknown) {
     return hasExpendableDartDroneInInventory(rawInventory);
   },
-  resolveLaunchItemResponse({ response, asteroidSamples }) {
+  resolveLaunchItemResponse({
+    response,
+    asteroidSamples,
+  }: {
+    response: LaunchItemResponse;
+    asteroidSamples: readonly AsteroidScanSample[];
+  }) {
     if (!response.success) {
       return {
         removeAsteroidSampleIds: [],
@@ -296,13 +304,35 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
     const assignments = generateMaterialAssignments(count, Math.random);
     return generateAsteroidSamples(undefined, Math.random, count, assignments);
   },
-  createNewAsteroidSamplesAroundShip({ playerName, characterId, center, launchSeedHint }) {
+  createNewAsteroidSamplesAroundShip({
+    playerName,
+    characterId,
+    center,
+    launchSeedHint,
+  }: {
+    playerName: string;
+    characterId: string;
+    center: Triple;
+    launchSeedHint?: number | null;
+  }) {
     const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
     const count = Math.floor(rng() * 16) + 5;
     const assignments = generateMaterialAssignments(count, rng);
     return generateAsteroidSamples(center, rng, count, assignments);
   },
-  createResumedAsteroidSamples({ playerName, characterId, center, existingBodies, launchSeedHint }) {
+  createResumedAsteroidSamples({
+    playerName,
+    characterId,
+    center,
+    existingBodies,
+    launchSeedHint,
+  }: {
+    playerName: string;
+    characterId: string;
+    center: Triple;
+    existingBodies: CelestialBodyListItem[];
+    launchSeedHint?: number | null;
+  }) {
     const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
     const activeBodies = existingBodies.filter((body) => body.state !== 'destroyed');
     const existingBySourceScanId = new Map(
@@ -360,24 +390,24 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   getGateStepDefinitions() {
     return FIRST_TARGET_GATE_STEPS;
   },
-  doesScanCompleteGateStep(stepKey, sample) {
+  doesScanCompleteGateStep(stepKey: string, sample: AsteroidScanSample) {
     if (stepKey === 'identify_iron_asteroid') {
       return sample.revealedMaterial?.material === 'Iron';
     }
 
     return false;
   },
-  doesLaunchCompleteGateStep(stepKey, response) {
+  doesLaunchCompleteGateStep(stepKey: string, response: LaunchItemResponse) {
     return (
       stepKey === 'neutralize_identified_asteroid' &&
       response.success === true &&
       response.resolution?.outcome === 'target-destroyed'
     );
   },
-  doesManufactureCompleteGateStep(stepKey, manufacturedItemType) {
+  doesManufactureCompleteGateStep(stepKey: string, manufacturedItemType: string) {
     return stepKey === 'manufacture_hull_patch_kit' && manufacturedItemType === 'hull-patch-kit';
   },
-  doesRepairCompleteGateStep(stepKey, repairKind) {
+  doesRepairCompleteGateStep(stepKey: string, repairKind: string) {
     return stepKey === 'repair_scavenger_pod' && repairKind === 'ship';
   },
   resolveMissionStatusFromGateState(gateState: ShipExteriorMissionGateState): MissionStatus {

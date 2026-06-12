@@ -452,8 +452,7 @@ describe('ViewerDataFacade', () => {
     expect(services.marketService.listMarketsByLocation).toHaveBeenCalledTimes(1);
     state.currentSolarSystemId = 'other-system';
     if (!marketCallback) {
-      fail('Expected market callback to be captured.');
-      return;
+      throw new Error('Expected market callback to be captured.');
     }
     (marketCallback as any)({
       success: true,
@@ -485,8 +484,7 @@ describe('ViewerDataFacade', () => {
     facade.loadSystem('sol');
 
     if (!marketCallback) {
-      fail('Expected market callback to be captured.');
-      return;
+      throw new Error('Expected market callback to be captured.');
     }
     (marketCallback as any)({
       success: true,

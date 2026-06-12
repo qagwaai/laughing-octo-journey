@@ -753,4 +753,142 @@ describe('CharacterListPage', () => {
       expect(text).toContain('Player name is required');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Null-coalesce / fallback branch coverage
+  // -------------------------------------------------------------------------
+
+  describe('normalizeCharacters() fallback branches', () => {
+    it('uses empty string characterName when all name fields are absent', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      // Passes a character with no id, characterId, characterName, name, or character.name.
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ level: 3 }],
+      } as any);
+
+      const chars = component['characters']();
+      expect(chars[0].characterName).toBe('');
+      // id falls back to `char-0` when neither id nor characterId is present.
+      expect(chars[0].id).toBe('char-0');
+    });
+
+    it('uses null item as empty object (raw ?? {})', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [null, { id: 'char-2', characterName: 'Vex' }],
+      } as any);
+
+      const chars = component['characters']();
+      // First entry is null, normalizes to '' name and 'char-0' id fallback.
+      expect(chars[0].characterName).toBe('');
+      expect(chars[1].characterName).toBe('Vex');
+    });
+
+    it('omits createdAt when it is not a string', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ id: 'c1', characterName: 'Aero', createdAt: 99999 }],
+      } as any);
+
+      expect(component['characters']()[0].createdAt).toBeUndefined();
+    });
+
+    it('normalizes missions with null entries via rawMission ?? {}', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [
+          {
+            id: 'c1',
+            characterName: 'Aero',
+            missions: [null, { missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+          },
+        ],
+      } as any);
+
+      const missions = component['characters']()[0].missions ?? [];
+      // The null entry normalizes to an empty mission object; the second entry lands correctly.
+      expect(missions.some((m) => m.missionId === FIRST_TARGET_MISSION_ID)).toBe(true);
+    });
+
+    it('preserves createdAt when it is a string', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ id: 'c1', characterName: 'Aero', createdAt: '2026-01-01T00:00:00Z' }],
+      } as any);
+
+      expect(component['characters']()[0].createdAt).toBe('2026-01-01T00:00:00Z');
+    });
+
+    it('returns undefined missions when normalized missions list is empty', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ id: 'c1', characterName: 'Aero', missions: [] }],
+      } as any);
+
+      // Empty array normalizes to undefined rather than [].
+      expect(component['characters']()[0].missions).toBeUndefined();
+    });
+
+    it('returns null status when character has no first-target mission', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ id: 'c1', characterName: 'Aero' }],
+      } as any);
+
+      const char = component['characters']()[0];
+      const status = component['getFirstTargetStatus'](char);
+      expect(status).toBeNull();
+    });
+
+    it('uses joinLabel when character is not in-progress', () => {
+      socketService.connected = true;
+      const { component } = setup({ socketService, sessionService });
+
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        playerName: 'Pioneer',
+        characters: [{ id: 'c1', characterName: 'Aero' }],
+      } as any);
+
+      const char = component['characters']()[0];
+      const label = component['getJoinGameLabel'](char);
+      expect(typeof label).toBe('string');
+    });
+  });
 });

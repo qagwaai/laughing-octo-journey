@@ -180,6 +180,86 @@ describe('CharacterService', () => {
     expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('matches character-add fallback responses by normalized names when correlation metadata is absent', () => {
+    let received: CharacterAddResponse | undefined;
+    const request: CharacterAddRequest = {
+      playerName: 'Pioneer',
+      characterName: 'Nyx',
+      sessionKey: 'session-1',
+    };
+
+    service.addCharacter(request, (response) => {
+      received = response;
+    });
+
+    socketService.trigger(CHARACTER_ADD_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: '  pioneer  ',
+      characterName: 'nyx',
+    } as CharacterAddResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+        playerName: '  pioneer  ',
+        characterName: 'nyx',
+      }),
+    );
+    expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects character-add fallback response when character name does not match', () => {
+    let received: CharacterAddResponse | undefined;
+    service.addCharacter(
+      {
+        playerName: 'Pioneer',
+        characterName: 'Nyx',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_ADD_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-name',
+      playerName: 'Pioneer',
+      characterName: 'Orin',
+    } as CharacterAddResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(CHARACTER_ADD_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('preserves provided add-character correlation metadata when present', () => {
+    const request: CharacterAddRequest = {
+      playerName: 'Pioneer',
+      characterName: 'Nyx',
+      sessionKey: 'session-1',
+      correlationId: '  custom-add-correlation  ',
+      correlationSource: 'custom-source',
+      requestIdentity: {
+        operation: 'character-add',
+        entityType: 'character',
+        containerId: 'custom-container',
+      },
+    };
+
+    service.addCharacter(request, () => {});
+
+    const emitted = socketService.emittedEvents[0]?.data as CharacterAddRequest;
+    expect(emitted.correlationId).toBe('custom-add-correlation');
+    expect(emitted.correlationSource).toBe('custom-source');
+    expect(emitted.requestIdentity).toEqual({
+      operation: 'character-add',
+      entityType: 'character',
+      containerId: 'custom-container',
+    });
+  });
+
   it('emits character-edit requests with correlation metadata and ignores mismatched responses', () => {
     let received: CharacterEditResponse | undefined;
     const request: CharacterEditRequest = {
@@ -237,6 +317,64 @@ describe('CharacterService', () => {
     expect(socketService.listenerCount(CHARACTER_EDIT_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('matches character-edit fallback responses by player and character id without correlation metadata', () => {
+    let received: CharacterEditResponse | undefined;
+    service.editCharacter(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        characterName: 'Nyx Prime',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_EDIT_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: ' pioneer ',
+      characterId: ' char-1 ',
+    } as CharacterEditResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+        playerName: ' pioneer ',
+        characterId: ' char-1 ',
+      }),
+    );
+    expect(socketService.listenerCount(CHARACTER_EDIT_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects character-edit fallback responses with mismatched character name', () => {
+    let received: CharacterEditResponse | undefined;
+    service.editCharacter(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        characterName: 'Nyx Prime',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_EDIT_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-name',
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      characterName: 'Orin',
+    } as CharacterEditResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(CHARACTER_EDIT_RESPONSE_EVENT)).toBe(1);
+  });
+
   it('emits character-list requests with correlation metadata and ignores mismatched responses', () => {
     let received: CharacterListResponse | undefined;
     const request: CharacterListRequest = {
@@ -287,6 +425,35 @@ describe('CharacterService', () => {
     socketService.trigger(CHARACTER_LIST_RESPONSE_EVENT, response);
 
     expect(received).toEqual(response);
+    expect(socketService.listenerCount(CHARACTER_LIST_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('matches character-list fallback responses by normalized player name without correlation metadata', () => {
+    let received: CharacterListResponse | undefined;
+    service.listCharacters(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: ' pioneer ',
+      characters: [],
+    } as unknown as CharacterListResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+        playerName: ' pioneer ',
+      }),
+    );
     expect(socketService.listenerCount(CHARACTER_LIST_RESPONSE_EVENT)).toBe(0);
   });
 
@@ -343,5 +510,58 @@ describe('CharacterService', () => {
 
     expect(received).toEqual(response);
     expect(socketService.listenerCount(CHARACTER_DELETE_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('matches character-delete fallback responses when response character id is absent', () => {
+    let received: CharacterDeleteResponse | undefined;
+    service.deleteCharacter(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_DELETE_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: 'pioneer',
+    } as CharacterDeleteResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+        playerName: 'pioneer',
+      }),
+    );
+    expect(socketService.listenerCount(CHARACTER_DELETE_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects character-delete fallback response when response character id mismatches expected', () => {
+    let received: CharacterDeleteResponse | undefined;
+    service.deleteCharacter(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        sessionKey: 'session-1',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(CHARACTER_DELETE_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-id',
+      playerName: 'Pioneer',
+      characterId: 'char-9',
+    } as CharacterDeleteResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(CHARACTER_DELETE_RESPONSE_EVENT)).toBe(1);
   });
 });

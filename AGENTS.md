@@ -8,14 +8,14 @@ This file is a quick, high-signal reference for AI assistants working in this re
 - Stack: Angular standalone components + TypeScript + Angular Three
 - Runtime: Browser SPA with left/right outlet routing patterns
 - Real-time transport: `socket.io-client`
-- Unit/component test runner: Karma + Jasmine
+- Unit/component test runner: Vitest
 - End-to-end test runner: Playwright
 
 ## Critical Testing Note
 
 - Jest is NOT used in this project.
 - Do not add Jest configs, Jest APIs, or Jest-specific assumptions.
-- For unit/component/integration tests, use Jasmine syntax and run through Angular/Karma.
+- For unit/component/integration tests, use Vitest syntax and run through Vitest.
 
 ## Common Commands
 
@@ -55,7 +55,7 @@ Auto-fix lint issues where possible:
 npm run lint:fix
 ```
 
-Typecheck app + karma spec TS:
+Typecheck app + Vitest spec TS:
 
 ```bash
 npm run typecheck
@@ -79,25 +79,25 @@ Optional TS/JS formatter check (broader, may reveal existing repo-wide debt):
 npm run format:check:ts
 ```
 
-Run Angular/Karma tests once:
+Run Vitest tests once:
 
 ```bash
 npm test
 ```
 
-Run Angular/Karma tests in watch mode:
+Run Vitest tests in watch mode:
 
 ```bash
 npm run test:watch
 ```
 
-Run Angular/Karma tests with coverage (CI style):
+Run Vitest tests with coverage (CI style):
 
 ```bash
 npm run test:ci
 ```
 
-Run Angular/Karma tests in debug mode:
+Run Vitest tests in debug mode:
 
 ```bash
 npm run test:debug
@@ -133,16 +133,16 @@ Install Playwright browsers:
 npm run e2e:install
 ```
 
-Run a single Angular spec file:
+Run a single Vitest file:
 
 ```bash
-npm test -- --include="**/market-hub.spec.ts"
+npm run test:spec -- src/app/page/game/market-hub.vitest.ts
 ```
 
-Run focused Angular specs with the helper script:
+Run focused Vitest files with the helper script:
 
 ```bash
-npm run test:spec -- "**/market-hub.spec.ts"
+npm run test:spec -- src/app/page/game/market-hub.vitest.ts
 ```
 
 Run selected Playwright specs:

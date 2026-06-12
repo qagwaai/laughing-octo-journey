@@ -353,4 +353,111 @@ describe('ShipService', () => {
     const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
     expect(requestPayload.requestIdentity?.containerId).toBe('unowned');
   });
+
+  it('matches ship-list fallback responses by normalized owner key when correlation metadata is absent', () => {
+    let received: ShipListByOwnerResponse | undefined;
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-1', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      owner: {
+        ownerType: ' player-character ',
+        playerId: ' player-1 ',
+        characterId: ' char-1 ',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+      }),
+    );
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('accepts ship-list fallback response when owner payload is missing', () => {
+    let received: ShipListByOwnerResponse | undefined;
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-1' },
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received).toEqual(expect.objectContaining({ success: true, message: 'ok' }));
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('matches ship-transfer fallback response when response ship id is absent', () => {
+    let received: ShipTransferResponse | undefined;
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-1',
+        toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+    } as ShipTransferResponse);
+
+    expect(received).toEqual(expect.objectContaining({ success: true, message: 'ok' }));
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects ship-transfer fallback response when ship id mismatches', () => {
+    let received: ShipTransferResponse | undefined;
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-1',
+        toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-id',
+      shipId: 'ship-99',
+      toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+    } as ShipTransferResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
+  });
 });

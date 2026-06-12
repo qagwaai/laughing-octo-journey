@@ -162,4 +162,30 @@ describe('socket-response-matchers', () => {
       ),
     ).toBe(false);
   });
+
+  it('treats undefined correlationId as empty string in each matcher (fallback branch)', () => {
+    const identity = { operation: 'item-upsert', entityType: 'probe', containerId: 'ship-1' };
+
+    // All five matchers: the `response.correlationId?.trim() ?? ''` fallback arm fires
+    // when correlationId is explicitly undefined (not just absent from emitted payload).
+    expect(
+      isItemUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any),
+    ).toBe(false);
+
+    expect(
+      isShipUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any, {} as any),
+    ).toBe(false);
+
+    expect(
+      isLaunchItemResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any, {} as any),
+    ).toBe(false);
+
+    expect(
+      isCelestialBodyUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any, {} as any),
+    ).toBe(false);
+
+    expect(
+      isCelestialBodyListResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any, {} as any),
+    ).toBe(false);
+  });
 });

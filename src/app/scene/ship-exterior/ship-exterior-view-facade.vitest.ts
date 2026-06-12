@@ -200,7 +200,7 @@ function createSourceMock(): ShipExteriorViewFacadeSource & Record<string, Retur
     'toggleFlightMode',
     'setFlightInvertY',
     'setFlightMouseSensitivityFromSliderValue',
-  ]) as ShipExteriorViewFacadeSource & Record<string, ReturnType<typeof vi.fn>>;
+  ]);
 
   source.showPropertiesPanel.mockReturnValue(true);
   source.showPropertiesPanelReveal.mockReturnValue(false);
@@ -268,5 +268,5 @@ function createSourceMock(): ShipExteriorViewFacadeSource & Record<string, Retur
   source.debrisDebugDisplayNameText.mockReturnValue('NAME // ---');
   source.debrisDebugPositionText.mockReturnValue('POS KM // ---');
 
-  return source;
+  return source as unknown as ShipExteriorViewFacadeSource & Record<string, ReturnType<typeof vi.fn>>;
 }

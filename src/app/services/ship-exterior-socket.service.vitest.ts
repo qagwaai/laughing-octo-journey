@@ -160,8 +160,7 @@ describe('ShipExteriorSocketService', () => {
     socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, response);
 
     if (!received) {
-      fail('Expected ship-list response callback to be invoked');
-      return;
+      throw new Error('Expected ship-list response callback to be invoked');
     }
     expect(received).toEqual(response);
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
@@ -270,7 +269,7 @@ describe('ShipExteriorSocketService', () => {
         owner: { ownerType: 'npc-pirate', npcId: 'pirate-42' } as any,
       },
       () => {
-        fail('Expected no callback invocation');
+        throw new Error('Expected no callback invocation');
       },
     );
 
@@ -286,7 +285,7 @@ describe('ShipExteriorSocketService', () => {
         owner: { ownerType: 'unowned' } as any,
       },
       () => {
-        fail('Expected no callback invocation');
+        throw new Error('Expected no callback invocation');
       },
     );
 
@@ -355,8 +354,7 @@ describe('ShipExteriorSocketService', () => {
     socketService.trigger(CELESTIAL_BODY_LIST_RESPONSE_EVENT, response);
 
     if (!received) {
-      fail('Expected celestial-body-list response callback to be invoked');
-      return;
+      throw new Error('Expected celestial-body-list response callback to be invoked');
     }
     expect(received).toEqual(response);
     expect(socketService.listenerCount(CELESTIAL_BODY_LIST_RESPONSE_EVENT)).toBe(0);
@@ -440,8 +438,7 @@ describe('ShipExteriorSocketService', () => {
     socketService.trigger(ITEM_LIST_BY_LOCATION_RESPONSE_EVENT, response);
 
     if (!received) {
-      fail('Expected item-list-by-location response callback to be invoked');
-      return;
+      throw new Error('Expected item-list-by-location response callback to be invoked');
     }
     expect(received).toEqual(response);
     expect(socketService.listenerCount(ITEM_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(0);
@@ -549,8 +546,7 @@ describe('ShipExteriorSocketService', () => {
     socketService.trigger(LAUNCH_ITEM_RESPONSE_EVENT, response);
 
     if (!received) {
-      fail('Expected launch-item response callback to be invoked');
-      return;
+      throw new Error('Expected launch-item response callback to be invoked');
     }
     expect(received).toEqual(response);
 
@@ -590,6 +586,145 @@ describe('ShipExteriorSocketService', () => {
     } as LaunchItemResponse);
 
     expect(called).toBe(false);
+    unsubscribe();
+  });
+
+  it('formats containerId for player owner type', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player', playerId: 'player-42' } as any,
+      },
+      () => {},
+    );
+    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(payload.requestIdentity?.containerId).toBe('player:player-42');
+  });
+
+  it('formats containerId for npc owner type', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'npc', npcId: 'npc-7' } as any,
+      },
+      () => {},
+    );
+    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(payload.requestIdentity?.containerId).toBe('npc:npc-7');
+  });
+
+  it('formats containerId for faction owner type', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'faction', factionId: 'faction-steel' } as any,
+      },
+      () => {},
+    );
+    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(payload.requestIdentity?.containerId).toBe('faction:faction-steel');
+  });
+
+  it('formats containerId for unknown owner type via fallback key', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'exotic-type', characterId: 'char-99' } as any,
+      },
+      () => {},
+    );
+    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    // Fallback path concatenates all owner fields normalized
+    expect(payload.requestIdentity?.containerId).toContain('exotic-type');
+  });
+
+  it('formats containerId for unknown owner type as key fallback', () => {
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'unknown' } as any,
+      },
+      () => {},
+    );
+    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    expect(payload.requestIdentity?.containerId).toBe('unknown');
+  });
+
+  it('registers pending launch and routes matching response via subscribeLaunchResponses', () => {
+    const request: LaunchItemRequest = {
+      sessionKey: 'session-1',
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      shipId: 'ship-1',
+      targetCelestialBodyId: 'asteroid-1',
+      hotkey: 1,
+      itemId: 'item-1',
+      itemType: 'probe',
+    };
+
+    const received: LaunchItemResponse[] = [];
+    const unsubscribe = service.subscribeLaunchResponses((resp) => received.push(resp));
+
+    service.launchItem(request);
+
+    const emittedLaunch = socketService.emittedEvents.find((e) => e.eventName === 'launchItem')?.payload as LaunchItemRequest | undefined;
+    const correlationId = (emittedLaunch?.correlationId ?? 'corr-launch-1') as string;
+    const requestIdentity = emittedLaunch?.requestIdentity ?? {
+      operation: 'launch-item',
+      entityType: 'probe',
+      containerId: 'ship-1',
+    };
+
+    const response: LaunchItemResponse = {
+      success: true,
+      message: 'launched',
+      correlationId,
+      requestIdentity: requestIdentity as any,
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      shipId: 'ship-1',
+      targetCelestialBodyId: 'asteroid-1',
+      hotkey: 1,
+      itemId: 'item-1',
+      itemType: 'probe',
+    };
+
+    socketService.trigger(LAUNCH_ITEM_RESPONSE_EVENT, response);
+
+    expect(received).toHaveLength(1);
+    expect(received[0].message).toBe('launched');
+    unsubscribe();
+  });
+
+  it('drops unmatched launch responses and emits correlation warning', () => {
+    const received: LaunchItemResponse[] = [];
+    const unsubscribe = service.subscribeLaunchResponses((resp) => received.push(resp));
+
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+
+    socketService.trigger(LAUNCH_ITEM_RESPONSE_EVENT, {
+      success: true,
+      message: 'orphan',
+      correlationId: 'no-such-correlation',
+      requestIdentity: { operation: 'launch-item', entityType: 'probe', containerId: 'ship-1' },
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      shipId: 'ship-1',
+      targetCelestialBodyId: 'asteroid-1',
+      hotkey: 1,
+      itemId: 'item-1',
+      itemType: 'probe',
+    } as LaunchItemResponse);
+
+    expect(received).toHaveLength(0);
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'socket-correlation-warning' }),
+    );
     unsubscribe();
   });
 });

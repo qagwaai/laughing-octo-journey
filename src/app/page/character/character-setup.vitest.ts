@@ -705,7 +705,7 @@ describe('CharacterSetupPage', () => {
       ];
 
       for (const fieldId of fieldIds) {
-        expect(fixture.nativeElement.querySelector(`#${fieldId}`)).withContext(fieldId).not.toBeNull();
+        expect(fixture.nativeElement.querySelector(`#${fieldId}`)).not.toBeNull();
       }
     });
 

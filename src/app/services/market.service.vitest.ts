@@ -193,4 +193,131 @@ describe('MarketService', () => {
     expect(received['near']).toEqual(nearResponse);
     expect(socketService.listenerCount(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(0);
   });
+
+  it('matches fallback responses without correlation metadata when request fields align', () => {
+    let received: MarketListByLocationResponse | undefined;
+    service.listMarketsByLocation(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        solarSystemId: 'sol',
+        positionKm: { x: 1, y: 2, z: 3 },
+        distanceAu: 0.5,
+        locationTypes: ['free-floating', 'station'],
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      playerName: 'Pioneer',
+      solarSystemId: 'sol',
+      positionKm: { x: 1, y: 2, z: 3 },
+      distanceAu: 0.5,
+      locationTypes: ['station', 'free-floating'],
+      markets: [],
+    } as unknown as MarketListByLocationResponse);
+
+    expect(received).toEqual(
+      expect.objectContaining({
+        success: true,
+        message: 'ok',
+        solarSystemId: 'sol',
+      }),
+    );
+    expect(socketService.listenerCount(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects fallback responses when position differs', () => {
+    let received: MarketListByLocationResponse | undefined;
+    service.listMarketsByLocation(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        solarSystemId: 'sol',
+        positionKm: { x: 1, y: 2, z: 3 },
+        distanceAu: 0.5,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-position',
+      playerName: 'Pioneer',
+      solarSystemId: 'sol',
+      positionKm: { x: 1, y: 2, z: 4 },
+      markets: [],
+    } as unknown as MarketListByLocationResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('rejects fallback responses when distance differs', () => {
+    let received: MarketListByLocationResponse | undefined;
+    service.listMarketsByLocation(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        solarSystemId: 'sol',
+        positionKm: { x: 1, y: 2, z: 3 },
+        distanceAu: 0.5,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-distance',
+      playerName: 'Pioneer',
+      solarSystemId: 'sol',
+      positionKm: { x: 1, y: 2, z: 3 },
+      distanceAu: 0.75,
+      markets: [],
+    } as unknown as MarketListByLocationResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('invokes callback once even if duplicate matching responses arrive', () => {
+    const received: MarketListByLocationResponse[] = [];
+    service.listMarketsByLocation(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        solarSystemId: 'sol',
+        positionKm: { x: 1, y: 2, z: 3 },
+        distanceAu: 0.5,
+      },
+      (response) => {
+        received.push(response);
+      },
+    );
+
+    const payload = socketService.emittedEvents[0].payload as MarketListByLocationRequest;
+    const response: MarketListByLocationResponse = {
+      success: true,
+      message: 'ok',
+      correlationId: payload.correlationId!,
+      requestIdentity: payload.requestIdentity!,
+      playerName: 'Pioneer',
+      solarSystemId: 'sol',
+      positionKm: { x: 1, y: 2, z: 3 },
+      markets: [],
+    };
+
+    socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, response);
+    socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, response);
+
+    expect(received).toHaveLength(1);
+  });
 });

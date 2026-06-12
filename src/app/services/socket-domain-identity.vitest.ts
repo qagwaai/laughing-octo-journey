@@ -94,4 +94,45 @@ describe('socket-domain-identity helpers', () => {
     });
     expect(listKey).toBe('pioneer|sol|900000|1|2|3');
   });
+
+  it('falls back to unknown defaults when item upsert fields are absent', () => {
+    const identity = buildDefaultItemUpsertRequestIdentity({} as any);
+    expect(identity.entityType).toBe('unknown-item-type');
+    expect(identity.containerId).toBe('unknown-container');
+  });
+
+  it('falls back to unknown-ship-id when ship upsert id is absent', () => {
+    const identity = buildDefaultShipUpsertRequestIdentity({} as any);
+    expect(identity.containerId).toBe('unknown-ship-id');
+  });
+
+  it('falls back to unknown defaults when launch item fields are absent', () => {
+    const identity = buildDefaultLaunchItemRequestIdentity({} as any);
+    expect(identity.entityType).toBe('unknown-item-type');
+    expect(identity.containerId).toBe('unknown-container');
+    expect(identity.itemId).toBeUndefined();
+    expect(identity.targetCelestialBodyId).toBeUndefined();
+    expect(identity.characterId).toBeUndefined();
+  });
+
+  it('falls back to unknown-celestial-body when upsert id is absent', () => {
+    const identity = buildDefaultCelestialBodyUpsertRequestIdentity({} as any);
+    expect(identity.containerId).toBe('unknown-celestial-body');
+  });
+
+  it('falls back to unknown-solar-system when list solar system id is absent', () => {
+    const identity = buildDefaultCelestialBodyListRequestIdentity({} as any);
+    expect(identity.containerId).toBe('unknown-solar-system');
+  });
+
+  it('builds list key with empty string placeholders when position is absent', () => {
+    const key = buildCelestialBodyListRequestKey({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    // distanceKm absent -> '', positionKm absent -> '' each axis
+    expect(key.startsWith('pioneer|sol')).toBe(true);
+  });
+
+  it('builds pipeline key with empty segments for missing fields', () => {
+    const key = buildDomainPipelineKey({});
+    expect(key).toBe('|||');
+  });
 });

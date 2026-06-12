@@ -8,5 +8,5 @@
     "emitDecoratorMetadata": true
   },
   "files": ["src/testing/vitest-setup.ts"],
-  "include": ["src/**/*.spec.ts", "src/**/*.vitest.ts", "src/**/*.d.ts"]
+  "include": ["src/**/*.vitest.ts", "src/**/*.d.ts"]
 }

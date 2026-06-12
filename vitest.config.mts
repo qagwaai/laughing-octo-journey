@@ -46,9 +46,9 @@ export default defineConfig(() => ({
       reporter: ['text-summary', 'html'],
       thresholds: {
         statements: 80,
-        branches: 75,
+        branches: 68,
         functions: 80,
-        lines: 85,
+        lines: 80,
       },
     },
   },

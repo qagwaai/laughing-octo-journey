@@ -192,4 +192,78 @@ describe('SolarSystemService', () => {
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback.mock.calls[0][0].message).toBe('ok');
   });
+
+  it('matches solar-system-list fallback by playerName when no requestId or correlationId', () => {
+    const callback = vi.fn();
+    service.listSolarSystems({ playerName: 'Pilot', sessionKey: 'sk' }, callback as any);
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-player',
+      playerName: 'Other',
+      solarSystems: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok-fallback',
+      playerName: 'Pilot',
+      solarSystems: [],
+    });
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('matches solar-system-list by requestId when present in both request and response', () => {
+    const callback = vi.fn();
+    service.listSolarSystems({ playerName: 'Pilot', sessionKey: 'sk', requestId: 'req-99' } as any, callback as any);
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-requestid',
+      requestId: 'req-00',
+      solarSystems: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
+
+    socket.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok-requestid',
+      requestId: 'req-99',
+      solarSystems: [],
+    });
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('matches solar-system-get fallback by playerName and solarSystemId without requestId', () => {
+    const callback = vi.fn();
+    service.getSolarSystem({ playerName: 'Pilot', sessionKey: 'sk', solarSystemId: 'sol' }, callback as any);
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-system',
+      playerName: 'Pilot',
+      solarSystemId: 'other',
+      bodies: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-player',
+      playerName: 'Other',
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+    expect(callback).not.toHaveBeenCalled();
+
+    socket.trigger(SOLAR_SYSTEM_GET_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok-fallback',
+      playerName: 'Pilot',
+      solarSystemId: 'sol',
+      bodies: [],
+    });
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
 });
