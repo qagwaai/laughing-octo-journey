@@ -20,11 +20,11 @@ This is a template to get started with Angular Three.
 
 - `npm run lint` - Lint TypeScript sources (app + e2e + top-level TS configs)
 - `npm run lint:fix` - Apply safe ESLint fixes
-- `npm run typecheck` - Typecheck app and karma specs
+- `npm run typecheck` - Typecheck app and Vitest specs
 - `npm run typecheck:templates` - Angular template typecheck via `ng build`
 - `npm run format:check` - Prettier check for html/css/json/markdown scope
 - `npm run format:check:ts` - Optional wider TS/JS Prettier check
-- `npm run test:spec -- "**/your.spec.ts"` - Focused unit/component spec run
+- `npm run test:spec -- src/path/to/your.vitest.ts` - Focused Vitest file run
 - `npm run e2e:spec -- e2e/tests/your.spec.ts` - Focused Playwright spec run
 - `npm run verify:quick` - Quick local gate (`lint + typecheck`)
 
