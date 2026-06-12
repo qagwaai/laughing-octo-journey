@@ -134,7 +134,7 @@ const VIEWER_LOCAL_ASTEROID_VIEW_ZOOM_THRESHOLD = 22;
 const VIEWER_LOCAL_ASTEROID_VIEW_RANGE_KM = 30_000;
 const VIEWER_LOCAL_ASTEROID_VIEW_SCALE = 0.00006;
 
-function degToRad(value: number | undefined): number {
+export function degToRad(value: number | undefined): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return 0;
   }
@@ -652,14 +652,14 @@ export function resolveViewerSceneCameraDistanceRange(bodies: ViewerBody[]): Vie
   };
 }
 
-function resolveZoomDistance(zoomLevel: number, bodies: ViewerBody[]): number {
+export function resolveZoomDistance(zoomLevel: number, bodies: ViewerBody[]): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
   const normalized = clamp(zoomLevel, 0, 100) / 100;
   // Logarithmic mapping: evenly distributes zoom across planet-detail to full-system scale.
   return min * Math.pow(max / min, normalized);
 }
 
-function resolveZoomPercent(distance: number, bodies: ViewerBody[]): number {
+export function resolveZoomPercent(distance: number, bodies: ViewerBody[]): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies);
   if (max <= min || min <= 0) {
     return 0;
@@ -674,7 +674,7 @@ function resolveZoomPercent(distance: number, bodies: ViewerBody[]): number {
  * Resolves orbit ring orientation using explicit transform composition:
  * base (XY->XZ) then node, inclination, periapsis within the scene frame.
  */
-function resolveOrbitRotationEuler(orbital: ViewerBody['orbitalElements']): [number, number, number] {
+export function resolveOrbitRotationEuler(orbital: ViewerBody['orbitalElements']): [number, number, number] {
   const ascendingNode = degToRad(orbital?.longitudeOfAscendingNodeDeg);
   const inclination = degToRad(orbital?.inclinationDeg);
   const argumentOfPeriapsis = degToRad(orbital?.argumentOfPeriapsisDeg);

@@ -22,15 +22,29 @@ import type { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { coerceShipInventory } from '../model/ship-list';
 import {
-  createInitialMissionGateState,
-  type ShipExteriorMissionDefinition,
-  type ShipExteriorMissionGateState,
-  type ShipExteriorMissionGateStepDefinition,
-} from './ship-exterior-mission';
-  import {
-    registerMissionInitializationStrategy,
-    type MissionInitializationStrategy,
-  } from '../services/mission-navigation/mission-initialization-strategy';
+  registerMissionInitializationStrategy,
+  type MissionInitializationStrategy,
+} from '../services/mission-navigation/mission-initialization-strategy';
+
+interface ShipExteriorMissionGateStepDefinition {
+  key: string;
+  objectiveText: string;
+  completionToastMessage: string;
+  prerequisiteStepKeys?: readonly string[];
+}
+
+interface ShipExteriorMissionGateStepState {
+  key: string;
+  status: 'locked' | 'active' | 'completed' | 'pending-retry';
+}
+
+interface ShipExteriorMissionGateState {
+  missionId: string;
+  characterId: string;
+  activeObjectiveText: string;
+  updatedAt: string;
+  steps: ShipExteriorMissionGateStepState[];
+}
 
 function normalizeInventoryToken(value: unknown): string {
   if (typeof value !== 'string') {
@@ -241,7 +255,7 @@ function generateAsteroidSamples(
   return samples;
 }
 
-export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition = {
+export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   missionId: FIRST_TARGET_MISSION_ID,
   canTargetAsteroids(params) {
     return params.shipModel === 'Scavenger Pod' && params.hasExpendableDartDrone;
@@ -377,11 +391,17 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition =
 };
 
 export function createFirstTargetMissionInitialGateState(characterId: string): ShipExteriorMissionGateState {
-  return createInitialMissionGateState({
+  const nowIso = new Date().toISOString();
+  return {
     missionId: FIRST_TARGET_MISSION_ID,
     characterId,
-    steps: FIRST_TARGET_GATE_STEPS,
-  });
+    activeObjectiveText: FIRST_TARGET_GATE_STEPS[0]?.objectiveText ?? 'Mission objective pending.',
+    updatedAt: nowIso,
+    steps: FIRST_TARGET_GATE_STEPS.map((step, index) => ({
+      key: step.key,
+      status: index === 0 ? 'active' : 'locked',
+    })),
+  };
 }
 
 export { DEFAULT_CLUSTER_SPREAD_KM };

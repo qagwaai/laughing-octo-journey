@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
-import { resolvePlanetViewBodyRadiusKm, resolvePlanetViewCameraDistanceRange } from './planet-view-scene';
+import {
+  createProceduralTexture,
+  createStarGlowTexture,
+  hexToRgb,
+  lerpColor,
+  resolveOrbitAngleRad,
+  resolveOrbitRadiusUnits,
+  resolvePlanetViewBodyRadiusKm,
+  resolvePlanetViewCameraDistanceRange,
+  resolveStarMarker,
+} from './planet-view-scene';
 
 function makeBody(id: string, bodyType: string, estimatedDiameterM?: number): ViewerBody {
   return {
@@ -106,5 +116,86 @@ describe('resolvePlanetViewBodyRadiusKm', () => {
     expect(first).toBe(second);
     expect(first).toBeGreaterThanOrEqual(700);
     expect(first).toBeLessThanOrEqual(3200);
+  });
+
+  it('uses estimatedDiameterM/2000 when explicit radius is absent', () => {
+    const body = makeBody('diameter-only', 'planet', 10_000);
+    expect(resolvePlanetViewBodyRadiusKm(body)).toBe(5);
+  });
+
+  it('falls back to default planet radius when no metadata is available', () => {
+    const body = makeBody('unknown-planet', 'planet');
+    expect(resolvePlanetViewBodyRadiusKm(body)).toBe(6200);
+  });
+});
+
+describe('planet-view helper utilities', () => {
+  it('resolveOrbitRadiusUnits clamps to base and max bounds', () => {
+    expect(resolveOrbitRadiusUnits(0)).toBe(4.5);
+    expect(resolveOrbitRadiusUnits(1e12)).toBeGreaterThan(30);
+    expect(resolveOrbitRadiusUnits(1e20)).toBe(42);
+  });
+
+  it('resolveOrbitAngleRad uses anomaly when present and hash fallback otherwise', () => {
+    const withAnomaly = makeBody('moon-with-angle', 'moon');
+    withAnomaly.orbitalElements = {
+      anchorBodyId: 'planet-1',
+      semiMajorAxisKm: 120_000,
+      eccentricity: 0,
+      inclinationDeg: 0,
+      longitudeOfAscendingNodeDeg: 0,
+      argumentOfPeriapsisDeg: 0,
+      meanAnomalyAtEpochDeg: 90,
+      orbitalPeriodSec: 1,
+      epoch: '2026-01-01T00:00:00.000Z',
+    };
+
+    expect(resolveOrbitAngleRad(withAnomaly)).toBeCloseTo(Math.PI / 2, 10);
+
+    const fallbackA = makeBody('moon-hash-a', 'moon');
+    const fallbackB = makeBody('moon-hash-b', 'moon');
+    expect(resolveOrbitAngleRad(fallbackA)).not.toBe(resolveOrbitAngleRad(fallbackB));
+  });
+
+  it('resolveStarMarker returns null when no star exists', () => {
+    const selected = makeBody('planet-1', 'planet', 12_742_000);
+    const noStar = resolveStarMarker(selected, [selected], 8);
+    expect(noStar).toBeNull();
+  });
+
+  it('resolveStarMarker computes deterministic marker around selected planet', () => {
+    const selected = makeBody('planet-1', 'planet', 12_742_000);
+    selected.spatial.positionKm.x = 1000;
+    selected.spatial.positionKm.z = 250;
+
+    const star = makeBody('star-1', 'star', 100_000_000);
+    star.spatial.positionKm.x = -2000;
+    star.spatial.positionKm.z = -500;
+    star.visualization = { colorHex: '#ffaa00' };
+
+    const marker = resolveStarMarker(selected, [selected, star], 9);
+    expect(marker).not.toBeNull();
+    expect(marker?.id).toBe('star-1');
+    expect(marker?.radius).toBe(0.66);
+    expect(marker?.glowSize).toBeGreaterThanOrEqual(7);
+  });
+
+  it('hexToRgb and lerpColor handle valid and invalid channels', () => {
+    expect(hexToRgb('#112233')).toEqual([17, 34, 51]);
+    expect(hexToRgb('zzzzzz')).toEqual([128, 128, 128]);
+    expect(lerpColor([0, 0, 0], [255, 255, 255], 0.5)).toBe('rgb(128,128,128)');
+  });
+
+  it('creates planet/moon procedural textures and star glow texture', () => {
+    const planetTexture = createProceduralTexture('#66aaff', 42, 'planet');
+    const moonTexture = createProceduralTexture('#aabbee', 7, 'moon');
+    const glowTexture = createStarGlowTexture('#ffcc66');
+
+    expect(planetTexture).toBeDefined();
+    expect(moonTexture).toBeDefined();
+    expect(glowTexture).toBeDefined();
+    expect((planetTexture.image as HTMLCanvasElement).width).toBe(512);
+    expect((moonTexture.image as HTMLCanvasElement).height).toBe(512);
+    expect((glowTexture.image as HTMLCanvasElement).width).toBe(256);
   });
 });

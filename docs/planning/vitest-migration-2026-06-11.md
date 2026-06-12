@@ -104,12 +104,111 @@ GATE 4 (Hard):
 ### Phase 5: Angular Three High-Risk Handling and Gate 5
 Objective: de-risk rendering and runtime constraints in Angular Three tests.
 
+Status: In progress (started 2026-06-11).
+
 Actions:
 - Identify Angular Three-dependent specs and classify by rendering depth.
 - Introduce targeted mocks/fakes for WebGL/canvas/environment gaps in JSDOM.
 - Prefer seam-level tests for scene logic when full render is unstable.
 - Keep high-value behavior assertions (inputs, events, state transitions) over pixel-level checks.
 - Add explicit notes for any test strategy shift caused by environment limitations.
+
+Execution update (2026-06-11):
+- Angular Three/high-risk Vitest inventory completed with heuristic classification:
+  - High: 1
+  - Medium: 9
+  - Low: 42
+  - Total candidates: 52
+- Focused baseline run for the highest-risk initial batch passed:
+  - Files: 10
+  - Tests: 198
+  - Result: all passing
+- Full Angular Three candidate batch passed:
+  - Files: 52
+  - Tests: 723
+  - Result: all passing
+- High-risk seam stability check (`src/app/scene/ship-view-specs.vitest.ts`):
+  - Repeated runs: 3 consecutive
+  - Result: all passing (3/3), no additional targeted mock required at this time
+- Existing runtime mitigations already active and validated for this phase:
+  - `src/testing/vitest-setup.ts` provides ResizeObserver and canvas `getContext` shims for JSDOM gaps.
+  - `vitest.config.mts` includes dependency inlining/noExternal treatment for Angular Three and related packages.
+
+Phase 5 working notes:
+- Next slice: convert the 52-file inventory into explicit triage buckets (migrate-as-is vs seam-level vs deferred-with-rationale) and record per-file mitigation decisions.
+- Gate 5 remains open until all Angular Three-related specs are either green under Vitest or explicitly triaged with approved rationale and follow-up tracking.
+
+Phase 5 triage register (2026-06-11):
+
+High-risk bucket (seam-level-with-jsdom-mocks):
+- `src/app/scene/ship-view-specs.vitest.ts`
+
+Medium-risk bucket (migrate-as-is-with-targeted-mocks):
+- `src/app/component/asteroid.vitest.ts`
+- `src/app/component/cube.vitest.ts`
+- `src/app/component/expendable-dart-drone.vitest.ts`
+- `src/app/page/character/components/character-bust-viewer/character-bust-viewer.vitest.ts`
+- `src/app/scene/hud/cold-boot-hud-scene.vitest.ts`
+
+Medium-risk bucket (migrate-as-is):
+- `src/app/component/external-anchors.vitest.ts`
+- `src/app/page/game/logout.vitest.ts`
+- `src/app/page/public/login.vitest.ts`
+- `src/app/page/public/registration.vitest.ts`
+
+Low-risk bucket (migrate-as-is): 42 files
+- `src/app/component/angular-logo.vitest.ts`
+- `src/app/component/earth.vitest.ts`
+- `src/app/component/sol.vitest.ts`
+- `src/app/mission/first-target-ship-exterior-mission.vitest.ts`
+- `src/app/mission/generic-exploration-ship-exterior-mission.vitest.ts`
+- `src/app/mission/mission-scene-plugin.vitest.ts`
+- `src/app/mission/ship-exterior-mission.vitest.ts`
+- `src/app/model/catalog/asteroid-mesh-profiles.vitest.ts`
+- `src/app/model/ship-exterior-view-context.vitest.ts`
+- `src/app/model/sw13b/asteroid-visual-foundation.vitest.ts`
+- `src/app/model/sw13b/sw-13b-m0b-asteroid-baseline.vitest.ts`
+- `src/app/model/sw13b/sw-13b-m1b-stellar-viewer-validation.vitest.ts`
+- `src/app/page/game/viewer-data-facade.vitest.ts`
+- `src/app/page/game/viewer-scene.vitest.ts`
+- `src/app/page/game/viewer.vitest.ts`
+- `src/app/routed-scene.vitest.ts`
+- `src/app/scene/hud/hud-overlay.vitest.ts`
+- `src/app/scene/ship-exterior-view.vitest.ts`
+- `src/app/scene/ship-exterior/asteroid-tier-selection.vitest.ts`
+- `src/app/scene/ship-exterior/async-serial-queue.vitest.ts`
+- `src/app/scene/ship-exterior/floating-debris-controller.vitest.ts`
+- `src/app/scene/ship-exterior/floating-debris-node.vitest.ts`
+- `src/app/scene/ship-exterior/frame-pressure-sampler.vitest.ts`
+- `src/app/scene/ship-exterior/hotkey-flash-controller.vitest.ts`
+- `src/app/scene/ship-exterior/launch-toast-controller.vitest.ts`
+- `src/app/scene/ship-exterior/ship-damage-controller.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-bootstrap-controller.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-flight-controls.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-formatters.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-input-adapter.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-route-feed-adapter.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-route-feed-layer.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-state-facade.vitest.ts`
+- `src/app/scene/ship-exterior/ship-exterior-view-facade.vitest.ts`
+- `src/app/scene/viewer/planet-view-scene.zoom.vitest.ts`
+- `src/app/scene/viewer/viewer-descriptor-selectors.vitest.ts`
+- `src/app/scene/viewer/viewer-formatters.vitest.ts`
+- `src/app/scene/viewer/viewer-ship-mesh.vitest.ts`
+- `src/app/scene/viewer/viewer-system-scene.vitest.ts`
+- `src/app/services/ship-exterior-asteroid-state.service.vitest.ts`
+- `src/app/services/ship-exterior-mission-state.service.vitest.ts`
+- `src/app/services/ship-exterior-socket.service.vitest.ts`
+
+Phase 5 execution checklist:
+- [x] Inventory Angular Three-dependent Vitest specs by rendering/runtime risk.
+- [x] Run focused initial high-risk batch (10 files, 198 tests, passing).
+- [x] Run full 52-file Angular Three candidate batch and record pass/fail/flake notes.
+- [x] Run seam-focused pass for high-risk file(s) with explicit JSDOM mitigation notes.
+- [x] Document any deferred/excluded files (currently none) with rationale and follow-up owner.
+
+Deferred/Excluded register (Phase 5):
+- None at this time.
 
 GATE 5 (Hard):
 - Angular Three-related specs are either migrated or explicitly triaged with approved mitigation.
@@ -119,11 +218,40 @@ GATE 5 (Hard):
 ### Phase 6: Integration Migration and Gate 6
 Objective: migrate integration specs and resolve module graph fragility.
 
+Status: In progress (started 2026-06-11).
+
 Actions:
 - Migrate integration-level specs (multi-service/component orchestration).
 - Audit for circular import exposure that may surface differently under Vitest module loading.
 - Refactor imports where needed to break cycles and avoid side-effect initialization races.
 - Validate mocking boundaries for HTTP, router, and socket interactions.
+
+Execution update (2026-06-11):
+- Integration Vitest subset executed (8 files):
+  - `src/app/component/character-ship-badge.integration.vitest.ts`
+  - `src/app/services/market-correlation.integration.vitest.ts`
+  - `src/app/services/mission-flow.integration.vitest.ts`
+  - `src/app/services/mission-list-correlation.integration.vitest.ts`
+  - `src/app/services/mission-service-connectivity.integration.vitest.ts`
+  - `src/app/services/mission.service.error-handling.integration.vitest.ts`
+  - `src/app/services/ship-list-correlation.integration.vitest.ts`
+  - `src/app/services/solar-system-correlation.integration.vitest.ts`
+  - Result: 8/8 files passing, 38/38 tests passing.
+- Circular dependency audit executed with `madge` on runtime TS graph:
+  - Initial result: 1 cycle detected.
+  - Initial cycle: `mission/ship-exterior-mission.ts` -> `mission/first-target-ship-exterior-mission.ts`.
+- Hardening refactor applied:
+  - Removed first-target module dependency on `ship-exterior-mission.ts` by localizing gate-state initialization/types in `first-target-ship-exterior-mission.ts`.
+  - Follow-up focused run: `ship-exterior-mission.vitest.ts`, `first-target-ship-exterior-mission.vitest.ts`, `mission-scene-plugin.vitest.ts`.
+  - Follow-up result: 3/3 files passing, 63/63 tests passing.
+- Circular dependency audit re-run with `madge` on runtime TS graph:
+  - Final result: no circular dependencies found.
+
+Phase 6 execution checklist:
+- [x] Execute integration-level Vitest suite and record outcomes.
+- [x] Audit runtime module graph for circular imports.
+- [x] Validate side-effect initialization order for detected cycle path(s).
+- [x] Optional hardening refactor: decouple first-target mission definition bootstrap from resolver module to remove the remaining intentional cycle.
 
 GATE 6 (Hard):
 - Integration suite passes under Vitest.
@@ -133,12 +261,60 @@ GATE 6 (Hard):
 ### Phase 7: Coverage and CI Cutover, Remove Karma/Jasmine, Gate 7
 Objective: make Vitest the default path in local/CI and retire legacy stack.
 
+Status: In progress (started 2026-06-11).
+
 Actions:
 - Switch CI/unit pipelines to Vitest commands.
 - Enforce V8 coverage thresholds: 80/75/80/85.
 - Remove Karma/Jasmine config and dependencies after Vitest parity is proven.
 - Delete obsolete bootstrap files tied only to Karma/Jasmine.
 - Ensure reports are generated in CI-friendly formats as required.
+
+Execution update (2026-06-11):
+- Vitest coverage gate run executed via `npm run test:vitest:ci`:
+  - Suite result: 134/134 files, 1824/1824 tests passing.
+  - Coverage result (V8):
+    - Statements: 77.57% (target 80)
+    - Branches: 66.62% (target 75)
+    - Functions: 79.40% (target 80)
+    - Lines: 77.74% (target 85)
+  - Outcome: Gate threshold check failing; Phase 7 cannot close yet.
+- CI cutover started by adding Vitest unit workflow:
+  - Added `.github/workflows/unit-vitest.yml` to run `npm run test:vitest` on PR/push.
+- Full non-coverage Vitest baseline remains green after cutover prep:
+  - Result: 134/134 files passing, 1824/1824 tests passing.
+
+Coverage hotspot scan (root report buckets):
+- `app/scene/viewer` -> statements 43.43%, branches 47.01%, functions 42.85%, lines 43.61%.
+- `app/scene` -> statements 65.20%, branches 51.19%, functions 63.32%, lines 66.12%.
+- `app/services` -> statements 78.81%, branches 63.11%, functions 80.92%, lines 78.71%.
+- `app/page/opening` -> statements 76.34%, branches 53.06%, functions 66.66%, lines 78.65%.
+
+Coverage remediation slice #1 (viewer helpers, 2026-06-11):
+- Added focused branch tests in:
+  - `src/app/scene/viewer/planet-view-scene.zoom.vitest.ts`
+  - `src/app/scene/viewer/viewer-system-scene.vitest.ts`
+- Exported pure helper functions for deterministic direct testing in:
+  - `src/app/scene/viewer/planet-view-scene.ts`
+  - `src/app/scene/viewer/viewer-system-scene.ts`
+- Focused validation result:
+  - 2 files, 43 tests passing.
+- Full coverage re-run result after slice #1:
+  - Statements: 78.52% (from 77.57%, +0.95)
+  - Branches: 67.05% (from 66.62%, +0.43)
+  - Functions: 79.91% (from 79.40%, +0.51)
+  - Lines: 78.71% (from 77.74%, +0.97)
+
+Phase 7 immediate remediation targets (next slice):
+- Add focused Vitest coverage for viewer scene modules under `src/app/scene/viewer/`.
+- Add branch-focused tests for high-traffic services under `src/app/services/` where branch coverage is below threshold.
+- Add opening-flow branch tests for `src/app/page/opening/` runtime guards.
+
+Phase 7 execution checklist:
+- [x] Start CI cutover with dedicated Vitest unit workflow.
+- [ ] Raise coverage to meet 80/75/80/85 thresholds under Vitest.
+- [ ] Update default local scripts/docs from Karma-first to Vitest-first once thresholds pass.
+- [ ] Remove Karma/Jasmine runtime/config/dependencies after threshold pass and script/doc cutover.
 
 GATE 7 (Hard):
 - CI green on Vitest-only unit pipeline.

@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { ShipSummary } from '../../model/ship-list';
 import {
+  degToRad,
   mapBodiesToRendered,
   mapShipsToRendered,
+  resolveOrbitRotationEuler,
   resolveTargetScenePosition,
   resolveViewerSceneCameraDistanceRange,
+  resolveZoomDistance,
+  resolveZoomPercent,
 } from './viewer-system-scene';
 import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
@@ -463,5 +467,50 @@ describe('resolveTargetScenePosition', () => {
   it('returns null when target id does not exist in bodies or ships', () => {
     const result = resolveTargetScenePosition('missing', [{ id: 'earth', position: [1, 2, 3] }], [{ id: 'ship-1', position: [8, 0, 0] }]);
     expect(result).toBeNull();
+  });
+});
+
+describe('viewer-system-scene helper math', () => {
+  it('degToRad returns 0 for invalid input and converts finite degrees', () => {
+    expect(degToRad(undefined)).toBe(0);
+    expect(degToRad(Number.NaN)).toBe(0);
+    expect(degToRad(180)).toBeCloseTo(Math.PI, 10);
+  });
+
+  it('resolveZoomDistance clamps zoom and resolveZoomPercent inverts mapping', () => {
+    const bodies = [star, planet, distantPlanet];
+    const near = resolveZoomDistance(-10, bodies);
+    const far = resolveZoomDistance(200, bodies);
+
+    const range = resolveViewerSceneCameraDistanceRange(bodies);
+    expect(near).toBeCloseTo(range.min, 6);
+    expect(far).toBeCloseTo(range.max, 6);
+
+    expect(resolveZoomPercent(near, bodies)).toBeCloseTo(0, 6);
+    expect(resolveZoomPercent(far, bodies)).toBeCloseTo(100, 6);
+  });
+
+  it('resolveZoomPercent handles degenerate range without NaN', () => {
+    expect(resolveZoomPercent(10, [])).toBeGreaterThanOrEqual(0);
+  });
+
+  it('resolveOrbitRotationEuler returns finite XYZ angles with and without orbital elements', () => {
+    const withElements = resolveOrbitRotationEuler({
+      anchorBodyId: 'sun',
+      semiMajorAxisKm: 1,
+      eccentricity: 0.1,
+      inclinationDeg: 10,
+      longitudeOfAscendingNodeDeg: 20,
+      argumentOfPeriapsisDeg: 30,
+      meanAnomalyAtEpochDeg: 0,
+    });
+    const withoutElements = resolveOrbitRotationEuler(undefined);
+
+    for (const value of withElements) {
+      expect(Number.isFinite(value)).toBe(true);
+    }
+    for (const value of withoutElements) {
+      expect(Number.isFinite(value)).toBe(true);
+    }
   });
 });

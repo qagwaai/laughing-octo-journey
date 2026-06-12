@@ -176,13 +176,13 @@ function resolveRelativeDistanceKm(selected: ViewerBody, candidate: ViewerBody):
   return Number.isFinite(distance) && distance > 0 ? distance : 1;
 }
 
-function resolveOrbitRadiusUnits(distanceKm: number): number {
+export function resolveOrbitRadiusUnits(distanceKm: number): number {
   const logDistance = Math.log10(1 + distanceKm);
   const unitRadius = PLANET_BASE_MOON_ORBIT + logDistance * 2.3;
   return Math.max(PLANET_BASE_MOON_ORBIT, Math.min(42, unitRadius));
 }
 
-function resolveOrbitAngleRad(body: ViewerBody): number {
+export function resolveOrbitAngleRad(body: ViewerBody): number {
   const anomalyDeg = body.orbitalElements?.meanAnomalyAtEpochDeg;
   if (typeof anomalyDeg === 'number' && Number.isFinite(anomalyDeg)) {
     return (anomalyDeg * Math.PI) / 180;
@@ -192,7 +192,7 @@ function resolveOrbitAngleRad(body: ViewerBody): number {
   return (hash % 360) * (Math.PI / 180);
 }
 
-function resolveStarMarker(selected: ViewerBody, allBodies: ViewerBody[], maxOrbitRadius: number): StarMarker | null {
+export function resolveStarMarker(selected: ViewerBody, allBodies: ViewerBody[], maxOrbitRadius: number): StarMarker | null {
   const nearestStar = allBodies.find((body) => body.bodyType === 'star');
   if (!nearestStar) {
     return null;
@@ -215,7 +215,7 @@ function resolveStarMarker(selected: ViewerBody, allBodies: ViewerBody[], maxOrb
   };
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const c = hex.replace('#', '');
   const r = parseInt(c.substring(0, 2), 16);
   const g = parseInt(c.substring(2, 4), 16);
@@ -223,14 +223,14 @@ function hexToRgb(hex: string): [number, number, number] {
   return [Number.isNaN(r) ? 128 : r, Number.isNaN(g) ? 128 : g, Number.isNaN(b) ? 128 : b];
 }
 
-function lerpColor(a: [number, number, number], b: [number, number, number], t: number): string {
+export function lerpColor(a: [number, number, number], b: [number, number, number], t: number): string {
   const r = Math.round(a[0] + (b[0] - a[0]) * t);
   const g = Math.round(a[1] + (b[1] - a[1]) * t);
   const bl = Math.round(a[2] + (b[2] - a[2]) * t);
   return `rgb(${r},${g},${bl})`;
 }
 
-function createProceduralTexture(baseHex: string, seed: number, type: 'planet' | 'moon'): CanvasTexture {
+export function createProceduralTexture(baseHex: string, seed: number, type: 'planet' | 'moon'): CanvasTexture {
   const size = 512;
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -279,7 +279,7 @@ function createProceduralTexture(baseHex: string, seed: number, type: 'planet' |
   return texture;
 }
 
-function createStarGlowTexture(hex: string): CanvasTexture {
+export function createStarGlowTexture(hex: string): CanvasTexture {
   const size = 256;
   const canvas = document.createElement('canvas');
   canvas.width = size;
