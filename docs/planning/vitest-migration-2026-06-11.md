@@ -218,7 +218,7 @@ GATE 5 (Hard):
 ### Phase 6: Integration Migration and Gate 6
 Objective: migrate integration specs and resolve module graph fragility.
 
-Status: In progress (started 2026-06-11).
+Status: Completed (closed 2026-06-11).
 
 Actions:
 - Migrate integration-level specs (multi-service/component orchestration).
@@ -261,7 +261,7 @@ GATE 6 (Hard):
 ### Phase 7: Coverage and CI Cutover, Remove Karma/Jasmine, Gate 7
 Objective: make Vitest the default path in local/CI and retire legacy stack.
 
-Status: In progress (started 2026-06-11).
+Status: Completed (closed 2026-06-11).
 
 Actions:
 - Switch CI/unit pipelines to Vitest commands.
@@ -407,6 +407,8 @@ Gate 7 disposition: CLOSED.
 ### Phase 8: Docs and Cleanup, Gate 8
 Objective: complete migration with clear team guidance and maintenance safeguards.
 
+Status: Completed (closed 2026-06-11).
+
 Actions:
 - Update contributor/testing docs to Vitest-first workflows.
 - Add migration notes for common rewrite patterns and pitfalls.
@@ -414,14 +416,45 @@ Actions:
 - Confirm e2e scope remains unchanged (32 specs).
 - Archive migration tracker as completed with final metrics.
 
+Execution update (2026-06-11):
+- Vitest-first docs/workflow references updated in:
+  - `README.md`
+  - `AGENTS.md`
+  - `docs/planning/vitest-migration-2026-06-11.md`
+- Legacy Jasmine artifacts removed from active source tree:
+  - deleted all `src/**/*.spec.ts` files (legacy Jasmine/Karma suite)
+  - deleted obsolete spec-writer scripts:
+    - `scripts/write-intro-spec.js`
+    - `scripts/write-login-spec.js`
+    - `scripts/write-registration-spec.js`
+  - updated `src/testing/mock-mission.service.ts` to Vitest-only spy compatibility
+- Validation runs after final cutover cleanup:
+  - `npm run typecheck` -> pass
+  - `npm run build` -> pass
+  - `npm run test:ci` -> pass (141/141 files, 1913/1913 tests)
+- Final coverage at cutover close:
+  - Statements: 80.42%
+  - Branches: 69.92%
+  - Functions: 81.90%
+  - Lines: 80.62%
+
+Phase 8 execution checklist:
+- [x] Update contributor/testing docs to Vitest-first workflows.
+- [x] Add migration notes for common rewrite patterns and pitfalls.
+- [x] Remove stale transition-era runner wiring and references.
+- [x] Confirm e2e scope remains unchanged (32 Playwright specs).
+- [x] Archive migration tracker as completed with final metrics.
+
 GATE 8 (Hard):
 - Documentation reflects final Vitest workflow.
 - No deprecated Karma/Jasmine instructions remain.
 - Final migration report signed off with baseline vs post-migration comparison.
 
+Gate 8 disposition: CLOSED.
+
 ## Key Files Modified
 - `package.json` (scripts, dependencies/devDependencies).
-- `vitest.config.ts` (new Vitest configuration).
+- `vitest.config.mts` (Vitest configuration).
 - `src/testing/vitest-setup.ts` (new global test setup).
 - `tsconfig.spec.json` and/or test tsconfig wiring if needed for Vitest types.
 - Legacy files removed at cutover:

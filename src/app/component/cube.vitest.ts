@@ -4,7 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
 import { BEFORE_RENDER_FN, Cube } from './cube';
 
-// The Jasmine equivalent of jest.mock('angular-three') for beforeRender:
+// Vitest-friendly wrapper around angular-three beforeRender seam:
 // provide BEFORE_RENDER_FN via TestBed so no ES module export is mutated.
 
 describe('Cube', () => {
