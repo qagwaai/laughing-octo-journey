@@ -1,18 +1,18 @@
 # SW-08 Weekly Metrics
 
 - Window (days): 7
-- Generated at: 2026-05-31T00:02:54.901Z
-- Events in window: 27
-- Drift count: 36
-- Drift by class: {"type mismatch":5,"missing required field":5,"enum/value mismatch":5}
-- Impacted surfaces: {"market/ledger":5,"item catalog/fabrication":5,"ship-external-view":5}
-- Owner tags: {"backend remediation":5,"frontend remediation":5,"coordinated fix":5}
-- MTTR (hours): 12.93
-- Bypass count: 2
-- Expired bypasses: 3
+- Generated at: 2026-06-12T23:49:03.010Z
+- Events in window: 8
+- Drift count: 43
+- Drift by class: {"enum/value mismatch":6,"endpoint/event missing":35,"type mismatch":1,"missing required field":1}
+- Impacted surfaces: {"character/ship":5,"ownership operations":35,"market/ledger":1,"item catalog/fabrication":1,"ship-external-view":1}
+- Owner tags: {"frontend remediation":6,"coordinated fix":36,"backend remediation":1}
+- MTTR (hours): 0.45
+- Bypass count: 0
+- Expired bypasses: 0
 - Near-expiry bypasses: 0
-- Repeat offenders: [{"surfaceId":"market/ledger","category":"type mismatch","count":5},{"surfaceId":"item catalog/fabrication","category":"missing required field","count":5},{"surfaceId":"ship-external-view","category":"enum/value mismatch","count":5}]
-- False-positive baseline (approved_exception_findings / total_findings): 0.167
+- Repeat offenders: [{"surfaceId":"ownership operations","category":"endpoint/event missing","count":35},{"surfaceId":"character/ship","category":"enum/value mismatch","count":5}]
+- False-positive baseline (approved_exception_findings / total_findings): 0
 
 ## Baseline Action Plan
 - Prioritize top repeat offender surfaces for contract alignment with producer owners.

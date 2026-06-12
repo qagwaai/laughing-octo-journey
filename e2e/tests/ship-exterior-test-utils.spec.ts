@@ -609,25 +609,8 @@ test.describe('Ship Exterior Test Utilities', () => {
         neutralize: 'completed',
         manufacture: 'completed',
         repair: 'completed',
+        objective: 'Mission objectives complete. Await further directives.',
       });
-
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => {
-                  activeObjectiveText: string;
-                };
-              };
-            }
-          ).__shipExteriorTestUtils;
-          return api!.getMissionGateState().activeObjectiveText;
-        }),
-        { timeout: 30_000 },
-      )
-      .toContain('Mission objectives complete');
 
     await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'active')).toBe(true);
   });

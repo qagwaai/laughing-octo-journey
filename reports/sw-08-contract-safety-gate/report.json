@@ -3,7 +3,7 @@
   "decision": "pass",
   "frontendInventoryPath": "docs/planning/sw-08/frontend-consumer-contract-inventory.json",
   "backendArtifactPath": "docs/planning/sw-08/backend-contract-artifact.json",
-  "contractCount": 14,
+  "contractCount": 21,
   "findingCount": 0,
   "summaryByCategory": {},
   "summaryByOwnerTag": {},
@@ -23,6 +23,7 @@
       "item catalog/fabrication",
       "market/ledger",
       "mission flows",
+      "ownership operations",
       "ship-external-view"
     ],
     "missingSurfaceIds": [],

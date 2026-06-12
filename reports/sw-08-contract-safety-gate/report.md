@@ -4,7 +4,7 @@
 - Decision: pass
 - Frontend inventory: docs/planning/sw-08/frontend-consumer-contract-inventory.json
 - Backend artifact: docs/planning/sw-08/backend-contract-artifact.json
-- Contracts checked: 14
+- Contracts checked: 21
 - Findings: 0
 - Critical surface coverage: complete
 

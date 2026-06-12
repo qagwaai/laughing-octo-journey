@@ -1,46 +1,59 @@
 {
   "windowDays": 30,
-  "generatedAt": "2026-05-31T00:02:54.902Z",
-  "eventsInWindow": 27,
-  "driftCount": 36,
+  "generatedAt": "2026-06-12T23:49:03.011Z",
+  "eventsInWindow": 35,
+  "driftCount": 79,
   "driftCountByClass": {
-    "type mismatch": 5,
-    "missing required field": 5,
-    "enum/value mismatch": 5
+    "type mismatch": 6,
+    "missing required field": 6,
+    "enum/value mismatch": 11,
+    "endpoint/event missing": 35
   },
   "impactedSurfaceCounts": {
-    "market/ledger": 5,
-    "item catalog/fabrication": 5,
-    "ship-external-view": 5
+    "market/ledger": 6,
+    "item catalog/fabrication": 6,
+    "ship-external-view": 6,
+    "character/ship": 5,
+    "ownership operations": 35
   },
   "ownerTagCounts": {
-    "backend remediation": 5,
-    "frontend remediation": 5,
-    "coordinated fix": 5
+    "backend remediation": 6,
+    "frontend remediation": 11,
+    "coordinated fix": 41
   },
-  "mttrHours": 12.93,
+  "mttrHours": 8.52,
   "bypassCount": 2,
   "expiredBypasses": 3,
   "nearExpiryBypasses": 0,
   "repeatOffenders": [
     {
+      "surfaceId": "ownership operations",
+      "category": "endpoint/event missing",
+      "count": 35
+    },
+    {
       "surfaceId": "market/ledger",
       "category": "type mismatch",
-      "count": 5
+      "count": 6
     },
     {
       "surfaceId": "item catalog/fabrication",
       "category": "missing required field",
-      "count": 5
+      "count": 6
     },
     {
       "surfaceId": "ship-external-view",
+      "category": "enum/value mismatch",
+      "count": 6
+    },
+    {
+      "surfaceId": "character/ship",
       "category": "enum/value mismatch",
       "count": 5
     }
   ],
   "falsePositiveBaseline": {
-    "proxyRate": 0.167,
+    "proxyRate": 0.076,
     "metric": "approved_exception_findings / total_findings",
     "actionPlan": [
       "Prioritize top repeat offender surfaces for contract alignment with producer owners.",
