@@ -51,12 +51,6 @@ function buildShipOwnerCorrelationContainerId(owner: {
       return 'unowned';
     case 'unknown':
       return 'unknown';
-    case 'player':
-      return `player:${normalizeIdentityValue(owner.playerId) || 'unknown-player'}`;
-    case 'npc':
-      return `npc:${normalizeIdentityValue(owner.npcId) || 'unknown-npc'}`;
-    case 'faction':
-      return `faction:${normalizeIdentityValue(owner.factionId) || 'unknown-faction'}`;
     default:
       return buildShipOwnerKey(owner);
   }

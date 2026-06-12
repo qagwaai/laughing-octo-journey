@@ -154,12 +154,6 @@ export class ShipExteriorSocketService {
         return 'unowned';
       case 'unknown':
         return 'unknown';
-      case 'player':
-        return `player:${this.normalizeIdentityValue(owner.playerId) || 'unknown-player'}`;
-      case 'npc':
-        return `npc:${this.normalizeIdentityValue(owner.npcId) || 'unknown-npc'}`;
-      case 'faction':
-        return `faction:${this.normalizeIdentityValue(owner.factionId) || 'unknown-faction'}`;
       default:
         return this.buildShipOwnerKey(owner);
     }

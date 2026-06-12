@@ -109,7 +109,7 @@
           "requestFields": [
             { "path": "playerName", "type": "string", "required": true },
             { "path": "sessionKey", "type": "string", "required": true },
-            { "path": "owner.ownerType", "type": "enum", "required": true, "values": ["player-character", "player", "npc", "faction", "unknown"] },
+            { "path": "owner.ownerType", "type": "enum", "required": true, "values": ["player-character", "npc-pirate", "unowned", "unknown"] },
             { "path": "owner.characterId", "type": "string", "required": false },
             { "path": "owner.playerId", "type": "string", "required": false }
           ],
@@ -371,6 +371,160 @@
             { "path": "resolution.yieldedMaterials", "type": "array", "required": false },
             { "path": "resolution.yieldedItems", "type": "array", "required": false },
             { "path": "resolution.targetCelestialBody", "type": "object", "required": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ownership operations",
+      "label": "ownership operations",
+      "ownerTag": "coordinated fix",
+      "consumerFiles": [
+        "src/app/model/ownership-operations.ts",
+        "src/app/services/ownership-operations.service.ts",
+        "src/app/page/game/market-hub.ts",
+        "src/app/scene/ship-exterior-view.ts"
+      ],
+      "contracts": [
+        {
+          "contractId": "ownership.itemListByOwner",
+          "kind": "socket",
+          "requestEvent": "item-list-by-owner-request",
+          "responseEvent": "item-list-by-owner-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts", "src/app/page/game/market-hub.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "owner.ownerType", "type": "enum", "required": true, "values": ["player-character", "npc-pirate", "unowned", "unknown"] },
+            { "path": "owner.characterId", "type": "string", "required": false },
+            { "path": "owner.npcId", "type": "string", "required": false }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "items", "type": "array", "required": true }
+          ]
+        },
+        {
+          "contractId": "ownership.shipListByNpcOwner",
+          "kind": "socket",
+          "requestEvent": "ship-list-by-npc-owner-request",
+          "responseEvent": "ship-list-by-npc-owner-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "npcOwner.ownerType", "type": "enum", "required": true, "values": ["npc-pirate"] },
+            { "path": "npcOwner.npcId", "type": "string", "required": true }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "ships", "type": "array", "required": true }
+          ]
+        },
+        {
+          "contractId": "ownership.shipSalvageClaim",
+          "kind": "socket",
+          "requestEvent": "ship-salvage-claim-request",
+          "responseEvent": "ship-salvage-claim-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "shipId", "type": "string", "required": true },
+            { "path": "claimantOwner.ownerType", "type": "enum", "required": true, "values": ["player-character"] }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "shipId", "type": "string", "required": false }
+          ]
+        },
+        {
+          "contractId": "ownership.shipPiracySeize",
+          "kind": "socket",
+          "requestEvent": "ship-piracy-seize-request",
+          "responseEvent": "ship-piracy-seize-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts", "src/app/scene/ship-exterior-view.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "shipId", "type": "string", "required": true },
+            { "path": "seizingOwner.ownerType", "type": "enum", "required": true, "values": ["npc-pirate"] }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "shipId", "type": "string", "required": false }
+          ]
+        },
+        {
+          "contractId": "ownership.marketListingCreate",
+          "kind": "socket",
+          "requestEvent": "market-listing-create-request",
+          "responseEvent": "market-listing-create-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "marketId", "type": "string", "required": true },
+            { "path": "owner.ownerType", "type": "enum", "required": true, "values": ["player-character"] }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "listingId", "type": "string", "required": false }
+          ]
+        },
+        {
+          "contractId": "ownership.marketOfferCreate",
+          "kind": "socket",
+          "requestEvent": "market-offer-create-request",
+          "responseEvent": "market-offer-create-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "listingId", "type": "string", "required": true },
+            { "path": "offerorOwner.ownerType", "type": "enum", "required": true, "values": ["player-character"] }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "offerId", "type": "string", "required": false }
+          ]
+        },
+        {
+          "contractId": "ownership.marketOfferAccept",
+          "kind": "socket",
+          "requestEvent": "market-offer-accept-request",
+          "responseEvent": "market-offer-accept-response",
+          "consumerFiles": ["src/app/model/ownership-operations.ts", "src/app/services/ownership-operations.service.ts"],
+          "ownerTag": "coordinated fix",
+          "requestFields": [
+            { "path": "playerName", "type": "string", "required": true },
+            { "path": "sessionKey", "type": "string", "required": true },
+            { "path": "offerId", "type": "string", "required": true },
+            { "path": "listingId", "type": "string", "required": true },
+            { "path": "listingOwner.ownerType", "type": "enum", "required": true, "values": ["player-character"] }
+          ],
+          "responseFields": [
+            { "path": "success", "type": "boolean", "required": true },
+            { "path": "message", "type": "string", "required": true },
+            { "path": "reason", "type": "string", "required": false },
+            { "path": "tradeId", "type": "string", "required": false }
           ]
         }
       ]

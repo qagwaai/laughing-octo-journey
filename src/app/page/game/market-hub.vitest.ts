@@ -13,6 +13,8 @@ import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE
 import { estimateTravelHours } from '../../model/math/drive-profile';
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
+import { ITEM_LIST_BY_OWNER_REQUEST_EVENT, ITEM_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ownership-operations';
+import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import MarketHubPage from './market-hub';
@@ -388,6 +390,128 @@ describe('MarketHubPage', () => {
     expect(component['marketListError']()).toBeNull();
     expect(component['markets']().length).toBe(1);
     expect(component['markets']()[0].marketId).toBe('sol-ceres-exchange');
+  });
+
+  it('should emit item-list-by-owner preflight when transacting at reachable docked market', () => {
+    sessionService.activeShip.set({
+      id: 'pod-1',
+      name: 'Pod',
+      model: 'M',
+      tier: 1,
+      status: 'docked',
+      spatial: SPATIAL_SOL_DOCKED,
+    });
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    const market: MarketSummary = {
+      marketId: 'sol-ceres-exchange',
+      solarSystemId: 'sol',
+      marketName: 'Ceres Exchange',
+      siteType: 'station',
+      siteName: 'Ceres Belt Trade Ring',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 413_704_822, y: 0, z: 0 },
+        epochMs: 1,
+      },
+      distanceAu: 0.032,
+      isDocked: true,
+      priceMultiplier: 1,
+      driftPercentPerHour: 6,
+      restockIntervalMinutes: 60,
+    };
+
+    component['transactAtMarket'](market);
+
+    const itemListEvent = socketService.emittedEvents.find((e) => e.event === ITEM_LIST_BY_OWNER_REQUEST_EVENT);
+    expect(itemListEvent).toEqual(
+      expect.objectContaining({
+        event: ITEM_LIST_BY_OWNER_REQUEST_EVENT,
+        data: expect.objectContaining({
+          playerName: 'Pioneer',
+          sessionKey: 'session-key',
+          owner: {
+            ownerType: 'player-character',
+            characterId: 'c-1',
+          },
+        }),
+      }),
+    );
+
+    const requestPayload = itemListEvent?.data as { correlationId?: string; requestIdentity?: unknown };
+    socketService.triggerEvent(ITEM_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
+      items: [{ itemId: 'item-1' }],
+    });
+
+    expect(component['marketActionError']()).toBeNull();
+    expect(component['marketActionMessage']()).toContain('Ownership preflight passed');
+  });
+
+  it('should map ownership reason to fail-fast market action error', () => {
+    const warnSpy = vi.spyOn(appLogger, 'warn');
+
+    sessionService.activeShip.set({
+      id: 'pod-1',
+      name: 'Pod',
+      model: 'M',
+      tier: 1,
+      status: 'docked',
+      spatial: SPATIAL_SOL_DOCKED,
+    });
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: { id: 'c-1', characterName: 'Nova' } },
+    });
+
+    const market: MarketSummary = {
+      marketId: 'sol-ceres-exchange',
+      solarSystemId: 'sol',
+      marketName: 'Ceres Exchange',
+      siteType: 'station',
+      siteName: 'Ceres Belt Trade Ring',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 413_704_822, y: 0, z: 0 },
+        epochMs: 1,
+      },
+      distanceAu: 0.032,
+      isDocked: true,
+      priceMultiplier: 1,
+      driftPercentPerHour: 6,
+      restockIntervalMinutes: 60,
+    };
+
+    component['transactAtMarket'](market);
+
+    const itemListEvent = socketService.emittedEvents.find((e) => e.event === ITEM_LIST_BY_OWNER_REQUEST_EVENT);
+    const requestPayload = itemListEvent?.data as { correlationId?: string; requestIdentity?: unknown };
+    socketService.triggerEvent(ITEM_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: false,
+      reason: 'OWNERSHIP_ITEM_FORBIDDEN',
+      message: 'raw backend message',
+      correlationId: requestPayload.correlationId,
+      requestIdentity: requestPayload.requestIdentity,
+      items: [],
+    });
+
+    expect(component['marketActionMessage']()).toBeNull();
+    expect(component['marketActionError']()).toContain('You cannot modify items for a different owner.');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Market transact preflight failed'));
+
+    warnSpy.mockRestore();
   });
 
   it('should default successful market response to empty array when markets payload is omitted', () => {

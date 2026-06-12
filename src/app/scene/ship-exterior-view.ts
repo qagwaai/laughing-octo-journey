@@ -66,11 +66,16 @@ import type {
   MarketRouteFeedGate,
   MarketRouteFeedStation,
 } from '../model/market-list';
+import { resolveOwnershipFailureMessage } from '../model/ownership-error';
 import {
   resolveShipExteriorViewSeedPolicy,
   type ShipExteriorViewMissionContext,
 } from '../model/ship-exterior-view-context';
 import type { ShipItem } from '../model/ship-item';
+import {
+  SHIP_PIRACY_SEIZE_RESPONSE_EVENT,
+  type ShipPiracySeizeResponse,
+} from '../model/ownership-operations';
 import {
   coerceShipInventory,
   coerceShipModel,
@@ -284,6 +289,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private unsubscribeShipListResponse?: () => void;
   private unsubscribeCelestialBodyListResponse?: () => void;
   private unsubscribeLaunchItemResponse?: () => void;
+  private unsubscribePiracySeizeResponse?: () => void;
   private launchSeedHint: number | null = null;
   private lastConsumedLaunchItemId: string | null = null;
   private readonly knownDroneDepletedShipIds = new Set<string>();
@@ -1228,6 +1234,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
       (response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
     );
+    this.unsubscribePiracySeizeResponse = this.socketService.on(
+      SHIP_PIRACY_SEIZE_RESPONSE_EVENT,
+      (response: ShipPiracySeizeResponse) => this.handleShipPiracySeizeResponse(response),
+    );
     this.floatingDebrisController.start();
     const seedPolicy = this.resolveSeedPolicy();
     const restoredPersistedAsteroids = this.restorePersistedAsteroidSamples();
@@ -1618,6 +1628,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.unsubscribeShipListResponse?.();
     this.unsubscribeCelestialBodyListResponse?.();
     this.unsubscribeLaunchItemResponse?.();
+    this.unsubscribePiracySeizeResponse?.();
     this.floatingDebrisController.stop();
     this.stopTractorBeamAnimationLoop();
     this.tractorBeamAudioController.dispose();
@@ -1665,6 +1676,29 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     } catch (error) {
       appLogger.warn('Failed to install scene environment map.', error);
     }
+  }
+
+  private handleShipPiracySeizeResponse(response: ShipPiracySeizeResponse): void {
+    const activeShipId = this.activeShipId().trim();
+    const seizedShipId = response.shipId?.trim() ?? '';
+    if (!activeShipId || !seizedShipId || seizedShipId !== activeShipId) {
+      return;
+    }
+
+    if (!response.success) {
+      const resolvedMessage = resolveOwnershipFailureMessage(
+        response.reason,
+        response.message || 'Active ship piracy ownership update failed.',
+      );
+      appLogger.warn(
+        `[ownership] Active ship piracy response reported failure. shipId=${seizedShipId} reason=${response.reason ?? 'unknown'} message=${resolvedMessage}`,
+      );
+      this.setLaunchToast(resolvedMessage, 'error', null);
+      return;
+    }
+
+    this.setLaunchToast(response.message || 'Active ship ownership transferred by piracy.', 'error', null);
+    this.refreshShipStateAfterLaunch();
   }
 
   private disposeSceneEnvironment(): void {

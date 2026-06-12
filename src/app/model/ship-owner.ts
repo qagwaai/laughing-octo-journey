@@ -6,10 +6,7 @@ export type ShipOwnerType =
   | 'unknown'
   | 'player-character'
   | 'npc-pirate'
-  | 'unowned'
-  | 'player'
-  | 'npc'
-  | 'faction';
+  | 'unowned';
 
 export interface ShipOwnerDescriptor {
   ownerType: ShipOwnerType;
@@ -45,9 +42,6 @@ function coerceShipOwnerType(value: unknown): ShipOwnerType | null {
     case 'player-character':
     case 'npc-pirate':
     case 'unowned':
-    case 'player':
-    case 'npc':
-    case 'faction':
       return normalized;
     default:
       return null;

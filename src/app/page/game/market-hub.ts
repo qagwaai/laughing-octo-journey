@@ -13,6 +13,7 @@ import {
   type MarketListByLocationResponse,
   type MarketSummary,
 } from '../../model/market-list';
+import { resolveOwnershipFailureMessage } from '../../model/ownership-error';
 import {
   estimateTravelHours,
   resolveDriveProfileForShip,
@@ -24,6 +25,7 @@ import type { Triple } from '../../model/shared/triple';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipSummary } from '../../model/ship-list';
 import { MarketService } from '../../services/market.service';
+import { OwnershipOperationsService } from '../../services/ownership-operations.service';
 import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipService } from '../../services/ship.service';
@@ -70,6 +72,7 @@ export default class MarketHubPage {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private marketService = inject(MarketService);
+  private ownershipOperationsService = inject(OwnershipOperationsService);
   private shipService = inject(ShipService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
@@ -85,6 +88,9 @@ export default class MarketHubPage {
   protected markets = signal<MarketSummary[]>([]);
   protected isLoadingMarkets = signal(false);
   protected marketListError = signal<string | null>(null);
+  protected marketActionError = signal<string | null>(null);
+  protected marketActionMessage = signal<string | null>(null);
+  protected isSubmittingMarketAction = signal(false);
   protected isDockedAtAnyMarket = signal(false);
   protected dockedMarketId = signal<string | null>(null);
   protected activeShip = this.sessionService.activeShip;
@@ -491,6 +497,55 @@ export default class MarketHubPage {
     }
 
     return false;
+  }
+
+  protected transactAtMarket(market: MarketSummary): void {
+    this.marketActionError.set(null);
+    this.marketActionMessage.set(null);
+
+    if (!this.canTransactAtMarket(market) || !this.isMarketWithinDriveRange(market)) {
+      this.marketActionError.set('Docking and range requirements must be met before transacting.');
+      return;
+    }
+
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const characterId = this.joinCharacter()?.id?.trim() ?? '';
+
+    if (!playerName || !sessionKey || !characterId) {
+      this.marketActionError.set('Missing player/session/character context for ownership validation.');
+      return;
+    }
+
+    this.isSubmittingMarketAction.set(true);
+    this.ownershipOperationsService.listItemsByOwner(
+      {
+        playerName,
+        sessionKey,
+        owner: {
+          ownerType: 'player-character',
+          characterId,
+        },
+      },
+      (response) => {
+        this.isSubmittingMarketAction.set(false);
+        if (!response.success) {
+          const resolvedMessage = resolveOwnershipFailureMessage(
+            response.reason,
+            response.message || 'Ownership preflight failed.',
+          );
+          appLogger.warn(
+            `[ownership] Market transact preflight failed. marketId=${market.marketId} playerName=${playerName} characterId=${characterId} reason=${response.reason ?? 'unknown'} message=${resolvedMessage}`,
+          );
+          this.marketActionError.set(resolvedMessage);
+          return;
+        }
+
+        this.marketActionMessage.set(
+          `Ownership preflight passed for ${market.marketName}. ${response.items?.length ?? 0} items in owner scope.`,
+        );
+      },
+    );
   }
 
   navigateToCharacterProfile(): void {

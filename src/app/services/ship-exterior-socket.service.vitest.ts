@@ -589,46 +589,7 @@ describe('ShipExteriorSocketService', () => {
     unsubscribe();
   });
 
-  it('formats containerId for player owner type', () => {
-    service.listShipsByOwner(
-      {
-        playerName: 'Pioneer',
-        sessionKey: 'session-1',
-        owner: { ownerType: 'player', playerId: 'player-42' } as any,
-      },
-      () => {},
-    );
-    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
-    expect(payload.requestIdentity?.containerId).toBe('player:player-42');
-  });
-
-  it('formats containerId for npc owner type', () => {
-    service.listShipsByOwner(
-      {
-        playerName: 'Pioneer',
-        sessionKey: 'session-1',
-        owner: { ownerType: 'npc', npcId: 'npc-7' } as any,
-      },
-      () => {},
-    );
-    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
-    expect(payload.requestIdentity?.containerId).toBe('npc:npc-7');
-  });
-
-  it('formats containerId for faction owner type', () => {
-    service.listShipsByOwner(
-      {
-        playerName: 'Pioneer',
-        sessionKey: 'session-1',
-        owner: { ownerType: 'faction', factionId: 'faction-steel' } as any,
-      },
-      () => {},
-    );
-    const payload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
-    expect(payload.requestIdentity?.containerId).toBe('faction:faction-steel');
-  });
-
-  it('formats containerId for unknown owner type via fallback key', () => {
+  it('formats containerId via fallback key for non-canonical owner type', () => {
     service.listShipsByOwner(
       {
         playerName: 'Pioneer',

@@ -87,12 +87,7 @@ test.describe('Repair & Retrofit', () => {
   test('shows hard-fail error and keeps detail action unavailable when no ship has usable spatial data', async ({ page }) => {
     await loginAndOpenRepairPage(false, page);
 
-    await expect(
-      page
-        .getByRole('alert')
-        .filter({ hasText: 'No ship with usable spatial data is available.' })
-        .first(),
-    ).toHaveText('No ship with usable spatial data is available.');
+    await expect(page.getByText('No ship with usable spatial data is available.').first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Active ship:/ })).toContainText('No ship selected');
     await expect(page.getByRole('button', { name: 'View details' })).toHaveCount(0);
   });

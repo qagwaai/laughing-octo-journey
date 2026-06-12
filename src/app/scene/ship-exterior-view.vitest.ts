@@ -12,6 +12,7 @@ import {
 } from '../model/market-list';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../model/ship-list-by-owner';
+import { SHIP_PIRACY_SEIZE_RESPONSE_EVENT } from '../model/ownership-operations';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
@@ -161,6 +162,78 @@ describe('ShipExteriorViewScene', () => {
     });
 
     expect(component.missionObjectiveText().length).toBeGreaterThan(0);
+  });
+
+  it('shows an error toast when piracy seizes the active ship', () => {
+    const { component, mockSocket } = setup({
+      joinShip: {
+        id: 'active-ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    mockSocket.triggerEvent(SHIP_PIRACY_SEIZE_RESPONSE_EVENT, {
+      success: true,
+      message: 'Piracy seized your active ship.',
+      shipId: 'active-ship-1',
+      correlationId: 'corr-1',
+      requestIdentity: {
+        operation: 'ship-piracy-seize',
+        entityType: 'ship',
+        containerId: 'active-ship-1',
+      },
+    });
+
+    expect(component.activeLaunchToast()?.tone).toBe('error');
+    expect(component.activeLaunchToast()?.message).toContain('Piracy seized your active ship.');
+  });
+
+  it('ignores piracy responses for a different ship id', () => {
+    const { component, mockSocket } = setup({
+      joinShip: {
+        id: 'active-ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    mockSocket.triggerEvent(SHIP_PIRACY_SEIZE_RESPONSE_EVENT, {
+      success: true,
+      message: 'Piracy seized a different ship.',
+      shipId: 'other-ship-2',
+      correlationId: 'corr-2',
+      requestIdentity: {
+        operation: 'ship-piracy-seize',
+        entityType: 'ship',
+        containerId: 'other-ship-2',
+      },
+    });
+
+    expect(component.activeLaunchToast()).toBeNull();
+  });
+
+  it('shows mapped ownership failure message for active ship piracy failure', () => {
+    const { component, mockSocket } = setup({
+      joinShip: {
+        id: 'active-ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    mockSocket.triggerEvent(SHIP_PIRACY_SEIZE_RESPONSE_EVENT, {
+      success: false,
+      reason: 'PIRACY_SEIZE_INVALID_TARGET',
+      message: 'backend raw failure',
+      shipId: 'active-ship-1',
+      correlationId: 'corr-3',
+      requestIdentity: {
+        operation: 'ship-piracy-seize',
+        entityType: 'ship',
+        containerId: 'active-ship-1',
+      },
+    });
+
+    expect(component.activeLaunchToast()?.tone).toBe('error');
+    expect(component.activeLaunchToast()?.message).toContain('Piracy target is invalid for ownership transfer.');
   });
 
   it('should enable targeting for Scavenger Pod with expendable-dart-drone inventory', () => {

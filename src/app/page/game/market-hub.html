@@ -103,6 +103,10 @@
       <p class="status-message warning-message">{{ t.game.marketHub.activeShipPositionMissingLabel }}</p>
       } @if (!isDocked()) {
       <p class="status-message warning-message">{{ t.game.marketHub.dockRequiredHintLabel }}</p>
+      } @if (marketActionMessage()) {
+      <p class="status-message">{{ marketActionMessage() }}</p>
+      } @if (marketActionError()) {
+      <p class="status-message error-message">{{ marketActionError() }}</p>
       } @if (marketListError()) {
       <p class="status-message error-message">{{ marketListError() }}</p>
       } @if (!marketListError() && !isLoadingMarkets() && reachableMarkets().length === 0 && (!showOutOfRangeMarkets()
@@ -138,7 +142,8 @@
           <button
             type="button"
             class="transact-btn"
-            [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market)"
+            (click)="transactAtMarket(market)"
+            [disabled]="!canTransactAtMarket(market) || !isMarketWithinDriveRange(market) || isSubmittingMarketAction()"
           >
             {{ t.game.marketHub.transactLabel }}
           </button>
