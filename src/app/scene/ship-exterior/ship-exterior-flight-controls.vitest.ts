@@ -62,7 +62,7 @@ describe('ship-exterior-flight-controls', () => {
 
     expect(result.speedSceneUnitsPerSec).toBe(4);
     expect(result.worldDelta.x).toBeCloseTo(Math.SQRT1_2 * 2, 4);
-    expect(result.worldDelta.z).toBeCloseTo(-Math.SQRT1_2 * 2, 4);
+    expect(result.worldDelta.z).toBeCloseTo(Math.SQRT1_2 * 2, 4);
   });
 
   it('quantizes coordinates to a fixed precision step', () => {

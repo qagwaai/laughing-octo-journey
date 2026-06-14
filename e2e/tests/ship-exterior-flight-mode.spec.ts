@@ -156,17 +156,46 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       .poll(() => readCoords(page))
       .toEqual(coordsBeforeEnable);
 
-    // --- Hold W to integrate forward movement; expect COORD Z to change. ---
+    // --- Hold W then S; they should drive Z in opposite directions. ---
+    const zBaseline = coordsBeforeEnable?.z ?? 0;
+
     await page.keyboard.down('KeyW');
+    let zAfterW: number | null = null;
     try {
       await expect
         .poll(async () => {
           const z = await readCoordZ(page);
-          return z !== null && z !== 0;
+          if (z === null || z === zBaseline) {
+            return false;
+          }
+          zAfterW = z;
+          return true;
         }, { timeout: 5_000 })
         .toBe(true);
     } finally {
       await page.keyboard.up('KeyW');
+    }
+
+    expect(zAfterW).not.toBeNull();
+    if (zAfterW === null) {
+      throw new Error('Expected W movement to update Z telemetry.');
+    }
+    expect(zAfterW).not.toBe(zBaseline);
+    const wDelta = zAfterW - zBaseline;
+
+    await page.keyboard.down('KeyS');
+    try {
+      await expect
+        .poll(async () => {
+          const z = await readCoordZ(page);
+          if (z === null) {
+            return false;
+          }
+          return wDelta > 0 ? z < zAfterW : z > zAfterW;
+        }, { timeout: 5_000 })
+        .toBe(true);
+    } finally {
+      await page.keyboard.up('KeyS');
     }
 
     // --- Disable flight ---

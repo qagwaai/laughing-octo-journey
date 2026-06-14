@@ -86,7 +86,7 @@ export function integrateFlightStep(
     rollRad: orientation.rollRad + input.roll * config.rollSpeedRadPerSec * deltaSeconds,
   };
 
-  const localVector = new Vector3(input.right, input.up, -input.forward);
+  const localVector = new Vector3(input.right, input.up, input.forward);
   if (localVector.lengthSq() > 1) {
     localVector.normalize();
   }
@@ -98,7 +98,7 @@ export function integrateFlightStep(
 
   // The camera is locked to world -Z while the scene rotates around the player.
   // So the displacement applied to the scene group is in the *camera* (world) frame,
-  // not rotated by the flight orientation. W always shifts +Z scene offset, etc.
+  // not rotated by the flight orientation. W shifts -Z scene offset, etc.
   const worldDelta = localVector.multiplyScalar(speed * deltaSeconds);
 
   return {

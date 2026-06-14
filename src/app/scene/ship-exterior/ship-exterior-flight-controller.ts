@@ -85,12 +85,6 @@ export class ShipExteriorFlightController {
     this.flightPressedKeys.clear();
     this.flightTrackingAccumulatorMs = 0;
     this.flightSpeedKmPerSec.set(0);
-
-    if (enabled) {
-      this.flightOrientation.set(this.getCurrentCameraOrientation() ?? this.cameraOrientation());
-      this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
-      this.syncFlightWorldTransform();
-    }
   }
 
   setFlightInvertY(enabled: boolean): void {
