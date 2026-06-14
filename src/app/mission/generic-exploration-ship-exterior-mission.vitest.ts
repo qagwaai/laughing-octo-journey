@@ -53,13 +53,13 @@ describe('GenericExplorationShipExteriorMission', () => {
     expect(steps[0].key).toBe('survey_asteroid_field');
   });
 
-  it('disables targeting and launch capabilities', () => {
+  it('allows locking targets while keeping launch capability disabled', () => {
     expect(
       GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION.canTargetAsteroids({
         shipModel: 'Scavenger Pod',
         hasExpendableDartDrone: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory([])).toBe(false);
   });
 

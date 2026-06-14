@@ -7,7 +7,36 @@ import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-hangar-resume';
 
-function configureShipExteriorResumeMock(mock: SocketIOMock): void {
+interface ShipExteriorResumeMockOptions {
+  missionStatus?: 'active' | 'completed';
+  inventory?: unknown[];
+}
+
+function configureShipExteriorResumeMock(mock: SocketIOMock, options: ShipExteriorResumeMockOptions = {}): void {
+  const missionStatus = options.missionStatus ?? 'active';
+  const inventory =
+    options.inventory ??
+    [
+      {
+        id: 'item-drone-1',
+        itemType: 'expendable-dart-drone',
+        displayName: 'Expendable Dart Drone',
+        launchable: true,
+        state: 'contained',
+        damageStatus: 'intact',
+        container: { containerType: 'ship', containerId: 'ship-1' },
+        owningPlayerId: TEST_PLAYER,
+        owningCharacterId: TEST_CHARACTER_ID,
+        kinematics: null,
+        destroyedAt: null,
+        destroyedReason: null,
+        discoveredAt: null,
+        discoveredByCharacterId: null,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ];
+
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -19,7 +48,7 @@ function configureShipExteriorResumeMock(mock: SocketIOMock): void {
           id: TEST_CHARACTER_ID,
           characterName: 'Scout Alpha',
           level: 2,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: missionStatus }],
         },
       ],
     },
@@ -34,7 +63,7 @@ function configureShipExteriorResumeMock(mock: SocketIOMock): void {
       message: '',
       playerName: TEST_PLAYER,
       characterId: TEST_CHARACTER_ID,
-      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: missionStatus }],
     },
   }));
 
@@ -51,26 +80,7 @@ function configureShipExteriorResumeMock(mock: SocketIOMock): void {
           name: 'Starter Pod',
           model: 'Scavenger Pod',
           status: 'Damaged',
-          inventory: [
-            {
-              id: 'item-drone-1',
-              itemType: 'expendable-dart-drone',
-              displayName: 'Expendable Dart Drone',
-              launchable: true,
-              state: 'contained',
-              damageStatus: 'intact',
-              container: { containerType: 'ship', containerId: 'ship-1' },
-              owningPlayerId: TEST_PLAYER,
-              owningCharacterId: TEST_CHARACTER_ID,
-              kinematics: null,
-              destroyedAt: null,
-              destroyedReason: null,
-              discoveredAt: null,
-              discoveredByCharacterId: null,
-              createdAt: '2026-05-01T00:00:00.000Z',
-              updatedAt: '2026-05-01T00:00:00.000Z',
-            },
-          ],
+          inventory,
           spatial: {
             solarSystemId: 'sol',
             frame: 'barycentric',
@@ -266,5 +276,97 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
         { timeout: 15_000 },
       )
       .toEqual({ scanned: true, scanProgress: 100 });
+  });
+
+  test('keeps asteroid target lock available after first-target completion from Ship Hangar exterior view', async ({
+    page,
+  }) => {
+    const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+    const shipHangarPage = new ShipHangarPage(page);
+    await mock.setup();
+    configureShipExteriorResumeMock(mock, {
+      missionStatus: 'completed',
+      inventory: [
+        {
+          id: 'item-mining-1',
+          itemType: 'basic-mining-laser',
+          displayName: 'Basic Mining Laser',
+          launchable: false,
+        },
+      ],
+    });
+
+    await loginViaUI(page, mock);
+    await gameShell.joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:mission-board/, { timeout: 15_000 });
+
+    await gameShell.openShipHangar();
+    const shipRow = shipHangarPage.shipItem(0);
+    await expect(shipRow).toBeVisible({ timeout: 10_000 });
+
+    await shipRow.locator('button', { hasText: 'View Exterior' }).click();
+    await expect(page).toHaveURL(/right:ship-exterior-view/);
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getAsteroidSamples?: () => Array<{ id: string }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getAsteroidSamples === 'function' && api.getAsteroidSamples().length > 0;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+
+    const interactionResult = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getAsteroidSamples: () => Array<{ id: string }>;
+            forceTargetAsteroid: (sampleId: string) => boolean;
+            getTargetedAsteroidId: () => string | null;
+            launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+            getActiveLaunchToast: () => { message: string; tone: string } | null;
+          };
+        }
+      ).__shipExteriorTestUtils;
+
+      const sampleId = api?.getAsteroidSamples()?.[0]?.id;
+      if (!api || !sampleId) {
+        return null;
+      }
+
+      const targetLocked = api.forceTargetAsteroid(sampleId);
+      const targetedBeforeLaunch = api.getTargetedAsteroidId();
+      api.launchFromHotkey(1);
+      const toast = api.getActiveLaunchToast();
+      const targetedAfterLaunchAttempt = api.getTargetedAsteroidId();
+
+      return {
+        sampleId,
+        targetLocked,
+        targetedBeforeLaunch,
+        targetedAfterLaunchAttempt,
+        toast,
+      };
+    });
+
+    expect(interactionResult).not.toBeNull();
+    expect(interactionResult?.targetLocked).toBe(true);
+    expect(interactionResult?.targetedBeforeLaunch).toBe(interactionResult?.sampleId);
+    expect(interactionResult?.targetedAfterLaunchAttempt).toBe(interactionResult?.sampleId);
+    expect(interactionResult?.toast).toEqual(
+      expect.objectContaining({
+        tone: 'error',
+      }),
+    );
+    expect(interactionResult?.toast?.message).toContain('no launchable item');
   });
 });

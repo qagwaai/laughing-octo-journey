@@ -12,7 +12,7 @@ const TEST_REQUEST_IDENTITY = {
 };
 
 describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
-  it('should only allow asteroid targeting for scavenger pod with expendable dart drone', () => {
+  it('should always allow asteroid targeting regardless of ship model or dart inventory', () => {
     expect(
       FIRST_TARGET_SHIP_EXTERIOR_MISSION.canTargetAsteroids({
         shipModel: 'Scavenger Pod',
@@ -25,14 +25,14 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
         shipModel: 'Scavenger Pod',
         hasExpendableDartDrone: false,
       }),
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       FIRST_TARGET_SHIP_EXTERIOR_MISSION.canTargetAsteroids({
         shipModel: 'Expendable Dart Ship',
         hasExpendableDartDrone: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('should generate deterministic asteroid samples for the same mission seed inputs', () => {

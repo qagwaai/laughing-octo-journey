@@ -259,8 +259,8 @@ function generateAsteroidSamples(
 
 export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   missionId: FIRST_TARGET_MISSION_ID,
-  canTargetAsteroids(params: { shipModel: string; hasExpendableDartDrone: boolean }) {
-    return params.shipModel === 'Scavenger Pod' && params.hasExpendableDartDrone;
+  canTargetAsteroids() {
+    return true;
   },
   resolveTargetingCapabilityFromInventory(rawInventory: unknown) {
     return hasExpendableDartDroneInInventory(rawInventory);

@@ -294,7 +294,7 @@ describe('ShipExteriorViewScene', () => {
     expect(component.resolveAsteroidRenderTier('sample-d')).toBe('hero');
   });
 
-  it('should disable targeting for wrong model even with expendable-dart-drone inventory', () => {
+  it('should allow targeting for non-scavenger ships when a sample is in view', () => {
     const { component } = setup({
       joinShip: {
         id: 's-2',
@@ -306,11 +306,11 @@ describe('ShipExteriorViewScene', () => {
     const sampleId = api.getAsteroidSamples()[0]?.id as string | undefined;
     const result = sampleId ? api.forceTargetAsteroid(sampleId) : false;
 
-    expect(result).toBe(false);
-    expect(api.getTargetedAsteroidId()).toBeNull();
+    expect(result).toBe(true);
+    expect(api.getTargetedAsteroidId()).toBe(sampleId ?? null);
   });
 
-  it('should disable targeting for Scavenger Pod without expendable-dart-drone inventory', () => {
+  it('should allow targeting for Scavenger Pod without expendable-dart-drone inventory', () => {
     const { component } = setup({
       joinShip: {
         id: 's-3',
@@ -322,8 +322,8 @@ describe('ShipExteriorViewScene', () => {
     const sampleId = api.getAsteroidSamples()[0]?.id as string | undefined;
     const result = sampleId ? api.forceTargetAsteroid(sampleId) : false;
 
-    expect(result).toBe(false);
-    expect(api.getTargetedAsteroidId()).toBeNull();
+    expect(result).toBe(true);
+    expect(api.getTargetedAsteroidId()).toBe(sampleId ?? null);
   });
 
   it('logs a contract warning when expendable dart drone is present but not launchable', () => {
@@ -526,7 +526,7 @@ describe('ShipExteriorViewScene', () => {
     expect(api.getTargetedAsteroidId()).toBe('sample-a4');
   });
 
-  it('should not lock target when targeting is disabled', () => {
+  it('should keep lock targeting available without launchable inventory', () => {
     const { fixture } = setup({
       joinShip: {
         id: 's-1',
@@ -540,8 +540,8 @@ describe('ShipExteriorViewScene', () => {
     fixture.detectChanges();
     const result = api.forceTargetAsteroid('sample-a3');
 
-    expect(result).toBe(false);
-    expect(api.getTargetedAsteroidId()).toBeNull();
+    expect(result).toBe(true);
+    expect(api.getTargetedAsteroidId()).toBe('sample-a3');
   });
 
   it('should resolve Sol sun config for sol solar system', () => {

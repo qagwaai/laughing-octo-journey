@@ -64,8 +64,8 @@ function resetExplorationScanCount(characterId: string): void {
 export const GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefinition = {
   missionId: GENERIC_EXPLORATION_MISSION_ID,
   canTargetAsteroids() {
-    // Exploration missions never launch payloads, so targeting is disabled.
-    return false;
+    // Locking targets remains available even when launch payload use is restricted.
+    return true;
   },
   resolveTargetingCapabilityFromInventory() {
     return false;

@@ -2174,7 +2174,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     if (!this.canTargetAsteroids()) {
-      this.setLaunchToast('Targeting unavailable. Ensure the ship has an expendable dart drone.', 'error', null);
+      this.setLaunchToast('Targeting unavailable in this mission context.', 'error', null);
       return;
     }
 
