@@ -23,6 +23,7 @@
 <ngt-group [position]="flightWorldOffset()" [rotation]="flightWorldRotation()">
   <app-background-stars [count]="512" [seed]="70411" [radiusMin]="18" [radiusMax]="44"></app-background-stars>
   <app-sol [position]="sunScenePosition()" [sunColor]="sunConfig().color" [radius]="sunConfig().radius" />
+  <app-jaxs-ship [position]="[-9, 1.4, 5.5]" [rotation]="[0, -0.55, 0]" [scale]="0.18" />
 
   <ngt-group [position]="[0, 0, -1.5]">
   <app-ship-exterior-route-feed-layer

@@ -18,6 +18,7 @@ import { environment } from '../../environments/environment';
 import { locale } from '../i18n/locale';
 import { Asteroid, type AsteroidHoverEvent } from '../component/asteroid';
 import { BackgroundStars } from '../component/background-stars';
+import { JaxsShip } from '../component/jaxs-ship';
 import { Sol } from '../component/sol';
 import {
   resolveMissionScenePlugin,
@@ -189,7 +190,7 @@ function resolveDescriptorDetailLevel(segments: number): number {
 @Component({
   selector: 'app-ship-exterior-view-scene',
   templateUrl: './ship-exterior-view.html',
-  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, Sol, FloatingDebrisNode, ShipExteriorRouteFeedLayer],
+  imports: [NgtArgs, NgtsOrbitControls, Asteroid, BackgroundStars, JaxsShip, Sol, FloatingDebrisNode, ShipExteriorRouteFeedLayer],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
