@@ -92,7 +92,7 @@
     "@analogjs/vite-plugin-angular": "^2.6.0",
     "@analogjs/vitest-angular": "^2.6.0",
     "@angular/build": "21.2.14",
-    "@angular/cli": "21.2.14",
+    "@angular/cli": "21.2.15",
     "@angular/compiler-cli": "21.2.14",
     "@angular/localize": "21.2.14",
     "@eslint/js": "^10.0.1",
