@@ -87,8 +87,7 @@ export class ShipExteriorFlightController {
     this.flightSpeedKmPerSec.set(0);
 
     if (enabled) {
-      this.resetCameraForFlight();
-      this.flightOrientation.set({ yawRad: 0, pitchRad: 0, rollRad: 0 });
+      this.flightOrientation.set(this.getCurrentCameraOrientation() ?? this.cameraOrientation());
       this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
       this.syncFlightWorldTransform();
     }
@@ -163,30 +162,26 @@ export class ShipExteriorFlightController {
     this.syncFlightWorldTransform();
   }
 
-  private resetCameraForFlight(): void {
+  private getCurrentCameraOrientation(): FlightOrientation | null {
     const camera = this.args.getCamera();
     if (!camera) {
-      return;
-    }
-
-    camera.position.set(0, 0, 6.6);
-    camera.lookAt(0, 0, 0);
-    camera.updateMatrixWorld();
-  }
-
-  private pollCameraOrientation(): void {
-    const camera = this.args.getCamera();
-    if (!camera) {
-      return;
+      return null;
     }
 
     const euler = new Euler().setFromQuaternion(camera.quaternion, 'YXZ');
-    const current = this.cameraOrientation();
-    const next: FlightOrientation = {
+    return {
       yawRad: euler.y,
       pitchRad: euler.x,
       rollRad: euler.z,
     };
+  }
+
+  private pollCameraOrientation(): void {
+    const next = this.getCurrentCameraOrientation();
+    if (!next) {
+      return;
+    }
+    const current = this.cameraOrientation();
 
     if (
       Math.abs(next.yawRad - current.yawRad) < 1e-4 &&

@@ -27,6 +27,11 @@
   background: rgba(30, 50, 90, 0.9);
 }
 
+.character-avatar.two-initials {
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
 .ship-badge {
   display: flex;
   flex-direction: column;

@@ -11,8 +11,24 @@ export class ShipHangarPage {
     return this.shipItems.nth(index);
   }
 
+  shipItemByName(name: string) {
+    return this.page.locator('.ship-item').filter({ hasText: name }).first();
+  }
+
+  activeShipControlButton(index: number) {
+    return this.shipItem(index).locator('button.inventory-link').nth(3);
+  }
+
+  activeShipControlButtonByName(name: string) {
+    return this.shipItemByName(name).locator('button.inventory-link').nth(3);
+  }
+
   setActiveShipButton(index: number) {
-    return this.shipItem(index).locator('button', { hasText: 'Set as Active Ship' });
+    return this.activeShipControlButton(index);
+  }
+
+  activeShipButton(index: number) {
+    return this.activeShipControlButton(index);
   }
 
   get shipBadgeName() {

@@ -412,6 +412,39 @@ describe('ShipHangarPage', () => {
     );
   });
 
+  it('should report active ship status by session active ship id', () => {
+    const activeShip = { id: 's-1', name: 'Courier' } as any;
+    sessionService.setActiveShip(activeShip);
+    const { component } = setup({ socketService, sessionService });
+
+    expect(component['isShipActive']({ id: 's-1' } as any)).toBe(true);
+    expect(component['isShipActive']({ id: 's-2' } as any)).toBe(false);
+  });
+
+  it('should not re-set active ship when selected ship is already active', () => {
+    const activeShip = { id: 's-1', name: 'Courier' } as any;
+    sessionService.setActiveShip(activeShip);
+    const setActiveSpy = vi.spyOn(sessionService, 'setActiveShip');
+    const { component } = setup({ socketService, sessionService });
+
+    component.setActiveShip({ id: 's-1', name: 'Courier' } as any);
+
+    expect(setActiveSpy).not.toHaveBeenCalled();
+  });
+
+  it('should set active ship when selected ship differs from session active ship', () => {
+    const activeShip = { id: 's-1', name: 'Courier' } as any;
+    const nextShip = { id: 's-2', name: 'Pathfinder' } as any;
+    sessionService.setActiveShip(activeShip);
+    const setActiveSpy = vi.spyOn(sessionService, 'setActiveShip');
+    const { component } = setup({ socketService, sessionService });
+
+    component.setActiveShip(nextShip);
+
+    expect(setActiveSpy).toHaveBeenCalledOnce();
+    expect(setActiveSpy).toHaveBeenCalledWith(nextShip);
+  });
+
   describe('DOM smoke tests', () => {
     it('should render the page container without error', () => {
       const { fixture } = setup({ socketService, sessionService });

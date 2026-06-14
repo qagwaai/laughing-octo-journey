@@ -22,7 +22,7 @@ import { clearRememberedPlayerHandle, writeRememberedPlayerHandle } from '../../
 import { RegisterRequest, RegisterResponse } from '../../model/register';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
-import { ExternalAnchorItem, ExternalAnchorsComponent } from '../../component/external-anchors';
+import { ExternalAnchorsComponent } from '../../component/external-anchors';
 
 interface RegistrationNavigationState {
   preferredLocale?: string;
@@ -50,13 +50,6 @@ export const passwordMatchValidator: ValidatorFn = (group: AbstractControl): Val
 export default class RegistrationPage implements OnDestroy {
   protected readonly t = locale;
   protected readonly supportedLocaleCodes = supportedLocaleCodes;
-  protected readonly footerAnchors: ReadonlyArray<ExternalAnchorItem> = [
-    {
-      href: 'https://angularthree.org',
-      text: 'Angular Three',
-      ariaLabel: 'Visit Angular Three website',
-    },
-  ];
   private authService = inject(AuthService);
   private sessionService = inject(SessionService);
   private fb = inject(FormBuilder);

@@ -438,6 +438,7 @@ export const it: DeepPartial<EnLocale> = {
       shipViewInventoryLabel: 'Vedi inventario',
       shipExteriorViewLabel: 'Vista esterna',
       shipSetActiveLabel: 'Imposta come nave attiva',
+      shipActiveLabel: 'Nave attiva',
       errors: {
         loadShipsRequiresPlayer: 'Il nome giocatore e obbligatorio per caricare le navi.',
         loadShipsRequiresCharacterId: "L'id del personaggio e obbligatorio per caricare le navi.",

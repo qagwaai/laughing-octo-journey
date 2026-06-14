@@ -4,35 +4,42 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ExternalAnchorItem, ExternalAnchorsComponent } from './external-anchors';
 
 @Component({
+  template: `<app-external-anchors [layout]="layout" />`,
+  imports: [ExternalAnchorsComponent],
+})
+class DefaultHostComponent {
+  layout: 'inline' | 'stack' = 'inline';
+}
+
+@Component({
   template: `<app-external-anchors [anchors]="anchors" [layout]="layout" />`,
   imports: [ExternalAnchorsComponent],
 })
-class HostComponent {
+class AnchoredHostComponent {
   anchors: ReadonlyArray<ExternalAnchorItem> = [];
   layout: 'inline' | 'stack' = 'inline';
 }
 
 describe('ExternalAnchorsComponent', () => {
-  let fixture: ComponentFixture<HostComponent>;
-  let host: HostComponent;
-
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [HostComponent],
+      imports: [DefaultHostComponent, AnchoredHostComponent],
     }).compileComponents();
-
-    fixture = TestBed.createComponent(HostComponent);
-    host = fixture.componentInstance;
   });
 
-  it('should render nothing when no anchors are provided', () => {
+  it('should render the shared default anchor when no anchors are provided', () => {
+    const fixture = TestBed.createComponent(DefaultHostComponent);
     fixture.detectChanges();
 
     const links = fixture.nativeElement.querySelectorAll('a.angular-three-mark');
-    expect(links.length).toBe(0);
+    expect(links.length).toBe(4);
+    expect(links[0].getAttribute('href')).toBe('https://angularthree.org');
+    expect(links[0].textContent?.trim()).toContain('Angular Three');
   });
 
   it('should render each provided anchor with secure defaults', () => {
+    const fixture = TestBed.createComponent(AnchoredHostComponent);
+    const host = fixture.componentInstance;
     host.anchors = [
       {
         href: 'https://angularthree.org',
@@ -57,6 +64,8 @@ describe('ExternalAnchorsComponent', () => {
   });
 
   it('should support stack layout class', () => {
+    const fixture = TestBed.createComponent(AnchoredHostComponent);
+    const host = fixture.componentInstance;
     host.anchors = [
       {
         href: 'https://angularthree.org',
@@ -74,6 +83,8 @@ describe('ExternalAnchorsComponent', () => {
   });
 
   it('should hide orb when showOrb is false', () => {
+    const fixture = TestBed.createComponent(AnchoredHostComponent);
+    const host = fixture.componentInstance;
     host.anchors = [
       {
         href: 'https://angularthree.org',

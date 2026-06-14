@@ -164,6 +164,17 @@ export default class ShipHangarPage {
     return `(${position.x}, ${position.y}, ${position.z}) km`;
   }
 
+  protected isShipActive(ship: ShipSummary): boolean {
+    const activeShipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+    return activeShipId.length > 0 && ship.id === activeShipId;
+  }
+
+  protected getSetActiveShipLabel(ship: ShipSummary): string {
+    return this.isShipActive(ship)
+      ? this.t.game.shipHangar.shipActiveLabel
+      : this.t.game.shipHangar.shipSetActiveLabel;
+  }
+
   private getFirstTargetMissionStatus(): MissionStatus | undefined {
     const missions = this.joinCharacter()?.missions;
     if (!Array.isArray(missions)) {
@@ -254,6 +265,10 @@ export default class ShipHangarPage {
    * Persists chosen ship as active session ship for downstream flows.
    */
   setActiveShip(ship: ShipSummary): void {
+    if (this.isShipActive(ship)) {
+      return;
+    }
+
     this.sessionService.setActiveShip(ship);
   }
 

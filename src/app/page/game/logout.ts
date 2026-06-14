@@ -5,7 +5,7 @@ import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { SessionService } from '../../services/session.service';
-import { ExternalAnchorItem, ExternalAnchorsComponent } from '../../component/external-anchors';
+import { ExternalAnchorsComponent } from '../../component/external-anchors';
 
 interface LogoutNavigationState {
   playerName?: string;
@@ -24,13 +24,6 @@ interface LogoutNavigationState {
  */
 export default class LogoutPage {
   protected readonly t = locale;
-  protected readonly footerAnchors: ReadonlyArray<ExternalAnchorItem> = [
-    {
-      href: 'https://angularthree.org',
-      text: 'Angular Three',
-      ariaLabel: 'Visit Angular Three website',
-    },
-  ];
   private router = inject(Router);
   private sessionService = inject(SessionService);
   private navigationState: LogoutNavigationState = resolveNavigationState<LogoutNavigationState>(this.router);

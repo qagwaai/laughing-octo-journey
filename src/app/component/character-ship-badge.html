@@ -5,8 +5,9 @@
     type="button"
     (click)="navigateToCharacterProfile()"
     [title]="joinCharacter.characterName"
+    [class.two-initials]="characterInitials(joinCharacter.characterName).length > 1"
   >
-    {{ joinCharacter.characterName.charAt(0).toUpperCase() }}
+    {{ characterInitials(joinCharacter.characterName) }}
   </button>
   }
 

@@ -20,6 +20,13 @@ export class CharacterShipBadge {
   @Input() joinCharacter: PlayerCharacterSummary | null = null;
 
   protected readonly t = locale.common.characterShipBadge;
+
+  protected characterInitials(name: string): string {
+    const parts = name.trim().split(/\s+/);
+    const first = parts[0]?.charAt(0).toUpperCase() ?? '';
+    const last = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0).toUpperCase() ?? '') : '';
+    return first + last;
+  }
   readonly activeShip = (): ShipSummary | null => {
     if (typeof this.activeShipSource === 'function') {
       const value = this.activeShipSource();

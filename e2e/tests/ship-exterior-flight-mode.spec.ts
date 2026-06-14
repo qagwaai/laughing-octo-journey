@@ -103,6 +103,19 @@ async function readCoordZ(page: Page): Promise<number | null> {
   return Number(match[3]);
 }
 
+async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
+  const text = (await flightPanel(page).innerText()).trim();
+  const match = text.match(/COORD KM\s*\/\/\s*X\s+(-?\d+)\s+Y\s+(-?\d+)\s+Z\s+(-?\d+)/);
+  if (!match) {
+    return null;
+  }
+  return {
+    x: Number(match[1]),
+    y: Number(match[2]),
+    z: Number(match[3]),
+  };
+}
+
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
   await expect
     .poll(() => readCoordZ(page), { timeout: 10_000 })
@@ -128,6 +141,8 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await waitForFlightTelemetryReady(page);
     await expect(toggle).toHaveText(/ENABLE FLIGHT/);
     await expect(flightHint(page)).toHaveCount(0);
+    const coordsBeforeEnable = await readCoords(page);
+    expect(coordsBeforeEnable).not.toBeNull();
 
     // --- Enable flight ---
     await toggle.focus();
@@ -136,10 +151,10 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(toggle).toHaveClass(/ship-exterior-flight-panel__toggle--active/);
     await expect(flightHint(page)).toBeVisible();
 
-    // After enabling, the camera/coord state is reset to origin.
+    // Enabling flight should not immediately jump location telemetry.
     await expect
-      .poll(() => readCoordZ(page))
-      .toBe(0);
+      .poll(() => readCoords(page))
+      .toEqual(coordsBeforeEnable);
 
     // --- Hold W to integrate forward movement; expect COORD Z to change. ---
     await page.keyboard.down('KeyW');

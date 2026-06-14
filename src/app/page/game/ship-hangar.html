@@ -50,8 +50,13 @@
           <button type="button" class="inventory-link" (click)="navigateToShipInventory(ship)">
             {{ t.game.shipHangar.shipViewInventoryLabel }}
           </button>
-          <button type="button" class="inventory-link" (click)="setActiveShip(ship)">
-            {{ t.game.shipHangar.shipSetActiveLabel }}
+          <button
+            type="button"
+            class="inventory-link"
+            [disabled]="isShipActive(ship)"
+            (click)="setActiveShip(ship)"
+          >
+            {{ getSetActiveShipLabel(ship) }}
           </button>
         </li>
         }

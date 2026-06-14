@@ -9,6 +9,29 @@ export interface ExternalAnchorItem {
   showOrb?: boolean;
 }
 
+const defaultExternalAnchors: ReadonlyArray<ExternalAnchorItem> = [
+  {
+    href: 'https://angularthree.org',
+    text: 'Angular Three',
+    ariaLabel: 'Visit Angular Three website',
+  },
+  {
+    href: 'https://codeberg.org/astronexus/hyg',
+    text: 'HYG Catalog',
+    ariaLabel: 'Visit HYG catalog source',
+  },
+  {
+    href: 'https://www.midjourney.com/',
+    text: 'MidJourney',
+    ariaLabel: 'Visit MidJourney website',
+  },
+  {
+    href: 'https://www.meshy.ai/',
+    text: 'Meshy',
+    ariaLabel: 'Visit Meshy website',
+  }
+];
+
 @Component({
   selector: 'app-external-anchors',
   template: `
@@ -35,6 +58,6 @@ export interface ExternalAnchorItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExternalAnchorsComponent {
-  anchors = input<ReadonlyArray<ExternalAnchorItem>>([]);
+  anchors = input<ReadonlyArray<ExternalAnchorItem>>(defaultExternalAnchors);
   layout = input<'inline' | 'stack'>('inline');
 }

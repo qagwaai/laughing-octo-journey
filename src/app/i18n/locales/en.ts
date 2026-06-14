@@ -527,6 +527,7 @@ export const en = {
       shipViewInventoryLabel: 'View Inventory',
       shipExteriorViewLabel: 'View Exterior',
       shipSetActiveLabel: 'Set as Active Ship',
+      shipActiveLabel: 'Active Ship',
       errors: {
         loadShipsRequiresPlayer: 'Player name is required to load ships.',
         loadShipsRequiresCharacterId: 'Character id is required to load ships.',

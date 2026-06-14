@@ -110,4 +110,31 @@ describe('CharacterShipBadge', () => {
       }),
     );
   });
+
+  describe('characterInitials', () => {
+    it('should return first and last initials for a two-part name', () => {
+      const badge = createBadge('Pioneer', null, sessionService, router);
+      expect((badge as any).characterInitials('Marcus Aurelius')).toBe('MA');
+    });
+
+    it('should return only the first initial for a single-word name', () => {
+      const badge = createBadge('Pioneer', null, sessionService, router);
+      expect((badge as any).characterInitials('Nova')).toBe('N');
+    });
+
+    it('should use first and last word initials for a three-part name', () => {
+      const badge = createBadge('Pioneer', null, sessionService, router);
+      expect((badge as any).characterInitials('Jean Luc Picard')).toBe('JP');
+    });
+
+    it('should uppercase both initials', () => {
+      const badge = createBadge('Pioneer', null, sessionService, router);
+      expect((badge as any).characterInitials('alice bob')).toBe('AB');
+    });
+
+    it('should handle leading and trailing whitespace', () => {
+      const badge = createBadge('Pioneer', null, sessionService, router);
+      expect((badge as any).characterInitials('  Zara  Quinn  ')).toBe('ZQ');
+    });
+  });
 });
