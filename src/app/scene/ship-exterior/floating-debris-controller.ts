@@ -21,7 +21,6 @@ export interface FloatingDebrisControllerDeps {
   getPlayerName: () => string;
   getCharacterId: () => string | null;
   getActiveShipId: () => string | null;
-  getHasTractorBeamInInventory: () => boolean;
   getShipPositionKm: () => Triple | null;
   getSolarSystemId: () => string;
   /** Injectable timer hooks for deterministic unit testing. */
@@ -87,7 +86,7 @@ export class FloatingDebrisController {
     // local Tractor Beam into the scene so the player has something to
     // tractor-beam regardless of backend availability. Real server items will
     // replace it via handleListResponse when they arrive.
-    if (positionKm && !this.hasSeededColdBoot && !this.hasIngestedAnyResponse && !this.deps.getHasTractorBeamInInventory()) {
+    if (positionKm && !this.hasSeededColdBoot && !this.hasIngestedAnyResponse) {
       this.seedColdBootTractorBeam(positionKm);
     }
 
@@ -134,7 +133,7 @@ export class FloatingDebrisController {
       return;
     }
 
-    if (!this.hasSeededColdBoot && this.deps.stateService.getAll().length === 0 && !this.deps.getHasTractorBeamInInventory()) {
+    if (!this.hasSeededColdBoot && this.deps.stateService.getAll().length === 0) {
       this.seedColdBootTractorBeam(shipPositionKm);
     }
     this.hasIngestedAnyResponse = true;

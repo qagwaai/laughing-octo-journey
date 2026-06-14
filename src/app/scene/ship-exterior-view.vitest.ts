@@ -2227,4 +2227,17 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(component['tractorBeamCapabilityText']()).toBe('TRACTOR EQ: DAMAGED // REPAIR REQUIRED');
     expect(component['tractorBeamTimingText']()).toBe('TRACTOR PULL: REPAIR REQUIRED');
   });
+
+  it('seeds cold-boot fallback debris even when ship inventory already has a tractor beam', () => {
+    const { component } = setup(
+      shipNavStateWithInventory([{ id: 'beam-1', itemType: 'ship-tractor-beam', tier: 1, damageStatus: 'intact' }]),
+    );
+
+    const stateService = component['floatingDebrisStateService'] as FloatingDebrisStateService;
+    const allDebris = stateService.getAll();
+
+    expect(allDebris.length).toBeGreaterThan(0);
+    expect(allDebris.some((item) => item.id === 'local-cold-boot-ship-tractor-beam')).toBe(true);
+    expect(allDebris.some((item) => item.itemType === 'ship-tractor-beam')).toBe(true);
+  });
 });
