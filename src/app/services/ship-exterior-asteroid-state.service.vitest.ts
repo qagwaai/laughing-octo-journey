@@ -70,4 +70,37 @@ describe('ShipExteriorAsteroidStateService', () => {
       }),
     ).toBeNull();
   });
+
+  it('should save and restore targeted asteroid sample id', () => {
+    service.saveTargetedSampleId(context, 'sample-a1');
+
+    expect(service.loadTargetedSampleId(context)).toBe('sample-a1');
+  });
+
+  it('should clear targeted asteroid sample id when null is saved', () => {
+    service.saveTargetedSampleId(context, 'sample-a1');
+    expect(service.loadTargetedSampleId(context)).toBe('sample-a1');
+
+    service.saveTargetedSampleId(context, null);
+    expect(service.loadTargetedSampleId(context)).toBeNull();
+  });
+
+  it('should clear targeted asteroid sample id explicitly', () => {
+    service.saveTargetedSampleId(context, 'sample-a1');
+    service.clearTargetedSampleId(context);
+
+    expect(service.loadTargetedSampleId(context)).toBeNull();
+  });
+
+  it('should isolate targeted asteroid id by mission/player/character context', () => {
+    service.saveTargetedSampleId(context, 'sample-a1');
+
+    expect(
+      service.loadTargetedSampleId({
+        missionId: 'first-target',
+        playerName: 'OtherPilot',
+        characterId: 'char-1',
+      }),
+    ).toBeNull();
+  });
 });

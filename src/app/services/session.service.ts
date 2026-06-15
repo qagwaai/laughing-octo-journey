@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import type { PlayerCharacterSummary } from '../model/character-list';
 import type { ShipSummary } from '../model/ship-list';
+import { isValidShipSpatial } from '../model/spatial';
 
 @Injectable({
   providedIn: 'root',
@@ -46,11 +47,61 @@ export class SessionService {
     return this.sessionKey() !== null;
   }
 
+  private normalizeShipId(id: string | undefined | null): string {
+    return typeof id === 'string' ? id.trim().toLowerCase() : '';
+  }
+
   /**
    * Sets the active ship used by game pages for contextual operations.
+   * Applies stickiness guard: same-ship updates preserve existing usable spatial
+   * against stale backend rehydration.
    */
   setActiveShip(ship: ShipSummary): void {
-    this.activeShipSignal.set(ship);
+    const current = this.activeShipSignal();
+    this.activeShipSignal.set(this.resolveActiveShipUpdate(current, ship));
+  }
+
+  /**
+   * Forces a spatial update for the active ship, bypassing the stickiness guard.
+   * Used exclusively by the flight controller to persist authoritative local position.
+   */
+  forceUpdateActiveShipSpatial(shipId: string, spatial: ShipSummary['spatial']): void {
+    const current = this.activeShipSignal();
+    if (!current || this.normalizeShipId(current.id) !== this.normalizeShipId(shipId)) {
+      return;
+    }
+    this.activeShipSignal.set({ ...current, spatial });
+  }
+
+  private resolveActiveShipUpdate(current: ShipSummary | null, next: ShipSummary): ShipSummary {
+    if (!current || this.normalizeShipId(current.id) !== this.normalizeShipId(next.id)) {
+      return next;
+    }
+
+    const currentSpatial = current.spatial;
+    const nextSpatial = next.spatial;
+    const currentSpatialUsable = isValidShipSpatial(currentSpatial);
+    const nextSpatialUsable = isValidShipSpatial(nextSpatial);
+
+    if (currentSpatialUsable && !nextSpatialUsable) {
+      return {
+        ...next,
+        spatial: currentSpatial,
+      };
+    }
+
+    // During an active session, keep the current same-ship usable spatial as
+    // the authoritative local last-known location. Some backend list paths can
+    // return older coordinates with newer timestamps, which would otherwise
+    // roll position back after page transitions.
+    if (currentSpatialUsable && nextSpatialUsable) {
+      return {
+        ...next,
+        spatial: currentSpatial,
+      };
+    }
+
+    return next;
   }
 
   /**

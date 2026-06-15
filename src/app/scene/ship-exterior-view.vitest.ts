@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { Euler, Quaternion } from 'three';
 
 import { createMockMissionService, createMockSessionService, createMockSocketService } from '../../testing';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
@@ -17,6 +18,7 @@ import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
+import { ShipExteriorViewStateService } from '../services/ship-exterior-view-state.service';
 import { SocketService } from '../services/socket.service';
 import { FloatingDebrisStateService } from '../services/floating-debris-state.service';
 import { appLogger } from '../services/logger';
@@ -36,12 +38,38 @@ interface NavigationState {
     spatial?: { solarSystemId?: string; positionKm: { x: number; y: number; z: number } };
   };
   firstTargetMissionStatus?: string;
+  sessionShip?: {
+    id: string;
+    name?: string;
+    model?: string;
+    tier?: number;
+    status?: string;
+    spatial?: {
+      solarSystemId?: string;
+      frame?: 'barycentric';
+      positionKm: { x: number; y: number; z: number };
+      epochMs?: number;
+    };
+    inventory?: unknown[];
+  };
+  persistedViewOrientation?: {
+    yawRad: number;
+    pitchRad: number;
+    rollRad: number;
+  };
+  persistedFlightPreferences?: {
+    invertY: boolean;
+    mouseSensitivity: number;
+  };
+  persistedAsteroidSamples?: AsteroidScanSample[];
+  persistedTargetedAsteroidId?: string | null;
 }
 
 function createSocketMock() {
   return {
     ...createMockSocketService(),
     launchItem: vi.fn(),
+    upsertShip: vi.fn(),
     upsertCelestialBody: vi.fn(),
     upsertItem: vi.fn(),
     listNearbyDeployedItems: vi.fn().mockReturnValue(() => undefined),
@@ -90,15 +118,29 @@ function setup(state?: NavigationState) {
   const mockSession = createMockSessionService('test-session-key');
   const mockMission = createMockMissionService();
   const mockAsteroidState = {
-    loadSamples: vi.fn().mockReturnValue(null),
+    loadSamples: vi.fn().mockReturnValue(state?.persistedAsteroidSamples ?? null),
     saveSamples: vi.fn(),
     clearSamples: vi.fn(),
+    loadTargetedSampleId: vi.fn().mockReturnValue(state?.persistedTargetedAsteroidId ?? null),
+    saveTargetedSampleId: vi.fn(),
+    clearTargetedSampleId: vi.fn(),
   };
   const mockMissionState = {
     loadState: vi.fn().mockReturnValue(null),
     saveState: vi.fn(),
     clearState: vi.fn(),
     lastSaved: () => null,
+  };
+  const mockViewState = {
+    loadOrientation: vi.fn().mockReturnValue(state?.persistedViewOrientation ?? null),
+    saveOrientation: vi.fn(),
+    clearOrientation: vi.fn(),
+    loadFlightPreferences: vi.fn().mockReturnValue(state?.persistedFlightPreferences ?? null),
+    saveFlightPreferences: vi.fn(),
+    clearFlightPreferences: vi.fn(),
+    loadSceneElapsedSeconds: vi.fn().mockReturnValue(null),
+    saveSceneElapsedSeconds: vi.fn(),
+    clearSceneElapsedSeconds: vi.fn(),
   };
 
   TestBed.configureTestingModule({
@@ -110,16 +152,42 @@ function setup(state?: NavigationState) {
       { provide: MissionService, useValue: mockMission },
       { provide: ShipExteriorAsteroidStateService, useValue: mockAsteroidState },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionState },
+      { provide: ShipExteriorViewStateService, useValue: mockViewState },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });
 
   TestBed.overrideComponent(ShipExteriorViewScene, { set: { imports: [], template: '' } });
 
+  if (state?.sessionShip) {
+    mockSession.setActiveShip({
+      id: state.sessionShip.id,
+      name: state.sessionShip.name ?? 'Starter Pod',
+      model: state.sessionShip.model ?? 'Scavenger Pod',
+      tier: state.sessionShip.tier ?? 1,
+      status: state.sessionShip.status ?? 'ACTIVE',
+      spatial: {
+        solarSystemId: state.sessionShip.spatial?.solarSystemId ?? 'sol',
+        frame: state.sessionShip.spatial?.frame ?? 'barycentric',
+        positionKm: state.sessionShip.spatial?.positionKm ?? { x: 0, y: 0, z: 0 },
+        epochMs: state.sessionShip.spatial?.epochMs ?? Date.now(),
+      },
+      inventory: (state.sessionShip.inventory as any[]) ?? [],
+    } as any);
+  }
+
   const fixture = TestBed.createComponent(ShipExteriorViewScene);
   fixture.detectChanges();
 
-  return { component: fixture.componentInstance, fixture, mockSocket, mockSession, mockMission };
+  return {
+    component: fixture.componentInstance,
+    fixture,
+    mockSocket,
+    mockSession,
+    mockMission,
+    mockViewState,
+    mockAsteroidState,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1242,7 +1310,9 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should update ship location using quantized flight checkpoints', () => {
-    const { component } = setup({
+    const { component, mockSocket } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-flight' },
       joinShip: {
         id: 's-1',
         spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
@@ -1261,6 +1331,11 @@ describe('ShipExteriorViewScene', () => {
     expect(location).not.toBeNull();
     expect(Math.abs(location!.z)).toBeGreaterThan(0);
     expect(Math.abs(location!.z % 10)).toBe(0);
+    expect(mockSocket.upsertShip).toHaveBeenCalled();
+    const calls = mockSocket.upsertShip.mock.calls;
+    const [request] = calls[calls.length - 1] ?? [];
+    expect(request.ship.id).toBe('s-1');
+    expect(request.ship.spatial.positionKm).toEqual(location);
   });
 
   it('should disable flight mode when pointer lock is released', () => {
@@ -1281,6 +1356,294 @@ describe('ShipExteriorViewScene', () => {
 
     expect(component.flightModeEnabled()).toBe(false);
     expect(component.flightPointerLocked()).toBe(false);
+  });
+
+  it('should keep flight mode disabled on re-entry', () => {
+    const state = {
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    };
+
+    const first = setup(state);
+    first.component.setFlightModeEnabled(true);
+    expect(first.component.flightModeEnabled()).toBe(true);
+    first.fixture.destroy();
+    TestBed.resetTestingModule();
+    delete (window as any).__shipExteriorTestUtils;
+
+    const second = setup(state);
+    expect(second.component.flightModeEnabled()).toBe(false);
+    expect(second.component.flightPointerLocked()).toBe(false);
+  });
+
+  it('should reconstruct flight world offset from persisted location on re-entry', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 1_000_000, y: 0, z: 0 } },
+      },
+      sessionShip: {
+        id: 'ship-1',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 1_003_600, y: 0, z: -1_200 },
+          epochMs: 500,
+        },
+      },
+    });
+
+    // sceneUnitToKm = 1200, so delta (3600,0,-1200) => displacement (3,0,-1), world offset is negative displacement.
+    expect(component.flightCoordsLine()).toContain('X 1003600');
+    expect(component.flightCoordsLine()).toContain('Z -1200');
+    expect(component.flightWorldOffset()).toEqual([-3, 0, 1]);
+  });
+
+  it('should restore persisted targeted asteroid id when target still exists', () => {
+    const { mockAsteroidState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+      persistedAsteroidSamples: [makeSample('sample-a1'), makeSample('sample-a2')],
+      persistedTargetedAsteroidId: 'sample-a2',
+    });
+
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getTargetedAsteroidId()).toBe('sample-a2');
+    expect(mockAsteroidState.loadTargetedSampleId).toHaveBeenCalled();
+  });
+
+  it('should restore persisted flight preferences on init', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+      persistedFlightPreferences: {
+        invertY: true,
+        mouseSensitivity: 0.0048,
+      },
+    });
+
+    expect(component.flightInvertY()).toBe(true);
+    expect(component.flightMouseSensitivity()).toBeCloseTo(0.0048, 5);
+  });
+
+  it('should persist flight preferences when invert-y is changed', () => {
+    const { component, mockViewState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    component.setFlightInvertY(true);
+
+    expect(mockViewState.saveFlightPreferences).toHaveBeenCalledWith(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+      },
+      {
+        invertY: true,
+        mouseSensitivity: component.flightMouseSensitivity(),
+      },
+    );
+  });
+
+  it('should persist flight preferences when mouse sensitivity changes from slider', () => {
+    const { component, mockViewState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    component.setFlightMouseSensitivityFromSliderValue(41);
+
+    expect(mockViewState.saveFlightPreferences).toHaveBeenCalledWith(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+      },
+      {
+        invertY: component.flightInvertY(),
+        mouseSensitivity: component.flightMouseSensitivity(),
+      },
+    );
+  });
+
+  it('should clear persisted targeted asteroid id when target no longer exists', () => {
+    const { mockAsteroidState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+      persistedAsteroidSamples: [makeSample('sample-a1')],
+      persistedTargetedAsteroidId: 'missing-target',
+    });
+
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getTargetedAsteroidId()).toBeNull();
+    expect(mockAsteroidState.saveTargetedSampleId).toHaveBeenCalledWith(
+      {
+        missionId: 'first-target',
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+      },
+      null,
+    );
+  });
+
+  it('should restore persisted view orientation on init for the active player and character', () => {
+    const { component, mockViewState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+      persistedViewOrientation: {
+        yawRad: 1,
+        pitchRad: 0.5,
+        rollRad: -0.2,
+      },
+    });
+
+    expect(mockViewState.loadOrientation).toHaveBeenCalledWith({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+    });
+    expect(component.flightViewDirectionLine()).toContain('YAW 57.3');
+    expect(component.flightViewDirectionLine()).toContain('PITCH 28.6');
+    expect(component.flightViewDirectionLine()).not.toContain('ROLL');
+  });
+
+  it('should persist the current view orientation on destroy', () => {
+    const { component, fixture, mockViewState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+    });
+
+    (component as any)['flightController'].restoreOrientation({
+      yawRad: 0.7,
+      pitchRad: -0.3,
+      rollRad: 0.15,
+    });
+
+    fixture.destroy();
+
+    expect(mockViewState.saveOrientation).toHaveBeenCalledWith(
+      {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+      },
+      {
+        yawRad: 0.7,
+        pitchRad: -0.3,
+        rollRad: 0.15,
+      },
+    );
+  });
+
+  it('should apply restored orientation to the scene camera quaternion', () => {
+    const { component } = setup();
+    const mockCamera = {
+      quaternion: new Quaternion(),
+      position: { length: () => 6.6, x: 0, y: 0, z: 6.6, set: vi.fn() },
+      lookAt: vi.fn(),
+      updateMatrixWorld: vi.fn(),
+    };
+    (component as any).store = {
+      snapshot: {
+        camera: mockCamera,
+      },
+    };
+
+    // Enable flight mode so the quaternion restore path is exercised.
+    component.setFlightModeEnabled(true);
+
+    const result = (component as any).applyOrientationToSceneCamera({
+      yawRad: -0.9,
+      pitchRad: 0.25,
+      rollRad: 0.4,
+    });
+
+    expect(result).toBe(true);
+    const euler = new Euler().setFromQuaternion(mockCamera.quaternion, 'YXZ');
+    expect(euler.y).toBeCloseTo(-0.9, 4);
+    expect(euler.x).toBeCloseTo(0.25, 4);
+    expect(euler.z).toBeCloseTo(0.4, 4);
+    expect(mockCamera.updateMatrixWorld).toHaveBeenCalled();
+  });
+
+  it('should preserve fresher session ship spatial when ship-list response is older', () => {
+    const { mockSocket, mockSession } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 1000, y: 0, z: 0 } },
+      },
+    });
+
+    mockSession.setActiveShip({
+      id: 'ship-1',
+      name: 'Starter Pod',
+      model: 'Scavenger Pod',
+      tier: 1,
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 2500, y: 0, z: -1200 },
+        epochMs: 500,
+      },
+      inventory: [],
+    } as any);
+
+    triggerMatchingShipListResponse(mockSocket, {
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      ships: [
+        {
+          id: 'ship-1',
+          model: 'Scavenger Pod',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1000, y: 0, z: 0 },
+            epochMs: 100,
+          },
+        },
+      ],
+    });
+
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getActiveShipLocationKm()).toEqual({ x: 2500, y: 0, z: -1200 });
   });
 
   it('should expose SW-13B metadata lines for the focused asteroid sample', () => {
@@ -1503,9 +1866,8 @@ describe('ColdBootScanScene in-progress seeding', () => {
     const api = (window as any).__shipExteriorTestUtils;
     const samples = api.getAsteroidSamples() as AsteroidScanSample[];
     expect(samples[0].scanned).toBe(true);
-    const topUp = samples.slice(1);
-    expect(topUp.length).toBeGreaterThan(0);
-    expect(topUp.every((s) => !s.scanned && s.scanProgress === 0)).toBe(true);
+    const resumedWithoutTopUp = samples.slice(1);
+    expect(resumedWithoutTopUp.length).toBe(0);
   });
 
   it('should produce at least as many samples as existing bodies when random target is smaller', () => {
@@ -1577,9 +1939,9 @@ describe('ColdBootScanScene in-progress seeding', () => {
 
     const api = (window as any).__shipExteriorTestUtils;
     const samples = api.getAsteroidSamples() as AsteroidScanSample[];
-    // 1 existing body + ≥4 random top-up (randomTarget ≥ 5)
-    expect(samples.length).toBeGreaterThanOrEqual(5);
-    expect(samples.filter((s) => !s.scanned).length).toBeGreaterThanOrEqual(4);
+    // Resume path is backend-authoritative and should not add random top-up samples.
+    expect(samples.length).toBe(1);
+    expect(samples.filter((s) => !s.scanned).length).toBe(0);
   });
 });
 

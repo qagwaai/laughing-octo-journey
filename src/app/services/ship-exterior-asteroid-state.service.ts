@@ -18,6 +18,7 @@ export interface ShipExteriorAsteroidStateContext {
  */
 export class ShipExteriorAsteroidStateService {
   private static readonly STORAGE_PREFIX = 'ship-exterior:asteroids';
+  private static readonly TARGETED_STORAGE_PREFIX = 'ship-exterior:targeted-asteroid';
 
   /**
    * Restores asteroid scan samples for the active mission/player/character context.
@@ -80,6 +81,67 @@ export class ShipExteriorAsteroidStateService {
     }
   }
 
+  /**
+   * Restores a previously targeted asteroid sample id for the active context.
+   */
+  loadTargetedSampleId(context: ShipExteriorAsteroidStateContext): string | null {
+    const storageKey = this.resolveTargetedStorageKey(context);
+    if (!storageKey) {
+      return null;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as { targetedSampleId?: unknown };
+      const targetedSampleId = typeof parsed?.targetedSampleId === 'string' ? parsed.targetedSampleId.trim() : '';
+      return targetedSampleId ? targetedSampleId : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Saves the targeted asteroid sample id for the active context.
+   */
+  saveTargetedSampleId(context: ShipExteriorAsteroidStateContext, targetedSampleId: string | null): void {
+    const storageKey = this.resolveTargetedStorageKey(context);
+    if (!storageKey) {
+      return;
+    }
+
+    const normalizedTargetedSampleId = targetedSampleId?.trim() ?? '';
+    if (!normalizedTargetedSampleId) {
+      this.clearTargetedSampleId(context);
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ targetedSampleId: normalizedTargetedSampleId }));
+    } catch {
+      // Storage can fail in private mode/quota limits; callers should continue gracefully.
+    }
+  }
+
+  /**
+   * Clears persisted targeted asteroid id for the given context.
+   */
+  clearTargetedSampleId(context: ShipExteriorAsteroidStateContext): void {
+    const storageKey = this.resolveTargetedStorageKey(context);
+    if (!storageKey) {
+      return;
+    }
+
+    try {
+      sessionStorage.removeItem(storageKey);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
   private resolveStorageKey(context: ShipExteriorAsteroidStateContext): string | null {
     const missionId = context.missionId?.trim();
     const playerName = context.playerName?.trim().toLowerCase();
@@ -89,5 +151,16 @@ export class ShipExteriorAsteroidStateService {
     }
 
     return `${ShipExteriorAsteroidStateService.STORAGE_PREFIX}:${missionId}:${playerName}:${characterId}`;
+  }
+
+  private resolveTargetedStorageKey(context: ShipExteriorAsteroidStateContext): string | null {
+    const missionId = context.missionId?.trim();
+    const playerName = context.playerName?.trim().toLowerCase();
+    const characterId = context.characterId?.trim();
+    if (!missionId || !playerName || !characterId) {
+      return null;
+    }
+
+    return `${ShipExteriorAsteroidStateService.TARGETED_STORAGE_PREFIX}:${missionId}:${playerName}:${characterId}`;
   }
 }

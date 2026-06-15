@@ -130,7 +130,8 @@ async function setupViewerShipsTest(page: any) {
   }));
 
   await gameShell.joinGame('Join Game');
-  await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+  await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
 
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',

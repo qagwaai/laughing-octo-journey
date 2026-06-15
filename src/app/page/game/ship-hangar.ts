@@ -17,6 +17,7 @@ import {
   coerceShipTier,
   type ShipSummary,
 } from '../../model/ship-list';
+import { isValidShipSpatial } from '../../model/spatial';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { MissionService } from '../../services/mission.service';
@@ -48,6 +49,10 @@ export default class ShipHangarPage {
   private missionService = inject(MissionService);
   private missionNavigationService = inject(MissionNavigationService);
   private navigationState: ShipHangarNavigationState = resolveNavigationState<ShipHangarNavigationState>(this.router);
+
+  private normalizeShipId(value: string | undefined | null): string {
+    return typeof value === 'string' ? value.trim().toLowerCase() : '';
+  }
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -236,16 +241,40 @@ export default class ShipHangarPage {
       }
     }
 
+    const navigationShip = this.resolvePreferredExteriorNavigationShip(ship);
+
     this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
       preserveFragment: true,
       state: {
         playerName: this.playerName(),
         joinCharacter: this.joinCharacter(),
-        joinShip: ship,
+        joinShip: navigationShip,
         missionContext,
         ...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
       },
     });
+  }
+
+  private resolvePreferredExteriorNavigationShip(ship: ShipSummary): ShipSummary {
+    const activeShip = this.sessionService.activeShip();
+    if (!activeShip) {
+      return ship;
+    }
+
+    const activeShipId = this.normalizeShipId(activeShip.id);
+    const selectedShipId = this.normalizeShipId(ship.id);
+    if (!activeShipId || !selectedShipId || activeShipId !== selectedShipId) {
+      return ship;
+    }
+
+    if (!isValidShipSpatial(activeShip.spatial)) {
+      return ship;
+    }
+
+    return {
+      ...ship,
+      spatial: activeShip.spatial,
+    };
   }
 
   navigateToShipSpecs(ship: ShipSummary): void {

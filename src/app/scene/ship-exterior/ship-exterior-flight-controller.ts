@@ -72,6 +72,23 @@ export class ShipExteriorFlightController {
     this.flightCurrentLocationKm = location;
   }
 
+  initializeCurrentLocationFromReference(currentLocation: Triple, referenceLocation: Triple): void {
+    this.flightCurrentLocationKm = currentLocation;
+    const kmScale = this.args.config.sceneUnitToKm;
+    if (!Number.isFinite(kmScale) || kmScale <= 0) {
+      this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
+      this.syncFlightWorldTransform();
+      return;
+    }
+
+    this.flightDisplacementScene = {
+      x: (currentLocation.x - referenceLocation.x) / kmScale,
+      y: (currentLocation.y - referenceLocation.y) / kmScale,
+      z: (currentLocation.z - referenceLocation.z) / kmScale,
+    };
+    this.syncFlightWorldTransform();
+  }
+
   syncCurrentLocationFromShip(location: Triple | null): void {
     if (this.flightModeEnabled()) {
       return;
@@ -105,6 +122,43 @@ export class ShipExteriorFlightController {
 
   setFlightMouseSensitivityFromSliderValue(rawValue: number): void {
     this.setFlightMouseSensitivity(rawValue / 10000);
+  }
+
+  getCurrentLocationKm(): Triple {
+    return {
+      x: this.flightCurrentLocationKm.x,
+      y: this.flightCurrentLocationKm.y,
+      z: this.flightCurrentLocationKm.z,
+    };
+  }
+
+  restoreOrientation(orientation: FlightOrientation): void {
+    const restored: FlightOrientation = {
+      yawRad: Number.isFinite(orientation.yawRad) ? orientation.yawRad : 0,
+      pitchRad: Number.isFinite(orientation.pitchRad) ? orientation.pitchRad : 0,
+      rollRad: Number.isFinite(orientation.rollRad) ? orientation.rollRad : 0,
+    };
+    this.flightOrientation.set(restored);
+    this.cameraOrientation.set(restored);
+    this.syncFlightWorldTransform();
+  }
+
+  getPersistableViewOrientation(): FlightOrientation {
+    if (this.flightModeEnabled()) {
+      const orientation = this.flightOrientation();
+      return {
+        yawRad: orientation.yawRad,
+        pitchRad: orientation.pitchRad,
+        rollRad: orientation.rollRad,
+      };
+    }
+
+    const orientation = this.getCurrentCameraOrientation() ?? this.cameraOrientation();
+    return {
+      yawRad: orientation.yawRad,
+      pitchRad: orientation.pitchRad,
+      rollRad: orientation.rollRad,
+    };
   }
 
   captureFlightMovementKey(code: string): boolean {

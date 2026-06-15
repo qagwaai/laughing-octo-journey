@@ -36,7 +36,19 @@ describe('SessionService', () => {
   });
 
   describe('active ship', () => {
-    const ship = { id: 'd-1', name: 'Surveyor', model: 'Scavenger Pod', tier: 1, status: 'ACTIVE' };
+    const ship = {
+      id: 'd-1',
+      name: 'Surveyor',
+      model: 'Scavenger Pod',
+      tier: 1,
+      status: 'ACTIVE',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric' as const,
+        positionKm: { x: 1000, y: 0, z: 0 },
+        epochMs: 100,
+      },
+    };
 
     it('should initialize with no active ship', () => {
       expect(service.activeShip()).toBeNull();
@@ -49,11 +61,145 @@ describe('SessionService', () => {
     });
 
     it('should overwrite active ship when set again', () => {
-      const other = { ...ship, id: 'd-2', name: 'Guardian' };
+      const other = {
+        ...ship,
+        id: 'd-2',
+        name: 'Guardian',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric' as const,
+          positionKm: { x: 2000, y: 0, z: 0 },
+          epochMs: 200,
+        },
+      };
       service.setActiveShip(ship as never);
       service.setActiveShip(other as never);
       expect(service.activeShip()?.id).toBe('d-2');
       expect(service.activeShip()?.name).toBe('Guardian');
+    });
+
+    it('should preserve existing spatial when same-ship update has older epoch', () => {
+      service.setActiveShip(ship as never);
+      service.setActiveShip({
+        ...ship,
+        status: 'DAMAGED',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 100, y: 0, z: 0 },
+          epochMs: 90,
+        },
+      } as never);
+
+      expect(service.activeShip()?.status).toBe('DAMAGED');
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
+      expect(service.activeShip()?.spatial.epochMs).toBe(100);
+    });
+
+    it('should preserve existing usable spatial when same-ship update has origin placeholder', () => {
+      service.setActiveShip(ship as never);
+      service.setActiveShip({
+        ...ship,
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 0, y: 0, z: 0 },
+          epochMs: 999,
+        },
+      } as never);
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
+      expect(service.activeShip()?.spatial.epochMs).toBe(100);
+    });
+
+    it('should keep current usable spatial for the same ship even when incoming is newer', () => {
+      service.setActiveShip(ship as never);
+      service.setActiveShip({
+        ...ship,
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 6000, y: 5, z: -8 },
+          epochMs: 500,
+        },
+      } as never);
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
+      expect(service.activeShip()?.spatial.epochMs).toBe(100);
+    });
+
+    it('should adopt incoming usable spatial when current same-ship spatial is unusable', () => {
+      service.setActiveShip({
+        ...ship,
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 0, y: 0, z: 0 },
+          epochMs: 50,
+        },
+      } as never);
+      service.setActiveShip({
+        ...ship,
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 6000, y: 5, z: -8 },
+          epochMs: 500,
+        },
+      } as never);
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 6000, y: 5, z: -8 });
+      expect(service.activeShip()?.spatial.epochMs).toBe(500);
+    });
+
+    it('should preserve spatial when same ship id differs only by case/whitespace', () => {
+      service.setActiveShip({
+        ...ship,
+        id: 'SHIP-1',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 9000, y: 0, z: -4000 },
+          epochMs: 700,
+        },
+      } as never);
+      service.setActiveShip({
+        ...ship,
+        id: ' ship-1 ',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 100, y: 0, z: 0 },
+          epochMs: 900,
+        },
+      } as never);
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 9000, y: 0, z: -4000 });
+    });
+
+    it('should apply forceUpdateActiveShipSpatial to same ship bypassing stickiness', () => {
+      service.setActiveShip(ship as never);
+      service.forceUpdateActiveShipSpatial('d-1', {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 340090400, y: -135100, z: -214153344 },
+        epochMs: 999,
+      });
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 340090400, y: -135100, z: -214153344 });
+      expect(service.activeShip()?.spatial.epochMs).toBe(999);
+    });
+
+    it('should ignore forceUpdateActiveShipSpatial for different ship id', () => {
+      service.setActiveShip(ship as never);
+      service.forceUpdateActiveShipSpatial('other-ship', {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: -9999 },
+        epochMs: 999,
+      });
+
+      expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
     });
 
     it('should clear active ship independently', () => {

@@ -382,6 +382,67 @@ describe('ShipHangarPage', () => {
     );
   });
 
+  it('should prefer active-session spatial when navigating to exterior for the same ship', async () => {
+    const character = { id: 'c-1', characterName: 'Nova' };
+    const { component, mockRouter } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer', joinCharacter: character },
+    });
+
+    sessionService.setActiveShip({
+      id: 's-1',
+      name: 'Dart Runner',
+      model: 'Scavenger Pod',
+      tier: 1,
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 340090396, y: -132943, z: -214077099 },
+        epochMs: 999,
+      },
+      inventory: [],
+    } as any);
+
+    const selectedShip = {
+      id: ' s-1 ',
+      name: 'Dart Runner',
+      model: 'Scavenger Pod',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 1000, y: 0, z: 0 },
+        epochMs: 1,
+      },
+    };
+
+    await component.navigateToExteriorView(selectedShip as any);
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+      {
+        preserveFragment: true,
+        state: {
+          playerName: 'Pioneer',
+          joinCharacter: character,
+          joinShip: {
+            ...selectedShip,
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 340090396, y: -132943, z: -214077099 },
+              epochMs: 999,
+            },
+          },
+          missionContext: {
+            missionId: FIRST_TARGET_MISSION_ID,
+            seedPolicy: 'resume',
+          },
+        },
+      },
+    );
+  });
+
   it('should navigate to item-view-specs with ship model and ship payload', () => {
     const character = { id: 'c-1', characterName: 'Nova' };
     const { component, mockRouter } = setup({

@@ -81,9 +81,11 @@ export function integrateFlightStep(
   config: FlightStepConfig,
 ): FlightStepResult {
   const deltaSeconds = Math.max(0, config.deltaSeconds);
+  // Roll is disabled: OrbitControls cannot maintain roll after flight mode exits,
+  // so we keep it at 0 to prevent a jarring snap on flight-mode toggle.
   const nextOrientation: FlightOrientation = {
     ...orientation,
-    rollRad: orientation.rollRad + input.roll * config.rollSpeedRadPerSec * deltaSeconds,
+    rollRad: 0,
   };
 
   const localVector = new Vector3(input.right, input.up, input.forward);

@@ -244,8 +244,7 @@ function buildFallbackNotes(): Sw13bM2bFallbackNotes {
     fallbackMetadataCompleteCount === fallbackSamples.length &&
     fallbackBaselineCount > 0 &&
     fallbackHeroCount > 0 &&
-    resumedFallbackTierCounts.hero > 0 &&
-    resumedFallbackTierCounts.standard > 0;
+    resumedFallbackTierCounts.hero > 0;
 
   return {
     fallbackMetadataCompleteCount,

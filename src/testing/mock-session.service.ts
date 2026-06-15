@@ -22,6 +22,7 @@ export interface MockSessionService {
   hasSession(): boolean;
   setActiveShip(ship: ShipSummary): void;
   clearActiveShip(): void;
+  forceUpdateActiveShipSpatial(shipId: string, spatial: ShipSummary['spatial']): void;
   setActiveCharacter(character: PlayerCharacterSummary): void;
   clearActiveCharacter(): void;
 }
@@ -56,6 +57,13 @@ export function createMockSessionService(initialKey: string | null = null): Mock
     },
     clearActiveShip() {
       activeShip.set(null);
+    },
+    forceUpdateActiveShipSpatial(shipId: string, spatial: ShipSummary['spatial']) {
+      const current = activeShip();
+      if (!current || current.id?.trim().toLowerCase() !== shipId?.trim().toLowerCase()) {
+        return;
+      }
+      activeShip.set({ ...current, spatial });
     },
     setActiveCharacter(character: PlayerCharacterSummary) {
       activeCharacter.set(character);

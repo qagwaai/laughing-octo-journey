@@ -333,15 +333,18 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
     existingBodies: CelestialBodyListItem[];
     launchSeedHint?: number | null;
   }) {
-    const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
     const activeBodies = existingBodies.filter((body) => body.state !== 'destroyed');
     const existingBySourceScanId = new Map(
       activeBodies
         .filter((body) => typeof body.sourceScanId === 'string' && body.sourceScanId.trim().length > 0)
         .map((body) => [body.sourceScanId, body] as const),
     );
-    const randomTarget = Math.floor(rng() * 16) + 5;
-    const total = Math.max(activeBodies.length, randomTarget);
+
+    // When resuming, only generate as many samples as exist on the backend.
+    // Do NOT pad with random seeding—use only what the server persisted.
+    // If there are no backend bodies, fall back to seeding.
+    const rng = seededRandom(resolveAsteroidSeed(playerName, characterId, center, launchSeedHint));
+    const total = activeBodies.length > 0 ? activeBodies.length : Math.floor(rng() * 16) + 5;
     const assignments = generateMaterialAssignments(total, rng);
     const allSamples = generateAsteroidSamples(center, rng, total, assignments);
 
