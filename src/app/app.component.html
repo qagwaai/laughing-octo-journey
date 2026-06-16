@@ -51,30 +51,31 @@
 
   <!-- Right Canvas Area -->
   <div class="relative min-w-0 max-h-dvh max-w-full flex-1 overflow-hidden" #rightPanel>
+    <ngt-canvas
+      #canvas
+      class="relative z-0"
+      [stats]="persistentStatsOptions"
+      shadows
+      [camera]="canvasCameraOptions"
+      [lookAt]="canvasLookAt"
+      (click)="onCanvasClick()"
+    >
+      <app-routed-scene *canvasContent />
+    </ngt-canvas>
+
+    @if (showColdBootLookHint()) {
+      <div
+        class="pointer-events-none absolute bottom-5 left-1/2 z-10 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
+        [style.opacity]="lookHintOpacity()"
+      >
+        HOLD DRAG TO LOOK
+      </div>
+    }
+
     @if (rightOutletActive()) {
-      <div class="h-full overflow-auto bg-gray-950 text-white">
+      <div class="absolute inset-0 z-20 overflow-auto bg-gray-950 text-white">
         <router-outlet name="right" />
       </div>
-    } @else {
-      <ngt-canvas
-        #canvas
-        [stats]="persistentStatsOptions"
-        shadows
-        [camera]="{ position: [5, 5, 5] }"
-        [lookAt]="[0, 0, 0]"
-        (click)="onCanvasClick()"
-      >
-        <app-routed-scene *canvasContent />
-      </ngt-canvas>
-
-      @if (showColdBootLookHint()) {
-        <div
-          class="pointer-events-none absolute bottom-5 left-1/2 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
-          [style.opacity]="lookHintOpacity()"
-        >
-          HOLD DRAG TO LOOK
-        </div>
-      }
     }
   </div>
 

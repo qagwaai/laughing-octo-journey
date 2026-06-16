@@ -17,6 +17,10 @@ export class ShipExteriorSessionController {
     this.clearScanLoop();
     this.scanIntervalId = window.setInterval(tickScene, intervalMs);
   }
+  
+  stopScanLoop(): void {
+    this.clearScanLoop();
+  }
 
   queuePostLaunchRefresh(refresh: () => void, debounceMs: number): void {
     if (this.postLaunchRefreshTimeoutId !== null) {

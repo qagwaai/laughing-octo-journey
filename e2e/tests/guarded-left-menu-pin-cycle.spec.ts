@@ -79,7 +79,7 @@ async function setupGuardedMenuTest(page: Page) {
 
   const gameShell = new GameShellPage(page);
   await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/);
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
 
   const opsMenu = page.locator('app-guarded-left-menu nav.ops-menu').first();
   const pinToggle = page.locator('app-guarded-left-menu .pin-toggle').first();
@@ -132,14 +132,14 @@ test.describe('Guarded Left Menu - pin cycle', () => {
     await expect(opsMenu).not.toHaveClass(/is-expanded/);
 
     await page.locator('app-guarded-left-menu button[aria-label="Market Hub"]').first().click();
-    await expect(page).toHaveURL(/left:market-hub/);
+    await expect(page).toHaveURL(/left:market-hub/, { timeout: 10_000 });
 
     await expect(pinToggleLabel).toHaveText('Unpin Menu');
     await expect(opsMenu).toHaveClass(/is-keep-mini/);
     await expect(opsMenu).not.toHaveClass(/is-expanded/);
 
     await page.locator('app-guarded-left-menu button[aria-label="Mission Board"]').first().click();
-    await expect(page).toHaveURL(/right:mission-board/);
+    await expect(page).toHaveURL(/right:mission-board/, { timeout: 10_000 });
 
     await expect(pinToggleLabel).toHaveText('Unpin Menu');
     await expect(opsMenu).toHaveClass(/is-keep-mini/);

@@ -22,6 +22,8 @@ export default class ColdBootScanPage {
   protected host = inject(ElementRef);
   private renderStats = inject(RenderStatsService);
   private shipExteriorView = viewChild(ShipExteriorViewScene);
+  protected readonly canvasCameraOptions = { position: [0, 1.8, 6.6] as [number, number, number], fov: 52 };
+  protected readonly canvasLookAt = [0, 0, 0] as [number, number, number];
   private readonly sceneFacade = createShipExteriorViewFacade(
     () => this.shipExteriorView() as ShipExteriorViewFacadeSource | undefined,
   );

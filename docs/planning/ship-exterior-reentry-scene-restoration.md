@@ -1,7 +1,7 @@
 # Ship External View — Scene Restoration on Re-entry
 
 Date: 2026-06-13  
-Status: In progress — position persistence fixed; full scene restoration pending  
+Status: Mostly complete — re-entry restoration implemented except debris persistence and minor orbital drift  
 Scope: `ship-exterior-view` / `opening-cold-boot-scan`
 
 ---
@@ -20,6 +20,20 @@ When the player navigates away from ship-external-view (to mission board, ship h
 - Asteroid scan state (scanned/unscanned, materials) — **already persisted** via `ShipExteriorAsteroidStateService` (localStorage)
 - Mission gate state — **already persisted** via `ShipExteriorMissionStateService` (localStorage)
 - Floating debris state — **not persisted** (ephemeral server-driven; probably OK to leave as is)
+
+---
+
+## Progress Update (2026-06-14)
+
+The scene restoration work now covers the main re-entry continuity cases:
+
+- Ship coordinates restore to 0.001 km precision.
+- Camera orientation restores across re-entry and flight/orbit transitions without a snap.
+- Roll is intentionally disabled, so the orbit controller and flight controller stay aligned.
+- Asteroid samples, scan state, and targeted asteroid state restore correctly.
+- Scene elapsed time and flight preferences persist across navigation.
+
+Remaining gaps are limited to floating debris re-seeding and a small amount of orbital phase drift.
 
 ---
 
@@ -58,40 +72,29 @@ When the player navigates away from ship-external-view (to mission board, ship h
 
 ## Scene Restoration — Remaining Work
 
-### 1. Camera orientation (yaw / pitch / roll)
+### 1. Floating debris
 
-**Current state**: `flightOrientation` is reconstructed to zero on every scene creation. `cameraOrientation` (read from OrbitControls camera quaternion) also resets to its default.
+**Current state**: Reloaded from server on every entry; no local persistence.
 
-**Desired state**: Re-entry shows the same camera direction as departure.
+**Desired state**: Debris positions remain stable across re-entry if that is treated as a durability requirement.
 
 **Design options**:
-- Option A: Persist `{ yawRad, pitchRad, rollRad }` in `SessionService` alongside spatial, flush on scene destroy/navigate-away, restore in `ngOnInit` by seeding `flightController.flightOrientation` and applying an equivalent OrbitControls camera rotation.
-- Option B: Persist heading in `SpatialState.heading` (field already exists on some backend models) so it round-trips through backend. More durable but requires backend schema and contract change.
-- **Recommendation**: Option A for client-side quick win first; Option B as a later backend contract upgrade.
+- Option B1: Persist debris positions to `sessionStorage` in `FloatingDebrisStateService`.
+- Option B2: Backend-persist debris as part of the celestial-body model.
+- Option B3: Accept debris reset as expected behaviour and keep it documented as ephemeral.
 
-**Key complexity**: OrbitControls owns the camera in non-flight mode. Restoring orientation requires either:
-- Setting camera quaternion directly before OrbitControls attaches, or
-- Setting `OrbitControls.target` and camera position to reproduce the viewing angle.
+### 2. Minor animation phase drift
 
-### 2. Targeted asteroid
+**Current state**: Asteroids restore to the right set and general orbital neighborhood, but can drift by a small amount during teardown/reload.
 
-**Current state**: `targetedAsteroidId` is an in-memory signal, not persisted. On re-entry it resets to `null`.
+**Desired state**: Either compensate for wall-clock time or explicitly accept the remaining micro-drift.
 
-**Desired state**: If the previously targeted asteroid is still in the sample set on re-entry, restore the target lock.
+**Design options**:
+- Option C1: Persist a wall-clock timestamp alongside elapsed seconds and advance the scene clock by real elapsed time on restore.
+- Option C2: Add a brief fade-in on re-entry to hide the tiny positional discontinuity.
+- Option C3: Accept minor drift as the current behavior.
 
-**Design**: This is straightforward — persist `targetedAsteroidId` in the same localStorage key-space as asteroid samples (or as a field on the sample state), restore it in `ngOnInit` after `restorePersistedAsteroidSamples()` runs, and validate that the restored target ID still exists in the loaded sample set before applying.
-
-**Candidate storage key**: extend `ShipExteriorAsteroidStateService` to include `targetedSampleId: string | null`.
-
-### 3. Flight preferences (mouse sensitivity, invert-Y)
-
-**Current state**: Reset to defaults on every scene creation.
-
-**Desired state**: User preferences survive navigation.
-
-**Design**: These are pure user preferences with no backend dependency. Persist in `localStorage` keyed by player/character. Load in `ngOnInit` before `flightController.start()`.
-
-### 4. Flight mode enabled on re-entry
+### 3. Flight mode enabled on re-entry
 
 **Policy question**: Should flight mode be re-enabled on re-entry if it was active when the player left?
 
@@ -101,17 +104,11 @@ When the player navigates away from ship-external-view (to mission board, ship h
 
 **Decision**: Flight mode remains OFF on re-entry. This is intentional and now treated as the policy for ship-exterior-view; the player re-enables it manually if needed.
 
-### 5. Active scan asteroid (hover)
+### 4. Active scan asteroid (hover)
 
 **Current state**: `activeScanAsteroidId` resets to null.
 
 **Desired state**: Ephemeral hover state. This is intentionally not restored (player is not hovering on re-entry). Leave as is.
-
-### 6. Floating debris
-
-**Current state**: Reloaded from server on every entry; no local persistence.
-
-**Desired state**: Debris positions are server-authoritative; re-seeding from server on entry is correct behavior. No change needed.
 
 ---
 
@@ -119,10 +116,9 @@ When the player navigates away from ship-external-view (to mission board, ship h
 
 | Priority | Item | Effort | Notes |
 |---|---|---|---|
-| 1 | Camera orientation (Option A) | Medium | Highest visual impact; doesn't need backend |
-| 2 | Targeted asteroid | Small | Extend existing asteroid state service |
-| 3 | Flight preferences | Small | Pure localStorage; no backend |
-| 4 | Flight mode policy document | Trivial | Decide and document; no code change |
+| 1 | Debris persistence (Option B1) | Small | Mirrors asteroid persistence pattern |
+| 2 | Wall-clock continuity for animation phase (Option C1) | Small | Only if the remaining drift is objectionable |
+| 3 | Backend debris (Option B2) | Large | Only if debris durability must survive browser refresh |
 
 ---
 

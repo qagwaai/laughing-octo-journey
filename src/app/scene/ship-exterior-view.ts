@@ -104,6 +104,7 @@ import {
 import { ShipExteriorSocketService } from '../services/ship-exterior-socket.service';
 import { SocketLifecycleService } from '../services/socket-lifecycle.service';
 import { SocketService } from '../services/socket.service';
+import { SceneVisibilityService } from '../services/scene-visibility.service';
 import {
   assignAsteroidRenderTiers,
   DEFAULT_ASTEROID_TIER_CAPS,
@@ -204,6 +205,8 @@ function resolveDescriptorDetailLevel(segments: number): number {
  * Real-time ship-exterior scene controller for scanning, mission gating, and launch actions.
  */
 export default class ShipExteriorViewScene implements OnInit, OnDestroy {
+    private sceneLifecycleActive = false;
+  private sceneBootstrapped = false;
   protected readonly t = locale;
   // --- Phase 3: Frame-pressure & Quality Scaler ---
   private readonly framePressureSampler = new FramePressureSampler(30); // Configurable window size
@@ -256,6 +259,23 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private missionStateService = inject(ShipExteriorMissionStateService);
   private viewStateService = inject(ShipExteriorViewStateService);
   private floatingDebrisStateService = inject(FloatingDebrisStateService);
+  private sceneVisibility = inject(SceneVisibilityService);
+
+  constructor() {
+    /**
+     * When scene becomes hidden (right outlet active), deactivate loops.
+     * When scene becomes visible (right outlet inactive), activate loops.
+     */
+    effect(() => {
+      const isHidden = this.sceneVisibility.isSceneHidden();
+      if (isHidden) {
+        this.deactivateScene();
+      } else if (this.sceneLifecycleActive) {
+        // Scene is visible and was previously active; resume
+        this.activateScene();
+      }
+    });
+  }
   private store: ReturnType<typeof injectStore> | null = (() => {
     try {
       return injectStore();
@@ -1251,20 +1271,37 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
-    this.inputAdapter = new ShipExteriorInputAdapter(
-      {
-        onWindowPointerDown: this.onWindowPointerDown,
-        onWindowPointerUp: this.onWindowPointerUp,
-        onWindowContextMenu: this.onWindowContextMenu,
-        onWindowKeyDown: this.onWindowKeyDown,
-        onWindowKeyUp: this.onWindowKeyUp,
-        onWindowMouseMove: this.onWindowMouseMove,
-        onSocketCorrelationWarning: this.onSocketCorrelationWarning,
-        onPointerLockChange: this.onPointerLockChange,
-      },
-      window,
-      document,
-    );
+    this.activateScene();
+  }
+
+  activateScene(): void {
+    if (this.sceneLifecycleActive) {
+      return;
+    }
+
+    this.sceneLifecycleActive = true;
+    if (!this.inputAdapter) {
+      this.inputAdapter = new ShipExteriorInputAdapter(
+        {
+          onWindowPointerDown: this.onWindowPointerDown,
+          onWindowPointerUp: this.onWindowPointerUp,
+          onWindowContextMenu: this.onWindowContextMenu,
+          onWindowKeyDown: this.onWindowKeyDown,
+          onWindowKeyUp: this.onWindowKeyUp,
+          onWindowMouseMove: this.onWindowMouseMove,
+          onSocketCorrelationWarning: this.onSocketCorrelationWarning,
+          onPointerLockChange: this.onPointerLockChange,
+        },
+        window,
+        document,
+      );
+    }
+
+    if (this.sceneBootstrapped) {
+      this.resumeSceneRuntime();
+      return;
+    }
+
     const currentLocation = this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 };
     const routeEntryReferenceLocation = this.resolveRouteEntryShipLocationKm() ?? currentLocation;
     const seedPolicy = this.resolveSeedPolicy();
@@ -1305,14 +1342,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       'navigation-state',
       this.activeShipId(),
     );
-    this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
-      (response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
-    );
-    this.unsubscribePiracySeizeResponse = this.socketService.on(
-      SHIP_PIRACY_SEIZE_RESPONSE_EVENT,
-      (response: ShipPiracySeizeResponse) => this.handleShipPiracySeizeResponse(response),
-    );
-    this.floatingDebrisController.start();
     const restoredPersistedAsteroids = this.restorePersistedAsteroidSamples();
     if (restoredPersistedAsteroids) {
       this.refreshShipStateAfterLaunch();
@@ -1329,11 +1358,24 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       }
     }
     this.restorePersistedTargetedAsteroidId();
+    this.sceneBootstrapped = true;
+    this.schedulePersistedViewOrientationRestore();
+    this.resumeSceneRuntime();
+  }
+
+  private resumeSceneRuntime(): void {
+    this.unsubscribeLaunchItemResponse = this.shipExteriorSocketService.subscribeLaunchResponses(
+      (response: LaunchItemResponse) => this.handleLaunchItemResponse(response),
+    );
+    this.unsubscribePiracySeizeResponse = this.socketService.on(
+      SHIP_PIRACY_SEIZE_RESPONSE_EVENT,
+      (response: ShipPiracySeizeResponse) => this.handleShipPiracySeizeResponse(response),
+    );
+    this.floatingDebrisController.start();
     const scanTickMs = this.activeSensorArrayCapabilities()?.scanTickMs ?? ShipExteriorViewScene.SCAN_TICK_MS;
     this.sessionController.startScanLoop(() => this.tickScene(), scanTickMs);
     this.flightController.start();
-    this.inputAdapter.attach();
-    this.schedulePersistedViewOrientationRestore();
+    this.inputAdapter?.attach();
   }
 
   private schedulePersistedViewOrientationRestore(maxAttempts = 8): void {
@@ -1347,7 +1389,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.restorePersistedViewOrientation();
       attempts += 1;
 
+      // After max attempts, mark as restored regardless so re-entry
+      // never triggers the restore effect again.
       if (this.orientationRestored || attempts >= maxAttempts) {
+        this.orientationRestored = true;
         return;
       }
 
@@ -1613,8 +1658,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
     console.log('[ship-exterior-view] restorePersistedViewOrientation: loaded', orientation);
     this.flightController.restoreOrientation(orientation);
-    this.applyOrientationToSceneCamera(orientation);
-    console.log('[ship-exterior-view] restorePersistedViewOrientation: applied to scene');
+    if (this.applyOrientationToSceneCamera(orientation)) {
+      this.orientationRestored = true;
+      console.log('[ship-exterior-view] restorePersistedViewOrientation: applied to scene');
+    }
   }
 
   private restorePersistedFlightPreferences(): void {
@@ -1979,6 +2026,24 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.deactivateScene();
+    this.tractorBeamAudioController.dispose();
+    this.bootstrapController.dispose();
+    this.sessionController.dispose();
+    this.flightController.dispose();
+    this.disposeSceneEnvironment();
+    this.inputAdapter?.detach();
+    this.inputAdapter = null;
+    this.hotkeyFlashController.dispose();
+    this.launchToastController.dispose();
+  }
+
+  deactivateScene(): void {
+    if (!this.sceneLifecycleActive) {
+      return;
+    }
+
+    this.sceneLifecycleActive = false;
     const currentLocation = this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm() ?? { x: 0, y: 0, z: 0 };
     const routeEntryReferenceLocation = this.resolveRouteEntryShipLocationKm() ?? currentLocation;
     const exitDetails = this.buildViewLifecycleDetails({
@@ -1996,20 +2061,19 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.persistSceneElapsedSeconds();
     this.unregisterTestUtils();
     this.unsubscribeShipListResponse?.();
+    this.unsubscribeShipListResponse = undefined;
     this.unsubscribeCelestialBodyListResponse?.();
+    this.unsubscribeCelestialBodyListResponse = undefined;
     this.unsubscribeLaunchItemResponse?.();
+    this.unsubscribeLaunchItemResponse = undefined;
     this.unsubscribePiracySeizeResponse?.();
+    this.unsubscribePiracySeizeResponse = undefined;
     this.floatingDebrisController.stop();
     this.stopTractorBeamAnimationLoop();
-    this.tractorBeamAudioController.dispose();
-    this.bootstrapController.dispose();
-    this.sessionController.dispose();
-    this.flightController.dispose();
-    this.disposeSceneEnvironment();
+    this.tractorBeamAudioController.stopLoop();
+    this.sessionController.stopScanLoop();
+    this.flightController.stop();
     this.inputAdapter?.detach();
-    this.inputAdapter = null;
-    this.hotkeyFlashController.dispose();
-    this.launchToastController.dispose();
   }
 
   setFlightModeEnabled(enabled: boolean): void {

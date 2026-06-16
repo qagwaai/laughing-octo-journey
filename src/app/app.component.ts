@@ -23,6 +23,7 @@ import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
 import { RenderStatsService } from './services/render-stats.service';
+import { SceneVisibilityService } from './services/scene-visibility.service';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -75,6 +76,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected openingAudio = inject(OpeningAudioService);
   protected contractVarianceNotifier = inject(ContractVarianceNotifierService);
   protected renderStats = inject(RenderStatsService);
+  private sceneVisibility = inject(SceneVisibilityService);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
   protected dividerRef = viewChild.required<ElementRef>('divider');
@@ -94,6 +96,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected leftPanelWidth = signal(50);
   protected isResizing = signal(false);
   protected lookHintOpacity = signal(0);
+  protected readonly canvasCameraOptions = { position: [5, 5, 5] as [number, number, number] };
+  protected readonly canvasLookAt = [0, 0, 0] as [number, number, number];
 
   protected currentUrl = toSignal(
     this.router.events.pipe(
@@ -126,6 +130,20 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     ),
     { initialValue: false },
   );
+
+  /**
+   * Subscribe to rightOutletActive changes and notify the scene visibility service.
+   * This ensures the scene knows when to deactivate (hidden) or activate (visible).
+   */
+  private rightOutletActiveSubscription = this.router.events
+    .pipe(
+      filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map((ev) => ev.urlAfterRedirects.includes('right:')),
+      startWith(this.router.url.includes('right:')),
+    )
+    .subscribe((active) => {
+      this.sceneVisibility.setRightOutletActive(active);
+    });
 
   constructor() {
     this.navigationSubscription = this.router.events

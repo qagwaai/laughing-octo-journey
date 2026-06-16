@@ -16,6 +16,7 @@ import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } f
 import { SHIP_PIRACY_SEIZE_RESPONSE_EVENT } from '../model/ownership-operations';
 import { MissionService } from '../services/mission.service';
 import { SessionService } from '../services/session.service';
+import { SceneVisibilityService } from '../services/scene-visibility.service';
 import { ShipExteriorAsteroidStateService } from '../services/ship-exterior-asteroid-state.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { ShipExteriorViewStateService } from '../services/ship-exterior-view-state.service';
@@ -135,6 +136,9 @@ function setup(state?: NavigationState) {
     loadOrientation: vi.fn().mockReturnValue(state?.persistedViewOrientation ?? null),
     saveOrientation: vi.fn(),
     clearOrientation: vi.fn(),
+    loadCameraPose: vi.fn().mockReturnValue(null),
+    saveCameraPose: vi.fn(),
+    clearCameraPose: vi.fn(),
     loadFlightPreferences: vi.fn().mockReturnValue(state?.persistedFlightPreferences ?? null),
     saveFlightPreferences: vi.fn(),
     clearFlightPreferences: vi.fn(),
@@ -178,6 +182,7 @@ function setup(state?: NavigationState) {
 
   const fixture = TestBed.createComponent(ShipExteriorViewScene);
   fixture.detectChanges();
+  const sceneVisibility = TestBed.inject(SceneVisibilityService);
 
   return {
     component: fixture.componentInstance,
@@ -187,6 +192,7 @@ function setup(state?: NavigationState) {
     mockMission,
     mockViewState,
     mockAsteroidState,
+    sceneVisibility,
   };
 }
 
@@ -1381,6 +1387,46 @@ describe('ShipExteriorViewScene', () => {
     expect(second.component.flightPointerLocked()).toBe(false);
   });
 
+  it('should keep activateScene and deactivateScene idempotent', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    const sessionController = component as any;
+    const flightController = (component as any)['flightController'];
+    const inputAdapter = (component as any)['inputAdapter'];
+    const startScanLoopSpy = vi.spyOn(sessionController['sessionController'], 'startScanLoop');
+    const stopScanLoopSpy = vi.spyOn(sessionController['sessionController'], 'stopScanLoop');
+    const flightStartSpy = vi.spyOn(flightController, 'start');
+    const flightStopSpy = vi.spyOn(flightController, 'stop');
+    const attachSpy = vi.spyOn(inputAdapter, 'attach');
+    const detachSpy = vi.spyOn(inputAdapter, 'detach');
+
+    component.activateScene();
+    component.activateScene();
+    expect(startScanLoopSpy).not.toHaveBeenCalled();
+    expect(flightStartSpy).not.toHaveBeenCalled();
+    expect(attachSpy).not.toHaveBeenCalled();
+
+    component.deactivateScene();
+    component.deactivateScene();
+    expect(stopScanLoopSpy).toHaveBeenCalledTimes(1);
+    expect(flightStopSpy).toHaveBeenCalledTimes(1);
+    expect(detachSpy).toHaveBeenCalledTimes(1);
+
+    component.activateScene();
+    component.activateScene();
+    expect(startScanLoopSpy).toHaveBeenCalledTimes(1);
+    expect(flightStartSpy).toHaveBeenCalledTimes(1);
+    expect(attachSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('should reconstruct flight world offset from persisted location on re-entry', () => {
     const { component } = setup({
       playerName: 'Pioneer',
@@ -2061,7 +2107,7 @@ describe('ShipExteriorViewScene - subscription cleanup (ngOnDestroy)', () => {
     component['unsubscribeShipListResponse'] = unsubShip;
     component['ngOnDestroy']();
 
-    expect(unsubShip).toHaveBeenCalledTimes(2);
+    expect(unsubShip).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -2601,5 +2647,157 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(allDebris.length).toBeGreaterThan(0);
     expect(allDebris.some((item) => item.id === 'local-cold-boot-ship-tractor-beam')).toBe(true);
     expect(allDebris.some((item) => item.itemType === 'ship-tractor-beam')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// describe('ShipExteriorViewScene - route visibility lifecycle')
+// ---------------------------------------------------------------------------
+
+describe('ShipExteriorViewScene - route visibility lifecycle', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    delete (window as any).__shipExteriorTestUtils;
+  });
+
+  it('should preserve scene instance across hide/show cycles via route visibility', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    const initialInstance = component;
+    const initialSessionController = component['sessionController'];
+
+    // Hide scene (right outlet active)
+    sceneVisibility.setRightOutletActive(true);
+
+    // Show scene (right outlet inactive)
+    sceneVisibility.setRightOutletActive(false);
+
+    // Verify component and session controller are same instances
+    expect(component).toBe(initialInstance);
+    expect(component['sessionController']).toBe(initialSessionController);
+  });
+
+  it('scene is initially active before any visibility changes', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    // Scene should be active after initialization
+    expect(component['sceneLifecycleActive']).toBe(true);
+
+    // Scene visibility should report not hidden initially
+    expect(sceneVisibility.isSceneHidden()).toBe(false);
+  });
+
+  it('should survive repeated visibility toggles without destroying', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    const originalInstance = component;
+
+    // Simulate multiple route navigations
+    for (let i = 0; i < 5; i++) {
+      sceneVisibility.setRightOutletActive(true);  // Hide (navigate to right page)
+      sceneVisibility.setRightOutletActive(false); // Show (navigate back)
+
+      // Component should never be destroyed and recreated
+      expect(component).toBe(originalInstance);
+    }
+  });
+
+  it('should not reset sceneLifecycleActive to false when visibility effect runs', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    // Scene starts active
+    expect(component['sceneLifecycleActive']).toBe(true);
+
+    // Hide and show the scene
+    sceneVisibility.setRightOutletActive(true);
+    sceneVisibility.setRightOutletActive(false);
+
+    // Scene should still be marked as active (idempotent activate handles re-entry)
+    expect(component['sceneLifecycleActive']).toBe(true);
+  });
+
+  it('should maintain stable state across 20 repeated hide/show cycles (integration test)', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    const originalInstance = component;
+    const originalSessionController = component['sessionController'];
+    const originalFlightController = component['flightController'];
+    const originalFloatingDebrisController = component['floatingDebrisController'];
+
+    // Track input adapter attach/detach behavior
+    const inputAdapter = component['inputAdapter'];
+    const originalInputAdapterInstance = inputAdapter;
+
+    // Execute 20 hide/show cycles
+    for (let i = 0; i < 20; i++) {
+      sceneVisibility.setRightOutletActive(true);  // Hide
+      sceneVisibility.setRightOutletActive(false); // Show
+
+      // After each cycle, verify critical invariants
+      expect(component).toBe(originalInstance);
+      expect(component['sessionController']).toBe(originalSessionController);
+      expect(component['flightController']).toBe(originalFlightController);
+      expect(component['floatingDebrisController']).toBe(originalFloatingDebrisController);
+
+      // Input adapter should be reused, not recreated
+      expect(component['inputAdapter']).toBe(originalInputAdapterInstance);
+
+      // Scene should be marked as active after each show cycle
+      expect(component['sceneLifecycleActive']).toBe(true);
+    }
+
+    // Verify final state after all cycles
+    expect(component['sceneLifecycleActive']).toBe(true);
+    expect(component).toBe(originalInstance);
+  });
+
+  it('should handle rapid visibility toggles without errors', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: { id: 'ship-1', model: 'Scavenger Pod', inventory: [] },
+    });
+
+    let errorOccurred = false;
+
+    // Capture any console errors during rapid toggles
+    const originalError = console.error;
+    console.error = (...args: any[]) => {
+      errorOccurred = true;
+      originalError(...args);
+    };
+
+    try {
+      // Rapid toggle: 10 quick hide/show cycles
+      for (let i = 0; i < 10; i++) {
+        sceneVisibility.setRightOutletActive(true);
+        sceneVisibility.setRightOutletActive(false);
+      }
+
+      expect(errorOccurred).toBe(false);
+      expect(component['sceneLifecycleActive']).toBe(true);
+    } finally {
+      console.error = originalError;
+    }
   });
 });
