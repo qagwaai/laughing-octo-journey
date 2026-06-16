@@ -105,6 +105,7 @@ import { ShipExteriorSocketService } from '../services/ship-exterior-socket.serv
 import { SocketLifecycleService } from '../services/socket-lifecycle.service';
 import { SocketService } from '../services/socket.service';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
+import { ShipExteriorViewHostService } from '../services/ship-exterior-view-host.service';
 import {
   assignAsteroidRenderTiers,
   DEFAULT_ASTEROID_TIER_CAPS,
@@ -259,6 +260,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private missionStateService = inject(ShipExteriorMissionStateService);
   private viewStateService = inject(ShipExteriorViewStateService);
   private floatingDebrisStateService = inject(FloatingDebrisStateService);
+  private shipExteriorViewHost = inject(ShipExteriorViewHostService);
   private sceneVisibility = inject(SceneVisibilityService);
 
   constructor() {
@@ -270,8 +272,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       const isHidden = this.sceneVisibility.isSceneHidden();
       if (isHidden) {
         this.deactivateScene();
-      } else if (this.sceneLifecycleActive) {
-        // Scene is visible and was previously active; resume
+      } else {
+        // Scene is visible; ensure the runtime is active again after any hidden-state flap.
         this.activateScene();
       }
     });
@@ -1272,6 +1274,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.activateScene();
+    this.shipExteriorViewHost.register(this);
   }
 
   activateScene(): void {
@@ -1313,20 +1316,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       seedPolicy,
     });
     this.lastViewInitializationDetails = initializationDetails;
-    console.log('[ship-exterior-view] lifecycle', initializationDetails);
     this.flightController.initializeCurrentLocationFromReference(currentLocation, routeEntryReferenceLocation);
     this.restorePersistedFlightPreferences();
     this.restorePersistedSceneElapsedSeconds();
-    console.log(
-      '[ship-exterior-view] lifecycle',
-      this.buildViewLifecycleDetails({
-        phase: 'entry',
-        stage: 'post-restore',
-        currentLocation,
-        routeEntryReferenceLocation,
-        seedPolicy,
-      }),
-    );
     this.socketLifecycleService.ensureConnected();
     this.installSceneEnvironment();
     this.initializeMissionGateState();
@@ -1569,13 +1561,15 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private resolveViewStateContext(): ShipExteriorViewStateContext | null {
     const playerName = this.playerName().trim();
     const characterId = this.navigationState.joinCharacter?.id?.trim();
-    if (!playerName || !characterId) {
+    const shipId = this.navigationState.joinShip?.id?.trim() ?? this.sessionService.activeShip()?.id?.trim();
+    if (!playerName || !characterId || !shipId) {
       return null;
     }
 
     return {
       playerName,
       characterId,
+      shipId,
     };
   }
 
@@ -1601,6 +1595,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         playerName: this.playerName(),
         characterId: this.navigationState.joinCharacter?.id ?? null,
         characterName: this.navigationState.joinCharacter?.characterName ?? null,
+        shipId: this.navigationState.joinShip?.id ?? this.sessionService.activeShip()?.id ?? null,
         activeShipId: this.activeShipId(),
         activeSolarSystemId: this.activeSolarSystemId(),
         currentLocationKm: args.currentLocation,
@@ -1646,21 +1641,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private restorePersistedViewOrientation(): void {
     const context = this.resolveViewStateContext();
     if (!context) {
-      console.log('[ship-exterior-view] restorePersistedViewOrientation: no context');
       return;
     }
 
     const orientation = this.viewStateService.loadOrientation(context);
     if (!orientation) {
-      console.log('[ship-exterior-view] restorePersistedViewOrientation: no orientation found', context);
       return;
     }
 
-    console.log('[ship-exterior-view] restorePersistedViewOrientation: loaded', orientation);
     this.flightController.restoreOrientation(orientation);
     if (this.applyOrientationToSceneCamera(orientation)) {
       this.orientationRestored = true;
-      console.log('[ship-exterior-view] restorePersistedViewOrientation: applied to scene');
     }
   }
 
@@ -1717,15 +1708,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private applyOrientationToSceneCamera(orientation: FlightOrientation): boolean {
     const camera = this.store?.snapshot.camera;
     if (!camera) {
-      console.log('[ship-exterior-view] applyOrientationToSceneCamera: camera not available');
       return false;
     }
-
-    console.log('[ship-exterior-view] applyOrientationToSceneCamera: before', {
-      yaw: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').y,
-      pitch: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').x,
-      roll: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').z,
-    });
 
     const orientationQuaternion = new Quaternion().setFromEuler(
       new Euler(orientation.pitchRad, orientation.yawRad, orientation.rollRad, 'YXZ'),
@@ -1744,12 +1728,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     camera.updateMatrixWorld();
-
-    console.log('[ship-exterior-view] applyOrientationToSceneCamera: after', {
-      yaw: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').y,
-      pitch: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').x,
-      roll: new Euler().setFromQuaternion(camera.quaternion, 'YXZ').z,
-    });
 
     return true;
   }
@@ -2026,6 +2004,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.shipExteriorViewHost.clear(this);
     this.deactivateScene();
     this.tractorBeamAudioController.dispose();
     this.bootstrapController.dispose();
@@ -2051,10 +2030,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       currentLocation,
       routeEntryReferenceLocation,
       seedPolicy: this.resolveSeedPolicy(),
-    });
-    console.log('[ship-exterior-view] lifecycle', {
-      ...exitDetails,
-      initializationDetails: this.lastViewInitializationDetails,
     });
     this.flushPreciseFlightLocationToPersistence();
     this.persistViewOrientation();
@@ -3400,7 +3375,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.resetPartialScanProgress(event.id);
 
     if (this.activeScanAsteroidId() === event.id) {
-      this.activeScanAsteroidId.set(null);
+      const sample = this.asteroidSamples().find((candidate) => candidate.id === event.id);
+      if (!sample?.scanned) {
+        this.activeScanAsteroidId.set(null);
+      }
     }
   }
 

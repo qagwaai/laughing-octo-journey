@@ -4,6 +4,7 @@ import type { FlightOrientation } from '../scene/ship-exterior/ship-exterior-fli
 export interface ShipExteriorViewStateContext {
   playerName: string;
   characterId: string;
+  shipId: string;
 }
 
 export interface ShipExteriorFlightPreferences {
@@ -282,40 +283,44 @@ export class ShipExteriorViewStateService {
   private resolveStorageKey(context: ShipExteriorViewStateContext): string | null {
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();
-    if (!playerName || !characterId) {
+    const shipId = context.shipId?.trim();
+    if (!playerName || !characterId || !shipId) {
       return null;
     }
 
-    return `${ShipExteriorViewStateService.STORAGE_PREFIX}:${playerName}:${characterId}`;
+    return `${ShipExteriorViewStateService.STORAGE_PREFIX}:${playerName}:${characterId}:${shipId}`;
   }
 
   private resolveFlightPreferencesStorageKey(context: ShipExteriorViewStateContext): string | null {
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();
-    if (!playerName || !characterId) {
+    const shipId = context.shipId?.trim();
+    if (!playerName || !characterId || !shipId) {
       return null;
     }
 
-    return `${ShipExteriorViewStateService.FLIGHT_PREFERENCES_STORAGE_PREFIX}:${playerName}:${characterId}`;
+    return `${ShipExteriorViewStateService.FLIGHT_PREFERENCES_STORAGE_PREFIX}:${playerName}:${characterId}:${shipId}`;
   }
 
   private resolveCameraPoseStorageKey(context: ShipExteriorViewStateContext): string | null {
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();
-    if (!playerName || !characterId) {
+    const shipId = context.shipId?.trim();
+    if (!playerName || !characterId || !shipId) {
       return null;
     }
 
-    return `${ShipExteriorViewStateService.CAMERA_POSE_STORAGE_PREFIX}:${playerName}:${characterId}`;
+    return `${ShipExteriorViewStateService.CAMERA_POSE_STORAGE_PREFIX}:${playerName}:${characterId}:${shipId}`;
   }
 
   private resolveSceneElapsedSecondsStorageKey(context: ShipExteriorViewStateContext): string | null {
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();
-    if (!playerName || !characterId) {
+    const shipId = context.shipId?.trim();
+    if (!playerName || !characterId || !shipId) {
       return null;
     }
 
-    return `${ShipExteriorViewStateService.SCENE_ELAPSED_SECONDS_STORAGE_PREFIX}:${playerName}:${characterId}`;
+    return `${ShipExteriorViewStateService.SCENE_ELAPSED_SECONDS_STORAGE_PREFIX}:${playerName}:${characterId}:${shipId}`;
   }
 }

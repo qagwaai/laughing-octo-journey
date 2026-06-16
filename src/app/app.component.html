@@ -63,6 +63,28 @@
       <app-routed-scene *canvasContent />
     </ngt-canvas>
 
+    <div
+      class="cold-boot-scan-host absolute inset-0 z-10"
+      aria-label="Ship exterior HUD overlay"
+      [style.display]="shipExteriorHudVisible() ? 'block' : 'none'"
+    >
+      <app-ship-exterior-hud-overlay
+        [objectivePanel]="shipExteriorObjectivePanel()"
+        [propertiesPanel]="shipExteriorPropertiesPanel()"
+        [flightPanel]="shipExteriorFlightPanel()"
+        [launchPanel]="shipExteriorLaunchPanel()"
+        [debugPanel]="shipExteriorDebugPanel()"
+        (hidePropertiesPanel)="shipExteriorHudFacade.commands.hidePropertiesPanel()"
+        (revealPropertiesPanel)="shipExteriorHudFacade.commands.revealPropertiesPanel()"
+        (launchFromHotkeySlot)="shipExteriorHudFacade.commands.launchFromHotkeySlot($event)"
+        (quickTargetIronAsteroidForTest)="shipExteriorHudFacade.commands.quickTargetIronAsteroidForTest()"
+        (scanAllAsteroidsToHeroForTest)="shipExteriorHudFacade.commands.scanAllAsteroidsToHeroForTest()"
+        (toggleFlightMode)="shipExteriorHudFacade.commands.toggleFlightMode()"
+        (flightInvertYChange)="shipExteriorHudFacade.commands.setFlightInvertY($event)"
+        (flightSensitivityInput)="shipExteriorHudFacade.commands.setFlightMouseSensitivityFromSliderValue($event)"
+      />
+    </div>
+
     @if (showColdBootLookHint()) {
       <div
         class="pointer-events-none absolute bottom-5 left-1/2 z-10 -translate-x-1/2 rounded border border-cyan-300/30 bg-slate-950/55 px-3 py-1 text-[0.66rem] tracking-[0.2em] text-cyan-100/80 transition-opacity duration-700"
@@ -73,7 +95,10 @@
     }
 
     @if (rightOutletActive()) {
-      <div class="absolute inset-0 z-20 overflow-auto bg-gray-950 text-white">
+      <div
+        class="absolute inset-0 z-20 overflow-auto bg-transparent text-white"
+        [style.pointer-events]="isColdBootScanOverlayActive() ? 'none' : 'auto'"
+      >
         <router-outlet name="right" />
       </div>
     }

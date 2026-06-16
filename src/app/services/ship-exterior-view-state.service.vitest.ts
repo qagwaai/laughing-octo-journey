@@ -14,6 +14,7 @@ describe('ShipExteriorViewStateService', () => {
     context = {
       playerName: 'Pioneer',
       characterId: 'char-1',
+      shipId: 'ship-1',
     };
   });
 
@@ -46,12 +47,14 @@ describe('ShipExteriorViewStateService', () => {
       service.loadOrientation({
         playerName: 'OtherPilot',
         characterId: 'char-1',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
     expect(
       service.loadOrientation({
         playerName: 'Pioneer',
         characterId: 'char-2',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
   });
@@ -61,6 +64,7 @@ describe('ShipExteriorViewStateService', () => {
       {
         playerName: '  Pioneer  ',
         characterId: 'char-1',
+        shipId: 'ship-1',
       },
       {
         yawRad: 0.9,
@@ -73,6 +77,7 @@ describe('ShipExteriorViewStateService', () => {
       service.loadOrientation({
         playerName: 'pioneer',
         characterId: 'char-1',
+        shipId: 'ship-1',
       }),
     ).toEqual({
       yawRad: 0.9,
@@ -82,12 +87,12 @@ describe('ShipExteriorViewStateService', () => {
   });
 
   it('returns null for malformed payloads', () => {
-    sessionStorage.setItem('ship-exterior:view-state:pioneer:char-1', '{bad-json');
+    sessionStorage.setItem('ship-exterior:view-state:pioneer:char-1:ship-1', '{bad-json');
     expect(service.loadOrientation(context)).toBeNull();
   });
 
   it('returns null when payload is missing finite numeric fields', () => {
-    sessionStorage.setItem('ship-exterior:view-state:pioneer:char-1', JSON.stringify({ yawRad: 1, pitchRad: 'x' }));
+    sessionStorage.setItem('ship-exterior:view-state:pioneer:char-1:ship-1', JSON.stringify({ yawRad: 1, pitchRad: 'x' }));
     expect(service.loadOrientation(context)).toBeNull();
   });
 
@@ -129,24 +134,26 @@ describe('ShipExteriorViewStateService', () => {
       service.loadCameraPose({
         playerName: 'OtherPilot',
         characterId: 'char-1',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
     expect(
       service.loadCameraPose({
         playerName: 'Pioneer',
         characterId: 'char-2',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
   });
 
   it('returns null for malformed camera pose payloads', () => {
-    sessionStorage.setItem('ship-exterior:camera-pose:pioneer:char-1', '{bad-json');
+    sessionStorage.setItem('ship-exterior:camera-pose:pioneer:char-1:ship-1', '{bad-json');
     expect(service.loadCameraPose(context)).toBeNull();
   });
 
   it('returns null when camera pose payload has non-finite values', () => {
     sessionStorage.setItem(
-      'ship-exterior:camera-pose:pioneer:char-1',
+      'ship-exterior:camera-pose:pioneer:char-1:ship-1',
       JSON.stringify({
         position: { x: 1, y: 'bad', z: 3 },
         quaternion: { w: 1, x: 0, y: 0, z: 0 },
@@ -192,24 +199,26 @@ describe('ShipExteriorViewStateService', () => {
       service.loadFlightPreferences({
         playerName: 'OtherPilot',
         characterId: 'char-1',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
     expect(
       service.loadFlightPreferences({
         playerName: 'Pioneer',
         characterId: 'char-2',
+        shipId: 'ship-1',
       }),
     ).toBeNull();
   });
 
   it('returns null for malformed flight preference payloads', () => {
-    localStorage.setItem('ship-exterior:flight-preferences:pioneer:char-1', '{bad-json');
+    localStorage.setItem('ship-exterior:flight-preferences:pioneer:char-1:ship-1', '{bad-json');
     expect(service.loadFlightPreferences(context)).toBeNull();
   });
 
   it('returns null when flight preferences are missing required fields', () => {
     localStorage.setItem(
-      'ship-exterior:flight-preferences:pioneer:char-1',
+      'ship-exterior:flight-preferences:pioneer:char-1:ship-1',
       JSON.stringify({ invertY: 'yes', mouseSensitivity: 0.003 }),
     );
     expect(service.loadFlightPreferences(context)).toBeNull();

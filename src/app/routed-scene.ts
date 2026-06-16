@@ -5,7 +5,7 @@ import { LoadingScene } from './scene/loading-scene.component';
 @Component({
   selector: 'app-routed-scene',
   template: `
-    @defer (prefetch on idle) {
+    @defer (on idle) {
       <router-outlet />
     } @placeholder (minimum 5s) {
       <app-loading-scene />

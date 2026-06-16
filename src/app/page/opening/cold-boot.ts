@@ -166,13 +166,16 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
         })
       : null;
 
-    await this.router.navigate([{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }], {
-      preserveFragment: true,
-      state: {
-        ...this.navigationState,
-        ...(prepared ? { joinShip: prepared.joinShip, missionContext: prepared.missionContext } : {}),
+    await this.router.navigate(
+      [{ outlets: { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
+      {
+        preserveFragment: true,
+        state: {
+          ...this.navigationState,
+          ...(prepared ? { joinShip: prepared.joinShip, missionContext: prepared.missionContext } : {}),
+        },
       },
-    });
+    );
     this.scanActionPending.set(false);
   }
 

@@ -7,6 +7,7 @@ import { Subject } from 'rxjs';
 import { AppComponent } from './app.component';
 import { OpeningAudioService } from './services';
 import { RenderStatsService } from './services/render-stats.service';
+import { SceneVisibilityService } from './services/scene-visibility.service';
 
 function createOpeningAudioMock() {
   return {
@@ -138,5 +139,16 @@ describe('AppComponent (Vitest)', () => {
 
     routerEvents$.next(new NavigationEnd(2, '/intro', '/intro'));
     expect((component as any).isColdBootSceneActive()).toBe(false);
+  });
+
+  it('should keep the scan overlay from hiding the scene', () => {
+    const { routerEvents$ } = setup();
+    const sceneVisibility = TestBed.inject(SceneVisibilityService);
+
+    routerEvents$.next(new NavigationEnd(1, '/ship-exterior-view(right:opening-cold-boot-scan)', '/ship-exterior-view(right:opening-cold-boot-scan)'));
+    expect(sceneVisibility.isSceneHidden()).toBe(false);
+
+    routerEvents$.next(new NavigationEnd(2, '/ship-exterior-view(right:market-hub)', '/ship-exterior-view(right:market-hub)'));
+    expect(sceneVisibility.isSceneHidden()).toBe(true);
   });
 });

@@ -4,6 +4,11 @@ import { authGuard } from './guards/auth.guard';
 const primaryRoutes: Routes = [
   // Primary outlet routes (right panel - canvas scenes)
   {
+    path: 'ship-exterior-view',
+    loadComponent: () => import('./scene/ship-exterior-view'),
+    canActivate: [authGuard],
+  },
+  {
     path: 'intro',
     loadComponent: () => import('./page/public/intro'),
   },
@@ -192,12 +197,6 @@ const rightOutletRoutes: Routes = [
   },
   {
     path: 'opening-cold-boot-scan',
-    outlet: 'right',
-    loadComponent: () => import('./page/opening/cold-boot-scan'),
-    canActivate: [authGuard],
-  },
-  {
-    path: 'ship-exterior-view',
     outlet: 'right',
     loadComponent: () => import('./page/opening/cold-boot-scan'),
     canActivate: [authGuard],

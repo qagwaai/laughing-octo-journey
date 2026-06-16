@@ -1189,6 +1189,27 @@ describe('ShipExteriorViewScene', () => {
     expect(target?.scanned).toBe(true);
   });
 
+  it('should keep a completed hover scan pinned to hero tier after hover-out', () => {
+    const { component } = setup({
+      joinShip: {
+        id: 'scanner-ship-hero-pin',
+        model: 'Scavenger Pod',
+        inventory: [{ id: 'sensor-pin', itemType: 'sensor-array' }],
+      },
+    });
+
+    const api = (window as any).__shipExteriorTestUtils;
+    api.setAsteroidSamples([makeSample('sample-hero-pin', { position: [0, 0, 100] })]);
+
+    api.hoverAsteroid('sample-hero-pin');
+    api.tickScanTicks(100);
+    api.unhoverAsteroid('sample-hero-pin');
+
+    expect(api.getAsteroidSamples().find((sample: AsteroidScanSample) => sample.id === 'sample-hero-pin')?.scanned).toBe(true);
+    expect(api.getActiveScanAsteroidId()).toBe('sample-hero-pin');
+    expect(component.resolveAsteroidRenderTier('sample-hero-pin')).toBe('hero');
+  });
+
   it('should use the highest installed sensor-array tier for scan speed', () => {
     const { component, fixture } = setup({
       joinShip: {
@@ -1427,6 +1448,29 @@ describe('ShipExteriorViewScene', () => {
     expect(attachSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('should restart the scan loop after visibility returns', () => {
+    const { component, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-visibility-cycle',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    const sessionController = component as any;
+    const startScanLoopSpy = vi.spyOn(sessionController['sessionController'], 'startScanLoop');
+    const stopScanLoopSpy = vi.spyOn(sessionController['sessionController'], 'stopScanLoop');
+
+    sceneVisibility.setRightOutletActive(true);
+    sceneVisibility.setRightOutletActive(false);
+
+    expect(stopScanLoopSpy).toHaveBeenCalledTimes(1);
+    expect(startScanLoopSpy).toHaveBeenCalledTimes(2);
+    expect(component['sceneLifecycleActive']).toBe(true);
+  });
+
   it('should reconstruct flight world offset from persisted location on re-entry', () => {
     const { component } = setup({
       playerName: 'Pioneer',
@@ -1504,6 +1548,7 @@ describe('ShipExteriorViewScene', () => {
       {
         playerName: 'Pioneer',
         characterId: 'char-1',
+        shipId: 'ship-1',
       },
       {
         invertY: true,
@@ -1528,6 +1573,7 @@ describe('ShipExteriorViewScene', () => {
       {
         playerName: 'Pioneer',
         characterId: 'char-1',
+        shipId: 'ship-1',
       },
       {
         invertY: component.flightInvertY(),
@@ -1578,6 +1624,7 @@ describe('ShipExteriorViewScene', () => {
     expect(mockViewState.loadOrientation).toHaveBeenCalledWith({
       playerName: 'Pioneer',
       characterId: 'char-1',
+      shipId: 'ship-1',
     });
     expect(component.flightViewDirectionLine()).toContain('YAW 57.3');
     expect(component.flightViewDirectionLine()).toContain('PITCH 28.6');
@@ -1606,6 +1653,7 @@ describe('ShipExteriorViewScene', () => {
       {
         playerName: 'Pioneer',
         characterId: 'char-1',
+        shipId: 'ship-1',
       },
       {
         yawRad: 0.7,

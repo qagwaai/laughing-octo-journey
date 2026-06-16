@@ -24,7 +24,7 @@ export const appLogger = {
     console.info(...args);
   },
   log: (...args: unknown[]): void => {
-    console.log(...args);
+    console.debug(...args);
   },
   warn: (...args: unknown[]): void => {
     emitLoggerEntry('warn', args);

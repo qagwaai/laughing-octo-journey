@@ -241,7 +241,7 @@ describe('ColdBootOpeningPage', () => {
       missionStatus: 'active',
     });
     expect(mockRouter.navigate).toHaveBeenCalledWith(
-      [{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
+      [{ outlets: { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
       expect.objectContaining({
         preserveFragment: true,
         state: expect.objectContaining({

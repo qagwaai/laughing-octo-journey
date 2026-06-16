@@ -19,11 +19,15 @@ import { NgtCanvas } from 'angular-three/dom';
 import { filter, map, startWith, Subscription } from 'rxjs';
 import { RoutedScene } from './routed-scene';
 import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
+import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
 import { RenderStatsService } from './services/render-stats.service';
 import { SceneVisibilityService } from './services/scene-visibility.service';
+import { ShipExteriorViewHostService } from './services/ship-exterior-view-host.service';
+import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
+import { environment } from '../environments/environment';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -49,6 +53,21 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
         user-select: none;
       }
     }
+
+    .cold-boot-scan-host {
+      position: absolute;
+      inset: 0;
+      display: block;
+      height: 100%;
+      min-height: 100%;
+      background: transparent;
+      pointer-events: none;
+      font-family: Inter, Arial, sans-serif;
+      --ship-properties-offset-x: 16px;
+      --ship-properties-offset-y: 16px;
+      --ship-hotkey-offset-x: 16px;
+      --ship-hotkey-offset-y: 16px;
+    }
   `,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [
@@ -60,6 +79,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
     NgtsStats,
     RoutedScene,
     LeftPaneMissionGuidanceOverlay,
+    ShipExteriorHudOverlayComponent,
     RouterOutlet,
   ],
 })
@@ -76,6 +96,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected openingAudio = inject(OpeningAudioService);
   protected contractVarianceNotifier = inject(ContractVarianceNotifierService);
   protected renderStats = inject(RenderStatsService);
+  private shipExteriorViewHost = inject(ShipExteriorViewHostService);
   private sceneVisibility = inject(SceneVisibilityService);
   protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
   protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
@@ -83,6 +104,13 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected color = signal('#ff0000');
   protected stats = this.renderStats.enabled;
   protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
+  protected readonly shipExteriorHudFacade = createShipExteriorViewFacade(() => this.shipExteriorViewHost.source() ?? undefined);
+  protected readonly shipExteriorHudVisible = computed(() => this.shipExteriorViewHost.source() !== null);
+  protected readonly shipExteriorObjectivePanel = computed(() => this.shipExteriorHudFacade.objectivePanel());
+  protected readonly shipExteriorPropertiesPanel = computed(() => this.shipExteriorHudFacade.propertiesPanel());
+  protected readonly shipExteriorFlightPanel = computed(() => this.shipExteriorHudFacade.flightPanel());
+  protected readonly shipExteriorLaunchPanel = computed(() => this.shipExteriorHudFacade.launchPanel());
+  protected readonly shipExteriorDebugPanel = computed(() => this.shipExteriorHudFacade.debugPanel());
   protected follow = signal(true);
   protected lockX = signal(false);
   protected lockY = signal(false);
@@ -112,6 +140,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     () => this.currentUrl().includes('opening-cold-boot') && !this.rightOutletActive(),
   );
 
+  protected isColdBootScanOverlayActive = computed(() => this.currentUrl().includes('opening-cold-boot-scan'));
+
   protected showColdBootLookHint = computed(() => this.isColdBootSceneActive() && this.lookHintOpacity() > 0);
   protected contractVarianceToast = this.contractVarianceNotifier.activeToast;
 
@@ -138,11 +168,17 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private rightOutletActiveSubscription = this.router.events
     .pipe(
       filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
-      map((ev) => ev.urlAfterRedirects.includes('right:')),
-      startWith(this.router.url.includes('right:')),
+      map((ev) => ({
+        active: ev.urlAfterRedirects.includes('right:'),
+        url: ev.urlAfterRedirects,
+      })),
+      startWith({
+        active: this.router.url.includes('right:'),
+        url: this.router.url,
+      }),
     )
-    .subscribe((active) => {
-      this.sceneVisibility.setRightOutletActive(active);
+    .subscribe(({ active, url }) => {
+      this.sceneVisibility.setRightOutletActive(active && !url.includes('opening-cold-boot-scan'));
     });
 
   constructor() {

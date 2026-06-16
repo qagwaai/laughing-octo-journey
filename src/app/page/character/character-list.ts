@@ -259,7 +259,7 @@ export default class CharacterListPage implements OnDestroy {
     const isFirstTargetCompleted = firstTargetStatus === 'completed';
 
     const outlets = isFirstTargetInProgress
-      ? { right: ['opening-cold-boot-scan'], left: ['game-main'] }
+      ? { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] }
       : isFirstTargetCompleted
         ? { right: ['mission-board'], left: ['game-main'] }
         : { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };

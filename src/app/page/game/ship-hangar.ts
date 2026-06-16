@@ -243,7 +243,7 @@ export default class ShipHangarPage {
 
     const navigationShip = this.resolvePreferredExteriorNavigationShip(ship);
 
-    this.router.navigate([{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }], {
+    this.router.navigate([{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }], {
       preserveFragment: true,
       state: {
         playerName: this.playerName(),

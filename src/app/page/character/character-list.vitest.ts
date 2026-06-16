@@ -472,7 +472,7 @@ describe('CharacterListPage', () => {
         data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
       });
       expect(router.navigate).toHaveBeenCalledWith(
-        [{ outlets: { right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
+        [{ outlets: { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
         {
           preserveFragment: true,
           state: {

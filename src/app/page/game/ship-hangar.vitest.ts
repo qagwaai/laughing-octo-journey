@@ -327,7 +327,7 @@ describe('ShipHangarPage', () => {
     await component.navigateToExteriorView(ship as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
-      [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+      [{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }],
       {
         preserveFragment: true,
         state: {
@@ -363,7 +363,7 @@ describe('ShipHangarPage', () => {
     await component.navigateToExteriorView(ship as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
-      [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+      [{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }],
       {
         preserveFragment: true,
         state: {
@@ -419,7 +419,7 @@ describe('ShipHangarPage', () => {
     await component.navigateToExteriorView(selectedShip as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
-      [{ outlets: { right: ['ship-exterior-view'], left: ['ship-hangar'] } }],
+      [{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }],
       {
         preserveFragment: true,
         state: {

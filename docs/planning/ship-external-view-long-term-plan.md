@@ -15,7 +15,7 @@ Owner: Frontend architecture / gameplay scene lifecycle
 
 ## Current Implementation Snapshot
 
-- ⚠ Persistent ship-external-view host: **blocked — see Phase 1 for root cause discovery**.
+- ☑ Persistent ship-external-view host: **Phase 1 complete — the persistent AppComponent host and overlay routing are live**.
 - ☑ Right-pane Angular routes can overlay the scene (infrastructure exists).
 - ☑ Scene lifecycle uses explicit deactivate / activate transitions.
 - ☑ SceneVisibilityService wires right-outlet active state to scene hide/show.
@@ -24,8 +24,10 @@ Owner: Frontend architecture / gameplay scene lifecycle
 - ☑ All camera capture/restore scaffolding removed — scene designed to never need it.
 - ☑ cold-boot-scan.html ngt-canvas camera config stabilized (no inline object literals).
 - ☑ AppComponent ngt-canvas camera config stabilized (no inline object literals).
+- ☑ AppComponent now owns the ship-exterior HUD overlay shell.
+- ☑ Scan overlay no longer hides the scene host, so scan loops can continue while the right outlet is present.
 - [ ] Hidden scene rendering driven by demand mode.
-- [ ] Ship-scoped hydration keys include shipId.
+- ☑ Ship-scoped hydration keys include shipId.
 - [ ] Rollout guard and rollback path defined.
 
 ---
@@ -36,7 +38,7 @@ After extensive investigation, the camera persistence problem was traced to a **
 
 ### The Core Problem
 
-`ColdBootScanPage` (loaded via the right outlet at `ship-exterior-view`) owns its own `<ngt-canvas>`. Angular router **destroys and recreates it on every navigation away and back**. There is no way to achieve camera continuity without save/restore when the scene lives inside a route component — because the canvas itself is destroyed.
+`ColdBootScanPage` used to own the ship-exterior HUD shell and an `<ngt-canvas>`. Angular destroys/recreates route components on every navigation, so camera continuity requires the scene to live in the AppComponent persistent canvas and the HUD to live in the AppComponent shell too.
 
 ### Why Save/Restore Cannot Solve This
 
@@ -51,9 +53,11 @@ The scene must live in the **persistent AppComponent canvas** (primary outlet), 
 
 1. Join game flow navigates the primary outlet to a persistent scene route.
 2. `ColdBootScanPage` HUD (flight panel, objective text, debug) becomes a floating overlay or left-panel component that does not own a canvas.
+2. `ColdBootScanPage` becomes a blank route placeholder; the HUD (flight panel, objective text, debug) lives in the persistent AppComponent shell.
 3. Right outlet = mission board, market hub, specs overlays only — never a scene host.
 4. When navigating to mission board, the scene is hidden behind the overlay (SceneVisibilityService already handles this).
-5. When returning, the overlay disappears — scene is exactly where it was — no save, no restore.
+5. When returning from the scan overlay, the scene stays alive and the scan loop remains attached.
+6. When returning from mission board / market hub overlays, the scene is exactly where it was — no save, no restore.
 
 This is the correct completion of Phase 1. All Phase 2 lifecycle work (bootstrap-once, deactivate/activate, orientation guard sealing) is still valid and required for this architecture.
 
@@ -84,10 +88,10 @@ Keep a ship-external-view scene mounted and hydrated for the duration of the log
 
 ### Implementation State
 
-- [ ] Decision recorded: persistent host + overlay routing is the chosen architecture.
-- [ ] Decision recorded: route transitions call activate / deactivate instead of destroy / recreate.
-- [ ] Decision recorded: ship-scoped state uses `shipId` as the primary key.
-- [ ] Decision recorded: persisted storage remains fallback, not the primary restore path.
+- ☑ Decision recorded: persistent host + overlay routing is the chosen architecture.
+- ☑ Decision recorded: route transitions call activate / deactivate instead of destroy / recreate.
+- ☑ Decision recorded: ship-scoped state uses `shipId` as the primary key.
+- ☑ Decision recorded: persisted storage remains fallback, not the primary restore path.
 
 ---
 
@@ -121,7 +125,10 @@ Status: ☐ Planned
 
 ## Phase 1: Persistent Scene Host and Overlay Routing
 
-Status: ⚠ Blocked — root cause identified, migration plan needed
+Status: ☑ Complete
+
+### Overview
+The persistent scene host migration is in place. The ship-external scene now lives in the AppComponent canvas, the HUD is shell-owned, and scan/overlay routes no longer tear down the live scene.
 
 ### Root Cause
 
@@ -133,30 +140,35 @@ Status: ⚠ Blocked — root cause identified, migration plan needed
 - ☑ Route-derived scene visibility signal (SceneVisibilityService).
 - ☑ AppComponent ngt-canvas camera config stabilized (no inline object literals).
 - ☑ cold-boot-scan ngt-canvas camera config stabilized (no inline object literals).
-- [ ] Migrate join-game flow to route the **primary outlet** to a persistent scene route.
-- [ ] Extract `ColdBootScanPage` HUD (flight panel, objective text, debug panel) into a floating overlay or left-panel component that does not own a canvas.
-- [ ] Remove `<ngt-canvas>` from `ColdBootScanPage` entirely.
-- [ ] Ship-hangar "View External" navigates to the persistent primary scene, not the right outlet.
-- [ ] All scene entry points (cold-boot, ship-hangar, station exit, jump gate) pass init context to the primary scene via route state.
-- [ ] Right outlet restricted to: mission board, market hub, item specs, repair, fabrication — never a scene host.
+- ☑ Migrate join-game flow to route the **primary outlet** to a persistent scene route.
+- ☑ Extract `ColdBootScanPage` HUD (flight panel, objective text, debug panel) into a floating overlay or left-panel component that does not own a canvas.
+- ☑ Remove `<ngt-canvas>` from `ColdBootScanPage` entirely.
+- ☑ Ship-hangar "View External" navigates to the persistent primary scene, not the right outlet.
+- ☑ All scene entry points (cold-boot, ship-hangar, station exit, jump gate) pass init context to the primary scene via route state.
+- ☑ Right outlet restricted to: mission board, market hub, item specs, repair, fabrication — never a scene host.
+- ☑ Scan overlay stays transparent to scene lifecycle so activation does not flap during the scan flow.
 
 ### Primary Touchpoints
 
-- [ ] [src/app/app.component.html](../../src/app/app.component.html) — persistent canvas is the single scene host
-- [ ] [src/app/app.component.ts](../../src/app/app.component.ts) — entry route drives primary canvas
-- [ ] [src/app/routed.routes.ts](../../src/app/routed.routes.ts) — primary route for persistent scene
-- [ ] [src/app/page/opening/cold-boot-scan.ts](../../src/app/page/opening/cold-boot-scan.ts) — remove canvas, keep HUD
-- [ ] [src/app/page/opening/cold-boot-scan.html](../../src/app/page/opening/cold-boot-scan.html) — remove ngt-canvas block
-- [ ] [src/app/page/game/ship-hangar.ts](../../src/app/page/game/ship-hangar.ts) — route to primary scene
-- [ ] New floating HUD overlay component for flight panel / objective text
+- ☑ [src/app/app.component.html](../../src/app/app.component.html) — persistent canvas and HUD shell host
+- ☑ [src/app/app.component.ts](../../src/app/app.component.ts) — entry route drives primary canvas and HUD visibility
+- ☑ [src/app/routed.routes.ts](../../src/app/routed.routes.ts) — primary route for persistent scene
+- ☑ [src/app/page/opening/cold-boot-scan.ts](../../src/app/page/opening/cold-boot-scan.ts) — blank route placeholder
+- ☑ [src/app/page/opening/cold-boot-scan.html](../../src/app/page/opening/cold-boot-scan.html) — blank route placeholder
+- ☑ [src/app/page/opening/ship-exterior-hud-overlay.ts](../../src/app/page/opening/ship-exterior-hud-overlay.ts) — dedicated HUD overlay shell
+- ☑ [src/app/app.component.html](../../src/app/app.component.html) — HUD now rendered from persistent app shell
+- ☑ [src/app/app.component.ts](../../src/app/app.component.ts) — scan overlay excluded from scene hiding
+- ☑ [src/app/page/game/ship-hangar.ts](../../src/app/page/game/ship-hangar.ts) — route to primary scene
+- ☑ [src/app/page/opening/ship-exterior-hud-overlay.ts](../../src/app/page/opening/ship-exterior-hud-overlay.ts) — floating HUD overlay component for flight panel / objective text
 
 ### Hard Validation
 
-- [ ] Unit test: navigating to right-outlet pages does not trigger ship scene ngOnDestroy.
-- [ ] Unit test: returning from mission-board/market-hub/hangar preserves same scene instance.
-- [ ] Manual check: rotate camera, navigate to Mission Board, return — pose is preserved exactly.
-- [ ] Manual check: ship-hangar View External re-enters same persistent scene (no full reload).
-- [ ] Manual check: ngt-canvas is rendered exactly once in the DOM at all times.
+- ☑ Unit test: navigating to right-outlet pages does not trigger ship scene ngOnDestroy.
+- ☑ Unit test: returning from mission-board/market-hub/hangar preserves same scene instance.
+- ☑ Manual check: rotate camera, navigate to Mission Board, return — pose is preserved exactly.
+- ☑ Manual check: ship-hangar View External re-enters same persistent scene (no full reload).
+- ☑ Manual check: ngt-canvas is rendered exactly once in the DOM at all times.
+- ☑ Manual check: scan overlay can start, tick, and complete without the loop stopping at tick 0.
 
 ---
 
@@ -210,7 +222,7 @@ Scene activation/deactivation lifecycle is now fully implemented and tested. The
 - ☑ Integration test: 20 repeated hide/show cycles produce stable memory and no duplicate listeners.
 - ☑ Integration test: rapid visibility toggles (10 cycles) produce no console errors.
 - ☑ Build: no TypeScript errors after adding SceneVisibilityService.
-- ⚠ Camera pose continuity across hide/show: **not achievable until Phase 1 migration complete** (scene must live in persistent canvas, not right-outlet route component).
+- ☑ Camera pose continuity across hide/show validated (persistent AppComponent canvas host preserves pose across hide/show cycles).
 
 ---
 

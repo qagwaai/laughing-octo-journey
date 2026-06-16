@@ -12,24 +12,26 @@
   --ship-hotkey-offset-y: 16px;
   height: 100%;
   min-height: 100%;
-  background: #030c12;
+  background: transparent;
+  pointer-events: none;
+  font-family: Inter, Arial, sans-serif;
 }
 
 .ship-exterior-objective {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
   top: var(--ship-hotkey-offset-y);
-  max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-  padding: 0.45rem 0.62rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(138, 224, 255, 0.56);
-  background: linear-gradient(165deg, rgba(5, 29, 44, 0.93), rgba(7, 17, 28, 0.95));
-  color: #d8f4ff;
+  max-width: min(24rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.42rem 0.62rem;
+  border-radius: 0.48rem;
+  border: 1px solid rgba(142, 215, 245, 0.52);
+  background: linear-gradient(165deg, rgba(8, 26, 39, 0.95), rgba(7, 17, 26, 0.98));
+  color: #e5f7ff;
   box-shadow:
-    0 10px 24px rgba(0, 7, 15, 0.54),
-    inset 0 0 0 1px rgba(196, 241, 255, 0.1);
-  font-size: 0.67rem;
-  letter-spacing: 0.06em;
+    0 8px 18px rgba(0, 7, 15, 0.48),
+    inset 0 0 0 1px rgba(196, 241, 255, 0.08);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
   z-index: 19;
   pointer-events: none;
 }
@@ -41,26 +43,29 @@
 }
 
 .ship-exterior-objective p:first-child {
-  color: #ffb3b3;
-  margin-bottom: 0.18rem;
+  color: #ffb0b0;
+  margin-bottom: 0.16rem;
 }
 
 .ship-exterior-flight-panel {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
-  top: calc(var(--ship-hotkey-offset-y) + 3.7rem);
-  width: min(40rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-  padding: 0.45rem 0.62rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(138, 224, 255, 0.45);
-  background: linear-gradient(160deg, rgba(6, 24, 38, 0.93), rgba(7, 14, 25, 0.95));
-  color: #d4eeff;
-  font-size: 0.62rem;
-  letter-spacing: 0.05em;
+  top: calc(var(--ship-hotkey-offset-y) + 3.45rem);
+  width: min(46rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.64rem 0.78rem 0.68rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(136, 215, 244, 0.42);
+  background: linear-gradient(165deg, rgba(6, 21, 34, 0.95), rgba(7, 14, 23, 0.98));
+  color: #e1f5ff;
+  font-size: 0.61rem;
+  letter-spacing: 0.045em;
   z-index: 19;
-  pointer-events: auto;
+  pointer-events: none;
   display: grid;
-  gap: 0.26rem;
+  gap: 0.24rem;
+  box-shadow:
+    0 10px 24px rgba(0, 7, 15, 0.52),
+    inset 0 0 0 1px rgba(196, 241, 255, 0.08);
 }
 
 .ship-exterior-flight-panel p {
@@ -75,60 +80,71 @@
 }
 
 .ship-exterior-flight-panel__toggle {
-  border: 1px solid rgba(145, 226, 255, 0.45);
-  border-radius: 0.42rem;
-  background: rgba(9, 40, 58, 0.82);
-  color: #d7f3ff;
-  font-size: 0.56rem;
-  letter-spacing: 0.12em;
-  padding: 0.24rem 0.5rem;
+  border: 2px solid rgba(255, 195, 90, 0.95);
+  border-radius: 0.58rem;
+  background: linear-gradient(165deg, rgba(48, 69, 34, 0.96), rgba(28, 42, 19, 0.98));
+  color: #fff3bf;
+  font-size: 0.55rem;
+  letter-spacing: 0.11em;
+  padding: 0.32rem 0.68rem;
   cursor: pointer;
+  pointer-events: auto;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 241, 174, 0.12);
 }
 
 .ship-exterior-flight-panel__toggle--active {
-  border-color: rgba(151, 239, 184, 0.72);
-  background: linear-gradient(165deg, rgba(8, 65, 39, 0.94), rgba(8, 32, 22, 0.96));
-  color: #e2ffe9;
+  border-color: rgba(255, 210, 108, 0.98);
+  background: linear-gradient(165deg, rgba(61, 89, 46, 0.98), rgba(31, 45, 20, 0.99));
+  color: #f1ffdc;
 }
 
 .ship-exterior-flight-panel__settings {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.48rem;
+  pointer-events: none;
 }
 
 .ship-exterior-flight-panel__checkbox {
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
+  pointer-events: auto;
 }
 
 .ship-exterior-flight-panel__slider {
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
+  pointer-events: auto;
 }
 
 .ship-exterior-flight-panel__slider input {
-  width: 7.5rem;
+  width: 7.9rem;
 }
 
 .ship-exterior-asteroid-debug {
-  margin-top: 0.4rem;
-  padding: 0.35rem 0.55rem;
-  border-radius: 0.45rem;
-  border: 1px dashed rgba(252, 193, 93, 0.62);
-  background: linear-gradient(165deg, rgba(42, 28, 8, 0.88), rgba(25, 17, 6, 0.92));
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  top: calc(var(--ship-hotkey-offset-y) + 15.5rem);
+  width: min(46rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.42rem 0.62rem;
+  border-radius: 0.5rem;
+  border: 1px dashed rgba(252, 193, 93, 0.58);
+  background: linear-gradient(165deg, rgba(42, 28, 8, 0.9), rgba(25, 17, 6, 0.94));
   color: #ffe9bc;
   box-shadow:
-    0 8px 16px rgba(0, 7, 15, 0.4),
+    0 8px 16px rgba(0, 7, 15, 0.42),
     inset 0 0 0 1px rgba(255, 233, 188, 0.08);
-  font-size: 0.58rem;
-  letter-spacing: 0.07em;
-  pointer-events: auto;
+  font-size: 0.57rem;
+  letter-spacing: 0.065em;
+  pointer-events: none;
   display: grid;
-  gap: 0.16rem;
+  gap: 0.14rem;
+  z-index: 19;
 }
 
 .ship-exterior-asteroid-debug__header {
@@ -152,6 +168,7 @@
   letter-spacing: 0.12em;
   padding: 0.18rem 0.42rem;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .ship-exterior-asteroid-debug p {
@@ -165,23 +182,39 @@
   bottom: var(--ship-hotkey-offset-y);
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   z-index: 18;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .ship-exterior-launch-debug {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
   bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
-  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
-  padding: 0.26rem 0.45rem;
-  border-radius: 0.4rem;
-  border: 1px dashed rgba(255, 212, 140, 0.58);
-  background: linear-gradient(165deg, rgba(38, 27, 12, 0.86), rgba(21, 15, 7, 0.9));
-  color: #ffeac3;
-  font-size: 0.52rem;
+  max-width: min(52rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.34rem 0.52rem;
+  border-radius: 0.45rem;
+  border: 1px dashed rgba(255, 210, 145, 0.56);
+  background: linear-gradient(165deg, rgba(35, 24, 11, 0.9), rgba(20, 14, 7, 0.94));
+  color: #fff0d1;
+  font-size: 0.51rem;
   letter-spacing: 0.07em;
+  z-index: 19;
+  pointer-events: none;
+}
+
+.ship-exterior-launch-id-debug {
+  position: absolute;
+  left: var(--ship-hotkey-offset-x);
+  bottom: calc(var(--ship-hotkey-offset-y) + 4.35rem);
+  max-width: min(52rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  padding: 0.3rem 0.52rem;
+  border-radius: 0.45rem;
+  border: 1px dashed rgba(191, 228, 255, 0.44);
+  background: linear-gradient(165deg, rgba(9, 29, 42, 0.88), rgba(7, 18, 29, 0.92));
+  color: #d9f2ff;
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
   z-index: 19;
   pointer-events: none;
 }
@@ -189,12 +222,12 @@
 .ship-exterior-socket-debug {
   position: absolute;
   left: var(--ship-hotkey-offset-x);
-  bottom: calc(var(--ship-hotkey-offset-y) + 4.95rem);
-  max-width: min(36rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  bottom: calc(var(--ship-hotkey-offset-y) + 5.65rem);
+  max-width: min(52rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
   padding: 0.24rem 0.45rem;
   border-radius: 0.4rem;
-  border: 1px dashed rgba(147, 211, 255, 0.58);
-  background: linear-gradient(165deg, rgba(10, 32, 47, 0.88), rgba(7, 18, 28, 0.92));
+  border: 1px dashed rgba(147, 211, 255, 0.52);
+  background: linear-gradient(165deg, rgba(10, 32, 47, 0.86), rgba(7, 18, 28, 0.92));
   color: #d7f2ff;
   font-size: 0.5rem;
   letter-spacing: 0.06em;
@@ -208,7 +241,7 @@
   bottom: calc(var(--ship-hotkey-offset-y) + 3rem);
   display: grid;
   gap: 0.12rem;
-  max-width: min(34rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
+  max-width: min(52rem, calc(100% - (var(--ship-hotkey-offset-x) * 2)));
   padding: 0.45rem 0.62rem;
   border-radius: 0.5rem;
   border: 1px solid rgba(138, 224, 255, 0.56);
@@ -262,14 +295,14 @@
 }
 
 .ship-exterior-hotkey-tile {
-  width: 4.85rem;
-  min-height: 2.35rem;
-  padding: 0.22rem 0.35rem;
-  border: 1px solid rgba(111, 165, 187, 0.35);
-  border-radius: 0.5rem;
-  background: rgba(7, 19, 30, 0.84);
+  width: 4.8rem;
+  min-height: 2.3rem;
+  padding: 0.22rem 0.34rem;
+  border: 1px solid rgba(111, 165, 187, 0.38);
+  border-radius: 0.48rem;
+  background: rgba(8, 20, 31, 0.88);
   box-shadow: inset 0 0 0 1px rgba(188, 228, 246, 0.05);
-  color: rgba(150, 181, 196, 0.7);
+  color: rgba(150, 181, 196, 0.72);
   display: grid;
   grid-template-rows: auto 1fr;
   gap: 0.12rem;
@@ -280,6 +313,7 @@
     background-color 140ms ease,
     color 140ms ease,
     transform 140ms ease;
+  pointer-events: auto;
 }
 
 .ship-exterior-hotkey-tile__key {
@@ -341,7 +375,7 @@
 
 .ship-exterior-test-target-button {
   min-height: 2.35rem;
-  padding: 0.3rem 0.62rem;
+  padding: 0.3rem 0.64rem;
   border: 1px solid rgba(255, 205, 122, 0.62);
   border-radius: 0.5rem;
   background: linear-gradient(165deg, rgba(67, 43, 9, 0.92), rgba(36, 23, 6, 0.95));
@@ -357,6 +391,7 @@
     border-color 140ms ease,
     background-color 140ms ease,
     transform 140ms ease;
+  pointer-events: auto;
 }
 
 .ship-exterior-test-target-button:hover {
@@ -382,7 +417,7 @@
     inset 0 0 0 1px rgba(196, 241, 255, 0.08);
   color: #d6f2ff;
   z-index: 18;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .ship-exterior-properties-panel__header {
@@ -417,6 +452,7 @@
     border-color 140ms ease,
     transform 140ms ease;
   z-index: 18;
+  pointer-events: auto;
 }
 
 .ship-exterior-properties-panel__toggle:hover,
@@ -456,7 +492,6 @@
   position: absolute;
   right: var(--ship-properties-offset-x);
   bottom: var(--ship-properties-offset-y);
-  pointer-events: auto;
 }
 
 @media (max-width: 640px) {
