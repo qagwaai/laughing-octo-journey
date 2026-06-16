@@ -147,8 +147,10 @@ describe('AppComponent (Vitest)', () => {
 
     routerEvents$.next(new NavigationEnd(1, '/ship-exterior-view(right:opening-cold-boot-scan)', '/ship-exterior-view(right:opening-cold-boot-scan)'));
     expect(sceneVisibility.isSceneHidden()).toBe(false);
+    expect(sceneVisibility.sceneFrameloop()).toBe('always');
 
     routerEvents$.next(new NavigationEnd(2, '/ship-exterior-view(right:market-hub)', '/ship-exterior-view(right:market-hub)'));
     expect(sceneVisibility.isSceneHidden()).toBe(true);
+    expect(sceneVisibility.sceneFrameloop()).toBe('demand');
   });
 });

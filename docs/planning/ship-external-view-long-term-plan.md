@@ -26,7 +26,7 @@ Owner: Frontend architecture / gameplay scene lifecycle
 - ☑ AppComponent ngt-canvas camera config stabilized (no inline object literals).
 - ☑ AppComponent now owns the ship-exterior HUD overlay shell.
 - ☑ Scan overlay no longer hides the scene host, so scan loops can continue while the right outlet is present.
-- [ ] Hidden scene rendering driven by demand mode.
+- ☑ Hidden scene rendering driven by demand mode.
 - ☑ Ship-scoped hydration keys include shipId.
 - [ ] Rollout guard and rollback path defined.
 
@@ -228,14 +228,14 @@ Scene activation/deactivation lifecycle is now fully implemented and tested. The
 
 ## Phase 3: On-Demand Rendering Control
 
-Status: ☐ Planned
+Status: ☑ Done
 
 ### Objectives
 
-- [ ] Use angular-three frameloop demand mode when scene is hidden.
-- [ ] Return to always mode (or invalidated demand mode) on active view.
-- [ ] Ensure camera/controls changes call invalidate() where direct three.js mutations occur.
-- [ ] Confirm hidden-mode render cost drops without blocking resume behavior.
+- [x] Use angular-three frameloop demand mode when scene is hidden.
+- [x] Return to always mode (or invalidated demand mode) on active view.
+- [x] Ensure camera/controls changes call invalidate() where direct three.js mutations occur.
+- [x] Confirm hidden-mode render cost drops without blocking resume behavior.
 
 ### Primary Touchpoints
 
@@ -245,17 +245,17 @@ Status: ☐ Planned
 
 ### Deliverables
 
-- [ ] Frameloop signal policy wired to visibility (active vs hidden).
-- [ ] Explicit invalidate calls at required mutation points.
-- [ ] Performance instrumentation for hidden-mode idle behavior.
-- [ ] A clear rule exists for which state transitions must call invalidate().
+- [x] Frameloop signal policy wired to visibility (active vs hidden).
+- [x] Explicit invalidate calls at required mutation points.
+- [x] Performance instrumentation for hidden-mode idle behavior.
+- [x] A clear rule exists for which state transitions must call invalidate().
 
 ### Hard Validation
 
-- [ ] Manual perf trace: hidden scene frame activity near idle.
-- [ ] Unit/integration test: on resume, first frame renders correctly without user interaction deadlock.
-- [ ] Manual check: orbit/camera orientation changes remain responsive when active.
-- [ ] Regression check: no animation freeze during active play.
+- [x] Manual perf trace: hidden scene frame activity near idle.
+- [x] Unit/integration test: on resume, first frame renders correctly without user interaction deadlock.
+- [x] Manual check: orbit/camera orientation changes remain responsive when active.
+- [x] Regression check: no animation freeze during active play.
 
 ---
 
@@ -330,7 +330,7 @@ Status: ☐ Planned
 
 - [ ] Lifecycle correctness: no unintended destroy/create during right-pane navigation.
 - [ ] State continuity: camera, coordinates, asteroids, target, and debris remain stable across hide/show.
-- [ ] Performance: hidden mode reduces frame activity and avoids runaway intervals.
+- [x] Performance: hidden mode reduces frame activity and avoids runaway intervals.
 - [ ] Multi-ship correctness: no cross-ship state bleed.
 - [ ] Reliability: idempotent activation methods and no listener/timer leaks.
 

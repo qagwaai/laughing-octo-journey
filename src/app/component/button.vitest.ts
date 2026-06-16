@@ -80,7 +80,7 @@ describe('Button', () => {
 
   it('should log click state transitions', () => {
     const { component } = setup();
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const logSpy = vi.spyOn(console, 'debug').mockImplementation(() => undefined);
 
     component.onClick();
 

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { Euler, Quaternion } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 
 import { createMockMissionService, createMockSessionService, createMockSocketService } from '../../testing';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
@@ -1449,7 +1449,7 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should restart the scan loop after visibility returns', () => {
-    const { component, sceneVisibility } = setup({
+    const { component, fixture, sceneVisibility } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: {
@@ -1464,11 +1464,76 @@ describe('ShipExteriorViewScene', () => {
     const stopScanLoopSpy = vi.spyOn(sessionController['sessionController'], 'stopScanLoop');
 
     sceneVisibility.setRightOutletActive(true);
+    fixture.detectChanges();
     sceneVisibility.setRightOutletActive(false);
+    fixture.detectChanges();
 
     expect(stopScanLoopSpy).toHaveBeenCalledTimes(1);
-    expect(startScanLoopSpy).toHaveBeenCalledTimes(2);
+    expect(startScanLoopSpy).toHaveBeenCalledTimes(1);
     expect(component['sceneLifecycleActive']).toBe(true);
+  });
+
+  it('should invalidate one frame after applying orientation directly to scene camera', () => {
+    const { component } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-render-invalidate',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    const invalidateSpy = vi.fn();
+    const camera = {
+      position: new Vector3(0, 0, 6.6),
+      quaternion: new Quaternion(),
+      lookAt: vi.fn(),
+      updateMatrixWorld: vi.fn(),
+    };
+
+    (component as any)['store'] = {
+      snapshot: { camera },
+      invalidate: invalidateSpy,
+    };
+
+    const restored = (component as any).applyOrientationToSceneCamera({
+      yawRad: 0.24,
+      pitchRad: -0.1,
+      rollRad: 0.05,
+    });
+
+    expect(restored).toBe(true);
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should record hidden demand telemetry and kick a render on resume', () => {
+    const { component, fixture, sceneVisibility } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-hidden-demand-telemetry',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+      },
+    });
+
+    const invalidateSpy = vi.fn();
+    (component as any)['store'] = {
+      snapshot: {},
+      invalidate: invalidateSpy,
+    };
+
+    sceneVisibility.setRightOutletActive(true);
+    fixture.detectChanges();
+    sceneVisibility.setRightOutletActive(false);
+    fixture.detectChanges();
+
+    expect(invalidateSpy).toHaveBeenCalledTimes(2);
+    expect(component.framePressureLine()).toContain('LAST HIDE');
+    expect(component.framePressureLine()).toContain('HIDE INV 1');
+    expect(component.qualityScalerLine()).toContain('MODE ALWAYS');
+    expect(component.qualityScalerLine()).toContain('RESUMES 1');
   });
 
   it('should reconstruct flight world offset from persisted location on re-entry', () => {

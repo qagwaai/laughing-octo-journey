@@ -215,6 +215,12 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly _qualityScaler = signal(1); // [0,1], 1 = best quality
   private readonly qualityScaler = this._qualityScaler;
   private readonly framePressureAvg = computed(() => this.framePressureSampler.getAverage());
+  private readonly hiddenDemandEnteredAtMs = signal<number | null>(null);
+  private readonly lastHiddenDemandDurationMs = signal<number | null>(null);
+  private readonly hiddenDemandInvalidationCount = signal(0);
+  private readonly lastHiddenDemandInvalidationCount = signal(0);
+  private readonly renderInvalidationCount = signal(0);
+  private readonly resumeRenderKickCount = signal(0);
   private static readonly SCAN_TICK_MS = 100;
   private static readonly SENSOR_ARRAY_ITEM_TYPE = 'sensor-array';
   private static readonly TRACTOR_BEAM_ITEM_TYPE = 'ship-tractor-beam';
@@ -271,8 +277,10 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     effect(() => {
       const isHidden = this.sceneVisibility.isSceneHidden();
       if (isHidden) {
+        this.beginHiddenDemandWindow();
         this.deactivateScene();
       } else {
+        this.completeHiddenDemandWindow();
         // Scene is visible; ensure the runtime is active again after any hidden-state flap.
         this.activateScene();
       }
@@ -974,8 +982,30 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   readonly showAnyDebugTag = computed(() => this.showAsteroidDebugTag() || this.showDebrisDebugTag());
 
   // --- Phase 3: Debug HUD lines ---
-  readonly framePressureLine = computed(() => `FRAME PRESSURE // ${this.framePressureAvg().toFixed(2)} ms`);
-  readonly qualityScalerLine = computed(() => `QUALITY SCALER // ${(this.qualityScaler() * 100).toFixed(0)}%`);
+  readonly framePressureLine = computed(() => {
+    const parts = ['FRAME PRESSURE', `${this.framePressureAvg().toFixed(2)} ms`];
+
+    if (!environment.production) {
+      const lastHiddenDurationMs = this.lastHiddenDemandDurationMs();
+      if (lastHiddenDurationMs !== null) {
+        parts.push(`LAST HIDE ${Math.round(lastHiddenDurationMs)} ms`);
+        parts.push(`HIDE INV ${this.lastHiddenDemandInvalidationCount()}`);
+      }
+    }
+
+    return parts.join(' // ');
+  });
+  readonly qualityScalerLine = computed(() => {
+    const parts = ['QUALITY SCALER', `${(this.qualityScaler() * 100).toFixed(0)}%`];
+
+    if (!environment.production) {
+      parts.push(`MODE ${this.sceneVisibility.sceneFrameloop().toUpperCase()}`);
+      parts.push(`RENDERS ${this.renderInvalidationCount()}`);
+      parts.push(`RESUMES ${this.resumeRenderKickCount()}`);
+    }
+
+    return parts.join(' // ');
+  });
 
   private resolveAsteroidCapMultiplier(): { capMultiplier?: number } | undefined {
     const qualityScaler = this.qualityScaler();
@@ -1283,6 +1313,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     this.sceneLifecycleActive = true;
+    this.requestRenderInvalidation();
     if (!this.inputAdapter) {
       this.inputAdapter = new ShipExteriorInputAdapter(
         {
@@ -1728,6 +1759,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     camera.updateMatrixWorld();
+    this.requestRenderInvalidation();
 
     return true;
   }
@@ -2049,6 +2081,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.sessionController.stopScanLoop();
     this.flightController.stop();
     this.inputAdapter?.detach();
+    this.requestRenderInvalidation();
   }
 
   setFlightModeEnabled(enabled: boolean): void {
@@ -2062,6 +2095,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.applyOrientationToSceneCamera(flightOrient);
     }
     this.flightController.setFlightModeEnabled(enabled);
+    this.requestRenderInvalidation();
     if (!enabled) {
       this.flushPreciseFlightLocationToPersistence();
       this.exitPointerLockIfHeld();
@@ -2096,6 +2130,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.pmremGenerator = pmrem;
       this.generatedEnvironmentTexture = envTexture;
       this.sceneEnvironmentInstalled = true;
+      this.requestRenderInvalidation();
     } catch (error) {
       appLogger.warn('Failed to install scene environment map.', error);
     }
@@ -2138,6 +2173,39 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.generatedEnvironmentTexture = null;
     this.pmremGenerator = null;
     this.sceneEnvironmentInstalled = false;
+    this.requestRenderInvalidation();
+  }
+
+  private beginHiddenDemandWindow(): void {
+    if (this.hiddenDemandEnteredAtMs() !== null) {
+      return;
+    }
+
+    this.hiddenDemandEnteredAtMs.set(Date.now());
+    this.hiddenDemandInvalidationCount.set(0);
+  }
+
+  private completeHiddenDemandWindow(): void {
+    const hiddenEnteredAtMs = this.hiddenDemandEnteredAtMs();
+    if (hiddenEnteredAtMs === null) {
+      return;
+    }
+
+    this.lastHiddenDemandDurationMs.set(Math.max(0, Date.now() - hiddenEnteredAtMs));
+    this.lastHiddenDemandInvalidationCount.set(this.hiddenDemandInvalidationCount());
+    this.hiddenDemandEnteredAtMs.set(null);
+    this.hiddenDemandInvalidationCount.set(0);
+    this.resumeRenderKickCount.update((count) => count + 1);
+  }
+
+  private requestRenderInvalidation(): void {
+    // In demand mode we explicitly request a frame after direct Three.js mutations.
+    this.renderInvalidationCount.update((count) => count + 1);
+    if (this.sceneVisibility.isSceneHidden()) {
+      this.hiddenDemandInvalidationCount.update((count) => count + 1);
+    }
+    const invalidate = (this.store as { invalidate?: () => void } | null)?.invalidate;
+    invalidate?.();
   }
 
   toggleFlightMode(): void {

@@ -126,6 +126,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected lookHintOpacity = signal(0);
   protected readonly canvasCameraOptions = { position: [5, 5, 5] as [number, number, number] };
   protected readonly canvasLookAt = [0, 0, 0] as [number, number, number];
+  protected readonly canvasFrameloop = this.sceneVisibility.sceneFrameloop;
 
   protected currentUrl = toSignal(
     this.router.events.pipe(
