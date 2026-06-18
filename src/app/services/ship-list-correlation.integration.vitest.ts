@@ -296,4 +296,134 @@ describe('ship-list correlation integration', () => {
       window.removeEventListener('socket-correlation-warning', listener);
     }
   }));
+
+  it('coalesces concurrent ship-exterior ship-list requests for the same owner', fakeAsync(() => {
+    const callbackA = vi.fn();
+    const callbackB = vi.fn();
+
+    shipExteriorSocketService.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-a' },
+      },
+      callbackA,
+    );
+
+    shipExteriorSocketService.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-a' },
+      },
+      callbackB,
+    );
+
+    const emittedShipListRequests = socketService.emittedEvents.filter(
+      (entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+    );
+    expect(emittedShipListRequests.length).toBe(1);
+
+    const emittedRequest = emittedShipListRequests[0].data as ShipListByOwnerRequest;
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'coalesced-response',
+      correlationId: emittedRequest.correlationId!,
+      requestIdentity: emittedRequest.requestIdentity!,
+      owner: {
+        ownerType: 'player-character',
+        playerId: null,
+        characterId: 'char-a',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as ShipListByOwnerResponse);
+    flushMicrotasks();
+
+    expect(callbackA).toHaveBeenCalledTimes(1);
+    expect(callbackB).toHaveBeenCalledTimes(1);
+  }));
+
+  it('ignores stale correlation-only ship-list responses without emitting contract variance warning', fakeAsync(() => {
+    const warningSpy = vi.fn();
+    const callbackA = vi.fn();
+    const callbackB = vi.fn();
+    const listener = (event: Event): void => {
+      warningSpy(event);
+    };
+
+    window.addEventListener('socket-correlation-warning', listener);
+    try {
+      const unsubscribeA = shipExteriorSocketService.listShipsByOwner(
+        {
+          playerName: 'Pioneer',
+          sessionKey: 'session-1',
+          owner: { ownerType: 'player-character', characterId: 'char-a' },
+        },
+        callbackA,
+      );
+
+      const firstRequest = socketService.emittedEvents.find(
+        (entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+      )?.data as ShipListByOwnerRequest;
+
+      unsubscribeA();
+
+      shipExteriorSocketService.listShipsByOwner(
+        {
+          playerName: 'Pioneer',
+          sessionKey: 'session-1',
+          owner: { ownerType: 'player-character', characterId: 'char-a' },
+        },
+        callbackB,
+      );
+
+      const shipRequests = socketService.emittedEvents.filter(
+        (entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+      );
+      expect(shipRequests.length).toBe(2);
+      const secondRequest = shipRequests[1].data as ShipListByOwnerRequest;
+
+      socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+        success: true,
+        message: 'stale-first-response',
+        correlationId: firstRequest.correlationId!,
+        requestIdentity: firstRequest.requestIdentity!,
+        owner: {
+          ownerType: 'player-character',
+          playerId: null,
+          characterId: 'char-a',
+          npcId: null,
+          factionId: null,
+        },
+        ships: [],
+      } as ShipListByOwnerResponse);
+      flushMicrotasks();
+
+      expect(callbackA).not.toHaveBeenCalled();
+      expect(callbackB).not.toHaveBeenCalled();
+      expect(warningSpy).not.toHaveBeenCalled();
+
+      socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+        success: true,
+        message: 'fresh-second-response',
+        correlationId: secondRequest.correlationId!,
+        requestIdentity: secondRequest.requestIdentity!,
+        owner: {
+          ownerType: 'player-character',
+          playerId: null,
+          characterId: 'char-a',
+          npcId: null,
+          factionId: null,
+        },
+        ships: [],
+      } as ShipListByOwnerResponse);
+      flushMicrotasks();
+
+      expect(callbackB).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('socket-correlation-warning', listener);
+    }
+  }));
 });

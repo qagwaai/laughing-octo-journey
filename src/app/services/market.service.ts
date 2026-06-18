@@ -7,6 +7,13 @@ import {
   type MarketListByLocationRequest,
   type MarketListByLocationResponse,
 } from '../model/market-list';
+import {
+  MARKET_BUY_REQUEST_EVENT,
+  MARKET_BUY_RESPONSE_EVENT,
+  type MarketBuyRequest,
+  type MarketBuyRequestIdentity,
+  type MarketBuyResponse,
+} from '../model/market-buy';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
@@ -34,6 +41,14 @@ function buildDefaultMarketListByLocationRequestIdentity(
     operation: 'market-list-by-location',
     entityType: 'market',
     containerId: normalizeIdentityValue(request.solarSystemId) || 'unknown-solar-system',
+  };
+}
+
+function buildDefaultMarketBuyRequestIdentity(request: MarketBuyRequest): MarketBuyRequestIdentity {
+  return {
+    operation: 'market-buy',
+    entityType: 'market-transaction',
+    containerId: normalizeIdentityValue(request.marketId) || 'unknown-market',
   };
 }
 
@@ -84,6 +99,30 @@ function isMarketListByLocationResponseForRequest(
   return true;
 }
 
+function isMarketBuyResponseForRequest(
+  response: MarketBuyResponse,
+  expectedCorrelationId: string,
+  expectedRequestIdentity: MarketBuyRequestIdentity,
+  expectedRequest: MarketBuyRequest,
+): boolean {
+  const responseCorrelationId = response.correlationId?.trim() ?? '';
+  if (responseCorrelationId) {
+    if (responseCorrelationId !== expectedCorrelationId) {
+      return false;
+    }
+
+    if (response.requestIdentity) {
+      return matchesRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+    }
+  }
+
+  if (response.requestId && expectedRequest.requestId && response.requestId !== expectedRequest.requestId) {
+    return false;
+  }
+
+  return true;
+}
+
 @Injectable({ providedIn: 'root' })
 /**
  * Fetches market snapshots near a location through the market-list socket contract.
@@ -108,6 +147,7 @@ export class MarketService {
     };
 
     let handled = false;
+
     const unsubscribe = this.socketService.on(
       MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
       (response: MarketListByLocationResponse) => {
@@ -141,5 +181,46 @@ export class MarketService {
       },
     );
     this.socketService.emit(MARKET_LIST_BY_LOCATION_REQUEST_EVENT, requestWithCorrelation);
+  }
+
+  /**
+   * Executes a market buy transaction and forwards the first matching response.
+   */
+  buyMarket(request: MarketBuyRequest, onResponse: (response: MarketBuyResponse) => void): void {
+    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('market-buy');
+    const expectedRequestIdentity = request.requestIdentity ?? buildDefaultMarketBuyRequestIdentity(request);
+    const requestWithCorrelation: MarketBuyRequest = {
+      ...request,
+      correlationId: expectedCorrelationId,
+      correlationSource: request.correlationSource ?? 'market-service.buyMarket',
+      requestIdentity: expectedRequestIdentity,
+    };
+
+    let handled = false;
+    const unsubscribe = this.socketService.on(MARKET_BUY_RESPONSE_EVENT, (response: MarketBuyResponse) => {
+      if (handled) {
+        return;
+      }
+
+      if (
+        !isMarketBuyResponseForRequest(response, expectedCorrelationId, expectedRequestIdentity, requestWithCorrelation)
+      ) {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
+          return;
+        }
+
+        appLogger.warn(
+          `[socket-correlation] Dropping unmatched market-buy response. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responseMarketId=${response.transaction?.marketId ?? 'missing'} expectedMarketId=${requestWithCorrelation.marketId} responseItemId=${response.transaction?.itemId ?? 'missing'} expectedItemId=${requestWithCorrelation.itemId}`,
+        );
+        return;
+      }
+
+      handled = true;
+      unsubscribe();
+      onResponse(response);
+    });
+
+    this.socketService.emit(MARKET_BUY_REQUEST_EVENT, requestWithCorrelation);
   }
 }

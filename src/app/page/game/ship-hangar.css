@@ -81,3 +81,41 @@
   cursor: not-allowed;
   opacity: 1;
 }
+
+.dev-tools-note {
+  margin: 0.2rem 0 0.75rem;
+  color: #b4cfff;
+}
+
+.dev-tool-button {
+  background: transparent;
+  border: 1px solid rgba(140, 190, 255, 0.45);
+  color: #8ec5ff;
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: all 0.15s ease-out;
+}
+
+.dev-tool-button:hover:not(:disabled) {
+  border-color: rgba(140, 190, 255, 0.65);
+  background: rgba(140, 190, 255, 0.08);
+  color: #c8ddff;
+}
+
+.dev-tool-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.dev-tools-status {
+  margin: 0.75rem 0 0;
+  color: #d7e8ff;
+}
+
+.dev-tools-error {
+  margin: 0.5rem 0 0;
+  color: #ffb4b4;
+}

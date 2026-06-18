@@ -11,6 +11,7 @@ import {
 } from '../../../testing';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { MarketService } from '../../services/market.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
@@ -23,6 +24,11 @@ function setup(options: {
   navigationState?: Record<string, unknown>;
   connected?: boolean;
 }) {
+  const marketService = {
+    listMarketsByLocation: vi.fn(),
+    buyMarket: vi.fn(),
+  };
+  
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: vi.fn(),
@@ -54,6 +60,7 @@ function setup(options: {
     providers: [
       { provide: SocketService, useValue: options.socketService },
       { provide: SessionService, useValue: options.sessionService },
+      { provide: MarketService, useValue: marketService },
       { provide: MissionService, useValue: missionService },
       { provide: MissionNavigationService, useValue: missionNavigationService },
       { provide: Router, useValue: mockRouter },
@@ -65,7 +72,7 @@ function setup(options: {
   fixture.detectChanges();
   const component = fixture.componentInstance;
 
-  return { component, fixture, mockRouter };
+  return { component, fixture, mockRouter, marketService };
 }
 
 describe('ShipHangarPage', () => {
@@ -304,6 +311,7 @@ describe('ShipHangarPage', () => {
 
   it('should navigate to ship-exterior-view with full ship payload', async () => {
     const character = { id: 'c-1', characterName: 'Nova' };
+    const setActiveSpy = vi.spyOn(sessionService, 'setActiveShip');
     const { component, mockRouter } = setup({
       socketService,
       sessionService,
@@ -325,6 +333,8 @@ describe('ShipHangarPage', () => {
     };
 
     await component.navigateToExteriorView(ship as any);
+
+    expect(setActiveSpy).toHaveBeenCalledWith(ship as any);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }],

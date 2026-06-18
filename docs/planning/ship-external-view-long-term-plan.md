@@ -27,15 +27,8 @@ Owner: Frontend architecture / gameplay scene lifecycle
 - ☑ AppComponent now owns the ship-exterior HUD overlay shell.
 - ☑ Scan overlay no longer hides the scene host, so scan loops can continue while the right outlet is present.
 - ☑ Hidden scene rendering driven by demand mode.
-- ☑ View-state hydration keys include shipId.
-- ☑ Asteroid hydration moved to celestial-body scope; the scene forwards `celestialBodyId` into asteroid state resolution.
-- ☑ Scene bootstrap prefers celestial-body-backed asteroid seeding over persisted asteroid restore when a body id is present.
-- ☑ Backend is authoritative for asteroid state after cold-boot seeding completes.
-- ☑ Floating debris is scene/body-scoped in memory and authoritative backend item lists replace stale debris immediately.
-- ☑ Per-ship view-state isolation implemented via activeShipChangeEffect; switching ships resets orientation and scope.
-- ☑ Multi-ship dev tool added to ship-hangar for cold-boot testing.
-- ☑ All facade tests updated; no cross-ship state contamination detected.
-- [ ] Rollout guard and rollback path defined.
+- ☑ Ship-scoped hydration keys include shipId.
+- ☑ Rollout guard and rollback path defined (Phase 5 execution pending).
 
 ---
 
@@ -106,27 +99,41 @@ Keep a ship-external-view scene mounted and hydrated for the duration of the log
 
 ## Phase 0: ADR and Scope Lock
 
-Status: ☐ Planned
+Status: ◧ In progress
 
 ### Objectives
 
-- [ ] Confirm architecture decision: persistent host + overlay right pages + activate/deactivate lifecycle.
-- [ ] Lock state ownership model (in-memory vs sessionStorage vs localStorage vs backend).
-- [ ] Lock per-ship scoping rules.
+- [x] Confirm architecture decision: persistent host + overlay right pages + activate/deactivate lifecycle.
+- [x] Lock state ownership model (in-memory vs sessionStorage vs localStorage vs backend).
+- [x] Lock per-ship scoping rules.
+
+### ADR Summary (Locked Decisions)
+
+- [x] Architecture: persistent primary scene host in AppComponent + right-outlet overlay pages.
+- [x] Lifecycle: route changes use activate/deactivate transitions, not destroy/recreate scene churn.
+- [x] State ownership: runtime state is session-memory first; backend remains authority for contract-backed entities.
+- [x] Per-ship scoping: `shipId` is required in view-state keys for multi-ship correctness.
+- [x] Asteroid/debris scoping: `celestialBodyId` scope where mission context applies.
+
+### Feature Flag and Rollback Definition
+
+- [x] Feature flag name: `shipExteriorPersistentHostEnabled`.
+- [x] Rollback path: disable `shipExteriorPersistentHostEnabled` to route scene entry back to pre-persistent lifecycle path.
+- [x] Rollback verification gate (execution in Phase 5): perform a dev toggle drill before broad rollout.
 
 ### Deliverables
 
-- [ ] ADR section added to this document.
+- [x] ADR section added to this document.
 - [ ] State ownership matrix approved by frontend and backend owners.
-- [ ] Feature flag name and rollback plan defined.
-- [ ] A concise implementation-state checklist exists in this document.
+- [x] Feature flag name and rollback plan defined.
+- [x] A concise implementation-state checklist exists in this document.
 
 ### Hard Validation
 
 - [ ] Sign-off checklist completed by code owners.
-- [ ] Explicit decision for ship-scoped keys (`shipId` included) documented.
+- [x] Explicit decision for ship-scoped keys (`shipId` included) documented.
 - [ ] Rollback plan tested in dev via feature flag toggle.
-- [ ] Open decisions below are reduced to zero or explicitly deferred.
+- [x] Open decisions below are reduced to zero or explicitly deferred.
 
 ---
 
@@ -268,7 +275,7 @@ Status: ☑ Done
 
 ## Phase 4: Per-Ship Hydrated State Model
 
-Status: ☑ Complete
+Status: ☑ Closed (2026-06-18)
 
 ### Objectives
 
@@ -289,7 +296,7 @@ Status: ☑ Complete
 - [x] Key schema implemented: `shipId` keys view state (camera, flight prefs), `celestialBodyId` keys asteroid/debris state.
 - [x] Debris persistence via `replaceFromShipItems()` authoritative replacement (prunes stale, adds fresh).
 - [x] Reconciliation: backend item lists authoritative; stale cache immediately replaced on mismatch.
-- [x] Per-ship restore path: activeShipChangeEffect detects ship change → resets orientationRestored flag → reloads per-ship view state.
+- [x] Per-ship restore path: activeShipChangeEffect detects ship change -> resets orientationRestored flag -> reloads per-ship view state.
 
 ### Hard Validation
 
@@ -297,10 +304,10 @@ Status: ☑ Complete
 - [x] Unit tests pass (129+) with no heap-out-of-memory errors (memory leak fixed).
 - [x] Facade tests pass after removing obsolete loadAnotherShipForTest interface method.
 - [x] Multi-ship test button on ship-hangar navigates with cold-boot context.
-- [ ] Integration test (manual): switch Ship A -> Ship B -> Ship A and verify each ship restores its own state.
-- [ ] Integration test (manual): collected debris does not reappear after ship change.
-- [ ] Integration test (manual): camera orientation, flight preferences, and target selection per-ship.
-- [ ] Manual check: debris list authoritative after backend item response arrives.
+- [x] Integration test (manual): switch Ship A -> Ship B -> Ship A and verify each ship restores its own state.
+- [x] Integration test (manual): collected debris does not reappear after ship change.
+- [x] Integration test (manual): camera orientation, flight preferences, and target selection per-ship.
+- [x] Manual check: debris list authoritative after backend item response arrives.
 
 ### Implementation State Notes
 
@@ -344,7 +351,7 @@ Status: ☐ Planned
 - [ ] Lifecycle correctness: no unintended destroy/create during right-pane navigation.
 - [ ] State continuity: camera, coordinates, asteroids, target, and debris remain stable across hide/show.
 - [x] Performance: hidden mode reduces frame activity and avoids runaway intervals.
-- [ ] Multi-ship correctness: no cross-ship state bleed.
+- [x] Multi-ship correctness: no cross-ship state bleed.
 - [ ] Reliability: idempotent activation methods and no listener/timer leaks.
 
 ### Visual Indicators for Status Updates
@@ -358,10 +365,10 @@ Status: ☐ Planned
 
 ## Open Decisions
 
-- [ ] Should hidden mode use demand->always toggle, or demand in both states with explicit invalidation?
-- [ ] What is the required stale cache TTL before forced backend reconciliation?
-- [ ] Which states remain session-only vs durable across browser restart?
-- [ ] Is backend scene-checkpoint support in scope for later phases or explicitly out of scope?
+- [x] Should hidden mode use demand->always toggle, or demand in both states with explicit invalidation? (Deferred to Phase 5 rollout tuning.)
+- [x] What is the required stale cache TTL before forced backend reconciliation? (Deferred to Phase 5 telemetry and soak data.)
+- [x] Which states remain session-only vs durable across browser restart? (Deferred to Phase 5 product/ops sign-off; current policy remains session-only.)
+- [x] Is backend scene-checkpoint support in scope for later phases or explicitly out of scope? (Deferred to post-Phase 5 architecture review.)
 
 ---
 
@@ -370,7 +377,7 @@ Status: ☐ Planned
 - [ ] Phase 0 and Phase 1 in one milestone (architecture and host refactor).
 - [ ] Phase 2 immediately after (activation lifecycle correctness).
 - [ ] Phase 3 next (on-demand render pause hardening).
-- [ ] Phase 4 for per-ship correctness and debris continuity.
+- [x] Phase 4 for per-ship correctness and debris continuity.
 - [ ] Phase 5 for controlled rollout and cleanup.
 
 ## Suggested Reporting Format

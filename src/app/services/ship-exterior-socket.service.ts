@@ -46,6 +46,13 @@ export class ShipExteriorSocketService {
   private socketService = inject(SocketService);
   private pendingLaunchByCorrelationId = new Map<string, LaunchItemRequestIdentity>();
   private pendingLaunchTimeoutByCorrelationId = new Map<string, ReturnType<typeof setTimeout>>();
+  private pendingShipListFlightsByKey = new Map<
+    string,
+    {
+      callbacks: Set<(response: ShipListByOwnerResponse) => void>;
+      unsubscribeSocket: () => void;
+    }
+  >();
   private static readonly LAUNCH_NO_RESPONSE_LOG_DELAY_MS = 3000;
 
   private normalizeIdentityValue(value: unknown): string {
@@ -286,6 +293,19 @@ export class ShipExteriorSocketService {
     return this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
   }
 
+  private buildShipListSingleFlightKey(
+    request: ShipListByOwnerRequest,
+    requestIdentity: ShipListByOwnerRequestIdentity,
+  ): string {
+    return [
+      this.normalizeIdentityValue(request.playerName),
+      this.normalizeIdentityValue(request.sessionKey),
+      this.normalizeIdentityValue(requestIdentity.operation),
+      this.normalizeIdentityValue(requestIdentity.entityType),
+      this.normalizeIdentityValue(requestIdentity.containerId),
+    ].join('|');
+  }
+
   private buildDefaultLaunchItemRequestIdentity(request: LaunchItemRequest): LaunchItemRequestIdentity {
     return {
       operation: 'launch-item',
@@ -411,6 +431,26 @@ export class ShipExteriorSocketService {
       requestIdentity: expectedRequestIdentity,
     };
 
+    const singleFlightKey = this.buildShipListSingleFlightKey(requestWithCorrelation, expectedRequestIdentity);
+    const existingFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
+    if (existingFlight) {
+      existingFlight.callbacks.add(onResponse);
+      return () => {
+        const activeFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
+        if (!activeFlight) {
+          return;
+        }
+
+        activeFlight.callbacks.delete(onResponse);
+        if (activeFlight.callbacks.size === 0) {
+          activeFlight.unsubscribeSocket();
+          this.pendingShipListFlightsByKey.delete(singleFlightKey);
+        }
+      };
+    }
+
+    const callbacks = new Set<(response: ShipListByOwnerResponse) => void>([onResponse]);
+
     const unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
       if (
         !this.isShipListByOwnerResponseForRequest(
@@ -461,6 +501,12 @@ export class ShipExteriorSocketService {
           expectedRequestIdentity,
           response.requestIdentity,
         );
+        const isStaleCorrelationOnlyResponse =
+          mismatchReason === 'correlation-id' &&
+          this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+        if (isStaleCorrelationOnlyResponse) {
+          return;
+        }
         const warningDetail = {
           code: 'socket-correlation-unmatched',
           channel: 'ship-exterior-wrapper',
@@ -492,12 +538,37 @@ export class ShipExteriorSocketService {
         return;
       }
 
+      const activeFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
+      if (!activeFlight) {
+        unsubscribe();
+        return;
+      }
+
+      this.pendingShipListFlightsByKey.delete(singleFlightKey);
       unsubscribe();
-      onResponse(response);
+      for (const callback of activeFlight.callbacks) {
+        callback(response);
+      }
+    });
+
+    this.pendingShipListFlightsByKey.set(singleFlightKey, {
+      callbacks,
+      unsubscribeSocket: unsubscribe,
     });
 
     this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, requestWithCorrelation);
-    return unsubscribe;
+    return () => {
+      const activeFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
+      if (!activeFlight) {
+        return;
+      }
+
+      activeFlight.callbacks.delete(onResponse);
+      if (activeFlight.callbacks.size === 0) {
+        activeFlight.unsubscribeSocket();
+        this.pendingShipListFlightsByKey.delete(singleFlightKey);
+      }
+    };
   }
 
   /**

@@ -14,6 +14,7 @@ interface ShipExteriorBootstrapControllerDeps {
   socketService: ShipExteriorSocketService;
   getPlayerName: () => string;
   getCharacterId: () => string | null;
+  getPreferredShipId: () => string | null;
   getLaunchSeedHint: () => number | null;
   missionScenePlugin: MissionScenePlugin;
   setAsteroidSamples: (samples: AsteroidScanSample[]) => void;
@@ -31,6 +32,26 @@ export class ShipExteriorBootstrapController {
   private unsubscribeCelestialBodyListResponse?: () => void;
 
   constructor(private readonly deps: ShipExteriorBootstrapControllerDeps) {}
+
+  private normalizeShipId(value: string | undefined | null): string {
+    return typeof value === 'string' ? value.trim().toLowerCase() : '';
+  }
+
+  private resolvePreferredShip(
+    ships: ShipListByOwnerResponse['ships'],
+  ): NonNullable<ShipListByOwnerResponse['ships']>[number] | undefined {
+    const candidates = ships ?? [];
+    if (candidates.length === 0) {
+      return undefined;
+    }
+
+    const preferredShipId = this.normalizeShipId(this.deps.getPreferredShipId());
+    if (!preferredShipId) {
+      return candidates[0];
+    }
+
+    return candidates.find((ship) => this.normalizeShipId(ship.id) === preferredShipId) ?? candidates[0];
+  }
 
   seedAsteroidsForInProgressMission(): void {
     const playerName = this.deps.getPlayerName().trim();
@@ -62,8 +83,8 @@ export class ShipExteriorBootstrapController {
           this.deps.updateTargetingCapabilityFromShipList(shipResponse.ships);
         }
 
-        const firstShip = shipResponse.success ? shipResponse.ships?.[0] : undefined;
-        const center = firstShip?.spatial?.positionKm;
+        const preferredShip = shipResponse.success ? this.resolvePreferredShip(shipResponse.ships) : undefined;
+        const center = preferredShip?.spatial?.positionKm;
 
         if (!center) {
           const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
@@ -142,8 +163,8 @@ export class ShipExteriorBootstrapController {
 
         this.deps.updateTargetingCapabilityFromShipList(response.ships);
 
-        const firstShip = response.ships?.[0];
-        const center = firstShip?.spatial?.positionKm;
+        const preferredShip = this.resolvePreferredShip(response.ships);
+        const center = preferredShip?.spatial?.positionKm;
         if (!center) {
           const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
           this.deps.setAsteroidSamples(fallbackSamples);

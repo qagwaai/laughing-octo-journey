@@ -259,6 +259,66 @@ describe('MarketService', () => {
     expect(socketService.listenerCount(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT)).toBe(1);
   });
 
+  it('emits market-buy with correlation metadata and resolves matching responses', () => {
+    const request: MarketBuyRequest = {
+      playerName: 'Pioneer',
+      sessionKey: 'session-1',
+      marketId: 'market-1',
+      solarSystemId: 'sol',
+      characterId: 'char-1',
+      itemId: 'scavenger-pod',
+      quantity: 1,
+    };
+    let received: MarketBuyResponse | undefined;
+
+    service.buyMarket(request, (response) => {
+      received = response;
+    });
+
+    expect(socketService.emittedEvents).toEqual([
+      {
+        eventName: MARKET_BUY_REQUEST_EVENT,
+        payload: expect.objectContaining({
+          ...request,
+          correlationId: expect.any(String),
+          correlationSource: 'market-service.buyMarket',
+          requestIdentity: {
+            operation: 'market-buy',
+            entityType: 'market-transaction',
+            containerId: 'market-1',
+          },
+        }),
+      },
+    ]);
+    expect(socketService.listenerCount(MARKET_BUY_RESPONSE_EVENT)).toBe(1);
+
+    const requestPayload = socketService.emittedEvents[0].payload as MarketBuyRequest;
+    socketService.trigger(MARKET_BUY_RESPONSE_EVENT, {
+      success: true,
+      message: 'ok',
+      correlationId: requestPayload.correlationId!,
+      requestIdentity: requestPayload.requestIdentity!,
+      transaction: {
+        transactionId: 'tx-1',
+        requestId: null,
+        marketId: 'market-1',
+        solarSystemId: 'sol',
+        characterId: 'char-1',
+        itemId: 'scavenger-pod',
+        direction: 'buy',
+        quantity: 1,
+        unitPrice: 500,
+        totalPrice: 500,
+        timestamp: '2026-06-18T00:00:00.000Z',
+        characterCredits: 1000,
+        marketStock: 0,
+      },
+    } satisfies MarketBuyResponse);
+
+    expect(received).toBeDefined();
+    expect(socketService.listenerCount(MARKET_BUY_RESPONSE_EVENT)).toBe(0);
+  });
+
   it('rejects fallback responses when distance differs', () => {
     let received: MarketListByLocationResponse | undefined;
     service.listMarketsByLocation(

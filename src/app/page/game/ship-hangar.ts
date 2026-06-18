@@ -9,6 +9,8 @@ import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
+import { type MarketBuyResponse } from '../../model/market-buy';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import {
   coerceShipDamageProfileOrNull,
@@ -20,6 +22,7 @@ import {
 } from '../../model/ship-list';
 import { isValidShipSpatial } from '../../model/spatial';
 import { SessionService } from '../../services/session.service';
+import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
@@ -46,6 +49,7 @@ export default class ShipHangarPage {
   private router = inject(Router);
   private socketLifecycleService = inject(SocketLifecycleService);
   private shipService = inject(ShipService);
+  private marketService = inject(MarketService);
   private sessionService = inject(SessionService);
   private missionService = inject(MissionService);
   private missionNavigationService = inject(MissionNavigationService);
@@ -60,6 +64,10 @@ export default class ShipHangarPage {
   protected ships = signal<ShipSummary[]>([]);
   protected isLoadingShips = signal(false);
   protected shipListError = signal<string | null>(null);
+  protected showDevTools = computed(() => !environment.production);
+  protected isBuyingTestShip = signal(false);
+  protected devToolStatus = signal<string | null>(null);
+  protected devToolError = signal<string | null>(null);
 
   constructor() {
     this.socketLifecycleService.runWhenConnected(() => this.loadShipsForCharacter());
@@ -136,6 +144,112 @@ export default class ShipHangarPage {
     });
   }
 
+  buyScavengerPodFromClosestMarket(): void {
+    const playerName = this.playerName().trim();
+    const joinCharacter = this.joinCharacter();
+    const characterId = joinCharacter?.id?.trim() ?? '';
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const activeShip = this.sessionService.activeShip();
+    const solarSystemId = activeShip?.spatial?.solarSystemId?.trim() ?? '';
+    const positionKm = activeShip?.spatial?.positionKm;
+
+    this.devToolError.set(null);
+    this.devToolStatus.set(null);
+
+    if (!playerName || !characterId || !sessionKey) {
+      this.devToolError.set('Player, character, and session context are required for the dev buy test.');
+      return;
+    }
+
+    if (!solarSystemId || !positionKm) {
+      this.devToolError.set('Active ship spatial data is required to locate the closest market.');
+      return;
+    }
+
+    this.isBuyingTestShip.set(true);
+    this.buyScavengerPodFromClosestMarketCore({ playerName, sessionKey, characterId, activeShip });
+  }
+
+  private buyScavengerPodFromClosestMarketCore(context: {
+    playerName: string;
+    sessionKey: string;
+    characterId: string;
+    activeShip: ShipSummary | null;
+  }): void {
+    const activeShip = context.activeShip;
+    const solarSystemId = activeShip?.spatial?.solarSystemId?.trim() ?? '';
+    const positionKm = activeShip?.spatial?.positionKm;
+
+    if (!solarSystemId || !positionKm) {
+      this.isBuyingTestShip.set(false);
+      this.devToolError.set('Active ship spatial data is required to locate the closest market.');
+      this.devToolStatus.set(null);
+      return;
+    }
+
+    this.devToolStatus.set('Finding closest market...');
+
+    const request: MarketListByLocationRequest = {
+      playerName: context.playerName,
+      sessionKey: context.sessionKey,
+      solarSystemId,
+      positionKm,
+      distanceAu: 50,
+      limit: 10,
+      locationTypes: ['station', 'free-floating'],
+      characterId: context.characterId,
+      shipId: activeShip?.id,
+    };
+
+    this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
+      if (!response.success) {
+        this.isBuyingTestShip.set(false);
+        this.devToolError.set(response.message);
+        this.devToolStatus.set(null);
+        return;
+      }
+
+      const closestMarket = response.markets?.[0];
+      if (!closestMarket) {
+        this.isBuyingTestShip.set(false);
+        this.devToolError.set('No market was returned by the closest-market lookup.');
+        this.devToolStatus.set(null);
+        return;
+      }
+
+      this.devToolStatus.set(`Buying Scavenger Pod at ${closestMarket.marketName}...`);
+      this.marketService.buyMarket(
+        {
+          playerName: context.playerName,
+          sessionKey: context.sessionKey,
+          marketId: closestMarket.marketId,
+          solarSystemId: closestMarket.solarSystemId,
+          characterId: context.characterId,
+          itemId: 'scavenger-pod',
+          quantity: 1,
+          requestId: `dev-scavenger-pod-${Date.now()}`,
+        },
+        (buyResponse: MarketBuyResponse) => {
+          this.isBuyingTestShip.set(false);
+          if (!buyResponse.success) {
+            this.devToolError.set(buyResponse.message);
+            this.devToolStatus.set(null);
+            return;
+          }
+
+          const purchasedShip = buyResponse.transaction?.purchasedShip;
+          this.devToolError.set(null);
+          this.devToolStatus.set(
+            purchasedShip
+              ? `Purchased ${purchasedShip.shipName} (${purchasedShip.id}). Refreshing hangar...`
+              : 'Purchased Scavenger Pod. Refreshing hangar...',
+          );
+          this.loadShipsForCharacter();
+        },
+      );
+    });
+  }
+
   private normalizeShipSummary(ship: ShipSummary): ShipSummary {
     const rawShip = ship as ShipSummary & { modelName?: string; tierLevel?: number };
     const normalizedModel = coerceShipModel(rawShip.model ?? rawShip.modelName);
@@ -207,6 +321,8 @@ export default class ShipHangarPage {
    * registered initialization strategy.
    */
   async navigateToExteriorView(ship: ShipSummary): Promise<void> {
+    this.sessionService.setActiveShip(ship);
+
     const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
     const joinCharacter = this.joinCharacter();
     const playerName = this.playerName();

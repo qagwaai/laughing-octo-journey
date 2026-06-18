@@ -346,7 +346,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   protected playerName = signal(this.navigationState.playerName ?? 'Unknown Pilot');
   protected characterName = computed(() => this.navigationState.joinCharacter?.characterName?.trim() || 'Unbound');
-  protected shipModel = computed(() => coerceShipModel(this.navigationState.joinShip?.model));
+  protected shipModel = signal(coerceShipModel(this.navigationState.joinShip?.model));
   private readonly normalizedNavigationInventory = coerceShipInventory(this.navigationState.joinShip?.inventory);
   protected hasExpendableDartDrone = signal(
     this.missionDefinition.resolveTargetingCapabilityFromInventory(this.normalizedNavigationInventory),
@@ -356,6 +356,17 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
   private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
   private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
+  private lastAppliedSessionShipId = '';
+  private readonly sessionActiveShipSelectionSync = effect(() => {
+    const sessionShip = this.sessionService.activeShip();
+    const normalizedSessionShipId = this.normalizeShipId(sessionShip?.id);
+    if (!sessionShip || !normalizedSessionShipId || normalizedSessionShipId === this.lastAppliedSessionShipId) {
+      return;
+    }
+
+    this.lastAppliedSessionShipId = normalizedSessionShipId;
+    this.applySessionShipSelection(sessionShip);
+  });
   private launchableInventory = signal(this.resolveLaunchableInventory(this.normalizedNavigationInventory));
   private readonly shipDamageController = new ShipDamageController(
     this.navigationState.missionContext?.shipDamagePreset,
@@ -420,6 +431,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     socketService: this.shipExteriorSocketService,
     getPlayerName: () => this.navigationState.playerName?.trim() ?? '',
     getCharacterId: () => this.navigationState.joinCharacter?.id?.trim() ?? null,
+    getPreferredShipId: () => this.activeShipId().trim() || this.navigationState.joinShip?.id?.trim() || null,
     getLaunchSeedHint: () => this.launchSeedHint,
     missionScenePlugin: this.missionScenePlugin,
     setAsteroidSamples: (samples) => this.setAsteroidSamples(samples),
@@ -518,10 +530,25 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     // Touch activeShipId to register this effect as dependent on ship changes
-    this.activeShipId();
+    const selectedShipId = this.activeShipId().trim();
+    if (!selectedShipId) {
+      return;
+    }
+
+    this.activeScanAsteroidId.set(null);
+    this.setTargetedAsteroidId(null);
+    this.targetedDebrisId.set(null);
 
     // Reload debris scope for the new ship's celestial body context
     this.floatingDebrisStateService.setScope(this.navigationState.missionContext?.celestialBodyId?.trim() ?? null);
+    this.floatingDebrisController.requestNearbyItems();
+
+    // Rebuild local asteroid field around the currently selected ship.
+    if (this.resolveSeedPolicy() === 'new') {
+      this.bootstrapController.seedAsteroidsAroundStarterShip();
+    } else {
+      this.bootstrapController.seedAsteroidsForInProgressMission();
+    }
 
     // Reset orientation-restored flag so viewOrientationRestoreEffect will reload the per-ship state
     this.orientationRestored = false;
@@ -1527,8 +1554,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   };
 
   private resolveNavigationShipLocationKm(): Triple | null {
+    // Hangar "View Exterior" explicitly targets a ship row; honor that ship first.
     const location =
-      this.sessionService.activeShip()?.spatial?.positionKm ?? this.navigationState.joinShip?.spatial?.positionKm;
+      this.navigationState.joinShip?.spatial?.positionKm ?? this.sessionService.activeShip()?.spatial?.positionKm;
     if (!location) {
       return null;
     }
@@ -1555,8 +1583,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
 
   private resolveNavigationSolarSystemId(): string {
     return (
-      this.sessionService.activeShip()?.spatial?.solarSystemId?.trim() ||
       this.navigationState.joinShip?.spatial?.solarSystemId?.trim() ||
+      this.sessionService.activeShip()?.spatial?.solarSystemId?.trim() ||
       DEFAULT_SOLAR_SYSTEM_ID
     );
   }
@@ -2430,6 +2458,33 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     return null;
+  }
+
+  private applySessionShipSelection(sessionShip: ShipSummary): void {
+    this.navigationState.joinShip = sessionShip;
+    this.shipModel.set(coerceShipModel(sessionShip.model));
+
+    const normalizedInventory = coerceShipInventory(sessionShip.inventory);
+    this.launchableInventory.set(this.resolveLaunchableInventory(normalizedInventory));
+    this.hasExpendableDartDrone.set(
+      this.missionDefinition.resolveTargetingCapabilityFromInventory(normalizedInventory),
+    );
+
+    const normalizedShipId = sessionShip.id?.trim() ?? '';
+    this.activeShipId.set(normalizedShipId);
+
+    if (isValidShipSpatial(sessionShip.spatial)) {
+      const nextLocation = sessionShip.spatial.positionKm;
+      const nextSolarSystemId = sessionShip.spatial.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+      this.activeShipLocationKm.set(nextLocation);
+      this.activeSolarSystemId.set(nextSolarSystemId);
+      this.lastFlightPersistedLocationKey = this.resolveLocationKey(nextLocation);
+      this.flightController.initializeCurrentLocationFromReference(nextLocation, nextLocation);
+      this.flightController.syncCurrentLocationFromShip(nextLocation);
+    }
+
+    this.shipDamageController.resolveFromShipSummary(sessionShip);
+    this.refreshContractBackedRouteFeeds();
   }
 
   private resolveLocationKey(location: Triple): string {

@@ -63,5 +63,25 @@
       </ul>
       }
     </section>
+
+    @if (showDevTools()) {
+    <section class="ops-card dev-tools">
+      <h2>Dev Tools</h2>
+      <p class="dev-tools-note">Buy a Tier 1 Scavenger Pod from the closest market using the active ship position.</p>
+      <button type="button" class="dev-tool-button" [disabled]="isBuyingTestShip()" (click)="buyScavengerPodFromClosestMarket()">
+        @if (isBuyingTestShip()) {
+        BUYING...
+        } @else {
+        BUY TEST SCAVENGER POD
+        }
+      </button>
+      @if (devToolStatus()) {
+      <p class="dev-tools-status">{{ devToolStatus() }}</p>
+      }
+      @if (devToolError()) {
+      <p class="dev-tools-error">{{ devToolError() }}</p>
+      }
+    </section>
+    }
   </div>
 </div>

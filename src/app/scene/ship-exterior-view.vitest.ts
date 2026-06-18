@@ -1789,6 +1789,32 @@ describe('ShipExteriorViewScene', () => {
     expect(mockCamera.updateMatrixWorld).toHaveBeenCalled();
   });
 
+  it('should prefer navigation ship spatial over session active ship on entry', () => {
+    setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-2',
+        model: 'Scavenger Pod',
+        spatial: {
+          solarSystemId: 'sol-beta',
+          positionKm: { x: 2200, y: 0, z: 0 },
+        },
+      },
+      sessionShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: {
+          solarSystemId: 'sol-alpha',
+          positionKm: { x: -376803807, y: 839741, z: 66211291 },
+        },
+      },
+    });
+
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getActiveShipLocationKm()).toEqual({ x: 2200, y: 0, z: 0 });
+  });
+
   it('should preserve fresher session ship spatial when ship-list response is older', () => {
     const { mockSocket, mockSession } = setup({
       playerName: 'Pioneer',
@@ -1833,6 +1859,35 @@ describe('ShipExteriorViewScene', () => {
 
     const api = (window as any).__shipExteriorTestUtils;
     expect(api.getActiveShipLocationKm()).toEqual({ x: 2500, y: 0, z: -1200 });
+  });
+
+  it('should update active ship location when session active ship changes', () => {
+    const { mockSession } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol-alpha', positionKm: { x: -376803807, y: 839741, z: 66211291 } },
+      },
+    });
+
+    mockSession.setActiveShip({
+      id: 'ship-2',
+      name: 'Second Pod',
+      model: 'Scavenger Pod',
+      tier: 1,
+      spatial: {
+        solarSystemId: 'sol-beta',
+        frame: 'barycentric',
+        positionKm: { x: 2200, y: 0, z: 0 },
+        epochMs: 900,
+      },
+      inventory: [],
+    } as any);
+
+    const api = (window as any).__shipExteriorTestUtils;
+    expect(api.getActiveShipLocationKm()).toEqual({ x: 2200, y: 0, z: 0 });
   });
 
   it('should expose SW-13B metadata lines for the focused asteroid sample', () => {
