@@ -43,6 +43,24 @@ describe('FloatingDebrisStateService', () => {
     expect(service.getAll()).toEqual([]);
   });
 
+  it('should isolate debris by celestial body scope', () => {
+    service.setScope('cb-1');
+    service.upsertLocal([
+      {
+        id: 'local-cb-1',
+        itemType: 'sensor-array',
+        displayName: 'Sensor Array',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+
+    service.setScope('cb-2');
+    expect(service.getAll()).toEqual([]);
+
+    service.setScope('cb-1');
+    expect(service.getAll().map((item) => item.id)).toEqual(['local-cb-1']);
+  });
+
   it('should map and store valid ship items', () => {
     service.upsertFromShipItems([createShipItem()]);
 
@@ -171,6 +189,21 @@ describe('FloatingDebrisStateService', () => {
 
     service.clear();
     expect(service.items()).toEqual([]);
+  });
+
+  it('should replace stale debris with authoritative ship items', () => {
+    service.upsertLocal([
+      { id: 'stale-local', itemType: 'sensor-array', displayName: 'Sensor', positionKm: { x: 0, y: 0, z: 0 } },
+    ]);
+
+    service.replaceFromShipItems([
+      createShipItem({
+        id: 'fresh-server',
+        displayName: 'Fresh Server Debris',
+      }),
+    ]);
+
+    expect(service.getAll().map((item) => item.id)).toEqual(['fresh-server']);
   });
 
   it('removeById deletes the entry and returns true (positive)', () => {

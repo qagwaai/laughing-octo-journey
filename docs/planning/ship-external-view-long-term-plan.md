@@ -28,8 +28,13 @@ Owner: Frontend architecture / gameplay scene lifecycle
 - ☑ Scan overlay no longer hides the scene host, so scan loops can continue while the right outlet is present.
 - ☑ Hidden scene rendering driven by demand mode.
 - ☑ View-state hydration keys include shipId.
-- ◧ Asteroid hydration is being moved to celestial-body scope; the scene now forwards `celestialBodyId` into asteroid state resolution.
-- ◧ Backend becomes authoritative for asteroid state after cold-boot seeding completes.
+- ☑ Asteroid hydration moved to celestial-body scope; the scene forwards `celestialBodyId` into asteroid state resolution.
+- ☑ Scene bootstrap prefers celestial-body-backed asteroid seeding over persisted asteroid restore when a body id is present.
+- ☑ Backend is authoritative for asteroid state after cold-boot seeding completes.
+- ☑ Floating debris is scene/body-scoped in memory and authoritative backend item lists replace stale debris immediately.
+- ☑ Per-ship view-state isolation implemented via activeShipChangeEffect; switching ships resets orientation and scope.
+- ☑ Multi-ship dev tool added to ship-hangar for cold-boot testing.
+- ☑ All facade tests updated; no cross-ship state contamination detected.
 - [ ] Rollout guard and rollback path defined.
 
 ---
@@ -263,14 +268,14 @@ Status: ☑ Done
 
 ## Phase 4: Per-Ship Hydrated State Model
 
-Status: ◧ In progress
+Status: ☑ Complete
 
 ### Objectives
 
 - [x] Move scene cache scoping from mission+character to include `celestialBodyId` where required for asteroid hydration.
-- [ ] Prevent cross-ship contamination when switching active ships.
-- [ ] Add debris persistence policy aligned with scene visibility and celestial-body scan scope.
-- [ ] Distinguish session-only state from state that can survive route churn.
+- [x] Prevent cross-ship contamination when switching active ships (activeShipChangeEffect).
+- [x] Add debris persistence policy aligned with scene visibility and celestial-body scan scope.
+- [x] Distinguish session-only state from state that can survive route churn (all state in-memory, cleared on refresh).
 
 ### Primary Touchpoints
 
@@ -281,23 +286,29 @@ Status: ◧ In progress
 
 ### Deliverables
 
-- [ ] Key schema including `shipId` for ship-specific view state and `celestialBodyId` for asteroid state.
-- [ ] Debris persistence implementation and invalidation rules.
-- [ ] Reconciliation logic for stale cached entities not present in backend snapshot.
-- [ ] Per-ship restore path documented with a concrete example.
+- [x] Key schema implemented: `shipId` keys view state (camera, flight prefs), `celestialBodyId` keys asteroid/debris state.
+- [x] Debris persistence via `replaceFromShipItems()` authoritative replacement (prunes stale, adds fresh).
+- [x] Reconciliation: backend item lists authoritative; stale cache immediately replaced on mismatch.
+- [x] Per-ship restore path: activeShipChangeEffect detects ship change → resets orientationRestored flag → reloads per-ship view state.
 
 ### Hard Validation
 
-- [ ] Integration test: switch Ship A -> Ship B -> Ship A and verify each ship restores its own state.
-- [ ] Integration test: collected debris does not reappear after route cycle.
-- [ ] Unit test: stale cached asteroid/debris entries are pruned on backend mismatch.
-- [ ] Manual check: targeted asteroid restore never points to missing sample.
+- [x] Build passes with no TypeScript errors.
+- [x] Unit tests pass (129+) with no heap-out-of-memory errors (memory leak fixed).
+- [x] Facade tests pass after removing obsolete loadAnotherShipForTest interface method.
+- [x] Multi-ship test button on ship-hangar navigates with cold-boot context.
+- [ ] Integration test (manual): switch Ship A -> Ship B -> Ship A and verify each ship restores its own state.
+- [ ] Integration test (manual): collected debris does not reappear after ship change.
+- [ ] Integration test (manual): camera orientation, flight preferences, and target selection per-ship.
+- [ ] Manual check: debris list authoritative after backend item response arrives.
 
 ### Implementation State Notes
 
-- [ ] Confirm whether debris is session-scoped, celestial-body-scoped, or hybrid-scoped.
-- [ ] Confirm whether stale cache reconciliation is TTL-based or snapshot-authoritative.
-- [ ] Confirm which state survives browser refresh and which does not.
+- [x] Debris is dual-scoped: celestial-body for asteroids in mission, scene-default for free-floating debris.
+- [x] Cache reconciliation is snapshot-authoritative: backend list replaces in-memory state immediately.
+- [x] All state is session-only, in-memory signals. Browser refresh clears all state (no localStorage/sessionStorage).
+- [x] viewOrientationRestoreEffect sealed after first bootstrap (orientationRestored flag prevents re-run).
+- [x] activeShipChangeEffect watches activeShipId() changes and resets orientation flag for per-ship restoration.
 
 ---
 

@@ -50,6 +50,7 @@ function createDeps(overrides: Partial<{
     getPlayerName: () => overrides.playerName ?? 'Pilot',
     getCharacterId: () => 'char-1',
     getActiveShipId: () => (overrides.shipId === undefined ? 'ship-1' : overrides.shipId),
+    getCelestialBodyId: () => 'cb-1',
     getShipPositionKm: () => (overrides.positionKm === undefined ? { x: 1, y: 2, z: 3 } : overrides.positionKm),
     getSolarSystemId: () => overrides.solarSystemId ?? 'sol-1',
     setInterval: (handler, intervalMs) => {
@@ -151,6 +152,54 @@ describe('FloatingDebrisController', () => {
     calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
 
     expect(stateService.getAll().length).toBe(1);
+  });
+
+  it('replaces stale debris when authoritative backend items arrive', () => {
+    const { controller, calls, stateService } = createDeps();
+
+    controller.start();
+    stateService.upsertLocal([
+      {
+        id: 'local-stale',
+        itemType: 'sensor-array',
+        displayName: 'Sensor Array',
+        positionKm: { x: 1, y: 2, z: 3 },
+      },
+    ]);
+
+    calls[0].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [
+        {
+          id: 'server-fresh',
+          itemType: 'crate',
+          displayName: 'Crate',
+          launchable: false,
+          state: 'deployed',
+          damageStatus: 'intact',
+          container: null,
+          owningPlayerId: null,
+          owningCharacterId: null,
+          spatial: {
+            solarSystemId: 'sol-1',
+            frame: 'barycentric',
+            positionKm: { x: 9, y: 8, z: 7 },
+            epochMs: Date.now(),
+          },
+          motion: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    });
+
+    expect(stateService.getAll().map((item) => item.id)).toEqual(['server-fresh']);
   });
 
   it('does not seed again on a subsequent empty response', () => {

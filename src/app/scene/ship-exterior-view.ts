@@ -433,6 +433,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     getPlayerName: () => this.playerName(),
     getCharacterId: () => this.navigationState.joinCharacter?.id?.trim() ?? null,
     getActiveShipId: () => this.activeShipId() || null,
+    getCelestialBodyId: () => this.navigationState.missionContext?.celestialBodyId?.trim() ?? null,
     getShipPositionKm: () => this.activeShipLocationKm() ?? this.resolveNavigationShipLocationKm(),
     getSolarSystemId: () => this.activeSolarSystemId() || this.resolveNavigationSolarSystemId(),
   });
@@ -510,6 +511,22 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.orientationRestored = true;
     }
   });
+
+  private readonly activeShipChangeEffect = effect(() => {
+    if (!this.sceneBootstrapped) {
+      return;
+    }
+
+    // Touch activeShipId to register this effect as dependent on ship changes
+    this.activeShipId();
+
+    // Reload debris scope for the new ship's celestial body context
+    this.floatingDebrisStateService.setScope(this.navigationState.missionContext?.celestialBodyId?.trim() ?? null);
+
+    // Reset orientation-restored flag so viewOrientationRestoreEffect will reload the per-ship state
+    this.orientationRestored = false;
+  });
+
   readonly shipConditionLine = computed(() => {
     const profile = this.shipDamageController.current();
     if (!profile) {
@@ -1365,7 +1382,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       'navigation-state',
       this.activeShipId(),
     );
-    const restoredPersistedAsteroids = this.restorePersistedAsteroidSamples();
+    const hasCelestialBodyScope = !!this.navigationState.missionContext?.celestialBodyId?.trim();
+    const restoredPersistedAsteroids = !hasCelestialBodyScope && this.restorePersistedAsteroidSamples();
     if (restoredPersistedAsteroids) {
       this.refreshShipStateAfterLaunch();
     } else if (seedPolicy === 'new') {
@@ -1373,6 +1391,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       this.clearPersistedMissionGateState();
       this.initializeMissionGateState();
       this.bootstrapController.seedAsteroidsAroundStarterShip();
+    } else if (hasCelestialBodyScope) {
+      this.bootstrapController.seedAsteroidsForInProgressMission();
     } else {
       if (!this.restorePersistedAsteroidSamples()) {
         this.bootstrapController.seedAsteroidsForInProgressMission();

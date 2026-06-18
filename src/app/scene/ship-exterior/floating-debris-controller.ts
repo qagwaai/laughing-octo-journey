@@ -21,6 +21,7 @@ export interface FloatingDebrisControllerDeps {
   getPlayerName: () => string;
   getCharacterId: () => string | null;
   getActiveShipId: () => string | null;
+  getCelestialBodyId: () => string | null;
   getShipPositionKm: () => Triple | null;
   getSolarSystemId: () => string;
   /** Injectable timer hooks for deterministic unit testing. */
@@ -52,7 +53,7 @@ export class FloatingDebrisController {
       return;
     }
     this.started = true;
-    this.deps.stateService.clear();
+    this.deps.stateService.setScope(this.deps.getCelestialBodyId());
     this.requestNearbyItems();
 
     const setIntervalFn = this.deps.setInterval ?? ((handler, interval) => window.setInterval(handler, interval));
@@ -128,7 +129,7 @@ export class FloatingDebrisController {
       if (this.hasSeededColdBoot) {
         this.deps.stateService.removeById(FloatingDebrisController.COLD_BOOT_TRACTOR_BEAM_ID);
       }
-      this.deps.stateService.upsertFromShipItems(items);
+      this.deps.stateService.replaceFromShipItems(items);
       this.hasIngestedAnyResponse = true;
       return;
     }
