@@ -27,7 +27,9 @@ Owner: Frontend architecture / gameplay scene lifecycle
 - ☑ AppComponent now owns the ship-exterior HUD overlay shell.
 - ☑ Scan overlay no longer hides the scene host, so scan loops can continue while the right outlet is present.
 - ☑ Hidden scene rendering driven by demand mode.
-- ☑ Ship-scoped hydration keys include shipId.
+- ☑ View-state hydration keys include shipId.
+- ◧ Asteroid hydration is being moved to celestial-body scope; the scene now forwards `celestialBodyId` into asteroid state resolution.
+- ◧ Backend becomes authoritative for asteroid state after cold-boot seeding completes.
 - [ ] Rollout guard and rollback path defined.
 
 ---
@@ -261,13 +263,13 @@ Status: ☑ Done
 
 ## Phase 4: Per-Ship Hydrated State Model
 
-Status: ☐ Planned
+Status: ◧ In progress
 
 ### Objectives
 
-- [ ] Move scene cache scoping from mission+character to include `shipId` where required.
+- [x] Move scene cache scoping from mission+character to include `celestialBodyId` where required for asteroid hydration.
 - [ ] Prevent cross-ship contamination when switching active ships.
-- [ ] Add debris persistence policy aligned with ship scope.
+- [ ] Add debris persistence policy aligned with scene visibility and celestial-body scan scope.
 - [ ] Distinguish session-only state from state that can survive route churn.
 
 ### Primary Touchpoints
@@ -279,7 +281,7 @@ Status: ☐ Planned
 
 ### Deliverables
 
-- [ ] Key schema including `shipId` for ship-specific state.
+- [ ] Key schema including `shipId` for ship-specific view state and `celestialBodyId` for asteroid state.
 - [ ] Debris persistence implementation and invalidation rules.
 - [ ] Reconciliation logic for stale cached entities not present in backend snapshot.
 - [ ] Per-ship restore path documented with a concrete example.
@@ -293,7 +295,7 @@ Status: ☐ Planned
 
 ### Implementation State Notes
 
-- [ ] Confirm whether debris is session-scoped, ship-scoped, or hybrid-scoped.
+- [ ] Confirm whether debris is session-scoped, celestial-body-scoped, or hybrid-scoped.
 - [ ] Confirm whether stale cache reconciliation is TTL-based or snapshot-authoritative.
 - [ ] Confirm which state survives browser refresh and which does not.
 

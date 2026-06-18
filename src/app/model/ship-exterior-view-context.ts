@@ -8,6 +8,7 @@ export type ShipExteriorViewSeedPolicy = 'auto' | 'new' | 'resume';
 
 export interface ShipExteriorViewMissionContext {
   missionId: string;
+  celestialBodyId?: string;
   missionStatusHint?: MissionStatus;
   seedPolicy?: ShipExteriorViewSeedPolicy;
   shipDamagePreset?: ShipDamagePreset;

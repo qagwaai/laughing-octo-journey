@@ -5,6 +5,7 @@ import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample'
  * Storage key identity used for scan-sample persistence.
  */
 export interface ShipExteriorAsteroidStateContext {
+  celestialBodyId?: string;
   missionId: string;
   playerName: string;
   characterId: string;
@@ -143,6 +144,17 @@ export class ShipExteriorAsteroidStateService {
   }
 
   private resolveStorageKey(context: ShipExteriorAsteroidStateContext): string | null {
+    const celestialBodyId = context.celestialBodyId?.trim();
+    if (celestialBodyId) {
+      const playerName = context.playerName?.trim().toLowerCase();
+      const characterId = context.characterId?.trim();
+      if (!playerName || !characterId) {
+        return null;
+      }
+
+      return `${ShipExteriorAsteroidStateService.STORAGE_PREFIX}:${celestialBodyId}:${playerName}:${characterId}`;
+    }
+
     const missionId = context.missionId?.trim();
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();
@@ -154,6 +166,17 @@ export class ShipExteriorAsteroidStateService {
   }
 
   private resolveTargetedStorageKey(context: ShipExteriorAsteroidStateContext): string | null {
+    const celestialBodyId = context.celestialBodyId?.trim();
+    if (celestialBodyId) {
+      const playerName = context.playerName?.trim().toLowerCase();
+      const characterId = context.characterId?.trim();
+      if (!playerName || !characterId) {
+        return null;
+      }
+
+      return `${ShipExteriorAsteroidStateService.TARGETED_STORAGE_PREFIX}:${celestialBodyId}:${playerName}:${characterId}`;
+    }
+
     const missionId = context.missionId?.trim();
     const playerName = context.playerName?.trim().toLowerCase();
     const characterId = context.characterId?.trim();

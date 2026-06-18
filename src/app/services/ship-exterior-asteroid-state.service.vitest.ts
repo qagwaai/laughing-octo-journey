@@ -71,6 +71,52 @@ describe('ShipExteriorAsteroidStateService', () => {
     ).toBeNull();
   });
 
+  it('should isolate state by celestial body when provided and ignore ship identity', () => {
+    const bodyScopedContext = {
+      ...context,
+      celestialBodyId: 'cb-1',
+    };
+    const samples: AsteroidScanSample[] = [
+      {
+        id: 'sample-body-1',
+        serverCelestialBodyId: null,
+        position: [1, 2, 3],
+        basePosition: [1, 2, 3],
+        scanProgress: 10,
+        scanned: false,
+        revealedMaterial: null,
+        revealedKinematics: null,
+        solarSystemLocation: { positionKm: { x: 1, y: 2, z: 3 } },
+        clusterCenterKm: { x: 1, y: 2, z: 3 },
+        capturedKinematics: {
+          velocityKmPerSec: { x: 0, y: 0, z: 0 },
+          angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+          estimatedMassKg: 1_000,
+          estimatedDiameterM: 10,
+        },
+        motionPhase: 0,
+        motionRate: 0.1,
+        motionRadius: 0.2,
+        bobAmplitude: 0.03,
+      },
+    ];
+
+    service.saveSamples(bodyScopedContext, samples);
+
+    expect(
+      service.loadSamples({
+        ...context,
+        celestialBodyId: 'cb-2',
+      }),
+    ).toBeNull();
+    expect(
+      service.loadSamples({
+        ...context,
+        celestialBodyId: 'cb-1',
+      }),
+    ).toEqual(samples);
+  });
+
   it('should save and restore targeted asteroid sample id', () => {
     service.saveTargetedSampleId(context, 'sample-a1');
 

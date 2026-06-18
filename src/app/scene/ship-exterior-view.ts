@@ -1558,6 +1558,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     const playerName = this.playerName().trim();
     const characterId = this.navigationState.joinCharacter?.id?.trim();
     const missionId = this.missionDefinition.missionId?.trim();
+    const celestialBodyId = this.navigationState.missionContext?.celestialBodyId?.trim();
     if (!playerName || !characterId || !missionId) {
       appLogger.warn('[ship-exterior-view] resolveAsteroidStateContext: null context', {
         hasPlayerName: !!playerName,
@@ -1568,6 +1569,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     return {
+      celestialBodyId: celestialBodyId || undefined,
       missionId,
       playerName,
       characterId,

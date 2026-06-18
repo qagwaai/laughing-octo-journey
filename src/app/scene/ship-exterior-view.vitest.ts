@@ -39,6 +39,12 @@ interface NavigationState {
     spatial?: { solarSystemId?: string; positionKm: { x: number; y: number; z: number } };
   };
   firstTargetMissionStatus?: string;
+  missionContext?: {
+    missionId?: string;
+    celestialBodyId?: string;
+    missionStatusHint?: string;
+    seedPolicy?: 'auto' | 'new' | 'resume';
+  };
   sessionShip?: {
     id: string;
     name?: string;
@@ -1577,6 +1583,30 @@ describe('ShipExteriorViewScene', () => {
     const api = (window as any).__shipExteriorTestUtils;
     expect(api.getTargetedAsteroidId()).toBe('sample-a2');
     expect(mockAsteroidState.loadTargetedSampleId).toHaveBeenCalled();
+  });
+
+  it('should forward celestialBodyId into asteroid state hydration context', () => {
+    const { mockAsteroidState } = setup({
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1' },
+      joinShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+      },
+      missionContext: {
+        missionId: 'first-target',
+        celestialBodyId: 'cb-1',
+      },
+    } as any);
+
+    expect(mockAsteroidState.loadSamples).toHaveBeenCalledWith(
+      expect.objectContaining({
+        celestialBodyId: 'cb-1',
+        missionId: 'first-target',
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+      }),
+    );
   });
 
   it('should restore persisted flight preferences on init', () => {
