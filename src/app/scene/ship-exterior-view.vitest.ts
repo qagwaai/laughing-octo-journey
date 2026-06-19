@@ -142,9 +142,6 @@ function setup(state?: NavigationState) {
     loadOrientation: vi.fn().mockReturnValue(state?.persistedViewOrientation ?? null),
     saveOrientation: vi.fn(),
     clearOrientation: vi.fn(),
-    loadCameraPose: vi.fn().mockReturnValue(null),
-    saveCameraPose: vi.fn(),
-    clearCameraPose: vi.fn(),
     loadFlightPreferences: vi.fn().mockReturnValue(state?.persistedFlightPreferences ?? null),
     saveFlightPreferences: vi.fn(),
     clearFlightPreferences: vi.fn(),
@@ -1862,7 +1859,7 @@ describe('ShipExteriorViewScene', () => {
   });
 
   it('should update active ship location when session active ship changes', () => {
-    const { mockSession } = setup({
+    const { fixture, mockSession } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1' },
       joinShip: {
@@ -1885,6 +1882,8 @@ describe('ShipExteriorViewScene', () => {
       },
       inventory: [],
     } as any);
+
+    fixture.detectChanges();
 
     const api = (window as any).__shipExteriorTestUtils;
     expect(api.getActiveShipLocationKm()).toEqual({ x: 2200, y: 0, z: 0 });
@@ -2567,6 +2566,72 @@ describe('ShipExteriorViewScene - tractor beam', () => {
     expect(beginTargetHoldSpy).not.toHaveBeenCalled();
     expect(component['activeLaunchToast']()?.message).toContain('Sensor array unavailable');
     expect(component['activeLaunchToast']()?.tone).toBe('error');
+  });
+
+  it('onAsteroidHoverChange clears target hold when hover exits the hold candidate', () => {
+    const { component } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip!,
+        inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20 }],
+      },
+    });
+
+    component['sessionController']['targetHoldCandidate'].set('asteroid-1');
+    component['onAsteroidHoverChange']({ id: 'asteroid-1', hovering: false });
+
+    expect(component['targetHoldCandidateId']()).toBeNull();
+  });
+
+  it('removeAsteroidSamples clears target hold when backend removes the hold candidate asteroid', () => {
+    const { component } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip!,
+        inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20 }],
+      },
+    });
+
+    component['asteroidSamples'].set([makeSample('asteroid-1')]);
+    component['sessionController']['targetHoldCandidate'].set('asteroid-1');
+
+    component['removeAsteroidSamples'](['asteroid-1']);
+
+    expect(component['targetHoldCandidateId']()).toBeNull();
+  });
+
+  it('clears target hold when sensor array capability is lost mid-hold', () => {
+    const { component, fixture, mockSession } = setup({
+      ...shipNavState(),
+      joinShip: {
+        ...shipNavState().joinShip!,
+        inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20, damageStatus: 'intact' } as any],
+      },
+      sessionShip: {
+        id: 'ship-1',
+        model: 'Scavenger Pod',
+        spatial: { solarSystemId: 'sol', positionKm: { x: 0, y: 0, z: 0 } },
+        inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20, damageStatus: 'intact' }],
+      },
+    });
+
+    component['asteroidSamples'].set([makeSample('asteroid-1')]);
+    component['sessionController']['targetHoldCandidate'].set('asteroid-1');
+
+    mockSession.setActiveShip({
+      id: 'ship-1',
+      model: 'Scavenger Pod',
+      spatial: {
+        solarSystemId: 'sol',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: 0 },
+        epochMs: Date.now(),
+      },
+      inventory: [{ id: 'sensor-20', itemType: 'sensor-array', tier: 20, damageStatus: 'destroyed' }],
+    } as any);
+    fixture.detectChanges();
+
+    expect(component['targetHoldCandidateId']()).toBeNull();
   });
 
   it('beginDebrisTargetHold blocks debris targeting and toasts when no sensor array is installed', () => {

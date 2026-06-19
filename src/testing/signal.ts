@@ -1,11 +1,8 @@
-/** Lightweight writable-signal substitute for use in spec files. */
-export type WritableSignalLike<T> = (() => T) & { set(v: T): void };
+import { signal, type WritableSignal } from '@angular/core';
+
+/** Writable signal type used by testing mocks. */
+export type WritableSignalLike<T> = WritableSignal<T>;
 
 export function createSignal<T>(initial: T): WritableSignalLike<T> {
-  let value = initial;
-  const sig = (() => value) as WritableSignalLike<T>;
-  sig.set = (v: T) => {
-    value = v;
-  };
-  return sig;
+  return signal(initial);
 }

@@ -6,6 +6,7 @@ import { GameShellPage } from '../page-objects/game-shell.page';
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-flight-position-persistence';
 const TEST_SHIP_ID = 'ship-flight-position-persistence';
+const SHIP_EXTERIOR_VIEW_URL_PATTERN = /(?:right:ship-exterior-view|\/ship-exterior-view(?:\(|$))/;
 
 function shipSummary(positionKm: { x: number; y: number; z: number }) {
   return {
@@ -153,10 +154,11 @@ function configureNavigateAwayPersistenceMock(
 
 const flightPanel = (page: Page) => page.locator('.ship-exterior-flight-panel');
 const flightToggle = (page: Page) => page.locator('.ship-exterior-flight-panel__toggle');
+const COORDS_PATTERN = /COORD KM\s*\/\/\s*X\s+(-?\d+(?:\.\d+)?)\s+Y\s+(-?\d+(?:\.\d+)?)\s+Z\s+(-?\d+(?:\.\d+)?)/;
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
   const text = (await flightPanel(page).innerText()).trim();
-  const match = text.match(/COORD KM\s*\/\/\s*X\s+(-?\d+)\s+Y\s+(-?\d+)\s+Z\s+(-?\d+)/);
+  const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
   }
@@ -288,14 +290,14 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
 
-    await expect(page).toHaveURL(/right:ship-exterior-view/, { timeout: 15_000 });
+    await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await expect(flightPanel(page)).toBeVisible();
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterReturn = await readCoords(page);
     expect(coordsAfterReturn).not.toBeNull();
     expect(coordsAfterReturn).toEqual(movedCoords);
-    expect(toTelemetryCoords(persistedPosition)).toEqual(movedCoords);
+    expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(movedCoords));
   });
 
   test('keeps latest coordinates across repeated re-entry cycles with different away-page order', async ({ page }) => {
@@ -335,12 +337,12 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const shipRow = page.locator('.ship-item').first();
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
-    await expect(page).toHaveURL(/right:ship-exterior-view/, { timeout: 15_000 });
+    await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterFirstReturn = await readCoords(page);
     expect(coordsAfterFirstReturn).toEqual(firstMovedCoords);
-    expect(toTelemetryCoords(persistedPosition)).toEqual(firstMovedCoords);
+    expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(firstMovedCoords));
 
     await toggle.focus();
     await page.keyboard.press('Enter');
@@ -360,11 +362,11 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const shipRowSecondCycle = page.locator('.ship-item').first();
     await expect(shipRowSecondCycle).toBeVisible({ timeout: 10_000 });
     await shipRowSecondCycle.locator('button', { hasText: 'View Exterior' }).click();
-    await expect(page).toHaveURL(/right:ship-exterior-view/, { timeout: 15_000 });
+    await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterSecondReturn = await readCoords(page);
     expect(coordsAfterSecondReturn).toEqual(secondMovedCoords);
-    expect(toTelemetryCoords(persistedPosition)).toEqual(secondMovedCoords);
+    expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(secondMovedCoords));
   });
 });

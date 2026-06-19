@@ -321,7 +321,8 @@ export default class ShipHangarPage {
    * registered initialization strategy.
    */
   async navigateToExteriorView(ship: ShipSummary): Promise<void> {
-    this.sessionService.setActiveShip(ship);
+    const navigationShip = this.resolvePreferredExteriorNavigationShip(ship);
+    this.sessionService.setActiveShip(navigationShip);
 
     const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
     const joinCharacter = this.joinCharacter();
@@ -357,8 +358,6 @@ export default class ShipHangarPage {
         missionContext = { ...missionContext, shipDamagePreset: damagePreset };
       }
     }
-
-    const navigationShip = this.resolvePreferredExteriorNavigationShip(ship);
 
     this.router.navigate([{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }], {
       preserveFragment: true,

@@ -94,9 +94,11 @@ const flightToggle = (page: Page) =>
 const flightHint = (page: Page) =>
   page.locator('.ship-exterior-flight-panel__hint');
 
+const COORDS_PATTERN = /COORD KM\s*\/\/\s*X\s+(-?\d+(?:\.\d+)?)\s+Y\s+(-?\d+(?:\.\d+)?)\s+Z\s+(-?\d+(?:\.\d+)?)/;
+
 async function readCoordZ(page: Page): Promise<number | null> {
   const text = (await flightPanel(page).innerText()).trim();
-  const match = text.match(/COORD KM\s*\/\/\s*X\s+(-?\d+)\s+Y\s+(-?\d+)\s+Z\s+(-?\d+)/);
+  const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
   }
@@ -105,7 +107,7 @@ async function readCoordZ(page: Page): Promise<number | null> {
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
   const text = (await flightPanel(page).innerText()).trim();
-  const match = text.match(/COORD KM\s*\/\/\s*X\s+(-?\d+)\s+Y\s+(-?\d+)\s+Z\s+(-?\d+)/);
+  const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
   }

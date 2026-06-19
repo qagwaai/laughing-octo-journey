@@ -326,11 +326,14 @@ test.describe('Viewer — Character Ships', () => {
     await targetShipButton.click();
     await expect(targetShipButton).toHaveAttribute('aria-pressed', 'true');
 
-    // Wait for target-fly tween to settle.
-    await page.waitForTimeout(4_200);
+    // Wait until the rendered frame changes instead of relying on a fixed delay.
+    await expect
+      .poll(async () => getCanvasFrameSignature(canvas), {
+        timeout: 10_000,
+        intervals: [300, 600, 1_000],
+      })
+      .not.toBe(before);
 
-    const after = await getCanvasFrameSignature(canvas);
-    expect(after).not.toBe(before);
     await expect(viewerPage.sceneError).toHaveCount(0);
   });
 

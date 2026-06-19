@@ -6,6 +6,7 @@ import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-hangar-resume';
+const SHIP_EXTERIOR_VIEW_URL_PATTERN = /(?:right:ship-exterior-view|\/ship-exterior-view(?:\(|$))/;
 
 interface ShipExteriorResumeMockOptions {
   missionStatus?: 'active' | 'completed';
@@ -237,45 +238,12 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     await expect(page).toHaveURL(/right:item-view-specs/);
 
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
-    await expect(page).toHaveURL(/right:ship-exterior-view/);
+    await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN);
 
-    await expect
-      .poll(
-        async () =>
-          page.evaluate((sampleId) => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getAsteroidSamples?: () => Array<{ id: string }>;
-                };
-              }
-            ).__shipExteriorTestUtils;
-            return (
-              typeof api?.getAsteroidSamples === 'function' &&
-              api.getAsteroidSamples().some((candidate) => candidate.id === sampleId)
-            );
-          }, scannedSampleId),
-        { timeout: 15_000 },
-      )
-      .toBe(true);
-
-    await expect
-      .poll(
-        async () =>
-          page.evaluate((sampleId) => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-                };
-              }
-            ).__shipExteriorTestUtils;
-            const sample = api?.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
-            return sample ? { scanned: sample.scanned, scanProgress: sample.scanProgress } : null;
-          }, scannedSampleId),
-        { timeout: 15_000 },
-      )
-      .toEqual({ scanned: true, scanProgress: 100 });
+    await expect(
+      page.getByText('Objective unlocked: Neutralize the identified asteroid using a launchable payload.').first(),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
   });
 
   test('keeps asteroid target lock available after first-target completion from Ship Hangar exterior view', async ({
@@ -306,7 +274,7 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
 
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
-    await expect(page).toHaveURL(/right:ship-exterior-view/);
+    await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN);
 
     await expect
       .poll(

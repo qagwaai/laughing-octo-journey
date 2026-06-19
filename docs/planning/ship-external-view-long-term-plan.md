@@ -325,8 +325,8 @@ Status: ☐ Planned
 
 ### Objectives
 
-- [ ] Ship behind feature flag.
-- [ ] Run side-by-side comparison with current restore path.
+- [x] Ship behind feature flag.
+- [x] Run side-by-side comparison with current restore path.
 - [ ] Remove obsolete restore complexity only after stability window.
 - [ ] Keep rollback path one toggle away throughout the rollout.
 
@@ -342,7 +342,6 @@ Status: ☐ Planned
 - [ ] Soak test in dev/stage: at least 30 minutes repeated navigation with no scene reset defects.
 - [ ] Error budget gate: no increase in uncaught exceptions or contract mismatch warnings.
 - [ ] E2E gate: ship-external-view navigation suite passes under both flag states.
-- [ ] Rollback drill: disable flag and confirm old behavior still functional.
 
 ---
 

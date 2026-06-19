@@ -17,6 +17,7 @@ function makeControllerHarness(overrides?: {
   characterId?: string | null;
   sessionKey?: string | null;
   launchSeedHint?: number | null;
+  preferredShipId?: string | null;
 }) {
   const fallbackSamples = makeSamples('fallback');
   const resumedSamples = makeSamples('resumed');
@@ -45,6 +46,7 @@ function makeControllerHarness(overrides?: {
     socketService,
     getPlayerName: () => (overrides?.playerName === undefined ? 'Pioneer' : overrides.playerName),
     getCharacterId: () => (overrides?.characterId === undefined ? 'char-1' : overrides.characterId),
+    getPreferredShipId: () => (overrides?.preferredShipId === undefined ? null : overrides.preferredShipId),
     getLaunchSeedHint: () => (overrides?.launchSeedHint === undefined ? 17 : overrides.launchSeedHint),
     missionScenePlugin: {
       seedPolicy: {

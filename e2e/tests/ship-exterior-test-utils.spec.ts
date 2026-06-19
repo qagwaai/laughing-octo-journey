@@ -7,6 +7,288 @@ const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-ship-exterior';
 
 test.describe('Ship Exterior Test Utilities', () => {
+  test('cancels right-hold targeting when asteroid hover exits before lock completes', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+
+    mock.on('character-list-request', () => ({
+      event: 'character-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characters: [
+          {
+            id: TEST_CHARACTER_ID,
+            characterName: 'Scout Alpha',
+            level: 2,
+            missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+          },
+        ],
+      },
+    }));
+
+    mock.on('game-join-request', () => null);
+
+    mock.on('list-missions-request', () => ({
+      event: 'list-missions-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        missions: [
+          {
+            missionId: FIRST_TARGET_MISSION_ID,
+            status: 'active',
+          },
+        ],
+      },
+    }));
+
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        ships: [
+          {
+            id: 'ship-1',
+            name: 'Starter Pod',
+            model: 'Scavenger Pod',
+            status: 'Damaged',
+            inventory: [
+              {
+                id: 'item-drone-1',
+                itemType: 'expendable-dart-drone',
+                displayName: 'Expendable Dart Drone',
+                launchable: true,
+                state: 'contained',
+                damageStatus: 'intact',
+                container: { containerType: 'ship', containerId: 'ship-1' },
+                owningPlayerId: TEST_PLAYER,
+                owningCharacterId: TEST_CHARACTER_ID,
+                kinematics: null,
+                destroyedAt: null,
+                destroyedReason: null,
+                discoveredAt: null,
+                discoveredByCharacterId: null,
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:00:00.000Z',
+              },
+              {
+                id: 'item-sensor-20',
+                itemType: 'sensor-array',
+                displayName: 'Sensor Array T20',
+                launchable: false,
+                tier: 20,
+                state: 'contained',
+                damageStatus: 'intact',
+                container: { containerType: 'ship', containerId: 'ship-1' },
+                owningPlayerId: TEST_PLAYER,
+                owningCharacterId: TEST_CHARACTER_ID,
+                kinematics: null,
+                destroyedAt: null,
+                destroyedReason: null,
+                discoveredAt: null,
+                discoveredByCharacterId: null,
+                createdAt: '2026-05-01T00:00:00.000Z',
+                updatedAt: '2026-05-01T00:00:00.000Z',
+              },
+            ],
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 1_000_000, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            motion: {
+              velocityKmPerSec: { x: 0, y: 0, z: 0 },
+            },
+            observability: {
+              visibility: 'visible',
+              scanState: 'scanned',
+            },
+          },
+        ],
+      },
+    }));
+
+    mock.on('celestial-body-list-request', () => ({
+      event: 'celestial-body-list-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        solarSystemId: 'sol',
+        positionKm: { x: 1_000_000, y: 0, z: 0 },
+        distanceKm: 900_000,
+        celestialBodies: [],
+      },
+    }));
+
+    mock.on('celestial-body-upsert-request', (request) => {
+      const payload = request as {
+        celestialBody?: {
+          id?: string;
+          sourceScanId?: string;
+          catalogId?: string;
+          createdByCharacterId?: string;
+          createdAt?: string;
+          updatedAt?: string;
+          spatial?: unknown;
+          motion?: unknown;
+          physical?: unknown;
+          composition?: unknown;
+          observability?: unknown;
+          state?: 'active' | 'destroyed';
+        };
+      };
+      const celestialBody = payload.celestialBody ?? {};
+      return {
+        event: 'celestial-body-upsert-response',
+        data: {
+          success: true,
+          message: '',
+          celestialBody: {
+            id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
+            sourceScanId: celestialBody.sourceScanId ?? 'generated',
+            catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
+            createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
+            createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
+            updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
+            spatial: celestialBody.spatial,
+            motion: celestialBody.motion,
+            physical: celestialBody.physical,
+            composition: celestialBody.composition,
+            observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
+            state: celestialBody.state ?? 'active',
+          },
+        },
+      };
+    });
+
+    mock.on('mission-upsert-request', () => ({
+      event: 'mission-upsert-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+      },
+    }));
+
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getAsteroidSamples?: () => Array<{ id: string }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return api?.getAsteroidSamples?.()[0]?.id ?? null;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeTruthy();
+
+    const started = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getAsteroidSamples: () => Array<{ id: string }>;
+            beginAsteroidTargetHold: (id: string) => boolean;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      const firstId = api?.getAsteroidSamples()?.[0]?.id;
+      if (!firstId || !api) {
+        return false;
+      }
+      return api.beginAsteroidTargetHold(firstId);
+    });
+
+    expect(started).toBe(true);
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: { getTargetHoldCandidateId: () => string | null };
+            }
+          ).__shipExteriorTestUtils;
+          return api?.getTargetHoldCandidateId?.() ?? null;
+        }),
+      )
+      .toBeTruthy();
+
+    await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getAsteroidSamples: () => Array<{ id: string }>;
+            unhoverAsteroid: (id: string) => boolean;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      const firstId = api?.getAsteroidSamples()?.[0]?.id;
+      if (api && firstId) {
+        api.unhoverAsteroid(firstId);
+      }
+    });
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getTargetHoldCandidateId: () => string | null;
+                getTargetedAsteroidId: () => string | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return {
+            holdCandidate: api?.getTargetHoldCandidateId?.() ?? null,
+            targeted: api?.getTargetedAsteroidId?.() ?? null,
+          };
+        }),
+      )
+      .toEqual({ holdCandidate: null, targeted: null });
+
+    await page.waitForTimeout(2600);
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getTargetHoldCandidateId: () => string | null;
+                getTargetedAsteroidId: () => string | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return {
+            holdCandidate: api?.getTargetHoldCandidateId?.() ?? null,
+            targeted: api?.getTargetedAsteroidId?.() ?? null,
+          };
+        }),
+      )
+      .toEqual({ holdCandidate: null, targeted: null });
+  });
+
   test('supports deterministic mission progression without real 3D pointer raycast', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();

@@ -339,6 +339,18 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     (this.router.getCurrentNavigation()?.extras.state as ShipExteriorViewNavigationState | undefined) ??
     (history.state as ShipExteriorViewNavigationState | undefined) ??
     {};
+  private readonly routeEntryShipLocationKm: Triple | null = (() => {
+    const location = this.navigationState.joinShip?.spatial?.positionKm;
+    if (!location) {
+      return null;
+    }
+
+    return {
+      x: location.x,
+      y: location.y,
+      z: location.z,
+    };
+  })();
   private readonly missionScenePlugin: MissionScenePlugin = resolveMissionScenePlugin(
     this.navigationState.missionContext?.missionId ?? FIRST_TARGET_MISSION_ID,
   );
@@ -356,7 +368,8 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   );
   private activeShipLocationKm = signal<Triple | null>(this.resolveNavigationShipLocationKm());
   private activeSolarSystemId = signal(this.resolveNavigationSolarSystemId());
-  private lastAppliedSessionShipId = '';
+  // Seed with the current session ship so the sync effect only applies future changes.
+  private lastAppliedSessionShipId = this.normalizeShipId(this.sessionService.activeShip()?.id);
   private readonly sessionActiveShipSelectionSync = effect(() => {
     const sessionShip = this.sessionService.activeShip();
     const normalizedSessionShipId = this.normalizeShipId(sessionShip?.id);
@@ -524,17 +537,29 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
   });
 
+  private lastHandledActiveShipId = '';
   private readonly activeShipChangeEffect = effect(() => {
     if (!this.sceneBootstrapped) {
       return;
     }
 
-    // Touch activeShipId to register this effect as dependent on ship changes
+    // Touch activeShipId to register this effect as dependent on ship changes.
     const selectedShipId = this.activeShipId().trim();
     if (!selectedShipId) {
       return;
     }
 
+    // First post-bootstrap run establishes baseline without resetting restored targeting state.
+    if (!this.lastHandledActiveShipId) {
+      this.lastHandledActiveShipId = selectedShipId;
+      return;
+    }
+
+    if (this.lastHandledActiveShipId === selectedShipId) {
+      return;
+    }
+
+    this.lastHandledActiveShipId = selectedShipId;
     this.activeScanAsteroidId.set(null);
     this.setTargetedAsteroidId(null);
     this.targetedDebrisId.set(null);
@@ -744,6 +769,34 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   private readonly activeSensorArrayCapabilities = computed<ItemTierCapabilities | null>(() =>
     this.resolveActiveSensorArrayCapabilities(),
   );
+  private readonly targetHoldSensorCapabilityGuard = effect(() => {
+    const holdCandidateId = this.targetHoldCandidateId();
+    if (!holdCandidateId) {
+      return;
+    }
+
+    if (this.activeSensorArrayCapabilities()) {
+      return;
+    }
+
+    this.clearTargetHoldTimer();
+  });
+  private readonly targetHoldCandidateExistenceGuard = effect(() => {
+    const holdCandidateId = this.targetHoldCandidateId();
+    if (!holdCandidateId) {
+      return;
+    }
+
+    const asteroidExists = this.asteroidSamples().some((sample) => sample.id === holdCandidateId);
+    if (asteroidExists) {
+      return;
+    }
+
+    const debrisExists = this.floatingDebrisItems().some((item) => item.id === holdCandidateId);
+    if (!debrisExists) {
+      this.clearTargetHoldTimer();
+    }
+  });
   private readonly activeTractorBeamCapabilities = computed<TractorBeamTierCapabilities | null>(() =>
     this.resolveActiveTractorBeamCapabilities(),
   );
@@ -1393,7 +1446,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.lastViewInitializationDetails = initializationDetails;
     this.flightController.initializeCurrentLocationFromReference(currentLocation, routeEntryReferenceLocation);
     this.restorePersistedFlightPreferences();
-    this.restorePersistedSceneElapsedSeconds();
     this.socketLifecycleService.ensureConnected();
     this.installSceneEnvironment();
     this.initializeMissionGateState();
@@ -1429,7 +1481,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
     this.restorePersistedTargetedAsteroidId();
     this.sceneBootstrapped = true;
-    this.schedulePersistedViewOrientationRestore();
     this.resumeSceneRuntime();
   }
 
@@ -1448,34 +1499,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     this.inputAdapter?.attach();
   }
 
-  private schedulePersistedViewOrientationRestore(maxAttempts = 8): void {
-    let attempts = 0;
 
-    const tryRestore = () => {
-      if (this.orientationRestored) {
-        return;
-      }
-
-      this.restorePersistedViewOrientation();
-      attempts += 1;
-
-      // After max attempts, mark as restored regardless so re-entry
-      // never triggers the restore effect again.
-      if (this.orientationRestored || attempts >= maxAttempts) {
-        this.orientationRestored = true;
-        return;
-      }
-
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => tryRestore());
-        return;
-      }
-
-      setTimeout(() => tryRestore(), 0);
-    };
-
-    tryRestore();
-  }
 
   private resolveSeedPolicy(): 'new' | 'resume' {
     const missionStatusHint =
@@ -1554,9 +1578,31 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   };
 
   private resolveNavigationShipLocationKm(): Triple | null {
+    const navigationShip = this.navigationState.joinShip;
+    const navigationLocation = navigationShip?.spatial?.positionKm;
+    const sessionShip = this.sessionService.activeShip();
+    const sessionLocation = sessionShip?.spatial?.positionKm;
+
+    // If navigation and session point to the same ship, prefer session spatial
+    // because it may carry fresher in-session flight checkpoints.
+    const normalizedNavigationShipId = this.normalizeShipId(navigationShip?.id);
+    const normalizedSessionShipId = this.normalizeShipId(sessionShip?.id);
+    if (
+      navigationLocation &&
+      sessionLocation &&
+      normalizedNavigationShipId &&
+      normalizedSessionShipId &&
+      normalizedNavigationShipId === normalizedSessionShipId
+    ) {
+      return {
+        x: sessionLocation.x,
+        y: sessionLocation.y,
+        z: sessionLocation.z,
+      };
+    }
+
     // Hangar "View Exterior" explicitly targets a ship row; honor that ship first.
-    const location =
-      this.navigationState.joinShip?.spatial?.positionKm ?? this.sessionService.activeShip()?.spatial?.positionKm;
+    const location = navigationLocation ?? sessionLocation;
     if (!location) {
       return null;
     }
@@ -1569,7 +1615,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
   }
 
   private resolveRouteEntryShipLocationKm(): Triple | null {
-    const location = this.navigationState.joinShip?.spatial?.positionKm;
+    const location = this.routeEntryShipLocationKm;
     if (!location) {
       return null;
     }
@@ -1719,22 +1765,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     };
   }
 
-  private restorePersistedViewOrientation(): void {
-    const context = this.resolveViewStateContext();
-    if (!context) {
-      return;
-    }
 
-    const orientation = this.viewStateService.loadOrientation(context);
-    if (!orientation) {
-      return;
-    }
-
-    this.flightController.restoreOrientation(orientation);
-    if (this.applyOrientationToSceneCamera(orientation)) {
-      this.orientationRestored = true;
-    }
-  }
 
   private restorePersistedFlightPreferences(): void {
     const context = this.resolveViewStateContext();
@@ -1763,28 +1794,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     });
   }
 
-  private restorePersistedSceneElapsedSeconds(): void {
-    const context = this.resolveViewStateContext();
-    if (!context) {
-      return;
-    }
 
-    const elapsedSeconds = this.viewStateService.loadSceneElapsedSeconds(context);
-    if (elapsedSeconds === null) {
-      return;
-    }
-
-    this.sceneElapsedSeconds = elapsedSeconds;
-  }
-
-  private persistSceneElapsedSeconds(): void {
-    const context = this.resolveViewStateContext();
-    if (!context) {
-      return;
-    }
-
-    this.viewStateService.saveSceneElapsedSeconds(context, this.sceneElapsedSeconds);
-  }
 
   private applyOrientationToSceneCamera(orientation: FlightOrientation): boolean {
     const camera = this.store?.snapshot.camera;
@@ -2115,7 +2125,6 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     });
     this.flushPreciseFlightLocationToPersistence();
     this.persistViewOrientation();
-    this.persistSceneElapsedSeconds();
     this.unregisterTestUtils();
     this.unsubscribeShipListResponse?.();
     this.unsubscribeShipListResponse = undefined;
@@ -3061,6 +3070,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     const matchingSampleIds = new Set(sampleIds);
+    const holdCandidateId = this.targetHoldCandidateId();
 
     let didChange = false;
     this.asteroidSamples.update((samples) => {
@@ -3077,6 +3087,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
     if (matchingSampleIds.has(this.activeScanAsteroidId() ?? '')) {
       this.activeScanAsteroidId.set(null);
+    }
+    if (holdCandidateId && matchingSampleIds.has(holdCandidateId)) {
+      this.clearTargetHoldTimer();
     }
   }
 
@@ -3387,6 +3400,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
         })),
       getActiveSensorArrayTier: () => this.activeSensorArrayCapabilities()?.tier ?? null,
       getTargetedAsteroidId: () => this.targetedAsteroidId(),
+      getTargetHoldCandidateId: () => this.targetHoldCandidateId(),
       getActiveScanAsteroidId: () => this.activeScanAsteroidId(),
       getScanStatusLine: () => this.scanStatusLine(),
       getSw13DebugText: () => ({
@@ -3401,6 +3415,7 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
       }),
       getActiveLaunchToast: () => this.activeLaunchToast(),
       onAsteroidHoverChange: (event) => this.onAsteroidHoverChange(event),
+      onAsteroidRightPointerDown: (event) => this.onAsteroidRightPointerDown(event),
       canTargetAsteroids: () => this.canTargetAsteroids(),
       updateTargetingCapabilityFromShipList: (ships) =>
         this.updateTargetingCapabilityFromShipList(ships as ShipSummary[] | undefined),
@@ -3518,6 +3533,9 @@ export default class ShipExteriorViewScene implements OnInit, OnDestroy {
     }
 
     this.resetPartialScanProgress(event.id);
+    if (this.targetHoldCandidateId() === event.id) {
+      this.clearTargetHoldTimer();
+    }
 
     if (this.activeScanAsteroidId() === event.id) {
       const sample = this.asteroidSamples().find((candidate) => candidate.id === event.id);

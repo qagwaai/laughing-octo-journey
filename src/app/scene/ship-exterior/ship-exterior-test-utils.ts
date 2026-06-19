@@ -39,6 +39,7 @@ export interface ShipExteriorViewTestApi {
   getLaunchHotkeySlots(): Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean; launching: boolean; itemType: string | null }>;
   getActiveSensorArrayTier(): number | null;
   getTargetedAsteroidId(): string | null;
+  getTargetHoldCandidateId(): string | null;
   setTargetedAsteroidId(sampleId: string | null): void;
   getActiveScanAsteroidId(): string | null;
   getScanStatusLine(): string;
@@ -55,6 +56,7 @@ export interface ShipExteriorViewTestApi {
   getActiveLaunchToast(): { message: string; tone: string } | null;
   hoverAsteroid(sampleId: string): boolean;
   unhoverAsteroid(sampleId: string): boolean;
+  beginAsteroidTargetHold(sampleId: string): boolean;
   forceTargetAsteroid(sampleId: string): boolean;
   simulateShipListTargetingCapabilityUpdate(ships: unknown[] | undefined): void;
   tickScanTicks(ticks?: number): AsteroidScanSample[];
@@ -85,6 +87,7 @@ export interface RegisterShipExteriorTestUtilsContext {
   getLaunchHotkeySlots: () => Array<{ hotkey: 1 | 2 | 3 | 4 | 5; label: string; enabled: boolean; launching: boolean; itemType: string | null }>;
   getActiveSensorArrayTier: () => number | null;
   getTargetedAsteroidId: () => string | null;
+  getTargetHoldCandidateId: () => string | null;
   setTargetedAsteroidId: (sampleId: string | null) => void;
   getActiveScanAsteroidId: () => string | null;
   getScanStatusLine: () => string;
@@ -100,6 +103,7 @@ export interface RegisterShipExteriorTestUtilsContext {
   };
   getActiveLaunchToast: () => { message: string; tone: string } | null;
   onAsteroidHoverChange: (event: AsteroidHoverEvent) => void;
+  onAsteroidRightPointerDown: (event: { id: string; button: number }) => void;
   canTargetAsteroids: () => boolean;
   updateTargetingCapabilityFromShipList: (ships: unknown[] | undefined) => void;
   tickScene: () => void;
@@ -148,6 +152,7 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
     getLaunchHotkeySlots: () => cloneForTest(context.getLaunchHotkeySlots()),
     getActiveSensorArrayTier: () => context.getActiveSensorArrayTier(),
     getTargetedAsteroidId: () => context.getTargetedAsteroidId(),
+    getTargetHoldCandidateId: () => context.getTargetHoldCandidateId(),
     setTargetedAsteroidId: (sampleId: string | null) => context.setTargetedAsteroidId(sampleId),
     getActiveScanAsteroidId: () => context.getActiveScanAsteroidId(),
     getScanStatusLine: () => context.getScanStatusLine(),
@@ -171,6 +176,14 @@ export function registerShipExteriorTestUtils(context: RegisterShipExteriorTestU
       }
       context.onAsteroidHoverChange({ id: sampleId, hovering: false });
       return true;
+    },
+    beginAsteroidTargetHold: (sampleId: string) => {
+      const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
+      if (!exists) {
+        return false;
+      }
+      context.onAsteroidRightPointerDown({ id: sampleId, button: 2 });
+      return context.getTargetHoldCandidateId() === sampleId;
     },
     forceTargetAsteroid: (sampleId: string) => {
       const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
