@@ -21,6 +21,15 @@ let sharedMock: SocketIOMock;
 let sharedCharacterListPage: CharacterListPage;
 let sharedCharacterSetupPage: CharacterSetupPage;
 
+function registerCharacterEditHandlers(mock: SocketIOMock): void {
+  mock.on('character-list-request', () => ({
+    event: 'character-list-response',
+    data: characterListResponse([BASE_CHARACTER]),
+  }));
+}
+
+test.describe.configure({ mode: 'serial' });
+
 async function setupSharedCharacterEditSession(browser: Browser): Promise<void> {
   sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
   sharedPage = await sharedContext.newPage();
@@ -29,28 +38,24 @@ async function setupSharedCharacterEditSession(browser: Browser): Promise<void> 
   sharedCharacterSetupPage = new CharacterSetupPage(sharedPage);
 
   await sharedMock.setup();
-  sharedMock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([BASE_CHARACTER]),
-  }));
+  registerCharacterEditHandlers(sharedMock);
 
   await sharedPage.goto('http://localhost:4200/(left:character-list)');
-  
-  // Try-catch retry-on-login pattern
+
   try {
     await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
   } catch {
-    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    registerCharacterEditHandlers(sharedMock);
     await loginViaUI(sharedPage, sharedMock);
     await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
   }
 
-  // Pre-load login recheck
   const loginFormVisibleBeforeLoad = await sharedPage
     .locator('#playerName')
     .isVisible({ timeout: 1_000 })
     .catch(() => false);
   if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    registerCharacterEditHandlers(sharedMock);
     await loginViaUI(sharedPage, sharedMock);
     await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
   }
@@ -66,13 +71,8 @@ async function resetSharedCharacterEditSession(): Promise<void> {
     return;
   }
 
-  // Register the default handler BEFORE navigating back so the auto-load triggered
-  // by Angular component init uses the correct handler and does not race.
   sharedMock.reset();
-  sharedMock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([BASE_CHARACTER]),
-  }));
+  registerCharacterEditHandlers(sharedMock);
 
   let attempts = 0;
   while (!sharedPage.url().includes('left:character-list') && attempts < 4) {
@@ -83,8 +83,6 @@ async function resetSharedCharacterEditSession(): Promise<void> {
   await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
   await expect(sharedCharacterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
 }
-
-test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async ({ browser }) => {
   await setupSharedCharacterEditSession(browser);

@@ -1,10 +1,15 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
 import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-fab-cue';
+
+function registerFirstTargetCueMock(mock: SocketIOMock): void {
+  configureFirstTargetCueMock(mock);
+}
 
 function configureFirstTargetCueMock(mock: SocketIOMock): void {
   mock.on('character-list-request', () => ({
@@ -227,11 +232,11 @@ function configureFirstTargetCueMock(mock: SocketIOMock): void {
   });
 }
 
-async function waitForShipExteriorTestApi(page: Page): Promise<void> {
+async function waitForShipExteriorTestApi(sharedPage: Page): Promise<void> {
   await expect
     .poll(
       async () =>
-        page.evaluate(() => {
+        sharedPage.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
@@ -247,8 +252,8 @@ async function waitForShipExteriorTestApi(page: Page): Promise<void> {
     .toBe(true);
 }
 
-async function advanceMissionToManufactureStep(page: Page): Promise<void> {
-  await page.evaluate(() => {
+async function advanceMissionToManufactureStep(sharedPage: Page): Promise<void> {
+  await sharedPage.evaluate(() => {
     const api = (
       window as Window & {
         __shipExteriorTestUtils?: {
@@ -275,7 +280,7 @@ async function advanceMissionToManufactureStep(page: Page): Promise<void> {
 
   await expect
     .poll(async () =>
-      page.evaluate(() => {
+      sharedPage.evaluate(() => {
         const api = (
           window as Window & {
             __shipExteriorTestUtils?: {
@@ -295,7 +300,7 @@ async function advanceMissionToManufactureStep(page: Page): Promise<void> {
     )
     .toBe(true);
 
-  await page.evaluate(() => {
+  await sharedPage.evaluate(() => {
     const api = (
       window as Window & {
         __shipExteriorTestUtils?: {
@@ -308,7 +313,7 @@ async function advanceMissionToManufactureStep(page: Page): Promise<void> {
 
   await expect
     .poll(async () =>
-      page.evaluate(() => {
+      sharedPage.evaluate(() => {
         const api = (
           window as Window & {
             __shipExteriorTestUtils?: {
@@ -326,21 +331,18 @@ async function advanceMissionToManufactureStep(page: Page): Promise<void> {
     .toBe('active');
 }
 
-test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ page }) => {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-  configureFirstTargetCueMock(mock);
+const test = createJoinedGameTest({
+  registerSessionHandlers: registerFirstTargetCueMock,
+  joinButtonText: 'Join Game in Progress',
+});
 
-  await loginViaUI(page, mock);
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ sharedPage }) => {
 
-  await waitForShipExteriorTestApi(page);
-  await advanceMissionToManufactureStep(page);
+  await waitForShipExteriorTestApi(sharedPage);
+  await advanceMissionToManufactureStep(sharedPage);
 
-  const fabricationLabButton = page.locator('button[aria-label="Fabrication Lab"]');
-  const overlay = page.locator('.left-pane-mission-guidance-overlay');
+  const fabricationLabButton = sharedPage.locator('button[aria-label="Fabrication Lab"]');
+  const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
   await expect(fabricationLabButton).toHaveClass(/is-guided-target/);
   await expect(fabricationLabButton.locator('.menu-badge')).toHaveText('NEXT');
   await expect(overlay).toBeVisible();
@@ -348,25 +350,17 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
   await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
 
   await overlay.locator('button.overlay-open').click();
-  await expect(page).toHaveURL(/left:fabrication-lab/);
+  await expect(sharedPage).toHaveURL(/left:fabrication-lab/);
 });
 
-test('shows repair & retrofit menu cue after manufacture unlocks repair step', async ({ page }) => {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-  configureFirstTargetCueMock(mock);
+test('shows repair & retrofit menu cue after manufacture unlocks repair step', async ({ sharedPage }) => {
 
-  await loginViaUI(page, mock);
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
-
-  await waitForShipExteriorTestApi(page);
-  await advanceMissionToManufactureStep(page);
+  await waitForShipExteriorTestApi(sharedPage);
+  await advanceMissionToManufactureStep(sharedPage);
 
   await expect
     .poll(async () =>
-      page.evaluate(() => {
+      sharedPage.evaluate(() => {
         const api = (
           window as Window & {
             __shipExteriorTestUtils?: {
@@ -386,8 +380,8 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
     )
     .toBe('active');
 
-  const repairRetrofitButton = page.locator('button[aria-label="Repair & Retrofit"]');
-  const overlay = page.locator('.left-pane-mission-guidance-overlay');
+  const repairRetrofitButton = sharedPage.locator('button[aria-label="Repair & Retrofit"]');
+  const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
   await expect
     .poll(async () => {
       const className = await repairRetrofitButton.getAttribute('class');
@@ -399,7 +393,7 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await expect
     .poll(
       async () => {
-        return page.evaluate(() => {
+        return sharedPage.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
@@ -434,43 +428,34 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
     );
 
   await repairRetrofitButton.click();
-  await expect(page).toHaveURL(/left:repair-retrofit/);
+  await expect(sharedPage).toHaveURL(/left:repair-retrofit/);
 });
 
-test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({ page }) => {
-  test.setTimeout(45_000);
+test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({
+  sharedPage,
+  prepareJoinedPage,
+}) => {
+  await prepareJoinedPage();
 
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-  configureFirstTargetCueMock(mock);
+  await waitForShipExteriorTestApi(sharedPage);
+  await advanceMissionToManufactureStep(sharedPage);
 
-  await loginViaUI(page, mock);
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
-
-  await waitForShipExteriorTestApi(page);
-  await advanceMissionToManufactureStep(page);
-
-  const overlay = page.locator('.left-pane-mission-guidance-overlay');
+  const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
   await expect(overlay).toBeVisible();
   await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
 
   await overlay.locator('button.overlay-dismiss').click();
   await expect(overlay).toHaveCount(0);
 
-  await page.reload();
-  await page.goto('/(left:login)');
-  await loginViaUI(page, mock);
-  await gameShell.joinGame('Join Game in Progress');
+  // Reset to game-main (fixture pattern instead of reload + re-login)
+  await prepareJoinedPage();
 
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
-  await waitForShipExteriorTestApi(page);
-  await expect(page.locator('.left-pane-mission-guidance-overlay')).toHaveCount(0);
+  await waitForShipExteriorTestApi(sharedPage);
+  await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).toHaveCount(0);
 
   await expect
     .poll(async () =>
-      page.evaluate(() => {
+      sharedPage.evaluate(() => {
         const api = (
           window as Window & {
             __shipExteriorTestUtils?: {
@@ -490,7 +475,7 @@ test('keeps overlay dismissed for the same step across refresh, then shows again
     )
     .toBe('active');
 
-  const repairOverlay = page.locator('.left-pane-mission-guidance-overlay');
+  const repairOverlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
   await expect(repairOverlay).toBeVisible();
   await expect(repairOverlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
 });
