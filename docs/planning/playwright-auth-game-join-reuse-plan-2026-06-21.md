@@ -341,21 +341,140 @@ Status: ☑ Complete (2026-06-22)
 
 ---
 
-## Phase 3: Future Spec Migration Strategy
+## Phase 3: Performance Recovery Workstream
 
-Status: ☐ Not started
+Status: ☑ Complete (2026-06-22), no optimization adopted
 
-### Objectives
+### Objective
 
-- [ ] Evaluate viewer-spec page-context workarounds or alternative fixture patterns.
-- [ ] Consider Phase 2 extension variants for specs with special isolation requirements.
-- [ ] Document "spec incompatibility matrix" for rapid assessment of future candidates.
+Recover the +0.2m regression from Phase 2 (6.8m → 6.6m target) and achieve measurable net speedup.
 
-### Deferred Research
+### Known Heavy Specs (Observable from codebase)
 
-- Viewer specs: Requires page context lifecycle research (afterEach navigation closure pattern).
-- Ship-exterior specs: Complex state coupling, lower migration priority.
-- first-target-full-mission-flow: Mission chain state, acceptable for Phase 1 storageState bootstrap if needed.
+Based on test count, viewer/mission complexity, and prior observations:
+
+| Spec | Test Count | Known Cost | Priority |
+|---|---|---|---|
+| viewer-scene-rendering.spec.ts | 16 | 3D rendering, heavy canvas ops | High |
+| viewer-ships.spec.ts | 13 | Viewer component, scene setup | High |
+| character-list.spec.ts | 23 | Auto-load lifecycle, per-test pattern | High |
+| ship-exterior-*.spec.ts | 15+ | Flight, targeting, mission state | Medium |
+| first-target-*.spec.ts | 11 | Mission gate chain, reload cycles | Medium |
+| Other gameplay specs | 64 | Per-test join/login per spec | Low |
+
+**Total:** ~142 tests, ~68 slow enough to warrant attention
+
+### Phase 3 Optimization Backlog (Ranked by Effort × Impact)
+
+1. **Separate slow viewer specs into dedicated worker project** (HIGH impact, LOW effort)
+   - Action: Split `viewer-scene-rendering` and `viewer-ships` into a new `chromium-viewer` project.
+   - Expected gain: 30-60s (reduced worker contention for fast specs).
+   - Implementation: Update `playwright.config.ts` with new project, filter in `testIgnore`.
+   - Risk: Low (isolated change, no fixture modifications).
+
+2. **Parallel setup for character-list tests** (MEDIUM impact, MEDIUM effort)
+   - Action: Profile character-list per-test login cost; batch character-fetch mocks if possible.
+   - Expected gain: 15-30s (if login cost is significant).
+   - Implementation: Requires character-list.spec.ts refactor (currently auto-load incompatible).
+   - Risk: Medium (touches per-test setup lifecycle).
+
+3. **Trace/artifact policy tuning for green runs** (MEDIUM impact, LOW effort)
+   - Action: Disable video and trace capture for non-debug builds.
+   - Expected gain: 10-20s (I/O overhead reduction).
+   - Implementation: Update playwright.config.ts `use.video` and `use.trace` conditionals.
+   - Risk: Low (config-only).
+
+4. **Ship-exterior test ordering optimization** (LOW impact, LOW effort)
+   - Action: Reorder ship-exterior tests to avoid expensive mission-state reload sequences.
+   - Expected gain: 5-10s (reduced per-test setup chaining).
+   - Implementation: Requires analysis of test interdependencies in ship-exterior specs.
+   - Risk: Low (test order only, no logic changes).
+
+### Next Action: Optimization 1 (Viewer Spec Split)
+
+**Rationale:** 16 + 13 = 29 tests on heavy viewer/rendering work. Isolating these into a dedicated worker lane unblocks the 4-worker pool to run simpler tests faster, reducing total wall time by worker-load rebalancing.
+
+**Expected outcome:** -30s to -60s (from current 6.8m to ~6.2-6.5m).
+
+**Result: REGRESSION (+0.3m)**
+- Baseline (Phase 2): 6.8m
+- With viewer split: 7.1m
+- Delta: +0.3m (worse)
+
+**Analysis:**
+- Project initialization overhead likely outweighs worker-lane rebalancing gains
+- Splitting increases parallel project startup cost (setup → chromium, chromium-viewer, chromium-auth all start independently)
+- Viewer tests may benefit from shared setup/TLS/network state in same worker lane
+- Hypothesis: We're trading per-test setup savings for per-project overhead
+
+**Decision: Revert viewer split and try Optimization 3 (artifact policy tuning) instead**
+
+### Optimization 3 Result (Artifact Policy Tuning)
+
+**Change tested:** Disable trace/video for normal runs; keep screenshot on failure.
+
+**Result: REGRESSION (+0.4m vs baseline)**
+- Baseline (Phase 2): 6.8m
+- With artifact policy tuning: 7.2m
+- Delta: +0.4m (worse)
+
+**Interpretation:**
+- Artifact write overhead was not the dominant bottleneck in this suite.
+- Runtime is likely dominated by app/test setup and mission/viewer interaction waits.
+
+**Decision:** Revert artifact policy tuning to baseline and prioritize spec-level setup optimization.
+
+### Next Action: Optimization 2 (Character-list Setup Cost Reduction)
+
+Focus on `character-list.spec.ts` and adjacent per-test setup-heavy specs. These tests repeatedly land around ~10.4s to ~11.2s each and appear to dominate the long tail.
+
+1. Add lightweight timing probes around login/join and initial page readiness in character-list tests.
+2. Reduce repeated per-test setup where state can be safely reused.
+3. Keep strict isolation assertions to prevent cross-test contamination.
+4. Re-run full suite and compare against 6.8m baseline.
+
+#### Optimization 2 Execution Result (2026-06-22)
+
+- Implemented and benchmarked a worker-shared reuse approach for `character-list.spec.ts`.
+- Focused run showed speed potential (24 tests in 22.9s), but full-suite execution exposed instability.
+
+**Observed regressions during full-suite run:**
+1. Intermittent auth bounce back to login (`left:login`) during character-list setup.
+2. Cross-test UI residue in delete-dialog flow (dialog remained open unexpectedly).
+
+**Decision:** Rejected for now and rolled back to stable per-test character-list setup.
+
+Status: Not adopted (stability gate failed).
+
+### Optimization 4 Result (Ship-Exterior Setup Consolidation)
+
+**Change tested:** Extract repeated ship-exterior mock/setup scaffolding into reusable helper usage and validate wall-time impact.
+
+**Result: REGRESSION (+0.1m vs baseline)**
+- Baseline (current): 7.0m, 157 passed
+- With partial ship-exterior consolidation: 7.1m, 157 passed
+- Delta: +0.1m (worse)
+
+**Interpretation:**
+- Boilerplate reduction did not translate into runtime savings.
+- Added helper indirection/setup path did not reduce dominant waits (scene/mission/app readiness).
+- This optimization does not recover the +0.2m drift.
+
+**Decision:** Revert optimization changes and keep baseline spec setup patterns.
+
+### Phase 3 Final Outcome
+
+- Optimization 1 (viewer split): rejected (+0.3m regression)
+- Optimization 2 (character-list reuse): rejected (stability failures under full suite)
+- Optimization 3 (artifact tuning): rejected (+0.4m regression)
+- Optimization 4 (ship-exterior setup consolidation): rejected (+0.1m regression)
+
+No Phase 3 optimization met both performance and stability gates.
+
+### Execution Discipline Finding
+
+- Do not poll/inspect while full-suite benchmark is running.
+- Run each 7-minute measurement as a single uninterrupted execution and collect metrics only after process exit.
 
 ---
 
@@ -390,23 +509,23 @@ Phase 2 is closed and kept.
 
 ### Runtime Goal Status
 
-- Current status: runtime goal not yet met after Phase 2.
-- Observed comparison: stable green runs at 6.8m versus prior 6.6m baseline.
-- Interpretation: regression is small but persistent; treat as optimization backlog rather than rollback trigger.
+- Current status: runtime goal not met after Phase 3.
+- Observed comparison: stable green runs at 7.0m-7.1m versus prior 6.8m (Phase 2) and 6.6m historical baseline.
+- Interpretation: regression is persistent; no tested Phase 3 candidate recovered time without new risk.
 
 ### Phase 3 Performance Workstream
 
-- Primary objective: recover the +0.2m regression and achieve net runtime reduction.
-- Focus area 1: slowest-spec profiling and worker-lane balancing.
-- Focus area 2: per-spec setup cost reduction in heavy specs.
-- Focus area 3: artifact/trace policy tuning for green-path runs.
-- Focus area 4: targeted optimizations to top runtime contributors before any broad migration.
+- Primary objective: recover regression and achieve net runtime reduction.
+- Result: objective not achieved in this cycle.
+- Next step: start a fresh profiling pass before additional structural refactors.
 
 ### Exit Criteria for Performance Workstream
 
 - Full suite remains 157/0 green.
 - Runtime returns to at least 6.6m baseline, then improves below it.
 - No sustained flake increase relative to current baseline.
+
+Current gate status: stability met, runtime target missed.
 
 ---
 
