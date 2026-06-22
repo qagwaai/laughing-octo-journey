@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -60,12 +60,14 @@ type MarketByLocationRequest = {
   shipId?: string;
 };
 
-async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLocationRequest) => void) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedGameShell: GameShellPage;
+let sharedMarketHubPage: MarketHubPage;
 
-  mock.on('character-list-request', () => ({
+function registerSharedSessionHandlers(): void {
+  sharedMock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
       success: true,
@@ -75,9 +77,9 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
     },
   }));
 
-  mock.on('game-join', () => null);
+  sharedMock.on('game-join', () => null);
 
-  mock.on('ship-list-by-owner-request', () => ({
+  sharedMock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
     data: {
       success: true,
@@ -87,8 +89,10 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
       ships: [SHIP_WITH_POSITION],
     },
   }));
+}
 
-  mock.on('market-list-by-location-request', (payload) => {
+function registerDefaultMarketHandler(onRequest: (request: MarketByLocationRequest) => void): void {
+  sharedMock.on('market-list-by-location-request', (payload) => {
     const request = payload as MarketByLocationRequest;
     onRequest(request);
     return {
@@ -144,27 +148,99 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
       },
     };
   });
-
-  await loginViaUI(page, mock);
-
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-  await gameShell.openMarketHub();
 }
 
+async function setupSharedMarketHubByLocationSession(browser: Browser): Promise<void> {
+  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedGameShell = new GameShellPage(sharedPage);
+  sharedMarketHubPage = new MarketHubPage(sharedPage);
+
+  await sharedMock.setup();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(() => undefined);
+
+  await sharedPage.goto('http://localhost:4200/(left:character-list)');
+  const loginFormVisible = (await sharedPage.locator('#playerName').count()) > 0;
+  if (loginFormVisible) {
+    await loginViaUI(sharedPage, sharedMock);
+  }
+  try {
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  const loginFormVisibleBeforeLoad = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  if ((await sharedPage.locator('.character-item').count()) === 0) {
+    await sharedPage.locator('.load-btn').click();
+  }
+  await sharedGameShell.joinGame('Join Game in Progress');
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function resetSharedMarketHubByLocationSession(): Promise<void> {
+  if (!sharedPage || sharedPage.isClosed()) {
+    return;
+  }
+
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(() => undefined);
+
+  let attempts = 0;
+  while (!sharedPage.url().includes('left:game-main') && attempts < 4) {
+    attempts += 1;
+    await sharedPage.goBack();
+  }
+
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function openMarketHubWithDefaultData(onRequest: (request: MarketByLocationRequest) => void) {
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(onRequest);
+
+  await sharedGameShell.openMarketHub();
+}
+
+test.describe.configure({ mode: 'serial' });
+
+test.beforeAll(async ({ browser }) => {
+  await setupSharedMarketHubByLocationSession(browser);
+});
+
+test.afterEach(async () => {
+  await resetSharedMarketHubByLocationSession();
+});
+
+test.afterAll(async () => {
+  await sharedContext.close();
+});
+
 test.describe('Market Hub by-location contract', () => {
-  test('emits by-location request and renders markets ordered by authoritative distance', async ({ page }) => {
+  test('emits by-location request and renders markets ordered by authoritative distance', async () => {
     const requests: MarketByLocationRequest[] = [];
-    const marketHubPage = new MarketHubPage(page);
-    await setupAndOpenMarketHub(page, (request) => requests.push(request));
+    await openMarketHubWithDefaultData((request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           const marketHubRequest = requests.find((request) => request.limit === 50);
           if (!marketHubRequest) {
-            await marketHubPage.reloadButton.click();
+            await sharedMarketHubPage.reloadButton.click();
           }
           return marketHubRequest ?? null;
         },
@@ -183,7 +259,7 @@ test.describe('Market Hub by-location contract', () => {
     expect(marketHubRequest!.shipId).toBe(SHIP_WITH_POSITION.id);
     expect(marketHubRequest!.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
 
-    const marketRows = marketHubPage.marketItems;
+    const marketRows = sharedMarketHubPage.marketItems;
     await expect(marketRows).toHaveCount(2);
     await expect(marketRows.nth(0)).toContainText('Ceres Exchange');
     await expect(marketRows.nth(0)).toContainText('In-system');

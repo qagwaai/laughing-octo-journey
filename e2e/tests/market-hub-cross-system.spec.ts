@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -51,13 +51,14 @@ type MarketByLocationRequest = {
   distanceAu: number;
 };
 
-async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocationRequest) => void) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  const marketHubPage = new MarketHubPage(page);
-  await mock.setup();
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedGameShell: GameShellPage;
+let sharedMarketHubPage: MarketHubPage;
 
-  mock.on('character-list-request', () => ({
+function registerSharedSessionHandlers(): void {
+  sharedMock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
       success: true,
@@ -67,9 +68,9 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
     },
   }));
 
-  mock.on('game-join', () => null);
+  sharedMock.on('game-join', () => null);
 
-  mock.on('ship-list-by-owner-request', () => ({
+  sharedMock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
     data: {
       success: true,
@@ -79,8 +80,10 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
       ships: [SHIP_IN_SOL],
     },
   }));
+}
 
-  mock.on('market-list-by-location-request', (payload) => {
+function registerDefaultMarketHandler(onRequest: (req: MarketByLocationRequest) => void): void {
+  sharedMock.on('market-list-by-location-request', (payload) => {
     const request = payload as MarketByLocationRequest;
     onRequest(request);
     return {
@@ -175,49 +178,199 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (req: MarketByLocati
       },
     };
   });
-
-  await loginViaUI(page, mock);
-
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-  await gameShell.openMarketHub();
-
-  // Wait for the reachable section to fully render before the test body proceeds.
-  await expect(marketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 }
+
+function registerServerNoRouteOverrideHandler(): void {
+  sharedMock.on('market-list-by-location-request', (payload) => {
+    const request = payload as MarketByLocationRequest;
+    return {
+      event: 'market-list-by-location-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        solarSystemId: 'sol',
+        positionKm: SHIP_IN_SOL.spatial.positionKm,
+        distanceAu: request.distanceAu,
+        locationTypes: ['station'],
+        isDocked: false,
+        dockedMarketId: null,
+        markets: [
+          {
+            marketId: 'sol-near-station',
+            solarSystemId: 'sol',
+            marketName: 'Near Station',
+            siteType: 'station',
+            siteName: 'Sol Core Ring',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 413_700_400, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: 0.003,
+            isDocked: false,
+            priceMultiplier: 1,
+            driftPercentPerHour: 6,
+            restockIntervalMinutes: 60,
+          },
+          {
+            marketId: 'alpha-centauri-station',
+            solarSystemId: 'alpha-centauri',
+            marketName: 'Alpha Station',
+            siteType: 'station',
+            siteName: 'Alpha Centauri Hub',
+            spatial: {
+              solarSystemId: 'alpha-centauri',
+              frame: 'barycentric',
+              positionKm: { x: 0, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: null,
+            isDocked: false,
+            priceMultiplier: 1.1,
+            driftPercentPerHour: 8,
+            restockIntervalMinutes: 120,
+            route: { kind: 'no-route' },
+          },
+        ],
+      },
+    };
+  });
+}
+
+async function setupSharedMarketHubCrossSystemSession(browser: Browser): Promise<void> {
+  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedGameShell = new GameShellPage(sharedPage);
+  sharedMarketHubPage = new MarketHubPage(sharedPage);
+
+  await sharedMock.setup();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(() => {});
+
+  await sharedPage.goto('http://localhost:4200/(left:character-list)');
+  await sharedPage
+    .waitForURL(/left:(character-list|login)/, { timeout: 15_000 })
+    .catch(() => null);
+
+  const loginFormInitiallyVisible = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+
+  if (!sharedPage.url().includes('left:character-list') || loginFormInitiallyVisible) {
+    await loginViaUI(sharedPage, sharedMock);
+  }
+
+  try {
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  const loginFormStillVisible = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (loginFormStillVisible) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  const loginFormVisibleBeforeLoad = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  if ((await sharedPage.locator('.character-item').count()) === 0) {
+    const loadButton = sharedPage.locator('.load-btn');
+    const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.first().isVisible());
+    if (!loadButtonVisible) {
+      throw new Error(`Character list is empty and load button is unavailable (url=${sharedPage.url()}).`);
+    }
+
+    await expect(loadButton.first()).toBeEnabled({ timeout: 5_000 });
+    await loadButton.first().click();
+    await expect(sharedPage.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
+  }
+  await sharedGameShell.joinGame('Join Game in Progress');
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function resetSharedMarketHubCrossSystemSession(): Promise<void> {
+  if (!sharedPage || sharedPage.isClosed()) {
+    return;
+  }
+
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(() => {});
+
+  let attempts = 0;
+  while (!sharedPage.url().includes('left:game-main') && attempts < 4) {
+    attempts += 1;
+    await sharedPage.goBack();
+  }
+
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function openMarketHubWithDefaultData(onRequest: (req: MarketByLocationRequest) => void) {
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(onRequest);
+
+  await sharedGameShell.openMarketHub();
+  await expect(sharedMarketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
+}
+
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
+
+test.beforeAll(async ({ browser }) => {
+  await setupSharedMarketHubCrossSystemSession(browser);
+});
+
+test.afterEach(async () => {
+  await resetSharedMarketHubCrossSystemSession();
+});
+
+test.afterAll(async () => {
+  await sharedContext.close();
+});
 
 test.describe('Market Hub cross-system route badges', () => {
   test.setTimeout(60_000);
 
-  test('renders in-system, gate-route, and no-route badges correctly', async ({ page }) => {
+  test('renders in-system, gate-route, and no-route badges correctly', async () => {
     const requests: MarketByLocationRequest[] = [];
-    const marketHubPage = new MarketHubPage(page);
-    await setupAndOpenMarketHub(page, (req) => requests.push(req));
+    await openMarketHubWithDefaultData((req) => requests.push(req));
 
-    const marketRows = marketHubPage.marketItems;
-    // Gate-route markets (alpha, barnards) are reachable; no-route (wolf) is behind the toggle.
+    const marketRows = sharedMarketHubPage.marketItems;
     await expect(marketRows).toHaveCount(3);
 
-    // In-system market
     const nearStation = marketRows.nth(0);
     await expect(nearStation).toContainText('Near Station');
     await expect(nearStation).toContainText('In-system');
 
-    // 1-hop gate-route market
     const alphaMarket = marketRows.nth(1);
     await expect(alphaMarket).toContainText('Alpha Station');
     await expect(alphaMarket).toContainText('1 gate hop');
     await expect(alphaMarket).toContainText('Alpha Station, 1 gate hop away');
 
-    // 2-hop gate-route market
     const barnardsMarket = marketRows.nth(2);
     await expect(barnardsMarket).toContainText("Barnard's Depot");
     await expect(barnardsMarket).toContainText('2 gate hops');
     await expect(barnardsMarket).toContainText("Barnard's Depot, 2 gate hops away");
 
-    // No-route market is hidden by default; reveal it via the toggle.
-    await marketHubPage.enableOutOfRangeMarkets();
+    await sharedMarketHubPage.enableOutOfRangeMarkets();
     await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
     const wolfMarket = marketRows.nth(3);
     await expect(wolfMarket).toContainText('Wolf-359 Outpost');
@@ -225,133 +378,37 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(wolfMarket).toContainText('Wolf-359 Outpost, no known gate route');
   });
 
-  test('gate-route markets have transact button disabled and no-route market is not transactable', async ({ page }) => {
+  test('gate-route markets have transact button disabled and no-route market is not transactable', async () => {
     const requests: MarketByLocationRequest[] = [];
-    const marketHubPage = new MarketHubPage(page);
-    await setupAndOpenMarketHub(page, (req) => requests.push(req));
+    await openMarketHubWithDefaultData((req) => requests.push(req));
 
-    const marketRows = marketHubPage.marketItems;
+    const marketRows = sharedMarketHubPage.marketItems;
 
-    // Enable toggle so no-route market (wolf) is visible alongside gate-route markets.
-    await marketHubPage.enableOutOfRangeMarkets();
+    await sharedMarketHubPage.enableOutOfRangeMarkets();
     await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
 
     const alphaMarket = marketRows.nth(1);
     const barnardsMarket = marketRows.nth(2);
     const wolfMarket = marketRows.nth(3);
 
-    // Gate-route markets are reachable via jump gates but not docked — transact disabled
     await expect(alphaMarket.locator('.transact-btn')).toBeDisabled();
     await expect(barnardsMarket.locator('.transact-btn')).toBeDisabled();
-
-    // No-route market is not transactable
     await expect(wolfMarket.locator('.transact-btn')).toBeDisabled();
   });
 
-  test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async ({ page }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    const marketHubPage = new MarketHubPage(page);
-    await mock.setup();
+  test('server no-route overrides client BFS — alpha-centauri shows No route when server says so', async () => {
+    sharedMock.reset();
+    registerSharedSessionHandlers();
+    registerServerNoRouteOverrideHandler();
 
-    mock.on('character-list-request', () => ({
-      event: 'character-list-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characters: [CHARACTER],
-      },
-    }));
+    await sharedGameShell.openMarketHub();
+    await expect(sharedMarketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 
-    mock.on('game-join', () => null);
+    await sharedMarketHubPage.enableOutOfRangeMarkets();
+    await expect(sharedMarketHubPage.marketItems).toHaveCount(2, { timeout: 5_000 });
 
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: CHARACTER.id,
-        ships: [SHIP_IN_SOL],
-      },
-    }));
-
-    mock.on('market-list-by-location-request', (payload) => {
-      const request = payload as MarketByLocationRequest;
-      return {
-        event: 'market-list-by-location-response',
-        data: {
-          success: true,
-          message: '',
-          playerName: TEST_PLAYER,
-          solarSystemId: 'sol',
-          positionKm: SHIP_IN_SOL.spatial.positionKm,
-          distanceAu: request.distanceAu,
-          locationTypes: ['station'],
-          isDocked: false,
-          dockedMarketId: null,
-          markets: [
-            {
-              marketId: 'sol-near-station',
-              solarSystemId: 'sol',
-              marketName: 'Near Station',
-              siteType: 'station',
-              siteName: 'Sol Core Ring',
-              spatial: {
-                solarSystemId: 'sol',
-                frame: 'barycentric',
-                positionKm: { x: 413_700_400, y: 0, z: 0 },
-                epochMs: Date.now(),
-              },
-              distanceAu: 0.003,
-              isDocked: false,
-              priceMultiplier: 1,
-              driftPercentPerHour: 6,
-              restockIntervalMinutes: 60,
-            },
-            {
-              // Alpha Centauri is 1 BFS hop from Sol — but server explicitly says no-route
-              marketId: 'alpha-centauri-station',
-              solarSystemId: 'alpha-centauri',
-              marketName: 'Alpha Station',
-              siteType: 'station',
-              siteName: 'Alpha Centauri Hub',
-              spatial: {
-                solarSystemId: 'alpha-centauri',
-                frame: 'barycentric',
-                positionKm: { x: 0, y: 0, z: 0 },
-                epochMs: Date.now(),
-              },
-              distanceAu: null,
-              isDocked: false,
-              priceMultiplier: 1.1,
-              driftPercentPerHour: 8,
-              restockIntervalMinutes: 120,
-              route: { kind: 'no-route' },
-            },
-          ],
-        },
-      };
-    });
-
-    await loginViaUI(page, mock);
-
-    await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-    await gameShell.openMarketHub();
-
-    // Wait for the reachable section to appear before checking the toggle.
-    await expect(marketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
-
-    // Alpha Centauri has server-declared no-route, so it is hidden behind the toggle.
-    await marketHubPage.enableOutOfRangeMarkets();
-    await expect(marketHubPage.marketItems).toHaveCount(2, { timeout: 5_000 });
-
-    const alphaMarket = marketHubPage.marketItems.nth(1);
+    const alphaMarket = sharedMarketHubPage.marketItems.nth(1);
     await expect(alphaMarket).toContainText('Alpha Station');
-    // Server says no-route — must NOT show '1 gate hop' even though BFS would reach it
     await expect(alphaMarket).toContainText('No route');
     await expect(alphaMarket).not.toContainText('gate hop');
     await expect(alphaMarket.locator('.transact-btn')).toBeDisabled();

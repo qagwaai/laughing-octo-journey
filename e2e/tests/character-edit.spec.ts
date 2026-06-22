@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
@@ -13,39 +13,104 @@ function characterListResponse(characters: object[]) {
   };
 }
 
-async function setupCharacterEditTest(page: Page) {
-  const mock = new SocketIOMock(page);
-  await mock.setup();
+const BASE_CHARACTER = { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 };
 
-  let currentCharacterName = 'Zara Voss';
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedCharacterListPage: CharacterListPage;
+let sharedCharacterSetupPage: CharacterSetupPage;
 
-  mock.on('character-list-request', () => ({
+async function setupSharedCharacterEditSession(browser: Browser): Promise<void> {
+  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedCharacterListPage = new CharacterListPage(sharedPage);
+  sharedCharacterSetupPage = new CharacterSetupPage(sharedPage);
+
+  await sharedMock.setup();
+  sharedMock.on('character-list-request', () => ({
     event: 'character-list-response',
-    data: characterListResponse([{ id: 'char-edit-001', characterName: currentCharacterName, level: 5 }]),
+    data: characterListResponse([BASE_CHARACTER]),
   }));
 
-  await loginViaUI(page, mock);
+  await sharedPage.goto('http://localhost:4200/(left:character-list)');
+  
+  // Try-catch retry-on-login pattern
+  try {
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
 
-  return {
-    mock,
-    characterListPage: new CharacterListPage(page),
-    characterSetupPage: new CharacterSetupPage(page),
-    updateCharacterName: (name: string) => {
-      currentCharacterName = name;
-    },
-  };
+  // Pre-load login recheck
+  const loginFormVisibleBeforeLoad = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  if ((await sharedCharacterListPage.characterItems.count()) === 0) {
+    await sharedCharacterListPage.loadButton.click();
+  }
+  await expect(sharedCharacterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
 }
 
-test.describe('Character Edit — setup save redirect', () => {
-  test('redirects to character list and shows updated character after successful edit save', async ({ page }) => {
-    const { mock, characterListPage, characterSetupPage, updateCharacterName } = await setupCharacterEditTest(page);
+async function resetSharedCharacterEditSession(): Promise<void> {
+  if (!sharedPage || sharedPage.isClosed()) {
+    return;
+  }
 
+  // Register the default handler BEFORE navigating back so the auto-load triggered
+  // by Angular component init uses the correct handler and does not race.
+  sharedMock.reset();
+  sharedMock.on('character-list-request', () => ({
+    event: 'character-list-response',
+    data: characterListResponse([BASE_CHARACTER]),
+  }));
+
+  let attempts = 0;
+  while (!sharedPage.url().includes('left:character-list') && attempts < 4) {
+    attempts += 1;
+    await sharedPage.goBack();
+  }
+
+  await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  await expect(sharedCharacterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
+}
+
+test.describe.configure({ mode: 'serial' });
+
+test.beforeAll(async ({ browser }) => {
+  await setupSharedCharacterEditSession(browser);
+});
+
+test.afterEach(async () => {
+  await resetSharedCharacterEditSession();
+});
+
+test.afterAll(async () => {
+  await sharedContext.close();
+});
+
+test.describe('Character Edit — setup save redirect', () => {
+  test('redirects to character list and shows updated character after successful edit save', async () => {
     let receivedEditRequest: Record<string, unknown> | null = null;
     let shipListRequestCount = 0;
 
-    mock.on('character-edit-request', (request) => {
+    sharedMock.on('character-edit-request', (request) => {
       receivedEditRequest = request as Record<string, unknown>;
-      updateCharacterName('Zara Prime');
+      // Override the character-list-request handler before the client redirects back,
+      // so the post-edit auto-load returns the updated name.
+      sharedMock.on('character-list-request', () => ({
+        event: 'character-list-response',
+        data: characterListResponse([{ ...BASE_CHARACTER, characterName: 'Zara Prime' }]),
+      }));
       return {
         event: 'character-edit-response',
         data: {
@@ -58,23 +123,23 @@ test.describe('Character Edit — setup save redirect', () => {
       };
     });
 
-    mock.on('ship-list-by-owner-request', () => {
+    sharedMock.on('ship-list-by-owner-request', () => {
       shipListRequestCount += 1;
       return null;
     });
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
-    await expect(characterListPage.characterName(0)).toHaveText('Zara Voss');
+    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await expect(sharedCharacterListPage.characterName(0)).toHaveText('Zara Voss');
 
-    await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+    await sharedCharacterListPage.editButton(0).click();
+    await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 
-    await characterSetupPage.fillCharacterName('Zara Prime');
-    await characterSetupPage.clickSubmit();
+    await sharedCharacterSetupPage.fillCharacterName('Zara Prime');
+    await sharedCharacterSetupPage.clickSubmit();
 
-    await expect(page).toHaveURL(/left:character-list/);
-    await expect(characterListPage.characterItems).toHaveCount(1);
-    await expect(characterListPage.characterName(0)).toHaveText('Zara Prime');
+    await expect(sharedPage).toHaveURL(/left:character-list/);
+    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await expect(sharedCharacterListPage.characterName(0)).toHaveText('Zara Prime');
 
     expect(receivedEditRequest).toEqual(
       expect.objectContaining({
@@ -87,57 +152,48 @@ test.describe('Character Edit — setup save redirect', () => {
     expect(shipListRequestCount).toBe(0);
   });
 
-  test('renders the 2D portrait preview in edit mode', async ({ page }) => {
-    const { characterListPage, characterSetupPage } = await setupCharacterEditTest(page);
+  test('renders the 2D portrait preview in edit mode', async () => {
+    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.editButton(0).click();
+    await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
-    await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
-
-    await expect(characterSetupPage.previewImage).toBeVisible();
-    await expect(characterSetupPage.previewImageAssetName).toContainText('.jpeg');
-    await expect(characterSetupPage.previewImageState).toContainText('.jpeg');
+    await expect(sharedCharacterSetupPage.previewImage).toBeVisible();
+    await expect(sharedCharacterSetupPage.previewImageAssetName).toContainText('.jpeg');
+    await expect(sharedCharacterSetupPage.previewImageState).toContainText('.jpeg');
   });
 
-  test('blocks edit when renaming to another existing character name', async ({ page }) => {
-    const mock = new SocketIOMock(page);
-    await mock.setup();
-
-    let editRequestCount = 0;
-    mock.on('character-list-request', () => ({
+  test('blocks edit when renaming to another existing character name', async () => {
+    // Override to 2-character list and trigger a fresh load.
+    sharedMock.on('character-list-request', () => ({
       event: 'character-list-response',
       data: characterListResponse([
         { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 },
         { id: 'char-other-002', characterName: 'Atlas Commander', level: 2 },
       ]),
     }));
-    mock.on('character-edit-request', () => {
+    await sharedCharacterListPage.loadButton.click();
+    await expect(sharedCharacterListPage.characterItems).toHaveCount(2, { timeout: 10_000 });
+
+    let editRequestCount = 0;
+    sharedMock.on('character-edit-request', () => {
       editRequestCount += 1;
       return null;
     });
 
-    await loginViaUI(page, mock);
+    await sharedCharacterListPage.editButton(0).click();
+    await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 
-    const characterListPage = new CharacterListPage(page);
-    const characterSetupPage = new CharacterSetupPage(page);
+    await sharedCharacterSetupPage.fillCharacterName('  atlas   commander ');
+    await sharedCharacterSetupPage.characterNameInput.blur();
 
-    await expect(characterListPage.characterItems).toHaveCount(2);
-    await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
-
-    await characterSetupPage.fillCharacterName('  atlas   commander ');
-    await characterSetupPage.characterNameInput.blur();
-
-    await expect(characterSetupPage.submitButton).toBeDisabled();
-    await expect(characterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
+    await expect(sharedCharacterSetupPage.submitButton).toBeDisabled();
+    await expect(sharedCharacterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
     expect(editRequestCount).toBe(0);
   });
 
-  test('shows server-side edit error and stays on setup page', async ({ page }) => {
-    const { mock, characterListPage, characterSetupPage } = await setupCharacterEditTest(page);
-
+  test('shows server-side edit error and stays on setup page', async () => {
     let editRequestCount = 0;
-    mock.on('character-edit-request', () => {
+    sharedMock.on('character-edit-request', () => {
       editRequestCount += 1;
       return {
         event: 'character-edit-response',
@@ -150,16 +206,16 @@ test.describe('Character Edit — setup save redirect', () => {
       };
     });
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
-    await characterListPage.editButton(0).click();
-    await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.editButton(0).click();
+    await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 
-    await characterSetupPage.fillCharacterName('Zara Prime');
-    await characterSetupPage.clickSubmit();
+    await sharedCharacterSetupPage.fillCharacterName('Zara Prime');
+    await sharedCharacterSetupPage.clickSubmit();
 
     expect(editRequestCount).toBe(1);
-    await expect(characterSetupPage.errorMessage).toContainText('Character name already exists.');
-    await expect(characterSetupPage.successMessage).not.toBeVisible();
-    await expect(page).toHaveURL(/left:character-setup/);
+    await expect(sharedCharacterSetupPage.errorMessage).toContainText('Character name already exists.');
+    await expect(sharedCharacterSetupPage.successMessage).not.toBeVisible();
+    await expect(sharedPage).toHaveURL(/left:character-setup/);
   });
 });

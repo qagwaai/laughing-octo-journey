@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -52,12 +52,14 @@ type MarketByLocationRequest = {
   distanceAu: number;
 };
 
-async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLocationRequest) => void) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedGameShell: GameShellPage;
+let sharedMarketHubPage: MarketHubPage;
 
-  mock.on('character-list-request', () => ({
+function registerSharedSessionHandlers(): void {
+  sharedMock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
       success: true,
@@ -67,9 +69,9 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
     },
   }));
 
-  mock.on('game-join', () => null);
+  sharedMock.on('game-join', () => null);
 
-  mock.on('ship-list-by-owner-request', () => ({
+  sharedMock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
     data: {
       success: true,
@@ -79,8 +81,10 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
       ships: [SHIP_WITH_POSITION],
     },
   }));
+}
 
-  mock.on('market-list-by-location-request', (payload) => {
+function registerDefaultMarketHandler(onRequest: (request: MarketByLocationRequest) => void): void {
+  sharedMock.on('market-list-by-location-request', (payload) => {
     const request = payload as MarketByLocationRequest;
     onRequest(request);
 
@@ -137,26 +141,164 @@ async function setupAndOpenMarketHub(page: Page, onRequest: (request: MarketByLo
       },
     };
   });
-
-  await loginViaUI(page, mock);
-
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-  await gameShell.openMarketHub();
 }
 
+function registerCrossSystemMarketHandler(): void {
+  sharedMock.on('market-list-by-location-request', (payload) => {
+    const request = payload as MarketByLocationRequest;
+    return {
+      event: 'market-list-by-location-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        solarSystemId: 'sol',
+        positionKm: SHIP_WITH_POSITION.spatial.positionKm,
+        distanceAu: request.distanceAu,
+        locationTypes: ['station'],
+        isDocked: true,
+        dockedMarketId: 'sol-ceres-exchange',
+        markets: [
+          {
+            marketId: 'sol-ceres-exchange',
+            solarSystemId: 'sol',
+            marketName: 'Ceres Exchange',
+            siteType: 'station',
+            siteName: 'Ceres Belt Trade Ring',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 413_700_102.5, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: 0.02,
+            isDocked: true,
+            priceMultiplier: 1,
+            driftPercentPerHour: 6,
+            restockIntervalMinutes: 60,
+          },
+          {
+            marketId: 'alpha-centauri-station',
+            solarSystemId: 'alpha-centauri',
+            marketName: 'Alpha Station',
+            siteType: 'station',
+            siteName: 'Alpha Centauri Hub',
+            spatial: {
+              solarSystemId: 'alpha-centauri',
+              frame: 'barycentric',
+              positionKm: { x: 0, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: null,
+            isDocked: false,
+            priceMultiplier: 1.1,
+            driftPercentPerHour: 8,
+            restockIntervalMinutes: 120,
+            route: { kind: 'gate-route', hops: 1 },
+          },
+        ],
+      },
+    };
+  });
+}
+
+async function setupSharedMarketHubDockingSession(browser: Browser): Promise<void> {
+  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedGameShell = new GameShellPage(sharedPage);
+  sharedMarketHubPage = new MarketHubPage(sharedPage);
+
+  await sharedMock.setup();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(() => {});
+
+  await sharedPage.goto('http://localhost:4200/(left:character-list)');
+  
+  // Try-catch retry-on-login pattern
+  try {
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  // Pre-load login recheck
+  const loginFormVisibleBeforeLoad = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  if ((await sharedPage.locator('.character-item').count()) === 0) {
+    const loadButton = sharedPage.locator('.load-btn');
+    const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.first().isVisible());
+    if (!loadButtonVisible) {
+      throw new Error(`Character list is empty and load button is unavailable (url=${sharedPage.url()}).`);
+    }
+
+    await expect(loadButton.first()).toBeEnabled({ timeout: 5_000 });
+    await loadButton.first().click();
+    await expect(sharedPage.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
+  }
+
+  await sharedGameShell.joinGame('Join Game in Progress');
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function resetSharedMarketHubDockingSession(): Promise<void> {
+  if (!sharedPage || sharedPage.isClosed()) {
+    return;
+  }
+
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+
+  let attempts = 0;
+  while (!sharedPage.url().includes('left:game-main') && attempts < 4) {
+    attempts += 1;
+    await sharedPage.goBack();
+  }
+
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function setupAndOpenMarketHub(onRequest: (request: MarketByLocationRequest) => void) {
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+  registerDefaultMarketHandler(onRequest);
+
+  await sharedGameShell.openMarketHub();
+}
+
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
+
+test.beforeAll(async ({ browser }) => {
+  await setupSharedMarketHubDockingSession(browser);
+});
+
+test.afterEach(async () => {
+  await resetSharedMarketHubDockingSession();
+});
+
+test.afterAll(async () => {
+  await sharedContext.close();
+});
+
 test.describe('Market Hub docking and radius behavior', () => {
-  test('shows in-system route badge for local non-docked market', async ({ page }) => {
+  test('shows in-system route badge for local non-docked market', async () => {
     const requests: MarketByLocationRequest[] = [];
-    const marketHubPage = new MarketHubPage(page);
-    await setupAndOpenMarketHub(page, (request) => requests.push(request));
+    await setupAndOpenMarketHub((request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           if (requests.length === 0) {
-            await marketHubPage.reloadButton.click();
+            await sharedMarketHubPage.reloadButton.click();
           }
           return requests.length;
         },
@@ -164,114 +306,26 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBeGreaterThan(0);
 
-    const marketRows = marketHubPage.marketItems;
+    const marketRows = sharedMarketHubPage.marketItems;
     const remoteMarket = marketRows.nth(1);
 
     await expect(remoteMarket).toContainText('Remote Market');
     await expect(remoteMarket).toContainText('In-system');
   });
 
-  test('docked cross-system market: gate-route badge shown, transact disabled when not docked there', async ({
-    page,
-  }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    const marketHubPage = new MarketHubPage(page);
-    await mock.setup();
+  test('docked cross-system market: gate-route badge shown, transact disabled when not docked there', async () => {
+    sharedMock.reset();
+    registerSharedSessionHandlers();
+    registerCrossSystemMarketHandler();
 
-    mock.on('character-list-request', () => ({
-      event: 'character-list-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characters: [CHARACTER],
-      },
-    }));
-
-    mock.on('game-join', () => null);
-
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: CHARACTER.id,
-        ships: [SHIP_WITH_POSITION],
-      },
-    }));
-
-    mock.on('market-list-by-location-request', (payload) => {
-      const request = payload as MarketByLocationRequest;
-      return {
-        event: 'market-list-by-location-response',
-        data: {
-          success: true,
-          message: '',
-          playerName: TEST_PLAYER,
-          solarSystemId: 'sol',
-          positionKm: SHIP_WITH_POSITION.spatial.positionKm,
-          distanceAu: request.distanceAu,
-          locationTypes: ['station'],
-          isDocked: true,
-          dockedMarketId: 'sol-ceres-exchange',
-          markets: [
-            {
-              marketId: 'sol-ceres-exchange',
-              solarSystemId: 'sol',
-              marketName: 'Ceres Exchange',
-              siteType: 'station',
-              siteName: 'Ceres Belt Trade Ring',
-              spatial: {
-                solarSystemId: 'sol',
-                frame: 'barycentric',
-                positionKm: { x: 413_700_102.5, y: 0, z: 0 },
-                epochMs: Date.now(),
-              },
-              distanceAu: 0.02,
-              isDocked: true,
-              priceMultiplier: 1,
-              driftPercentPerHour: 6,
-              restockIntervalMinutes: 60,
-            },
-            {
-              marketId: 'alpha-centauri-station',
-              solarSystemId: 'alpha-centauri',
-              marketName: 'Alpha Station',
-              siteType: 'station',
-              siteName: 'Alpha Centauri Hub',
-              spatial: {
-                solarSystemId: 'alpha-centauri',
-                frame: 'barycentric',
-                positionKm: { x: 0, y: 0, z: 0 },
-                epochMs: Date.now(),
-              },
-              distanceAu: null,
-              isDocked: false,
-              priceMultiplier: 1.1,
-              driftPercentPerHour: 8,
-              restockIntervalMinutes: 120,
-              route: { kind: 'gate-route', hops: 1 },
-            },
-          ],
-        },
-      };
-    });
-
-    await loginViaUI(page, mock);
-
-    await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-    await gameShell.openMarketHub();
+    await sharedGameShell.openMarketHub();
 
     await expect
       .poll(
         async () => {
-          const count = await marketHubPage.marketItems.count();
+          const count = await sharedMarketHubPage.marketItems.count();
           if (count === 0) {
-            await marketHubPage.reloadButton.click();
+            await sharedMarketHubPage.reloadButton.click();
           }
           return count;
         },
@@ -279,7 +333,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBe(2);
 
-    const marketRows = marketHubPage.marketItems;
+    const marketRows = sharedMarketHubPage.marketItems;
 
     const dockedMarket = marketRows.nth(0);
     await expect(dockedMarket).toContainText('Ceres Exchange');
@@ -292,16 +346,15 @@ test.describe('Market Hub docking and radius behavior', () => {
     await expect(crossSystemMarket.locator('.transact-btn')).toBeDisabled();
   });
 
-  test('enables transact only for docked market and refreshes with selected radius', async ({ page }) => {
+  test('enables transact only for docked market and refreshes with selected radius', async () => {
     const requests: MarketByLocationRequest[] = [];
-    const marketHubPage = new MarketHubPage(page);
-    await setupAndOpenMarketHub(page, (request) => requests.push(request));
+    await setupAndOpenMarketHub((request) => requests.push(request));
 
     await expect
       .poll(
         async () => {
           if (requests.length === 0) {
-            await marketHubPage.reloadButton.click();
+            await sharedMarketHubPage.reloadButton.click();
           }
           return requests.length;
         },
@@ -309,7 +362,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       )
       .toBeGreaterThan(0);
 
-    const marketRows = marketHubPage.marketItems;
+    const marketRows = sharedMarketHubPage.marketItems;
     await expect(marketRows).toHaveCount(2);
 
     const dockedMarket = marketRows.nth(0);
@@ -322,10 +375,10 @@ test.describe('Market Hub docking and radius behavior', () => {
     await expect(dockedMarket.locator('.transact-btn')).toBeEnabled();
     await expect(remoteMarket.locator('.transact-btn')).toBeDisabled();
     await expect(remoteMarket.locator('.dock-required-badge', { hasText: 'Dock required' })).toBeVisible();
-    await expect(page.getByText('Rapid Transit Thruster').first()).toBeVisible();
+    await expect(sharedPage.getByText('Rapid Transit Thruster').first()).toBeVisible();
 
-    await page.selectOption('#radiusAu', '1');
-    const applyRadiusButton = page.getByRole('button', { name: /apply radius/i });
+    await sharedPage.selectOption('#radiusAu', '1');
+    const applyRadiusButton = sharedPage.getByRole('button', { name: /apply radius/i });
     if ((await applyRadiusButton.count()) > 0) {
       await applyRadiusButton.click();
     }

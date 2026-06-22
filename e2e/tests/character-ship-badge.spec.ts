@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -49,57 +49,115 @@ function characterListResponse(characters: object[]) {
   return { success: true, message: '', playerName: TEST_PLAYER, characters };
 }
 
-// ── Helper ─────────────────────────────────────────────────────────────────────
+function shipListByOwnerResponse(ships: object[]) {
+  return {
+    success: true,
+    message: '',
+    owner: {
+      ownerType: 'player-character',
+      playerId: 'player-1',
+      characterId: CHARACTER_WITH_MISSION.id,
+      npcId: null,
+      factionId: null,
+    },
+    ships,
+  };
+}
 
-async function setupAndNavigateToShipHangar(page: Page, ships = [PRIMARY_SHIP]) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedGameShell: GameShellPage;
 
-  mock.on('character-list-request', () => ({
+function registerSharedSessionHandlers(): void {
+  sharedMock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: characterListResponse([CHARACTER_WITH_MISSION]),
   }));
-
-  mock.on('game-join-request', () => null);
-
-  // Ship-list-by-owner loads in ship-hangar
-  mock.on('ship-list-by-owner-request', () => ({
+  sharedMock.on('game-join-request', () => null);
+  sharedMock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      owner: {
-        ownerType: 'player-character',
-        playerId: 'player-1',
-        characterId: CHARACTER_WITH_MISSION.id,
-        npcId: null,
-        factionId: null,
-      },
-      ships,
-    },
+    data: shipListByOwnerResponse([PRIMARY_SHIP]),
   }));
-
-  await loginViaUI(page, mock);
-
-  // Join in-progress game — goes directly to game-main
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-  // Navigate to ship-hangar via the left outlet
-  await gameShell.openShipHangar();
-
-  return { mock };
 }
+
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
+
+test.beforeAll(async ({ browser }) => {
+  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedGameShell = new GameShellPage(sharedPage);
+
+  await sharedMock.setup();
+  registerSharedSessionHandlers();
+
+  await sharedPage.goto('http://localhost:4200/(left:character-list)');
+  
+  // Try-catch retry-on-login pattern
+  try {
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  // Pre-load login recheck
+  const loginFormVisibleBeforeLoad = await sharedPage
+    .locator('#playerName')
+    .isVisible({ timeout: 1_000 })
+    .catch(() => false);
+  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
+    await loginViaUI(sharedPage, sharedMock);
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  }
+
+  if ((await sharedPage.locator('.character-item').count()) === 0) {
+    const loadButton = sharedPage.locator('.load-btn');
+    const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.first().isVisible());
+    if (!loadButtonVisible) {
+      throw new Error(`Character list is empty and load button is unavailable (url=${sharedPage.url()}).`);
+    }
+
+    await expect(loadButton.first()).toBeEnabled({ timeout: 5_000 });
+    await loadButton.first().click();
+    await expect(sharedPage.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
+  }
+
+  await sharedGameShell.joinGame('Join Game in Progress');
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+});
+
+test.afterEach(async () => {
+  if (!sharedPage || sharedPage.isClosed()) return;
+  sharedMock.reset();
+  registerSharedSessionHandlers();
+
+  let attempts = 0;
+  while (!sharedPage.url().includes('left:game-main') && attempts < 4) {
+    attempts += 1;
+    await sharedPage.goBack();
+  }
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+});
+
+test.afterAll(async () => {
+  await sharedContext.close();
+});
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 test.describe('Character ship badge', () => {
-  test('ship badge shows hydrated active ship after joining first-target in progress', async ({ page }) => {
-    await setupAndNavigateToShipHangar(page);
-    const shipHangarPage = new ShipHangarPage(page);
+  test('ship badge shows hydrated active ship after joining first-target in progress', async () => {
+    sharedMock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
+      data: shipListByOwnerResponse([PRIMARY_SHIP]),
+    }));
 
-    // Started-mission join hydrates active ship from ship-list before routing.
+    await sharedGameShell.openShipHangar();
+    const shipHangarPage = new ShipHangarPage(sharedPage);
+
     const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toBeVisible({ timeout: 10_000 });
     await expect(badgeName).toHaveText('Surveyor');
@@ -112,11 +170,15 @@ test.describe('Character ship badge', () => {
     await expect(surveyorActiveControl).toBeDisabled();
   });
 
-  test('ship badge shows active ship name after choosing another ship in hangar', async ({ page }) => {
-    await setupAndNavigateToShipHangar(page, [PRIMARY_SHIP, SECONDARY_SHIP]);
-    const shipHangarPage = new ShipHangarPage(page);
+  test('ship badge shows active ship name after choosing another ship in hangar', async () => {
+    sharedMock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
+      data: shipListByOwnerResponse([PRIMARY_SHIP, SECONDARY_SHIP]),
+    }));
 
-    // Wait for ship list to populate (headed mode can be slower to render rows)
+    await sharedGameShell.openShipHangar();
+    const shipHangarPage = new ShipHangarPage(sharedPage);
+
     await expect.poll(async () => shipHangarPage.shipItems.count(), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(shipHangarPage.shipItemByName('Surveyor')).toBeVisible({ timeout: 20_000 });
     await expect(shipHangarPage.shipItemByName('Pathfinder')).toBeVisible({ timeout: 20_000 });
@@ -125,13 +187,11 @@ test.describe('Character ship badge', () => {
     await expect(surveyorActiveControl).toHaveText('Active Ship');
     await expect(surveyorActiveControl).toBeDisabled();
 
-    // Click the "Set as Active Ship" button for Pathfinder.
     const pathfinderActiveControl = shipHangarPage.activeShipControlButtonByName('Pathfinder');
     await expect(pathfinderActiveControl).toHaveText('Set as Active Ship');
     await expect(pathfinderActiveControl).toBeEnabled();
     await pathfinderActiveControl.click();
 
-    // Badge should now reflect the chosen ship name
     const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toHaveText('Pathfinder', { timeout: 10_000 });
 

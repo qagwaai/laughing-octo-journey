@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -99,7 +99,7 @@ async function getCanvasFrameSignature(canvas: Locator): Promise<string> {
   return image.toString('base64');
 }
 
-async function setupViewerShipsTest(page: any) {
+async function setupIsolatedViewerShipsSession(page: Page): Promise<SocketIOMock> {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   await mock.setup();
@@ -138,109 +138,150 @@ async function setupViewerShipsTest(page: any) {
     data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
   }));
 
-  return { mock };
+  return mock;
 }
 
-async function navigateToScene(page: any, mock: any, ships: any[] = [ACTIVE_SHIP, INACTIVE_SHIP]) {
-  const gameShell = new GameShellPage(page);
-  const viewerPage = new ViewerPage(page);
+let sharedContext: BrowserContext;
+let sharedPage: Page;
+let sharedMock: SocketIOMock;
+let sharedGameShell: GameShellPage;
+let sharedViewerPage: ViewerPage;
 
-  await gameShell.openViewer();
+async function setupSharedViewerShipsSession(browser: Browser): Promise<void> {
+  sharedContext = await browser.newContext();
+  sharedPage = await sharedContext.newPage();
+  sharedMock = new SocketIOMock(sharedPage);
+  sharedGameShell = new GameShellPage(sharedPage);
+  sharedViewerPage = new ViewerPage(sharedPage);
 
-  mock.on('solar-system-get-request', () => ({
+  await sharedMock.setup();
+
+  sharedMock.on('character-list-request', () => ({
+    event: 'character-list-response',
+    data: {
+      success: true,
+      message: '',
+      playerName: TEST_PLAYER,
+      characters: [
+        {
+          id: 'char-viewer-1',
+          characterName: 'Scout',
+          level: 1,
+          missions: [{ missionId: 'first-target', status: 'active' }],
+        },
+      ],
+    },
+  }));
+
+  await loginViaUI(sharedPage, sharedMock);
+
+  sharedMock.on('game-join-request', () => null);
+  sharedMock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
+    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
+  }));
+
+  await sharedGameShell.joinGame('Join Game');
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 15_000 });
+  await expect(sharedGameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
+
+  sharedMock.on('solar-system-list-request', () => ({
+    event: 'solar-system-list-response',
+    data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
+  }));
+}
+
+async function resetSharedViewerShipsSession(): Promise<void> {
+  if (!sharedPage || sharedPage.isClosed()) {
+    return;
+  }
+
+  const currentUrl = sharedPage.url();
+  if (currentUrl.includes('right:viewer-scene')) {
+    await sharedPage.goBack();
+  }
+
+  if (sharedPage.url().includes('left:viewer')) {
+    await sharedPage.goBack();
+  }
+
+  if (sharedPage.url().includes('left:game-main')) {
+    sharedMock.reset();
+  }
+
+  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+}
+
+async function navigateToScene(
+  ships: any[] = [ACTIVE_SHIP, INACTIVE_SHIP],
+  onShipRequest?: (request: unknown) => void,
+) {
+  sharedMock.reset();
+  sharedMock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',
     data: makeSolarSystemGetResponse(),
   }));
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: makeShipListResponse(ships),
-  }));
+  sharedMock.on('ship-list-by-owner-request', (request) => {
+    onShipRequest?.(request);
+    return {
+      event: 'ship-list-by-owner-response',
+      data: makeShipListResponse(ships),
+    };
+  });
 
-  await viewerPage.selectSystem('Sol');
-  await expect(viewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+  await sharedGameShell.openViewer();
+
+  await sharedViewerPage.selectSystem('Sol');
+  await expect(sharedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-test.describe('Viewer — Character Ships', () => {
-  test('legend shows active ship and inactive ships entries', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock);
+test.describe.serial('Viewer — Character Ships', () => {
+  test.beforeAll(async ({ browser }) => {
+    await setupSharedViewerShipsSession(browser);
+  });
 
-    const shipsPage = new ViewerShipsPage(page);
+  test.afterEach(async () => {
+    await resetSharedViewerShipsSession();
+  });
+
+  test.afterAll(async () => {
+    await sharedContext.close();
+  });
+
+  test('legend shows active ship and inactive ships entries', async () => {
+    await navigateToScene();
+
+    const shipsPage = new ViewerShipsPage(sharedPage);
     await shipsPage.assertLegendVisible();
     await expect(shipsPage.activeShipLegendItem).toContainText('Active Ship');
     await expect(shipsPage.inactiveShipLegendItem).toContainText('Inactive Ships');
   });
 
-  test('active ship legend swatch uses amber color (#fbbf24)', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock);
+  test('active ship legend swatch uses amber color (#fbbf24)', async () => {
+    await navigateToScene();
 
-    const shipsPage = new ViewerShipsPage(page);
+    const shipsPage = new ViewerShipsPage(sharedPage);
     await shipsPage.assertActiveShipSwatchColor('#fbbf24');
   });
 
-  test('inactive ship legend swatch uses blue color (#3b82f6)', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock);
+  test('inactive ship legend swatch uses blue color (#3b82f6)', async () => {
+    await navigateToScene();
 
-    const shipsPage = new ViewerShipsPage(page);
+    const shipsPage = new ViewerShipsPage(sharedPage);
     await shipsPage.assertInactiveShipSwatchColor('#3b82f6');
   });
 
-  test('scene renders without error when ships are present in current solar system', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock, [ACTIVE_SHIP, INACTIVE_SHIP]);
-
-    const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
-    await expect(page).toHaveURL(/right:viewer-scene/);
-  });
-
   test('viewer requests scavenger pod GLB asset when rendering ship meshes', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
+    const mock = await setupIsolatedViewerShipsSession(page);
+    const isolatedGameShell = new GameShellPage(page);
+    const isolatedViewerPage = new ViewerPage(page);
 
     const glbResponsePromise = page.waitForResponse(
       (response) =>
         response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
     );
-
-    await navigateToScene(page, mock, [ACTIVE_SHIP]);
-
-    const glbResponse = await glbResponsePromise;
-    expect(glbResponse.ok()).toBeTruthy();
-  });
-
-  test('scene renders without error when ship list is empty', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock, []);
-
-    const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
-  });
-
-  test('ships in other solar systems are excluded from scene', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    // Only include a ship from another system — scene should still load cleanly
-    await navigateToScene(page, mock, [SHIP_IN_OTHER_SYSTEM]);
-
-    const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
-    // Legend should still be present
-    const shipsPage = new ViewerShipsPage(page);
-    await shipsPage.assertLegendVisible();
-  });
-
-  test('scene handles ship-list failure gracefully (no scene error shown)', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    const gameShell = new GameShellPage(page);
-    const viewerPage = new ViewerPage(page);
-
-    await gameShell.openViewer();
 
     mock.on('solar-system-get-request', () => ({
       event: 'solar-system-get-response',
@@ -248,48 +289,82 @@ test.describe('Viewer — Character Ships', () => {
     }));
     mock.on('ship-list-by-owner-request', () => ({
       event: 'ship-list-by-owner-response',
-      data: { success: false, message: 'Service unavailable', playerName: TEST_PLAYER, characterId: 'char-viewer-1', ships: [] },
+      data: makeShipListResponse([ACTIVE_SHIP]),
     }));
 
-    await viewerPage.selectSystem('Sol');
-    await expect(viewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
-    await expect(viewerPage.sceneError).toHaveCount(0);
+    await isolatedGameShell.openViewer();
+    await isolatedViewerPage.selectSystem('Sol');
+    await expect(isolatedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+
+    const glbResponse = await glbResponsePromise;
+    expect(glbResponse.ok()).toBeTruthy();
   });
 
-  test('legend is always visible regardless of ship availability', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock, []);
+  test('scene renders without error when ships are present in current solar system', async () => {
+    await navigateToScene([ACTIVE_SHIP, INACTIVE_SHIP]);
 
-    const shipsPage = new ViewerShipsPage(page);
+    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
+    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+    await expect(sharedPage).toHaveURL(/right:viewer-scene/);
+  });
+
+  test('scene renders without error when ship list is empty', async () => {
+    await navigateToScene([]);
+
+    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
+    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('ships in other solar systems are excluded from scene', async () => {
+    // Only include a ship from another system — scene should still load cleanly
+    await navigateToScene([SHIP_IN_OTHER_SYSTEM]);
+
+    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
+    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+    // Legend should still be present
+    const shipsPage = new ViewerShipsPage(sharedPage);
+    await shipsPage.assertLegendVisible();
+  });
+
+  test('scene handles ship-list failure gracefully (no scene error shown)', async () => {
+    sharedMock.reset();
+    sharedMock.on('solar-system-get-request', () => ({
+      event: 'solar-system-get-response',
+      data: makeSolarSystemGetResponse(),
+    }));
+    sharedMock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
+      data: {
+        success: false,
+        message: 'Service unavailable',
+        playerName: TEST_PLAYER,
+        characterId: 'char-viewer-1',
+        ships: [],
+      },
+    }));
+
+    await sharedGameShell.openViewer();
+
+    await sharedViewerPage.selectSystem('Sol');
+    await expect(sharedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+  });
+
+  test('legend is always visible regardless of ship availability', async () => {
+    await navigateToScene([]);
+
+    const shipsPage = new ViewerShipsPage(sharedPage);
     await expect(shipsPage.legend).toBeVisible();
     await expect(shipsPage.activeShipLegendItem).toBeVisible();
     await expect(shipsPage.inactiveShipLegendItem).toBeVisible();
   });
 
-  test('session key is used in ship-list request alongside player and character', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
+  test('session key is used in ship-list request alongside player and character', async () => {
     let capturedShipRequest: any = null;
 
-    mock.on('ship-list-by-owner-request', (data) => {
-      capturedShipRequest = data;
-      return {
-        event: 'ship-list-by-owner-response',
-        data: makeShipListResponse([ACTIVE_SHIP]),
-      };
+    await navigateToScene([ACTIVE_SHIP], (request) => {
+      capturedShipRequest = request;
     });
-
-    const gameShell = new GameShellPage(page);
-    const viewerPage = new ViewerPage(page);
-
-    await gameShell.openViewer();
-
-    mock.on('solar-system-get-request', () => ({
-      event: 'solar-system-get-response',
-      data: makeSolarSystemGetResponse(),
-    }));
-
-    await viewerPage.selectSystem('Sol');
-    await expect(viewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
 
     // Verify the ship-list request was made with proper fields
     if (capturedShipRequest) {
@@ -304,19 +379,17 @@ test.describe('Viewer — Character Ships', () => {
     }
   });
 
-  test('target button flies camera to selected ship row target', async ({ page }) => {
-    const { mock } = await setupViewerShipsTest(page);
-    await navigateToScene(page, mock, [ACTIVE_SHIP, INACTIVE_SHIP]);
+  test('target button flies camera to selected ship row target', async () => {
+    await navigateToScene([ACTIVE_SHIP, INACTIVE_SHIP]);
 
-    const viewerPage = new ViewerPage(page);
-    const canvas = viewerPage.sceneCanvas;
+    const canvas = sharedViewerPage.sceneCanvas;
     await expect(canvas).toBeVisible({ timeout: 10_000 });
-    await viewerPage.switchToDistanceView();
+    await sharedViewerPage.switchToDistanceView();
 
     const before = await getCanvasFrameSignature(canvas);
     expect(before.length).toBeGreaterThan(500);
 
-    const targetShipButton = page
+    const targetShipButton = sharedPage
       .locator('tr', { hasText: ACTIVE_SHIP.name })
       .first()
       .locator('button.details-target-btn')
@@ -334,14 +407,13 @@ test.describe('Viewer — Character Ships', () => {
       })
       .not.toBe(before);
 
-    await expect(viewerPage.sceneError).toHaveCount(0);
+    await expect(sharedViewerPage.sceneError).toHaveCount(0);
   });
 
-  test('renders unknown-spatial legend swatch and triggers lazy repair upsert', async ({ page }) => {
+  test('renders unknown-spatial legend swatch and triggers lazy repair upsert', async () => {
     // A ship arriving with sun-origin spatial — the legacy synthetic placeholder
     // case — should: (a) surface the unknown-location legend entry, and
     // (b) cause the client to re-issue a deterministic ship upsert to repair it.
-    const { mock } = await setupViewerShipsTest(page);
     const BROKEN_SHIP = {
       id: 'ship-broken-1',
       name: 'Wraith',
@@ -357,7 +429,7 @@ test.describe('Viewer — Character Ships', () => {
     };
 
     let capturedShipUpsertRequest: any = null;
-    mock.on('ship-upsert-request', (data) => {
+    sharedMock.on('ship-upsert-request', (data) => {
       capturedShipUpsertRequest = data;
       return {
         event: 'ship-upsert-response',
@@ -365,9 +437,9 @@ test.describe('Viewer — Character Ships', () => {
       };
     });
 
-    await navigateToScene(page, mock, [BROKEN_SHIP]);
+    await navigateToScene([BROKEN_SHIP]);
 
-    const shipsPage = new ViewerShipsPage(page);
+    const shipsPage = new ViewerShipsPage(sharedPage);
     await expect(shipsPage.unknownShipLegendItem).toBeVisible({ timeout: 5_000 });
     await expect(shipsPage.unknownShipLegendItem).toContainText('Unknown location');
 

@@ -128,6 +128,20 @@ export class SocketIOMock {
     }
   }
 
+  /**
+   * Clears any queued packets so a reused live page starts from a clean mock state.
+   * Flushes any pending GET long-poll with a server ping so the polling cycle
+   * continues cleanly instead of silently hanging until the 25 s keepalive fires.
+   */
+  reset(): void {
+    this.responseQueue.length = 0;
+    if (this.pendingGetResolve) {
+      const resolve = this.pendingGetResolve;
+      this.pendingGetResolve = null;
+      resolve('2'); // server ping — client will pong and issue a fresh GET poll
+    }
+  }
+
   private enqueue(packet: string): void {
     if (this.debugEnabled) {
       console.log(`[socket-mock] enqueue packet: ${packet}`);
