@@ -103,6 +103,18 @@ plan paused.
 
 GATE 1 (Nova internal): PASS = exit test green. This gate authorizes building the visual component.
 
+**GATE 1 RESULT (2026-06-30): PASS** ✓
+
+Phase 1 deliverables completed:
+  - `ShipSceneRegistry` (src/app/scene/ship-exterior/ship-scene-registry.ts): lazy init, activate,
+    pause, dispose, orphaned-response safety.
+  - `ShipSceneContext` (src/app/scene/ship-exterior/ship-scene-context.ts): immutable state holder,
+    pause/resume, serialize for byte-comparison.
+  - Exit test (src/app/scene/ship-exterior/ship-scene-engine.vitest.ts): 6 tests, all green.
+    Hard invariant: A->B->A maintains byte-identical state, zero recreation, strict pause.
+
+Phase 2 is authorized. Ready to wire the bare scene component.
+
 ### Phase 2: Bare Scene Component + Hard Replace (Nova)
 
 1. Goal: Render the bare scene (ship + starfield + per-ship camera state + pause/resume) wired to
@@ -132,6 +144,24 @@ permanent / approving baselines):
 
 GATE 2 result: ALL PASS -> approve `toHaveScreenshot` baselines, deletion is permanent, proceed.
 Any FAIL -> Nova fixes before parity work; `git revert` of the deletion commit is available if needed.
+
+**GATE 2 STATUS (2026-06-30): READY FOR VISUAL TEST**
+
+Phase 2 deliverables completed:
+  - `ShipExteriorBareSceneComponent` (src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts):
+    wired to registry, requests ship list, initializes contexts, activates first ship, exposes
+    test API via `window.__shipExteriorTestUtils`.
+  - `ShipExteriorDebugOverlayComponent`: dev-only overlay showing active context, pause status,
+    registry metadata (hidden in prod, visible via ?debugScene=1).
+  - Playwright spec (e2e/tests/ship-exterior-visual-phase2.spec.ts): captures A->B->A artifacts
+    and asserts via overlay that A state is preserved on return.
+  - Hard replace completed:
+    - `git tag sw-13-pre-greenfield` created (checkpoint for rollback safety).
+    - Old `src/app/scene/ship-exterior-view.ts` deleted.
+    - Route updated to load new component (src/app/routed.routes.ts).
+    - Build clean: no errors, no orphaned imports.
+  - Awaiting Pete visual inspection gate (GATE 2 checklist above).
+
 
 ### Phase 3: Parity Slice 1 — Camera/Pause Hardening (Nova)
 
