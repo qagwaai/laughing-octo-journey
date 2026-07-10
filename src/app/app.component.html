@@ -51,18 +51,24 @@
 
   <!-- Right Canvas Area -->
   <div class="relative min-w-0 max-h-dvh max-w-full flex-1 overflow-hidden" #rightPanel>
-    <ngt-canvas
-      #canvas
-      class="relative z-0"
-      [stats]="persistentStatsOptions"
-      [frameloop]="canvasFrameloop()"
-      shadows
-      [camera]="canvasCameraOptions"
-      [lookAt]="canvasLookAt"
-      (click)="onCanvasClick()"
-    >
-      <app-routed-scene *canvasContent />
-    </ngt-canvas>
+    @if (shipExteriorPrimaryActive()) {
+      <div class="absolute inset-0 z-0">
+        <router-outlet />
+      </div>
+    } @else {
+      <ngt-canvas
+        #canvas
+        class="relative z-0"
+        [stats]="persistentStatsOptions"
+        [frameloop]="canvasFrameloop()"
+        shadows
+        [camera]="canvasCameraOptions"
+        [lookAt]="canvasLookAt"
+        (click)="onCanvasClick()"
+      >
+        <app-routed-scene *canvasContent />
+      </ngt-canvas>
+    }
 
     <div
       class="cold-boot-scan-host absolute inset-0 z-10"

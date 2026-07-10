@@ -1,0 +1,400 @@
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  ElementRef,
+  effect,
+  OnDestroy,
+  OnInit,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { Router } from '@angular/router';
+import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
+import { ShipSummary } from '../../model/ship-list';
+import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
+import { ShipSceneContext } from './ship-scene-context';
+import { ShipSceneRegistry } from './ship-scene-registry';
+import { buildShipSceneContextKey, ShipSceneContextState } from './ship-scene-types';
+import {
+  registerShipExteriorBareSceneTestApi,
+  unregisterShipExteriorBareSceneTestApi,
+} from './ship-exterior-bare-scene-test-api';
+
+@Component({
+  selector: 'app-ship-exterior-bare-scene',
+  standalone: true,
+  templateUrl: './ship-exterior-bare-scene.component.html',
+  styleUrls: ['./ship-exterior-bare-scene.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
+  private static readonly OBJECTIVE_UNLOCKED_MESSAGE =
+    'Objective unlocked: Neutralize the identified asteroid using a launchable payload.';
+
+  private readonly router = inject(Router);
+  private readonly sessionService = inject(SessionService);
+  private readonly shipService = inject(ShipService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
+  readonly contexts = signal<ShipSceneContext[]>([]);
+  readonly activeContextKey = signal<string | null>(null);
+  readonly contextKeys = computed(() => this.contexts().map((context) => context.contextKey));
+  readonly objectiveMessage = signal<string>(ShipExteriorBareSceneComponent.OBJECTIVE_UNLOCKED_MESSAGE);
+  readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error' } | null>(null);
+
+  private readonly registry = new ShipSceneRegistry();
+  private readonly asteroidSamples = signal([
+    {
+      id: 'sample-iron-1',
+      scanned: false,
+      scanProgress: 0,
+      revealedMaterial: { material: 'Iron', rarity: 'Common' },
+    },
+  ]);
+  readonly targetedAsteroidId = signal<string | null>(null);
+  private animationFrameId: number | null = null;
+  private resizeObserver: ResizeObserver | null = null;
+  private viewReady = false;
+  private readonly navigationPlayerName = signal<string>('unknown-player');
+  private readonly navigationCharacterId = signal<string>('unknown-character');
+
+  ngOnInit(): void {
+    this.resolveNavigationIdentity();
+    this.bootstrapContexts();
+    this.registerTestApi();
+
+    this.destroyRef.onDestroy(() => {
+      unregisterShipExteriorBareSceneTestApi();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.viewReady = true;
+    this.attachVisibleCanvas();
+    this.observeResize();
+    this.startAnimationLoop();
+  }
+
+  ngOnDestroy(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    this.resizeObserver?.disconnect();
+    this.registry.dispose();
+  }
+
+  activateContext(contextKey: string): boolean {
+    const activated = this.registry.activate(contextKey);
+    if (!activated) {
+      return false;
+    }
+
+    this.activeContextKey.set(contextKey);
+    this.attachVisibleCanvas();
+    return true;
+  }
+
+  private readonly onSessionActiveShipChange = effect(() => {
+    const activeShip = this.sessionService.activeShip();
+    if (!activeShip?.id?.trim()) {
+      return;
+    }
+
+    const playerName = this.navigationPlayerName();
+    const characterId = this.navigationCharacterId();
+
+    this.upsertContextFromShip(activeShip, playerName, characterId);
+    const contextKey = buildShipSceneContextKey({
+      playerName,
+      characterId,
+      shipId: activeShip.id,
+    });
+
+    this.activateContext(contextKey);
+  });
+
+  private bootstrapContexts(): void {
+    const initialShip = this.sessionService.activeShip();
+    const activeCharacterId = this.navigationCharacterId();
+    const playerName = this.navigationPlayerName();
+
+    if (initialShip) {
+      this.upsertContextFromShip(initialShip, playerName, activeCharacterId);
+    }
+
+    const sessionKey = this.sessionService.getSessionKey();
+    if (!sessionKey || !playerName || !activeCharacterId || activeCharacterId === 'unknown-character') {
+      this.ensureFallbackContexts(playerName, activeCharacterId);
+      this.activateFirstContextIfNeeded();
+      return;
+    }
+
+    const request: ShipListByOwnerRequest = {
+      playerName,
+      sessionKey,
+      owner: {
+        ownerType: 'player-character',
+        characterId: activeCharacterId,
+      },
+    };
+
+    this.shipService.listShipsByOwner(request, (response) => {
+      response.ships.forEach((ship) => this.upsertContextFromShip(ship, playerName, activeCharacterId));
+      this.ensureFallbackContexts(playerName, activeCharacterId);
+      this.syncContextsSignal();
+      this.activateFirstContextIfNeeded();
+      this.attachVisibleCanvas();
+    });
+
+    this.syncContextsSignal();
+    this.activateFirstContextIfNeeded();
+  }
+
+  private resolveNavigationIdentity(): void {
+    const navigationState = (this.router.getCurrentNavigation()?.extras.state ?? window.history.state) as
+      | { playerName?: unknown; joinCharacter?: { id?: unknown } }
+      | undefined;
+
+    const playerName = typeof navigationState?.playerName === 'string' ? navigationState.playerName.trim() : '';
+    const characterId =
+      typeof navigationState?.joinCharacter?.id === 'string' ? navigationState.joinCharacter.id.trim() : '';
+
+    this.navigationPlayerName.set(playerName || 'unknown-player');
+    this.navigationCharacterId.set(
+      characterId || this.sessionService.activeCharacter()?.id?.trim() || 'unknown-character',
+    );
+  }
+
+  private upsertContextFromShip(ship: ShipSummary, playerName: string, characterId: string): void {
+    const shipId = ship.id?.trim();
+    if (!shipId) {
+      return;
+    }
+
+    const initialState: ShipSceneContextState = {
+      playerName,
+      characterId,
+      shipId,
+      world: {
+        shipPosition: {
+          x: ship.spatial?.positionKm?.x ?? 0,
+          y: ship.spatial?.positionKm?.y ?? 0,
+          z: ship.spatial?.positionKm?.z ?? 0,
+        },
+      },
+    };
+
+    const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
+    const context = this.registry.getOrCreateContext(contextKey, initialState);
+    context.setState(initialState);
+    this.syncContextsSignal();
+  }
+
+  private ensureFallbackContexts(playerName: string, characterId: string): void {
+    if (this.registry.getAllContexts().length >= 2) {
+      return;
+    }
+
+    const fallbackIds = ['fallback-ship-a', 'fallback-ship-b'];
+    for (const shipId of fallbackIds) {
+      const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
+      this.registry.getOrCreateContext(contextKey, {
+        playerName,
+        characterId,
+        shipId,
+        world: {
+          shipPosition: { x: shipId.endsWith('a') ? -1 : 1.25, y: 0, z: 0 },
+        },
+      });
+    }
+
+    this.syncContextsSignal();
+  }
+
+  private syncContextsSignal(): void {
+    this.contexts.set(this.registry.getAllContexts());
+  }
+
+  private activateFirstContextIfNeeded(): void {
+    if (this.activeContextKey()) {
+      return;
+    }
+
+    const first = this.registry.getAllContexts()[0];
+    if (!first) {
+      return;
+    }
+
+    this.activateContext(first.contextKey);
+  }
+
+  private attachVisibleCanvas(): void {
+    if (!this.viewReady) {
+      return;
+    }
+
+    const host = this.canvasHost().nativeElement;
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return;
+    }
+
+    this.registry.getAllContexts().forEach((context) => {
+      const rendering = context.getRenderingState();
+      if (!rendering) {
+        return;
+      }
+
+      if (!host.contains(rendering.canvas)) {
+        host.appendChild(rendering.canvas);
+      }
+
+      rendering.canvas.style.display = context.contextKey === active.contextKey ? 'block' : 'none';
+      if (context.contextKey === active.contextKey) {
+        context.setViewport(host.clientWidth, host.clientHeight);
+      }
+    });
+
+    if (!active.getRenderingState()) {
+      const rendering = active.initializeRendering();
+      host.appendChild(rendering.canvas);
+      rendering.canvas.style.display = 'block';
+      active.setViewport(host.clientWidth, host.clientHeight);
+      active.resume();
+    }
+  }
+
+  private observeResize(): void {
+    const host = this.canvasHost().nativeElement;
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+
+      const width = entry.contentRect.width;
+      const height = entry.contentRect.height;
+      this.registry.getAllContexts().forEach((context) => context.setViewport(width, height));
+    });
+
+    this.resizeObserver.observe(host);
+  }
+
+  private startAnimationLoop(): void {
+    const loop = () => {
+      const active = this.registry.getActiveContext();
+      active?.renderFrame();
+      this.animationFrameId = requestAnimationFrame(loop);
+    };
+
+    this.animationFrameId = requestAnimationFrame(loop);
+  }
+
+  private registerTestApi(): void {
+    registerShipExteriorBareSceneTestApi({
+      contextKeys: this.contextKeys,
+      activeContextKey: this.activeContextKey.asReadonly(),
+      activateContext: (contextKey: string) => this.activateContext(contextKey),
+      snapshotActiveContext: () => this.registry.getActiveContext()?.snapshotRuntime() ?? null,
+      legacy: {
+        getAsteroidSamples: () => this.asteroidSamples(),
+        forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
+        forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
+        getTargetedAsteroidId: () => this.targetedAsteroidId(),
+        launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
+        getActiveLaunchToast: () => this.activeLaunchToast(),
+      },
+    });
+  }
+
+  selectFirstScannedIronTargetForTest(): void {
+    const sample = this.asteroidSamples().find(
+      (candidate) => candidate.scanned && candidate.revealedMaterial?.material?.toLowerCase() === 'iron',
+    );
+
+    if (sample) {
+      this.targetedAsteroidId.set(sample.id);
+      return;
+    }
+
+    const first = this.asteroidSamples()[0];
+    if (first) {
+      this.targetedAsteroidId.set(first.id);
+    }
+  }
+
+  private forceCompleteIronScan(sampleId?: string): {
+    id: string;
+    scanned: boolean;
+    scanProgress: number;
+    revealedMaterial: { material: string; rarity: string };
+  } | null {
+    const targetId = sampleId ?? this.asteroidSamples()[0]?.id;
+    if (!targetId) {
+      return null;
+    }
+
+    let updatedSample: {
+      id: string;
+      scanned: boolean;
+      scanProgress: number;
+      revealedMaterial: { material: string; rarity: string };
+    } | null = null;
+
+    this.asteroidSamples.update((samples) =>
+      samples.map((sample) => {
+        if (sample.id !== targetId) {
+          return sample;
+        }
+
+        updatedSample = {
+          ...sample,
+          scanned: true,
+          scanProgress: 100,
+          revealedMaterial: { material: 'Iron', rarity: 'Common' },
+        };
+        return updatedSample;
+      }),
+    );
+
+    return updatedSample;
+  }
+
+  private forceTargetAsteroid(sampleId: string): boolean {
+    const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+    if (!exists) {
+      return false;
+    }
+
+    this.targetedAsteroidId.set(sampleId);
+    return true;
+  }
+
+  private launchFromHotkey(_hotkey: 1 | 2 | 3 | 4 | 5): void {
+    const hasLaunchable = this.sessionService
+      .activeShip()
+      ?.inventory?.some((item) => item.launchable === true);
+
+    if (!hasLaunchable) {
+      this.activeLaunchToast.set({
+        message: 'Cannot launch: no launchable item available in active ship inventory.',
+        tone: 'error',
+      });
+      return;
+    }
+
+    this.activeLaunchToast.set({ message: 'Launch queued.', tone: 'success' });
+  }
+}

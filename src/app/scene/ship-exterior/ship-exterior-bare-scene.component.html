@@ -1,0 +1,32 @@
+<section class="ship-exterior-bare-scene" aria-label="Ship exterior bare scene">
+  <header class="ship-exterior-bare-scene__toolbar">
+    <span class="ship-exterior-bare-scene__title">SHIP EXTERIOR // BARE SCENE</span>
+    <div class="ship-exterior-bare-scene__switches">
+      @for (context of contexts(); track context.contextKey) {
+        <button
+          type="button"
+          class="ship-exterior-bare-scene__switch-btn"
+          [class.ship-exterior-bare-scene__switch-btn--active]="activeContextKey() === context.contextKey"
+          (click)="activateContext(context.contextKey)"
+        >
+          {{ context.getState().shipId }}
+        </button>
+      }
+    </div>
+  </header>
+
+  <section class="ship-exterior-bare-scene__objective" aria-live="polite">
+    <p>{{ objectiveMessage() }}</p>
+    <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="selectFirstScannedIronTargetForTest()">
+      TARGET IRON
+    </button>
+  </section>
+
+  <div class="ship-exterior-bare-scene__viewport" #canvasHost></div>
+
+  <footer class="ship-exterior-bare-scene__debug" aria-live="polite">
+    <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>
+    <span>CONTEXTS: {{ contexts().length }}</span>
+    <span>TARGET: {{ targetedAsteroidId() ?? 'none' }}</span>
+  </footer>
+</section>

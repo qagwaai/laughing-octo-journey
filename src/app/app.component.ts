@@ -143,6 +143,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   protected isColdBootScanOverlayActive = computed(() => this.currentUrl().includes('opening-cold-boot-scan'));
 
+  protected shipExteriorPrimaryActive = computed(() => {
+    const url = this.currentUrl();
+    return /(?:^|\/)ship-exterior-view(?:\(|$)/.test(url);
+  });
+
   protected showColdBootLookHint = computed(() => this.isColdBootSceneActive() && this.lookHintOpacity() > 0);
   protected contractVarianceToast = this.contractVarianceNotifier.activeToast;
 

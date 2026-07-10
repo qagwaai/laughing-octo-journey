@@ -13,8 +13,8 @@
 **Each player-character's ship must render in its own isolated THREE.js scene.**
 
 When a player switches ships:
-- Scene A (Ship 1) is removed from renderer
-- Scene B (Ship 2) is rendered to the same canvas
+- Ship 1 renders through its own component instance and canvas
+- Ship 2 renders through a different component instance and canvas
 - All visual properties (camera, meshes, state) are **completely isolated** per ship
 
 ### Design Questions (Answer Before Coding)
@@ -22,10 +22,10 @@ When a player switches ships:
    **A:** Screenshot Ship 1 (color X, position Y) → Switch → Screenshot Ship 2 (color Z, position W). Both should be visually distinct.
 
 2. **Q: Where do THREE.js objects live?**  
-   **A:** **Inside `ShipSceneContext`**, not in the component. Each context owns its complete rendering state.
+  **A:** **Inside the per-ship component instance and its `ShipSceneContext`**, not in any shared host. Each ship instance owns its complete rendering state.
 
 3. **Q: What happens on context switch?**  
-   **A:** Component gets active context → renders its scene to canvas. Old scene is detached, new scene is attached.
+  **A:** The UI switches between already-instantiated ship components. The newly shown ship component resumes its own scene/canvas pipeline, and the previously shown ship component is hidden and paused.
 
 4. **Q: How does pause state survive a switch?**  
    **A:** Each context tracks its own `isPaused` signal. Switch to Ship 1 (paused) → switch to Ship 2 (not paused) → switch back to Ship 1 (still paused).
@@ -52,6 +52,7 @@ export interface ShipSceneRenderingState {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
+  canvas: HTMLCanvasElement;
   
   // Mesh/Geometry/Material
   cube: THREE.Mesh;
@@ -78,7 +79,7 @@ export class ShipSceneContext {
   constructor(contextKey: string, initialState: ShipSceneContextState) { }
   
   // NEW: Initialize rendering for this context
-  initializeRendering(canvas: HTMLCanvasElement): ShipSceneRenderingState { }
+  initializeRendering(): ShipSceneRenderingState { }
   
   // NEW: Get rendering state
   getRenderingState(): ShipSceneRenderingState | null { }
@@ -99,75 +100,63 @@ export class ShipSceneContext {
 ## Part 3: Component Architecture
 
 ### Component Responsibilities (ONLY These)
-1. **Routing:** Subscribe to active ship ID from navigation/registry
-2. **Context Lifecycle:** Request rendering state from active context
-3. **Canvas Management:** Attach/detach scenes to canvas on switch
-4. **Event Delegation:** Pass keyboard/mouse events to active context
+1. **Routing:** Receive one ship identity and display mode from parent/navigation state
+2. **Context Lifecycle:** Own one `ShipSceneContext` for that ship instance
+3. **Canvas Management:** Create and retain this ship instance's canvas and renderer
+4. **Event Delegation:** Handle keyboard/mouse events for this ship instance only when visible
 5. **Test API:** Expose test utilities for e2e
 
 ### Component Fields (Delete Old Global Scene Objects)
 ```typescript
 export class ShipExteriorBareSceneComponent {
-  // Remove: private scene, camera, renderer, cube, animationFrameId, cameraControls
+  // This component instance owns one ship scene. There is no shared host canvas.
   
   // Keep:
   readonly sceneCanvas = viewChild<ElementRef>('sceneCanvas');
-  readonly registry = new ShipSceneRegistry();
-  readonly activeContextKey = signal<string | null>(null);
   readonly showDebugOverlay = signal(false);
   
   // NEW:
-  private activeRenderingState: ShipSceneRenderingState | null = null;
+  readonly context = new ShipSceneContext(contextKey, initialState);
+  private renderingState: ShipSceneRenderingState | null = null;
+  readonly isVisible = signal(false);
 }
 ```
 
 ### Component Lifecycle
 
 **ngOnInit:**
-- Request ship list via socket
-- Create contexts with data (DO NOT initialize rendering yet)
-- Activate first ship
+- Receive or resolve the ship identity for this component instance
+- Construct one `ShipSceneContext` with data only (DO NOT initialize rendering yet)
 
 **ngAfterViewInit:**
-- Get canvas reference
-- Call `activeContext.initializeRendering(canvas)`
-- Store as `activeRenderingState`
-- Start animation loop for active context
+- Call `context.initializeRendering()`
+- Store as `renderingState`
+- Start animation loop for this component instance only when visible
 
-**On Context Switch (effect):**
+**On Visibility Change (effect):**
 ```typescript
-private readonly onActiveContextChange = effect(() => {
-  const activeKey = this.activeContextKey();
-  if (!activeKey) return;
-  
-  const activeContext = this.registry.getActiveContext();
-  if (!activeContext) return;
-  
-  const canvas = this.sceneCanvas()?.nativeElement;
-  if (!canvas) return;
-  
-  // Get or initialize rendering for this context
-  let renderingState = activeContext.getRenderingState();
-  if (!renderingState) {
-    renderingState = activeContext.initializeRendering(canvas);
+private readonly onVisibilityChange = effect(() => {
+  const renderingState = this.renderingState;
+  if (!renderingState) return;
+
+  if (this.isVisible()) {
+    this.context.resume();
+    renderingState.renderer.render(renderingState.scene, renderingState.camera);
+    return;
   }
-  
-  // Swap rendering state
-  this.activeRenderingState = renderingState;
-  
-  // Re-attach scene to renderer (canvas already set during init)
-  this.renderer?.render(renderingState.scene, renderingState.camera);
+
+  this.context.pause();
 });
 ```
 
 **Animation Loop:**
-- Only runs for active context's rendering state
-- Calls `activeRenderingState.orbitControls.update()` if not paused
-- Calls `activeRenderingState.cube.rotation` update if not paused
+- Runs per component instance, but performs work only while that instance is visible and not paused
+- Calls `renderingState.orbitControls.update()` if not paused
+- Calls `renderingState.cube.rotation` update if not paused
 
 **ngOnDestroy:**
-- Dispose all contexts' rendering states
-- Stop animation loop
+- Dispose this component instance's rendering state
+- Stop this component instance's animation loop
 
 ---
 
@@ -179,15 +168,15 @@ private readonly onActiveContextChange = effect(() => {
 - [ ] Do NOT initialize rendering in constructor
 
 ### Phase 2b: Component Rewrite
-- [ ] Remove component's global scene/camera/renderer/cube fields
-- [ ] Add `activeRenderingState` field
-- [ ] Rewrite `initializeScene()` → `onContextSwitch()` effect
-- [ ] Rewrite animation loop to use `activeRenderingState`
-- [ ] Add rendering initialization on first context activation
+- [ ] Remove any shared-host scene/camera/renderer/cube assumptions
+- [ ] Add per-instance `renderingState` field
+- [ ] Rewrite activation logic to visibility-driven pause/resume per component instance
+- [ ] Rewrite animation loop to use per-instance `renderingState`
+- [ ] Add rendering initialization on first component mount
 
 ### Phase 2c: Context Rendering Initialization
-- [ ] Implement `ShipSceneContext.initializeRendering(canvas)`
-- [ ] Create scene, camera, renderer per context
+- [ ] Implement `ShipSceneContext.initializeRendering()`
+- [ ] Create scene, camera, renderer, and canvas per component instance/context
 - [ ] Create cube with deterministic color per shipId
 - [ ] Create OrbitCameraControls for this context
 - [ ] Store all objects in `ShipSceneRenderingState`
@@ -210,10 +199,10 @@ private readonly onActiveContextChange = effect(() => {
 
 **Success Criteria:**
 - ✓ Player has 2 ships
-- ✓ Click "View Exterior" on Ship 1 → Canvas shows **blue cube**
-- ✓ Set Ship 2 active, click "View Exterior" → Canvas shows **different color cube**
+- ✓ Click "View Exterior" on Ship 1 → Ship 1 component/canvas shows **blue cube**
+- ✓ Set Ship 2 active, click "View Exterior" → Ship 2 component/canvas shows **different color cube**
 - ✓ Debug overlay shows different ship ID on each switch
-- ✓ Switch back to Ship 1 → Shows **blue cube again**
+- ✓ Switch back to Ship 1 → Shows **blue cube again** in Ship 1's original component instance
 - ✓ Pause on Ship 1 → Switch to Ship 2 (not paused) → Switch back Ship 1 (still paused)
 
 **What to Screenshot:**
@@ -256,11 +245,11 @@ private readonly onActiveContextChange = effect(() => {
 
 1. **Design First:** Do not code until you can answer all questions in Part 1
 2. **Read Memory:** Check `/memories/repo/ship-exterior-view-architecture.md` before starting
-3. **Context Isolation:** Each context owns its THREE.js objects, NOT the component
+3. **Instance Isolation:** Each ship component instance owns its THREE.js objects and canvas; there is no shared renderer host
 4. **Animation Scope:** Only animate the active context's rendering state
 5. **Disposal:** Clean up rendering objects on context dispose (prevent memory leaks)
 6. **Test-Driven:** E2E must verify two ships show different scenes
-7. **No Shortcuts:** Don't try to reuse single scene across ships (defeats architecture)
+7. **No Shortcuts:** Don't try to reuse a single scene, renderer, or canvas across ships (defeats architecture)
 
 ---
 

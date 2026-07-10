@@ -10,9 +10,10 @@ All Phase 2 implementation changes have been reverted. A complete architectural 
 **Original Intent (Correct):**
 - Each `ShipSceneContext` should own its **own isolated THREE.js scene** with independent:
   - `THREE.Scene`, `THREE.Camera`, `THREE.WebGLRenderer`
+   - Its own `HTMLCanvasElement` and component instance lifecycle
   - Mesh/geometry/materials (not shared across ships)
   - Camera state, visual properties, pause state
-- On ship switch: swap entire rendering pipeline, not just recolor a global scene
+- On ship switch: show a different ship component instance and its rendering pipeline, not just recolor a global scene
 
 **What Was Built (Wrong):**
 - Single global `THREE.Scene`, `camera`, `renderer`, `cube`

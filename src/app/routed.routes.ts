@@ -5,7 +5,7 @@ const primaryRoutes: Routes = [
   // Primary outlet routes (right panel - canvas scenes)
   {
     path: 'ship-exterior-view',
-    loadComponent: () => import('./scene/ship-exterior-view'),
+    loadComponent: () => import('./scene/ship-exterior/ship-exterior-bare-scene.component'),
     canActivate: [authGuard],
   },
   {
