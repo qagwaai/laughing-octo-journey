@@ -33,6 +33,7 @@ export interface ShipSceneRuntimeSnapshot {
   cameraPosition: { x: number; y: number; z: number };
   cubeRotation: { x: number; y: number; z: number };
   isPaused: boolean;
+  renderedFrameCount: number;
 }
 
 export interface ShipSceneKeyParts {

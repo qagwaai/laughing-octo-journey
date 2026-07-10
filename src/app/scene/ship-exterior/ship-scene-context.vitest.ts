@@ -30,4 +30,21 @@ describe('ShipSceneContext', () => {
 
     expect(context.getState().world?.shipPosition).toEqual({ x: 9, y: 8, z: 7 });
   });
+
+  it('does not increment rendered frame count while paused or without rendering state', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.getRenderedFrameCount()).toBe(0);
+
+    context.renderFrame();
+    expect(context.getRenderedFrameCount()).toBe(0);
+
+    context.resume();
+    context.renderFrame();
+    expect(context.getRenderedFrameCount()).toBe(0);
+  });
 });

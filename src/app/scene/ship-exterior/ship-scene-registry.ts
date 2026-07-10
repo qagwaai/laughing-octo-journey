@@ -42,21 +42,58 @@ export class ShipSceneRegistry {
       return null;
     }
 
-    const previous = this.getActiveContext();
-    if (previous && previous.contextKey !== contextKey) {
-      previous.pause();
-    }
-
     this.activeContextKey = contextKey;
-    target.resume();
+    this.enforceActivePauseInvariants();
     return target;
   }
 
   pause(contextKey: string): void {
     this.contexts.get(contextKey)?.pause();
+
+    if (this.activeContextKey === contextKey) {
+      this.activeContextKey = null;
+    }
+  }
+
+  deactivateAll(): void {
+    this.activeContextKey = null;
+    this.contexts.forEach((context) => context.pause());
+  }
+
+  removeContext(contextKey: string): boolean {
+    const context = this.contexts.get(contextKey);
+    if (!context) {
+      return false;
+    }
+
+    context.disposeRendering();
+    const wasActive = this.activeContextKey === contextKey;
+    this.contexts.delete(contextKey);
+
+    if (wasActive) {
+      this.activeContextKey = null;
+      const nextContext = this.getAllContexts()[0];
+      if (nextContext) {
+        this.activate(nextContext.contextKey);
+      }
+    }
+
+    return true;
+  }
+
+  enforceActivePauseInvariants(): void {
+    this.contexts.forEach((context, key) => {
+      if (this.activeContextKey && key === this.activeContextKey) {
+        context.resume();
+        return;
+      }
+
+      context.pause();
+    });
   }
 
   dispose(): void {
+    this.deactivateAll();
     this.contexts.forEach((context) => context.disposeRendering());
     this.contexts.clear();
     this.activeContextKey = null;

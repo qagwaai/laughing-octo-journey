@@ -37,6 +37,7 @@
     "e2e:3d": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts --reporter=line",
     "e2e:stateful": "playwright test e2e/tests/character-*.spec.ts e2e/tests/first-target-*.spec.ts e2e/tests/guarded-left-menu-pin-cycle.spec.ts e2e/tests/locale-opening-mission-flow.spec.ts e2e/tests/login-after-first-target-completed.spec.ts e2e/tests/market-hub-*.spec.ts e2e/tests/mission-board.spec.ts e2e/tests/print-queue.spec.ts e2e/tests/repair-retrofit.spec.ts --reporter=line",
     "e2e:auth-route:ui": "playwright test e2e/tests/login.spec.ts e2e/tests/registration.spec.ts e2e/tests/registration-auto-login-failure.spec.ts e2e/tests/locale-auth-flow.spec.ts --reporter=line --ui",
+    "e2e:3d:headed": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts --reporter=line --headed",
     "e2e:3d:ui": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts --reporter=line --ui",
     "e2e:stateful:ui": "playwright test e2e/tests/character-*.spec.ts e2e/tests/first-target-*.spec.ts e2e/tests/guarded-left-menu-pin-cycle.spec.ts e2e/tests/locale-opening-mission-flow.spec.ts e2e/tests/login-after-first-target-completed.spec.ts e2e/tests/market-hub-*.spec.ts e2e/tests/mission-board.spec.ts e2e/tests/print-queue.spec.ts e2e/tests/repair-retrofit.spec.ts --reporter=line --ui",
     "e2e:ui": "playwright test --ui",

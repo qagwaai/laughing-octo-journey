@@ -29,6 +29,7 @@ export class ShipSceneContext {
   private state: ShipSceneContextState;
   private renderingState: ShipSceneRenderingState | null = null;
   private paused = true;
+  private renderedFrameCount = 0;
 
   constructor(
     readonly contextKey: string,
@@ -115,6 +116,10 @@ export class ShipSceneContext {
     return this.renderingState;
   }
 
+  getRenderedFrameCount(): number {
+    return this.renderedFrameCount;
+  }
+
   setViewport(width: number, height: number): void {
     if (!this.renderingState) {
       return;
@@ -159,6 +164,7 @@ export class ShipSceneContext {
     this.renderingState.cube.rotation.y += 0.006;
     this.renderingState.orbitControls.update();
     this.renderingState.renderer.render(this.renderingState.scene, this.renderingState.camera);
+    this.renderedFrameCount += 1;
   }
 
   snapshotRuntime(): ShipSceneRuntimeSnapshot | null {
@@ -178,6 +184,7 @@ export class ShipSceneContext {
         z: this.renderingState.cube.rotation.z,
       },
       isPaused: this.isPaused(),
+      renderedFrameCount: this.renderedFrameCount,
     };
   }
 
@@ -192,5 +199,6 @@ export class ShipSceneContext {
     this.renderingState.canvas.remove();
     this.renderingState = null;
     this.paused = true;
+    this.renderedFrameCount = 0;
   }
 }

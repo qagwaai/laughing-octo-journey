@@ -1,7 +1,7 @@
 # SW-13 Replacement Design Checkpoint
 
 Status: Active
-Date: 2026-07-09
+Date: 2026-07-10
 Scope: Ship Exterior hard replacement (Option A)
 
 ## 1) Confirmed Operating Decisions
@@ -36,7 +36,7 @@ Note: If backend contract changes are needed, update openapi.yaml in the same pa
 Recommended subsets from package scripts:
 1. npm run test:spec -- <focused-file>
 2. npm run e2e:3d
-3. npm run e2e:3d:ui
+3. npm run e2e:3d:headed
 4. npm run e2e:spec -- <focused-spec>
 
 ## 4) Milestone Rhythm
@@ -156,7 +156,7 @@ Primary target file:
 
 Prompt A (manual visual, shortest path):
 1. Expected result: switching between two ships shows isolated visuals per ship instance and preserves A on return.
-2. Command: `npm run e2e:3d:ui`
+2. Command: `npm run e2e:3d:headed`
 
 Prompt B (focused automated spec once created):
 1. Expected result: A -> B -> A screenshot/overlay checks pass for per-instance isolation.
@@ -169,3 +169,81 @@ Prompt B (focused automated spec once created):
 3. Visual validation prompt is prepared and executed by Pete.
 4. Any expected red tests are explicitly labeled and tracked.
 5. Milestone-1 commit is created.
+
+Milestone-1 status (2026-07-10): complete.
+
+## 10) Milestone-2 Kickoff Scope (Camera/Pause Hardening)
+
+Milestone-2 objective:
+1. Harden ship instance pause/resume semantics and camera continuity under repeated switching.
+2. Ensure A -> B -> C -> A keeps each ship camera/runtime state isolated with no cross-write.
+3. Keep the current bare-scene footprint stable while removing temporary dead code introduced during cutover.
+
+In scope:
+1. Per-context pause state instrumentation and deterministic state assertions.
+2. Multi-switch continuity behavior for camera state.
+3. Context lifecycle cleanup on logout/session reset.
+4. Focused cleanup in the new bare-scene stack where symbols are now dead post-monolith deletion.
+
+Out of scope:
+1. Reintroducing flight controller behavior.
+2. Asteroid gameplay parity expansion.
+3. Mission/route-feed parity expansion.
+4. Backend contract changes.
+
+Primary files to update:
+1. `src/app/scene/ship-exterior/ship-scene-context.ts`
+2. `src/app/scene/ship-exterior/ship-scene-registry.ts`
+3. `src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts`
+4. `src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
+5. `src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+
+Milestone-2 acceptance criteria:
+1. Repeated switching across >= 3 ships preserves ship-local camera/runtime state.
+2. Inactive contexts are paused and do not advance animation/runtime state while hidden.
+3. Session teardown disposes contexts deterministically.
+4. No new references to deleted monolith files exist.
+5. Build remains green.
+
+Milestone-2 expected failure policy:
+1. Focused tests can be temporarily red during implementation.
+2. End-of-milestone target is green for focused unit + selected e2e validation.
+
+Milestone-2 brief test prompts (Pete-run):
+1. Expected result: registry/context unit coverage proves multi-switch isolation and pause semantics.
+2. Command: `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-registry.vitest.ts src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+
+3. Expected result: ship-hangar resume flow preserves per-ship visual continuity across context switches.
+4. Command: `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts`
+
+5. Expected result: manual visual confirms A -> B -> C -> A continuity with no cross-bleed.
+6. Command: `npm run e2e:3d:headed`
+
+Milestone-2 commit gate:
+1. Commit after acceptance criteria are met and validation outcome is recorded.
+
+## 11) Milestone-2 Validation Evidence (2026-07-10)
+
+Validation outcome:
+1. Focused unit tests: PASS (confirmed by Pete).
+2. Focused e2e tests: PASS (confirmed by Pete).
+3. Manual visual continuity checks: PASS (confirmed by Pete).
+
+Manual validation confirmations captured:
+1. A -> B -> C -> A continuity: PASS.
+2. No cross-ship bleed: PASS.
+3. Active-only animation behavior: PASS (validated with console context readout).
+4. Context residency behavior: PASS.
+5. Ship-hangar-driven switching path: PASS.
+6. Session teardown sanity: PASS.
+7. Buy Test Scavenger Pod lazy-init behavior: PASS (new ship context initializes on View Exterior, not at purchase time).
+
+Runtime evidence summary:
+1. Console switch logs show stable context identities per ship key.
+2. Exactly one context is active (`paused: false`) while all other resident contexts remain paused (`paused: true`).
+3. Rendered frame count advances only on the active context at switch time.
+4. Context count remains stable across switching (no unintended context recreation).
+
+Milestone-2 gate status:
+1. Acceptance criteria satisfied.
+2. Ready for Milestone-2 commit gate.

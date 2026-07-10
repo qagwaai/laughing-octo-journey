@@ -61,6 +61,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private viewReady = false;
+  private hasBootstrappedContexts = false;
   private readonly navigationPlayerName = signal<string>('unknown-player');
   private readonly navigationCharacterId = signal<string>('unknown-character');
 
@@ -88,7 +89,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     this.resizeObserver?.disconnect();
-    this.registry.dispose();
+    this.teardownAllContexts();
   }
 
   activateContext(contextKey: string): boolean {
@@ -99,6 +100,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.activeContextKey.set(contextKey);
     this.attachVisibleCanvas();
+    this.logContextActivation(contextKey);
     return true;
   }
 
@@ -119,6 +121,21 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     });
 
     this.activateContext(contextKey);
+  });
+
+  private readonly onSessionReset = effect(() => {
+    if (!this.hasBootstrappedContexts) {
+      return;
+    }
+
+    const activeShip = this.sessionService.activeShip();
+    const activeCharacter = this.sessionService.activeCharacter();
+
+    if (activeShip || activeCharacter) {
+      return;
+    }
+
+    this.teardownAllContexts();
   });
 
   private bootstrapContexts(): void {
@@ -220,7 +237,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private syncContextsSignal(): void {
-    this.contexts.set(this.registry.getAllContexts());
+    const contexts = this.registry.getAllContexts();
+    this.contexts.set(contexts);
+    if (contexts.length > 0) {
+      this.hasBootstrappedContexts = true;
+    }
   }
 
   private activateFirstContextIfNeeded(): void {
@@ -294,12 +315,51 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private startAnimationLoop(): void {
     const loop = () => {
+      this.registry.enforceActivePauseInvariants();
       const active = this.registry.getActiveContext();
       active?.renderFrame();
       this.animationFrameId = requestAnimationFrame(loop);
     };
 
     this.animationFrameId = requestAnimationFrame(loop);
+  }
+
+  private logContextActivation(contextKey: string): void {
+    if (typeof console === 'undefined') {
+      return;
+    }
+
+    const active = this.registry.getActiveContext();
+    const state = active?.getState();
+    const contextSummary = this.registry.getAllContexts().map((context) => ({
+      contextKey: context.contextKey,
+      shipId: context.getState().shipId,
+      paused: context.isPaused(),
+      renderedFrameCount: context.getRenderedFrameCount(),
+    }));
+
+    console.log('[ship-exterior] active context switched', {
+      contextKey,
+      shipId: state?.shipId ?? null,
+      playerName: state?.playerName ?? null,
+      characterId: state?.characterId ?? null,
+      totalContexts: this.registry.getAllContexts().length,
+      contexts: contextSummary,
+    });
+  }
+
+  private teardownAllContexts(): void {
+    this.registry.dispose();
+    this.contexts.set([]);
+    this.activeContextKey.set(null);
+    this.hasBootstrappedContexts = false;
+
+    if (!this.viewReady) {
+      return;
+    }
+
+    const host = this.canvasHost().nativeElement;
+    host.querySelectorAll('canvas.ship-scene-canvas').forEach((node) => node.remove());
   }
 
   private registerTestApi(): void {
