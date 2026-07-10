@@ -150,8 +150,9 @@ export class ShipSceneContext {
       new THREE.MeshStandardMaterial({ color: cubeColor, metalness: 0.25, roughness: 0.5 }),
     );
 
-    const worldPosition = this.state.world?.shipPosition;
-    cube.position.set(worldPosition?.x ?? 0, worldPosition?.y ?? 0, worldPosition?.z ?? 0);
+    // Render in a local anchor frame for this slice. World position stays in context state
+    // for future hydration/transforms, while visuals remain centered and numerically stable.
+    cube.position.set(0, 0, 0);
 
     const ambient = new THREE.AmbientLight('#cfe3ff', 0.65);
     const directional = new THREE.DirectionalLight('#ffffff', 0.85);
@@ -167,6 +168,11 @@ export class ShipSceneContext {
     const orbitControls = new OrbitCameraControls(camera, canvas, {
       target: cube.position.clone(),
       autoRotateSpeed: 0,
+      enableRotate: true,
+      enableZoom: true,
+      enablePan: false,
+      minDistance: 1.8,
+      maxDistance: 24,
     });
 
     this.renderingState = {

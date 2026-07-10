@@ -2,7 +2,7 @@
 
 Status owner: Nova (frontend)
 Program: SW-13 closure (Option A hard replace)
-Overall state: On track with Milestone-3A validation complete (ready for commit gate)
+Overall state: On track with Milestone-3B validation complete (ready for commit gate)
 
 ## Executive Snapshot
 
@@ -73,11 +73,11 @@ Overall state: On track with Milestone-3A validation complete (ready for commit 
 
 ## Next Slice Outlook (Post Milestone-2)
 
-Next planning target: Milestone-3A starfield visual parity slice, followed by Milestone-3B flight lane.
+Next planning target: Milestone-3B orbit controls lane, followed by Milestone-3C flight lane.
 
 In scope:
-1. Execute Milestone-3A (deterministic per-ship starfield visual differentiation and continuity).
-2. Preserve proven isolation invariants while reintroducing feature behavior.
+1. Execute Milestone-3B (active-context orbit controls with strict no-cross-context camera mutation).
+2. Preserve proven isolation invariants while reintroducing interaction behavior.
 3. Keep focused test cadence and manual visual confirmation at milestone gate.
 
 Out of scope:
@@ -88,8 +88,9 @@ Out of scope:
 ## Immediate Next Actions
 
 1. Execute Milestone-3A commit gate.
-2. Begin Milestone-3B flight lane implementation scope.
-3. Keep focused validation cadence (unit + focused e2e + manual visual) for Milestone-3B.
+2. Milestone-3B validation is complete (manual visual + focused unit + focused e2e + build all PASS).
+3. Execute Milestone-3B commit gate.
+4. Start Milestone-3C flight lane kickoff scope.
 
 ## Canonical Planning Reference
 

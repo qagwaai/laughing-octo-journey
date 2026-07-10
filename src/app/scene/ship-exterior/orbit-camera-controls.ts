@@ -1,57 +1,71 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+const DISABLED_TOUCH_ACTION = -1 as unknown as THREE.TOUCH;
 
 export interface OrbitCameraControlsOptions {
   target?: THREE.Vector3;
   autoRotateSpeed?: number;
+  enableRotate?: boolean;
+  enableZoom?: boolean;
+  enablePan?: boolean;
+  minDistance?: number;
+  maxDistance?: number;
 }
 
 /**
- * Minimal orbit-like camera helper used by the bare scene until full controls are restored.
+ * Wrapper around Three.js OrbitControls constrained for ship-exterior isolation slices.
  */
 export class OrbitCameraControls {
-  private readonly target: THREE.Vector3;
-  private readonly autoRotateSpeed: number;
-  private enabled = true;
+  private readonly controls: OrbitControls;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly domElement: HTMLCanvasElement,
     options: OrbitCameraControlsOptions = {},
   ) {
-    this.target = options.target ? options.target.clone() : new THREE.Vector3(0, 0, 0);
-    this.autoRotateSpeed = options.autoRotateSpeed ?? 0;
+    this.controls = new OrbitControls(this.camera, this.domElement);
+    this.controls.target.copy(options.target ?? new THREE.Vector3(0, 0, 0));
+
+    this.controls.enableRotate = options.enableRotate ?? true;
+    this.controls.enableZoom = options.enableZoom ?? true;
+    this.controls.enablePan = options.enablePan ?? false;
+    this.controls.minDistance = options.minDistance ?? 1.8;
+    this.controls.maxDistance = options.maxDistance ?? 24;
+
+    // Desktop-only for Milestone-3B; use an unmapped touch action to ignore touch gestures.
+    this.controls.touches.ONE = DISABLED_TOUCH_ACTION;
+    this.controls.touches.TWO = DISABLED_TOUCH_ACTION;
+
+    this.controls.autoRotate = Boolean(options.autoRotateSpeed && options.autoRotateSpeed !== 0);
+    this.controls.autoRotateSpeed = options.autoRotateSpeed ?? 2;
+
+    this.controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    this.controls.mouseButtons.MIDDLE = THREE.MOUSE.DOLLY;
+    this.controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+    if (!this.controls.enablePan) {
+      this.controls.mouseButtons.RIGHT = THREE.MOUSE.ROTATE;
+    }
+
+    this.controls.update();
   }
 
   setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
+    this.controls.enabled = enabled;
   }
 
   setTarget(target: THREE.Vector3): void {
-    this.target.copy(target);
+    this.controls.target.copy(target);
+    this.controls.update();
   }
 
   update(): void {
-    if (!this.enabled) {
-      return;
-    }
-
-    if (this.autoRotateSpeed !== 0) {
-      const current = this.camera.position.clone();
-      const offset = current.sub(this.target);
-      const radius = Math.max(offset.length(), 0.001);
-      const angle = Math.atan2(offset.z, offset.x) + this.autoRotateSpeed;
-      this.camera.position.set(
-        this.target.x + Math.cos(angle) * radius,
-        this.camera.position.y,
-        this.target.z + Math.sin(angle) * radius,
-      );
-    }
-
-    this.camera.lookAt(this.target);
+    this.controls.update();
   }
 
   dispose(): void {
-    this.enabled = false;
+    this.controls.dispose();
+    void this.camera;
     void this.domElement;
   }
 }

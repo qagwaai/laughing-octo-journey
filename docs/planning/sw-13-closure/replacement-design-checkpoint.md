@@ -254,10 +254,11 @@ Milestone-3 objective:
 1. Start parity recovery with one narrowly scoped lane while preserving all isolation guarantees validated in Milestone-2.
 
 Candidate lanes:
-1. Flight lane.
-2. Cold Boot sequence lane.
-3. Asteroid gameplay lane.
-4. Mission/route-feed lane.
+1. Orbit controls lane.
+2. Flight lane.
+3. Cold Boot sequence lane.
+4. Asteroid gameplay lane.
+5. Mission/route-feed lane.
 
 Selection criteria:
 1. Lowest risk to scene-isolation invariants.
@@ -267,17 +268,19 @@ Selection criteria:
 
 Ranking (recommended order):
 1. Starfield visual parity slice (recommended first; Milestone-3A).
-2. Flight lane (Milestone-3B).
-3. Cold Boot sequence lane.
-4. Asteroid gameplay lane.
-5. Mission/route-feed lane.
+2. Orbit controls lane (Milestone-3B).
+3. Flight lane (Milestone-3C).
+4. Cold Boot sequence lane.
+5. Asteroid gameplay lane.
+6. Mission/route-feed lane.
 
 Recommendation rationale:
 1. Starfield visual parity adds clear per-ship visual differentiation with minimal behavioral risk and no flight/input complexity.
-2. Flight lane remains next and benefits from starfield proof already validating visible no-cross-bleed behavior.
-3. Cold Boot sequence lane is strongly user-visible and mostly flow/orchestration behavior, making it a good follow-on lane.
-4. Asteroid lane introduces heavier render and interaction state, increasing the surface for accidental cross-write.
-5. Mission/route-feed lane has the highest async and contract routing complexity, so it should follow after active-context mechanics are fully hardened.
+2. Orbit controls is the smallest interaction layer to reintroduce after starfield, giving high user-visible value while keeping risk localized to active-context camera input.
+3. Flight lane follows orbit controls and benefits from prior camera/input hardening.
+4. Cold Boot sequence lane is strongly user-visible and mostly flow/orchestration behavior, making it a good follow-on lane.
+5. Asteroid lane introduces heavier render and interaction state, increasing the surface for accidental cross-write.
+6. Mission/route-feed lane has the highest async and contract routing complexity, so it should follow after active-context mechanics are fully hardened.
 
 ### 12.1 Milestone-3A Scope (Starfield Visual Parity)
 
@@ -335,7 +338,72 @@ Milestone-3A validation evidence (complete):
 4. Build validation: PASS (`npm run build` successful; existing cold-boot CSS budget warning remains non-blocking and unchanged).
 5. Gate status: Milestone-3A acceptance criteria satisfied and ready for commit gate.
 
-### 12.6 Milestone-3B Scope (Flight Lane)
+### 12.6 Milestone-3B Scope (Orbit Controls Lane)
+
+In scope:
+1. Re-enable active-context orbit controls for camera orbit, pan, and zoom interactions.
+2. Enforce that only the active context receives orbit-control input updates.
+3. Preserve inactive-context pause guarantees while active context camera input is in use.
+4. Add focused test API/readout hooks needed for deterministic validation of active-only camera mutation.
+5. Render ship and starfield in a per-context local anchor frame (floating-origin style) for numeric stability.
+6. Keep ship world position in context state as retained data for future scene hydration.
+7. Apply orbit zoom bounds so visual anchor elements remain visible during interaction.
+
+Out of scope:
+1. Flight movement and propulsion behavior.
+2. Asteroid scan/material parity work.
+3. Mission gate/state parity work.
+4. Route-feed parity work.
+5. Backend contract changes.
+6. Full world-space celestial-body/debris hydration.
+
+Primary files to update:
+1. `src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts`
+2. `src/app/scene/ship-exterior/ship-scene-context.ts`
+3. `src/app/scene/ship-exterior/ship-scene-registry.ts`
+4. `src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+5. `src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
+6. (If needed) `src/app/scene/ship-exterior/ship-exterior-bare-scene-test-api.ts`
+
+### 12.7 Milestone-3B Acceptance Criteria
+
+1. Orbit controls are enabled on the active ship context and disabled on inactive contexts.
+2. Active ship camera updates are deterministic and remain ship-local.
+3. Inactive contexts remain paused and do not receive camera-state mutations.
+4. A -> B -> A after active camera interaction on B returns A camera state unchanged.
+5. Build remains green.
+6. Starfield remains visible while dragging/orbiting and behaves as a stable 3D visual anchor.
+
+### 12.8 Milestone-3B Test Prompts (Pete-run)
+
+1. Expected result: focused unit tests prove active-only camera mutation and preserved inactive contexts.
+2. Command: `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-registry.vitest.ts src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+
+3. Expected result: focused ship-exterior hangar resume flow remains stable with orbit controls enabled.
+4. Command: `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts`
+
+5. Expected result: manual visual confirms camera interaction changes only on active ship and no bleed on switch back.
+6. Command: `npm run e2e:3d:headed`
+
+### 12.9 Milestone-3B Failure Policy
+
+1. Temporary focused-test failures are acceptable during implementation.
+2. End-of-milestone requirement is green focused unit and focused e2e validation.
+
+### 12.10 Milestone-3B Commit Gate
+
+1. Commit after acceptance criteria are met and validation outcome is recorded in this document.
+
+Milestone-3B validation evidence (complete):
+1. Manual visual no-bleed validation: PASS (Pete-confirmed).
+2. Manual visual starfield persistence during orbit interaction: PASS (Pete-confirmed).
+3. Manual visual active-only animation behavior: PASS (cube rotation pauses on inactive scene and resumes on re-activation).
+4. Focused unit validation: PASS (2 files, 10 tests passing).
+5. Focused e2e validation: PASS (`e2e/tests/ship-exterior-hangar-resume.spec.ts`, 3 tests passing).
+6. Build validation: PASS (`npm run build` successful; existing cold-boot CSS budget warning remains non-blocking and unchanged).
+7. Gate status: Milestone-3B acceptance criteria satisfied and ready for commit gate.
+
+### 12.11 Milestone-3C Scope (Flight Lane)
 
 In scope:
 1. Reintroduce active-context flight toggle and movement updates.
@@ -357,7 +425,7 @@ Primary files to update:
 5. `src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
 6. (If needed) `src/app/scene/ship-exterior/ship-exterior-bare-scene-test-api.ts`
 
-### 12.7 Milestone-3B Acceptance Criteria
+### 12.12 Milestone-3C Acceptance Criteria
 
 1. Flight mode can be enabled and disabled on the active ship context.
 2. Active ship flight updates its own runtime state deterministically.
@@ -365,7 +433,7 @@ Primary files to update:
 4. A -> B -> A after active flight on B returns A unchanged.
 5. Build remains green.
 
-### 12.8 Milestone-3B Test Prompts (Pete-run)
+### 12.13 Milestone-3C Test Prompts (Pete-run)
 
 1. Expected result: focused unit tests prove active-only flight mutation and preserved inactive contexts.
 2. Command: `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-registry.vitest.ts src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
@@ -376,11 +444,11 @@ Primary files to update:
 5. Expected result: manual visual confirms flight changes only on active ship and no bleed on switch back.
 6. Command: `npm run e2e:3d:headed`
 
-### 12.9 Milestone-3B Failure Policy
+### 12.14 Milestone-3C Failure Policy
 
 1. Temporary focused-test failures are acceptable during implementation.
 2. End-of-milestone requirement is green focused unit and focused e2e validation.
 
-### 12.10 Milestone-3B Commit Gate
+### 12.15 Milestone-3C Commit Gate
 
 1. Commit after acceptance criteria are met and validation outcome is recorded in this document.
