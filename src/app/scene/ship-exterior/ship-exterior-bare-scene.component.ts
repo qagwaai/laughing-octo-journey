@@ -45,6 +45,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   readonly contexts = signal<ShipSceneContext[]>([]);
   readonly activeContextKey = signal<string | null>(null);
   readonly contextKeys = computed(() => this.contexts().map((context) => context.contextKey));
+  readonly activeStarfieldSignature = computed(() => {
+    const key = this.activeContextKey();
+    if (!key) {
+      return null;
+    }
+
+    return this.registry.getContext(key)?.getStarfieldSignature() ?? null;
+  });
   readonly objectiveMessage = signal<string>(ShipExteriorBareSceneComponent.OBJECTIVE_UNLOCKED_MESSAGE);
   readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error' } | null>(null);
 
@@ -334,6 +342,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const contextSummary = this.registry.getAllContexts().map((context) => ({
       contextKey: context.contextKey,
       shipId: context.getState().shipId,
+      starfieldSignature: context.getStarfieldSignature(),
       paused: context.isPaused(),
       renderedFrameCount: context.getRenderedFrameCount(),
     }));
@@ -344,6 +353,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       playerName: state?.playerName ?? null,
       characterId: state?.characterId ?? null,
       totalContexts: this.registry.getAllContexts().length,
+      activeStarfieldSignature: active?.getStarfieldSignature() ?? null,
       contexts: contextSummary,
     });
   }

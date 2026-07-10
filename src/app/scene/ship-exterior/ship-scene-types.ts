@@ -23,6 +23,8 @@ export interface ShipSceneRenderingState {
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   cube: THREE.Mesh;
+  starfieldPoints: THREE.Points;
+  starfieldSignatureLocal: string;
   orbitControls: OrbitCameraControls;
   isPausedLocal: boolean;
   cubeColorLocal: number;
@@ -32,6 +34,7 @@ export interface ShipSceneRenderingState {
 export interface ShipSceneRuntimeSnapshot {
   cameraPosition: { x: number; y: number; z: number };
   cubeRotation: { x: number; y: number; z: number };
+  starfieldSignature: string;
   isPaused: boolean;
   renderedFrameCount: number;
 }

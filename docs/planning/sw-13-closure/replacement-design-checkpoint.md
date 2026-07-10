@@ -246,4 +246,141 @@ Runtime evidence summary:
 
 Milestone-2 gate status:
 1. Acceptance criteria satisfied.
-2. Ready for Milestone-2 commit gate.
+2. Milestone-2 commit gate completed.
+
+## 12) Milestone-3 Kickoff Documentation (Parity Lane Selection)
+
+Milestone-3 objective:
+1. Start parity recovery with one narrowly scoped lane while preserving all isolation guarantees validated in Milestone-2.
+
+Candidate lanes:
+1. Flight lane.
+2. Cold Boot sequence lane.
+3. Asteroid gameplay lane.
+4. Mission/route-feed lane.
+
+Selection criteria:
+1. Lowest risk to scene-isolation invariants.
+2. Minimal backend/contract dependency.
+3. High user-visible value per implementation effort.
+4. Strong focused-test coverage potential.
+
+Ranking (recommended order):
+1. Starfield visual parity slice (recommended first; Milestone-3A).
+2. Flight lane (Milestone-3B).
+3. Cold Boot sequence lane.
+4. Asteroid gameplay lane.
+5. Mission/route-feed lane.
+
+Recommendation rationale:
+1. Starfield visual parity adds clear per-ship visual differentiation with minimal behavioral risk and no flight/input complexity.
+2. Flight lane remains next and benefits from starfield proof already validating visible no-cross-bleed behavior.
+3. Cold Boot sequence lane is strongly user-visible and mostly flow/orchestration behavior, making it a good follow-on lane.
+4. Asteroid lane introduces heavier render and interaction state, increasing the surface for accidental cross-write.
+5. Mission/route-feed lane has the highest async and contract routing complexity, so it should follow after active-context mechanics are fully hardened.
+
+### 12.1 Milestone-3A Scope (Starfield Visual Parity)
+
+In scope:
+1. Add deterministic per-ship starfield generation owned by each ship context.
+2. Ensure each ship context keeps a stable, ship-local starfield signature across switching.
+3. Preserve active/inactive pause invariants while starfield is rendered.
+4. Add minimal validation hooks/logs needed to prove starfield continuity per context.
+
+Out of scope:
+1. Flight controls and movement.
+2. Asteroid scan/material parity work.
+3. Mission gate/state parity work.
+4. Route-feed parity work.
+5. Backend contract changes.
+
+Primary files to update:
+1. `src/app/scene/ship-exterior/ship-scene-context.ts`
+2. `src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts`
+3. `src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+4. `src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
+5. (If needed) `src/app/scene/ship-exterior/ship-scene-types.ts`
+
+### 12.2 Milestone-3A Acceptance Criteria
+
+1. Ship A and Ship B render visibly distinct starfields.
+2. A -> B -> C -> A restores A's original starfield signature (no reseed from other ships).
+3. Inactive contexts remain paused while active context starfield updates/rendering proceed.
+4. Build remains green.
+
+### 12.3 Milestone-3A Test Prompts (Pete-run)
+
+1. Expected result: focused unit tests prove starfield seed/signature remains ship-local across switching.
+2. Command: `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-context.vitest.ts src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
+
+3. Expected result: focused hangar resume flow preserves starfield continuity on ship switching.
+4. Command: `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts`
+
+5. Expected result: manual visual confirms distinct starfield per ship and stable return pattern on A -> B -> C -> A.
+6. Command: `npm run e2e:3d:headed`
+
+### 12.4 Milestone-3A Failure Policy
+
+1. Temporary focused-test failures are acceptable during implementation.
+2. End-of-milestone requirement is green focused unit and focused e2e validation.
+
+### 12.5 Milestone-3A Commit Gate
+
+1. Commit after acceptance criteria are met and validation outcome is recorded in this document.
+
+Milestone-3A validation evidence (complete):
+1. Manual visual persistence across cross-ship viewing: PASS (Pete-confirmed).
+2. Focused unit validation: PASS (2 files, 10 tests passing).
+3. Focused e2e validation: PASS (`ship-exterior-hangar-resume.spec.ts`, 3 tests passing).
+4. Build validation: PASS (`npm run build` successful; existing cold-boot CSS budget warning remains non-blocking and unchanged).
+5. Gate status: Milestone-3A acceptance criteria satisfied and ready for commit gate.
+
+### 12.6 Milestone-3B Scope (Flight Lane)
+
+In scope:
+1. Reintroduce active-context flight toggle and movement updates.
+2. Enforce that only active context receives movement writes and animation updates.
+3. Preserve inactive-context pause guarantees during flight activity on another ship.
+4. Add focused test API/readout hooks needed for deterministic validation.
+
+Out of scope:
+1. Asteroid scan/material parity work.
+2. Mission gate/state parity work.
+3. Route-feed parity work.
+4. Backend contract changes.
+
+Primary files to update:
+1. `src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts`
+2. `src/app/scene/ship-exterior/ship-scene-context.ts`
+3. `src/app/scene/ship-exterior/ship-scene-registry.ts`
+4. `src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+5. `src/app/scene/ship-exterior/ship-scene-registry.vitest.ts`
+6. (If needed) `src/app/scene/ship-exterior/ship-exterior-bare-scene-test-api.ts`
+
+### 12.7 Milestone-3B Acceptance Criteria
+
+1. Flight mode can be enabled and disabled on the active ship context.
+2. Active ship flight updates its own runtime state deterministically.
+3. Inactive contexts remain paused and do not receive flight-state mutations.
+4. A -> B -> A after active flight on B returns A unchanged.
+5. Build remains green.
+
+### 12.8 Milestone-3B Test Prompts (Pete-run)
+
+1. Expected result: focused unit tests prove active-only flight mutation and preserved inactive contexts.
+2. Command: `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-registry.vitest.ts src/app/scene/ship-exterior/ship-scene-context.vitest.ts`
+
+3. Expected result: focused ship-exterior hangar resume flow remains stable with flight lane enabled.
+4. Command: `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts`
+
+5. Expected result: manual visual confirms flight changes only on active ship and no bleed on switch back.
+6. Command: `npm run e2e:3d:headed`
+
+### 12.9 Milestone-3B Failure Policy
+
+1. Temporary focused-test failures are acceptable during implementation.
+2. End-of-milestone requirement is green focused unit and focused e2e validation.
+
+### 12.10 Milestone-3B Commit Gate
+
+1. Commit after acceptance criteria are met and validation outcome is recorded in this document.

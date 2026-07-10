@@ -47,4 +47,27 @@ describe('ShipSceneContext', () => {
     context.renderFrame();
     expect(context.getRenderedFrameCount()).toBe(0);
   });
+
+  it('uses deterministic starfield signatures per ship id', () => {
+    const first = new ShipSceneContext('player::char::ship-a', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship-a',
+    });
+
+    const sameShipAgain = new ShipSceneContext('player::char::ship-a', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship-a',
+    });
+
+    const differentShip = new ShipSceneContext('player::char::ship-b', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship-b',
+    });
+
+    expect(first.getStarfieldSignature()).toBe(sameShipAgain.getStarfieldSignature());
+    expect(first.getStarfieldSignature()).not.toBe(differentShip.getStarfieldSignature());
+  });
 });

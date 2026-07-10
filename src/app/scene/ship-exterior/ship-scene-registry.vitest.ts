@@ -156,4 +156,34 @@ describe('ShipSceneRegistry', () => {
     expect(registry.getContext(aKey)).toBeNull();
     expect(registry.getActiveContextKey()).toBe(bKey);
   });
+
+  it('keeps starfield signatures stable across A -> B -> A activation', () => {
+    const registry = new ShipSceneRegistry();
+    const aKey = createKey('ship-a');
+    const bKey = createKey('ship-b');
+
+    const a = registry.getOrCreateContext(aKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-a',
+    });
+
+    const b = registry.getOrCreateContext(bKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-b',
+    });
+
+    registry.activate(aKey);
+    const aSignatureFirst = a.getStarfieldSignature();
+
+    registry.activate(bKey);
+    const bSignature = b.getStarfieldSignature();
+
+    registry.activate(aKey);
+    const aSignatureSecond = a.getStarfieldSignature();
+
+    expect(aSignatureSecond).toBe(aSignatureFirst);
+    expect(bSignature).not.toBe(aSignatureFirst);
+  });
 });

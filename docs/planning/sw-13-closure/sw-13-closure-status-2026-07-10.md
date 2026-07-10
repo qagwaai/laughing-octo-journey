@@ -2,7 +2,7 @@
 
 Status owner: Nova (frontend)
 Program: SW-13 closure (Option A hard replace)
-Overall state: On track after Milestone-2 validation completion (ready for Milestone-2 commit gate)
+Overall state: On track with Milestone-3A validation complete (ready for commit gate)
 
 ## Executive Snapshot
 
@@ -10,7 +10,7 @@ Overall state: On track after Milestone-2 validation completion (ready for Miles
 2. Milestone-2 (camera/pause hardening) implementation is complete.
 3. Focused unit + focused e2e + manual visual validation are all confirmed PASS.
 4. Build is green (`npm run build` succeeded).
-5. Milestone-2 acceptance criteria are satisfied and ready for commit gate.
+5. Milestone-2 acceptance criteria are satisfied and commit gate is completed.
 
 ## Confirmed Decisions In Force
 
@@ -52,6 +52,7 @@ Overall state: On track after Milestone-2 validation completion (ready for Miles
 4. Manual visual continuity and behavior checks: PASS (Pete-confirmed).
 5. Runtime observation: multiple `ship-scene-canvas` elements present for initialized ships is expected behavior and consistent with keep-alive context design.
 6. Runtime console evidence: exactly one active context (`paused: false`) while resident inactive contexts remain paused (`paused: true`) and rendered frame counts advance only on active context.
+7. Milestone-3A starfield persistence validation: PASS (starfield remains ship-local and persistent across cross-ship exterior viewing).
 
 ## Known Gaps / Transitional Debt
 
@@ -68,14 +69,14 @@ Overall state: On track after Milestone-2 validation completion (ready for Miles
 5. Ship-hangar-driven switching path: PASS.
 6. Session teardown sanity: PASS.
 7. Buy Test Scavenger Pod lazy-init behavior: PASS (new ship context initializes on View Exterior, not at purchase).
-8. Milestone-2 gate status: READY FOR COMMIT.
+8. Milestone-2 gate status: COMMIT COMPLETED.
 
 ## Next Slice Outlook (Post Milestone-2)
 
-Next planning target: Milestone-3 parity slice selection.
+Next planning target: Milestone-3A starfield visual parity slice, followed by Milestone-3B flight lane.
 
 In scope:
-1. Select first parity lane (flight vs asteroid vs mission/route feed) with smallest risk surface.
+1. Execute Milestone-3A (deterministic per-ship starfield visual differentiation and continuity).
 2. Preserve proven isolation invariants while reintroducing feature behavior.
 3. Keep focused test cadence and manual visual confirmation at milestone gate.
 
@@ -86,9 +87,9 @@ Out of scope:
 
 ## Immediate Next Actions
 
-1. Execute Milestone-2 commit gate.
-2. Select Milestone-3 parity lane and write the next scoped kickoff section in the checkpoint doc.
-3. Maintain focused validation cadence (unit + focused e2e + manual visual) for the next slice.
+1. Execute Milestone-3A commit gate.
+2. Begin Milestone-3B flight lane implementation scope.
+3. Keep focused validation cadence (unit + focused e2e + manual visual) for Milestone-3B.
 
 ## Canonical Planning Reference
 

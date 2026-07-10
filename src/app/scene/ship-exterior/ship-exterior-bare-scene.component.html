@@ -26,6 +26,7 @@
 
   <footer class="ship-exterior-bare-scene__debug" aria-live="polite">
     <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>
+    <span>STARFIELD: {{ activeStarfieldSignature() ?? 'none' }}</span>
     <span>CONTEXTS: {{ contexts().length }}</span>
     <span>TARGET: {{ targetedAsteroidId() ?? 'none' }}</span>
   </footer>
