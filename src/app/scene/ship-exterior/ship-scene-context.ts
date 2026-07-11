@@ -1,10 +1,40 @@
 import * as THREE from 'three';
+import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
 import { OrbitCameraControls } from './orbit-camera-controls';
-import { ShipSceneContextState, ShipSceneRenderingState, ShipSceneRuntimeSnapshot } from './ship-scene-types';
+import {
+  ShipSceneContextState,
+  ShipSceneFlightState,
+  ShipSceneRenderingState,
+  ShipSceneRuntimeSnapshot,
+} from './ship-scene-types';
 
 const STARFIELD_POINT_COUNT = 220;
 const STARFIELD_INNER_RADIUS = 10;
 const STARFIELD_RADIUS_SPREAD = 34;
+const ZERO_VECTOR = { x: 0, y: 0, z: 0 };
+const DEFAULT_FLIGHT_STATE: ShipSceneFlightState = {
+  enabled: false,
+  invertY: false,
+  mouseSensitivity: 0.0023,
+  currentLocationKm: { ...ZERO_VECTOR },
+  orientation: { yawRad: 0, pitchRad: 0, rollRad: 0 },
+  worldOffset: { ...ZERO_VECTOR },
+  worldRotation: { ...ZERO_VECTOR },
+  speedKmPerSec: 0,
+};
+const FLIGHT_CONFIG = {
+  tickMs: 16,
+  trackingCheckpointMs: 250,
+  trackingQuantizeKm: 0.05,
+  sceneUnitToKm: 1,
+  baseSpeedSceneUnitsPerSec: 0.16,
+  boostMultiplier: 4,
+  rollSpeedRadPerSec: 0.75,
+  defaultMouseSensitivity: DEFAULT_FLIGHT_STATE.mouseSensitivity,
+  mouseSensitivityMin: 0.0002,
+  mouseSensitivityMax: 0.01,
+  maxPitchRad: Math.PI / 2 - 0.02,
+};
 
 function hashStringToSeed(input: string): number {
   let hash = 2166136261;
@@ -91,6 +121,7 @@ export class ShipSceneContext {
   private renderingState: ShipSceneRenderingState | null = null;
   private paused = true;
   private renderedFrameCount = 0;
+  private flightController: ShipExteriorFlightController | null = null;
   private readonly starfieldSeed: number;
   private readonly starfieldSignature: string;
 
@@ -98,7 +129,17 @@ export class ShipSceneContext {
     readonly contextKey: string,
     initialState: ShipSceneContextState,
   ) {
-    this.state = { ...initialState };
+    this.state = {
+      ...initialState,
+      flight: {
+        ...DEFAULT_FLIGHT_STATE,
+        ...initialState.flight,
+        currentLocationKm: {
+          ...DEFAULT_FLIGHT_STATE.currentLocationKm,
+          ...(initialState.flight?.currentLocationKm ?? initialState.world?.shipPosition ?? ZERO_VECTOR),
+        },
+      },
+    };
     this.starfieldSeed = hashStringToSeed(this.state.shipId);
     this.starfieldSignature = `${this.starfieldSeed.toString(16).padStart(8, '0')}:${STARFIELD_POINT_COUNT}:${this.starfieldSeed % 360}`;
   }
@@ -108,9 +149,17 @@ export class ShipSceneContext {
   }
 
   setState(update: Partial<ShipSceneContextState>): void {
+    const flight = update.flight
+      ? {
+          ...DEFAULT_FLIGHT_STATE,
+          ...this.state.flight,
+          ...update.flight,
+        }
+      : this.state.flight;
     this.state = {
       ...this.state,
       ...update,
+      flight: flight ?? this.state.flight,
     };
   }
 
@@ -189,6 +238,9 @@ export class ShipSceneContext {
       animationFrameId: null,
     };
 
+    this.ensureFlightController();
+    this.syncFlightControllerToState();
+
     return this.renderingState;
   }
 
@@ -215,6 +267,8 @@ export class ShipSceneContext {
 
   pause(): void {
     this.paused = true;
+    this.syncFlightStateFromController();
+    this.flightController?.stop();
     if (!this.renderingState) {
       return;
     }
@@ -223,12 +277,17 @@ export class ShipSceneContext {
   }
 
   resume(): void {
+    if (!this.paused && this.renderingState?.isPausedLocal === false) {
+      return;
+    }
+
     this.paused = false;
     if (!this.renderingState) {
       return;
     }
     this.renderingState.isPausedLocal = false;
     this.renderingState.orbitControls.setEnabled(true);
+    this.syncFlightControllerToState();
   }
 
   isPaused(): boolean {
@@ -242,15 +301,76 @@ export class ShipSceneContext {
 
     this.renderingState.cube.rotation.x += 0.0035;
     this.renderingState.cube.rotation.y += 0.006;
+    const flight = this.state.flight;
+    if (flight?.enabled && this.flightController) {
+      const [offsetX, offsetY, offsetZ] = this.flightController.flightWorldOffset();
+      this.renderingState.cube.position.set(offsetX, offsetY, offsetZ);
+      this.renderingState.orbitControls.setTarget(this.renderingState.cube.position);
+    }
     this.renderingState.orbitControls.update();
     this.renderingState.renderer.render(this.renderingState.scene, this.renderingState.camera);
     this.renderedFrameCount += 1;
+  }
+
+  toggleFlightMode(): void {
+    const nextEnabled = !this.flightModeEnabled();
+    this.updateFlightState({ enabled: nextEnabled });
+    const controller = this.ensureFlightController();
+    if (!controller) {
+      return;
+    }
+
+    controller.setFlightModeEnabled(nextEnabled);
+    if (nextEnabled) {
+      controller.start();
+      return;
+    }
+
+    controller.stop();
+    this.syncFlightStateFromController();
+  }
+
+  setFlightInvertY(enabled: boolean): void {
+    this.updateFlightState({ invertY: enabled });
+    const controller = this.ensureFlightController();
+    controller?.setFlightInvertY(enabled);
+  }
+
+  setFlightMouseSensitivityFromSliderValue(rawValue: number): void {
+    this.updateFlightState({ mouseSensitivity: rawValue / 10000 });
+    const controller = this.ensureFlightController();
+    controller?.setFlightMouseSensitivityFromSliderValue(rawValue);
+    this.syncFlightStateFromController();
+  }
+
+  captureFlightMovementKey(code: string): boolean {
+    return this.ensureFlightController()?.captureFlightMovementKey(code) ?? false;
+  }
+
+  releaseFlightMovementKey(code: string): boolean {
+    return this.ensureFlightController()?.releaseFlightMovementKey(code) ?? false;
+  }
+
+  applyFlightMouseMove(movementX: number, movementY: number): void {
+    this.ensureFlightController()?.applyMouseMove(movementX, movementY);
+    this.syncFlightStateFromController();
+  }
+
+  flightModeEnabled(): boolean {
+    return this.flightController?.flightModeEnabled() ?? this.state.flight?.enabled ?? false;
+  }
+
+  flightPointerLocked(): boolean {
+    return Boolean(this.renderingState?.canvas && typeof document !== 'undefined' && document.pointerLockElement === this.renderingState.canvas);
   }
 
   snapshotRuntime(): ShipSceneRuntimeSnapshot | null {
     if (!this.renderingState) {
       return null;
     }
+
+    this.syncFlightStateFromController();
+    const flight = this.state.flight ?? DEFAULT_FLIGHT_STATE;
 
     return {
       cameraPosition: {
@@ -266,6 +386,11 @@ export class ShipSceneContext {
       starfieldSignature: this.renderingState.starfieldSignatureLocal,
       isPaused: this.isPaused(),
       renderedFrameCount: this.renderedFrameCount,
+      flightModeEnabled: flight.enabled,
+      flightCurrentLocationKm: { ...flight.currentLocationKm },
+      flightWorldOffset: { ...flight.worldOffset },
+      flightWorldRotation: { ...flight.worldRotation },
+      flightSpeedKmPerSec: flight.speedKmPerSec,
     };
   }
 
@@ -274,6 +399,8 @@ export class ShipSceneContext {
       return;
     }
 
+    this.syncFlightStateFromController();
+    this.flightController?.stop();
     this.renderingState.orbitControls.dispose();
     if (this.renderingState.starfieldPoints.geometry) {
       this.renderingState.starfieldPoints.geometry.dispose();
@@ -289,5 +416,109 @@ export class ShipSceneContext {
     this.renderingState = null;
     this.paused = true;
     this.renderedFrameCount = 0;
+  }
+
+  private ensureFlightController(): ShipExteriorFlightController | null {
+    if (!this.renderingState) {
+      return null;
+    }
+
+    if (this.flightController) {
+      return this.flightController;
+    }
+
+    const controller = new ShipExteriorFlightController({
+      config: FLIGHT_CONFIG,
+      getCamera: () => this.renderingState?.camera ?? null,
+      setActiveShipLocationKm: (location) => {
+        this.updateFlightState({ currentLocationKm: location });
+        this.setState({
+          world: {
+            shipPosition: { ...location },
+          },
+        });
+      },
+      commitTrackedLocation: (location) => {
+        this.updateFlightState({ currentLocationKm: location });
+        this.setState({
+          world: {
+            shipPosition: { ...location },
+          },
+        });
+      },
+    });
+
+    this.flightController = controller;
+    return controller;
+  }
+
+  private syncFlightControllerToState(): void {
+    const controller = this.ensureFlightController();
+    if (!controller) {
+      return;
+    }
+
+    const flight = this.state.flight ?? DEFAULT_FLIGHT_STATE;
+    controller.setFlightModeEnabled(flight.enabled);
+    controller.setFlightInvertY(flight.invertY);
+    controller.setFlightMouseSensitivity(flight.mouseSensitivity);
+    controller.initializeCurrentLocationFromReference(
+      flight.currentLocationKm,
+      this.state.world?.shipPosition ?? flight.currentLocationKm,
+    );
+    controller.restoreOrientation(flight.orientation);
+
+    if (flight.enabled && !this.paused) {
+      controller.start();
+      return;
+    }
+
+    controller.stop();
+  }
+
+  private syncFlightStateFromController(): void {
+    const controller = this.flightController;
+    if (!controller) {
+      return;
+    }
+
+    const flight = this.state.flight ?? DEFAULT_FLIGHT_STATE;
+    this.state = {
+      ...this.state,
+      flight: {
+        ...flight,
+        enabled: controller.flightModeEnabled(),
+        invertY: controller.flightInvertY(),
+        mouseSensitivity: controller.flightMouseSensitivity(),
+        currentLocationKm: controller.getCurrentLocationKm(),
+        orientation: controller.getPersistableViewOrientation(),
+        worldOffset: Array.isArray(controller.flightWorldOffset())
+          ? {
+              x: controller.flightWorldOffset()[0],
+              y: controller.flightWorldOffset()[1],
+              z: controller.flightWorldOffset()[2],
+            }
+          : { ...flight.worldOffset },
+        worldRotation: Array.isArray(controller.flightWorldRotation())
+          ? {
+              x: controller.flightWorldRotation()[0],
+              y: controller.flightWorldRotation()[1],
+              z: controller.flightWorldRotation()[2],
+            }
+          : { ...flight.worldRotation },
+        speedKmPerSec: controller.flightSpeedKmPerSec(),
+      },
+    };
+  }
+
+  private updateFlightState(update: Partial<ShipSceneFlightState>): void {
+    const flight = this.state.flight ?? DEFAULT_FLIGHT_STATE;
+    this.state = {
+      ...this.state,
+      flight: {
+        ...flight,
+        ...update,
+      },
+    };
   }
 }

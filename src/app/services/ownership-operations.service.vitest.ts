@@ -246,11 +246,16 @@ describe('OwnershipOperationsService', () => {
       received = response;
     });
 
-    socketService.trigger(ITEM_LIST_BY_OWNER_RESPONSE_EVENT, {
+    const fallbackResponseWithoutCorrelation = {
       success: true,
       message: 'ok',
       items: [],
-    } as ItemListByOwnerResponse);
+    };
+
+    socketService.trigger(
+      ITEM_LIST_BY_OWNER_RESPONSE_EVENT,
+      fallbackResponseWithoutCorrelation as unknown as ItemListByOwnerResponse,
+    );
 
     expect(received).toEqual(
       expect.objectContaining({

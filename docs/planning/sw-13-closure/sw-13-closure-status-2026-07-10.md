@@ -2,7 +2,7 @@
 
 Status owner: Nova (frontend)
 Program: SW-13 closure (Option A hard replace)
-Overall state: On track with Milestone-3B validation complete (ready for commit gate)
+Overall state: Milestone-3C validation complete for pre-test-investment commit; known hangar-resume e2e non-blocker documented
 
 ## Executive Snapshot
 
@@ -53,6 +53,7 @@ Overall state: On track with Milestone-3B validation complete (ready for commit 
 5. Runtime observation: multiple `ship-scene-canvas` elements present for initialized ships is expected behavior and consistent with keep-alive context design.
 6. Runtime console evidence: exactly one active context (`paused: false`) while resident inactive contexts remain paused (`paused: true`) and rendered frame counts advance only on active context.
 7. Milestone-3A starfield persistence validation: PASS (starfield remains ship-local and persistent across cross-ship exterior viewing).
+8. Milestone-3B orbit-controls validation: PASS (no bleed, starfield persistence during orbit, active-only cube rotation pause/resume, focused unit/e2e/build green).
 
 ## Known Gaps / Transitional Debt
 
@@ -85,14 +86,46 @@ Out of scope:
 2. Full-suite e2e runs unless specifically needed.
 3. Backend contract changes unless explicitly approved.
 
-## Immediate Next Actions
+## Gate Snapshot
 
-1. Execute Milestone-3A commit gate.
-2. Milestone-3B validation is complete (manual visual + focused unit + focused e2e + build all PASS).
-3. Execute Milestone-3B commit gate.
-4. Start Milestone-3C flight lane kickoff scope.
+1. Milestone-3A: validation complete and ready for commit gate.
+2. Milestone-3B: validation complete and ready for commit gate.
+3. Milestone-3C: focused unit + manual visual validation complete; ready for commit with known e2e waiver.
+4. Non-blocking warning persists: `src/app/page/opening/cold-boot-scan.css` budget warning (unchanged).
+
+## New Chat Bootstrap
+
+1. Commit the Milestone-3C flight-lane change set before starting broader test-foundation investment.
+2. Treat `ship-exterior-hangar-resume.spec.ts` as a known non-blocking e2e failure for this commit only.
+3. After commit, resume the test-foundation plan and migrate hangar-resume e2e to `sw13.v1` readiness checkpoints.
+
+## Milestone-3C Closure Progress (2026-07-11)
+
+1. Flight toggle and active-context proof hooks are wired into the bare-scene stack.
+2. Per-ship flight state owns movement/runtime mutation state locally.
+3. Focused unit tests are green (Pete-confirmed).
+4. Manual visual validation is green for flight toggle, Escape exit, WASD movement, active-only mutation, no cross-ship bleed, inactive pause, pointer-lock behavior, hangar round trip, and Options removal.
+5. Milestone-3C is ready for commit before the broader test-foundation investment.
+
+## Milestone-3C Signoff Tracker
+
+1. Required signoff e2e: `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts`.
+2. Current state: FAILING.
+3. Classification: known non-blocker for the pre-test-investment Milestone-3C commit, owner-accepted.
+4. Rationale: the failure belongs to the readiness-migration gap already captured by the SW-13 test-foundation investment plan, not the active-only flight behavior validated manually.
+5. Closure path: after this commit, migrate this spec to readiness-contract checkpoints (`sw13.v1`) and re-run focused e2e gate.
 
 ## Canonical Planning Reference
 
 Use this as the source-of-truth checkpoint document:
 - `docs/planning/sw-13-closure/replacement-design-checkpoint.md`
+
+## Strategic Test Investment Reference
+
+Use this document for the long-term maintainable test solution plan:
+- `docs/planning/sw-13-closure/sw-13-test-foundation-investment-plan-2026-07-11.md`
+
+## Test-Foundation Phase-1 Artifact
+
+Readiness contract + hangar state-machine spec:
+- `docs/planning/sw-13-closure/sw-13-phase1-readiness-contract-spec-2026-07-11.md`

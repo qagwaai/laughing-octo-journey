@@ -20,6 +20,14 @@
   background: rgba(2, 8, 16, 0.75);
 }
 
+.ship-exterior-bare-scene__toolbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .ship-exterior-bare-scene__objective {
   display: flex;
   align-items: center;
@@ -39,6 +47,22 @@
   padding: 4px 9px;
   font-size: 0.66rem;
   letter-spacing: 0.08em;
+}
+
+.ship-exterior-bare-scene__flight-btn {
+  border: 1px solid rgba(102, 231, 181, 0.55);
+  background: linear-gradient(135deg, rgba(11, 54, 44, 0.94), rgba(5, 24, 19, 0.94));
+  color: #c7ffe9;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ship-exterior-bare-scene__flight-btn:hover {
+  border-color: #7fffd4;
+  color: #effff9;
 }
 
 .ship-exterior-bare-scene__title {

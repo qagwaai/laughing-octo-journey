@@ -473,11 +473,19 @@ export class SocketService {
     }
 
     const socketAtSubscription = this.socket;
-    socketAtSubscription.on(eventName, callback);
+    const safeCallback = (data: any) => {
+      try {
+        callback(data);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        appLogger.error(`[socket-service] listener callback failed for event '${eventName}': ${message}`);
+      }
+    };
+    socketAtSubscription.on(eventName, safeCallback);
 
     // Return unsubscribe function
     return () => {
-      socketAtSubscription.off(eventName, callback);
+      socketAtSubscription.off(eventName, safeCallback);
     };
   }
 

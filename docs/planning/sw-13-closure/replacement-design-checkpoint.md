@@ -447,8 +447,41 @@ Primary files to update:
 ### 12.14 Milestone-3C Failure Policy
 
 1. Temporary focused-test failures are acceptable during implementation.
-2. End-of-milestone requirement is green focused unit and focused e2e validation.
+2. End-of-milestone requirement is green focused unit validation, manual visual validation, and explicit classification of any focused e2e failure.
+3. `ship-exterior-hangar-resume.spec.ts` may be owner-waived as a known readiness-migration non-blocker for the pre-test-investment commit only.
 
 ### 12.15 Milestone-3C Commit Gate
 
 1. Commit after acceptance criteria are met and validation outcome is recorded in this document.
+
+Milestone-3C signoff note (hangar resume e2e):
+1. `npm run e2e:spec -- e2e/tests/ship-exterior-hangar-resume.spec.ts` is a required signoff input.
+2. If this spec is failing, signoff must include explicit classification:
+   - Expected known failure (readiness migration pending), or
+   - Regression (new failure mode outside known readiness gap).
+3. Milestone-3C cannot close as green until this spec is either:
+   - Green, or
+   - Explicitly waived with owner-approved expected-failure rationale and follow-up issue reference.
+4. For expected-failure classification, signoff must record the planned closure step: migrate this spec to readiness-contract checkpoints from Phase-1 (`sw13.v1`) without test-only production mutations.
+
+Milestone-3C validation evidence (complete for pre-test-investment commit):
+1. Focused unit validation: PASS (Pete-confirmed).
+2. Manual visual flight toggle validation: PASS (flight can enter and exit through UI button).
+3. Manual visual Escape validation: PASS (Escape exits flight mode immediately).
+4. Manual visual movement validation: PASS (WASD movement changes coordinates and active ship/cube position).
+5. Manual visual active-only ownership validation: PASS (movement affects only active ship context).
+6. Manual visual no-cross-ship-bleed validation: PASS (A -> B -> A preserves independent ship state).
+7. Manual visual inactive-pause validation: PASS (inactive contexts remain paused while active ship flies).
+8. Manual visual pointer-lock validation: PASS (lock/release behavior works without stuck lock).
+9. Manual visual hangar round-trip validation: PASS (Exterior -> Hangar -> Exterior preserves expected context without unwanted reset/mutation).
+10. Temporary Options dropdown removal: PASS.
+11. Focused e2e validation: FAILING but owner-classified as known non-blocker for this commit (`ship-exterior-hangar-resume.spec.ts`, readiness-contract migration pending).
+12. Follow-up closure path: invest in test-foundation plan after this commit, then migrate hangar-resume e2e to `sw13.v1` readiness checkpoints.
+13. Gate status: Milestone-3C acceptance criteria satisfied for commit with documented e2e waiver.
+
+## 13) Session Closure Handoff (2026-07-11)
+
+1. Milestone-3A validation evidence is complete and gate-ready.
+2. Milestone-3B validation evidence is complete and gate-ready.
+3. Milestone-3C validation evidence is complete and ready for pre-test-investment commit.
+4. Next work after commit should continue the test-foundation investment plan and migrate the known failing hangar-resume e2e to readiness-contract checkpoints.

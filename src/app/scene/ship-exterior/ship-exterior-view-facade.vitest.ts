@@ -173,7 +173,6 @@ function createSourceMock(): ShipExteriorViewFacadeSource & Record<string, Retur
     'socketCorrelationDebugLine',
     'socketContractViolationCounterLine',
     'showQuickTargetIronControl',
-    'showMultiShipTestControl',
     'activeLaunchToast',
     'showAnyDebugTag',
     'showAsteroidDebugTag',
@@ -248,7 +247,6 @@ function createSourceMock(): ShipExteriorViewFacadeSource & Record<string, Retur
   source.socketCorrelationDebugLine.mockReturnValue('SOCKET DBG // ...');
   source.socketContractViolationCounterLine.mockReturnValue('CONTRACT VIOLATIONS // 0/min');
   source.showQuickTargetIronControl.mockReturnValue(true);
-  source.showMultiShipTestControl.mockReturnValue(true);
   source.activeLaunchToast.mockReturnValue({ message: 'ok', tone: 'success', seed: 9 });
 
   source.showAnyDebugTag.mockReturnValue(true);

@@ -1,17 +1,22 @@
 <section class="ship-exterior-bare-scene" aria-label="Ship exterior bare scene">
   <header class="ship-exterior-bare-scene__toolbar">
     <span class="ship-exterior-bare-scene__title">SHIP EXTERIOR // BARE SCENE</span>
-    <div class="ship-exterior-bare-scene__switches">
-      @for (context of contexts(); track context.contextKey) {
-        <button
-          type="button"
-          class="ship-exterior-bare-scene__switch-btn"
-          [class.ship-exterior-bare-scene__switch-btn--active]="activeContextKey() === context.contextKey"
-          (click)="activateContext(context.contextKey)"
-        >
-          {{ context.getState().shipId }}
-        </button>
-      }
+    <div class="ship-exterior-bare-scene__toolbar-actions">
+      <button type="button" class="ship-exterior-bare-scene__flight-btn" (click)="toggleFlightMode()">
+        {{ activeFlightStatusLine() }}
+      </button>
+      <div class="ship-exterior-bare-scene__switches">
+        @for (context of contexts(); track context.contextKey) {
+          <button
+            type="button"
+            class="ship-exterior-bare-scene__switch-btn"
+            [class.ship-exterior-bare-scene__switch-btn--active]="activeContextKey() === context.contextKey"
+            (click)="activateContext(context.contextKey)"
+          >
+            {{ context.getState().shipId }}
+          </button>
+        }
+      </div>
     </div>
   </header>
 
@@ -29,5 +34,11 @@
     <span>STARFIELD: {{ activeStarfieldSignature() ?? 'none' }}</span>
     <span>CONTEXTS: {{ contexts().length }}</span>
     <span>TARGET: {{ targetedAsteroidId() ?? 'none' }}</span>
+    <span>{{ activeFlightDirectionLine() }}</span>
+    <span>{{ activeFlightCoordsLine() }}</span>
+    <span>{{ activeFlightSpeedLine() }}</span>
+    <span>{{ activeFlightMovementLine() }}</span>
+    <span>{{ activeFlightFramePressureLine() }}</span>
+    <span>{{ activeFlightQualityScalerLine() }}</span>
   </footer>
 </section>

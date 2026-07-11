@@ -7,6 +7,8 @@ export interface ShipExteriorViewStateContext {
   shipId: string;
 }
 
+export interface ShipExteriorViewStateSnapshot extends ShipExteriorViewStateContext {}
+
 export interface ShipExteriorFlightPreferences {
   invertY: boolean;
   mouseSensitivity: number;
@@ -20,7 +22,64 @@ export interface ShipExteriorFlightPreferences {
  */
 export class ShipExteriorViewStateService {
   private static readonly STORAGE_PREFIX = 'ship-exterior:view-state';
+  private static readonly VIEW_CONTEXT_STORAGE_KEY = 'ship-exterior:view-context';
   private static readonly FLIGHT_PREFERENCES_STORAGE_PREFIX = 'ship-exterior:flight-preferences';
+
+  saveCurrentContext(context: ShipExteriorViewStateContext): void {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return;
+    }
+
+    const snapshot: ShipExteriorViewStateSnapshot = {
+      playerName: context.playerName?.trim() ?? '',
+      characterId: context.characterId?.trim() ?? '',
+      shipId: context.shipId?.trim() ?? '',
+    };
+
+    try {
+      window.sessionStorage.setItem(ShipExteriorViewStateService.VIEW_CONTEXT_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // Ignore storage failures; callers should continue gracefully.
+    }
+  }
+
+  loadCurrentContext(): ShipExteriorViewStateSnapshot | null {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return null;
+    }
+
+    try {
+      const raw = window.sessionStorage.getItem(ShipExteriorViewStateService.VIEW_CONTEXT_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as Partial<ShipExteriorViewStateSnapshot>;
+      const playerName = typeof parsed.playerName === 'string' ? parsed.playerName.trim() : '';
+      const characterId = typeof parsed.characterId === 'string' ? parsed.characterId.trim() : '';
+      const shipId = typeof parsed.shipId === 'string' ? parsed.shipId.trim() : '';
+
+      if (!playerName || !characterId || !shipId) {
+        return null;
+      }
+
+      return { playerName, characterId, shipId };
+    } catch {
+      return null;
+    }
+  }
+
+  clearCurrentContext(): void {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return;
+    }
+
+    try {
+      window.sessionStorage.removeItem(ShipExteriorViewStateService.VIEW_CONTEXT_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
 
   loadOrientation(context: ShipExteriorViewStateContext): FlightOrientation | null {
     const storageKey = this.resolveStorageKey(context);

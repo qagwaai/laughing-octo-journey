@@ -32,6 +32,9 @@ export interface ShipExteriorBareSceneTestApi {
   activeContextKey: Signal<string | null>;
   activateContext: (contextKey: string) => boolean;
   snapshotActiveContext: () => ShipSceneRuntimeSnapshot | null;
+  toggleFlightMode: () => void;
+  setFlightInvertY: (enabled: boolean) => void;
+  setFlightMouseSensitivityFromSliderValue: (rawValue: number) => void;
   legacy: ShipExteriorLegacyTestApi;
 }
 

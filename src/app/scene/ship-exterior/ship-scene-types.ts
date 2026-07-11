@@ -9,12 +9,24 @@ export interface ShipSceneWorldState {
   shipPosition: { x: number; y: number; z: number };
 }
 
+export interface ShipSceneFlightState {
+  enabled: boolean;
+  invertY: boolean;
+  mouseSensitivity: number;
+  currentLocationKm: { x: number; y: number; z: number };
+  orientation: { yawRad: number; pitchRad: number; rollRad: number };
+  worldOffset: { x: number; y: number; z: number };
+  worldRotation: { x: number; y: number; z: number };
+  speedKmPerSec: number;
+}
+
 export interface ShipSceneContextState {
   playerName: string;
   characterId: string;
   shipId: string;
   camera?: ShipSceneCameraState;
   world?: ShipSceneWorldState;
+  flight?: ShipSceneFlightState;
 }
 
 export interface ShipSceneRenderingState {
@@ -37,6 +49,11 @@ export interface ShipSceneRuntimeSnapshot {
   starfieldSignature: string;
   isPaused: boolean;
   renderedFrameCount: number;
+  flightModeEnabled: boolean;
+  flightCurrentLocationKm: { x: number; y: number; z: number };
+  flightWorldOffset: { x: number; y: number; z: number };
+  flightWorldRotation: { x: number; y: number; z: number };
+  flightSpeedKmPerSec: number;
 }
 
 export interface ShipSceneKeyParts {
