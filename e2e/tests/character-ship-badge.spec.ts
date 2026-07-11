@@ -170,11 +170,11 @@ test.describe('Character ship badge', () => {
     await expect(badgeName).toBeVisible({ timeout: 10_000 });
     await expect(badgeName).toHaveText('Surveyor');
 
-    await expect(shipHangarPage.shipItemByName('Surveyor')).toBeVisible({ timeout: 20_000 });
-
-    const surveyorActiveControl = shipHangarPage.activeShipControlButtonByName('Surveyor');
-    await expect(surveyorActiveControl).toHaveText('Active Ship');
-    await expect(surveyorActiveControl).toBeDisabled();
+    await shipHangarPage.waitForShipByNameVisible('Surveyor');
+    await shipHangarPage.expectActiveShipControlByName('Surveyor', {
+      text: 'Active Ship',
+      enabled: false,
+    });
   });
 
   test('ship badge shows active ship name after choosing another ship in hangar', async () => {
@@ -195,22 +195,25 @@ test.describe('Character ship badge', () => {
       timeout: 20_000,
     });
 
-    await expect(shipHangarPage.shipItemByName('Surveyor')).toBeVisible({ timeout: 20_000 });
-    await expect(shipHangarPage.shipItemByName('Pathfinder')).toBeVisible({ timeout: 20_000 });
+    await shipHangarPage.waitForShipByNameVisible('Surveyor');
+    await shipHangarPage.waitForShipByNameVisible('Pathfinder');
 
-    const surveyorActiveControl = shipHangarPage.activeShipControlButtonByName('Surveyor');
-    await expect(surveyorActiveControl).toHaveText('Active Ship');
-    await expect(surveyorActiveControl).toBeDisabled();
-
-    const pathfinderActiveControl = shipHangarPage.activeShipControlButtonByName('Pathfinder');
-    await expect(pathfinderActiveControl).toHaveText('Set as Active Ship');
-    await expect(pathfinderActiveControl).toBeEnabled();
-    await pathfinderActiveControl.click();
+    await shipHangarPage.expectActiveShipControlByName('Surveyor', {
+      text: 'Active Ship',
+      enabled: false,
+    });
+    await shipHangarPage.expectActiveShipControlByName('Pathfinder', {
+      text: 'Set as Active Ship',
+      enabled: true,
+    });
+    await shipHangarPage.setActiveShipByName('Pathfinder');
 
     const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toHaveText('Pathfinder', { timeout: 10_000 });
 
-    await expect(pathfinderActiveControl).toHaveText('Active Ship');
-    await expect(pathfinderActiveControl).toBeDisabled();
+    await shipHangarPage.expectActiveShipControlByName('Pathfinder', {
+      text: 'Active Ship',
+      enabled: false,
+    });
   });
 });

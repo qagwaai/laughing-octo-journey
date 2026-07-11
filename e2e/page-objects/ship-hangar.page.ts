@@ -50,6 +50,10 @@ export class ShipHangarPage {
     return this.page.locator('.ship-item').filter({ hasText: name }).first();
   }
 
+  async waitForShipByNameVisible(name: string, timeout = 20_000) {
+    await expect(this.shipItemByName(name)).toBeVisible({ timeout });
+  }
+
   activeShipControlButton(index: number) {
     return this.shipItem(index).locator('button.inventory-link').nth(3);
   }
@@ -74,6 +78,22 @@ export class ShipHangarPage {
 
   activeShipControlButtonByName(name: string) {
     return this.shipItemByName(name).locator('button.inventory-link').nth(3);
+  }
+
+  async expectActiveShipControlByName(name: string, options: { text: string; enabled: boolean; timeout?: number }) {
+    const control = this.activeShipControlButtonByName(name);
+    await expect(control).toHaveText(options.text, { timeout: options.timeout ?? 10_000 });
+    if (options.enabled) {
+      await expect(control).toBeEnabled({ timeout: options.timeout ?? 10_000 });
+    } else {
+      await expect(control).toBeDisabled({ timeout: options.timeout ?? 10_000 });
+    }
+  }
+
+  async setActiveShipByName(name: string) {
+    const control = this.activeShipControlButtonByName(name);
+    await expect(control).toBeEnabled({ timeout: 10_000 });
+    await control.click();
   }
 
   setActiveShipButton(index: number) {
