@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-flight-position-persistence';
@@ -152,12 +153,12 @@ function configureNavigateAwayPersistenceMock(
   }));
 }
 
-const flightPanel = (page: Page) => page.locator('.ship-exterior-flight-panel');
-const flightToggle = (page: Page) => page.locator('.ship-exterior-flight-panel__toggle');
-const COORDS_PATTERN = /COORD KM\s*\/\/\s*X\s+(-?\d+(?:\.\d+)?)\s+Y\s+(-?\d+(?:\.\d+)?)\s+Z\s+(-?\d+(?:\.\d+)?)/;
+const shipExteriorScene = (page: Page) => page.locator('.ship-exterior-bare-scene');
+const flightToggle = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
+const COORDS_PATTERN = /COORD KM\s*\/\/\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/;
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
-  const text = (await flightPanel(page).innerText()).trim();
+  const text = (await shipExteriorScene(page).innerText()).trim();
   const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
@@ -255,6 +256,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const persistedPosition = { x: 1_000_000, y: 0, z: 0 };
     const mock = new SocketIOMock(page);
     const gameShell = new GameShellPage(page);
+    const shipHangarPage = new ShipHangarPage(page);
 
     await mock.setup();
     configureNavigateAwayPersistenceMock(mock, persistedPosition);
@@ -264,7 +266,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
     const toggle = flightToggle(page);
-    await expect(flightPanel(page)).toBeVisible();
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsBeforeEnable = await readCoords(page);
@@ -272,26 +274,33 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/DISABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
 
     await moveForwardInFlightMode(page, coordsBeforeEnable!);
 
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/ENABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
     const movedCoords = await readCoords(page);
     expect(movedCoords).not.toBeNull();
 
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness({
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        shipId: TEST_SHIP_ID,
+      },
+    });
 
     const shipRow = page.locator('.ship-item').first();
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
 
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
-    await expect(flightPanel(page)).toBeVisible();
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterReturn = await readCoords(page);
@@ -304,6 +313,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const persistedPosition = { x: 1_050_000, y: 0, z: 0 };
     const mock = new SocketIOMock(page);
     const gameShell = new GameShellPage(page);
+    const shipHangarPage = new ShipHangarPage(page);
 
     await mock.setup();
     configureNavigateAwayPersistenceMock(mock, persistedPosition);
@@ -313,7 +323,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
     const toggle = flightToggle(page);
-    await expect(flightPanel(page)).toBeVisible();
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const initialCoords = await readCoords(page);
@@ -321,11 +331,11 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/DISABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
     await moveForwardInFlightMode(page, initialCoords!);
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/ENABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
     const firstMovedCoords = await readCoords(page);
     expect(firstMovedCoords).not.toBeNull();
 
@@ -333,11 +343,19 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness({
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        shipId: TEST_SHIP_ID,
+      },
+    });
 
     const shipRow = page.locator('.ship-item').first();
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
     await shipRow.locator('button', { hasText: 'View Exterior' }).click();
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterFirstReturn = await readCoords(page);
@@ -346,11 +364,11 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/DISABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
     await moveForwardInFlightMode(page, coordsAfterFirstReturn!);
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/ENABLE FLIGHT/);
+    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
     const secondMovedCoords = await readCoords(page);
     expect(secondMovedCoords).not.toBeNull();
 
@@ -358,11 +376,19 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await gameShell.openMarketHub();
     await gameShell.openMissionBoard();
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness({
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        shipId: TEST_SHIP_ID,
+      },
+    });
 
     const shipRowSecondCycle = page.locator('.ship-item').first();
     await expect(shipRowSecondCycle).toBeVisible({ timeout: 10_000 });
     await shipRowSecondCycle.locator('button', { hasText: 'View Exterior' }).click();
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const coordsAfterSecondReturn = await readCoords(page);
