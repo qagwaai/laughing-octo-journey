@@ -3,6 +3,7 @@ import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { MissionBoardPage } from '../page-objects/mission-board.page';
+import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 
 // ── Shared test data ───────────────────────────────────────────────────────────
 
@@ -206,6 +207,7 @@ test.describe('Mission Board — mission progress display', () => {
     const { mock } = await setupMissionBoardTest(page, [characterWithCompletedMission]);
     const gameShell = new GameShellPage(page);
     const missionBoardPage = new MissionBoardPage(page);
+    const shipHangarPage = new ShipHangarPage(page);
 
     mock.on('game-join-request', () => null);
     mock.on('list-missions-request', () => ({
@@ -231,6 +233,30 @@ test.describe('Mission Board — mission progress display', () => {
         ],
       },
     }));
+    mock.on('ship-list-by-owner-request', () => ({
+      event: 'ship-list-by-owner-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: 'char-4',
+        ships: [
+          {
+            id: 'ship-2',
+            name: 'Pathfinder',
+            model: 'Scavenger Pod',
+            tier: 1,
+            status: 'ACTIVE',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 350000000, y: 0, z: 10000000 },
+              epochMs: 1715000000000,
+            },
+          },
+        ],
+      },
+    }));
 
     await gameShell.joinGame();
     await expect(page).toHaveURL(/right:mission-board/);
@@ -241,6 +267,13 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(missionBoardPage.laneItems('completed')).toHaveCount(1);
 
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness({
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: 'char-4',
+        shipId: 'ship-2',
+      },
+    });
     await gameShell.openMissionBoard();
 
     await expect(missionBoardPage.filterButton('completed')).toHaveAttribute('aria-pressed', 'true');
