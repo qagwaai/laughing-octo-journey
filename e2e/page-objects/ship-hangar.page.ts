@@ -42,12 +42,25 @@ export class ShipHangarPage {
     return this.shipItems.nth(index);
   }
 
+  async waitForShipRowVisible(index: number, timeout = 10_000) {
+    await expect(this.shipItem(index)).toBeVisible({ timeout });
+  }
+
   shipItemByName(name: string) {
     return this.page.locator('.ship-item').filter({ hasText: name }).first();
   }
 
   activeShipControlButton(index: number) {
     return this.shipItem(index).locator('button.inventory-link').nth(3);
+  }
+
+  exteriorViewButton(index: number) {
+    return this.shipItem(index).locator('button', { hasText: 'View Exterior' });
+  }
+
+  async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
+    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
+    await this.exteriorViewButton(index).click();
   }
 
   activeShipControlButtonByName(name: string) {

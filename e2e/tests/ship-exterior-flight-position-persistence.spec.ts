@@ -294,10 +294,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
         shipId: TEST_SHIP_ID,
       },
     });
-
-    const shipRow = page.locator('.ship-item').first();
-    await expect(shipRow).toBeVisible({ timeout: 10_000 });
-    await shipRow.locator('button', { hasText: 'View Exterior' }).click();
+    await shipHangarPage.openExteriorForShip(0);
 
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
@@ -350,10 +347,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
         shipId: TEST_SHIP_ID,
       },
     });
-
-    const shipRow = page.locator('.ship-item').first();
-    await expect(shipRow).toBeVisible({ timeout: 10_000 });
-    await shipRow.locator('button', { hasText: 'View Exterior' }).click();
+    await shipHangarPage.openExteriorForShip(0);
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
@@ -383,10 +377,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
         shipId: TEST_SHIP_ID,
       },
     });
-
-    const shipRowSecondCycle = page.locator('.ship-item').first();
-    await expect(shipRowSecondCycle).toBeVisible({ timeout: 10_000 });
-    await shipRowSecondCycle.locator('button', { hasText: 'View Exterior' }).click();
+    await shipHangarPage.openExteriorForShip(0);
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN, { timeout: 15_000 });
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
