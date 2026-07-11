@@ -1,68 +1,15 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import {
+  CHARACTER_WITH_MISSION,
+  PRIMARY_SHIP,
+  registerCharacterShipBadgeSessionHandlers,
+  SECONDARY_SHIP,
+  shipListByOwnerResponse,
+} from '../fixtures/character-ship-badge-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ShipHangarPage } from '../page-objects/ship-hangar.page';
-
-// ── Shared test data ───────────────────────────────────────────────────────────
-
-const MISSION_ID = 'first-target';
-
-// Character with a started mission — join button reads "Join Game in Progress"
-// which navigates directly to game-main, bypassing the opening-cold-boot sequence.
-const CHARACTER_WITH_MISSION = {
-  id: 'char-1',
-  characterName: 'Nova-Prime',
-  level: 5,
-  missions: [{ missionId: MISSION_ID, status: 'active' }],
-};
-
-const PRIMARY_SHIP = {
-  id: 'd-1',
-  name: 'Surveyor',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 1, y: 0, z: 0 },
-    epochMs: 0,
-  },
-};
-
-const SECONDARY_SHIP = {
-  id: 'd-2',
-  name: 'Pathfinder',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 2, y: 0, z: 0 },
-    epochMs: 0,
-  },
-};
-
-function characterListResponse(characters: object[]) {
-  return { success: true, message: '', playerName: TEST_PLAYER, characters };
-}
-
-function shipListByOwnerResponse(ships: object[]) {
-  return {
-    success: true,
-    message: '',
-    owner: {
-      ownerType: 'player-character',
-      playerId: 'player-1',
-      characterId: CHARACTER_WITH_MISSION.id,
-      npcId: null,
-      factionId: null,
-    },
-    ships,
-  };
-}
 
 let sharedContext: BrowserContext;
 let sharedPage: Page;
@@ -70,15 +17,7 @@ let sharedMock: SocketIOMock;
 let sharedGameShell: GameShellPage;
 
 function registerSharedSessionHandlers(): void {
-  sharedMock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([CHARACTER_WITH_MISSION]),
-  }));
-  sharedMock.on('game-join-request', () => null);
-  sharedMock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: shipListByOwnerResponse([PRIMARY_SHIP]),
-  }));
+  registerCharacterShipBadgeSessionHandlers(sharedMock, [PRIMARY_SHIP]);
 }
 
 test.describe.configure({ mode: 'serial', timeout: 60_000 });
