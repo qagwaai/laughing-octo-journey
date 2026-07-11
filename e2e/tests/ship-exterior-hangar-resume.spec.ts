@@ -84,13 +84,10 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
       },
     });
 
-    const shipRow = shipHangarPage.shipItem(0);
-    await expect(shipRow).toBeVisible({ timeout: 10_000 });
-
-    await shipRow.locator('button', { hasText: 'View Specs' }).click();
+    await shipHangarPage.openSpecsForShip(0);
     await expect(page).toHaveURL(/right:item-view-specs/);
 
-    await shipRow.locator('button', { hasText: 'View Exterior' }).click();
+    await shipHangarPage.openExteriorForShip(0);
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN);
 
     await expect(
@@ -130,10 +127,8 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
         shipId: SHIP_EXTERIOR_RESUME_SHIP_ID,
       },
     });
-    const shipRow = shipHangarPage.shipItem(0);
-    await expect(shipRow).toBeVisible({ timeout: 10_000 });
 
-    await shipRow.locator('button', { hasText: 'View Exterior' }).click();
+    await shipHangarPage.openExteriorForShip(0);
     await expect(page).toHaveURL(SHIP_EXTERIOR_VIEW_URL_PATTERN);
 
     await expect

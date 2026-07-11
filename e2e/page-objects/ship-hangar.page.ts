@@ -58,6 +58,15 @@ export class ShipHangarPage {
     return this.shipItem(index).locator('button', { hasText: 'View Exterior' });
   }
 
+  viewSpecsButton(index: number) {
+    return this.shipItem(index).locator('button', { hasText: 'View Specs' });
+  }
+
+  async openSpecsForShip(index: number, options: { rowTimeout?: number } = {}) {
+    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
+    await this.viewSpecsButton(index).click();
+  }
+
   async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
     await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
     await this.exteriorViewButton(index).click();
