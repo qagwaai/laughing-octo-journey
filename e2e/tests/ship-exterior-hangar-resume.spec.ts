@@ -230,6 +230,7 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
       .toEqual({ scanned: true, scanProgress: 100 });
 
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness();
 
     const shipRow = shipHangarPage.shipItem(0);
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
@@ -270,6 +271,7 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     await expect(page).toHaveURL(/right:mission-board/, { timeout: 15_000 });
 
     await gameShell.openShipHangar();
+    await shipHangarPage.waitForLoadedReadiness();
     const shipRow = shipHangarPage.shipItem(0);
     await expect(shipRow).toBeVisible({ timeout: 10_000 });
 

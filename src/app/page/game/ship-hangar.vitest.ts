@@ -14,15 +14,47 @@ import { SocketService } from '../../services/socket.service';
 import { MarketService } from '../../services/market.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { ShipService } from '../../services/ship.service';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
+import { getSw13AppTestReadinessSnapshot } from '../../services/sw13-app-test-readiness-contract';
 import ShipHangarPage from './ship-hangar';
 const FIRST_TARGET_MISSION_ID = 'first-target';
+
+type ControllableShipService = {
+  pendingResponses: Array<(response: any) => void>;
+  listShipsByOwner: ReturnType<typeof vi.fn>;
+};
+
+function createControllableShipService(): ControllableShipService {
+  const pendingResponses: Array<(response: any) => void> = [];
+
+  return {
+    pendingResponses,
+    listShipsByOwner: vi.fn((_request, onResponse: (response: any) => void) => {
+      pendingResponses.push(onResponse);
+    }),
+  };
+}
+
+function createShip(id: string, name = id) {
+  return {
+    id,
+    name,
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 1, y: 2, z: 3 },
+      epochMs: 1,
+    },
+  };
+}
 
 function setup(options: {
   socketService: MockSocketService;
   sessionService: MockSessionService;
   navigationState?: Record<string, unknown>;
   connected?: boolean;
+  shipService?: Pick<ControllableShipService, 'listShipsByOwner'>;
 }) {
   const marketService = {
     listMarketsByLocation: vi.fn(),
@@ -59,6 +91,7 @@ function setup(options: {
     imports: [ShipHangarPage],
     providers: [
       { provide: SocketService, useValue: options.socketService },
+      ...(options.shipService ? [{ provide: ShipService, useValue: options.shipService }] : []),
       { provide: SessionService, useValue: options.sessionService },
       { provide: MarketService, useValue: marketService },
       { provide: MissionService, useValue: missionService },
@@ -209,6 +242,95 @@ describe('ShipHangarPage', () => {
     expect(component['ships']().length).toBe(2);
   });
 
+  it('should publish loading and loaded readiness states for a successful ship load', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    expect(component['hangarLoadState']()).toBe('loading');
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loading',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: null,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'ok',
+      ships: [createShip('s-1', 'Courier')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loaded');
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 1,
+        shipCount: 1,
+        error: null,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 's-1',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+        }),
+      }),
+    );
+  });
+
+  it('should publish empty readiness state for a successful empty ship load', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'ok',
+      ships: [],
+    });
+
+    expect(component['hangarLoadState']()).toBe('empty');
+    expect(component['ships']()).toEqual([]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'empty',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: null,
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 0,
+        }),
+      }),
+    );
+  });
+
   it('should set error and clear ships on failed response', () => {
     const { component } = setup({
       socketService,
@@ -237,6 +359,72 @@ describe('ShipHangarPage', () => {
     expect(component['isLoadingShips']()).toBe(false);
     expect(component['shipListError']()).toBe('Character not found');
     expect(component['ships']()).toEqual([]);
+  });
+
+  it('should ignore stale out-of-order ship-list responses from older generations', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    component.loadShipsForCharacter();
+
+    expect(controllableShipService.pendingResponses).toHaveLength(2);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loading',
+        requestGeneration: 2,
+      }),
+    );
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'stale ok',
+      ships: [createShip('stale-ship', 'Stale Ship')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loading');
+    expect(component['ships']()).toEqual([]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loading',
+        requestGeneration: 2,
+        shipCount: 0,
+        lastSuccessfulLoad: null,
+      }),
+    );
+
+    controllableShipService.pendingResponses[1]({
+      success: true,
+      message: 'latest ok',
+      ships: [createShip('latest-ship', 'Latest Ship')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loaded');
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'latest-ship', name: 'Latest Ship' })]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 2,
+        shipCount: 1,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'latest-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 2,
+          shipCount: 1,
+        }),
+      }),
+    );
   });
 
   it('should return name fallback for blank ship name', () => {
