@@ -25,6 +25,12 @@ interface Sw13AppTestReadinessSnapshot {
   hangar: ShipHangarReadinessSnapshot;
 }
 
+interface ShipHangarLoadedReadinessOptions {
+  minimumShipCount?: number;
+  routeContext?: Partial<ShipHangarReadinessSnapshot['routeContext']>;
+  timeout?: number;
+}
+
 export class ShipHangarPage {
   constructor(private readonly page: Page) {}
 
@@ -75,8 +81,16 @@ export class ShipHangarPage {
     });
   }
 
-  async waitForLoadedReadiness(options: { minimumShipCount?: number; timeout?: number } = {}) {
+  async waitForLoadedReadiness(options: ShipHangarLoadedReadinessOptions = {}) {
     const minimumShipCount = options.minimumShipCount ?? 1;
+    const expectedReadiness = {
+      version: 'sw13.v1',
+      state: 'loaded',
+      shipCount: expect.any(Number),
+      lastSuccessfulShipCount: expect.any(Number),
+      error: null,
+      ...(options.routeContext ? { routeContext: expect.objectContaining(options.routeContext) } : {}),
+    };
 
     await expect
       .poll(
@@ -89,18 +103,13 @@ export class ShipHangarPage {
                 shipCount: snapshot.hangar.shipCount,
                 lastSuccessfulShipCount: snapshot.hangar.lastSuccessfulLoad?.shipCount ?? null,
                 error: snapshot.hangar.error,
+                routeContext: snapshot.hangar.routeContext,
               }
             : null;
         },
         { timeout: options.timeout ?? 15_000 },
       )
-      .toMatchObject({
-        version: 'sw13.v1',
-        state: 'loaded',
-        shipCount: expect.any(Number),
-        lastSuccessfulShipCount: expect.any(Number),
-        error: null,
-      });
+      .toMatchObject(expectedReadiness);
 
     await expect
       .poll(async () => (await this.getReadinessSnapshot())?.hangar.shipCount ?? 0, {

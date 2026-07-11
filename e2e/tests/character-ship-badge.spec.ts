@@ -157,12 +157,19 @@ test.describe('Character ship badge', () => {
 
     await sharedGameShell.openShipHangar();
     const shipHangarPage = new ShipHangarPage(sharedPage);
+    await shipHangarPage.waitForLoadedReadiness({
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: CHARACTER_WITH_MISSION.id,
+        shipId: PRIMARY_SHIP.id,
+      },
+      timeout: 20_000,
+    });
 
     const badgeName = shipHangarPage.shipBadgeName;
     await expect(badgeName).toBeVisible({ timeout: 10_000 });
     await expect(badgeName).toHaveText('Surveyor');
 
-    await expect.poll(async () => shipHangarPage.shipItems.count(), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(shipHangarPage.shipItemByName('Surveyor')).toBeVisible({ timeout: 20_000 });
 
     const surveyorActiveControl = shipHangarPage.activeShipControlButtonByName('Surveyor');
@@ -178,8 +185,16 @@ test.describe('Character ship badge', () => {
 
     await sharedGameShell.openShipHangar();
     const shipHangarPage = new ShipHangarPage(sharedPage);
+    await shipHangarPage.waitForLoadedReadiness({
+      minimumShipCount: 2,
+      routeContext: {
+        playerName: TEST_PLAYER,
+        characterId: CHARACTER_WITH_MISSION.id,
+        shipId: PRIMARY_SHIP.id,
+      },
+      timeout: 20_000,
+    });
 
-    await expect.poll(async () => shipHangarPage.shipItems.count(), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(shipHangarPage.shipItemByName('Surveyor')).toBeVisible({ timeout: 20_000 });
     await expect(shipHangarPage.shipItemByName('Pathfinder')).toBeVisible({ timeout: 20_000 });
 
