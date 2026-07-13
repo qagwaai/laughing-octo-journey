@@ -1,5 +1,6 @@
 import { Signal } from '@angular/core';
 import type { ShipSceneRuntimeSnapshot } from './ship-scene-types';
+import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 
 declare global {
   interface Window {
@@ -20,10 +21,16 @@ export interface ShipExteriorLegacyAsteroidSample {
 
 export interface ShipExteriorLegacyTestApi {
   getAsteroidSamples: () => ShipExteriorLegacyAsteroidSample[];
-  forceCompleteIronScan: (sampleId?: string) => ShipExteriorLegacyAsteroidSample | null;
+  getMissionGateState: () => ShipExteriorMissionGateState;
+  resetMissionGateState: () => ShipExteriorMissionGateState;
+  forceCompleteIronScan: (sampleId?: string) => ShipExteriorMissionGateState | null;
   forceTargetAsteroid: (sampleId: string) => boolean;
   getTargetedAsteroidId: () => string | null;
   launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+  simulateDebrisCollection: (remainingDebrisCount?: number) => ShipExteriorMissionGateState;
+  simulateManufacture: (itemType: string) => ShipExteriorMissionGateState;
+  simulateRepair: (repairKind: string) => ShipExteriorMissionGateState;
+  getActiveShipInventoryItemTypes: () => string[];
   getActiveLaunchToast: () => { message: string; tone: 'success' | 'error' } | null;
 }
 
