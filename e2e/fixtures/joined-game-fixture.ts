@@ -57,6 +57,16 @@ async function ensureCharacterListReady(
   }
 
   if ((await page.locator('.character-item').count()) === 0) {
+    const loginFormVisibleBeforeError = await page
+      .locator('#playerName')
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false);
+    if (page.url().includes('left:login') || loginFormVisibleBeforeError) {
+      registerSessionHandlers(mock);
+      await loginViaUI(page, mock);
+      await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+    }
+
     const loadButton = page.locator('.load-btn').first();
     const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.isVisible());
     if (!loadButtonVisible) {
@@ -126,15 +136,44 @@ export function createJoinedGameTest(config: JoinedGameFixtureConfig) {
 
     prepareJoinedPage: async ({ joinedGameWorker }, use) => {
       await use(async () => {
-        const { page, mock, registerSessionHandlers, joinedUrlPattern } = joinedGameWorker;
+        const { page, mock, registerSessionHandlers, joinedUrlPattern, gameShell } = joinedGameWorker;
         if (page.isClosed()) {
           throw new Error('joined-game fixture page closed unexpectedly.');
         }
 
+        const isLoginUiVisible = async (): Promise<boolean> =>
+          page
+            .locator('#playerName')
+            .isVisible({ timeout: 1_000 })
+            .catch(() => false);
+
+        const recoverToJoinedGame = async (errorContext: string): Promise<void> => {
+          registerSessionHandlers(mock);
+          await loginViaUI(page, mock);
+
+          if ((await page.locator('.character-item').count()) === 0) {
+            const loadButton = page.locator('.load-btn').first();
+            const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.isVisible());
+            if (!loadButtonVisible) {
+              throw new Error(
+                `Character list is empty and load button is unavailable during ${errorContext} (url=${page.url()}).`,
+              );
+            }
+
+            await expect(loadButton).toBeEnabled({ timeout: 5_000 });
+            await loadButton.click();
+            await expect(page.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
+          }
+
+          await ensureGameJoined(page, gameShell, joinedUrlPattern, config.joinButtonText);
+        };
+
         mock.reset();
         registerSessionHandlers(mock);
 
-        if (joinedUrlPattern.test(page.url())) {
+        const loginVisibleAtStart = await isLoginUiVisible();
+
+        if (joinedUrlPattern.test(page.url()) && !loginVisibleAtStart) {
           return;
         }
 
@@ -145,10 +184,39 @@ export function createJoinedGameTest(config: JoinedGameFixtureConfig) {
         }
 
         if (!joinedUrlPattern.test(page.url())) {
-          await page.goto('/(left:game-main)');
+          try {
+            await page.goto('/(left:game-main)');
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            const isNavigationRace =
+              message.includes('interrupted by another navigation') && message.includes('about:blank');
+            if (!isNavigationRace) {
+              throw error;
+            }
+            await page
+              .waitForURL(/left:(login|game-main|character-list)/, { timeout: 5_000 })
+              .catch(() => null);
+          }
         }
 
-        await expect(page).toHaveURL(joinedUrlPattern, { timeout: 10_000 });
+        const loginVisibleAfterNavigation = await isLoginUiVisible();
+        if (page.url().includes('left:login') || loginVisibleAfterNavigation) {
+          await recoverToJoinedGame('prepareJoinedPage');
+        }
+
+        try {
+          await expect(page).toHaveURL(joinedUrlPattern, { timeout: 10_000 });
+        } catch {
+          // Shared worker page can drift back to login between setup steps; force one full recovery pass.
+          await recoverToJoinedGame('prepareJoinedPage URL assertion recovery');
+          await expect(page).toHaveURL(joinedUrlPattern, { timeout: 10_000 });
+        }
+
+        const loginVisibleAtEnd = await isLoginUiVisible();
+        if (loginVisibleAtEnd) {
+          await recoverToJoinedGame('final prepareJoinedPage recovery');
+          await expect(page).toHaveURL(joinedUrlPattern, { timeout: 10_000 });
+        }
       });
     },
   });

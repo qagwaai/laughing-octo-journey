@@ -1,13 +1,11 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
 import {
-  registerDefaultMarketHandler,
+  openMarketHubWithDefaultData,
   registerServerNoRouteOverrideHandler,
   registerSharedSessionHandlers,
   type MarketByLocationRequest,
 } from '../fixtures/market-hub-cross-system-scenario';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { GameShellPage } from '../page-objects/game-shell.page';
 import { MarketHubPage } from '../page-objects/market-hub.page';
 
 let sharedMarketHubPage: MarketHubPage;
@@ -16,19 +14,6 @@ const test = createJoinedGameTest({
   registerSessionHandlers: registerSharedSessionHandlers,
   joinButtonText: 'Join Game in Progress',
 });
-
-async function openMarketHubWithDefaultData(
-  sharedGameShell: GameShellPage,
-  sharedMock: SocketIOMock,
-  onRequest: (req: MarketByLocationRequest) => void,
-) {
-  sharedMock.reset();
-  registerSharedSessionHandlers(sharedMock);
-  registerDefaultMarketHandler(sharedMock, onRequest);
-
-  await sharedGameShell.openMarketHub();
-  await expect(sharedMarketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
-}
 
 test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
@@ -45,7 +30,7 @@ test.describe('Market Hub cross-system route badges', () => {
     sharedMock,
   }) => {
     const requests: MarketByLocationRequest[] = [];
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, (req) => requests.push(req));
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, (req) => requests.push(req));
 
     const marketRows = sharedMarketHubPage.marketItems;
     await expect(marketRows).toHaveCount(3);
@@ -77,7 +62,7 @@ test.describe('Market Hub cross-system route badges', () => {
     sharedMock,
   }) => {
     const requests: MarketByLocationRequest[] = [];
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, (req) => requests.push(req));
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, (req) => requests.push(req));
 
     const marketRows = sharedMarketHubPage.marketItems;
 

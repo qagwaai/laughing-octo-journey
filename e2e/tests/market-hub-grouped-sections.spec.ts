@@ -1,150 +1,21 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { TEST_PLAYER } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
+import {
+  getDefaultGroupedMarkets,
+  openMarketHubWithDefaultData,
+  registerSessionHandlers,
+  type MarketByLocationRequest,
+} from '../fixtures/market-hub-grouped-sections-scenario';
 import { MarketHubPage } from '../page-objects/market-hub.page';
 
-const CHARACTER = {
-  id: 'char-market-grouped',
-  characterName: 'Pathfinder',
-  level: 2,
-  missions: [{ missionId: 'first-target', status: 'active' }],
-};
-
-/** Standard-cruise drive: 0.5 AU range. Near Exchange (0.2 AU) is reachable;
- *  Distant Exchange (2.5 AU) exceeds that range and should appear only when
- *  the "show out-of-range" toggle is enabled. */
-const SHIP = {
-  id: `starter-pod-${CHARACTER.id}`,
-  name: 'Scavenger Pod',
-  model: 'Scavenger Pod',
-  tier: 1,
-  driveProfile: {
-    id: 'standard-cruise',
-    name: 'Standard Cruise Drive',
-    rangeAu: 0.5,
-    cruiseSpeedAuPerHour: 0.3,
-    fuelCostPerAu: 1,
-  },
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 413_700_000, y: 0, z: 0 },
-    epochMs: 1_777_000_000_000,
-  },
-  motion: {
-    velocityKmPerSec: { x: 0, y: 0, z: 0 },
-    angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
-  },
-  observability: {
-    sensorConfidence: 1,
-    source: {
-      solarSystemId: 'sol',
-      sourceType: 'server-feed',
-      observedAt: new Date(1_777_000_000_000).toISOString(),
-    },
-  },
-};
-
-const NEAR_MARKET = {
-  marketId: 'sol-near-exchange',
-  solarSystemId: 'sol',
-  marketName: 'Near Exchange',
-  siteType: 'station',
-  siteName: 'Inner Belt Ring',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 413_729_950, y: 0, z: 0 },
-    epochMs: Date.now(),
-  },
-  distanceAu: 0.2,
-  isDocked: false,
-  priceMultiplier: 1,
-  driftPercentPerHour: 6,
-  restockIntervalMinutes: 60,
-};
-
-const DISTANT_MARKET = {
-  marketId: 'sol-distant-exchange',
-  solarSystemId: 'sol',
-  marketName: 'Distant Exchange',
-  siteType: 'station',
-  siteName: 'Outer Rim Hub',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 414_073_947, y: 0, z: 0 },
-    epochMs: Date.now(),
-  },
-  distanceAu: 2.5,
-  isDocked: false,
-  priceMultiplier: 1.2,
-  driftPercentPerHour: 8,
-  restockIntervalMinutes: 120,
-};
-
-type MarketByLocationRequest = { distanceAu: number };
+const { nearMarket: NEAR_MARKET, distantMarket: DISTANT_MARKET, ship: SHIP } = getDefaultGroupedMarkets();
 
 let sharedMarketHubPage: MarketHubPage;
-
-function registerSessionHandlers(mock: SocketIOMock): void {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [CHARACTER],
-    },
-  }));
-
-  mock.on('game-join', () => null);
-
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: CHARACTER.id,
-      ships: [SHIP],
-    },
-  }));
-}
-
-function registerDefaultMarketHandler(mock: SocketIOMock): void {
-  mock.on('market-list-by-location-request', () => ({
-    event: 'market-list-by-location-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystemId: 'sol',
-      positionKm: SHIP.spatial.positionKm,
-      locationTypes: ['station'],
-      isDocked: false,
-      dockedMarketId: null,
-      markets: [NEAR_MARKET, DISTANT_MARKET],
-    },
-  }));
-}
 
 const test = createJoinedGameTest({
   registerSessionHandlers,
   joinButtonText: 'Join Game in Progress',
 });
-
-async function openMarketHubWithDefaultData(sharedGameShell: GameShellPage, sharedMock: SocketIOMock) {
-  sharedMock.reset();
-  registerSessionHandlers(sharedMock);
-  registerDefaultMarketHandler(sharedMock);
-
-  await sharedGameShell.openMarketHub();
-  await expect.poll(() => sharedMarketHubPage.marketItems.count(), { timeout: 15_000 }).toBeGreaterThan(0);
-}
 
 test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
@@ -159,7 +30,7 @@ test.describe('Market Hub grouped sections', () => {
     sharedMock,
     sharedPage,
   }) => {
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock);
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
     const reachableHeading = sharedMarketHubPage.reachableHeading;
     await reachableHeading.scrollIntoViewIfNeeded();
@@ -179,7 +50,7 @@ test.describe('Market Hub grouped sections', () => {
     sharedMock,
     sharedPage,
   }) => {
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock);
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
     await expect(sharedMarketHubPage.showOutOfRangeToggle).not.toBeChecked();
     await sharedMarketHubPage.enableOutOfRangeMarkets();
@@ -197,7 +68,7 @@ test.describe('Market Hub grouped sections', () => {
   });
 
   test('out-of-range market shows required drive upgrade info', async ({ sharedGameShell, sharedMock }) => {
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock);
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
     await sharedMarketHubPage.enableOutOfRangeMarkets();
     await expect(sharedMarketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });

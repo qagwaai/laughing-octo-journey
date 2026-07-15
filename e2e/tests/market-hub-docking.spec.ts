@@ -1,9 +1,8 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
-import { SocketIOMock } from '../fixtures/socket-mock';
 import {
-  MARKET_HUB_DOCKING_CHARACTER,
-  MARKET_HUB_DOCKING_SHIP_WITH_POSITION,
+  registerCrossSystemMarketHandler,
+  registerDefaultMarketHandler,
   registerSharedSessionHandlers,
   setupAndOpenMarketHub,
   type MarketByLocationRequest,
@@ -23,125 +22,6 @@ test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
   await prepareJoinedPage();
   sharedMarketHubPage = new MarketHubPage(sharedPage);
 });
-
-function registerDefaultMarketHandler(mock: SocketIOMock, onRequest: (request: MarketByLocationRequest) => void): void {
-  mock.on('market-list-by-location-request', (payload) => {
-    const request = payload as MarketByLocationRequest;
-    onRequest(request);
-
-    return {
-      event: 'market-list-by-location-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: 'testplayer',
-        solarSystemId: 'sol',
-        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
-        distanceAu: request.distanceAu,
-        locationTypes: ['station'],
-        isDocked: true,
-        dockedMarketId: 'sol-ceres-exchange',
-        markets: [
-          {
-            marketId: 'sol-ceres-exchange',
-            solarSystemId: 'sol',
-            marketName: 'Ceres Exchange',
-            siteType: 'station',
-            siteName: 'Ceres Belt Trade Ring',
-            spatial: {
-              solarSystemId: 'sol',
-              frame: 'barycentric',
-              positionKm: { x: 413_700_102.5, y: 0, z: 0 },
-              epochMs: Date.now(),
-            },
-            distanceAu: 0.02,
-            isDocked: true,
-            priceMultiplier: 1,
-            driftPercentPerHour: 6,
-            restockIntervalMinutes: 60,
-          },
-          {
-            marketId: 'sol-remote-market',
-            solarSystemId: 'sol',
-            marketName: 'Remote Market',
-            siteType: 'station',
-            siteName: 'Outer Arc',
-            spatial: {
-              solarSystemId: 'sol',
-              frame: 'barycentric',
-              positionKm: { x: 413_700_440.2, y: 0, z: 0 },
-              epochMs: Date.now(),
-            },
-            distanceAu: 0.6,
-            isDocked: false,
-            priceMultiplier: 1,
-            driftPercentPerHour: 6,
-            restockIntervalMinutes: 60,
-          },
-        ],
-      },
-    };
-  });
-}
-
-function registerCrossSystemMarketHandler(mock: SocketIOMock): void {
-  mock.on('market-list-by-location-request', (payload) => {
-    const request = payload as MarketByLocationRequest;
-    return {
-      event: 'market-list-by-location-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: 'testplayer',
-        solarSystemId: 'sol',
-        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
-        distanceAu: request.distanceAu,
-        locationTypes: ['station'],
-        isDocked: true,
-        dockedMarketId: 'sol-ceres-exchange',
-        markets: [
-          {
-            marketId: 'sol-ceres-exchange',
-            solarSystemId: 'sol',
-            marketName: 'Ceres Exchange',
-            siteType: 'station',
-            siteName: 'Ceres Belt Trade Ring',
-            spatial: {
-              solarSystemId: 'sol',
-              frame: 'barycentric',
-              positionKm: { x: 413_700_102.5, y: 0, z: 0 },
-              epochMs: Date.now(),
-            },
-            distanceAu: 0.02,
-            isDocked: true,
-            priceMultiplier: 1,
-            driftPercentPerHour: 6,
-            restockIntervalMinutes: 60,
-          },
-          {
-            marketId: 'alpha-centauri-station',
-            solarSystemId: 'alpha-centauri',
-            marketName: 'Alpha Station',
-            siteType: 'station',
-            siteName: 'Alpha Centauri Hub',
-            spatial: {
-              solarSystemId: 'alpha-centauri',
-              frame: 'barycentric',
-              positionKm: { x: 0, y: 0, z: 0 },
-              epochMs: Date.now(),
-            },
-            distanceAu: null,
-            isDocked: false,
-            priceMultiplier: 1.1,
-            driftPercentPerHour: 8,
-            restockIntervalMinutes: 120,
-            route: { kind: 'gate-route', hops: 1 },
-          },
-        ],
-      },
-    };
-  });
-}
 
 test.describe('Market Hub docking and radius behavior', () => {
   test('shows in-system route badge for local non-docked market', async ({ sharedGameShell, sharedMock }) => {

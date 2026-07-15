@@ -84,3 +84,125 @@ export async function setupAndOpenMarketHub(
   registerMarketHandler(sharedMock as SocketIOMock);
   await sharedGameShell.openMarketHub();
 }
+
+export function registerDefaultMarketHandler(
+  mock: SocketIOMock,
+  onRequest: (request: MarketByLocationRequest) => void,
+): void {
+  mock.on('market-list-by-location-request', (payload) => {
+    const request = payload as MarketByLocationRequest;
+    onRequest(request);
+
+    return {
+      event: 'market-list-by-location-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        solarSystemId: 'sol',
+        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
+        distanceAu: request.distanceAu,
+        locationTypes: ['station'],
+        isDocked: true,
+        dockedMarketId: 'sol-ceres-exchange',
+        markets: [
+          {
+            marketId: 'sol-ceres-exchange',
+            solarSystemId: 'sol',
+            marketName: 'Ceres Exchange',
+            siteType: 'station',
+            siteName: 'Ceres Belt Trade Ring',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 413_700_102.5, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: 0.02,
+            isDocked: true,
+            priceMultiplier: 1,
+            driftPercentPerHour: 6,
+            restockIntervalMinutes: 60,
+          },
+          {
+            marketId: 'sol-remote-market',
+            solarSystemId: 'sol',
+            marketName: 'Remote Market',
+            siteType: 'station',
+            siteName: 'Outer Arc',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 413_700_440.2, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: 0.6,
+            isDocked: false,
+            priceMultiplier: 1,
+            driftPercentPerHour: 6,
+            restockIntervalMinutes: 60,
+          },
+        ],
+      },
+    };
+  });
+}
+
+export function registerCrossSystemMarketHandler(mock: SocketIOMock): void {
+  mock.on('market-list-by-location-request', (payload) => {
+    const request = payload as MarketByLocationRequest;
+    return {
+      event: 'market-list-by-location-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        solarSystemId: 'sol',
+        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
+        distanceAu: request.distanceAu,
+        locationTypes: ['station'],
+        isDocked: true,
+        dockedMarketId: 'sol-ceres-exchange',
+        markets: [
+          {
+            marketId: 'sol-ceres-exchange',
+            solarSystemId: 'sol',
+            marketName: 'Ceres Exchange',
+            siteType: 'station',
+            siteName: 'Ceres Belt Trade Ring',
+            spatial: {
+              solarSystemId: 'sol',
+              frame: 'barycentric',
+              positionKm: { x: 413_700_102.5, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: 0.02,
+            isDocked: true,
+            priceMultiplier: 1,
+            driftPercentPerHour: 6,
+            restockIntervalMinutes: 60,
+          },
+          {
+            marketId: 'alpha-centauri-station',
+            solarSystemId: 'alpha-centauri',
+            marketName: 'Alpha Station',
+            siteType: 'station',
+            siteName: 'Alpha Centauri Hub',
+            spatial: {
+              solarSystemId: 'alpha-centauri',
+              frame: 'barycentric',
+              positionKm: { x: 0, y: 0, z: 0 },
+              epochMs: Date.now(),
+            },
+            distanceAu: null,
+            isDocked: false,
+            priceMultiplier: 1.1,
+            driftPercentPerHour: 8,
+            restockIntervalMinutes: 120,
+            route: { kind: 'gate-route', hops: 1 },
+          },
+        ],
+      },
+    };
+  });
+}

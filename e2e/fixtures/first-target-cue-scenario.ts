@@ -1,7 +1,10 @@
+import { expect, type Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
+const FAB_LAB_HINT_DISMISS_PREFIX = 'first-target:fabrication-lab-hint-dismissed';
+const REPAIR_HINT_DISMISS_PREFIX = 'first-target:repair-retrofit-hint-dismissed';
 
 export const FIRST_TARGET_CUE_CHARACTER_ID = 'char-fab-cue';
 
@@ -228,4 +231,129 @@ export function configureFirstTargetCueMock(mock: SocketIOMock): void {
       },
     };
   });
+}
+
+export async function waitForShipExteriorTestApi(
+  sharedPage: Page,
+  recover?: () => Promise<void>,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const apiReadyBeforeRouteAttempt = await sharedPage.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState?: () => unknown;
+                getAsteroidSamples?: () => unknown[];
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return typeof api?.getMissionGateState === 'function';
+        });
+
+        if (apiReadyBeforeRouteAttempt) {
+          return true;
+        }
+
+        if (recover) {
+          await recover();
+        }
+
+        const targetIronButton = sharedPage.getByRole('button', { name: 'TARGET IRON' });
+        const canOpenShipExterior = await targetIronButton
+          .isVisible({ timeout: 500 })
+          .catch(() => false);
+        if (canOpenShipExterior) {
+          await targetIronButton.click();
+        }
+
+        return sharedPage.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getMissionGateState?: () => unknown;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          return typeof api?.getMissionGateState === 'function';
+        });
+      },
+      { timeout: 15000, intervals: [250, 500, 1000] },
+    )
+    .toBe(true);
+}
+
+export async function advanceMissionToManufactureStep(sharedPage: Page): Promise<void> {
+  await sharedPage.evaluate(() => {
+    const api = (
+      window as Window & {
+        __shipExteriorTestUtils?: {
+          forceCompleteIronScan?: () => unknown;
+          getAsteroidSamples?: () => Array<{
+            id: string;
+            scanned?: boolean;
+            revealedMaterial?: { material?: string } | null;
+          }>;
+          forceTargetAsteroid?: (sampleId: string) => boolean;
+        };
+      }
+    ).__shipExteriorTestUtils;
+
+    api?.forceCompleteIronScan?.();
+
+    const ironSample = api
+      ?.getAsteroidSamples?.()
+      ?.find((sample) => sample.scanned && sample.revealedMaterial?.material === 'Iron');
+    if (ironSample?.id) {
+      api?.forceTargetAsteroid?.(ironSample.id);
+    }
+  });
+
+  await sharedPage.evaluate(() => {
+    const api = (
+      window as Window & {
+        __shipExteriorTestUtils?: {
+          launchFromHotkey?: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+        };
+      }
+    ).__shipExteriorTestUtils;
+    api?.launchFromHotkey?.(1);
+  });
+
+  await expect
+    .poll(async () =>
+      sharedPage.evaluate(() => {
+        const api = (
+          window as Window & {
+            __shipExteriorTestUtils?: {
+              getMissionGateState?: () => {
+                steps?: Array<{ key?: string; status?: string }>;
+              } | null;
+            };
+          }
+        ).__shipExteriorTestUtils;
+        const gateState = api?.getMissionGateState?.();
+        const manufactureStep = gateState?.steps?.find((step) => step.key === 'manufacture_hull_patch_kit');
+        return manufactureStep?.status ?? null;
+      }),
+    )
+    .toBe('active');
+}
+
+export async function resetFirstTargetCuePersistence(sharedPage: Page): Promise<void> {
+  await sharedPage.evaluate(
+    ({ missionId, playerName, characterId, fabricationDismissPrefix, repairDismissPrefix }) => {
+      window.localStorage.removeItem(`ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`);
+      window.localStorage.removeItem(`${fabricationDismissPrefix}::${playerName}::${characterId}`);
+      window.localStorage.removeItem(`${repairDismissPrefix}::${playerName}::${characterId}`);
+    },
+    {
+      missionId: FIRST_TARGET_MISSION_ID,
+      playerName: TEST_PLAYER,
+      characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+      fabricationDismissPrefix: FAB_LAB_HINT_DISMISS_PREFIX,
+      repairDismissPrefix: REPAIR_HINT_DISMISS_PREFIX,
+    },
+  );
 }

@@ -1,83 +1,11 @@
-import { expect, type Page } from '@playwright/test';
-import { registerFirstTargetCueMock } from '../fixtures/first-target-cue-scenario';
+import { expect } from '@playwright/test';
+import {
+  advanceMissionToManufactureStep,
+  resetFirstTargetCuePersistence,
+  registerFirstTargetCueMock,
+  waitForShipExteriorTestApi,
+} from '../fixtures/first-target-cue-scenario';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
-
-async function waitForShipExteriorTestApi(sharedPage: Page): Promise<void> {
-  await expect
-    .poll(
-      async () =>
-        sharedPage.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState?: () => unknown;
-                getAsteroidSamples?: () => unknown[];
-              };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        }),
-      { timeout: 15000 },
-    )
-    .toBe(true);
-}
-
-async function advanceMissionToManufactureStep(sharedPage: Page): Promise<void> {
-  await sharedPage.evaluate(() => {
-    const api = (
-      window as Window & {
-        __shipExteriorTestUtils?: {
-          forceCompleteIronScan?: () => unknown;
-          getAsteroidSamples?: () => Array<{
-            id: string;
-            scanned?: boolean;
-            revealedMaterial?: { material?: string } | null;
-          }>;
-          forceTargetAsteroid?: (sampleId: string) => boolean;
-        };
-      }
-    ).__shipExteriorTestUtils;
-
-    api?.forceCompleteIronScan?.();
-
-    const ironSample = api
-      ?.getAsteroidSamples?.()
-      ?.find((sample) => sample.scanned && sample.revealedMaterial?.material === 'Iron');
-    if (ironSample?.id) {
-      api?.forceTargetAsteroid?.(ironSample.id);
-    }
-  });
-
-  await sharedPage.evaluate(() => {
-    const api = (
-      window as Window & {
-        __shipExteriorTestUtils?: {
-          launchFromHotkey?: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-        };
-      }
-    ).__shipExteriorTestUtils;
-    api?.launchFromHotkey?.(1);
-  });
-
-  await expect
-    .poll(async () =>
-      sharedPage.evaluate(() => {
-        const api = (
-          window as Window & {
-            __shipExteriorTestUtils?: {
-              getMissionGateState?: () => {
-                steps?: Array<{ key?: string; status?: string }>;
-              } | null;
-            };
-          }
-        ).__shipExteriorTestUtils;
-        const gateState = api?.getMissionGateState?.();
-        const manufactureStep = gateState?.steps?.find((step) => step.key === 'manufacture_hull_patch_kit');
-        return manufactureStep?.status ?? null;
-      }),
-    )
-    .toBe('active');
-}
 
 const test = createJoinedGameTest({
   registerSessionHandlers: registerFirstTargetCueMock,
@@ -107,7 +35,7 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 }) => {
   await prepareJoinedPage();
 
-  await waitForShipExteriorTestApi(sharedPage);
+  await waitForShipExteriorTestApi(sharedPage, prepareJoinedPage);
   await advanceMissionToManufactureStep(sharedPage);
 
   await expect
@@ -188,8 +116,27 @@ test('keeps overlay dismissed for the same step across refresh, then shows again
   prepareJoinedPage,
 }) => {
   await prepareJoinedPage();
+  await resetFirstTargetCuePersistence(sharedPage);
+  // Worker-scoped page reuse keeps Angular service state in memory; reload to guarantee a clean cue baseline.
+  await sharedPage.reload();
+  await prepareJoinedPage();
 
-  await waitForShipExteriorTestApi(sharedPage);
+  await waitForShipExteriorTestApi(sharedPage, async () => {
+    const loginVisible = await sharedPage
+      .locator('#playerName')
+      .isVisible({ timeout: 1_000 })
+      .catch(() => false);
+    if (sharedPage.url().includes('left:login') || loginVisible) {
+      await prepareJoinedPage();
+    }
+
+    const targetIronButton = sharedPage.getByRole('button', { name: 'TARGET IRON' });
+    const canOpenShipExterior = await targetIronButton.isVisible({ timeout: 500 }).catch(() => false);
+    if (canOpenShipExterior) {
+      await targetIronButton.click();
+    }
+  });
+
   await advanceMissionToManufactureStep(sharedPage);
 
   const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
@@ -202,7 +149,7 @@ test('keeps overlay dismissed for the same step across refresh, then shows again
   // Reset to game-main (fixture pattern instead of reload + re-login)
   await prepareJoinedPage();
 
-  await waitForShipExteriorTestApi(sharedPage);
+  await waitForShipExteriorTestApi(sharedPage, prepareJoinedPage);
   await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).toHaveCount(0);
 
   await expect

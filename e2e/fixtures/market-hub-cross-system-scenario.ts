@@ -1,3 +1,6 @@
+import { expect } from '@playwright/test';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { MarketHubPage } from '../page-objects/market-hub.page';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
@@ -228,4 +231,18 @@ export function registerServerNoRouteOverrideHandler(mock: SocketIOMock): void {
       },
     };
   });
+}
+
+export async function openMarketHubWithDefaultData(
+  sharedGameShell: GameShellPage,
+  sharedMock: SocketIOMock,
+  marketHubPage: MarketHubPage,
+  onRequest: (req: MarketByLocationRequest) => void,
+): Promise<void> {
+  sharedMock.reset();
+  registerSharedSessionHandlers(sharedMock);
+  registerDefaultMarketHandler(sharedMock, onRequest);
+
+  await sharedGameShell.openMarketHub();
+  await expect(marketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 }
