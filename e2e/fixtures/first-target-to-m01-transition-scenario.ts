@@ -1,3 +1,7 @@
+import type { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { loginViaUI } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
@@ -108,4 +112,26 @@ export function registerFirstTargetToM01TransitionMock(mock: SocketIOMock, missi
     event: 'list-missions-response',
     data: missionListResponseWith(missions),
   }));
+}
+
+export async function setupFirstTargetToM01MissionBoardTest(
+  page: Page,
+  options: {
+    missions?: object[];
+  } = {},
+): Promise<{ mock: SocketIOMock }> {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+
+  const missions = options.missions ?? [];
+  registerFirstTargetToM01TransitionMock(mock, missions);
+
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+  await expect(page).toHaveURL(/left:game-main|left:opening-cold-boot/, { timeout: 15_000 });
+
+  await gameShell.openMissionBoard();
+
+  return { mock };
 }

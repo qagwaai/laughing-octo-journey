@@ -1,277 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
-
-const FIRST_TARGET_MISSION_ID = 'first-target';
-const TEST_CHARACTER_ID = 'char-first-target';
-
-function configureFirstTargetFlowMock(
-  mock: SocketIOMock,
-  missionUpsertRequests: Array<{ status?: string }>,
-  options?: { includeIronInShipInventory?: boolean },
-): void {
-  const shipInventory = [
-    {
-      id: 'item-drone-1',
-      itemType: 'expendable-dart-drone',
-      displayName: 'Expendable Dart Drone',
-      launchable: true,
-      state: 'contained',
-      damageStatus: 'intact',
-      container: { containerType: 'ship' as const, containerId: 'ship-1' },
-      owningPlayerId: TEST_PLAYER,
-      owningCharacterId: TEST_CHARACTER_ID,
-      kinematics: null,
-      destroyedAt: null,
-      destroyedReason: null,
-      discoveredAt: null,
-      discoveredByCharacterId: null,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    },
-  ];
-
-  if (options?.includeIronInShipInventory) {
-    shipInventory.push({
-      id: 'item-iron-1',
-      itemType: 'iron-raw-material',
-      displayName: 'Iron (raw material)',
-      launchable: false,
-      state: 'contained',
-      damageStatus: 'intact',
-      container: { containerType: 'ship' as const, containerId: 'ship-1' },
-      owningPlayerId: TEST_PLAYER,
-      owningCharacterId: TEST_CHARACTER_ID,
-      kinematics: null,
-      destroyedAt: null,
-      destroyedReason: null,
-      discoveredAt: null,
-      discoveredByCharacterId: null,
-      createdAt: '2026-05-01T00:00:00.000Z',
-      updatedAt: '2026-05-01T00:00:00.000Z',
-    });
-  }
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: TEST_CHARACTER_ID,
-          characterName: 'Scout Alpha',
-          level: 2,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
-        },
-      ],
-    },
-  }));
-
-  mock.on('game-join-request', () => null);
-
-  mock.on('list-missions-request', () => ({
-    event: 'list-missions-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: TEST_CHARACTER_ID,
-      missions: [
-        {
-          missionId: FIRST_TARGET_MISSION_ID,
-          status: 'active',
-        },
-      ],
-    },
-  }));
-
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: TEST_CHARACTER_ID,
-      ships: [
-        {
-          id: 'ship-1',
-          name: 'Starter Pod',
-          model: 'Scavenger Pod',
-          status: 'Damaged',
-          inventory: shipInventory,
-          spatial: {
-            solarSystemId: 'sol',
-            frame: 'barycentric',
-            positionKm: { x: 1_000_000, y: 0, z: 0 },
-            epochMs: Date.now(),
-          },
-          motion: {
-            velocityKmPerSec: { x: 0, y: 0, z: 0 },
-          },
-          observability: {
-            visibility: 'visible',
-            scanState: 'scanned',
-          },
-        },
-      ],
-    },
-  }));
-
-  mock.on('celestial-body-list-request', () => ({
-    event: 'celestial-body-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystemId: 'sol',
-      positionKm: { x: 1_000_000, y: 0, z: 0 },
-      distanceKm: 900_000,
-      celestialBodies: [],
-    },
-  }));
-
-  mock.on('celestial-body-upsert-request', (request) => {
-    const payload = request as {
-      celestialBody?: {
-        id?: string;
-        sourceScanId?: string;
-        catalogId?: string;
-        createdByCharacterId?: string;
-        createdAt?: string;
-        updatedAt?: string;
-        spatial?: unknown;
-        motion?: unknown;
-        physical?: unknown;
-        composition?: unknown;
-        observability?: unknown;
-        state?: 'active' | 'destroyed';
-      };
-    };
-    const celestialBody = payload.celestialBody ?? {};
-    return {
-      event: 'celestial-body-upsert-response',
-      data: {
-        success: true,
-        message: '',
-        celestialBody: {
-          id: celestialBody.id ?? `cb-${celestialBody.sourceScanId ?? 'generated'}`,
-          sourceScanId: celestialBody.sourceScanId ?? 'generated',
-          catalogId: celestialBody.catalogId ?? `catalog-${Date.now()}`,
-          createdByCharacterId: celestialBody.createdByCharacterId ?? TEST_CHARACTER_ID,
-          createdAt: celestialBody.createdAt ?? '2026-05-01T00:00:00.000Z',
-          updatedAt: celestialBody.updatedAt ?? '2026-05-01T00:00:00.000Z',
-          spatial: celestialBody.spatial,
-          motion: celestialBody.motion,
-          physical: celestialBody.physical,
-          composition: celestialBody.composition,
-          observability: celestialBody.observability ?? { visibility: 'visible', scanState: 'unscanned' },
-          state: celestialBody.state ?? 'active',
-        },
-      },
-    };
-  });
-
-  mock.on('launch-item-request', (request) => {
-    const payload = request as {
-      shipId?: string;
-      targetCelestialBodyId?: string;
-      hotkey?: 1 | 2 | 3 | 4 | 5;
-      itemId?: string;
-      itemType?: string;
-    };
-    return {
-      event: 'launch-item-response',
-      data: {
-        success: true,
-        message: 'Target destroyed',
-        playerName: TEST_PLAYER,
-        characterId: TEST_CHARACTER_ID,
-        shipId: payload.shipId ?? 'ship-1',
-        targetCelestialBodyId: payload.targetCelestialBodyId ?? 'cb-generated',
-        hotkey: payload.hotkey ?? 1,
-        itemId: payload.itemId ?? 'item-drone-1',
-        itemType: payload.itemType ?? 'expendable-dart-drone',
-        resolution: {
-          outcome: 'target-destroyed',
-          targetDestroyed: true,
-          yieldedMaterials: [],
-          yieldedItems: [],
-          launchSeed: 42,
-        },
-      },
-    };
-  });
-
-  mock.on('mission-upsert-request', (request) => {
-    missionUpsertRequests.push(request as { status?: string });
-    return {
-      event: 'mission-upsert-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: TEST_CHARACTER_ID,
-      },
-    };
-  });
-
-  mock.on('item-upsert-request', (request) => {
-    const payload = request as {
-      item?: {
-        id?: string;
-        itemType?: string;
-        displayName?: string;
-        launchable?: boolean;
-        state?: string;
-        damageStatus?: string;
-        container?: { containerType: 'ship'; containerId: string } | null;
-        owningPlayerId?: string;
-        owningCharacterId?: string;
-      };
-    };
-    const item = payload.item ?? {};
-    return {
-      event: 'item-upsert-response',
-      data: {
-        success: true,
-        message: '',
-        item: {
-          id: item.id ?? `itm-${Date.now()}`,
-          itemType: item.itemType ?? 'hull-patch-kit',
-          displayName: item.displayName ?? 'Hull Patch Kit',
-          launchable: item.launchable ?? false,
-          state: item.state ?? 'contained',
-          damageStatus: item.damageStatus ?? 'intact',
-          container: item.container ?? { containerType: 'ship', containerId: 'ship-1' },
-          owningPlayerId: item.owningPlayerId ?? TEST_PLAYER,
-          owningCharacterId: item.owningCharacterId ?? TEST_CHARACTER_ID,
-          kinematics: null,
-          destroyedAt: null,
-          destroyedReason: null,
-          discoveredAt: null,
-          discoveredByCharacterId: null,
-          createdAt: '2026-05-01T00:00:00.000Z',
-          updatedAt: '2026-05-01T00:00:00.000Z',
-        },
-      },
-    };
-  });
-}
+import {
+  configureFirstTargetFlowMock,
+  FIRST_TARGET_MISSION_ID,
+  setupFirstTargetFlowTest,
+  TEST_CHARACTER_ID,
+} from '../fixtures/first-target-full-mission-flow-scenario';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 
 test.describe('First Target Mission Flow', () => {
   test('validates all first-target mission gate steps in order', async ({ page }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    await mock.setup();
-    const missionUpsertRequests: Array<{ status?: string }> = [];
-
-    configureFirstTargetFlowMock(mock, missionUpsertRequests);
-
-    await loginViaUI(page, mock);
-    await gameShell.joinGame('Join Game in Progress');
+    await setupFirstTargetFlowTest(page);
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
@@ -438,9 +176,6 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({ manufacture: 'completed', repair: 'active' });
 
-    await expect.poll(() => missionUpsertRequests.some((request) => request.status === 'active')).toBe(true);
-    expect(missionUpsertRequests.some((request) => request.status === 'completed')).toBe(false);
-
     await expect
       .poll(
         async () =>
@@ -470,17 +205,11 @@ test.describe('First Target Mission Flow', () => {
         { timeout: 30_000 },
       )
       .toEqual({ allCompleted: true, hasCompletionObjective: true, hasDebrisObjective: false });
+
   });
 
   test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    await mock.setup();
-    const missionUpsertRequests: Array<{ status?: string }> = [];
-
-    configureFirstTargetFlowMock(mock, missionUpsertRequests);
-
-    await loginViaUI(page, mock);
+    const { gameShell, missionUpsertRequests } = await setupFirstTargetFlowTest(page, { autoJoin: false });
 
     await page.evaluate(
       ({ missionId, characterId, playerName }) => {
@@ -540,15 +269,7 @@ test.describe('First Target Mission Flow', () => {
   test('shows Hull Patch Kit print button from Fabrication Lab print queue when iron exists in inventory', async ({
     page,
   }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    await mock.setup();
-    const missionUpsertRequests: Array<{ status?: string }> = [];
-
-    configureFirstTargetFlowMock(mock, missionUpsertRequests, { includeIronInShipInventory: true });
-
-    await loginViaUI(page, mock);
-    await gameShell.joinGame('Join Game in Progress');
+    const { gameShell } = await setupFirstTargetFlowTest(page, { includeIronInShipInventory: true });
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 

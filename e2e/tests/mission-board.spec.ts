@@ -1,6 +1,6 @@
-import { expect, test, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { expect, test } from '@playwright/test';
+import { setupMissionBoardTest } from '../fixtures/mission-board-scenario';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { MissionBoardPage } from '../page-objects/mission-board.page';
 import { ShipHangarPage } from '../page-objects/ship-hangar.page';
@@ -35,31 +35,6 @@ const completedMissionGateState = {
     { key: 'repair_scavenger_pod', status: 'completed' },
   ],
 };
-
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
-
-// ── Helper: set up socket mock, log in, and return the character-list page ────
-
-async function setupMissionBoardTest(page: Page, characters: object[]) {
-  const mock = new SocketIOMock(page);
-  await mock.setup();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse(characters),
-  }));
-
-  await loginViaUI(page, mock);
-
-  return { mock };
-}
 
 // ── Tests: mission board ───────────────────────────────────────────────────────
 

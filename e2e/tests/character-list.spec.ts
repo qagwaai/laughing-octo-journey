@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
-import { CharacterListPage } from '../page-objects/character-list.page';
+import {
+  characterListResponse,
+  emptyCharacterListResponse,
+  setupCharacterListTest,
+} from '../fixtures/character-list-scenario';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 
 // ── Shared test data ───────────────────────────────────────────────────────────
 
@@ -40,19 +43,6 @@ const characterWithAbandonedMission = {
   missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'abandoned' }],
 };
 
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
-
-function emptyCharacterListResponse() {
-  return characterListResponse([]);
-}
-
 function characterDeleteResponse(characterId: string) {
   return {
     success: true,
@@ -60,35 +50,6 @@ function characterDeleteResponse(characterId: string) {
     playerName: TEST_PLAYER,
     characterId,
   };
-}
-
-// ── Helper: set up socket mock, log in, and return the character-list page ────
-
-async function setupCharacterListTest(
-  page: Page,
-  options: {
-    autoLoadResponse?: object[] | null;
-  } = {},
-) {
-  const mock = new SocketIOMock(page);
-  await mock.setup();
-
-  // Configure initial character-list-request handler (used by auto-load on init)
-  // Even when callers pass null, the page auto-load still fires on connect; return
-  // an empty list so the page leaves loading state, then tests can override later.
-  const responseData =
-    options.autoLoadResponse !== null && options.autoLoadResponse !== undefined
-      ? characterListResponse(options.autoLoadResponse)
-      : emptyCharacterListResponse();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: responseData,
-  }));
-
-  await loginViaUI(page, mock);
-
-  return { mock, characterListPage: new CharacterListPage(page) };
 }
 
 // ── Tests: page structure ──────────────────────────────────────────────────────
@@ -196,13 +157,15 @@ test.describe('Character List — loading characters', () => {
 
     await expect(characterListPage.characterItems).toHaveCount(2);
 
-    // Re-register the handler to return a single character on the next load
-    mock.on('character-list-request', () => ({
-      event: 'character-list-response',
-      data: characterListResponse([{ id: 'char-99', characterName: 'New Recruit', level: 1 }]),
-    }));
+    // Hold the next request so the replacement payload is delivered deterministically.
+    mock.on('character-list-request', () => null);
 
     await characterListPage.clickLoad();
+
+    mock.push(
+      'character-list-response',
+      characterListResponse([{ id: 'char-99', characterName: 'New Recruit', level: 1 }]),
+    );
 
     await expect(characterListPage.characterItems).toHaveCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('New Recruit');

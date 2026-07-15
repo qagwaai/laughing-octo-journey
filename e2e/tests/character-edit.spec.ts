@@ -1,19 +1,15 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import {
+  BASE_CHARACTER,
+  characterListResponse,
+  registerCharacterEditHandlers,
+  resetSharedCharacterEditSession,
+  setupSharedCharacterEditSession,
+} from '../fixtures/character-edit-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
 import { CharacterSetupPage } from '../page-objects/character-setup.page';
-
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
-
-const BASE_CHARACTER = { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 };
 
 let sharedContext: BrowserContext;
 let sharedPage: Page;
@@ -21,75 +17,23 @@ let sharedMock: SocketIOMock;
 let sharedCharacterListPage: CharacterListPage;
 let sharedCharacterSetupPage: CharacterSetupPage;
 
-function registerCharacterEditHandlers(mock: SocketIOMock): void {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([BASE_CHARACTER]),
-  }));
-}
-
 test.describe.configure({ mode: 'serial' });
 
-async function setupSharedCharacterEditSession(browser: Browser): Promise<void> {
-  sharedContext = await browser.newContext({ storageState: 'e2e/.auth/user.json' });
-  sharedPage = await sharedContext.newPage();
-  sharedMock = new SocketIOMock(sharedPage);
-  sharedCharacterListPage = new CharacterListPage(sharedPage);
-  sharedCharacterSetupPage = new CharacterSetupPage(sharedPage);
-
-  await sharedMock.setup();
-  registerCharacterEditHandlers(sharedMock);
-
-  await sharedPage.goto('http://localhost:4200/(left:character-list)');
-
-  try {
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  } catch {
-    registerCharacterEditHandlers(sharedMock);
-    await loginViaUI(sharedPage, sharedMock);
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  const loginFormVisibleBeforeLoad = await sharedPage
-    .locator('#playerName')
-    .isVisible({ timeout: 1_000 })
-    .catch(() => false);
-  if (sharedPage.url().includes('left:login') || loginFormVisibleBeforeLoad) {
-    registerCharacterEditHandlers(sharedMock);
-    await loginViaUI(sharedPage, sharedMock);
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  if ((await sharedCharacterListPage.characterItems.count()) === 0) {
-    await sharedCharacterListPage.loadButton.click();
-  }
-  await expect(sharedCharacterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
-}
-
-async function resetSharedCharacterEditSession(): Promise<void> {
-  if (!sharedPage || sharedPage.isClosed()) {
-    return;
-  }
-
-  sharedMock.reset();
-  registerCharacterEditHandlers(sharedMock);
-
-  let attempts = 0;
-  while (!sharedPage.url().includes('left:character-list') && attempts < 4) {
-    attempts += 1;
-    await sharedPage.goBack();
-  }
-
-  await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  await expect(sharedCharacterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
-}
-
 test.beforeAll(async ({ browser }) => {
-  await setupSharedCharacterEditSession(browser);
+  const session = await setupSharedCharacterEditSession(browser);
+  sharedContext = session.context;
+  sharedPage = session.page;
+  sharedMock = session.mock;
+  sharedCharacterListPage = session.characterListPage;
+  sharedCharacterSetupPage = session.characterSetupPage;
 });
 
 test.afterEach(async () => {
-  await resetSharedCharacterEditSession();
+  await resetSharedCharacterEditSession({
+    page: sharedPage,
+    mock: sharedMock,
+    characterListPage: sharedCharacterListPage,
+  });
 });
 
 test.afterAll(async () => {

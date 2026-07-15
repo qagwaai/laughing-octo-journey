@@ -1,131 +1,17 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
+import {
+  ACTIVE_SHIP,
+  ALPHA_CENTAURI_SYSTEM,
+  SIRIUS_SYSTEM,
+  SOL_SYSTEM,
+  setupViewerListTest,
+  solarSystemListResponse,
+} from '../fixtures/viewer-list-scenario';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
 import { ViewerPage } from '../page-objects/viewer.page';
-
-// ── Test data ──────────────────────────────────────────────────────────────
-
-const SOL_SYSTEM: Partial<any> = {
-  id: 'sol',
-  displayName: 'Sol',
-  source: 'curated',
-  distanceParsec: 0,
-  starCount: 1,
-  primaryStar: {
-    hygId: '0',
-    spectralClass: 'G2V',
-    colorHex: '#fff5b6',
-    luminositySolar: 1.0,
-  },
-};
-
-const ALPHA_CENTAURI_SYSTEM: Partial<any> = {
-  id: 'alpha-centauri',
-  displayName: 'Alpha Centauri',
-  source: 'procedural',
-  distanceParsec: 1.3,
-  starCount: 3,
-  primaryStar: {
-    hygId: '71681',
-    spectralClass: 'G2V',
-    colorHex: '#fff5b6',
-    luminositySolar: 1.1,
-  },
-};
-
-const SIRIUS_SYSTEM: Partial<any> = {
-  id: 'sirius',
-  displayName: 'Sirius',
-  source: 'curated',
-  distanceParsec: 2.6,
-  starCount: 1,
-  primaryStar: {
-    hygId: '32349',
-    spectralClass: 'A1V',
-    colorHex: '#f0f4ff',
-    luminositySolar: 26.0,
-  },
-};
-
-const ACTIVE_SHIP = {
-  id: 'ship-viewer-list-1',
-  name: 'Scout Pod',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 350000000, y: 0, z: 0 },
-    epochMs: 1715000000000,
-  },
-};
-
-function solarSystemListResponse(systems: any[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    solarSystems: systems,
-  };
-}
-
-async function setupViewerListTest(page: any, systems: any[] = []) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [
-            {
-              missionId: 'first-target',
-              status: 'active',
-            },
-          ],
-        },
-      ],
-    },
-  }));
-
-  await loginViaUI(page, mock);
-
-  // Must join a game before viewer menu is enabled
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: 'char-viewer-1',
-      ships: [ACTIVE_SHIP],
-    },
-  }));
-  const joinButton = gameShell.joinButton();
-  await expect(joinButton).toBeVisible({ timeout: 10000 });
-  await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
-
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: solarSystemListResponse(systems),
-  }));
-
-  return { mock };
-}
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 

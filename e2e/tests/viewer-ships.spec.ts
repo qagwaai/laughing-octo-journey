@@ -1,195 +1,29 @@
-import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
+import {
+  ACTIVE_SHIP,
+  INACTIVE_SHIP,
+  SHIP_IN_OTHER_SYSTEM,
+  makeShipListResponse,
+  makeSolarSystemGetResponse,
+  setupIsolatedViewerShipsSession,
+  setupSharedViewerShipsSession,
+  type SharedViewerShipsSession,
+} from '../fixtures/viewer-ships-scenario';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { ViewerShipsPage } from '../page-objects/viewer-ships.page';
-
-// ── Shared test data ────────────────────────────────────────────────────────
-
-const SOL_SUMMARY = {
-  id: 'sol',
-  displayName: 'Sol',
-  source: 'curated',
-  distanceParsec: 0,
-  starCount: 1,
-  primaryStar: { hygId: '0', spectralClass: 'G2V', colorHex: '#fff5b6', luminositySolar: 1.0 },
-};
-
-const SOL_BODIES: any[] = [
-  {
-    id: 'sun',
-    bodyType: 'star',
-    displayName: 'The Sun',
-    spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1715000000000 },
-    visualization: { colorHex: '#fff5b6' },
-    spectralClass: 'G2V',
-    luminositySolar: 1.0,
-    massSolar: 1.0,
-  },
-  {
-    id: 'earth',
-    bodyType: 'planet',
-    displayName: 'Earth',
-    spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 149597870.7, y: 0, z: 0 }, epochMs: 1715000000000 },
-    orbitalElements: {
-      anchorBodyId: 'sun',
-      semiMajorAxisKm: 149597870.7,
-      eccentricity: 0.0167,
-      inclinationDeg: 0,
-      longitudeOfAscendingNodeDeg: 0,
-      argumentOfPeriapsisDeg: 102.9,
-      meanAnomalyAtEpochDeg: 100.5,
-      orbitalPeriodSec: 31536000,
-      epoch: '2026-05-08T00:00:00.000Z',
-    },
-  },
-];
-
-const ACTIVE_SHIP = {
-  id: 'ship-active-1',
-  name: 'Wayfarer I',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: null,
-  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 10000000, y: 0, z: 0 }, epochMs: 1715000000000 },
-};
-
-const INACTIVE_SHIP = {
-  id: 'ship-inactive-2',
-  name: 'Drifter II',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: null,
-  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 20000000, y: 0, z: 0 }, epochMs: 1715000000000 },
-};
-
-const SHIP_IN_OTHER_SYSTEM = {
-  id: 'ship-other-3',
-  name: 'Far Wanderer',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: null,
-  spatial: { solarSystemId: 'proxima', frame: 'barycentric', positionKm: { x: 5000000, y: 0, z: 0 }, epochMs: 1715000000000 },
-};
-
-function makeShipListResponse(ships: any[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characterId: 'char-viewer-1',
-    ships,
-  };
-}
-
-function makeSolarSystemGetResponse(bodies: any[] = SOL_BODIES) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    solarSystemId: 'sol',
-    solarSystem: SOL_SUMMARY,
-    bodies,
-  };
-}
 
 async function getCanvasFrameSignature(canvas: Locator): Promise<string> {
   const image = await canvas.screenshot();
   return image.toString('base64');
 }
 
-async function setupIsolatedViewerShipsSession(page: Page): Promise<SocketIOMock> {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [{ missionId: 'first-target', status: 'active' }],
-        },
-      ],
-    },
-  }));
-
-  await loginViaUI(page, mock);
-
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
-  }));
-
-  await gameShell.joinGame('Join Game');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
-  await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
-
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
-  }));
-
-  return mock;
-}
-
 let sharedContext: BrowserContext;
 let sharedPage: Page;
-let sharedMock: SocketIOMock;
-let sharedGameShell: GameShellPage;
+let sharedSession: SharedViewerShipsSession;
+let sharedMock: SharedViewerShipsSession['mock'];
+let sharedGameShell: SharedViewerShipsSession['gameShell'];
 let sharedViewerPage: ViewerPage;
-
-async function setupSharedViewerShipsSession(browser: Browser): Promise<void> {
-  sharedContext = await browser.newContext();
-  sharedPage = await sharedContext.newPage();
-  sharedMock = new SocketIOMock(sharedPage);
-  sharedGameShell = new GameShellPage(sharedPage);
-  sharedViewerPage = new ViewerPage(sharedPage);
-
-  await sharedMock.setup();
-
-  sharedMock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [{ missionId: 'first-target', status: 'active' }],
-        },
-      ],
-    },
-  }));
-
-  await loginViaUI(sharedPage, sharedMock);
-
-  sharedMock.on('game-join-request', () => null);
-  sharedMock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
-  }));
-
-  await sharedGameShell.joinGame('Join Game');
-  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 15_000 });
-  await expect(sharedGameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
-
-  sharedMock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
-  }));
-}
 
 async function resetSharedViewerShipsSession(): Promise<void> {
   if (!sharedPage || sharedPage.isClosed()) {
@@ -239,7 +73,12 @@ async function navigateToScene(
 
 test.describe.serial('Viewer — Character Ships', () => {
   test.beforeAll(async ({ browser }) => {
-    await setupSharedViewerShipsSession(browser);
+    sharedSession = await setupSharedViewerShipsSession(browser);
+    sharedContext = sharedSession.context;
+    sharedPage = sharedSession.page;
+    sharedMock = sharedSession.mock;
+    sharedGameShell = sharedSession.gameShell;
+    sharedViewerPage = sharedSession.viewerPage;
   });
 
   test.afterEach(async () => {

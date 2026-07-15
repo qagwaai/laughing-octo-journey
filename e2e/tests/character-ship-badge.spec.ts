@@ -16,10 +16,6 @@ let sharedPage: Page;
 let sharedMock: SocketIOMock;
 let sharedGameShell: GameShellPage;
 
-function registerSharedSessionHandlers(): void {
-  registerCharacterShipBadgeSessionHandlers(sharedMock, [PRIMARY_SHIP]);
-}
-
 test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
 test.beforeAll(async ({ browser }) => {
@@ -29,7 +25,7 @@ test.beforeAll(async ({ browser }) => {
   sharedGameShell = new GameShellPage(sharedPage);
 
   await sharedMock.setup();
-  registerSharedSessionHandlers();
+  registerCharacterShipBadgeSessionHandlers(sharedMock, [PRIMARY_SHIP]);
 
   await sharedPage.goto('http://localhost:4200/(left:character-list)');
   
@@ -71,7 +67,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async () => {
   if (!sharedPage || sharedPage.isClosed()) return;
   sharedMock.reset();
-  registerSharedSessionHandlers();
+  registerCharacterShipBadgeSessionHandlers(sharedMock, [PRIMARY_SHIP]);
 
   let attempts = 0;
   while (!sharedPage.url().includes('left:game-main') && attempts < 4) {

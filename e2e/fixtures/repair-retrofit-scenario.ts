@@ -1,4 +1,6 @@
+import { expect, type Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { SocketIOMock } from './socket-mock';
 
 const REPAIR_RETROFIT_CHARACTER_ID = 'char-repair-e2e';
@@ -57,4 +59,9 @@ export function configureRepairMock(mock: SocketIOMock, options: { usableShipSpa
       ],
     },
   }));
+}
+
+export async function openRepairRetrofitPage(page: Page, gameShell: GameShellPage): Promise<void> {
+  await gameShell.openNav('Repair & Retrofit');
+  await expect(page).toHaveURL(/left:repair-retrofit/, { timeout: 10_000 });
 }

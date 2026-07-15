@@ -90,7 +90,7 @@ type MarketByLocationRequest = { distanceAu: number };
 
 let sharedMarketHubPage: MarketHubPage;
 
-function registerSharedSessionHandlers(mock: SocketIOMock): void {
+function registerSessionHandlers(mock: SocketIOMock): void {
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -133,13 +133,13 @@ function registerDefaultMarketHandler(mock: SocketIOMock): void {
 }
 
 const test = createJoinedGameTest({
-  registerSessionHandlers: registerSharedSessionHandlers,
+  registerSessionHandlers,
   joinButtonText: 'Join Game in Progress',
 });
 
 async function openMarketHubWithDefaultData(sharedGameShell: GameShellPage, sharedMock: SocketIOMock) {
   sharedMock.reset();
-  registerSharedSessionHandlers(sharedMock);
+  registerSessionHandlers(sharedMock);
   registerDefaultMarketHandler(sharedMock);
 
   await sharedGameShell.openMarketHub();
@@ -216,7 +216,7 @@ test.describe('Market Hub grouped sections', () => {
     const requests: MarketByLocationRequest[] = [];
 
     sharedMock.reset();
-    registerSharedSessionHandlers(sharedMock);
+    registerSessionHandlers(sharedMock);
     sharedMock.on('market-list-by-location-request', (payload) => {
       requests.push(payload as MarketByLocationRequest);
       return {

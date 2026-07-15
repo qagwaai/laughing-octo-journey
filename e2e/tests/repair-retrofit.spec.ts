@@ -1,6 +1,10 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
-import { configureRepairMock, registerRepairMockDefault } from '../fixtures/repair-retrofit-scenario';
+import {
+  configureRepairMock,
+  openRepairRetrofitPage,
+  registerRepairMockDefault,
+} from '../fixtures/repair-retrofit-scenario';
 import { GameShellPage } from '../page-objects/game-shell.page';
 
 const test = createJoinedGameTest({
@@ -16,13 +20,8 @@ test.describe('Repair & Retrofit', () => {
     gameShell = new GameShellPage(sharedPage);
   });
 
-  async function openRepairPage(sharedPage: Parameters<typeof test>[0]['sharedPage']): Promise<void> {
-    await gameShell.openNav('Repair & Retrofit');
-    await expect(sharedPage).toHaveURL(/left:repair-retrofit/, { timeout: 10_000 });
-  }
-
   test('opens repair details when ship context has usable spatial data', async ({ sharedPage }) => {
-    await openRepairPage(sharedPage);
+    await openRepairRetrofitPage(sharedPage, gameShell);
 
     const viewDetailsButton = sharedPage.getByRole('button', { name: 'View details' });
     await expect(viewDetailsButton).toBeVisible();
@@ -40,7 +39,7 @@ test.describe('Repair & Retrofit', () => {
     // Override the ship-list handler for this test variation (don't reset — that breaks fixture state)
     configureRepairMock(sharedMock, { usableShipSpatial: false });
 
-    await openRepairPage(sharedPage);
+    await openRepairRetrofitPage(sharedPage, gameShell);
 
     await expect(sharedPage.getByText('No ship with usable spatial data is available.').first()).toBeVisible();
     await expect(sharedPage.getByRole('button', { name: /Active ship:/ })).toContainText('Repair Pod');

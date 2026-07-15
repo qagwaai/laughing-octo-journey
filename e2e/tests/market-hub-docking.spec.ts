@@ -1,84 +1,28 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
 import { SocketIOMock } from '../fixtures/socket-mock';
-import { TEST_PLAYER } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
+import {
+  MARKET_HUB_DOCKING_CHARACTER,
+  MARKET_HUB_DOCKING_SHIP_WITH_POSITION,
+  registerSharedSessionHandlers,
+  setupAndOpenMarketHub,
+  type MarketByLocationRequest,
+} from '../fixtures/market-hub-docking-scenario';
 import { MarketHubPage } from '../page-objects/market-hub.page';
-
-const CHARACTER = {
-  id: 'char-market-2',
-  characterName: 'Dockmaster',
-  level: 4,
-  missions: [{ missionId: 'first-target', status: 'active' }],
-};
-
-const SHIP_WITH_POSITION = {
-  id: `starter-pod-${CHARACTER.id}`,
-  name: 'Scavenger Pod',
-  model: 'Scavenger Pod',
-  tier: 1,
-  driveProfile: {
-    id: 'rapid-transit',
-    name: 'Rapid Transit Thruster',
-    rangeAu: 0.8,
-    cruiseSpeedAuPerHour: 0.4,
-    fuelCostPerAu: 4,
-  },
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 413_700_100, y: 0, z: 0 },
-    epochMs: 1_777_777_888_000,
-  },
-  motion: {
-    velocityKmPerSec: { x: 0, y: 0, z: 0 },
-    angularVelocityRadPerSec: {
-      x: 0,
-      y: 0,
-      z: 0,
-    },
-  },
-  observability: {
-    sensorConfidence: 1,
-    source: {
-      solarSystemId: 'sol',
-      sourceType: 'server-feed',
-      observedAt: new Date(1_777_777_888_000).toISOString(),
-    },
-  },
-};
-
-type MarketByLocationRequest = {
-  distanceAu: number;
-};
 
 let sharedMarketHubPage: MarketHubPage;
 
-function registerSharedSessionHandlers(mock: SocketIOMock): void {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [CHARACTER],
-    },
-  }));
+const test = createJoinedGameTest({
+  registerSessionHandlers: registerSharedSessionHandlers,
+  joinButtonText: 'Join Game in Progress',
+});
 
-  mock.on('game-join', () => null);
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: CHARACTER.id,
-      ships: [SHIP_WITH_POSITION],
-    },
-  }));
-}
+test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
+  await prepareJoinedPage();
+  sharedMarketHubPage = new MarketHubPage(sharedPage);
+});
 
 function registerDefaultMarketHandler(mock: SocketIOMock, onRequest: (request: MarketByLocationRequest) => void): void {
   mock.on('market-list-by-location-request', (payload) => {
@@ -90,9 +34,9 @@ function registerDefaultMarketHandler(mock: SocketIOMock, onRequest: (request: M
       data: {
         success: true,
         message: '',
-        playerName: TEST_PLAYER,
+        playerName: 'testplayer',
         solarSystemId: 'sol',
-        positionKm: SHIP_WITH_POSITION.spatial.positionKm,
+        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
         distanceAu: request.distanceAu,
         locationTypes: ['station'],
         isDocked: true,
@@ -148,9 +92,9 @@ function registerCrossSystemMarketHandler(mock: SocketIOMock): void {
       data: {
         success: true,
         message: '',
-        playerName: TEST_PLAYER,
+        playerName: 'testplayer',
         solarSystemId: 'sol',
-        positionKm: SHIP_WITH_POSITION.spatial.positionKm,
+        positionKm: MARKET_HUB_DOCKING_SHIP_WITH_POSITION.spatial.positionKm,
         distanceAu: request.distanceAu,
         locationTypes: ['station'],
         isDocked: true,
@@ -198,34 +142,11 @@ function registerCrossSystemMarketHandler(mock: SocketIOMock): void {
     };
   });
 }
-const test = createJoinedGameTest({
-  registerSessionHandlers: registerSharedSessionHandlers,
-  joinButtonText: 'Join Game in Progress',
-});
-
-test.describe.configure({ mode: 'serial', timeout: 60_000 });
-
-test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
-  await prepareJoinedPage();
-  sharedMarketHubPage = new MarketHubPage(sharedPage);
-});
-
-async function setupAndOpenMarketHub(
-  sharedGameShell: GameShellPage,
-  sharedMock: SocketIOMock,
-  onRequest: (request: MarketByLocationRequest) => void,
-) {
-  sharedMock.reset();
-  registerSharedSessionHandlers(sharedMock);
-  registerDefaultMarketHandler(sharedMock, onRequest);
-
-  await sharedGameShell.openMarketHub();
-}
 
 test.describe('Market Hub docking and radius behavior', () => {
   test('shows in-system route badge for local non-docked market', async ({ sharedGameShell, sharedMock }) => {
     const requests: MarketByLocationRequest[] = [];
-    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (request) => requests.push(request));
+    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) => registerDefaultMarketHandler(mock, (request) => requests.push(request)));
 
     await expect
       .poll(
@@ -288,7 +209,7 @@ test.describe('Market Hub docking and radius behavior', () => {
     sharedPage,
   }) => {
     const requests: MarketByLocationRequest[] = [];
-    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (request) => requests.push(request));
+    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) => registerDefaultMarketHandler(mock, (request) => requests.push(request)));
 
     await expect
       .poll(

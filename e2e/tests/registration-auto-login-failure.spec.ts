@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { registerAutoLoginFailureHandlers } from '../fixtures/registration-auto-login-failure-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { RegistrationPage } from '../page-objects/registration.page';
 
@@ -6,22 +7,7 @@ test.describe('Registration auto-login failure', () => {
   test('stays on registration and shows error when login fails after successful registration', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();
-
-    mock.on('register', () => ({
-      event: 'register-response',
-      data: {
-        success: true,
-        message: 'Registration successful!',
-      },
-    }));
-
-    mock.on('login', () => ({
-      event: 'login-response',
-      data: {
-        success: false,
-        message: 'Auto-login failed. Please try again.',
-      },
-    }));
+    registerAutoLoginFailureHandlers(mock);
 
     const registrationPage = new RegistrationPage(page);
     await registrationPage.goto();

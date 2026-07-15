@@ -1,99 +1,17 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
+import {
+  characterBustReadResponse,
+  PROFILE_CHARACTER,
+  registerCharacterProfileSessionHandlers,
+} from '../fixtures/character-profile-scenario';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
-
-const FIRST_TARGET_MISSION_ID = 'first-target';
-
-const PROFILE_CHARACTER = {
-  id: 'char-profile-1',
-  characterName: 'Profile Pilot',
-  level: 4,
-  missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
-};
-
-const PROFILE_SHIP = {
-  id: 'ship-profile-1',
-  name: 'Pathfinder',
-  model: 'Scavenger Pod',
-  tier: 1,
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 1, y: 0, z: 0 },
-    epochMs: 0,
-  },
-};
-
-const PROFILE_DESCRIPTOR = {
-  schemaVersion: 'sw-15-m1-v1',
-  presetVersion: 'sw-15-m2-a-v1',
-  faceShape: 'oval',
-  skinTone: 'medium',
-  hairStyle: 'short-crop',
-  hairColor: 'brown',
-  eyeStyle: 'almond',
-  eyeColor: 'green',
-  expressionPreset: 'focused',
-  apparelAccent: 'collar',
-  facialHair: 'none',
-  scar: 'none',
-  tattoo: 'none',
-};
-
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
-
-function shipListByOwnerResponse() {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characterId: PROFILE_CHARACTER.id,
-    owner: {
-      ownerType: 'player-character',
-      playerId: 'player-1',
-      characterId: PROFILE_CHARACTER.id,
-      npcId: null,
-      factionId: null,
-    },
-    ships: [PROFILE_SHIP],
-  };
-}
-
-function characterBustReadResponse() {
-  return {
-    success: true,
-    message: 'Character bust retrieved successfully',
-    playerName: TEST_PLAYER,
-    characterId: PROFILE_CHARACTER.id,
-    descriptor: PROFILE_DESCRIPTOR,
-  };
-}
 
 let sharedContext: BrowserContext;
 let sharedPage: Page;
 let sharedMock: SocketIOMock;
 let sharedGameShell: GameShellPage;
-
-function registerSharedSessionHandlers(): void {
-  sharedMock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([PROFILE_CHARACTER]),
-  }));
-  sharedMock.on('game-join-request', () => null);
-  sharedMock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: shipListByOwnerResponse(),
-  }));
-}
 
 test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
@@ -104,7 +22,7 @@ test.beforeAll(async ({ browser }) => {
   sharedGameShell = new GameShellPage(sharedPage);
 
   await sharedMock.setup();
-  registerSharedSessionHandlers();
+  registerCharacterProfileSessionHandlers(sharedMock);
 
   await sharedPage.goto('http://localhost:4200/(left:character-list)');
   await sharedPage
@@ -156,7 +74,7 @@ test.beforeAll(async ({ browser }) => {
 test.afterEach(async () => {
   if (!sharedPage || sharedPage.isClosed()) return;
   sharedMock.reset();
-  registerSharedSessionHandlers();
+  registerCharacterProfileSessionHandlers(sharedMock);
 
   let attempts = 0;
   while (!sharedPage.url().includes('left:game-main') && attempts < 4) {

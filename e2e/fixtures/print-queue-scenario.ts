@@ -1,3 +1,6 @@
+import { expect, type Page } from '@playwright/test';
+import { loginViaUI } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
@@ -123,4 +126,24 @@ export function configurePrintQueueMock(
       },
     };
   });
+}
+
+export async function setupAndOpenPrintQueue(
+  options: { usableShipSpatial: boolean; includeIron: boolean },
+  page: Page,
+): Promise<void> {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+  configurePrintQueueMock(mock, options);
+
+  await loginViaUI(page, mock);
+  await gameShell.joinGame('Join Game in Progress');
+  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
+
+  await gameShell.openNav('Fabrication Lab');
+  await expect(page).toHaveURL(/left:fabrication-lab/, { timeout: 10_000 });
+
+  await page.getByRole('button', { name: 'View Print Queue' }).click();
+  await expect(page).toHaveURL(/right:print-queue/, { timeout: 10_000 });
 }

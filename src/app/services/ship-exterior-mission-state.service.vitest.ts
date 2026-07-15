@@ -19,12 +19,24 @@ describe('ShipExteriorMissionStateService', () => {
     state = {
       missionId: 'first-target',
       characterId: 'char-1',
-      activeObjectiveText: 'Identify an Iron asteroid',
+      activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
       updatedAt: '2026-04-28T00:00:00.000Z',
       steps: [
         {
           key: 'identify_iron_asteroid',
           status: 'active',
+        },
+        {
+          key: 'neutralize_identified_asteroid',
+          status: 'locked',
+        },
+        {
+          key: 'manufacture_hull_patch_kit',
+          status: 'locked',
+        },
+        {
+          key: 'repair_scavenger_pod',
+          status: 'locked',
         },
       ],
     };
@@ -69,5 +81,35 @@ describe('ShipExteriorMissionStateService', () => {
         playerName: 'Pioneer  ',
       }),
     ).toEqual(state);
+  });
+
+  it('should normalize legacy first-target state that is missing the repair step', () => {
+    window.localStorage.setItem(
+      'ship-exterior-mission-state::first-target::Pioneer::char-1',
+      JSON.stringify({
+        missionId: 'first-target',
+        characterId: 'char-1',
+        activeObjectiveText: 'Mission objectives complete. Await further directives.',
+        updatedAt: '2026-04-30T00:00:00.000Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' },
+          { key: 'neutralize_identified_asteroid', status: 'completed' },
+          { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        ],
+      }),
+    );
+
+    expect(service.loadState(context)).toEqual({
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+      updatedAt: '2026-04-30T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        { key: 'repair_scavenger_pod', status: 'active' },
+      ],
+    });
   });
 });
