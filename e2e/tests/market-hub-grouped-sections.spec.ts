@@ -37,7 +37,7 @@ test.describe('Market Hub grouped sections', () => {
     await expect(reachableHeading).toBeVisible();
 
     const reachableItems = sharedMarketHubPage.marketItems;
-    await expect(reachableItems).toHaveCount(1);
+    await sharedMarketHubPage.waitForMarketItemCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
     await expect(reachableItems.nth(0)).toContainText('In-system');
 
@@ -59,10 +59,12 @@ test.describe('Market Hub grouped sections', () => {
 
     await expect(sharedPage.getByRole('heading', { name: 'Distant Exchange' })).toBeVisible();
     const outOfRangeItems = sharedMarketHubPage.marketList(1).locator('.market-item');
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     await expect(outOfRangeItems).toHaveCount(1);
     await expect(outOfRangeItems.nth(0)).toContainText('Out of range');
 
     const reachableItems = sharedMarketHubPage.marketList(0).locator('.market-item');
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     await expect(reachableItems).toHaveCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
   });

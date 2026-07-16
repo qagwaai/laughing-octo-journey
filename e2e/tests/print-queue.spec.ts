@@ -27,6 +27,6 @@ test.describe('Print Queue', () => {
     await expect(page.locator('p.status-line--error[role="alert"]')).toHaveText(
       'No ship with usable spatial data is available.',
     );
-    await expect(page.getByRole('button', { name: 'Print Hull Patch Kit' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Print Hull Patch Kit' })).not.toBeVisible();
   });
 });

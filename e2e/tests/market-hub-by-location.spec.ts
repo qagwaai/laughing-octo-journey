@@ -54,7 +54,7 @@ test.describe('Market Hub by-location contract', () => {
     expect(marketHubRequest!.positionKm).toEqual({ x: 413_700_000, y: 10, z: -5 });
 
     const marketRows = sharedMarketHubPage.marketItems;
-    await expect(marketRows).toHaveCount(2);
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     await expect(marketRows.nth(0)).toContainText('Ceres Exchange');
     await expect(marketRows.nth(0)).toContainText('In-system');
     await expect(marketRows.nth(0)).toContainText('0.150 AU');

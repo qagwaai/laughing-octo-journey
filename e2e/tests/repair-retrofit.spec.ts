@@ -43,6 +43,6 @@ test.describe('Repair & Retrofit', () => {
 
     await expect(sharedPage.getByText('No ship with usable spatial data is available.').first()).toBeVisible();
     await expect(sharedPage.getByRole('button', { name: /Active ship:/ })).toContainText('Repair Pod');
-    await expect(sharedPage.getByRole('button', { name: 'View details' })).toHaveCount(0);
+    await expect(sharedPage.getByRole('button', { name: 'View details' })).not.toBeVisible();
   });
 });

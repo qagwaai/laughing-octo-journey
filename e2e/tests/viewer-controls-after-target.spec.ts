@@ -51,7 +51,6 @@ test.describe('Viewer controls after target completion', () => {
     const afterPanFrame = await getCanvasFrameSignature(canvas);
     expect(afterPanFrame).not.toBe(afterZoomFrame);
 
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
+    await new ViewerPage(page).expectSceneLoaded();
   });
 });

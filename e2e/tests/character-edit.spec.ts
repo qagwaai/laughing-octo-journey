@@ -70,7 +70,7 @@ test.describe('Character Edit — setup save redirect', () => {
       return null;
     });
 
-    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.expectCharacterCount(1);
     await expect(sharedCharacterListPage.characterName(0)).toHaveText('Zara Voss');
 
     await sharedCharacterListPage.editButton(0).click();
@@ -80,7 +80,7 @@ test.describe('Character Edit — setup save redirect', () => {
     await sharedCharacterSetupPage.clickSubmit();
 
     await expect(sharedPage).toHaveURL(/left:character-list/);
-    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.expectCharacterCount(1);
     await expect(sharedCharacterListPage.characterName(0)).toHaveText('Zara Prime');
 
     expect(receivedEditRequest).toEqual(
@@ -95,7 +95,7 @@ test.describe('Character Edit — setup save redirect', () => {
   });
 
   test('renders the 2D portrait preview in edit mode', async () => {
-    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.expectCharacterCount(1);
     await sharedCharacterListPage.editButton(0).click();
     await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 
@@ -114,7 +114,7 @@ test.describe('Character Edit — setup save redirect', () => {
       ]),
     }));
     await sharedCharacterListPage.loadButton.click();
-    await expect(sharedCharacterListPage.characterItems).toHaveCount(2, { timeout: 10_000 });
+    await sharedCharacterListPage.expectCharacterCount(2, 10_000);
 
     let editRequestCount = 0;
     sharedMock.on('character-edit-request', () => {
@@ -148,7 +148,7 @@ test.describe('Character Edit — setup save redirect', () => {
       };
     });
 
-    await expect(sharedCharacterListPage.characterItems).toHaveCount(1);
+    await sharedCharacterListPage.expectCharacterCount(1);
     await sharedCharacterListPage.editButton(0).click();
     await expect(sharedPage).toHaveURL(/right:character-bust-preview/, { timeout: 15_000 });
 

@@ -60,4 +60,23 @@ export class ViewerPage {
     await this.detailsViewByDistanceButton.click();
     await expect(this.detailsViewByDistanceButton).toHaveAttribute('aria-pressed', 'true');
   }
+
+  async expectSceneRoute(timeout = 10_000) {
+    await expect(this.page).toHaveURL(/right:viewer-scene/, { timeout });
+  }
+
+  async expectSceneComponentPresent(timeout = 5_000) {
+    await expect(this.sceneContainer).toHaveCount(1, { timeout });
+  }
+
+  async expectSceneLoaded(timeout = 10_000) {
+    await expect(this.sceneCanvas).toBeVisible({ timeout });
+    await expect(this.sceneError).toHaveCount(0);
+    await this.expectSceneRoute(timeout);
+  }
+
+  async expectSceneErrorContains(text: string | RegExp, timeout = 5_000) {
+    await expect(this.sceneError).toBeVisible({ timeout });
+    await expect(this.sceneError).toContainText(text);
+  }
 }

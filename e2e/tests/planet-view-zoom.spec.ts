@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { PlanetViewPage } from '../page-objects/planet-view.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
   await page.waitForFunction(() => {
@@ -94,6 +95,6 @@ test.describe('Planet details zoom pattern', () => {
     const clickY = (box?.y ?? 0) + 20;
     await page.mouse.click(clickX, clickY, { button: 'right' });
 
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await new ViewerPage(page).expectSceneRoute();
   });
 });

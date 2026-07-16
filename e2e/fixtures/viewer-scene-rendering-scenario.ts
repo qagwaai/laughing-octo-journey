@@ -175,11 +175,7 @@ export function solarSystemGetResponse(bodies: any[]) {
   };
 }
 
-export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-
+function registerViewerSceneSessionHandlers(mock: SocketIOMock, ownerShips: any[]) {
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -202,9 +198,6 @@ export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTI
     },
   }));
 
-  await loginViaUI(page, mock);
-
-  // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
   mock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
@@ -216,6 +209,16 @@ export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTI
       ships: ownerShips,
     },
   }));
+}
+
+export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+
+  registerViewerSceneSessionHandlers(mock, ownerShips);
+  await loginViaUI(page, mock);
+
   await gameShell.joinGame();
   await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
   await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });

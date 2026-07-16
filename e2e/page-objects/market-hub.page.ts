@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export class MarketHubPage {
   constructor(private readonly page: Page) {}
@@ -34,5 +34,13 @@ export class MarketHubPage {
   async enableOutOfRangeMarkets() {
     await this.showOutOfRangeToggle.scrollIntoViewIfNeeded();
     await this.showOutOfRangeToggle.check();
+  }
+
+  async waitForMarketItemCount(expectedCount: number, timeout = 5_000) {
+    await expect(this.marketItems).toHaveCount(expectedCount, { timeout });
+  }
+
+  async waitForAtLeastMarketItems(minimumCount: number, timeout = 15_000) {
+    await expect.poll(() => this.marketItems.count(), { timeout }).toBeGreaterThanOrEqual(minimumCount);
   }
 }

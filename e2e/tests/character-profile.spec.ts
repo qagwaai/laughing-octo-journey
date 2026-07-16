@@ -2,10 +2,9 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { SocketIOMock } from '../fixtures/socket-mock';
 import {
   characterBustReadResponse,
-  PROFILE_CHARACTER,
   registerCharacterProfileSessionHandlers,
 } from '../fixtures/character-profile-scenario';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { bootstrapSharedGameMainSession } from '../fixtures/shared-session-bootstrap';
 import { GameShellPage } from '../page-objects/game-shell.page';
 
 let sharedContext: BrowserContext;
@@ -22,53 +21,12 @@ test.beforeAll(async ({ browser }) => {
   sharedGameShell = new GameShellPage(sharedPage);
 
   await sharedMock.setup();
-  registerCharacterProfileSessionHandlers(sharedMock);
-
-  await sharedPage.goto('http://localhost:4200/(left:character-list)');
-  await sharedPage
-    .waitForURL(/left:(character-list|login)/, { timeout: 15_000 })
-    .catch(() => null);
-
-  const loginFormInitiallyVisible = await sharedPage
-    .locator('#playerName')
-    .isVisible({ timeout: 1_000 })
-    .catch(() => false);
-
-  if (!sharedPage.url().includes('left:character-list') || loginFormInitiallyVisible) {
-    await loginViaUI(sharedPage, sharedMock);
-  }
-
-  try {
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  } catch {
-    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
-    await loginViaUI(sharedPage, sharedMock);
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  const loginFormStillVisible = await sharedPage
-    .locator('#playerName')
-    .isVisible({ timeout: 1_000 })
-    .catch(() => false);
-  if (loginFormStillVisible) {
-    await loginViaUI(sharedPage, sharedMock);
-    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  if ((await sharedPage.locator('.character-item').count()) === 0) {
-    const loadButton = sharedPage.locator('.load-btn');
-    const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.first().isVisible());
-    if (!loadButtonVisible) {
-      throw new Error(`Character list is empty and load button is unavailable (url=${sharedPage.url()}).`);
-    }
-
-    await expect(loadButton.first()).toBeEnabled({ timeout: 5_000 });
-    await loadButton.first().click();
-    await expect(sharedPage.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
-  }
-
-  await sharedGameShell.joinGame('Join Game in Progress');
-  await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10_000 });
+  await bootstrapSharedGameMainSession({
+    page: sharedPage,
+    mock: sharedMock,
+    gameShell: sharedGameShell,
+    registerSessionHandlers: registerCharacterProfileSessionHandlers,
+  });
 });
 
 test.afterEach(async () => {
@@ -141,7 +99,7 @@ test.describe('Character Profile - portrait and attributes', () => {
       requestIdentity: capturedBustReadRequest!['requestIdentity'] as Record<string, unknown>,
     });
 
-    await expect(sharedPage.locator('.portrait-window__empty')).toHaveCount(0);
+    await expect(sharedPage.locator('.portrait-window__empty')).not.toBeVisible();
     await expect(sharedPage.locator('.portrait-window__image')).toBeVisible();
     await expect(sharedPage.locator('.attributes-section .attribute-row')).toHaveCount(12);
   });

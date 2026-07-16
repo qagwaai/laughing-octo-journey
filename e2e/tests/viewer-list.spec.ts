@@ -232,7 +232,7 @@ test.describe('Viewer — Solar System List', () => {
     await viewerPage.selectSystem('Sol');
 
     // Verify navigation to the scene view
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('[locale] displays viewer list in Italian locale', async ({ page }) => {

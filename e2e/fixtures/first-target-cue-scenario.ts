@@ -240,17 +240,28 @@ export async function waitForShipExteriorTestApi(
   await expect
     .poll(
       async () => {
-        const apiReadyBeforeRouteAttempt = await sharedPage.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState?: () => unknown;
-                getAsteroidSamples?: () => unknown[];
-              };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        });
+        const isLoginVisible = await sharedPage
+          .locator('#playerName')
+          .isVisible({ timeout: 500 })
+          .catch(() => false);
+
+        if ((sharedPage.url().includes('left:login') || isLoginVisible) && recover) {
+          await recover();
+        }
+
+        const apiReadyBeforeRouteAttempt = await sharedPage
+          .evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getMissionGateState?: () => unknown;
+                  getAsteroidSamples?: () => unknown[];
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function';
+          })
+          .catch(() => false);
 
         if (apiReadyBeforeRouteAttempt) {
           return true;
@@ -268,18 +279,30 @@ export async function waitForShipExteriorTestApi(
           await targetIronButton.click();
         }
 
-        return sharedPage.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState?: () => unknown;
-              };
-            }
-          ).__shipExteriorTestUtils;
-          return typeof api?.getMissionGateState === 'function';
-        });
+        const apiReadyAfterRouteAttempt = await sharedPage
+          .evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getMissionGateState?: () => unknown;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return typeof api?.getMissionGateState === 'function';
+          })
+          .catch(() => false);
+
+        if (apiReadyAfterRouteAttempt) {
+          return true;
+        }
+
+        if (recover) {
+          await recover();
+        }
+
+        return false;
       },
-      { timeout: 15000, intervals: [250, 500, 1000] },
+      { timeout: 20000, intervals: [250, 500, 1000] },
     )
     .toBe(true);
 }

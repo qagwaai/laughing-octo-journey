@@ -41,6 +41,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       .toBeGreaterThan(0);
 
     const marketRows = sharedMarketHubPage.marketItems;
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     const remoteMarket = marketRows.nth(1);
 
     await expect(remoteMarket).toContainText('Remote Market');
@@ -104,7 +105,7 @@ test.describe('Market Hub docking and radius behavior', () => {
       .toBeGreaterThan(0);
 
     const marketRows = sharedMarketHubPage.marketItems;
-    await expect(marketRows).toHaveCount(2);
+    await sharedMarketHubPage.waitForMarketItemCount(2);
 
     const dockedMarket = marketRows.nth(0);
     const remoteMarket = marketRows.nth(1);

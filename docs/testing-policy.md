@@ -60,7 +60,15 @@ For test-sensitive pull requests, verify:
 - [ ] At least one negative-path assertion exists when risk increased
 - [ ] Existing tests were updated if contracts or flow changed
 - [ ] No brittle timing assumptions were introduced in Playwright
+- [ ] Stateful gameplay specs that use Ship Hangar surfaces assert readiness via sw13.v1 contract (for example waitForLoadedReadiness)
 - [ ] CI remains green and runtime remains reasonable
+
+## SW-13 Readiness Gate
+
+Stateful gameplay governance for SW-13 uses an automated gate:
+- Command: npm run e2e:readiness:check
+- Hooked into: pree2e and pree2e:spec
+- Rule: Any stateful gameplay e2e spec that touches Ship Hangar surfaces must include a deterministic readiness assertion through the sw13.v1 contract.
 
 ## Current Practical Baseline
 For major feature areas in this repository, the pragmatic target is:

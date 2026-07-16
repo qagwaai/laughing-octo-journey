@@ -67,6 +67,13 @@ async function ensureCharacterListReady(
       await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
     }
 
+    const characterItemCountAfterRecovery = await page.locator('.character-item').count();
+    if (characterItemCountAfterRecovery === 0 && !page.url().includes('left:character-list')) {
+      registerSessionHandlers(mock);
+      await loginViaUI(page, mock);
+      await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+    }
+
     const loadButton = page.locator('.load-btn').first();
     const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.isVisible());
     if (!loadButtonVisible) {

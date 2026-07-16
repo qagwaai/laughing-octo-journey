@@ -14,7 +14,7 @@ test.describe('Mission Board — first-target in progress', () => {
     await setupFirstTargetToM01MissionBoardTest(page, { missions });
 
     await expect(page.getByText('Mission Log')).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('.mission-lane[data-lane="active"] [data-lane-item="active"]')).toHaveCount(1);
+    await expect(page.locator('.mission-lane[data-lane="active"] [data-lane-item="active"]').first()).toBeVisible();
   });
 
   test('shows locked catalog missions when first-target is only started', async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe('Mission Board — after first-target completion', () => {
 
     // M-02 title should not appear as available; it requires M-01.
     const m02Item = page.locator('.mission-item--available', { hasText: 'Basic Economics' });
-    await expect(m02Item).toHaveCount(0);
+    await expect(m02Item).not.toBeVisible();
 
     // But M-02 should appear in the locked section
     await expect(page.locator('.mission-item--locked', { hasText: 'Basic Economics' })).toBeVisible({

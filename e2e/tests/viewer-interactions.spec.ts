@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { setupViewerInteractionTest, SOL_SUMMARY } from '../fixtures/viewer-interactions-scenario';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
-async function navigateToScene(page: any) {
+async function navigateToScene(page: Page) {
   const gameShell = new GameShellPage(page);
   const viewerPage = new ViewerPage(page);
   // Navigate to Viewer
@@ -19,7 +19,7 @@ async function navigateToScene(page: any) {
   await viewerPage.selectSystem('Sol');
 
   // Wait for scene route to settle
-  await expect(page).toHaveURL(/right:viewer-scene/);
+  await viewerPage.expectSceneRoute();
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -30,9 +30,10 @@ test.describe('Viewer — Interaction Behaviors', () => {
   test('applies hover styling when mouse enters scene canvas', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Get the canvas element
-    const canvas = new ViewerPage(page).sceneCanvas;
+    const canvas = viewerPage.sceneCanvas;
 
     // Hover over the canvas
     await canvas.hover();
@@ -45,25 +46,26 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // The scene should remain visible and interactive
     await expect(canvas).toBeVisible();
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('canvas remains interactive after hover', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Perform multiple pointer interactions over the scene area
     await page.mouse.move(100, 100);
     await page.mouse.move(200, 200);
 
     // Scene should remain functional
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('scene responds to mouse move events', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Move mouse over scene area
     await page.mouse.move(50, 50);
@@ -71,41 +73,43 @@ test.describe('Viewer — Interaction Behaviors', () => {
     await page.mouse.move(150, 150);
 
     // Scene should continue to render without errors
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('displays planet orbital elements correctly', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // The scene loads with Earth and Mars, both with orbital elements
     // The rendering validates that orbital elements are processed
-    const canvas = new ViewerPage(page).sceneCanvas;
+    const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible();
 
     // The scene should have successfully rendered both planets with their orbits
     // (verified by scene remaining in stable state without errors)
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('handles moon orbital elements relative to planet anchor', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Luna (anchored to Earth) and Phobos (anchored to Mars) should render
     // The anchorBodyId relationships are validated by the scene renderer
 
-    const canvas = new ViewerPage(page).sceneCanvas;
+    const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible();
 
     // Scene loaded successfully with all hierarchical relationships intact
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('maintains scene state during multiple interactions', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Perform a series of interactions
     await page.mouse.move(100, 100);
@@ -114,13 +118,13 @@ test.describe('Viewer — Interaction Behaviors', () => {
     await page.waitForTimeout(100);
 
     // Scene should remain stable and responsive
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(new ViewerPage(page).sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('scene renders without errors on rapid hover toggle', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     const sceneHost = page.locator('.viewer-scene-host');
 
@@ -133,27 +137,28 @@ test.describe('Viewer — Interaction Behaviors', () => {
     }
 
     // Scene should remain stable
-    await expect(page).toHaveURL(/right:viewer-scene/);
-    await expect(page.locator('[data-testid="viewer-scene-error"]')).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('preserves scene context across view interactions', async ({ page }) => {
     await setupViewerInteractionTest(page);
     await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
 
     // Scene route should be loaded
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
 
        // Interact with the scene
        await page.locator('.viewer-scene-host').hover();
        await page.mouse.move(100, 100);
 
     // Scene should remain in expected state
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('[edge case] scene remains stable with zero-mass bodies', async ({ page }) => {
     const { mock } = await setupViewerInteractionTest(page);
+    const viewerPage = new ViewerPage(page);
 
     // Create a custom set of bodies with edge-case properties
     const edgeCaseBodies = [
@@ -216,13 +221,13 @@ test.describe('Viewer — Interaction Behaviors', () => {
     await navigateToScene(page);
 
   // Scene route should be active and handling the edge case bodies
-  await expect(page).toHaveURL(/right:viewer-scene/);
+  await viewerPage.expectSceneRoute();
 
     // Interact with scene despite edge-case data
   await page.locator('.viewer-scene-host').hover();
     await page.mouse.move(100, 100);
 
     // Scene should handle edge cases gracefully
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 });

@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
-import { expect } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 const SOL_SUMMARY = {
   id: 'sol',
@@ -216,9 +216,7 @@ export async function setupPlanetViewZoomViewer(page: Page): Promise<void> {
     },
   }));
 
-  await loginViaUI(page, mock);
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15000 });
+  await loginAndJoinViewerSession({ page, mock, gameShell });
 
   await gameShell.openViewer();
   await viewerPage.selectSystem('Sol');

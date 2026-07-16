@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 const characterWithJoin = {
   id: 'char-vw-1',
@@ -91,6 +93,7 @@ const solGetResponse = {
 
 export async function setupViewerTest(page: Page): Promise<{ mock: SocketIOMock }> {
   const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   mock.on('character-list-request', () => ({
@@ -122,6 +125,6 @@ export async function setupViewerTest(page: Page): Promise<{ mock: SocketIOMock 
     data: solGetResponse,
   }));
 
-  await loginViaUI(page, mock);
+  await loginAndJoinViewerSession({ page, mock, gameShell });
   return { mock };
 }

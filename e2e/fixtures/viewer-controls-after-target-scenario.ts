@@ -1,8 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { SocketIOMock } from './socket-mock';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 const CHARACTER = {
   id: 'char-vw-controls-1',
@@ -99,10 +100,7 @@ export async function setupViewer(page: Page): Promise<void> {
     data: SOL_SYSTEM_RESPONSE,
   }));
 
-  await loginViaUI(page, mock);
-
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/);
+  await loginAndJoinViewerSession({ page, mock, gameShell });
 
   const viewerButton = gameShell.navButton('Viewer');
   await expect(viewerButton).toBeVisible({ timeout: 10_000 });

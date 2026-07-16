@@ -183,3 +183,30 @@ This investment is complete when:
 1. Without this investment, each new stateful gameplay feature can repeat the same high-cost debugging cycle.
 2. Continuing to solve e2e flakiness only at Playwright level will likely increase production code churn.
 3. Mixing feature rollout and test stabilization in one change set should be treated as an exception, not normal workflow.
+
+## 9. Progress Checkpoint (2026-07-16)
+
+Estimated overall completion: 74%
+
+Phase status:
+1. Phase 0 (Change isolation and branch hygiene): 35%
+2. Phase 1 (Define test contracts): 90%
+3. Phase 2 (Deterministic component integration coverage): 78%
+4. Phase 3 (Harden e2e harness): 89%
+5. Phase 4 (Trim and stabilize e2e specs): 71%
+6. Phase 5 (CI and governance): 33%
+
+Evidence added in this checkpoint:
+1. Phase-0 keep/revert matrix published in `docs/planning/sw-13-closure/sw-13-phase0-keep-revert-matrix-2026-07-16.md`.
+2. Automated SW-13 readiness gate added via `scripts/check-stateful-readiness-gate.mjs`.
+3. Readiness gate wired into `pree2e` and `pree2e:spec` in `package.json`.
+4. Governance checklist updated in `docs/testing-policy.md` with explicit readiness-assertion requirement for Ship Hangar stateful specs.
+5. Viewer scene assertions consolidated in `e2e/page-objects/viewer.page.ts` via reusable route/component/loaded/error helper methods.
+6. Viewer specs migrated to intent-level helpers (`viewer-scene-rendering`, `viewer-interactions`, `viewer-list`, `viewer-ships`, `planet-view-zoom`) to reduce duplicated implicit timing checks.
+7. Viewer fixture login/join setup standardized with `e2e/fixtures/viewer-session-bootstrap.ts` and adopted across viewer fixture modules without reintroducing the shared load-button regression path.
+
+Open closure gaps remaining:
+1. Phase-0 track split evidence is still partially documentary and not yet represented as an audited branch-level keep/revert outcome.
+2. Readiness-contract usage is not yet universal across all stateful gameplay tests, only where Ship Hangar route surfaces are exercised.
+3. Trim pass remains to remove residual implicit timing assertions in non-viewer high-churn stateful specs where deterministic readiness checks are now available.
+4. CI/governance still needs a reviewer-facing checklist enforcement artifact linked from SW-13 closure status.

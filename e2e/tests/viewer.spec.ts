@@ -5,8 +5,6 @@ import { ViewerPage } from '../page-objects/viewer.page';
 
 async function navigateToViewer(page: Page) {
   const gameShell = new GameShellPage(page);
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
   await gameShell.openViewer();
 }
 

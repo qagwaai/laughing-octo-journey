@@ -113,29 +113,22 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 
 test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({
   sharedPage,
+  sharedMock,
   prepareJoinedPage,
 }) => {
+  const recoverJoinedCuePage = async () => {
+    sharedMock.reset();
+    registerFirstTargetCueMock(sharedMock);
+    await prepareJoinedPage();
+  };
+
   await prepareJoinedPage();
   await resetFirstTargetCuePersistence(sharedPage);
   // Worker-scoped page reuse keeps Angular service state in memory; reload to guarantee a clean cue baseline.
   await sharedPage.reload();
-  await prepareJoinedPage();
+  await recoverJoinedCuePage();
 
-  await waitForShipExteriorTestApi(sharedPage, async () => {
-    const loginVisible = await sharedPage
-      .locator('#playerName')
-      .isVisible({ timeout: 1_000 })
-      .catch(() => false);
-    if (sharedPage.url().includes('left:login') || loginVisible) {
-      await prepareJoinedPage();
-    }
-
-    const targetIronButton = sharedPage.getByRole('button', { name: 'TARGET IRON' });
-    const canOpenShipExterior = await targetIronButton.isVisible({ timeout: 500 }).catch(() => false);
-    if (canOpenShipExterior) {
-      await targetIronButton.click();
-    }
-  });
+  await waitForShipExteriorTestApi(sharedPage, recoverJoinedCuePage);
 
   await advanceMissionToManufactureStep(sharedPage);
 
@@ -144,13 +137,13 @@ test('keeps overlay dismissed for the same step across refresh, then shows again
   await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
 
   await overlay.locator('button.overlay-dismiss').click();
-  await expect(overlay).toHaveCount(0);
+  await expect(overlay).not.toBeVisible();
 
   // Reset to game-main (fixture pattern instead of reload + re-login)
-  await prepareJoinedPage();
+  await recoverJoinedCuePage();
 
-  await waitForShipExteriorTestApi(sharedPage, prepareJoinedPage);
-  await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).toHaveCount(0);
+  await waitForShipExteriorTestApi(sharedPage, recoverJoinedCuePage);
+  await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).not.toBeVisible();
 
   await expect
     .poll(async () =>

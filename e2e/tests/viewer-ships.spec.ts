@@ -10,6 +10,7 @@ import {
   setupSharedViewerShipsSession,
   type SharedViewerShipsSession,
 } from '../fixtures/viewer-ships-scenario';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { ViewerShipsPage } from '../page-objects/viewer-ships.page';
 
@@ -66,7 +67,7 @@ async function navigateToScene(
   await sharedGameShell.openViewer();
 
   await sharedViewerPage.selectSystem('Sol');
-  await expect(sharedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+  await sharedViewerPage.expectSceneLoaded();
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -133,7 +134,7 @@ test.describe.serial('Viewer — Character Ships', () => {
 
     await isolatedGameShell.openViewer();
     await isolatedViewerPage.selectSystem('Sol');
-    await expect(isolatedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
+    await isolatedViewerPage.expectSceneLoaded();
 
     const glbResponse = await glbResponsePromise;
     expect(glbResponse.ok()).toBeTruthy();
@@ -141,25 +142,18 @@ test.describe.serial('Viewer — Character Ships', () => {
 
   test('scene renders without error when ships are present in current solar system', async () => {
     await navigateToScene([ACTIVE_SHIP, INACTIVE_SHIP]);
-
-    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
-    await expect(sharedViewerPage.sceneError).toHaveCount(0);
-    await expect(sharedPage).toHaveURL(/right:viewer-scene/);
+    await sharedViewerPage.expectSceneLoaded();
   });
 
   test('scene renders without error when ship list is empty', async () => {
     await navigateToScene([]);
-
-    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
-    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+    await sharedViewerPage.expectSceneLoaded();
   });
 
   test('ships in other solar systems are excluded from scene', async () => {
     // Only include a ship from another system — scene should still load cleanly
     await navigateToScene([SHIP_IN_OTHER_SYSTEM]);
-
-    await expect(sharedViewerPage.sceneCanvas).toBeVisible();
-    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+    await sharedViewerPage.expectSceneLoaded();
     // Legend should still be present
     const shipsPage = new ViewerShipsPage(sharedPage);
     await shipsPage.assertLegendVisible();
@@ -185,8 +179,7 @@ test.describe.serial('Viewer — Character Ships', () => {
     await sharedGameShell.openViewer();
 
     await sharedViewerPage.selectSystem('Sol');
-    await expect(sharedViewerPage.sceneCanvas).toBeVisible({ timeout: 10_000 });
-    await expect(sharedViewerPage.sceneError).toHaveCount(0);
+    await sharedViewerPage.expectSceneLoaded();
   });
 
   test('legend is always visible regardless of ship availability', async () => {

@@ -95,7 +95,7 @@ test.describe('Character List — loading characters', () => {
       autoLoadResponse: twoCharacters,
     });
 
-    await expect(characterListPage.characterItems).toHaveCount(2);
+    await characterListPage.expectCharacterCount(2);
     await expect(characterListPage.characterName(0)).toHaveText('Zara Voss');
     await expect(characterListPage.characterName(1)).toHaveText('Commander Rex');
   });
@@ -155,7 +155,7 @@ test.describe('Character List — loading characters', () => {
       autoLoadResponse: twoCharacters,
     });
 
-    await expect(characterListPage.characterItems).toHaveCount(2);
+    await characterListPage.expectCharacterCount(2);
 
     // Hold the next request so the replacement payload is delivered deterministically.
     mock.on('character-list-request', () => null);
@@ -167,7 +167,7 @@ test.describe('Character List — loading characters', () => {
       characterListResponse([{ id: 'char-99', characterName: 'New Recruit', level: 1 }]),
     );
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('New Recruit');
   });
 });
@@ -254,7 +254,7 @@ test.describe('Character List — delete dialog', () => {
     await characterListPage.clickCancelDelete();
 
     await expect(characterListPage.deleteDialog).not.toBeVisible();
-    await expect(characterListPage.characterItems).toHaveCount(2);
+    await characterListPage.expectCharacterCount(2);
   });
 
   test('confirms delete and removes the character from the list', async ({ page }) => {
@@ -271,7 +271,7 @@ test.describe('Character List — delete dialog', () => {
     await characterListPage.clickConfirmDelete();
 
     await expect(characterListPage.deleteDialog).not.toBeVisible();
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('Commander Rex');
   });
 
@@ -313,7 +313,7 @@ test.describe('Character List — delete dialog', () => {
 
     await expect(characterListPage.errorMessage).toContainText('Character not found');
     // Character list is unchanged
-    await expect(characterListPage.characterItems).toHaveCount(2);
+    await characterListPage.expectCharacterCount(2);
   });
 });
 

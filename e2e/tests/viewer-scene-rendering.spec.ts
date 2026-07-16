@@ -333,9 +333,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...stationBodies]);
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('SW-13 M3 gate landmark selector evidence is deterministic, bounded, and hazard-aware', async () => {
@@ -376,8 +374,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...gateBodies]);
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
     await expect(page.getByTestId('viewer-legend-gate')).toBeVisible();
 
     const routeRunFamilies = gateBodies.map((body) => body.externalObjectDescriptor.objectFamily).sort();
@@ -473,12 +470,12 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock);
 
     // Verify the scene container is visible
-    const sceneContainer = new ViewerPage(page).sceneContainer;
-       // Component exists in DOM (might be hidden with CSS)
-       await expect(sceneContainer).toHaveCount(1);
+     const viewerPage = new ViewerPage(page);
+     // Component exists in DOM (might be hidden with CSS)
+     await viewerPage.expectSceneComponentPresent();
 
     // Verify the canvas element exists (Angular Three renders to <ngt-canvas>)
-    const canvas = new ViewerPage(page).sceneCanvas;
+     const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible();
   });
 
@@ -497,8 +494,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock);
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('accepts SW-13 gate descriptor families ring-gate, segmented-arch, relay-spindle', async ({ page }) => {
@@ -507,8 +503,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, withGateDescriptorBodies(SOL_SYSTEM_BODIES));
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneCanvas).toBeVisible();
-    await expect(viewerPage.sceneError).toHaveCount(0);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('rejects invalid SW-13 gate descriptor families at viewer ingest boundary', async ({ page }) => {
@@ -517,8 +512,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, withInvalidGateDescriptorBody(SOL_SYSTEM_BODIES));
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
-    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
+    await viewerPage.expectSceneErrorContains('descriptor-contract');
   });
 
   test('rejects legacy gate descriptor domains and families with no fallback remap', async ({ page }) => {
@@ -527,8 +521,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, withLegacyGateDescriptorBody(SOL_SYSTEM_BODIES));
 
     const viewerPage = new ViewerPage(page);
-    await expect(viewerPage.sceneError).toBeVisible({ timeout: 5000 });
-    await expect(viewerPage.sceneError).toContainText('descriptor-contract');
+    await viewerPage.expectSceneErrorContains('descriptor-contract');
   });
 
   test('handles scene load error gracefully', async ({ page }) => {
@@ -562,12 +555,12 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, SOL_SYSTEM_BODIES);
 
     // Verify scene component is loaded
-       // Component exists in DOM 
-      await expect(new ViewerPage(page).sceneContainer).toHaveCount(1, { timeout: 5000 });
+    // Component exists in DOM
+    await new ViewerPage(page).expectSceneComponentPresent();
 
     // For Three.js rendering, we can verify the response was processed
     // by checking that the page remains in the scene view without errors
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    await new ViewerPage(page).expectSceneRoute();
   });
 
   test('renders orbits for planet-anchored bodies', async ({ page }) => {
@@ -576,11 +569,8 @@ test.describe('Viewer — Scene Rendering', () => {
     // Luna (moon) has anchorBodyId: 'earth', so moon orbits should be calculated relative to Earth
     await navigateToSystemScene(page, mock, SOL_SYSTEM_BODIES);
 
-    const canvas = new ViewerPage(page).sceneCanvas;
-    await expect(canvas).toBeVisible();
-
-    // Verify scene rendered without error (orbits are rendered in the Three.js scene)
-    await expect(page).toHaveURL(/right:viewer-scene/);
+    const viewerPage = new ViewerPage(page);
+    await viewerPage.expectSceneLoaded();
   });
 
   test('displays loading state while scene is loading', async ({ page }) => {
@@ -606,15 +596,14 @@ test.describe('Viewer — Scene Rendering', () => {
 
     await viewerPage.selectSystem('Sol');
 
-      // Wait for the scene component to become visible
-      await expect(viewerPage.sceneContainer).toHaveCount(1, { timeout: 5000 });
+    // Wait for the scene component to become visible
+    await viewerPage.expectSceneComponentPresent();
 
     // Resolve the delayed response
     resolveResponse();
 
     // Wait for scene component to become visible
-      // Verify scene component is present in DOM
-      await expect(page).toHaveURL(/right:viewer-scene/);
+    await viewerPage.expectSceneRoute();
   });
 
   test('maintains system summary across scene navigation', async ({ page }) => {
@@ -623,8 +612,8 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock);
 
     // Verify scene component is rendered and visible
-      // Component exists in DOM
-      await expect(page.locator('app-viewer-scene-page')).toHaveCount(1, { timeout: 5000 });
+    // Component exists in DOM
+    await new ViewerPage(page).expectSceneComponentPresent();
   });
 
   test('[locale] renders scene content in Italian locale', async ({ page }) => {
@@ -731,9 +720,6 @@ test.describe('Viewer — Scene Rendering', () => {
     const solButton = page.locator('.solar-system-item__button').filter({ hasText: 'Sol' }).first();
     await solButton.click();
 
-    await expect(page).toHaveURL(/right:viewer-scene/);
-
-    // Verify scene component loads
-    await expect(page.locator('app-viewer-scene-page')).toHaveCount(1, { timeout: 5000 });
+    await new ViewerPage(page).expectSceneLoaded();
   });
 });

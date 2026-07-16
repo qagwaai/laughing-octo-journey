@@ -1,8 +1,8 @@
 import type { Page } from '@playwright/test';
-import { expect } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 export const SOL_SUMMARY = {
   id: 'sol',
@@ -219,8 +219,6 @@ export async function setupViewerInteractionTest(page: Page): Promise<{ mock: So
     },
   }));
 
-  await loginViaUI(page, mock);
-
   mock.on('game-join-request', () => null);
   mock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
@@ -232,11 +230,7 @@ export async function setupViewerInteractionTest(page: Page): Promise<{ mock: So
       ships: [ACTIVE_SHIP],
     },
   }));
-  const joinButton = gameShell.joinButton();
-  await expect(joinButton).toBeVisible({ timeout: 10000 });
-  await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
+  await loginAndJoinViewerSession({ page, mock, gameShell });
 
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',

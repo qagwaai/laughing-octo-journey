@@ -1,6 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
+import { bootstrapSharedGameMainSession } from './shared-session-bootstrap';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
@@ -91,11 +92,7 @@ export function makeSolarSystemGetResponse(bodies: any[] = SOL_BODIES) {
   };
 }
 
-export async function setupIsolatedViewerShipsSession(page: Page): Promise<SocketIOMock> {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  await mock.setup();
-
+function registerViewerSessionHandlers(mock: SocketIOMock, ships = [ACTIVE_SHIP, INACTIVE_SHIP]) {
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -113,16 +110,25 @@ export async function setupIsolatedViewerShipsSession(page: Page): Promise<Socke
     },
   }));
 
-  await loginViaUI(page, mock);
-
   mock.on('game-join-request', () => null);
   mock.on('ship-list-by-owner-request', () => ({
     event: 'ship-list-by-owner-response',
-    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
+    data: makeShipListResponse(ships),
   }));
+}
 
-  await gameShell.joinGame('Join Game');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+export async function setupIsolatedViewerShipsSession(page: Page): Promise<SocketIOMock> {
+  const mock = new SocketIOMock(page);
+  const gameShell = new GameShellPage(page);
+  await mock.setup();
+
+  await bootstrapSharedGameMainSession({
+    page,
+    mock,
+    gameShell,
+    registerSessionHandlers: (registeredMock) => registerViewerSessionHandlers(registeredMock),
+    joinButtonText: 'Join Game',
+  });
   await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
 
   mock.on('solar-system-list-request', () => ({
@@ -150,33 +156,13 @@ export async function setupSharedViewerShipsSession(browser: Browser): Promise<S
 
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [{ missionId: 'first-target', status: 'active' }],
-        },
-      ],
-    },
-  }));
-
-  await loginViaUI(page, mock);
-
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
-  }));
-
-  await gameShell.joinGame('Join Game');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+  await bootstrapSharedGameMainSession({
+    page,
+    mock,
+    gameShell,
+    registerSessionHandlers: (registeredMock) => registerViewerSessionHandlers(registeredMock),
+    joinButtonText: 'Join Game',
+  });
   await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
 
   mock.on('solar-system-list-request', () => ({

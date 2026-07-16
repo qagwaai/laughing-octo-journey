@@ -4,7 +4,6 @@ import {
   openMarketHubWithDefaultData,
   registerServerNoRouteOverrideHandler,
   registerSharedSessionHandlers,
-  type MarketByLocationRequest,
 } from '../fixtures/market-hub-cross-system-scenario';
 import { MarketHubPage } from '../page-objects/market-hub.page';
 
@@ -29,11 +28,10 @@ test.describe('Market Hub cross-system route badges', () => {
     sharedGameShell,
     sharedMock,
   }) => {
-    const requests: MarketByLocationRequest[] = [];
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, (req) => requests.push(req));
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, () => undefined);
 
     const marketRows = sharedMarketHubPage.marketItems;
-    await expect(marketRows).toHaveCount(3);
+    await sharedMarketHubPage.waitForMarketItemCount(3);
 
     const nearStation = marketRows.nth(0);
     await expect(nearStation).toContainText('Near Station');
@@ -50,7 +48,7 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(barnardsMarket).toContainText("Barnard's Depot, 2 gate hops away");
 
     await sharedMarketHubPage.enableOutOfRangeMarkets();
-    await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
+    await sharedMarketHubPage.waitForMarketItemCount(4);
     const wolfMarket = marketRows.nth(3);
     await expect(wolfMarket).toContainText('Wolf-359 Outpost');
     await expect(wolfMarket).toContainText('No route');
@@ -61,13 +59,12 @@ test.describe('Market Hub cross-system route badges', () => {
     sharedGameShell,
     sharedMock,
   }) => {
-    const requests: MarketByLocationRequest[] = [];
-    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, (req) => requests.push(req));
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, () => undefined);
 
     const marketRows = sharedMarketHubPage.marketItems;
 
     await sharedMarketHubPage.enableOutOfRangeMarkets();
-    await expect(marketRows).toHaveCount(4, { timeout: 5_000 });
+    await sharedMarketHubPage.waitForMarketItemCount(4);
 
     const alphaMarket = marketRows.nth(1);
     const barnardsMarket = marketRows.nth(2);
@@ -90,7 +87,7 @@ test.describe('Market Hub cross-system route badges', () => {
     await expect(sharedMarketHubPage.reachableHeading).toBeVisible({ timeout: 15_000 });
 
     await sharedMarketHubPage.enableOutOfRangeMarkets();
-    await expect(sharedMarketHubPage.marketItems).toHaveCount(2, { timeout: 5_000 });
+    await sharedMarketHubPage.waitForMarketItemCount(2);
 
     const alphaMarket = sharedMarketHubPage.marketItems.nth(1);
     await expect(alphaMarket).toContainText('Alpha Station');

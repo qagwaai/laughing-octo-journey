@@ -143,7 +143,7 @@ test.describe('Character Add — from character list', () => {
       );
     }
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('Nova Prime');
   });
 
@@ -226,7 +226,7 @@ test.describe('Character Add — from character list', () => {
     });
 
     await characterListPage.clickLoad();
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
 
     await characterListPage.clickSetup();
     await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });

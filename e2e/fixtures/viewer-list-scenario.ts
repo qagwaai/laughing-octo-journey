@@ -1,7 +1,8 @@
-import { expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 export const SOL_SYSTEM: Partial<any> = {
   id: 'sol',
@@ -95,8 +96,6 @@ export async function setupViewerListTest(page: Page, systems: any[] = []) {
     },
   }));
 
-  await loginViaUI(page, mock);
-
   // Must join a game before viewer menu is enabled
   mock.on('game-join-request', () => null);
   mock.on('ship-list-by-owner-request', () => ({
@@ -109,11 +108,7 @@ export async function setupViewerListTest(page: Page, systems: any[] = []) {
       ships: [ACTIVE_SHIP],
     },
   }));
-  const joinButton = gameShell.joinButton();
-  await expect(joinButton).toBeVisible({ timeout: 10000 });
-  await expect(joinButton).toBeEnabled({ timeout: 10000 });
-  await gameShell.joinGame();
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
+  await loginAndJoinViewerSession({ page, mock, gameShell });
 
   mock.on('solar-system-list-request', () => ({
     event: 'solar-system-list-response',
