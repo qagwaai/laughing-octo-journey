@@ -113,9 +113,9 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     // Perform a series of interactions
     await page.mouse.move(100, 100);
-    await page.waitForTimeout(100);
+    await viewerPage.expectSceneLoaded();
     await page.mouse.move(200, 200);
-    await page.waitForTimeout(100);
+    await viewerPage.expectSceneLoaded();
 
     // Scene should remain stable and responsive
     await viewerPage.expectSceneLoaded();
@@ -131,9 +131,9 @@ test.describe('Viewer — Interaction Behaviors', () => {
     // Simulate rapid hover entry/exit
     for (let i = 0; i < 5; i++) {
       await sceneHost.hover();
-      await page.waitForTimeout(50);
+      await viewerPage.expectSceneLoaded();
       await page.mouse.move(0, 0);
-      await page.waitForTimeout(50);
+      await viewerPage.expectSceneLoaded();
     }
 
     // Scene should remain stable

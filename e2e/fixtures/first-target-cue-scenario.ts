@@ -1,6 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
+import {
+  registerMissionCharacterList,
+  registerMissionGameJoin,
+  registerMissionList,
+  registerMissionShipListByOwner,
+} from './mission-session-helpers';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const FAB_LAB_HINT_DISMISS_PREFIX = 'first-target:fabrication-lab-hint-dismissed';
@@ -13,87 +19,67 @@ export function registerFirstTargetCueMock(mock: SocketIOMock): void {
 }
 
 export function configureFirstTargetCueMock(mock: SocketIOMock): void {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: FIRST_TARGET_CUE_CHARACTER_ID,
-          characterName: 'Cue Tester',
-          level: 2,
-          missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
-        },
-      ],
-    },
-  }));
-
-  mock.on('game-join-request', () => null);
-
-  mock.on('list-missions-request', () => ({
-    event: 'list-missions-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+  registerMissionCharacterList(mock, [
+    {
+      id: FIRST_TARGET_CUE_CHARACTER_ID,
+      characterName: 'Cue Tester',
+      level: 2,
       missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
     },
-  }));
+  ]);
 
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: FIRST_TARGET_CUE_CHARACTER_ID,
-      ships: [
-        {
-          id: 'ship-cue-1',
-          name: 'Starter Pod',
-          model: 'Scavenger Pod',
-          tier: 1,
-          status: 'Damaged',
-          inventory: [
-            {
-              id: 'item-drone-1',
-              itemType: 'expendable-dart-drone',
-              displayName: 'Expendable Dart Drone',
-              launchable: true,
-              state: 'contained',
-              damageStatus: 'intact',
-              container: { containerType: 'ship', containerId: 'ship-cue-1' },
-              owningPlayerId: TEST_PLAYER,
-              owningCharacterId: FIRST_TARGET_CUE_CHARACTER_ID,
-              kinematics: null,
-              destroyedAt: null,
-              destroyedReason: null,
-              discoveredAt: null,
-              discoveredByCharacterId: null,
-              createdAt: '2026-05-01T00:00:00.000Z',
-              updatedAt: '2026-05-01T00:00:00.000Z',
-            },
-          ],
-          spatial: {
-            solarSystemId: 'sol',
-            frame: 'barycentric',
-            positionKm: { x: 1000000, y: 0, z: 0 },
-            epochMs: Date.now(),
+  registerMissionGameJoin(mock);
+
+  registerMissionList(mock, {
+    characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+    missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: 'active' }],
+  });
+
+  registerMissionShipListByOwner(mock, {
+    characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+    ships: [
+      {
+        id: 'ship-cue-1',
+        name: 'Starter Pod',
+        model: 'Scavenger Pod',
+        tier: 1,
+        status: 'Damaged',
+        inventory: [
+          {
+            id: 'item-drone-1',
+            itemType: 'expendable-dart-drone',
+            displayName: 'Expendable Dart Drone',
+            launchable: true,
+            state: 'contained',
+            damageStatus: 'intact',
+            container: { containerType: 'ship', containerId: 'ship-cue-1' },
+            owningPlayerId: TEST_PLAYER,
+            owningCharacterId: FIRST_TARGET_CUE_CHARACTER_ID,
+            kinematics: null,
+            destroyedAt: null,
+            destroyedReason: null,
+            discoveredAt: null,
+            discoveredByCharacterId: null,
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
           },
-          motion: {
-            velocityKmPerSec: { x: 0, y: 0, z: 0 },
-          },
-          observability: {
-            visibility: 'visible',
-            scanState: 'scanned',
-          },
+        ],
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 1000000, y: 0, z: 0 },
+          epochMs: Date.now(),
         },
-      ],
-    },
-  }));
+        motion: {
+          velocityKmPerSec: { x: 0, y: 0, z: 0 },
+        },
+        observability: {
+          visibility: 'visible',
+          scanState: 'scanned',
+        },
+      },
+    ],
+  });
 
   mock.on('celestial-body-list-request', () => ({
     event: 'celestial-body-list-response',
@@ -237,38 +223,39 @@ export async function waitForShipExteriorTestApi(
   sharedPage: Page,
   recover?: () => Promise<void>,
 ): Promise<void> {
+  const isShipExteriorApiReady = async (): Promise<boolean> =>
+    sharedPage
+      .evaluate(() => {
+        const api = (
+          window as Window & {
+            __shipExteriorTestUtils?: {
+              getMissionGateState?: () => unknown;
+              getAsteroidSamples?: () => unknown[];
+            };
+          }
+        ).__shipExteriorTestUtils;
+        return typeof api?.getMissionGateState === 'function';
+      })
+      .catch(() => false);
+
   await expect
     .poll(
       async () => {
-        const isLoginVisible = await sharedPage
-          .locator('#playerName')
-          .isVisible({ timeout: 500 })
-          .catch(() => false);
-
-        if ((sharedPage.url().includes('left:login') || isLoginVisible) && recover) {
-          await recover();
-        }
-
-        const apiReadyBeforeRouteAttempt = await sharedPage
-          .evaluate(() => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getMissionGateState?: () => unknown;
-                  getAsteroidSamples?: () => unknown[];
-                };
-              }
-            ).__shipExteriorTestUtils;
-            return typeof api?.getMissionGateState === 'function';
-          })
-          .catch(() => false);
-
-        if (apiReadyBeforeRouteAttempt) {
+        const apiReadyAtStart = await isShipExteriorApiReady();
+        if (apiReadyAtStart) {
           return true;
         }
 
-        if (recover) {
+        const isLoginVisible = await sharedPage
+          .getByRole('textbox', { name: 'Player Name' })
+          .isVisible({ timeout: 500 })
+          .catch(() => false);
+        const isOnLoginRoute = /(?:\bleft:login\b|\/login(?:[?#(]|$))/.test(sharedPage.url());
+
+        if ((isOnLoginRoute || isLoginVisible) && recover) {
           await recover();
+          // Let routing/state settle after recovery and retry in the next poll tick.
+          return false;
         }
 
         const targetIronButton = sharedPage.getByRole('button', { name: 'TARGET IRON' });
@@ -277,27 +264,14 @@ export async function waitForShipExteriorTestApi(
           .catch(() => false);
         if (canOpenShipExterior) {
           await targetIronButton.click();
+        } else if (!sharedPage.url().includes('right:opening-cold-boot-scan')) {
+          await sharedPage.goto('/(left:game-main//right:opening-cold-boot-scan)').catch(() => null);
         }
 
-        const apiReadyAfterRouteAttempt = await sharedPage
-          .evaluate(() => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getMissionGateState?: () => unknown;
-                };
-              }
-            ).__shipExteriorTestUtils;
-            return typeof api?.getMissionGateState === 'function';
-          })
-          .catch(() => false);
+        const apiReadyAfterRouteAttempt = await isShipExteriorApiReady();
 
         if (apiReadyAfterRouteAttempt) {
           return true;
-        }
-
-        if (recover) {
-          await recover();
         }
 
         return false;

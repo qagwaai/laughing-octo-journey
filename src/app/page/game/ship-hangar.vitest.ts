@@ -175,6 +175,19 @@ describe('ShipHangarPage', () => {
     expect(component['shipListError']()).toBe('Player name is required to load ships.');
     expect(component['ships']()).toEqual([]);
     expect(socketService.emittedEvents.length).toBe(0);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Player name is required to load ships.',
+        routeContext: {
+          playerName: null,
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
   });
 
   it('should set validation error when character id is missing', () => {
@@ -191,6 +204,19 @@ describe('ShipHangarPage', () => {
     expect(component['shipListError']()).toBe('Character id is required to load ships.');
     expect(component['ships']()).toEqual([]);
     expect(socketService.emittedEvents.length).toBe(0);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Character id is required to load ships.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: null,
+          shipId: null,
+        },
+      }),
+    );
   });
 
   it('should set validation error when session key is missing', () => {
@@ -207,6 +233,251 @@ describe('ShipHangarPage', () => {
     expect(component['shipListError']()).toBe('Session key is required to load ships.');
     expect(component['ships']()).toEqual([]);
     expect(socketService.emittedEvents.length).toBe(0);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Session key is required to load ships.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
+  });
+
+  it('should increment readiness requestGeneration across repeated validation failures without emitting ship-list requests', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: '   ',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    expect(component['shipListError']()).toBe('Player name is required to load ships.');
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Player name is required to load ships.',
+      }),
+    );
+    expect(socketService.emittedEvents.length).toBe(0);
+
+    component.loadShipsForCharacter();
+
+    expect(component['shipListError']()).toBe('Player name is required to load ships.');
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'Player name is required to load ships.',
+      }),
+    );
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
+
+  it('should preserve last successful load metadata when a later validation failure occurs before request emit', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'initial ok',
+      ships: [createShip('initial-ship', 'Initial Ship')],
+    });
+
+    const firstSuccessSnapshot = getSw13AppTestReadinessSnapshot().hangar;
+    expect(firstSuccessSnapshot).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 1,
+        shipCount: 1,
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+        }),
+      }),
+    );
+
+    sessionService.setSessionKey('');
+    component.loadShipsForCharacter();
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('Session key is required to load ships.');
+    expect(component['ships']()).toEqual([]);
+    expect(controllableShipService.pendingResponses).toHaveLength(1);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'Session key is required to load ships.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'initial-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+          loadedAtEpochMs: firstSuccessSnapshot.lastSuccessfulLoad?.loadedAtEpochMs,
+        }),
+      }),
+    );
+  });
+
+  it('should publish deterministic readiness errors across multiple validation-failure reasons with incrementing generations', () => {
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        playerName: '   ',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Player name is required to load ships.',
+        routeContext: {
+          playerName: null,
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
+    expect(socketService.emittedEvents.length).toBe(0);
+
+    component['playerName'].set('Pioneer');
+    component['joinCharacter'].set({ id: '', characterName: 'Nova' } as any);
+    component.loadShipsForCharacter();
+
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'Character id is required to load ships.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: null,
+          shipId: null,
+        },
+      }),
+    );
+    expect(socketService.emittedEvents.length).toBe(0);
+
+    component['joinCharacter'].set({ id: 'c-1', characterName: 'Nova' } as any);
+    sessionService.setSessionKey('');
+    component.loadShipsForCharacter();
+
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 3,
+        shipCount: 0,
+        error: 'Session key is required to load ships.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
+    expect(socketService.emittedEvents.length).toBe(0);
+  });
+
+  it('should recover from validation failure into deterministic loading and loaded readiness states', () => {
+    const controllableShipService = createControllableShipService();
+    const recoverySessionService = createMockSessionService(null);
+    const { component } = setup({
+      socketService,
+      sessionService: recoverySessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    expect(component['shipListError']()).toBe('Session key is required to load ships.');
+    expect(controllableShipService.pendingResponses).toHaveLength(0);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 0,
+        error: 'Session key is required to load ships.',
+      }),
+    );
+
+    recoverySessionService.setSessionKey('restored-session-key');
+    component.loadShipsForCharacter();
+
+    expect(component['hangarLoadState']()).toBe('loading');
+    expect(controllableShipService.pendingResponses).toHaveLength(1);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loading',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: null,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: null,
+        },
+      }),
+    );
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'ok',
+      ships: [createShip('recovered-ship', 'Recovered Ship')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loaded');
+    expect(component['shipListError']()).toBeNull();
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'recovered-ship', name: 'Recovered Ship' })]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 2,
+        shipCount: 1,
+        error: null,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'recovered-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 2,
+          shipCount: 1,
+        }),
+      }),
+    );
   });
 
   it('should populate ships on successful response', () => {
@@ -422,6 +693,299 @@ describe('ShipHangarPage', () => {
         lastSuccessfulLoad: expect.objectContaining({
           requestGeneration: 2,
           shipCount: 1,
+        }),
+      }),
+    );
+  });
+
+  it('should ignore stale failure responses once the latest generation has loaded successfully', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    component.loadShipsForCharacter();
+
+    expect(controllableShipService.pendingResponses).toHaveLength(2);
+
+    controllableShipService.pendingResponses[1]({
+      success: true,
+      message: 'latest ok',
+      ships: [createShip('latest-ship', 'Latest Ship')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loaded');
+    expect(component['shipListError']()).toBeNull();
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'latest-ship', name: 'Latest Ship' })]);
+
+    controllableShipService.pendingResponses[0]({
+      success: false,
+      message: 'stale failure',
+      ships: [],
+    });
+
+    expect(component['hangarLoadState']()).toBe('loaded');
+    expect(component['shipListError']()).toBeNull();
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'latest-ship', name: 'Latest Ship' })]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 2,
+        shipCount: 1,
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'latest-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 2,
+          shipCount: 1,
+        }),
+      }),
+    );
+  });
+
+  it('should preserve last successful load metadata when the latest generation fails', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    expect(controllableShipService.pendingResponses).toHaveLength(1);
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'initial ok',
+      ships: [createShip('initial-ship', 'Initial Ship')],
+    });
+
+    const firstSuccessSnapshot = getSw13AppTestReadinessSnapshot().hangar;
+    expect(firstSuccessSnapshot).toEqual(
+      expect.objectContaining({
+        state: 'loaded',
+        requestGeneration: 1,
+        shipCount: 1,
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+        }),
+      }),
+    );
+
+    component.loadShipsForCharacter();
+    expect(controllableShipService.pendingResponses).toHaveLength(2);
+
+    controllableShipService.pendingResponses[1]({
+      success: false,
+      message: 'latest failed',
+      ships: [],
+    });
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('latest failed');
+    expect(component['ships']()).toEqual([]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'latest failed',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'initial-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+          loadedAtEpochMs: firstSuccessSnapshot.lastSuccessfulLoad?.loadedAtEpochMs,
+        }),
+      }),
+    );
+  });
+
+  it('should ignore stale success responses when the latest generation has already failed', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    component.loadShipsForCharacter();
+    expect(controllableShipService.pendingResponses).toHaveLength(2);
+
+    controllableShipService.pendingResponses[1]({
+      success: false,
+      message: 'latest failed',
+      ships: [],
+    });
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('latest failed');
+    expect(component['ships']()).toEqual([]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'latest failed',
+      }),
+    );
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'stale success',
+      ships: [createShip('stale-ship', 'Stale Ship')],
+    });
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('latest failed');
+    expect(component['ships']()).toEqual([]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 0,
+        error: 'latest failed',
+      }),
+    );
+  });
+
+  it('should fail ship load when no returned ship has usable spatial data', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'ok-but-unusable',
+      ships: [
+        {
+          id: 'origin-ship',
+          name: 'Origin Ship',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 0, y: 0, z: 0 },
+            epochMs: 1,
+          },
+        },
+      ],
+    });
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('No ship with usable spatial data is available.');
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'origin-ship' })]);
+    expect(component['lastSuccessfulShipLoad']()).toBeNull();
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 1,
+        shipCount: 1,
+        error: 'No ship with usable spatial data is available.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: null,
+        },
+        lastSuccessfulLoad: null,
+      }),
+    );
+  });
+
+  it('should preserve last successful load metadata when a later response has only unusable spatial ships', () => {
+    const controllableShipService = createControllableShipService();
+    const { component } = setup({
+      socketService,
+      sessionService,
+      shipService: controllableShipService,
+      navigationState: {
+        playerName: 'Pioneer',
+        joinCharacter: { id: 'c-1', characterName: 'Nova' },
+      },
+      connected: true,
+    });
+
+    controllableShipService.pendingResponses[0]({
+      success: true,
+      message: 'initial ok',
+      ships: [createShip('initial-ship', 'Initial Ship')],
+    });
+
+    const firstSuccessSnapshot = getSw13AppTestReadinessSnapshot().hangar;
+    expect(firstSuccessSnapshot.lastSuccessfulLoad).toEqual(
+      expect.objectContaining({
+        requestGeneration: 1,
+        shipCount: 1,
+      }),
+    );
+
+    component.loadShipsForCharacter();
+    expect(controllableShipService.pendingResponses).toHaveLength(2);
+
+    controllableShipService.pendingResponses[1]({
+      success: true,
+      message: 'unusable latest',
+      ships: [
+        {
+          id: 'origin-ship',
+          name: 'Origin Ship',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 0, y: 0, z: 0 },
+            epochMs: 2,
+          },
+        },
+      ],
+    });
+
+    expect(component['hangarLoadState']()).toBe('error');
+    expect(component['shipListError']()).toBe('No ship with usable spatial data is available.');
+    expect(component['ships']()).toEqual([expect.objectContaining({ id: 'origin-ship' })]);
+    expect(getSw13AppTestReadinessSnapshot().hangar).toEqual(
+      expect.objectContaining({
+        state: 'error',
+        requestGeneration: 2,
+        shipCount: 1,
+        error: 'No ship with usable spatial data is available.',
+        routeContext: {
+          playerName: 'Pioneer',
+          characterId: 'c-1',
+          shipId: 'initial-ship',
+        },
+        lastSuccessfulLoad: expect.objectContaining({
+          requestGeneration: 1,
+          shipCount: 1,
+          loadedAtEpochMs: firstSuccessSnapshot.lastSuccessfulLoad?.loadedAtEpochMs,
         }),
       }),
     );
@@ -702,6 +1266,184 @@ describe('ShipHangarPage', () => {
 
     expect(setActiveSpy).toHaveBeenCalledOnce();
     expect(setActiveSpy).toHaveBeenCalledWith(nextShip);
+  });
+
+  describe('buyScavengerPodFromClosestMarket', () => {
+    function setupBuyContext(options: {
+      playerName?: string;
+      characterId?: string;
+      sessionKey?: string | null;
+      activeShip?: ReturnType<typeof createShip> | null;
+    } = {}) {
+      const playerName = options.playerName ?? 'Pioneer';
+      const characterId = options.characterId ?? 'c-1';
+      const localSessionService = createMockSessionService(options.sessionKey ?? 'test-session-key');
+
+      if (options.activeShip !== undefined) {
+        if (options.activeShip !== null) {
+          localSessionService.setActiveShip(options.activeShip as any);
+        }
+      } else {
+        localSessionService.setActiveShip(createShip('s-active') as any);
+      }
+
+      const { component, marketService } = setup({
+        socketService,
+        sessionService: localSessionService,
+        navigationState: {
+          playerName,
+          joinCharacter: { id: characterId, characterName: 'Nova' },
+        },
+        connected: false,
+      });
+
+      return { component, marketService };
+    }
+
+    it('should set devToolError when player/character/session context is missing', () => {
+      const { component } = setupBuyContext({ playerName: '' });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBe(
+        'Player, character, and session context are required for the dev buy test.',
+      );
+      expect(component['isBuyingTestShip']()).toBe(false);
+    });
+
+    it('should set devToolError when active ship has no spatial data', () => {
+      const shipWithoutSpatial = { id: 's-nospatial', name: 'Ghost' } as any;
+      const { component } = setupBuyContext({ activeShip: shipWithoutSpatial });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBe(
+        'Active ship spatial data is required to locate the closest market.',
+      );
+      expect(component['isBuyingTestShip']()).toBe(false);
+    });
+
+    it('should set devToolError when market list request fails', () => {
+      const { component, marketService } = setupBuyContext();
+
+      marketService.listMarketsByLocation.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({ success: false, message: 'Market service unavailable' });
+      });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBe('Market service unavailable');
+      expect(component['isBuyingTestShip']()).toBe(false);
+      expect(component['devToolStatus']()).toBeNull();
+    });
+
+    it('should set devToolError when market list succeeds but returns no markets', () => {
+      const { component, marketService } = setupBuyContext();
+
+      marketService.listMarketsByLocation.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({ success: true, markets: [] });
+      });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBe('No market was returned by the closest-market lookup.');
+      expect(component['isBuyingTestShip']()).toBe(false);
+      expect(component['devToolStatus']()).toBeNull();
+    });
+
+    it('should set devToolError when buy request fails', () => {
+      const { component, marketService } = setupBuyContext();
+
+      marketService.listMarketsByLocation.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({
+          success: true,
+          markets: [{ marketId: 'm-1', solarSystemId: 'sol', marketName: 'Station Alpha' }],
+        });
+      });
+      marketService.buyMarket.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({ success: false, message: 'Insufficient credits' });
+      });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBe('Insufficient credits');
+      expect(component['isBuyingTestShip']()).toBe(false);
+      expect(component['devToolStatus']()).toBeNull();
+    });
+
+    it('should set generic success status and trigger reload when buy succeeds without purchasedShip', () => {
+      const controllableShipService = createControllableShipService();
+      const localSessionService = createMockSessionService('test-session-key');
+      localSessionService.setActiveShip(createShip('s-active') as any);
+
+      const { component, marketService } = setup({
+        socketService,
+        sessionService: localSessionService,
+        shipService: controllableShipService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+        connected: false,
+      });
+
+      marketService.listMarketsByLocation.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({
+          success: true,
+          markets: [{ marketId: 'm-1', solarSystemId: 'sol', marketName: 'Station Alpha' }],
+        });
+      });
+      marketService.buyMarket.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({ success: true, transaction: {} });
+      });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBeNull();
+      expect(component['devToolStatus']()).toBe('Purchased Scavenger Pod. Refreshing hangar...');
+      expect(component['isBuyingTestShip']()).toBe(false);
+      // reload triggered: a new ship list request should have been queued
+      expect(controllableShipService.pendingResponses.length).toBe(1);
+    });
+
+    it('should set named success status with ship name when buy succeeds with purchasedShip', () => {
+      const controllableShipService = createControllableShipService();
+      const localSessionService = createMockSessionService('test-session-key');
+      localSessionService.setActiveShip(createShip('s-active') as any);
+
+      const { component, marketService } = setup({
+        socketService,
+        sessionService: localSessionService,
+        shipService: controllableShipService,
+        navigationState: {
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'c-1', characterName: 'Nova' },
+        },
+        connected: false,
+      });
+
+      marketService.listMarketsByLocation.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({
+          success: true,
+          markets: [{ marketId: 'm-1', solarSystemId: 'sol', marketName: 'Station Alpha' }],
+        });
+      });
+      marketService.buyMarket.mockImplementation((_req: any, cb: (r: any) => void) => {
+        cb({
+          success: true,
+          transaction: {
+            purchasedShip: { id: 's-new', shipName: 'Scavenger Pod' },
+          },
+        });
+      });
+
+      component.buyScavengerPodFromClosestMarket();
+
+      expect(component['devToolError']()).toBeNull();
+      expect(component['devToolStatus']()).toBe('Purchased Scavenger Pod (s-new). Refreshing hangar...');
+      expect(component['isBuyingTestShip']()).toBe(false);
+      expect(controllableShipService.pendingResponses.length).toBe(1);
+    });
   });
 
   describe('DOM smoke tests', () => {

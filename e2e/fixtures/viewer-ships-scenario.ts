@@ -4,6 +4,12 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 import { bootstrapSharedGameMainSession } from './shared-session-bootstrap';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 export const SOL_SUMMARY = {
   id: 'sol',
@@ -93,28 +99,22 @@ export function makeSolarSystemGetResponse(bodies: any[] = SOL_BODIES) {
 }
 
 function registerViewerSessionHandlers(mock: SocketIOMock, ships = [ACTIVE_SHIP, INACTIVE_SHIP]) {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [{ missionId: 'first-target', status: 'active' }],
-        },
-      ],
-    },
-  }));
+  registerViewerCharacterList(mock, {
+    characters: [
+      {
+        id: 'char-viewer-1',
+        characterName: 'Scout',
+        level: 1,
+        missions: [{ missionId: 'first-target', status: 'active' }],
+      },
+    ],
+  });
 
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: makeShipListResponse(ships),
-  }));
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: 'char-viewer-1',
+    ships,
+  });
 }
 
 export async function setupIsolatedViewerShipsSession(page: Page): Promise<SocketIOMock> {
@@ -131,10 +131,7 @@ export async function setupIsolatedViewerShipsSession(page: Page): Promise<Socke
   });
   await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
 
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
-  }));
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   return mock;
 }
@@ -165,10 +162,7 @@ export async function setupSharedViewerShipsSession(browser: Browser): Promise<S
   });
   await expect(gameShell.navButton('Viewer')).toBeVisible({ timeout: 10_000 });
 
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: { success: true, message: '', playerName: TEST_PLAYER, solarSystems: [SOL_SUMMARY] },
-  }));
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   return { context, page, mock, gameShell, viewerPage };
 }

@@ -4,6 +4,12 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 const SOL_SUMMARY = {
   id: 'sol',
@@ -152,57 +158,37 @@ export async function setupPlanetViewZoomViewer(page: Page): Promise<void> {
   const viewerPage = new ViewerPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-zoom-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [{ missionId: 'first-target', status: 'active' }],
-        },
-      ],
-    },
-  }));
+  registerViewerCharacterList(mock, {
+    characters: [
+      {
+        id: 'char-viewer-zoom-1',
+        characterName: 'Scout',
+        level: 1,
+        missions: [{ missionId: 'first-target', status: 'active' }],
+      },
+    ],
+  });
 
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: 'char-viewer-zoom-1',
-      ships: [
-        {
-          id: 'ship-viewer-zoom-1',
-          name: 'Scout Pod',
-          model: 'Scavenger Pod',
-          tier: 1,
-          status: 'ACTIVE',
-          spatial: {
-            solarSystemId: 'sol',
-            frame: 'barycentric',
-            positionKm: { x: 350000000, y: 0, z: 0 },
-            epochMs: 1715000000000,
-          },
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: 'char-viewer-zoom-1',
+    ships: [
+      {
+        id: 'ship-viewer-zoom-1',
+        name: 'Scout Pod',
+        model: 'Scavenger Pod',
+        tier: 1,
+        status: 'ACTIVE',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 350000000, y: 0, z: 0 },
+          epochMs: 1715000000000,
         },
-      ],
-    },
-  }));
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystems: [SOL_SUMMARY],
-    },
-  }));
+      },
+    ],
+  });
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',

@@ -75,8 +75,7 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
       )
       .toEqual({ scanned: true, scanProgress: 100 });
 
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: SHIP_EXTERIOR_RESUME_CHARACTER_ID,
@@ -119,8 +118,7 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:mission-board/, { timeout: 15_000 });
 
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: SHIP_EXTERIOR_RESUME_CHARACTER_ID,

@@ -3,6 +3,12 @@ import { SocketIOMock } from './socket-mock';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 export const SOL_SUMMARY = {
   id: 'sol',
@@ -197,50 +203,30 @@ export async function setupViewerInteractionTest(page: Page): Promise<{ mock: So
   const gameShell = new GameShellPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [
-            {
-              missionId: 'first-target',
-              status: 'active',
-            },
-          ],
-        },
-      ],
-    },
-  }));
+  registerViewerCharacterList(mock, {
+    characters: [
+      {
+        id: 'char-viewer-1',
+        characterName: 'Scout',
+        level: 1,
+        missions: [
+          {
+            missionId: 'first-target',
+            status: 'active',
+          },
+        ],
+      },
+    ],
+  });
 
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: 'char-viewer-1',
-      ships: [ACTIVE_SHIP],
-    },
-  }));
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: 'char-viewer-1',
+    ships: [ACTIVE_SHIP],
+  });
   await loginAndJoinViewerSession({ page, mock, gameShell });
 
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystems: [SOL_SUMMARY],
-    },
-  }));
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',

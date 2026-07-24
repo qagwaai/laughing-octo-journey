@@ -4,6 +4,11 @@ import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { SocketIOMock } from './socket-mock';
 import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 const CHARACTER = {
   id: 'char-vw-controls-1',
@@ -74,26 +79,13 @@ export async function setupViewer(page: Page): Promise<void> {
   const viewerPage = new ViewerPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [CHARACTER],
-    },
-  }));
+  registerViewerCharacterList(mock, { characters: [CHARACTER] });
 
-  mock.on('game-join-request', () => null);
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: {
-      success: true,
-      message: 'ok',
-      playerName: TEST_PLAYER,
-      solarSystems: [SOL_SUMMARY],
-    },
-  }));
+  registerViewerGameJoin(mock);
+  registerViewerSolarSystemList(mock, {
+    solarSystems: [SOL_SUMMARY],
+    message: 'ok',
+  });
 
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',

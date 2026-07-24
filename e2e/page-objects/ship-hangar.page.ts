@@ -27,12 +27,22 @@ interface Sw13AppTestReadinessSnapshot {
 
 interface ShipHangarLoadedReadinessOptions {
   minimumShipCount?: number;
-  routeContext?: Partial<ShipHangarReadinessSnapshot['routeContext']>;
+  routeContext: ShipHangarReadinessSnapshot['routeContext'];
   timeout?: number;
 }
 
+type ShipHangarOpenLoadedReadinessOptions = ShipHangarLoadedReadinessOptions;
+
 export class ShipHangarPage {
   constructor(private readonly page: Page) {}
+
+  async openAndWaitForLoadedReadiness(options: ShipHangarOpenLoadedReadinessOptions) {
+    const shipHangarButton = this.page.locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible').first();
+    await shipHangarButton.scrollIntoViewIfNeeded();
+    await shipHangarButton.click();
+    await expect(this.page).toHaveURL(/left:ship-hangar/);
+    await this.waitForLoadedReadiness(options);
+  }
 
   get shipItems() {
     return this.page.locator('.ship-item');
@@ -123,7 +133,7 @@ export class ShipHangarPage {
     });
   }
 
-  async waitForLoadedReadiness(options: ShipHangarLoadedReadinessOptions = {}) {
+  async waitForLoadedReadiness(options: ShipHangarLoadedReadinessOptions) {
     const minimumShipCount = options.minimumShipCount ?? 1;
     const expectedReadiness = {
       version: 'sw13.v1',

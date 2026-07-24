@@ -2,6 +2,12 @@ import { expect, type Page } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 export const SOL_SUMMARY = {
   id: 'sol',
@@ -176,39 +182,27 @@ export function solarSystemGetResponse(bodies: any[]) {
 }
 
 function registerViewerSceneSessionHandlers(mock: SocketIOMock, ownerShips: any[]) {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [
-            {
-              missionId: 'first-target',
-              status: 'active',
-            },
-          ],
-        },
-      ],
-    },
-  }));
+  registerViewerCharacterList(mock, {
+    characters: [
+      {
+        id: 'char-viewer-1',
+        characterName: 'Scout',
+        level: 1,
+        missions: [
+          {
+            missionId: 'first-target',
+            status: 'active',
+          },
+        ],
+      },
+    ],
+  });
 
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: 'char-viewer-1',
-      ships: ownerShips,
-    },
-  }));
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: 'char-viewer-1',
+    ships: ownerShips,
+  });
 }
 
 export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
@@ -224,15 +218,7 @@ export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTI
   await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 10_000 });
 
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystems: [SOL_SUMMARY],
-    },
-  }));
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   return { mock };
 }

@@ -48,6 +48,7 @@ export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: b
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly OBJECTIVE_UNLOCKED_MESSAGE =
     'Objective unlocked: Neutralize the identified asteroid using a launchable payload.';
+  private static readonly TEST_TARGET_HOLD_MS = 2500;
 
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
@@ -148,6 +149,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     },
   ]);
   readonly targetedAsteroidId = signal<string | null>(null);
+  private readonly testTargetHoldCandidateId = signal<string | null>(null);
+  private testTargetHoldTimeoutId: number | null = null;
   private readonly missionGateState = signal<ShipExteriorMissionGateState>(
     createInitialMissionGateState({
       missionId: FIRST_TARGET_MISSION_ID,
@@ -191,6 +194,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     this.resizeObserver?.disconnect();
+    this.clearTestTargetHoldTimer();
     this.teardownAllContexts();
   }
 
@@ -616,6 +620,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         this.setFlightMouseSensitivityFromSliderValue(rawValue),
       legacy: {
         getAsteroidSamples: () => this.asteroidSamples(),
+        beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
+        unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
+        getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
         getMissionGateState: () => this.missionGateState(),
         resetMissionGateState: () => this.resetMissionGateStateForTest(),
         forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
@@ -671,6 +678,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.missionGateState.set(resetState);
     this.persistMissionGateState(resetState);
 
+    this.clearTestTargetHoldTimer();
     this.testInventoryRewards.set([]);
     this.targetedAsteroidId.set(null);
     this.asteroidSamples.update((samples) =>
@@ -683,6 +691,41 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     );
 
     return resetState;
+  }
+
+  private beginAsteroidTargetHold(sampleId: string): boolean {
+    const sampleExists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+    if (!sampleExists) {
+      return false;
+    }
+
+    this.clearTestTargetHoldTimer();
+    this.testTargetHoldCandidateId.set(sampleId);
+    this.testTargetHoldTimeoutId = window.setTimeout(() => {
+      if (this.testTargetHoldCandidateId() === sampleId) {
+        this.forceTargetAsteroid(sampleId);
+      }
+      this.clearTestTargetHoldTimer();
+    }, ShipExteriorBareSceneComponent.TEST_TARGET_HOLD_MS);
+
+    return true;
+  }
+
+  private unhoverAsteroid(sampleId: string): boolean {
+    if (this.testTargetHoldCandidateId() !== sampleId) {
+      return false;
+    }
+
+    this.clearTestTargetHoldTimer();
+    return true;
+  }
+
+  private clearTestTargetHoldTimer(): void {
+    if (this.testTargetHoldTimeoutId !== null) {
+      clearTimeout(this.testTargetHoldTimeoutId);
+      this.testTargetHoldTimeoutId = null;
+    }
+    this.testTargetHoldCandidateId.set(null);
   }
 
   private persistMissionGateState(state: ShipExteriorMissionGateState): void {
@@ -835,6 +878,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return this.missionGateState();
     }
 
+    const manufactureStep = this.missionGateState().steps.find((step) => step.key === 'manufacture_hull_patch_kit');
+    if (manufactureStep?.status !== 'active') {
+      return this.missionGateState();
+    }
+
     return this.updateMissionGateState((state) => {
       const manufactureCompleted = this.setStepStatus(state, 'manufacture_hull_patch_kit', 'completed');
       const repairActive = this.setStepStatus(manufactureCompleted, 'repair_scavenger_pod', 'active');
@@ -847,6 +895,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private simulateRepair(repairKind: string): ShipExteriorMissionGateState {
     if (repairKind !== 'ship') {
+      return this.missionGateState();
+    }
+
+    const repairStep = this.missionGateState().steps.find((step) => step.key === 'repair_scavenger_pod');
+    if (repairStep?.status !== 'active') {
       return this.missionGateState();
     }
 

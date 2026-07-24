@@ -69,6 +69,19 @@ If you add a new e2e test:
 - **Pre-commit**: Run the full suite (`e2e:full`) to catch cross-partition breakage
 - **CI**: Full suite is the merge gate
 
+## SW-13 Stabilization Governance
+
+For PRs touching SW-13 stabilization scope (stateful gameplay tests, readiness assertions, viewer harness/spec cleanup, or governance docs):
+
+1. Follow the reviewer checklist:
+   - [docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md](docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md)
+2. Complete the SW-13 section in the PR template:
+   - [.github/pull_request_template.md](.github/pull_request_template.md)
+3. Update governance adoption evidence:
+   - [docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md](docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md)
+4. Follow contributor governance guidance:
+   - [CONTRIBUTING.md](CONTRIBUTING.md)
+
 ## Features
 
 - Angular 21

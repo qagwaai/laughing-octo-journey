@@ -3,6 +3,12 @@ import { SocketIOMock } from './socket-mock';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 export const SOL_SYSTEM: Partial<any> = {
   id: 'sol',
@@ -74,46 +80,31 @@ export async function setupViewerListTest(page: Page, systems: any[] = []) {
   const gameShell = new GameShellPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [
-        {
-          id: 'char-viewer-1',
-          characterName: 'Scout',
-          level: 1,
-          missions: [
-            {
-              missionId: 'first-target',
-              status: 'active',
-            },
-          ],
-        },
-      ],
-    },
-  }));
+  registerViewerCharacterList(mock, {
+    characters: [
+      {
+        id: 'char-viewer-1',
+        characterName: 'Scout',
+        level: 1,
+        missions: [
+          {
+            missionId: 'first-target',
+            status: 'active',
+          },
+        ],
+      },
+    ],
+  });
 
   // Must join a game before viewer menu is enabled
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: 'char-viewer-1',
-      ships: [ACTIVE_SHIP],
-    },
-  }));
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: 'char-viewer-1',
+    ships: [ACTIVE_SHIP],
+  });
   await loginAndJoinViewerSession({ page, mock, gameShell });
 
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: solarSystemListResponse(systems),
-  }));
+  registerViewerSolarSystemList(mock, { solarSystems: systems });
 
   return { mock };
 }

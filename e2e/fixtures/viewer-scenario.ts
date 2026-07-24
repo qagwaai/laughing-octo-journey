@@ -3,6 +3,12 @@ import { SocketIOMock } from './socket-mock';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
+import {
+  registerViewerCharacterList,
+  registerViewerGameJoin,
+  registerViewerShipListByOwner,
+  registerViewerSolarSystemList,
+} from './viewer-fixture-helpers';
 
 const characterWithJoin = {
   id: 'char-vw-1',
@@ -10,15 +16,6 @@ const characterWithJoin = {
   level: 2,
   missions: [{ missionId: 'first-target', status: 'active' }],
 };
-
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
 
 const solSummary = {
   id: 'sol',
@@ -96,30 +93,17 @@ export async function setupViewerTest(page: Page): Promise<{ mock: SocketIOMock 
   const gameShell = new GameShellPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([characterWithJoin]),
-  }));
-  mock.on('game-join-request', () => null);
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: 'ok',
-      playerName: TEST_PLAYER,
-      characterId: characterWithJoin.id,
-      ships: [ACTIVE_SHIP],
-    },
-  }));
-  mock.on('solar-system-list-request', () => ({
-    event: 'solar-system-list-response',
-    data: {
-      success: true,
-      message: 'ok',
-      playerName: TEST_PLAYER,
-      solarSystems: [solSummary, alphaCenSummary],
-    },
-  }));
+  registerViewerCharacterList(mock, { characters: [characterWithJoin] });
+  registerViewerGameJoin(mock);
+  registerViewerShipListByOwner(mock, {
+    characterId: characterWithJoin.id,
+    ships: [ACTIVE_SHIP],
+    message: 'ok',
+  });
+  registerViewerSolarSystemList(mock, {
+    solarSystems: [solSummary, alphaCenSummary],
+    message: 'ok',
+  });
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',
     data: solGetResponse,

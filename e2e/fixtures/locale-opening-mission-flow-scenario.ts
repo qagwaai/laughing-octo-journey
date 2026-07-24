@@ -2,6 +2,11 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
 import type { Page } from '@playwright/test';
+import {
+  registerMissionCharacterList,
+  registerMissionList,
+  registerMissionShipListByOwner,
+} from './mission-session-helpers';
 import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
@@ -23,23 +28,29 @@ export async function setupLocaleOpeningMissionFlowTest(
   const gameShell = new GameShellPage(page);
   await mock.setup();
 
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse(options.characterId, options.characterName, [
-      { missionId: FIRST_TARGET_MISSION_ID, status: options.missionStatus },
-    ]),
-  }));
+  registerMissionCharacterList(mock, [
+    {
+      id: options.characterId,
+      characterName: options.characterName,
+      level: options.characterName === 'Nova' ? 4 : 5,
+      missions: [
+        { missionId: FIRST_TARGET_MISSION_ID, status: options.missionStatus },
+      ],
+    },
+  ]);
 
   if (options.includeMissionAndShipHandlers) {
-    mock.on('mission-list-request', () => ({
-      event: 'mission-list-response',
-      data: missionListResponse(options.characterId),
-    }));
+    registerMissionList(mock, {
+      characterId: options.characterId,
+      missions: missionListResponse(options.characterId).missions,
+      requestEvent: 'mission-list-request',
+      responseEvent: 'mission-list-response',
+    });
 
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: shipListResponse(options.characterId),
-    }));
+    registerMissionShipListByOwner(mock, {
+      characterId: options.characterId,
+      ships: shipListResponse(options.characterId).ships,
+    });
   }
 
   await loginWithItalianLocale(page, mock);

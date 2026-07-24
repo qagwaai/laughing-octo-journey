@@ -144,8 +144,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: SHIP_EXTERIOR_FLIGHT_PERSISTENCE_CHARACTER_ID,
@@ -197,8 +196,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     // First cycle: mission board -> market hub -> hangar -> exterior.
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: SHIP_EXTERIOR_FLIGHT_PERSISTENCE_CHARACTER_ID,
@@ -227,8 +225,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     // Second cycle: market hub -> mission board -> hangar -> exterior.
     await gameShell.openMarketHub();
     await gameShell.openMissionBoard();
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: SHIP_EXTERIOR_FLIGHT_PERSISTENCE_CHARACTER_ID,

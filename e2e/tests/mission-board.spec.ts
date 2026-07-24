@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { setupMissionBoardTest } from '../fixtures/mission-board-scenario';
+import {
+  registerMissionGameJoin,
+  registerMissionList,
+  registerMissionShipListByOwner,
+} from '../fixtures/mission-session-helpers';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { MissionBoardPage } from '../page-objects/mission-board.page';
@@ -44,49 +49,37 @@ test.describe('Mission Board — mission progress display', () => {
     const gameShell = new GameShellPage(page);
     const missionBoardPage = new MissionBoardPage(page);
 
-    mock.on('game-join-request', () => null);
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-3',
-        ships: [
-          {
-            id: 'ship-1',
-            name: 'Nomad',
-            model: 'Scavenger Pod',
-            tier: 1,
-            status: 'ACTIVE',
-            spatial: {
-              solarSystemId: 'sol',
-              frame: 'barycentric',
-              positionKm: { x: 350000000, y: 0, z: 10000000 },
-              epochMs: 1715000000000,
-            },
+    registerMissionGameJoin(mock);
+    registerMissionShipListByOwner(mock, {
+      characterId: 'char-3',
+      ships: [
+        {
+          id: 'ship-1',
+          name: 'Nomad',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'ACTIVE',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 350000000, y: 0, z: 10000000 },
+            epochMs: 1715000000000,
           },
-        ],
-      },
-    }));
-    mock.on('list-missions-request', () => ({
-      event: 'list-missions-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-3',
-        missions: [
-          {
-            missionId: FIRST_TARGET_MISSION_ID,
-            status: 'completed',
-            statusDetail: JSON.stringify(completedMissionGateState),
-            startedAt: '2026-04-01T10:00:00.000Z',
-            updatedAt: '2026-04-30T00:00:00.000Z',
-          },
-        ],
-      },
-    }));
+        },
+      ],
+    });
+    registerMissionList(mock, {
+      characterId: 'char-3',
+      missions: [
+        {
+          missionId: FIRST_TARGET_MISSION_ID,
+          status: 'completed',
+          statusDetail: JSON.stringify(completedMissionGateState),
+          startedAt: '2026-04-01T10:00:00.000Z',
+          updatedAt: '2026-04-30T00:00:00.000Z',
+        },
+      ],
+    });
 
     await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
@@ -107,25 +100,19 @@ test.describe('Mission Board — mission progress display', () => {
     const gameShell = new GameShellPage(page);
     const missionBoardPage = new MissionBoardPage(page);
 
-    mock.on('game-join-request', () => null);
-    mock.on('list-missions-request', () => ({
-      event: 'list-missions-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-4',
-        missions: [
-          {
-            missionId: FIRST_TARGET_MISSION_ID,
-            status: 'completed',
-            statusDetail: JSON.stringify(completedMissionGateState),
-            startedAt: '2026-04-01T10:00:00.000Z',
-            updatedAt: '2026-04-30T00:00:00.000Z',
-          },
-        ],
-      },
-    }));
+    registerMissionGameJoin(mock);
+    registerMissionList(mock, {
+      characterId: 'char-4',
+      missions: [
+        {
+          missionId: FIRST_TARGET_MISSION_ID,
+          status: 'completed',
+          statusDetail: JSON.stringify(completedMissionGateState),
+          startedAt: '2026-04-01T10:00:00.000Z',
+          updatedAt: '2026-04-30T00:00:00.000Z',
+        },
+      ],
+    });
 
     await gameShell.joinGame();
     await expect(page).toHaveURL(/right:mission-board/);
@@ -141,30 +128,24 @@ test.describe('Mission Board — mission progress display', () => {
     const gameShell = new GameShellPage(page);
     const missionBoardPage = new MissionBoardPage(page);
 
-    mock.on('game-join-request', () => null);
-    mock.on('list-missions-request', () => ({
-      event: 'list-missions-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-4',
-        missions: [
-          {
-            missionId: 'sw01-completed-control',
-            status: 'completed',
-            startedAt: '2026-04-01T10:00:00.000Z',
-            updatedAt: '2026-04-30T00:00:00.000Z',
-          },
-          {
-            missionId: 'sw01-unknown',
-            status: 'abandoned',
-            startedAt: '2026-04-02T10:00:00.000Z',
-            updatedAt: '2026-04-29T00:00:00.000Z',
-          },
-        ],
-      },
-    }));
+    registerMissionGameJoin(mock);
+    registerMissionList(mock, {
+      characterId: 'char-4',
+      missions: [
+        {
+          missionId: 'sw01-completed-control',
+          status: 'completed',
+          startedAt: '2026-04-01T10:00:00.000Z',
+          updatedAt: '2026-04-30T00:00:00.000Z',
+        },
+        {
+          missionId: 'sw01-unknown',
+          status: 'abandoned',
+          startedAt: '2026-04-02T10:00:00.000Z',
+          updatedAt: '2026-04-29T00:00:00.000Z',
+        },
+      ],
+    });
 
     await gameShell.joinGame();
     await expect(page).toHaveURL(/right:mission-board/);
@@ -182,54 +163,42 @@ test.describe('Mission Board — mission progress display', () => {
     const missionBoardPage = new MissionBoardPage(page);
     const shipHangarPage = new ShipHangarPage(page);
 
-    mock.on('game-join-request', () => null);
-    mock.on('list-missions-request', () => ({
-      event: 'list-missions-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-4',
-        missions: [
-          {
-            missionId: 'sw01-completed-smoke',
-            status: 'completed',
-            startedAt: '2026-04-01T10:00:00.000Z',
-            updatedAt: '2026-04-30T00:00:00.000Z',
+    registerMissionGameJoin(mock);
+    registerMissionList(mock, {
+      characterId: 'char-4',
+      missions: [
+        {
+          missionId: 'sw01-completed-smoke',
+          status: 'completed',
+          startedAt: '2026-04-01T10:00:00.000Z',
+          updatedAt: '2026-04-30T00:00:00.000Z',
+        },
+        {
+          missionId: 'sw01-active-smoke',
+          status: 'active',
+          startedAt: '2026-04-18T10:00:00.000Z',
+          updatedAt: '2026-04-19T10:00:00.000Z',
+        },
+      ],
+    });
+    registerMissionShipListByOwner(mock, {
+      characterId: 'char-4',
+      ships: [
+        {
+          id: 'ship-2',
+          name: 'Pathfinder',
+          model: 'Scavenger Pod',
+          tier: 1,
+          status: 'ACTIVE',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 350000000, y: 0, z: 10000000 },
+            epochMs: 1715000000000,
           },
-          {
-            missionId: 'sw01-active-smoke',
-            status: 'active',
-            startedAt: '2026-04-18T10:00:00.000Z',
-            updatedAt: '2026-04-19T10:00:00.000Z',
-          },
-        ],
-      },
-    }));
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: 'char-4',
-        ships: [
-          {
-            id: 'ship-2',
-            name: 'Pathfinder',
-            model: 'Scavenger Pod',
-            tier: 1,
-            status: 'ACTIVE',
-            spatial: {
-              solarSystemId: 'sol',
-              frame: 'barycentric',
-              positionKm: { x: 350000000, y: 0, z: 10000000 },
-              epochMs: 1715000000000,
-            },
-          },
-        ],
-      },
-    }));
+        },
+      ],
+    });
 
     await gameShell.joinGame();
     await expect(page).toHaveURL(/right:mission-board/);
@@ -239,8 +208,7 @@ test.describe('Mission Board — mission progress display', () => {
     await expect(missionBoardPage.filterButton('completed')).toHaveAttribute('aria-pressed', 'true');
     await missionBoardPage.expectLaneItemCount('completed', 1);
 
-    await gameShell.openShipHangar();
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: 'char-4',

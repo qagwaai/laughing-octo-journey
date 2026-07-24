@@ -60,9 +60,8 @@ test.describe('Character ship badge', () => {
       data: shipListByOwnerResponse([PRIMARY_SHIP]),
     }));
 
-    await sharedGameShell.openShipHangar();
     const shipHangarPage = new ShipHangarPage(sharedPage);
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       routeContext: {
         playerName: TEST_PLAYER,
         characterId: CHARACTER_WITH_MISSION.id,
@@ -88,9 +87,8 @@ test.describe('Character ship badge', () => {
       data: shipListByOwnerResponse([PRIMARY_SHIP, SECONDARY_SHIP]),
     }));
 
-    await sharedGameShell.openShipHangar();
     const shipHangarPage = new ShipHangarPage(sharedPage);
-    await shipHangarPage.waitForLoadedReadiness({
+    await shipHangarPage.openAndWaitForLoadedReadiness({
       minimumShipCount: 2,
       routeContext: {
         playerName: TEST_PLAYER,

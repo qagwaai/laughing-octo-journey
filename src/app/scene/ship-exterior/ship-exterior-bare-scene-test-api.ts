@@ -21,6 +21,9 @@ export interface ShipExteriorLegacyAsteroidSample {
 
 export interface ShipExteriorLegacyTestApi {
   getAsteroidSamples: () => ShipExteriorLegacyAsteroidSample[];
+  beginAsteroidTargetHold: (sampleId: string) => boolean;
+  unhoverAsteroid: (sampleId: string) => boolean;
+  getTargetHoldCandidateId: () => string | null;
   getMissionGateState: () => ShipExteriorMissionGateState;
   resetMissionGateState: () => ShipExteriorMissionGateState;
   forceCompleteIronScan: (sampleId?: string) => ShipExteriorMissionGateState | null;

@@ -1,6 +1,7 @@
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
+import { registerMarketSharedSession } from './market-hub-session-helpers';
 
 export const MARKET_HUB_CHARACTER = {
   id: 'char-market-1',
@@ -59,28 +60,11 @@ export type MarketByLocationRequest = {
 };
 
 export function registerSharedSessionHandlers(mock: SocketIOMock): void {
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [MARKET_HUB_CHARACTER],
-    },
-  }));
-
-  mock.on('game-join', () => null);
-
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: MARKET_HUB_CHARACTER.id,
-      ships: [MARKET_HUB_SHIP_WITH_POSITION],
-    },
-  }));
+  registerMarketSharedSession(mock, {
+    character: MARKET_HUB_CHARACTER,
+    ships: [MARKET_HUB_SHIP_WITH_POSITION],
+    joinEvent: 'game-join',
+  });
 }
 
 export function registerDefaultMarketHandler(
