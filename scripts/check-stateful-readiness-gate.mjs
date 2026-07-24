@@ -30,7 +30,12 @@ const HANGAR_USAGE_PATTERNS = [
   /openSpecsForShip\s*\(/,
 ];
 
-const READINESS_PATTERNS = [/waitForLoadedReadiness\s*\(/, /getReadinessSnapshot\s*\(/, /__sw13AppTestReadiness/];
+const READINESS_PATTERNS = [
+  /openAndWaitForLoadedReadiness\s*\(/,
+  /waitForLoadedReadiness\s*\(/,
+  /getReadinessSnapshot\s*\(/,
+  /__sw13AppTestReadiness/,
+];
 
 const specFiles = fs
   .readdirSync(testsDir, { withFileTypes: true })
