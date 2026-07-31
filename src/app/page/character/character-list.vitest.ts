@@ -42,9 +42,10 @@ const TEST_REQUEST_IDENTITY = {
 // Test helpers
 // ---------------------------------------------------------------------------
 
-function makeMockRouter(playerName = 'Pioneer') {
+function makeMockRouter(state: Record<string, unknown> | string | null = { playerName: 'Pioneer' }) {
+  const resolvedState = typeof state === 'string' ? { playerName: state } : state;
   return {
-    getCurrentNavigation: () => ({ extras: { state: { playerName } } }),
+    getCurrentNavigation: () => (resolvedState === null ? null : { extras: { state: resolvedState } }),
     navigate: vi.fn().mockReturnValue(Promise.resolve(true)),
   };
 }
@@ -53,9 +54,16 @@ function setup(options: {
   socketService: MockSocketService;
   sessionService: MockSessionService;
   playerName?: string;
+  navigationState?: Record<string, unknown> | null;
   shipService?: { listShipsByOwner: ReturnType<typeof vi.fn> };
 }): { component: CharacterListPage; fixture: ComponentFixture<CharacterListPage> } {
-  const router = makeMockRouter(options.playerName ?? 'Pioneer');
+  const routerState =
+    options.navigationState === undefined
+      ? options.playerName
+        ? { playerName: options.playerName }
+        : { playerName: 'Pioneer' }
+      : options.navigationState;
+  const router = makeMockRouter(routerState);
   const shipService =
     options.shipService ??
     ({
@@ -117,6 +125,24 @@ describe('CharacterListPage', () => {
     expect(component['characters']()).toEqual([]);
     expect(component['errorMessage']()).toBeNull();
     expect(component['isLoading']()).toBe(false);
+  });
+
+  it('should hydrate playerName from the persisted session when router state is missing', () => {
+    sessionService.setPlayerName('Persisted Pioneer');
+    socketService.connected = true;
+
+    const { component } = setup({ socketService, sessionService, navigationState: null });
+
+    expect(component['playerName']()).toBe('Persisted Pioneer');
+    expect(socketService.emittedEvents[0]).toEqual(
+      expect.objectContaining({
+        event: CHARACTER_LIST_REQUEST_EVENT,
+        data: expect.objectContaining({
+          playerName: 'Persisted Pioneer',
+          sessionKey: 'test-session-key',
+        }),
+      }),
+    );
   });
 
   // -------------------------------------------------------------------------
