@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -23,6 +23,10 @@ function setup() {
 }
 
 describe('IntroPage Logic', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should create component instance', () => {
     const { component } = setup();
     expect(component).toBeTruthy();
@@ -255,6 +259,18 @@ describe('IntroPage Logic', () => {
       const { component, mockRouter } = setup();
       component.navigateToLogin();
       expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+    });
+
+    it('should navigate to knot in the right outlet after 5 seconds', () => {
+      vi.useFakeTimers();
+      const { mockRouter } = setup();
+
+      vi.advanceTimersByTime(5000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(
+        [{ outlets: { primary: ['knot'], left: ['intro'], right: null } }],
+        { preserveFragment: true },
+      );
     });
   });
 

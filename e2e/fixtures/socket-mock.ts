@@ -89,6 +89,7 @@ export class SocketIOMock {
   private pendingGetResolve: ((packet: string) => void) | null = null;
   private readonly handlers = new Map<string, SocketEventHandler>();
   private readonly debugEnabled = process.env['PW_SOCKET_MOCK_DEBUG'] === '1';
+  private readonly connectWaiters: Array<() => void> = [];
 
   constructor(
     private readonly page: Page,
@@ -109,6 +110,13 @@ export class SocketIOMock {
   readonly connected: Promise<void> = new Promise<void>((resolve) => {
     this.connectResolve = resolve;
   });
+
+  /** Resolves on the next namespace reconnect after the current one. */
+  waitForNextConnect(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.connectWaiters.push(resolve);
+    });
+  }
 
   /** Register a handler that auto-responds when the client emits the given event. */
   on(event: string, handler: SocketEventHandler): this {
@@ -272,6 +280,10 @@ export class SocketIOMock {
         if (packet.startsWith('40')) {
           this.connectResolve?.();
           this.connectResolve = null;
+          while (this.connectWaiters.length > 0) {
+            const resolve = this.connectWaiters.shift();
+            resolve?.();
+          }
         }
         return;
       }

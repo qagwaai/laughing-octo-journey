@@ -53,6 +53,16 @@ export async function setupLocaleOpeningMissionFlowTest(
     });
   }
 
+  mock.on('mission-upsert-request', () => ({
+    event: 'mission-upsert-response',
+    data: {
+      success: true,
+      message: '',
+      playerName: TEST_PLAYER,
+      characterId: options.characterId,
+    },
+  }));
+
   await loginWithItalianLocale(page, mock);
   return { mock, gameShell };
 }

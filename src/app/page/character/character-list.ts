@@ -54,6 +54,10 @@ export default class CharacterListPage implements OnDestroy {
   }
 
   constructor() {
+    if (this.navigationState.playerName?.trim()) {
+      this.sessionService.setPlayerName(this.navigationState.playerName.trim());
+    }
+
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
@@ -246,6 +250,7 @@ export default class CharacterListPage implements OnDestroy {
       return;
     }
 
+    this.sessionService.setMissionEntryContext(playerName, character);
     const request: GameJoinRequest = {
       playerName,
       characterId: character.id,

@@ -260,7 +260,7 @@ const rightOutletRoutes: Routes = [
 const routes: Routes = [
   ...primaryRoutes,
   ...leftOutletRoutes,
-  { path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
+  { path: '', redirectTo: '/intro(left:intro)', pathMatch: 'full' },
   ...rightOutletRoutes,
 ];
 

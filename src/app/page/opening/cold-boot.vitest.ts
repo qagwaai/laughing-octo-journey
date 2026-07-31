@@ -261,6 +261,32 @@ describe('ColdBootOpeningPage', () => {
     expect(component['scanActionPending']()).toBe(false);
   });
 
+  it('should recover player and character context from session state when route state is missing', async () => {
+    const { component, mockSession, mockMissionNavigation, mockRouter } = setup();
+    mockSession.setPlayerName('Pioneer');
+    mockSession.setActiveCharacter({ id: 'char-1', characterName: 'Nova' } as never);
+
+    await component['startScanning']();
+
+    expect(mockMissionNavigation.prepareNavigation).toHaveBeenCalledWith({
+      missionId: FIRST_TARGET_MISSION_ID,
+      playerName: 'Pioneer',
+      joinCharacter: { id: 'char-1', characterName: 'Nova' },
+      sessionKey: 'session-key',
+      missionStatus: 'active',
+    });
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [{ outlets: { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] } }],
+      expect.objectContaining({
+        preserveFragment: true,
+        state: expect.objectContaining({
+          playerName: 'Pioneer',
+          joinCharacter: { id: 'char-1', characterName: 'Nova' },
+        }),
+      }),
+    );
+  });
+
   it('should surface an error when mission start context is missing', async () => {
     const { component, mockMission, mockSession } = setup({
       playerName: 'Pioneer',

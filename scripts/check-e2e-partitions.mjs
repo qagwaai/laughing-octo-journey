@@ -17,6 +17,7 @@ const PARTITIONS = [
       /^registration\.spec\.ts$/,
       /^registration-auto-login-failure\.spec\.ts$/,
       /^locale-auth-flow\.spec\.ts$/,
+      /^cold-boot-auth-redirect\.spec\.ts$/,
     ],
   },
   {
@@ -29,6 +30,7 @@ const PARTITIONS = [
       /^character-.*\.spec\.ts$/,
       /^first-target-.*\.spec\.ts$/,
       /^guarded-left-menu-pin-cycle\.spec\.ts$/,
+      /^cold-boot-refresh-context\.spec\.ts$/,
       /^locale-opening-mission-flow\.spec\.ts$/,
       /^login-after-first-target-completed\.spec\.ts$/,
       /^market-hub-.*\.spec\.ts$/,

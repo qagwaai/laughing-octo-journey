@@ -55,6 +55,10 @@ export default class GameJoinPage {
   protected shipListError = signal<string | null>(null);
 
   constructor() {
+    if (this.navigationState.playerName?.trim()) {
+      this.sessionService.setPlayerName(this.navigationState.playerName.trim());
+    }
+
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
@@ -82,6 +86,7 @@ export default class GameJoinPage {
       return;
     }
 
+    this.sessionService.setMissionEntryContext(playerName, character);
     this.sessionService.setActiveCharacter(character);
     this.isLoadingShips.set(true);
     this.shipListError.set(null);

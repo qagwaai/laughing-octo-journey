@@ -344,6 +344,11 @@ export async function resetFirstTargetCuePersistence(sharedPage: Page): Promise<
       window.localStorage.removeItem(`ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`);
       window.localStorage.removeItem(`${fabricationDismissPrefix}::${playerName}::${characterId}`);
       window.localStorage.removeItem(`${repairDismissPrefix}::${playerName}::${characterId}`);
+      // Clear session service persistence so a page.reload() starts with a clean session state.
+      window.localStorage.removeItem('stellar.sessionKey');
+      window.localStorage.removeItem('stellar.playerName');
+      window.localStorage.removeItem('stellar.activeCharacter');
+      window.localStorage.removeItem('stellar.missionEntryContext');
     },
     {
       missionId: FIRST_TARGET_MISSION_ID,
