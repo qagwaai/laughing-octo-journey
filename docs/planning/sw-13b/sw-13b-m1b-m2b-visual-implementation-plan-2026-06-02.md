@@ -19,7 +19,7 @@ Policy lock: Code-generated asteroids only; no marketplace or commissioned asset
    - src/app/scene/viewer/viewer-system-scene.ts
    - src/app/scene/viewer/viewer-system-scene.html
 4. Verification at acceptance checkpoint:
-   - `npm run test:spec -- "**/viewer-system-scene.spec.ts"` -> 23 passed.
+   - `npm run test:spec -- "**/viewer-system-scene.vitest.ts"` -> 23 passed.
    - `npm run build` -> passed.
    - Existing known warning unchanged: `cold-boot-scan.css` budget +483 bytes.
 5. Scope note:
@@ -179,7 +179,7 @@ Published evidence pack document:
 
 Status checkpoint (2026-06-04): Complete.
 
-1. Unit tests (Jasmine/Karma):
+1. Unit tests (Vitest):
    - Completed: Added targeted SW-13B assertions for post-scan hero deformation stability and viewer QA/force-hero branch behavior.
    - Completed: Updated affected asteroid expectations to align with current visual-state logic.
    - Current full-suite status: `npm run test:ci` passed with 1726 tests completed.

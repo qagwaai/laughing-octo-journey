@@ -19,7 +19,7 @@ Policy: Code-generation-only asteroid delivery
    - src/app/model/sw13b/sw-13b-m2b-ship-external-view-validation.ts
    - Export: SW13B_M2B_SHIP_EXTERNAL_VIEW_VALIDATION
 2. Added focused artifact tests:
-   - src/app/model/sw13b/sw-13b-m2b-ship-external-view-validation.spec.ts
+   - src/app/model/sw13b/sw-13b-m2b-ship-external-view-validation.vitest.ts
 3. Executed focused runtime validations (unit and e2e) for M2B confidence.
 
 ## Determinism Evidence (ship-external-view)
@@ -72,7 +72,7 @@ Result:
 1. Focused M2B artifact spec
 
 ```bash
-npm run test:spec -- "**/sw-13b-m2b-ship-external-view-validation.spec.ts"
+npm run test:spec -- "**/sw-13b-m2b-ship-external-view-validation.vitest.ts"
 ```
 
 Result:
@@ -81,7 +81,7 @@ Result:
 2. Mission generation/fallback regression
 
 ```bash
-npm run test:spec -- "**/first-target-ship-exterior-mission.spec.ts"
+npm run test:spec -- "**/first-target-ship-exterior-mission.vitest.ts"
 ```
 
 Result:
@@ -90,10 +90,15 @@ Result:
 3. Ship exterior scene/debug regression
 
 ```bash
-npm run test:spec -- "**/ship-exterior-view.spec.ts"
+# NOTE (2026-07-31): ship-exterior-view.spec.ts was the legacy monolith test (deleted in hard-replace).
+# Current equivalent coverage is spread across:
+#   ship-exterior-view-state.service.vitest.ts
+#   ship-exterior-view-facade.vitest.ts
+#   ship-exterior-view-context.vitest.ts
+npm run test:spec -- "**/ship-exterior-view-state.service.vitest.ts"
 ```
 
-Result:
+Result (historical, monolith test at time of execution):
 - 72 passed
 
 4. Focused runtime e2e subset
