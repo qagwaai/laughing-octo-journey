@@ -18,12 +18,12 @@ Policy: No legacy support paths
 ## Closure Snapshot
 
 - ☐ G1 Documentation reconciliation
-- ⚠ G2 Multi-ship retained scene architecture
+- ◧ G2 Multi-ship retained scene architecture
 - ◧ G3 Route-feed completeness reconciliation
 - ◧ G4 SW-13B evidence integrity verification
 - ☐ G5 M5 and M6 closeout records
 
-Overall readiness: 0/5 gates green
+Overall readiness: 0/5 gates green (G2 architecture unblocked; parity lanes remaining)
 
 ## 1. Purpose
 
@@ -115,7 +115,7 @@ Reviewer: Pete
 
 ### Gate G2: Multi-Ship Ship-External Scene Retention (Hard Blocker)
 
-Indicator: ⚠ Blocked
+Indicator: ◧ In Progress (architecture replacement delivered; parity lanes remaining)
 
 Pass criteria:
 
@@ -142,6 +142,21 @@ Current evidence (Slice 1, 2026-06-29):
 5. Reviewer manual validation reports architecture failures (rotation and scan-tier cross-context bleed).
 6. Targeted e2e coverage exists in `e2e/tests/ship-exterior-multi-ship-keepalive.spec.ts` but does not yet prove true concurrent per-ship scene-instance behavior:
 	- `preserves per-ship scene marker across active-ship switches`
+
+Architecture replacement evidence (2026-07-10 through 2026-07-11):
+
+1. Hard replace of old monolith completed: `ShipExteriorViewScene` monolith, its template, vitest file, and monolith-specific test-utils are removed from the source tree.
+2. New per-ship scene architecture delivered under `src/app/scene/ship-exterior/`:
+   - `ShipSceneContext`, `ShipSceneRegistry`, `ShipSceneRenderingState`, and related scene types.
+   - `ShipExteriorBareSceneComponent` wired as the route component for `ship-exterior-view`.
+3. Per-ship isolation for scene, camera, renderer, and canvas is the active runtime model.
+4. Activation-switch semantics enforced: initialized ship contexts are activated/paused, not restored/reseeded.
+5. Inactive contexts remain fully paused and resident until logout.
+6. Async writes gated to owning ship context only (ownership-drop telemetry in place).
+7. Milestones 3A (starfield visual parity), 3B (orbit controls), and 3C (flight lane) validated:
+   - Pete-confirmed manual visual PASS for active-only mutation, no cross-ship bleed, A→B→A continuity.
+   - Focused unit and e2e green at each milestone gate.
+8. Remaining G2 scope: Cold Boot sequence lane, Asteroid gameplay lane, Mission/route-feed lane (parity recovery slices).
 
 ### Gate G3: Route Feed Completeness for SW-13A Family Coverage
 
@@ -245,13 +260,22 @@ Execution update (2026-06-29):
 4. Milestone 4 Step 2 implementation landed in `src/app/scene/ship-exterior-view.ts` and acceptance-gate tests were enabled in `src/app/scene/ship-exterior-view.vitest.ts`.
 5. Reviewer-reported unit validation is green for the updated ship-exterior test suite.
 
-Milestone 4 scope (G2 semantic-correction slice):
+Architecture replacement execution (2026-07-10 through 2026-07-11):
 
-1. Implement keep-alive per-ship scene contexts as primary runtime behavior.
-2. Enforce active-only scene display when switching ships.
-3. Remove restore-first continuity assumptions from G2 acceptance path.
-4. Add focused validation evidence proving no reconstruction dependency on swap.
-5. Link Milestone 4 evidence to `docs/planning/sw-13-closure/sw-13-closure-matrix.md` and `docs/planning/sw-13-closure/sw-13-multi-ship-scene-retention-note.md`.
+1. Hard replace of `ShipExteriorViewScene` monolith executed (Option A). Monolith and all associated artifacts removed.
+2. Milestone 1 delivered: route cutover, new `ShipSceneContext` + `ShipSceneRegistry` + bare-scene component, per-ship isolation baseline, deterministic A→B→A unit assertion. Pete-confirmed.
+3. Milestone 2 delivered: camera/pause hardening, multi-switch (A→B→C→A) continuity, context lifecycle cleanup on logout. Pete-confirmed.
+4. Milestone 3A delivered: starfield visual parity — per-ship starfield generation, ship-local signature stable across switching. Pete-confirmed.
+5. Milestone 3B delivered: orbit controls lane — active-context camera orbit/pan/zoom, inactive contexts paused, no cross-context camera mutation. Pete-confirmed.
+6. Milestone 3C delivered: flight lane — active-context flight toggle and WASD movement, inactive pause during flight, A→B→A preserves flight state per ship. Pete-confirmed.
+7. Remaining G2 parity lanes: Cold Boot sequence, Asteroid gameplay, Mission/route-feed (see replacement-design-checkpoint.md section 12 for milestone progression order).
+
+Milestone 4 scope (G2 semantic-correction slice — superseded by architecture replacement):
+
+1. Milestone 4 was the planned semantic-correction slice before the hard-replace decision was confirmed.
+2. The Option A hard replace (Milestones 1–3C) supersedes Milestone 4 semantic-correction intent.
+3. Activation-switch semantics, no-restore continuity, and validated A→B→A isolation are now runtime reality via the replacement architecture.
+4. Milestone 4 evidence links below are preserved for audit traceability but are no longer governing G2 status.
 
 Milestone 4 validation disposition (current):
 

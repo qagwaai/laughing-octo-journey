@@ -1,7 +1,7 @@
 # SW-13 Multi-Ship Scene Retention Note
 
-Status: Draft
-Date: 2026-06-29
+Status: Updated (2026-07-31 — architecture replacement delivered)
+Date: 2026-06-29 (original) / 2026-07-31 (addendum)
 Owner: Nova
 Reviewer: Pete
 Policy: No legacy support
@@ -79,24 +79,40 @@ Per-ship runtime scene context must preserve at least:
 2. Eviction policy, if used, must not violate active switch continuity requirements.
 3. Cleanup behavior must be deterministic and documented.
 
-## 8. Current G2 Status
+## 8. Current G2 Status (Updated 2026-07-31)
 
-G2 is Blocked and not closure-ready:
+Architecture replacement delivered — G2 is In Progress (parity lanes remaining):
 
-1. Prior slices delivered snapshot/restore behavior, not true per-ship concurrent scene instances.
-2. Reviewer validation confirmed cross-context bleed remains under manual timing scenarios.
-3. Current runtime does not yet satisfy scene activation-switch semantics.
-4. Next slice must implement true per-ship scene instances with inactive-scene pause and strict async routing.
+1. The Option A hard replace was executed (2026-07-10 through 2026-07-11). The prior snapshot/restore monolith and all associated artifacts are deleted.
+2. True per-ship scene instances are now the runtime model, keyed by playerName + characterId + shipId, implemented via `ShipSceneContext` + `ShipSceneRegistry` + `ShipExteriorBareSceneComponent`.
+3. Activation-switch semantics are enforced: initialized contexts are activated or paused; no reseed or restore path exists for already-initialized scenes.
+4. Inactive scenes are fully paused and remain resident until logout.
+5. Async writes are ownership-gated to the owning ship context only.
+6. Pete-confirmed validation: M1 (isolation baseline), M2 (camera/pause hardening), M3A (starfield parity), M3B (orbit controls), M3C (flight lane) — all PASS.
+7. G2 is no longer architecturally blocked. Remaining work is parity lane completion: Cold Boot sequence, Asteroid gameplay, Mission/route-feed.
 
-## 9. Next Slice Directive
+Evidence references:
+- [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) — milestone delivery records (§9 M1, §11 M2, §12.5 M3A, §12.7 M3B, §12.15 M3C)
+- [sw-13-closure-status-2026-07-10.md](./sw-13-closure-status-2026-07-10.md) — executive snapshot and validation readout
+- [sw-13-closure-matrix.md](./sw-13-closure-matrix.md) §7 — replacement traceability table
 
-Implement true per-ship scene instances with activation-switch semantics:
+## 9. Next Slice Directive (Superseded — Replaced by Parity Lane Plan)
 
-1. Build scene manager keyed by playerName + characterId + shipId.
-2. Apply lazy scene initialization on first View Exterior for each ship.
-3. Keep initialized scenes resident until logout.
-4. Pause inactive scenes fully and route async payloads to owning scene only.
-5. Remove restore-first assumptions from switch continuity behavior.
+The directives below were for the original implementation of true per-ship scene instances. That implementation is now complete via the hard replace. The active next-slice directive is to execute the remaining parity recovery lanes:
+
+1. Cold Boot sequence lane — reintroduce cold boot orchestration behavior under per-ship context model.
+2. Asteroid gameplay lane — reintroduce asteroid scan/material/target parity under per-ship context.
+3. Mission/route-feed lane — reintroduce mission gate progression and route feed hydration under per-ship context (highest async/contract complexity; execute last).
+
+See `docs/planning/sw-13-closure/replacement-design-checkpoint.md` section 12 for the milestone rhythm and acceptance criteria pattern.
+
+Original directive (preserved for audit):
+
+1. ~~Build scene manager keyed by playerName + characterId + shipId.~~
+2. ~~Apply lazy scene initialization on first View Exterior for each ship.~~
+3. ~~Keep initialized scenes resident until logout.~~
+4. ~~Pause inactive scenes fully and route async payloads to owning scene only.~~
+5. ~~Remove restore-first assumptions from switch continuity behavior.~~
 
 Progress addendum (2026-06-29, Milestone 4 Step 2):
 

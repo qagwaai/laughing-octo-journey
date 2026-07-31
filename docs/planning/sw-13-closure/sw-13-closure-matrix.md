@@ -73,7 +73,7 @@ Policy: No legacy support
 | Area | Current Status | Evidence | Closure Notes |
 | --- | --- | --- | --- |
 | Visual/determinism closure for M1B and M2B | Complete | [sw-13b-m1b-m2b-visual-implementation-plan-2026-06-02.md](../sw-13b/sw-13b-m1b-m2b-visual-implementation-plan-2026-06-02.md), [sw-13b-m2b-ship-external-view-execution-brief-2026-06-02.md](../sw-13b/sw-13b-m2b-ship-external-view-execution-brief-2026-06-02.md), [sw-13b-m1b-m2b-evidence-pack-2026-06-04.md](../sw-13b/sw-13b-m1b-m2b-evidence-pack-2026-06-04.md) | Asteroid-focused M1B/M2B evidence chain is present. |
-| Multi-ship per-ship retained scene behavior | Partial | [ship-exterior-view.ts](../../src/app/scene/ship-exterior-view.ts), [ship-exterior-view.vitest.ts](../../src/app/scene/ship-exterior-view.vitest.ts), [sw-13-multi-ship-scene-retention-note.md](./sw-13-multi-ship-scene-retention-note.md), [sw-13-closure.md](./sw-13-closure.md) | Milestone 3 baseline delivered capture/restore retention, but reviewer validation marked semantic mismatch versus keep-alive active-scene switching. Milestone 4 required. |
+| Multi-ship per-ship retained scene behavior | Partial | [ship-exterior-bare-scene.component.ts](../../src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts), [ship-scene-context.ts](../../src/app/scene/ship-exterior/ship-scene-context.ts), [ship-scene-registry.ts](../../src/app/scene/ship-exterior/ship-scene-registry.ts), [sw-13-multi-ship-scene-retention-note.md](./sw-13-multi-ship-scene-retention-note.md), [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) | Hard architecture replacement (M1–3C) delivered: true per-ship scene instances, activation-switch semantics, no restore paths, lazy init, inactive-pause, Pete-confirmed M1/2/3A/3B/3C. Old monolith artifacts deleted. Remaining: Cold Boot, Asteroid, Mission/route-feed parity lanes. |
 | No-legacy policy continuity | Partial | [sw-13b-m1b-m2b-visual-implementation-plan-2026-06-02.md](../sw-13b/sw-13b-m1b-m2b-visual-implementation-plan-2026-06-02.md) | Policy is documented; enforce through final closure checklist and code review. |
 
 ## 5. Cross-Stream Hard Gates (From Closure Plan)
@@ -81,37 +81,43 @@ Policy: No legacy support
 ### Gate Rollup
 
 - ☐ G1 Documentation reconciliation
-- ⚠ G2 Multi-ship per-ship scene retention
+- ◧ G2 Multi-ship per-ship scene retention
 - ◧ G3 Route feed completeness and SW-13A reconciliation
 - ◧ G4 SW-13B evidence integrity and reproducibility
 - ☐ G5 M5 worksheet and M6 go/no-go publication
 
-Current closure readiness: 0/5 gates green
+Current closure readiness: 0/5 gates green (G2 architecture unblocked; parity lanes remaining)
 
 | Gate | Description | Status | Owner | Reviewer | Evidence Needed |
 | --- | --- | --- | --- | --- | --- |
 | G1 | Documentation reconciliation across SW-13, SW-13A, SW-13B | Open | Nova | Pete | Updated reports and consistent status language across streams. |
-| G2 | Multi-ship per-ship scene retention in ship-external view | Blocked | Nova | Pete | Implement true per-ship scene instances (keyed by playerName+characterId+shipId), lazy init for uninitialized scenes, inactive-scene pause, resident-until-logout lifecycle, strict async routing, and validate no cross-context bleed. |
+| G2 | Multi-ship per-ship scene retention in ship-external view | Partial | Nova | Pete | Architecture replacement (M1–3C) delivered and Pete-confirmed. Remaining: Cold Boot lane, Asteroid gameplay lane, Mission/route-feed lane parity recovery. |
 | G3 | Route feed completeness and SW-13A contract-backed family coverage | Partial | Forge + Nova | Pete | Confirmed contract authority plus reconciled SW-13A gap closure record. |
 | G4 | SW-13B evidence integrity and reproducibility | Partial | Nova | Pete | Re-run or verify reproducibility links and update closure package references. |
 | G5 | M5 worksheet completion and M6 go/no-go publication | Open | Nova | Pete | Completed worksheet artifacts and signed go/no-go record. |
 
 ## 6. Immediate Next Actions
 
-0. Execute the lifecycle-first readiness sequence in [sw-13-visual-testing-readiness-plan.md](./sw-13-visual-testing-readiness-plan.md) and do not start visual validation until its gate criteria pass.
-1. Update SW-13A with a reconciliation addendum that retires superseded gap items.
-2. Execute G2 in architecture-replacement mode (not incremental patch mode) using the documented communication contract.
-3. Complete SW-13 M5 worksheet evidence fields and checklist.
-4. Publish SW-13 M6 go/no-go record with explicit blocker disposition.
-5. Update this matrix from Draft to Accepted when G1-G5 are all pass.
+0. ~~Execute the lifecycle-first readiness sequence in sw-13-visual-testing-readiness-plan.md~~ — superseded; architecture replacement (M1–3C) satisfies the lifecycle-first intent.
+1. Update SW-13A with a reconciliation addendum that retires superseded gap items (G3, WP3).
+2. Execute remaining G2 parity lanes in replacement-design-checkpoint.md order: Cold Boot sequence → Asteroid gameplay → Mission/route-feed.
+3. Complete SW-13 M5 worksheet evidence fields and checklist (G5, WP4).
+4. Publish SW-13 M6 go/no-go record with explicit blocker disposition (G5, WP4).
+5. Re-verify SW-13B M1B/M2B evidence reproducibility (G4).
+6. Update G1 documentation reconciliation across SW-13, SW-13A, SW-13B status docs once G2–G4 evidence is current.
+7. Update this matrix from Draft to Accepted when G1–G5 are all pass.
 
-## 7. Milestone 4 Traceability (G2)
+## 7. Architecture Replacement Traceability (G2)
 
-| Milestone 4 Item | Status | Evidence | Reviewer Note |
+Milestone 4 semantic-correction intent was superseded by the Option A hard replace (2026-07-10 through 2026-07-11). Evidence below reflects the replacement milestone chain.
+
+| Milestone | Status | Evidence | Reviewer Note |
 | --- | --- | --- | --- |
-| Keep-alive per-ship scene instances implemented | Blocked | [ship-exterior-view.ts](../../src/app/scene/ship-exterior-view.ts) | Current runtime remains snapshot/restore-oriented; true per-ship concurrent scene instances are not implemented |
-| Active-only scene display on ship switch | Partial | [ship-exterior-view.vitest.ts](../../src/app/scene/ship-exterior-view.vitest.ts) (`M4: should enforce active-only scene data on ship switch with no cross-ship residue`) | Unit signal exists; manual cross-context regressions still reported |
-| No restore/reseed dependency for initialized-scene switch continuity | Blocked | [ship-exterior-view.ts](../../src/app/scene/ship-exterior-view.ts), [sw-13-multi-ship-scene-retention-note.md](./sw-13-multi-ship-scene-retention-note.md) | Reviewer-confirmed architecture requires activation-switch semantics only |
-| Non-bleed guarantees under active switching | Blocked | [ship-exterior-view.vitest.ts](../../src/app/scene/ship-exterior-view.vitest.ts), [ship-exterior-multi-ship-keepalive.spec.ts](../../e2e/tests/ship-exterior-multi-ship-keepalive.spec.ts) | Manual validation reports rotation and scan-tier cross-context bleed |
-| Lifecycle/memory bounds documented and accepted | Partial | [sw-13-multi-ship-scene-retention-note.md](./sw-13-multi-ship-scene-retention-note.md) | Lifecycle policy clarified; acceptance blocked pending implementation proof |
-| Patch-vs-replacement communication contract documented | Complete | [sw-13-closure.md](./sw-13-closure.md), [sw-13-multi-ship-scene-retention-note.md](./sw-13-multi-ship-scene-retention-note.md) | G2 execution now requires explicit "architecture replacement" declaration and stop conditions |
+| M1 – Route cutover + per-ship ownership model | Complete | [ship-exterior-bare-scene.component.ts](../../src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts), [ship-scene-context.ts](../../src/app/scene/ship-exterior/ship-scene-context.ts), [ship-scene-registry.ts](../../src/app/scene/ship-exterior/ship-scene-registry.ts), [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) §9 | Pete-confirmed. Old monolith deleted. Per-ship isolation baseline and deterministic A→B→A unit assertion in place. |
+| M2 – Camera/pause hardening + context lifecycle | Complete | [ship-scene-context.vitest.ts](../../src/app/scene/ship-exterior/ship-scene-context.vitest.ts), [ship-scene-registry.vitest.ts](../../src/app/scene/ship-exterior/ship-scene-registry.vitest.ts), [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) §11 | Pete-confirmed. A→B→C→A continuity PASS, no cross-bleed PASS, active-only animation PASS, session teardown PASS. |
+| M3A – Starfield visual parity | Complete | [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) §12.5 | Pete-confirmed. Per-ship starfield seed stable across switching; isolated per-context. |
+| M3B – Orbit controls lane | Complete | [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) §12.7 | Pete-confirmed. Active-context camera orbit/pan/zoom; inactive contexts paused; no cross-context camera mutation. |
+| M3C – Flight lane | Complete | [replacement-design-checkpoint.md](./replacement-design-checkpoint.md) §12.15, [sw-13-closure-status-2026-07-10.md](./sw-13-closure-status-2026-07-10.md) | Pete-confirmed. Active-only flight toggle/WASD; inactive pause during flight; A→B→A flight state per ship. |
+| Cold Boot sequence lane | Open | — | Not yet started. Next parity lane in replacement-design-checkpoint.md ordering. |
+| Asteroid gameplay lane | Open | — | Not yet started. Follows Cold Boot lane. |
+| Mission/route-feed lane | Open | — | Not yet started. Highest async/contract complexity; last in parity lane order. |
