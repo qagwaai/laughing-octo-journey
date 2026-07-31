@@ -6,6 +6,8 @@ Owner model: Nova + Forge + reviewer roles
 Primary reviewer: Pete
 Policy: No legacy support paths
 
+> Reconciliation note (2026-07-31): this file is the original 2026-06-26 closure baseline. Current implementation status and validated code-state reconciliation live in `sw-13-closure-status-2026-07-10.md` (see 2026-07-31 checkpoint addendum) and `sw-13-closure-matrix.md` (see section "1A. Reconciliation Addendum (2026-07-31)").
+
 ## Visual Indicators
 
 | Marker | Meaning |

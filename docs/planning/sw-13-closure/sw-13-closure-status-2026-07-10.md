@@ -188,3 +188,20 @@ Readiness contract + hangar state-machine spec:
 
 Reference:
 - `docs/planning/sw-13-closure/sw-13-test-foundation-investment-plan-2026-07-11.md`
+
+## Documentation Reconciliation Checkpoint (2026-07-31)
+
+1. Route cutover is confirmed in current code: `ship-exterior-view` resolves to `src/app/scene/ship-exterior/ship-exterior-bare-scene.component` (`src/app/routed.routes.ts`).
+2. Legacy monolith files referenced by early SW-13 closure docs are now absent by design:
+   - `src/app/scene/ship-exterior-view.ts`
+   - `src/app/scene/ship-exterior-view.html`
+   - `src/app/scene/ship-exterior-view.vitest.ts`
+3. Focused validation commands re-run on this checkpoint:
+   - `npm run test:spec -- src/app/scene/ship-exterior/ship-scene-context.vitest.ts src/app/scene/ship-exterior/ship-scene-registry.vitest.ts` (PASS, 10/10 tests)
+   - `npm run test:spec -- src/app/page/game/ship-hangar.vitest.ts` (PASS, 40/40 tests)
+   - `npm run e2e:readiness:check` (PASS)
+   - `npm run sw13:adoption:check` (PASS)
+4. Closure docs updated this session:
+   - `sw-13-closure-matrix.md` now includes a current-state reconciliation addendum and marks monolith references as historical-only evidence.
+   - `sw-13-governance-adoption-log-2026-07-20.md` malformed evidence row corrected and refreshed.
+5. Immediate next closure step remains unchanged: publish SW-13A reconciliation addendum and complete G5 evidence artifacts (M5 worksheet + M6 go/no-go record).

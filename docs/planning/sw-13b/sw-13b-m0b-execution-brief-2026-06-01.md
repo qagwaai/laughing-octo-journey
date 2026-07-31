@@ -117,7 +117,7 @@ Use this section as the authoritative handoff runbook for Orion.
 - Runtime sample contract:
   - src/app/model/ship-exterior-asteroid-sample.ts
 - Debug telemetry exposure in scene/page:
-  - src/app/scene/ship-exterior-view.ts
+  - src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts
   - src/app/page/opening/cold-boot-scan.ts
   - src/app/page/opening/cold-boot-scan.html
 
@@ -138,7 +138,7 @@ Expected result:
 2. Focused SW-13B artifact spec
 
 ```bash
-npm run test:spec -- "**/sw-13b-m0b-asteroid-baseline.spec.ts"
+npm run test:spec -- "**/sw-13b-m0b-asteroid-baseline.vitest.ts"
 ```
 
 Expected result:
