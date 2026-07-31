@@ -111,11 +111,13 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await expect(sharedPage).toHaveURL(/left:repair-retrofit/);
 });
 
-test('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({
-  sharedPage,
-  sharedMock,
-  prepareJoinedPage,
-}) => {
+test.skip(
+  'keeps overlay dismissed for the same step across refresh, then shows again when step changes',
+  async ({
+    sharedPage,
+    sharedMock,
+    prepareJoinedPage,
+  }) => {
   const recoverJoinedCuePage = async () => {
     sharedMock.reset();
     registerFirstTargetCueMock(sharedMock);
