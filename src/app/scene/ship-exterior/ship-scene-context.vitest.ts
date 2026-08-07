@@ -31,6 +31,40 @@ describe('ShipSceneContext', () => {
     expect(context.getState().world?.shipPosition).toEqual({ x: 9, y: 8, z: 7 });
   });
 
+  it('stores mission state inside the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    context.setMissionGateState({
+      missionId: 'first-target',
+      characterId: 'char',
+      activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+      updatedAt: '2026-04-28T00:00:00.000Z',
+      steps: [
+        {
+          key: 'identify_iron_asteroid',
+          status: 'active',
+        },
+      ],
+    });
+
+    expect(context.getMissionGateState()).toEqual({
+      missionId: 'first-target',
+      characterId: 'char',
+      activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+      updatedAt: '2026-04-28T00:00:00.000Z',
+      steps: [
+        {
+          key: 'identify_iron_asteroid',
+          status: 'active',
+        },
+      ],
+    });
+  });
+
   it('does not increment rendered frame count while paused or without rendering state', () => {
     const context = new ShipSceneContext('player::char::ship', {
       playerName: 'player',
@@ -84,12 +118,14 @@ describe('ShipSceneContext', () => {
     context.setAsteroidSamples([
       {
         id: 'sample-alpha',
+        serverCelestialBodyId: 'cb-sample-alpha',
         scanned: false,
         scanProgress: 0,
         revealedMaterial: { material: 'Iron', rarity: 'Common' },
       },
       {
         id: 'sample-beta',
+        serverCelestialBodyId: null,
         scanned: true,
         scanProgress: 100,
         revealedMaterial: { material: 'Nickel', rarity: 'Rare' },
@@ -99,5 +135,24 @@ describe('ShipSceneContext', () => {
 
     expect(context.getTargetedAsteroidId()).toBe('sample-beta');
     expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-alpha', 'sample-beta']);
+    expect(context.getAsteroidSamples().find((sample) => sample.id === 'sample-alpha')?.serverCelestialBodyId).toBe(
+      'cb-sample-alpha',
+    );
+  });
+
+  it('keeps asteroid layout signatures ship-local and deterministic', () => {
+    const first = new ShipSceneContext('player::char::ship-a', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship-a',
+    });
+    const second = new ShipSceneContext('player::char::ship-b', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship-b',
+    });
+
+    expect(first.getAsteroidLayoutSignature()).toBe(first.getAsteroidLayoutSignature());
+    expect(first.getAsteroidLayoutSignature()).not.toBe(second.getAsteroidLayoutSignature());
   });
 });

@@ -345,13 +345,17 @@ test.describe('Ship Exterior Test Utilities', () => {
     await loginViaUI(page, mock);
 
     await page.evaluate(
-      ({ missionId, playerName, characterId }) => {
+      ({ missionId, playerName, characterId, shipId }) => {
+        window.localStorage.removeItem(
+          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
+        );
         window.localStorage.removeItem(`ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`);
       },
       {
         missionId: FIRST_TARGET_MISSION_ID,
         playerName: TEST_PLAYER,
         characterId: TEST_CHARACTER_ID,
+        shipId: 'ship-1',
       },
     );
 
@@ -639,9 +643,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     await loginViaUI(page, mock);
 
     await page.evaluate(
-      ({ missionId, characterId, playerName }) => {
+      ({ missionId, characterId, playerName, shipId }) => {
         window.localStorage.setItem(
-          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`,
+          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
           JSON.stringify({
             missionId,
             characterId,
@@ -656,7 +660,12 @@ test.describe('Ship Exterior Test Utilities', () => {
           }),
         );
       },
-      { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
+      {
+        missionId: FIRST_TARGET_MISSION_ID,
+        characterId: TEST_CHARACTER_ID,
+        playerName: TEST_PLAYER,
+        shipId: 'ship-1',
+      },
     );
 
     await new GameShellPage(page).joinGame();
@@ -736,9 +745,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     await loginViaUI(page, mock);
 
     await page.evaluate(
-      ({ missionId, characterId, playerName }) => {
+      ({ missionId, characterId, playerName, shipId }) => {
         window.localStorage.setItem(
-          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`,
+          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
           JSON.stringify({
             missionId,
             characterId,
@@ -753,7 +762,12 @@ test.describe('Ship Exterior Test Utilities', () => {
           }),
         );
       },
-      { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
+      {
+        missionId: FIRST_TARGET_MISSION_ID,
+        characterId: TEST_CHARACTER_ID,
+        playerName: TEST_PLAYER,
+        shipId: 'ship-1',
+      },
     );
 
     await new GameShellPage(page).joinGame('Join Game in Progress');

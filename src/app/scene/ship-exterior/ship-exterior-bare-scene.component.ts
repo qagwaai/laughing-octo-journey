@@ -13,27 +13,54 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { MarketService } from '../../services/market.service';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
+import { SocketService } from '../../services/socket.service';
 import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { appLogger } from '../../services/logger';
+import {
+  type MarketListByLocationRequest,
+  type MarketListByLocationResponse,
+} from '../../model/market-list';
 import { ShipSummary } from '../../model/ship-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { DEFAULT_SOLAR_SYSTEM_ID, type CelestialBodyUpsertRequest } from '../../model/celestial-body-upsert';
 import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 import { ShipSceneRegistry } from './ship-scene-registry';
 import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
+import { collectShipExteriorRouteFeeds, type ShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
+import {
+  formatShipExteriorRouteFeedSummary,
+  summarizeShipExteriorRouteFeeds,
+  type ShipExteriorRouteFeedCounts,
+} from './ship-exterior-route-feed-summary';
 import {
   createInitialMissionGateState,
   resolveShipExteriorMission,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
+import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
+import type { ShipItem } from '../../model/ship-item';
+import type {
+  LaunchItemRequest,
+  LaunchItemResponse,
+  LaunchItemYieldedItem,
+  LaunchItemYieldedMaterial,
+} from '../../model/launch-item';
 import {
   type ShipExteriorLegacyAsteroidSample,
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
 } from './ship-exterior-bare-scene-test-api';
+
+const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
+const ROUTE_FEED_DISCOVERY_LIMIT = 250;
 
 export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: boolean): boolean {
   return code === 'KeyF' || (code === 'Escape' && flightModeEnabled);
@@ -52,6 +79,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly shipService = inject(ShipService);
+  private readonly marketService = inject(MarketService);
+  private readonly socketService = inject(SocketService);
+  private readonly missionProgressSyncService = inject(MissionProgressSyncService);
   private readonly shipExteriorViewStateService = inject(ShipExteriorViewStateService);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -121,10 +151,37 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const snapshot = this.activeFlightSnapshot();
     return `QUALITY SCALER // ${snapshot?.isPaused ? 'PAUSED' : 'ACTIVE'}`;
   });
-  readonly objectiveMessage = computed(() => this.missionGateState().activeObjectiveText);
-  readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error' } | null>(null);
+  readonly activeRouteFeedLine = computed(() => {
+    const key = this.activeContextKey();
+    if (!key) {
+      return 'ROUTE // ---';
+    }
+
+    return formatShipExteriorRouteFeedSummary(this.getRouteFeedCountsForContextKey(key));
+  });
+  readonly activeAsteroidLine = computed(() => {
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return 'ASTEROIDS // ---';
+    }
+
+    const samples = active.getAsteroidSamples();
+    const targetedId = active.getTargetedAsteroidId() ?? 'none';
+    return `ASTEROIDS // ${samples.length} / ${targetedId} / ${active.getAsteroidLayoutSignature()}`;
+  });
+  readonly objectiveMessage = computed(() => {
+    this.runtimeRevision();
+    this.activeContextKey();
+    return this.getActiveMissionGateState()?.activeObjectiveText ?? 'Mission objectives complete. Await further directives.';
+  });
+  readonly selectedLaunchHotkey = signal<1 | 2 | 3 | 4 | 5>(1);
+  readonly launchQuestionAnswer = signal('');
+  readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error'; seed: number | null } | null>(
+    null,
+  );
 
   private readonly registry = new ShipSceneRegistry();
+  private readonly routeFeedsByContextKey = signal<Record<string, ShipExteriorRouteFeeds>>({});
   private readonly inputAdapter = new ShipExteriorInputAdapter(
     {
       onWindowPointerDown: (event) => this.onWindowPointerDown(event),
@@ -147,13 +204,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly testTargetHoldCandidateId = signal<string | null>(null);
   private readonly testTargetHoldContextKey = signal<string | null>(null);
   private testTargetHoldTimeoutId: number | null = null;
-  private readonly missionGateState = signal<ShipExteriorMissionGateState>(
-    createInitialMissionGateState({
-      missionId: FIRST_TARGET_MISSION_ID,
-      characterId: 'unknown-character',
-      steps: resolveShipExteriorMission(FIRST_TARGET_MISSION_ID).getGateStepDefinitions(),
-    }),
-  );
   private readonly testInventoryRewards = signal<string[]>([]);
   private animationFrameId: number | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -162,10 +212,32 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly runtimeRevision = signal(0);
   private readonly navigationPlayerName = signal<string>('unknown-player');
   private readonly navigationCharacterId = signal<string>('unknown-character');
+  private readonly launchController = new ShipExteriorLaunchController({
+    missionDefinition: resolveShipExteriorMission(FIRST_TARGET_MISSION_ID),
+    getAsteroidSamples: () => this.getActiveAsteroidSamples(),
+    getMissionGateState: () => this.getActiveMissionGateState(),
+    setMissionGateState: (gateState) => this.setActiveMissionGateState(gateState),
+    persistMissionGateState: (gateState) => {
+      const active = this.registry.getActiveContext();
+      if (active) {
+        this.persistMissionGateState(active, gateState);
+      }
+    },
+    enqueueMissionProgressUpsert: (item) => {
+      void this.syncMissionProgressToBackend(item.gateState);
+    },
+    removeAsteroidSamples: (sampleIds) => this.removeAsteroidSamples(sampleIds),
+    consumeLaunchedItem: (response) => this.consumeLaunchedItem(response),
+    applyMaterialRewards: (materials) => this.applyMaterialRewards(materials),
+    applyYieldedItems: (items) => this.applyYieldedItems(items),
+    queuePostLaunchRefresh: () => this.queuePostLaunchRefresh(),
+    setLaunchToast: (message, tone, seed) => this.activeLaunchToast.set({ message, tone, seed }),
+    invokePluginHook: () => {},
+    setLaunchSeedHint: (launchSeed) => this.setLaunchSeedHint(launchSeed),
+  });
 
   ngOnInit(): void {
     this.resolveNavigationIdentity();
-    this.initializeMissionGateStateForTestApi();
     this.bootstrapContexts();
     this.inputAdapter.attach();
     this.registerTestApi();
@@ -236,6 +308,17 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   setFlightMouseSensitivityFromSliderValue(rawValue: number): void {
     const active = this.registry.getActiveContext();
     active?.setFlightMouseSensitivityFromSliderValue(rawValue);
+    this.bumpRuntimeRevision();
+  }
+
+  private setActiveMissionGateState(gateState: ShipExteriorMissionGateState): void {
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return;
+    }
+
+    active.setMissionGateState(gateState);
+    this.persistMissionGateState(active, gateState);
     this.bumpRuntimeRevision();
   }
 
@@ -383,6 +466,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     if (active.captureFlightMovementKey(event.code)) {
       event.preventDefault();
+      return;
+    }
+
+    const hotkey = this.resolveLaunchHotkeyFromCode(event.code);
+    if (hotkey !== null) {
+      this.launchFromHotkey(hotkey);
+      event.preventDefault();
     }
   }
 
@@ -400,6 +490,31 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onSocketCorrelationWarning(_event: Event): void {}
+
+  setSelectedLaunchHotkey(rawValue: string): void {
+    const parsed = Number.parseInt(rawValue, 10);
+    if (parsed >= 1 && parsed <= 5) {
+      this.selectedLaunchHotkey.set(parsed as 1 | 2 | 3 | 4 | 5);
+    }
+  }
+
+  setLaunchQuestionAnswer(rawValue: string): void {
+    this.launchQuestionAnswer.set(rawValue);
+  }
+
+  submitLaunchFromControls(): void {
+    const answer = this.launchQuestionAnswer().trim();
+    if (!answer) {
+      this.activeLaunchToast.set({
+        message: 'Launch hold: answer the launch question before proceeding.',
+        tone: 'error',
+        seed: null,
+      });
+      return;
+    }
+
+    this.launchFromHotkey(this.selectedLaunchHotkey());
+  }
 
   private onPointerLockChange(): void {
     this.syncPointerLockForActiveContext(false);
@@ -433,6 +548,23 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
   }
 
+  private resolveLaunchHotkeyFromCode(code: string): 1 | 2 | 3 | 4 | 5 | null {
+    switch (code) {
+      case 'Digit1':
+        return 1;
+      case 'Digit2':
+        return 2;
+      case 'Digit3':
+        return 3;
+      case 'Digit4':
+        return 4;
+      case 'Digit5':
+        return 5;
+      default:
+        return null;
+    }
+  }
+
   private upsertContextFromShip(ship: ShipSummary, playerName: string, characterId: string): void {
     const shipId = ship.id?.trim();
     if (!shipId) {
@@ -455,7 +587,85 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
     const context = this.registry.getOrCreateContext(contextKey, initialState);
     context.setState(initialState);
+    this.ensureMissionGateStateForContext(context);
+    this.ensureRouteFeedsForContext(contextKey, ship, playerName, characterId);
     this.syncContextsSignal();
+  }
+
+  private ensureRouteFeedsForContext(
+    contextKey: string,
+    ship: ShipSummary,
+    playerName: string,
+    characterId: string,
+  ): void {
+    const shipId = ship.id?.trim();
+    const solarSystemId = ship.spatial?.solarSystemId?.trim() ?? '';
+    const positionKm = ship.spatial?.positionKm;
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    if (!shipId || !solarSystemId || !positionKm || !sessionKey || !playerName || !characterId) {
+      return;
+    }
+
+    if (this.routeFeedsByContextKey()[contextKey]) {
+      return;
+    }
+
+    const request: MarketListByLocationRequest = {
+      playerName,
+      sessionKey,
+      solarSystemId,
+      positionKm,
+      distanceAu: ROUTE_FEED_DISCOVERY_DISTANCE_AU,
+      limit: ROUTE_FEED_DISCOVERY_LIMIT,
+      locationTypes: ['station', 'free-floating'],
+      characterId,
+      shipId,
+    };
+
+    this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
+      if (!response.success) {
+        this.storeRouteFeedsForContext(contextKey, {
+          gates: [],
+          stations: [],
+          encounterShips: [],
+        });
+        return;
+      }
+
+      const context = this.registry.getContext(contextKey);
+      const contextShipId = context?.getState().shipId?.trim() ?? '';
+      if (!context || contextShipId !== shipId) {
+        return;
+      }
+
+      this.storeRouteFeedsForContext(contextKey, collectShipExteriorRouteFeeds(response.markets));
+    });
+  }
+
+  private storeRouteFeedsForContext(contextKey: string, routeFeeds: ShipExteriorRouteFeeds): void {
+    this.routeFeedsByContextKey.update((current) => ({
+      ...current,
+      [contextKey]: routeFeeds,
+    }));
+    this.bumpRuntimeRevision();
+  }
+
+  private getRouteFeedCountsForContextKey(contextKey: string): ShipExteriorRouteFeedCounts | null {
+    const routeFeeds = this.routeFeedsByContextKey()[contextKey];
+    if (!routeFeeds) {
+      return null;
+    }
+
+    return summarizeShipExteriorRouteFeeds(routeFeeds);
+  }
+
+  private getActiveRouteFeedCounts(): ShipExteriorRouteFeedCounts | null {
+    const key = this.activeContextKey();
+    if (!key) {
+      return null;
+    }
+
+    return this.getRouteFeedCountsForContextKey(key);
   }
 
   private ensureFallbackContexts(playerName: string, characterId: string): void {
@@ -466,7 +676,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const fallbackIds = ['fallback-ship-a', 'fallback-ship-b'];
     for (const shipId of fallbackIds) {
       const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
-      this.registry.getOrCreateContext(contextKey, {
+      const context = this.registry.getOrCreateContext(contextKey, {
         playerName,
         characterId,
         shipId,
@@ -474,6 +684,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
           shipPosition: { x: shipId.endsWith('a') ? -1 : 1.25, y: 0, z: 0 },
         },
       });
+      this.ensureMissionGateStateForContext(context);
     }
 
     this.syncContextsSignal();
@@ -602,6 +813,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.registry.dispose();
     this.contexts.set([]);
     this.activeContextKey.set(null);
+    this.routeFeedsByContextKey.set({});
     this.hasBootstrappedContexts = false;
 
     if (!this.viewReady) {
@@ -622,12 +834,15 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       setFlightInvertY: (enabled: boolean) => this.setFlightInvertY(enabled),
       setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
         this.setFlightMouseSensitivityFromSliderValue(rawValue),
+      getActiveRouteFeedCounts: () => this.getActiveRouteFeedCounts(),
+      getMissionGateState: () => this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
+      resetMissionGateState: () => this.resetMissionGateStateForTest(),
       legacy: {
         getAsteroidSamples: () => this.getActiveAsteroidSamples(),
         beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
         unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
         getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
-        getMissionGateState: () => this.missionGateState(),
+        getMissionGateState: () => this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
         resetMissionGateState: () => this.resetMissionGateStateForTest(),
         forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
         forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
@@ -642,49 +857,19 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     });
   }
 
-  private initializeMissionGateStateForTestApi(): void {
-    const playerName = this.navigationPlayerName().trim();
-    const characterId = this.navigationCharacterId().trim();
-    const missionId = FIRST_TARGET_MISSION_ID;
-
-    if (!playerName || !characterId || characterId === 'unknown-character') {
-      return;
-    }
-
-    const fromStorage = this.missionStateService.loadState({
-      missionId,
-      playerName,
-      characterId,
-    });
-
-    if (fromStorage) {
-      this.missionGateState.set(fromStorage);
-      return;
-    }
-
-    const initialState = this.createInitialMissionGateStateForTestApi(characterId);
-    this.missionGateState.set(initialState);
-    this.persistMissionGateState(initialState);
-  }
-
-  private createInitialMissionGateStateForTestApi(characterId: string): ShipExteriorMissionGateState {
-    const missionId = FIRST_TARGET_MISSION_ID;
-    return createInitialMissionGateState({
-      missionId,
-      characterId,
-      steps: resolveShipExteriorMission(missionId).getGateStepDefinitions(),
-    });
-  }
-
   private resetMissionGateStateForTest(): ShipExteriorMissionGateState {
-    const characterId = this.navigationCharacterId().trim();
-    const resetState = this.createInitialMissionGateStateForTestApi(characterId || 'unknown-character');
-    this.missionGateState.set(resetState);
-    this.persistMissionGateState(resetState);
+    const active = this.registry.getActiveContext();
+    const resetState = this.createInitialMissionGateStateForTestApi(
+      active?.getState().characterId?.trim() || this.navigationCharacterId().trim() || 'unknown-character',
+    );
+    if (active) {
+      active.setMissionGateState(resetState);
+      this.persistMissionGateState(active, resetState);
+    }
+    this.bumpRuntimeRevision();
 
     this.clearTestTargetHoldTimer();
     this.testInventoryRewards.set([]);
-    const active = this.registry.getActiveContext();
     if (active) {
       const resetSamples = active.getAsteroidSamples().map((sample) => ({
         ...sample,
@@ -749,29 +934,76 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.testTargetHoldContextKey.set(null);
   }
 
-  private persistMissionGateState(state: ShipExteriorMissionGateState): void {
-    const playerName = this.navigationPlayerName().trim();
-    const characterId = this.navigationCharacterId().trim();
-    if (!playerName || !characterId || characterId === 'unknown-character') {
+  private createInitialMissionGateStateForTestApi(characterId: string = this.navigationCharacterId().trim() || 'unknown-character'): ShipExteriorMissionGateState {
+    return createInitialMissionGateState({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId,
+      steps: resolveShipExteriorMission(FIRST_TARGET_MISSION_ID).getGateStepDefinitions(),
+    });
+  }
+
+  private getActiveMissionGateState(): ShipExteriorMissionGateState | null {
+    return this.registry.getActiveContext()?.getMissionGateState() ?? null;
+  }
+
+  private buildMissionStateContext(state: { playerName: string; characterId: string; shipId: string }): ShipExteriorMissionStateContext | null {
+    const playerName = state.playerName.trim();
+    const characterId = state.characterId.trim();
+    const shipId = state.shipId.trim();
+    if (!playerName || !characterId || !shipId || characterId === 'unknown-character') {
+      return null;
+    }
+
+    return {
+      missionId: FIRST_TARGET_MISSION_ID,
+      playerName,
+      characterId,
+      shipId,
+    };
+  }
+
+  private ensureMissionGateStateForContext(context: ShipSceneContext): ShipExteriorMissionGateState {
+    const existing = context.getMissionGateState();
+    if (existing) {
+      return existing;
+    }
+
+    const contextState = context.getState();
+    const storageContext = this.buildMissionStateContext(contextState);
+    const fromStorage = storageContext ? this.missionStateService.loadState(storageContext) : null;
+    const nextState = fromStorage ?? this.createInitialMissionGateStateForTestApi(contextState.characterId);
+    context.setMissionGateState(nextState);
+
+    if (!fromStorage && storageContext) {
+      this.missionStateService.saveState(storageContext, nextState);
+    }
+
+    this.bumpRuntimeRevision();
+    return nextState;
+  }
+
+  private persistMissionGateState(context: ShipSceneContext, state: ShipExteriorMissionGateState): void {
+    const storageContext = this.buildMissionStateContext(context.getState());
+    if (!storageContext) {
       return;
     }
 
-    this.missionStateService.saveState(
-      {
-        missionId: FIRST_TARGET_MISSION_ID,
-        playerName,
-        characterId,
-      },
-      state,
-    );
+    this.missionStateService.saveState(storageContext, state);
   }
 
   private updateMissionGateState(
     updater: (state: ShipExteriorMissionGateState) => ShipExteriorMissionGateState,
   ): ShipExteriorMissionGateState {
-    const nextState = updater(this.missionGateState());
-    this.missionGateState.set(nextState);
-    this.persistMissionGateState(nextState);
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return this.createInitialMissionGateStateForTestApi();
+    }
+
+    const currentState = this.ensureMissionGateStateForContext(active);
+    const nextState = updater(currentState);
+    active.setMissionGateState(nextState);
+    this.persistMissionGateState(active, nextState);
+    this.bumpRuntimeRevision();
     return nextState;
   }
 
@@ -875,57 +1107,442 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return true;
   }
 
-  private launchFromHotkey(_hotkey: 1 | 2 | 3 | 4 | 5): void {
-    const hasLaunchable = this.sessionService
-      .activeShip()
-      ?.inventory?.some((item) => item.launchable === true);
+  private launchFromHotkey(hotkey: 1 | 2 | 3 | 4 | 5): void {
+    const activeShip = this.sessionService.activeShip();
+    if (!activeShip) {
+      this.activeLaunchToast.set({
+        message: 'Cannot launch: no active ship selected.',
+        tone: 'error',
+        seed: null,
+      });
+      return;
+    }
 
-    if (!hasLaunchable) {
+    const resolvedActiveShip: ShipSummary = activeShip;
+    const launchableItems = resolvedActiveShip.inventory?.filter((item) => item.launchable === true) ?? [];
+    if (launchableItems.length === 0) {
       this.activeLaunchToast.set({
         message: 'Cannot launch: no launchable item available in active ship inventory.',
         tone: 'error',
+        seed: null,
       });
       return;
     }
 
+    const selectedItem = launchableItems[hotkey - 1] ?? launchableItems[0];
     const active = this.registry.getActiveContext();
-    const targetId = active?.getTargetedAsteroidId() ?? null;
+    const activeState = active?.getState();
+    const resolvedPlayerName = activeState?.playerName?.trim() || this.navigationPlayerName();
+    const resolvedCharacterId =
+      activeState?.characterId?.trim() || this.sessionService.activeCharacter()?.id?.trim() || this.navigationCharacterId();
+
+    const targetId = active?.getTargetedAsteroidId() ?? active?.getAsteroidSamples()[0]?.id ?? null;
     if (!targetId) {
-      this.activeLaunchToast.set({ message: 'Launch queued.', tone: 'success' });
+      this.activeLaunchToast.set({
+        message: 'Cannot launch: no target selected.',
+        tone: 'error',
+        seed: null,
+      });
       return;
     }
 
-    const targetSample = active?.getAsteroidSamples().find((sample) => sample.id === targetId);
-    const targetedIron = targetSample?.revealedMaterial?.material?.toLowerCase() === 'iron';
-
-    if (targetedIron) {
-      this.testInventoryRewards.update((types) => (types.includes('iron') ? types : [...types, 'iron']));
-
-      this.updateMissionGateState((state) => {
-        const neutralizeCompleted = this.setStepStatus(state, 'neutralize_identified_asteroid', 'completed');
-        const manufactureActive = this.setStepStatus(neutralizeCompleted, 'manufacture_hull_patch_kit', 'active');
-        return {
-          ...manufactureActive,
-          activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit in the Fabrication Lab.',
-        };
+    const targetSample = active?.getAsteroidSamples().find((sample) => sample.id === targetId) ?? null;
+    if (!targetSample || !active || !activeState) {
+      this.activeLaunchToast.set({
+        message: 'Cannot launch: selected target sample is unavailable.',
+        tone: 'error',
+        seed: null,
       });
+      return;
     }
 
-    this.activeLaunchToast.set({ message: 'Launch queued.', tone: 'success' });
+    this.ensureLaunchTargetCelestialBodyId({
+      contextKey: active.contextKey,
+      sample: targetSample,
+      playerName: resolvedPlayerName,
+      characterId: resolvedCharacterId,
+      onResolved: (launchTargetCelestialBodyId) => {
+        const request: LaunchItemRequest = {
+          playerName: resolvedPlayerName,
+          characterId: resolvedCharacterId,
+          shipId: resolvedActiveShip.id,
+          sessionKey: this.sessionService.getSessionKey() ?? '',
+          hotkey,
+          itemId: selectedItem.id,
+          itemType: selectedItem.itemType,
+          targetCelestialBodyId: launchTargetCelestialBodyId,
+          requestIdentity: {
+            operation: 'launch-item',
+            entityType: selectedItem.itemType,
+            containerId: resolvedActiveShip.id,
+            itemId: selectedItem.id,
+            hotkey,
+            targetCelestialBodyId: launchTargetCelestialBodyId,
+            characterId: resolvedCharacterId,
+          },
+        };
+
+        this.activeLaunchToast.set({
+          message: `Launch queued for ${selectedItem.displayName ?? selectedItem.itemType}.`,
+          tone: 'success',
+          seed: null,
+        });
+
+        this.socketService.launchItem(request, (response) => {
+          this.launchController.handleLaunchItemResponse(response);
+        });
+      },
+    });
+  }
+
+  private ensureLaunchTargetCelestialBodyId(params: {
+    contextKey: string;
+    sample: ShipSceneAsteroidSample;
+    playerName: string;
+    characterId: string;
+    onResolved: (targetCelestialBodyId: string) => void;
+  }): void {
+    const existingTargetId = params.sample.serverCelestialBodyId?.trim();
+    if (existingTargetId) {
+      params.onResolved(existingTargetId);
+      return;
+    }
+
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const resolvedPlayerName = params.playerName.trim() || this.sessionService.getPlayerName()?.trim() || '';
+    const resolvedCharacterId =
+      params.characterId.trim() || this.sessionService.activeCharacter()?.id?.trim() || this.navigationCharacterId().trim();
+    const hasPlaceholderIdentity =
+      resolvedPlayerName === 'unknown-player' || resolvedCharacterId === 'unknown-character';
+
+    if (!sessionKey || !resolvedPlayerName || !resolvedCharacterId || hasPlaceholderIdentity) {
+      this.activeLaunchToast.set({
+        message: 'Cannot launch: missing session or character identity for target registration.',
+        tone: 'error',
+        seed: null,
+      });
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const requestedCelestialBodyId = `cb-${params.characterId}-${FIRST_TARGET_MISSION_ID}-${params.sample.id}`;
+    const fallbackPositionKm = this.resolveFallbackTargetPositionKm(params.sample.id);
+    const request: CelestialBodyUpsertRequest = {
+      sessionKey,
+      playerName: resolvedPlayerName,
+      createdByCharacterId: resolvedCharacterId,
+      celestialBody: {
+        id: requestedCelestialBodyId,
+        catalogId: `sol-${resolvedCharacterId}-${FIRST_TARGET_MISSION_ID}-${params.sample.id}`,
+        sourceScanId: params.sample.id,
+        createdByCharacterId: resolvedCharacterId,
+        bodyType: 'asteroid',
+        displayName: `Asteroid ${params.sample.id}`,
+        missionId: FIRST_TARGET_MISSION_ID,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        spatial: {
+          solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+          frame: 'barycentric',
+          positionKm: fallbackPositionKm,
+          epochMs: Date.now(),
+        },
+        motion: {
+          velocityKmPerSec: { x: 0, y: 0, z: 0 },
+          angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+        },
+        physical: {
+          estimatedMassKg: 1_000_000_000,
+          estimatedDiameterM: 120,
+        },
+        physicalCatalog: {
+          estimatedMassKg: 1_000_000_000,
+          estimatedDiameterM: 120,
+          radiusKm: 0.06,
+        },
+        visualization: {
+          colorHex: '#8f99a7',
+          textureKey: null,
+        },
+        composition: params.sample.revealedMaterial
+          ? {
+              material: params.sample.revealedMaterial.material,
+              rarity: params.sample.revealedMaterial.rarity as 'Common' | 'Uncommon' | 'Rare' | 'Exotic',
+              textureColor: '#8f99a7',
+            }
+          : undefined,
+        observability: {
+          visibility: 'visible',
+          scanState: params.sample.scanned ? 'scanned' : 'unscanned',
+        },
+        state: params.sample.scanned ? 'active' : 'unscanned',
+      },
+    };
+
+    this.activeLaunchToast.set({
+      message: 'Preparing target registration for launch...',
+      tone: 'success',
+      seed: null,
+    });
+
+    this.socketService.upsertCelestialBody(request, (response) => {
+      if (!response.success) {
+        this.activeLaunchToast.set({
+          message: response.message || 'Target registration failed.',
+          tone: 'error',
+          seed: null,
+        });
+        return;
+      }
+
+      const persistedId = response.celestialBody?.id?.trim() || requestedCelestialBodyId;
+      this.setAsteroidSampleServerCelestialBodyId(params.contextKey, params.sample.id, persistedId);
+      params.onResolved(persistedId);
+    });
+  }
+
+  private resolveFallbackTargetPositionKm(sampleId: string): { x: number; y: number; z: number } {
+    const base = this.registry.getActiveContext()?.getState().world?.shipPosition ?? { x: 0, y: 0, z: 0 };
+    const hash = sampleId
+      .split('')
+      .reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+    const offset = (Math.abs(hash) % 1500) + 300;
+    return {
+      x: base.x + offset,
+      y: base.y + Math.floor(offset / 3),
+      z: base.z - Math.floor(offset / 2),
+    };
+  }
+
+  private setAsteroidSampleServerCelestialBodyId(contextKey: string, sampleId: string, serverCelestialBodyId: string): void {
+    const context = this.registry.getContext(contextKey);
+    if (!context) {
+      return;
+    }
+
+    const nextSamples = context.getAsteroidSamples().map((sample) =>
+      sample.id === sampleId
+        ? {
+            ...sample,
+            serverCelestialBodyId,
+          }
+        : sample,
+    );
+    context.setAsteroidSamples(nextSamples);
+    this.bumpRuntimeRevision();
+  }
+
+  private consumeLaunchedItem(response: LaunchItemResponse): void {
+    const activeShip = this.sessionService.activeShip();
+    if (!activeShip || activeShip.id !== response.shipId) {
+      return;
+    }
+
+    const nextInventory = (activeShip.inventory ?? []).filter((item) => item.id !== response.itemId);
+    this.sessionService.setActiveShip({
+      ...activeShip,
+      inventory: nextInventory,
+    });
+  }
+
+  private removeAsteroidSamples(sampleIds: readonly string[]): void {
+    const active = this.registry.getActiveContext();
+    if (!active || sampleIds.length === 0) {
+      return;
+    }
+
+    const removedSampleIds = new Set(sampleIds);
+    const nextSamples = active.getAsteroidSamples().filter((sample) => !removedSampleIds.has(sample.id));
+    active.setAsteroidSamples(nextSamples);
+    this.bumpRuntimeRevision();
+  }
+
+  private applyMaterialRewards(materials: readonly LaunchItemYieldedMaterial[]): void {
+    if (materials.length === 0) {
+      return;
+    }
+
+    const activeShip = this.sessionService.activeShip();
+    if (activeShip) {
+      const nowIso = new Date().toISOString();
+      const ownerCharacterId = this.sessionService.activeCharacter()?.id?.trim() || this.navigationCharacterId().trim() || null;
+      const rewardedInventoryItems: ShipItem[] = materials.flatMap((material) => {
+        const normalizedItemType = material.material.trim().toLowerCase().replace(/[\s_]+/g, '-');
+        const quantity = Number.isFinite(material.quantity) && material.quantity > 0 ? Math.floor(material.quantity) : 0;
+        return Array.from({ length: quantity }, (_, index) => ({
+          id:
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `reward-${Date.now()}-${normalizedItemType}-${index}`,
+          itemType: normalizedItemType || 'unknown-material',
+          displayName: `${material.material} (raw material)`,
+          launchable: false,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: {
+            containerType: 'ship',
+            containerId: activeShip.id,
+          },
+          owningPlayerId: activeShip.ownership?.playerId ?? null,
+          owningCharacterId: ownerCharacterId,
+          spatial: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        }));
+      });
+
+      if (rewardedInventoryItems.length > 0) {
+        this.sessionService.setActiveShip({
+          ...activeShip,
+          inventory: [...(activeShip.inventory ?? []), ...rewardedInventoryItems],
+        });
+        this.persistRewardItemsToBackend(rewardedInventoryItems);
+      }
+    }
+
+    const rewardTypes = materials.flatMap((material) => Array.from({ length: material.quantity }, () => material.material.toLowerCase()));
+    this.testInventoryRewards.update((types) => [...types, ...rewardTypes]);
+  }
+
+  private applyYieldedItems(items: readonly LaunchItemYieldedItem[]): void {
+    if (items.length === 0) {
+      return;
+    }
+
+    const activeShip = this.sessionService.activeShip();
+    if (!activeShip) {
+      return;
+    }
+
+    const yieldedInventoryItems: ShipItem[] = items.flatMap((item) => {
+      const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Math.floor(item.quantity) : 0;
+      if (quantity === 0) {
+        return [];
+      }
+      const first: ShipItem = {
+        id: item.id,
+        itemType: item.itemType,
+        displayName: item.displayName,
+        launchable: item.launchable,
+        state: item.state,
+        damageStatus: 'intact',
+        container: item.container
+          ? {
+              containerType: item.container.containerType,
+              containerId: item.container.containerId,
+            }
+          : null,
+        owningPlayerId: activeShip.ownership?.playerId ?? null,
+        owningCharacterId: this.sessionService.activeCharacter()?.id ?? null,
+        spatial: null,
+        destroyedAt: null,
+        destroyedReason: null,
+        discoveredAt: null,
+        discoveredByCharacterId: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const rest = Array.from({ length: quantity - 1 }, (_, index) => ({
+        ...first,
+        id:
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${item.id}-copy-${index + 1}`,
+      }));
+      return [first, ...rest];
+    });
+
+    if (yieldedInventoryItems.length === 0) {
+      return;
+    }
+
+    this.sessionService.setActiveShip({
+      ...activeShip,
+      inventory: [...(activeShip.inventory ?? []), ...yieldedInventoryItems],
+    });
+    this.persistRewardItemsToBackend(yieldedInventoryItems);
+  }
+
+  private persistRewardItemsToBackend(items: readonly ShipItem[]): void {
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const playerName = this.navigationPlayerName().trim() || this.sessionService.getPlayerName()?.trim() || '';
+    const characterId = this.navigationCharacterId().trim() || this.sessionService.activeCharacter()?.id?.trim() || '';
+    const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+    if (!sessionKey || !playerName || !characterId || !shipId) {
+      appLogger.warn('ShipExteriorBareSceneComponent.persistRewardItemsToBackend: skipped due to missing context', {
+        hasSessionKey: !!sessionKey,
+        hasPlayerName: !!playerName,
+        hasCharacterId: !!characterId,
+        hasShipId: !!shipId,
+      });
+      return;
+    }
+
+    items.forEach((item) => {
+      this.socketService.upsertItem(
+        {
+          playerName,
+          sessionKey,
+          correlationSource: 'ship-exterior.launch-reward',
+          item: {
+            id: item.id,
+            itemType: item.itemType,
+            displayName: item.displayName,
+            launchable: item.launchable,
+            state: item.state,
+            damageStatus: item.damageStatus,
+            container: item.container ?? { containerType: 'ship', containerId: shipId },
+            owningPlayerId: item.owningPlayerId ?? playerName,
+            owningCharacterId: item.owningCharacterId ?? characterId,
+          },
+        },
+        (response) => {
+          if (!response.success || !response.item) {
+            appLogger.warn('ShipExteriorBareSceneComponent.persistRewardItemsToBackend: reward item upsert failed', {
+              message: response.message,
+              itemId: item.id,
+              itemType: item.itemType,
+            });
+          }
+        },
+      );
+    });
+  }
+
+  private queuePostLaunchRefresh(): void {
+    this.bumpRuntimeRevision();
+  }
+
+  private setLaunchSeedHint(_launchSeed: number | null): void {
+    this.bumpRuntimeRevision();
+  }
+
+  private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
+    await this.missionProgressSyncService.syncGateState({
+      playerName: this.navigationPlayerName(),
+      characterId: this.navigationCharacterId(),
+      sessionKey: this.sessionService.getSessionKey() ?? '',
+      gateState,
+    });
   }
 
   private simulateDebrisCollection(_remainingDebrisCount?: number): ShipExteriorMissionGateState {
-    return this.missionGateState();
+    return this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
   }
 
   private simulateManufacture(itemType: string): ShipExteriorMissionGateState {
     if (itemType !== 'hull-patch-kit') {
-      return this.missionGateState();
+      return this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
     }
 
-    const manufactureStep = this.missionGateState().steps.find((step) => step.key === 'manufacture_hull_patch_kit');
+    const missionState = this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
+    const manufactureStep = missionState.steps.find((step) => step.key === 'manufacture_hull_patch_kit');
     if (manufactureStep?.status !== 'active') {
-      return this.missionGateState();
+      return missionState;
     }
 
     return this.updateMissionGateState((state) => {
@@ -940,12 +1557,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private simulateRepair(repairKind: string): ShipExteriorMissionGateState {
     if (repairKind !== 'ship') {
-      return this.missionGateState();
+      return this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
     }
 
-    const repairStep = this.missionGateState().steps.find((step) => step.key === 'repair_scavenger_pod');
+    const missionState = this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
+    const repairStep = missionState.steps.find((step) => step.key === 'repair_scavenger_pod');
     if (repairStep?.status !== 'active') {
-      return this.missionGateState();
+      return missionState;
     }
 
     return this.updateMissionGateState((state) => {
@@ -958,11 +1576,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private getActiveShipInventoryItemTypes(): string[] {
-    const baseTypes = this.sessionService
-      .activeShip()
-      ?.inventory?.map((item) => item.itemType)
-      .filter((itemType): itemType is string => typeof itemType === 'string' && itemType.length > 0) ?? [];
+    const activeInventory = this.sessionService.activeShip()?.inventory ?? [];
+    const baseTypes = activeInventory
+      .map((item: ShipItem) => item.itemType)
+      .filter((itemType: string): itemType is string => itemType.length > 0);
 
-    return [...baseTypes, ...this.testInventoryRewards()];
+    return baseTypes;
   }
 }

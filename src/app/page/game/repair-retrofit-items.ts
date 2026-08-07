@@ -733,8 +733,9 @@ export default class RepairRetrofitItemsPage {
     }
 
     const mission = resolveShipExteriorMission(missionId);
-    const context = { missionId, playerName, characterId };
-    const stored = this.missionStateService.loadState(context);
+    const shipId = this.joinShip()?.id?.trim() ?? '';
+    const context = { missionId, playerName, characterId, shipId };
+    const stored = shipId ? this.missionStateService.loadState(context) : null;
     const steps = mission.getGateStepDefinitions();
     const gateState = stored
       ? (parseMissionGateState({

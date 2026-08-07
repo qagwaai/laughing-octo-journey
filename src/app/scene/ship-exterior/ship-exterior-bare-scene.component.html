@@ -22,10 +22,52 @@
 
   <section class="ship-exterior-bare-scene__objective" aria-live="polite">
     <p>{{ objectiveMessage() }}</p>
-    <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="selectFirstScannedIronTargetForTest()">
-      TARGET IRON
-    </button>
+    <div class="ship-exterior-bare-scene__objective-actions">
+      <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="selectFirstScannedIronTargetForTest()">
+        TARGET IRON
+      </button>
+      <label class="ship-exterior-bare-scene__launch-form-label">
+        HOTKEY
+        <select
+          #launchHotkeySelect
+          class="ship-exterior-bare-scene__launch-select"
+          [value]="selectedLaunchHotkey()"
+          (change)="setSelectedLaunchHotkey(launchHotkeySelect.value)"
+        >
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+      <label class="ship-exterior-bare-scene__launch-form-label">
+        QUESTION
+        <input
+          #launchQuestionInput
+          type="text"
+          class="ship-exterior-bare-scene__launch-input"
+          [value]="launchQuestionAnswer()"
+          (input)="setLaunchQuestionAnswer(launchQuestionInput.value)"
+          placeholder="Why launch now?"
+        />
+      </label>
+      <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="submitLaunchFromControls()">
+        LAUNCH
+      </button>
+    </div>
   </section>
+
+  @if (activeLaunchToast(); as toast) {
+    <section
+      class="ship-exterior-bare-scene__toast"
+      [class.ship-exterior-bare-scene__toast--error]="toast.tone === 'error'"
+      [class.ship-exterior-bare-scene__toast--success]="toast.tone === 'success'"
+      aria-live="polite"
+    >
+      {{ toast.message }}
+    </section>
+  }
 
   <div class="ship-exterior-bare-scene__viewport" #canvasHost></div>
 
@@ -40,5 +82,7 @@
     <span>{{ activeFlightMovementLine() }}</span>
     <span>{{ activeFlightFramePressureLine() }}</span>
     <span>{{ activeFlightQualityScalerLine() }}</span>
+    <span>{{ activeRouteFeedLine() }}</span>
+    <span>{{ activeAsteroidLine() }}</span>
   </footer>
 </section>

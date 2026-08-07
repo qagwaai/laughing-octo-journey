@@ -39,6 +39,36 @@
   background: rgba(3, 10, 19, 0.75);
 }
 
+.ship-exterior-bare-scene__objective-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ship-exterior-bare-scene__launch-form-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: rgba(201, 227, 255, 0.9);
+}
+
+.ship-exterior-bare-scene__launch-select,
+.ship-exterior-bare-scene__launch-input {
+  border: 1px solid rgba(128, 188, 245, 0.4);
+  background: rgba(5, 17, 30, 0.88);
+  color: #d9ecff;
+  border-radius: 4px;
+  font-size: 0.64rem;
+  padding: 3px 7px;
+}
+
+.ship-exterior-bare-scene__launch-input {
+  min-width: 160px;
+}
+
 .ship-exterior-bare-scene__target-btn {
   border: 1px solid rgba(132, 233, 255, 0.62);
   background: rgba(9, 36, 52, 0.9);
@@ -47,6 +77,22 @@
   padding: 4px 9px;
   font-size: 0.66rem;
   letter-spacing: 0.08em;
+}
+
+.ship-exterior-bare-scene__toast {
+  padding: 7px 12px;
+  font-size: 0.66rem;
+  border-bottom: 1px solid rgba(115, 168, 220, 0.24);
+}
+
+.ship-exterior-bare-scene__toast--error {
+  color: #ffd2d2;
+  background: rgba(78, 17, 17, 0.78);
+}
+
+.ship-exterior-bare-scene__toast--success {
+  color: #d5ffe9;
+  background: rgba(11, 54, 44, 0.68);
 }
 
 .ship-exterior-bare-scene__flight-btn {

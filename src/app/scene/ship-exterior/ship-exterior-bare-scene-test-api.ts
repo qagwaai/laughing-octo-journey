@@ -1,6 +1,6 @@
 import { Signal } from '@angular/core';
-import type { ShipSceneRuntimeSnapshot } from './ship-scene-types';
 import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
+import type { ShipSceneRuntimeSnapshot } from './ship-scene-types';
 
 declare global {
   interface Window {
@@ -34,7 +34,7 @@ export interface ShipExteriorLegacyTestApi {
   simulateManufacture: (itemType: string) => ShipExteriorMissionGateState;
   simulateRepair: (repairKind: string) => ShipExteriorMissionGateState;
   getActiveShipInventoryItemTypes: () => string[];
-  getActiveLaunchToast: () => { message: string; tone: 'success' | 'error' } | null;
+  getActiveLaunchToast: () => { message: string; tone: 'success' | 'error'; seed: number | null } | null;
 }
 
 export interface ShipExteriorBareSceneTestApi {
@@ -45,6 +45,9 @@ export interface ShipExteriorBareSceneTestApi {
   toggleFlightMode: () => void;
   setFlightInvertY: (enabled: boolean) => void;
   setFlightMouseSensitivityFromSliderValue: (rawValue: number) => void;
+  getActiveRouteFeedCounts: () => { gates: number; stations: number; encounterShips: number } | null;
+  getMissionGateState: () => ShipExteriorMissionGateState;
+  resetMissionGateState: () => ShipExteriorMissionGateState;
   legacy: ShipExteriorLegacyTestApi;
 }
 

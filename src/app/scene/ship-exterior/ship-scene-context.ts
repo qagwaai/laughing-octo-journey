@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
 import { OrbitCameraControls } from './orbit-camera-controls';
+import { buildAsteroidLayoutSignature, deriveAsteroidVisuals } from './ship-exterior-asteroid-visuals';
+import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import {
   ShipSceneAsteroidSample,
   ShipSceneAsteroidState,
@@ -40,6 +42,7 @@ const FLIGHT_CONFIG = {
 const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [
   {
     id: 'sample-iron-1',
+    serverCelestialBodyId: null,
     scanned: false,
     scanProgress: 0,
     revealedMaterial: { material: 'Iron', rarity: 'Common' },
@@ -49,7 +52,18 @@ const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [
 function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroidSample {
   return {
     ...sample,
+    serverCelestialBodyId: sample.serverCelestialBodyId ?? null,
     revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : null,
+  };
+}
+
+function cloneMissionGateState(state: ShipExteriorMissionGateState): ShipExteriorMissionGateState {
+  return {
+    ...state,
+    steps: state.steps.map((step) => ({
+      ...step,
+      evidence: step.evidence ? { ...step.evidence } : undefined,
+    })),
   };
 }
 
@@ -143,6 +157,15 @@ function disposeMesh(mesh: THREE.Mesh): void {
   mesh.material?.dispose();
 }
 
+function disposeAsteroidGroup(group: THREE.Group): void {
+  group.children.forEach((child) => {
+    if (child instanceof THREE.Mesh) {
+      disposeMesh(child);
+    }
+  });
+  group.clear();
+}
+
 export class ShipSceneContext {
   private state: ShipSceneContextState;
   private renderingState: ShipSceneRenderingState | null = null;
@@ -151,6 +174,7 @@ export class ShipSceneContext {
   private flightController: ShipExteriorFlightController | null = null;
   private readonly starfieldSeed: number;
   private readonly starfieldSignature: string;
+  private asteroidLayoutSignature = '';
 
   constructor(
     readonly contextKey: string,
@@ -167,6 +191,7 @@ export class ShipSceneContext {
         },
       },
       asteroid: normalizeAsteroidState(initialState.asteroid),
+      mission: initialState.mission ? cloneMissionGateState(initialState.mission) : undefined,
     };
     this.starfieldSeed = hashStringToSeed(this.state.shipId);
     this.starfieldSignature = `${this.starfieldSeed.toString(16).padStart(8, '0')}:${STARFIELD_POINT_COUNT}:${this.starfieldSeed % 360}`;
@@ -185,11 +210,13 @@ export class ShipSceneContext {
         }
       : this.state.flight;
     const asteroid = update.asteroid ? normalizeAsteroidState(update.asteroid) : this.state.asteroid;
+    const mission = update.mission ? cloneMissionGateState(update.mission) : this.state.mission;
     this.state = {
       ...this.state,
       ...update,
       flight: flight ?? this.state.flight,
       asteroid,
+      mission,
     };
   }
 
@@ -233,8 +260,27 @@ export class ShipSceneContext {
     };
   }
 
+  getMissionGateState(): ShipExteriorMissionGateState | null {
+    return this.state.mission ? cloneMissionGateState(this.state.mission) : null;
+  }
+
+  setMissionGateState(state: ShipExteriorMissionGateState): void {
+    this.state = {
+      ...this.state,
+      mission: cloneMissionGateState(state),
+    };
+  }
+
   getStarfieldSignature(): string {
     return this.starfieldSignature;
+  }
+
+  getAsteroidLayoutSignature(): string {
+    return buildAsteroidLayoutSignature(
+      this.state.shipId,
+      this.state.asteroid?.samples ?? DEFAULT_ASTEROID_SAMPLES,
+      this.state.asteroid?.targetedAsteroidId ?? null,
+    );
   }
 
   initializeRendering(): ShipSceneRenderingState {
@@ -278,11 +324,14 @@ export class ShipSceneContext {
     directional.position.set(3, 5, 4);
 
     const { points: starfieldPoints, signature: starfieldSignatureLocal } = createStarfieldPoints(this.starfieldSeed);
+    const asteroidGroup = new THREE.Group();
+    asteroidGroup.name = 'ship-scene-asteroid-group';
 
     scene.add(ambient);
     scene.add(directional);
     scene.add(starfieldPoints);
     scene.add(cube);
+    scene.add(asteroidGroup);
 
     const orbitControls = new OrbitCameraControls(camera, canvas, {
       target: cube.position.clone(),
@@ -300,8 +349,10 @@ export class ShipSceneContext {
       renderer,
       canvas,
       cube,
+      asteroidGroup,
       starfieldPoints,
       starfieldSignatureLocal,
+      asteroidLayoutSignatureLocal: this.getAsteroidLayoutSignature(),
       orbitControls,
       isPausedLocal: true,
       cubeColorLocal: cubeColor,
@@ -378,6 +429,7 @@ export class ShipSceneContext {
       this.renderingState.orbitControls.setTarget(this.renderingState.cube.position);
     }
     this.renderingState.orbitControls.update();
+    this.syncAsteroidVisuals();
     this.renderingState.renderer.render(this.renderingState.scene, this.renderingState.camera);
     this.renderedFrameCount += 1;
   }
@@ -472,6 +524,7 @@ export class ShipSceneContext {
     this.syncFlightStateFromController();
     this.flightController?.stop();
     this.renderingState.orbitControls.dispose();
+    disposeAsteroidGroup(this.renderingState.asteroidGroup);
     if (this.renderingState.starfieldPoints.geometry) {
       this.renderingState.starfieldPoints.geometry.dispose();
     }
@@ -486,6 +539,43 @@ export class ShipSceneContext {
     this.renderingState = null;
     this.paused = true;
     this.renderedFrameCount = 0;
+  }
+
+  private syncAsteroidVisuals(): void {
+    if (!this.renderingState) {
+      return;
+    }
+
+    const nextSignature = this.getAsteroidLayoutSignature();
+    if (this.asteroidLayoutSignature === nextSignature && this.renderingState.asteroidGroup.children.length > 0) {
+      return;
+    }
+
+    this.asteroidLayoutSignature = nextSignature;
+    this.renderingState.asteroidLayoutSignatureLocal = nextSignature;
+    disposeAsteroidGroup(this.renderingState.asteroidGroup);
+
+    const visuals = deriveAsteroidVisuals(
+      this.state.shipId,
+      this.state.asteroid?.samples ?? DEFAULT_ASTEROID_SAMPLES,
+      this.state.asteroid?.targetedAsteroidId ?? null,
+    );
+
+    for (const visual of visuals) {
+      const geometry = new THREE.IcosahedronGeometry(visual.radius, visual.detail);
+      const material = new THREE.MeshStandardMaterial({
+        color: visual.color,
+        emissive: visual.emissive,
+        emissiveIntensity: visual.emissiveIntensity,
+        roughness: visual.isTargeted ? 0.38 : 0.72,
+        metalness: visual.isTargeted ? 0.22 : 0.08,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = visual.id;
+      mesh.position.set(visual.position[0], visual.position[1], visual.position[2]);
+      mesh.scale.setScalar(visual.isTargeted ? 1.28 : visual.detail > 0 ? 1.08 : 0.94);
+      this.renderingState.asteroidGroup.add(mesh);
+    }
   }
 
   private ensureFlightController(): ShipExteriorFlightController | null {

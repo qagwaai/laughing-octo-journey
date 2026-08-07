@@ -15,6 +15,7 @@ describe('ShipExteriorMissionStateService', () => {
       missionId: 'first-target',
       playerName: 'Pioneer',
       characterId: 'char-1',
+      shipId: 'ship-1',
     };
     state = {
       missionId: 'first-target',
@@ -49,7 +50,7 @@ describe('ShipExteriorMissionStateService', () => {
   });
 
   it('should return null for malformed payloads', () => {
-    window.localStorage.setItem('ship-exterior-mission-state::first-target::Pioneer::char-1', '{not-json');
+    window.localStorage.setItem('ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1', '{not-json');
 
     expect(service.loadState(context)).toBeNull();
   });
@@ -61,6 +62,17 @@ describe('ShipExteriorMissionStateService', () => {
       service.loadState({
         ...context,
         characterId: 'char-2',
+      }),
+    ).toBeNull();
+  });
+
+  it('should isolate states between ships', () => {
+    service.saveState(context, state);
+
+    expect(
+      service.loadState({
+        ...context,
+        shipId: 'ship-2',
       }),
     ).toBeNull();
   });
@@ -83,9 +95,21 @@ describe('ShipExteriorMissionStateService', () => {
     ).toEqual(state);
   });
 
-  it('should normalize legacy first-target state that is missing the repair step', () => {
+  it('should load legacy state without ship-specific storage', () => {
     window.localStorage.setItem(
       'ship-exterior-mission-state::first-target::Pioneer::char-1',
+      JSON.stringify(state),
+    );
+
+    expect(service.loadState(context)).toEqual(state);
+    expect(window.localStorage.getItem('ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1')).toBe(
+      JSON.stringify(state),
+    );
+  });
+
+  it('should normalize legacy first-target state that is missing the repair step', () => {
+    window.localStorage.setItem(
+      'ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1',
       JSON.stringify({
         missionId: 'first-target',
         characterId: 'char-1',

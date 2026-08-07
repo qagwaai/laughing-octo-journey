@@ -225,6 +225,97 @@ describe('evaluateMissionGateOnLaunch', () => {
       'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
     );
   });
+
+  it('should complete neutralize step when targetDestroyed is true even if outcome token varies', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = {
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+      updatedAt: '2026-04-28T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' as const },
+        { key: 'neutralize_identified_asteroid', status: 'active' as const },
+        { key: 'manufacture_hull_patch_kit', status: 'locked' as const },
+        { key: 'repair_scavenger_pod', status: 'locked' as const },
+      ],
+    };
+
+    const evaluation = evaluateMissionGateOnLaunch({
+      mission,
+      gateState,
+      response: {
+        success: true,
+        message: 'Target neutralized',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        shipId: 'ship-1',
+        targetCelestialBodyId: 'sample-a1',
+        hotkey: 1 as const,
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        resolution: {
+          outcome: 'no-effect',
+          targetDestroyed: true,
+          yieldedMaterials: [],
+          yieldedItems: [],
+          launchSeed: 42,
+        },
+      },
+    });
+
+    expect(evaluation.changed).toBe(true);
+    expect(evaluation.completedStepKey).toBe('neutralize_identified_asteroid');
+    expect(evaluation.gateState.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe('active');
+  });
+
+  it('should complete identify step from launch when iron yield confirms target identity', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = {
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
+      updatedAt: '2026-04-28T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'active' as const },
+        { key: 'neutralize_identified_asteroid', status: 'locked' as const },
+        { key: 'manufacture_hull_patch_kit', status: 'locked' as const },
+        { key: 'repair_scavenger_pod', status: 'locked' as const },
+      ],
+    };
+
+    const evaluation = evaluateMissionGateOnLaunch({
+      mission,
+      gateState,
+      response: {
+        success: true,
+        message: 'Target neutralized',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
+        playerName: 'Pioneer',
+        characterId: 'c-1',
+        shipId: 'ship-1',
+        targetCelestialBodyId: 'sample-a1',
+        hotkey: 1 as const,
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        resolution: {
+          outcome: 'no-effect',
+          targetDestroyed: true,
+          yieldedMaterials: [{ material: 'Iron', rarity: 'Common', quantity: 1 }],
+          yieldedItems: [],
+          launchSeed: 42,
+        },
+      },
+    });
+
+    expect(evaluation.changed).toBe(true);
+    expect(evaluation.completedStepKey).toBe('identify_iron_asteroid');
+    expect(evaluation.gateState.steps.find((step) => step.key === 'identify_iron_asteroid')?.status).toBe('completed');
+    expect(evaluation.gateState.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status).toBe('active');
+  });
 });
 
 // ── Shared gate state fixture ──────────────────────────────────────────────────

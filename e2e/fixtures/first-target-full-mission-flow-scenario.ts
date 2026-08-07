@@ -14,13 +14,17 @@ export async function setupFirstTargetFlowTest(
   mock: SocketIOMock;
   gameShell: GameShellPage;
   missionUpsertRequests: Array<{ status?: string }>;
+  celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }>;
+  launchItemRequests: Array<{ targetCelestialBodyId?: string }>;
 }> {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   const missionUpsertRequests: Array<{ status?: string }> = [];
+  const celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }> = [];
+  const launchItemRequests: Array<{ targetCelestialBodyId?: string }> = [];
 
   await mock.setup();
-  configureFirstTargetFlowMock(mock, missionUpsertRequests, {
+  configureFirstTargetFlowMock(mock, missionUpsertRequests, celestialBodyUpsertRequests, launchItemRequests, {
     includeIronInShipInventory: options?.includeIronInShipInventory,
   });
 
@@ -30,12 +34,14 @@ export async function setupFirstTargetFlowTest(
     await gameShell.joinGame('Join Game in Progress');
   }
 
-  return { mock, gameShell, missionUpsertRequests };
+  return { mock, gameShell, missionUpsertRequests, celestialBodyUpsertRequests, launchItemRequests };
 }
 
 export function configureFirstTargetFlowMock(
   mock: SocketIOMock,
   missionUpsertRequests: Array<{ status?: string }>,
+  celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }>,
+  launchItemRequests: Array<{ targetCelestialBodyId?: string }>,
   options?: { includeIronInShipInventory?: boolean },
 ): void {
   const pickMissionStatus = (value: unknown): string | undefined => {
@@ -194,6 +200,7 @@ export function configureFirstTargetFlowMock(
   }));
 
   mock.on('celestial-body-upsert-request', (request) => {
+    celestialBodyUpsertRequests.push(request as { celestialBody?: { id?: string; sourceScanId?: string } });
     const payload = request as {
       celestialBody?: {
         id?: string;
@@ -235,6 +242,7 @@ export function configureFirstTargetFlowMock(
   });
 
   mock.on('launch-item-request', (request) => {
+    launchItemRequests.push(request as { targetCelestialBodyId?: string });
     const payload = request as {
       shipId?: string;
       targetCelestialBodyId?: string;

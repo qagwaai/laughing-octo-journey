@@ -386,6 +386,58 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     expect(resolution.removeAsteroidSampleIds).toEqual(['sample-a1']);
   });
 
+  it('treats targetDestroyed=true as destroyed even when outcome is no-effect', () => {
+    const resolution = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveLaunchItemResponse({
+      response: {
+        success: true,
+        message: 'Target destroyed',
+        correlationId: TEST_CORRELATION_ID,
+        requestIdentity: TEST_REQUEST_IDENTITY,
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        shipId: 'ship-1',
+        targetCelestialBodyId: 'cb-1',
+        hotkey: 1,
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        resolution: {
+          outcome: 'no-effect',
+          targetDestroyed: true,
+          yieldedMaterials: [],
+          yieldedItems: [],
+          launchSeed: 0,
+        },
+      },
+      asteroidSamples: [
+        {
+          id: 'sample-a1',
+          serverCelestialBodyId: 'cb-1',
+          position: [0, 0, 0],
+          basePosition: [0, 0, 0],
+          scanProgress: 100,
+          scanned: true,
+          revealedMaterial: null,
+          revealedKinematics: null,
+          capturedKinematics: {
+            velocityKmPerSec: { x: 0, y: 0, z: 0 },
+            angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+            estimatedMassKg: 1,
+            estimatedDiameterM: 1,
+          },
+          solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
+          clusterCenterKm: { x: 0, y: 0, z: 0 },
+          motionPhase: 0,
+          motionRate: 0,
+          motionRadius: 0,
+          bobAmplitude: 0,
+        },
+      ],
+    });
+
+    expect(resolution.removeAsteroidSampleIds).toEqual(['sample-a1']);
+    expect(resolution.shouldRefreshAfterLaunch).toBe(true);
+  });
+
   it('should detect expendable dart drone by itemType in raw inventory', () => {
     const result = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveTargetingCapabilityFromInventory([
       { itemType: 'expendable-dart-drone', id: 'id-1', displayName: '', tier: 1, damageStatus: 'good', quantity: 1 },

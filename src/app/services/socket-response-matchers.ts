@@ -81,23 +81,48 @@ export function isShipUpsertResponseForRequest(
   return matchesShipRequestIdentity(response.requestIdentity, expectedRequestIdentity);
 }
 
-function matchesLaunchRequestIdentity(
-  left: LaunchItemRequestIdentity | undefined,
-  right: LaunchItemRequestIdentity | undefined,
+function matchesLaunchResponseCoreFields(
+  response: LaunchItemResponse,
+  expectedRequestIdentity: LaunchItemRequestIdentity,
 ): boolean {
-  if (!left || !right) {
+  if (!response.requestIdentity) {
     return false;
   }
 
   return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId) &&
-    normalizeIdentityValue(left.itemId) === normalizeIdentityValue(right.itemId) &&
-    (left.hotkey ?? null) === (right.hotkey ?? null) &&
-    normalizeIdentityValue(left.targetCelestialBodyId) === normalizeIdentityValue(right.targetCelestialBodyId) &&
-    normalizeIdentityValue(left.characterId) === normalizeIdentityValue(right.characterId)
+    normalizeIdentityValue(response.requestIdentity.operation) === normalizeIdentityValue(expectedRequestIdentity.operation) &&
+    normalizeIdentityValue(response.itemType) === normalizeIdentityValue(expectedRequestIdentity.entityType) &&
+    normalizeIdentityValue(response.shipId) === normalizeIdentityValue(expectedRequestIdentity.containerId) &&
+    normalizeIdentityValue(response.itemId) === normalizeIdentityValue(expectedRequestIdentity.itemId)
   );
+}
+
+function matchesRequiredLaunchResponseFields(
+  response: LaunchItemResponse,
+  expectedRequestIdentity: LaunchItemRequestIdentity,
+): boolean {
+  const responseHotkey = normalizeLaunchHotkey(response.hotkey);
+  const expectedHotkey = normalizeLaunchHotkey(expectedRequestIdentity.hotkey);
+
+  return (
+    responseHotkey === expectedHotkey &&
+    normalizeIdentityValue(response.targetCelestialBodyId) ===
+      normalizeIdentityValue(expectedRequestIdentity.targetCelestialBodyId) &&
+    normalizeIdentityValue(response.characterId) === normalizeIdentityValue(expectedRequestIdentity.characterId)
+  );
+}
+
+function normalizeLaunchHotkey(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) ? parsed : null;
+  }
+
+  return null;
 }
 
 export function isLaunchItemResponseForRequest(
@@ -115,7 +140,10 @@ export function isLaunchItemResponseForRequest(
     return false;
   }
 
-  return matchesLaunchRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+  return (
+    matchesLaunchResponseCoreFields(response, expectedRequestIdentity) &&
+    matchesRequiredLaunchResponseFields(response, expectedRequestIdentity)
+  );
 }
 
 function matchesCelestialBodyUpsertRequestIdentity(

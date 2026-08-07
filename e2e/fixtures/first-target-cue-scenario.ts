@@ -340,7 +340,10 @@ export async function advanceMissionToManufactureStep(sharedPage: Page): Promise
 
 export async function resetFirstTargetCuePersistence(sharedPage: Page): Promise<void> {
   await sharedPage.evaluate(
-    ({ missionId, playerName, characterId, fabricationDismissPrefix, repairDismissPrefix }) => {
+    ({ missionId, playerName, characterId, shipId, fabricationDismissPrefix, repairDismissPrefix }) => {
+      window.localStorage.removeItem(
+        `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
+      );
       window.localStorage.removeItem(`ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`);
       window.localStorage.removeItem(`${fabricationDismissPrefix}::${playerName}::${characterId}`);
       window.localStorage.removeItem(`${repairDismissPrefix}::${playerName}::${characterId}`);
@@ -354,6 +357,7 @@ export async function resetFirstTargetCuePersistence(sharedPage: Page): Promise<
       missionId: FIRST_TARGET_MISSION_ID,
       playerName: TEST_PLAYER,
       characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+      shipId: 'ship-cue-1',
       fabricationDismissPrefix: FAB_LAB_HINT_DISMISS_PREFIX,
       repairDismissPrefix: REPAIR_HINT_DISMISS_PREFIX,
     },

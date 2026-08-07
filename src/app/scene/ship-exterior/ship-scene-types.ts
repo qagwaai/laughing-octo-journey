@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import { OrbitCameraControls } from './orbit-camera-controls';
 
 export interface ShipSceneCameraState {
@@ -22,6 +23,7 @@ export interface ShipSceneFlightState {
 
 export interface ShipSceneAsteroidSample {
   id: string;
+  serverCelestialBodyId?: string | null;
   scanned: boolean;
   scanProgress: number;
   revealedMaterial: {
@@ -43,6 +45,7 @@ export interface ShipSceneContextState {
   world?: ShipSceneWorldState;
   flight?: ShipSceneFlightState;
   asteroid?: ShipSceneAsteroidState;
+  mission?: ShipExteriorMissionGateState;
 }
 
 export interface ShipSceneRenderingState {
@@ -51,8 +54,10 @@ export interface ShipSceneRenderingState {
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   cube: THREE.Mesh;
+  asteroidGroup: THREE.Group;
   starfieldPoints: THREE.Points;
   starfieldSignatureLocal: string;
+  asteroidLayoutSignatureLocal: string;
   orbitControls: OrbitCameraControls;
   isPausedLocal: boolean;
   cubeColorLocal: number;

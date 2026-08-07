@@ -439,7 +439,7 @@ export class SocketService {
       onResponseMatched: (response) => onResponse(response),
       onResponseMismatched: (response) => {
         appLogger.warn(
-          `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
+          `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedOperation=${requestIdentity.operation ?? 'missing'} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} expectedHotkey=${requestIdentity.hotkey ?? 'missing'} expectedTargetCelestialBodyId=${requestIdentity.targetCelestialBodyId ?? 'missing'} expectedCharacterId=${requestIdentity.characterId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseOperation=${response.requestIdentity?.operation ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'} responseHotkey=${response.hotkey ?? 'missing'} responseTargetCelestialBodyId=${response.targetCelestialBodyId ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
         );
         emitSocketCorrelationWarning({
           operation: 'launch-item',

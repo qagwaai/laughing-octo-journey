@@ -9,7 +9,7 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 
 test.describe('First Target Mission Flow', () => {
   test('validates all first-target mission gate steps in order', async ({ page }) => {
-    await setupFirstTargetFlowTest(page);
+    const { celestialBodyUpsertRequests, launchItemRequests } = await setupFirstTargetFlowTest(page);
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
@@ -118,6 +118,14 @@ test.describe('First Target Mission Flow', () => {
     }, firstSampleId);
 
     await expect
+      .poll(() => launchItemRequests.length)
+      .toBeGreaterThan(0);
+    expect(launchItemRequests[0]?.targetCelestialBodyId).not.toBe(firstSampleId);
+    if (celestialBodyUpsertRequests.length > 0) {
+      expect(celestialBodyUpsertRequests[0]?.celestialBody?.sourceScanId).toBe(firstSampleId);
+    }
+
+    await expect
       .poll(async () =>
         page.evaluate(() => {
           const api = (
@@ -212,9 +220,9 @@ test.describe('First Target Mission Flow', () => {
     const { gameShell, missionUpsertRequests } = await setupFirstTargetFlowTest(page, { autoJoin: false });
 
     await page.evaluate(
-      ({ missionId, characterId, playerName }) => {
+      ({ missionId, characterId, playerName, shipId }) => {
         window.localStorage.setItem(
-          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`,
+          `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
           JSON.stringify({
             missionId,
             characterId,
@@ -228,7 +236,12 @@ test.describe('First Target Mission Flow', () => {
           }),
         );
       },
-      { missionId: FIRST_TARGET_MISSION_ID, characterId: TEST_CHARACTER_ID, playerName: TEST_PLAYER },
+      {
+        missionId: FIRST_TARGET_MISSION_ID,
+        characterId: TEST_CHARACTER_ID,
+        playerName: TEST_PLAYER,
+        shipId: 'ship-1',
+      },
     );
 
     await gameShell.joinGame('Join Game in Progress');

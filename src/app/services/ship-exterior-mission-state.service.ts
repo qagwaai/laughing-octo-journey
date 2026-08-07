@@ -9,6 +9,7 @@ export interface ShipExteriorMissionStateContext {
   missionId: string;
   playerName: string;
   characterId: string;
+  shipId: string;
 }
 
 @Injectable({
@@ -40,7 +41,12 @@ export class ShipExteriorMissionStateService {
       }
     }
 
-    return this.loadFallbackStateByMissionAndCharacter(context);
+    const legacyState = this.loadFallbackStateByMissionAndCharacter(context);
+    if (legacyState) {
+      this.saveState(context, legacyState);
+    }
+
+    return legacyState;
   }
 
   private loadFallbackStateByMissionAndCharacter(
@@ -58,11 +64,13 @@ export class ShipExteriorMissionStateService {
         continue;
       }
 
-      const [prefix, storedMissionId, _storedPlayerName, storedCharacterId] = key.split('::');
+      const parts = key.split('::');
+      const [prefix, storedMissionId, _storedPlayerName, storedCharacterId] = parts;
       if (
         prefix !== ShipExteriorMissionStateService.STORAGE_PREFIX ||
         storedMissionId !== missionId ||
-        storedCharacterId !== characterId
+        storedCharacterId !== characterId ||
+        parts.length !== 4
       ) {
         continue;
       }
@@ -186,9 +194,25 @@ export class ShipExteriorMissionStateService {
     }
 
     window.localStorage.removeItem(key);
+    const legacyKey = this.buildLegacyStorageKey(context);
+    if (legacyKey) {
+      window.localStorage.removeItem(legacyKey);
+    }
   }
 
   private buildStorageKey(context: ShipExteriorMissionStateContext): string | null {
+    const missionId = context.missionId?.trim();
+    const playerName = context.playerName?.trim();
+    const characterId = context.characterId?.trim();
+    const shipId = context.shipId?.trim();
+    if (!missionId || !playerName || !characterId || !shipId) {
+      return null;
+    }
+
+    return `${ShipExteriorMissionStateService.STORAGE_PREFIX}::${missionId}::${playerName}::${characterId}::${shipId}`;
+  }
+
+  private buildLegacyStorageKey(context: ShipExteriorMissionStateContext): string | null {
     const missionId = context.missionId?.trim();
     const playerName = context.playerName?.trim();
     const characterId = context.characterId?.trim();
