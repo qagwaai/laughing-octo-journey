@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
 import { OrbitCameraControls } from './orbit-camera-controls';
 import {
+  ShipSceneAsteroidSample,
+  ShipSceneAsteroidState,
   ShipSceneContextState,
   ShipSceneFlightState,
   ShipSceneRenderingState,
@@ -35,6 +37,31 @@ const FLIGHT_CONFIG = {
   mouseSensitivityMax: 0.01,
   maxPitchRad: Math.PI / 2 - 0.02,
 };
+const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [
+  {
+    id: 'sample-iron-1',
+    scanned: false,
+    scanProgress: 0,
+    revealedMaterial: { material: 'Iron', rarity: 'Common' },
+  },
+];
+
+function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroidSample {
+  return {
+    ...sample,
+    revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : null,
+  };
+}
+
+function normalizeAsteroidState(state?: ShipSceneAsteroidState): ShipSceneAsteroidState {
+  const samples = (state?.samples ?? DEFAULT_ASTEROID_SAMPLES).map((sample) => cloneAsteroidSample(sample));
+  const targetedAsteroidId = state?.targetedAsteroidId ?? null;
+  const targetStillExists = targetedAsteroidId ? samples.some((sample) => sample.id === targetedAsteroidId) : false;
+  return {
+    samples,
+    targetedAsteroidId: targetStillExists ? targetedAsteroidId : null,
+  };
+}
 
 function hashStringToSeed(input: string): number {
   let hash = 2166136261;
@@ -139,6 +166,7 @@ export class ShipSceneContext {
           ...(initialState.flight?.currentLocationKm ?? initialState.world?.shipPosition ?? ZERO_VECTOR),
         },
       },
+      asteroid: normalizeAsteroidState(initialState.asteroid),
     };
     this.starfieldSeed = hashStringToSeed(this.state.shipId);
     this.starfieldSignature = `${this.starfieldSeed.toString(16).padStart(8, '0')}:${STARFIELD_POINT_COUNT}:${this.starfieldSeed % 360}`;
@@ -156,10 +184,52 @@ export class ShipSceneContext {
           ...update.flight,
         }
       : this.state.flight;
+    const asteroid = update.asteroid ? normalizeAsteroidState(update.asteroid) : this.state.asteroid;
     this.state = {
       ...this.state,
       ...update,
       flight: flight ?? this.state.flight,
+      asteroid,
+    };
+  }
+
+  getAsteroidSamples(): readonly ShipSceneAsteroidSample[] {
+    let asteroid = this.state.asteroid;
+    if (!asteroid) {
+      asteroid = normalizeAsteroidState();
+      this.state = {
+        ...this.state,
+        asteroid,
+      };
+    }
+    return asteroid.samples.map((sample) => cloneAsteroidSample(sample));
+  }
+
+  setAsteroidSamples(samples: readonly ShipSceneAsteroidSample[]): void {
+    const previousTargeted = this.state.asteroid?.targetedAsteroidId ?? null;
+    const nextState = normalizeAsteroidState({
+      samples: samples.map((sample) => cloneAsteroidSample(sample)),
+      targetedAsteroidId: previousTargeted,
+    });
+    this.state = {
+      ...this.state,
+      asteroid: nextState,
+    };
+  }
+
+  getTargetedAsteroidId(): string | null {
+    return this.state.asteroid?.targetedAsteroidId ?? null;
+  }
+
+  setTargetedAsteroidId(sampleId: string | null): void {
+    const asteroid = this.state.asteroid ?? normalizeAsteroidState();
+    const targetStillExists = sampleId ? asteroid.samples.some((sample) => sample.id === sampleId) : false;
+    this.state = {
+      ...this.state,
+      asteroid: {
+        ...asteroid,
+        targetedAsteroidId: targetStillExists ? sampleId : null,
+      },
     };
   }
 

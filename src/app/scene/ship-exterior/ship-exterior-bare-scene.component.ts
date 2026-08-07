@@ -23,13 +23,14 @@ import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
 import { ShipSceneRegistry } from './ship-scene-registry';
-import { buildShipSceneContextKey, ShipSceneContextState } from './ship-scene-types';
+import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
 import {
   createInitialMissionGateState,
   resolveShipExteriorMission,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
 import {
+  type ShipExteriorLegacyAsteroidSample,
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
 } from './ship-exterior-bare-scene-test-api';
@@ -46,8 +47,6 @@ export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: b
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
-  private static readonly OBJECTIVE_UNLOCKED_MESSAGE =
-    'Objective unlocked: Neutralize the identified asteroid using a launchable payload.';
   private static readonly TEST_TARGET_HOLD_MS = 2500;
 
   private readonly router = inject(Router);
@@ -122,7 +121,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const snapshot = this.activeFlightSnapshot();
     return `QUALITY SCALER // ${snapshot?.isPaused ? 'PAUSED' : 'ACTIVE'}`;
   });
-  readonly objectiveMessage = signal<string>(ShipExteriorBareSceneComponent.OBJECTIVE_UNLOCKED_MESSAGE);
+  readonly objectiveMessage = computed(() => this.missionGateState().activeObjectiveText);
   readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error' } | null>(null);
 
   private readonly registry = new ShipSceneRegistry();
@@ -140,16 +139,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     window,
     document,
   );
-  private readonly asteroidSamples = signal([
-    {
-      id: 'sample-iron-1',
-      scanned: false,
-      scanProgress: 0,
-      revealedMaterial: { material: 'Iron', rarity: 'Common' },
-    },
-  ]);
-  readonly targetedAsteroidId = signal<string | null>(null);
+  readonly targetedAsteroidId = computed(() => {
+    this.runtimeRevision();
+    this.activeContextKey();
+    return this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null;
+  });
   private readonly testTargetHoldCandidateId = signal<string | null>(null);
+  private readonly testTargetHoldContextKey = signal<string | null>(null);
   private testTargetHoldTimeoutId: number | null = null;
   private readonly missionGateState = signal<ShipExteriorMissionGateState>(
     createInitialMissionGateState({
@@ -244,18 +240,26 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   selectFirstScannedIronTargetForTest(): void {
-    const sample = this.asteroidSamples().find(
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return;
+    }
+
+    const samples = active.getAsteroidSamples();
+    const sample = samples.find(
       (candidate) => candidate.scanned && candidate.revealedMaterial?.material?.toLowerCase() === 'iron',
     );
 
     if (sample) {
-      this.targetedAsteroidId.set(sample.id);
+      active.setTargetedAsteroidId(sample.id);
+      this.bumpRuntimeRevision();
       return;
     }
 
-    const first = this.asteroidSamples()[0];
+    const first = samples[0];
     if (first) {
-      this.targetedAsteroidId.set(first.id);
+      active.setTargetedAsteroidId(first.id);
+      this.bumpRuntimeRevision();
     }
   }
 
@@ -619,7 +623,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
         this.setFlightMouseSensitivityFromSliderValue(rawValue),
       legacy: {
-        getAsteroidSamples: () => this.asteroidSamples(),
+        getAsteroidSamples: () => this.getActiveAsteroidSamples(),
         beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
         unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
         getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
@@ -627,7 +631,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         resetMissionGateState: () => this.resetMissionGateStateForTest(),
         forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
         forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
-        getTargetedAsteroidId: () => this.targetedAsteroidId(),
+        getTargetedAsteroidId: () => this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
         simulateDebrisCollection: (remainingDebrisCount?: number) => this.simulateDebrisCollection(remainingDebrisCount),
         simulateManufacture: (itemType: string) => this.simulateManufacture(itemType),
@@ -680,30 +684,42 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.clearTestTargetHoldTimer();
     this.testInventoryRewards.set([]);
-    this.targetedAsteroidId.set(null);
-    this.asteroidSamples.update((samples) =>
-      samples.map((sample) => ({
+    const active = this.registry.getActiveContext();
+    if (active) {
+      const resetSamples = active.getAsteroidSamples().map((sample) => ({
         ...sample,
         scanned: false,
         scanProgress: 0,
         revealedMaterial: { material: 'Iron', rarity: 'Common' },
-      })),
-    );
+      }));
+      active.setAsteroidSamples(resetSamples);
+      active.setTargetedAsteroidId(null);
+      this.bumpRuntimeRevision();
+    }
 
     return resetState;
   }
 
   private beginAsteroidTargetHold(sampleId: string): boolean {
-    const sampleExists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return false;
+    }
+
+    const sampleExists = active.getAsteroidSamples().some((sample) => sample.id === sampleId);
     if (!sampleExists) {
       return false;
     }
 
     this.clearTestTargetHoldTimer();
     this.testTargetHoldCandidateId.set(sampleId);
+    this.testTargetHoldContextKey.set(active.contextKey);
     this.testTargetHoldTimeoutId = window.setTimeout(() => {
       if (this.testTargetHoldCandidateId() === sampleId) {
-        this.forceTargetAsteroid(sampleId);
+        const contextKey = this.testTargetHoldContextKey();
+        if (contextKey) {
+          this.forceTargetAsteroidInContext(contextKey, sampleId);
+        }
       }
       this.clearTestTargetHoldTimer();
     }, ShipExteriorBareSceneComponent.TEST_TARGET_HOLD_MS);
@@ -712,7 +728,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private unhoverAsteroid(sampleId: string): boolean {
-    if (this.testTargetHoldCandidateId() !== sampleId) {
+    const activeContextKey = this.registry.getActiveContext()?.contextKey ?? null;
+    if (
+      this.testTargetHoldCandidateId() !== sampleId ||
+      this.testTargetHoldContextKey() !== activeContextKey
+    ) {
       return false;
     }
 
@@ -726,6 +746,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       this.testTargetHoldTimeoutId = null;
     }
     this.testTargetHoldCandidateId.set(null);
+    this.testTargetHoldContextKey.set(null);
   }
 
   private persistMissionGateState(state: ShipExteriorMissionGateState): void {
@@ -778,34 +799,42 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.runtimeRevision.update((value) => value + 1);
   }
 
+  private getActiveAsteroidSamples(): ShipExteriorLegacyAsteroidSample[] {
+    const samples = this.registry.getActiveContext()?.getAsteroidSamples() ?? [];
+    return samples.map((sample) => ({
+      ...sample,
+      revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : undefined,
+    }));
+  }
+
   private forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null {
-    const targetId = sampleId ?? this.asteroidSamples()[0]?.id;
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return null;
+    }
+
+    const targetId = sampleId ?? active.getAsteroidSamples()[0]?.id;
     if (!targetId) {
       return null;
     }
 
-    let updatedSample: {
-      id: string;
-      scanned: boolean;
-      scanProgress: number;
-      revealedMaterial: { material: string; rarity: string };
-    } | null = null;
+    let updatedSample: ShipSceneAsteroidSample | null = null;
 
-    this.asteroidSamples.update((samples) =>
-      samples.map((sample) => {
-        if (sample.id !== targetId) {
-          return sample;
-        }
+    const nextSamples = active.getAsteroidSamples().map((sample) => {
+      if (sample.id !== targetId) {
+        return sample;
+      }
 
-        updatedSample = {
-          ...sample,
-          scanned: true,
-          scanProgress: 100,
-          revealedMaterial: { material: 'Iron', rarity: 'Common' },
-        };
-        return updatedSample;
-      }),
-    );
+      updatedSample = {
+        ...sample,
+        scanned: true,
+        scanProgress: 100,
+        revealedMaterial: { material: 'Iron', rarity: 'Common' },
+      };
+      return updatedSample;
+    });
+    active.setAsteroidSamples(nextSamples);
+    this.bumpRuntimeRevision();
 
     if (!updatedSample) {
       return null;
@@ -822,12 +851,27 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private forceTargetAsteroid(sampleId: string): boolean {
-    const exists = this.asteroidSamples().some((sample) => sample.id === sampleId);
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return false;
+    }
+
+    return this.forceTargetAsteroidInContext(active.contextKey, sampleId);
+  }
+
+  private forceTargetAsteroidInContext(contextKey: string, sampleId: string): boolean {
+    const context = this.registry.getContext(contextKey);
+    if (!context) {
+      return false;
+    }
+
+    const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
     if (!exists) {
       return false;
     }
 
-    this.targetedAsteroidId.set(sampleId);
+    context.setTargetedAsteroidId(sampleId);
+    this.bumpRuntimeRevision();
     return true;
   }
 
@@ -844,13 +888,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    const targetId = this.targetedAsteroidId();
+    const active = this.registry.getActiveContext();
+    const targetId = active?.getTargetedAsteroidId() ?? null;
     if (!targetId) {
       this.activeLaunchToast.set({ message: 'Launch queued.', tone: 'success' });
       return;
     }
 
-    const targetSample = this.asteroidSamples().find((sample) => sample.id === targetId);
+    const targetSample = active?.getAsteroidSamples().find((sample) => sample.id === targetId);
     const targetedIron = targetSample?.revealedMaterial?.material?.toLowerCase() === 'iron';
 
     if (targetedIron) {

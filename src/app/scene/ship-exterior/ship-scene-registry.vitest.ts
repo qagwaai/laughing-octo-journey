@@ -186,4 +186,48 @@ describe('ShipSceneRegistry', () => {
     expect(aSignatureSecond).toBe(aSignatureFirst);
     expect(bSignature).not.toBe(aSignatureFirst);
   });
+
+  it('keeps asteroid target and scan state isolated across A -> B -> A activation', () => {
+    const registry = new ShipSceneRegistry();
+    const aKey = createKey('ship-a');
+    const bKey = createKey('ship-b');
+
+    const a = registry.getOrCreateContext(aKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-a',
+    });
+    const b = registry.getOrCreateContext(bKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-b',
+    });
+
+    a.setAsteroidSamples([
+      {
+        id: 'a-1',
+        scanned: true,
+        scanProgress: 100,
+        revealedMaterial: { material: 'Iron', rarity: 'Common' },
+      },
+    ]);
+    a.setTargetedAsteroidId('a-1');
+
+    registry.activate(bKey);
+    b.setAsteroidSamples([
+      {
+        id: 'b-1',
+        scanned: false,
+        scanProgress: 25,
+        revealedMaterial: { material: 'Silicate', rarity: 'Common' },
+      },
+    ]);
+    b.setTargetedAsteroidId('b-1');
+
+    registry.activate(aKey);
+    expect(a.getTargetedAsteroidId()).toBe('a-1');
+    expect(a.getAsteroidSamples().map((sample) => sample.id)).toEqual(['a-1']);
+    expect(b.getTargetedAsteroidId()).toBe('b-1');
+    expect(b.getAsteroidSamples().map((sample) => sample.id)).toEqual(['b-1']);
+  });
 });

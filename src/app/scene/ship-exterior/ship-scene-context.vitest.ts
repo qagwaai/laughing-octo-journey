@@ -70,4 +70,34 @@ describe('ShipSceneContext', () => {
     expect(first.getStarfieldSignature()).toBe(sameShipAgain.getStarfieldSignature());
     expect(first.getStarfieldSignature()).not.toBe(differentShip.getStarfieldSignature());
   });
+
+  it('stores asteroid samples and target state in the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.getTargetedAsteroidId()).toBeNull();
+    expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-iron-1']);
+
+    context.setAsteroidSamples([
+      {
+        id: 'sample-alpha',
+        scanned: false,
+        scanProgress: 0,
+        revealedMaterial: { material: 'Iron', rarity: 'Common' },
+      },
+      {
+        id: 'sample-beta',
+        scanned: true,
+        scanProgress: 100,
+        revealedMaterial: { material: 'Nickel', rarity: 'Rare' },
+      },
+    ]);
+    context.setTargetedAsteroidId('sample-beta');
+
+    expect(context.getTargetedAsteroidId()).toBe('sample-beta');
+    expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-alpha', 'sample-beta']);
+  });
 });

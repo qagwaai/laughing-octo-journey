@@ -20,6 +20,21 @@ export interface ShipSceneFlightState {
   speedKmPerSec: number;
 }
 
+export interface ShipSceneAsteroidSample {
+  id: string;
+  scanned: boolean;
+  scanProgress: number;
+  revealedMaterial: {
+    material: string;
+    rarity: string;
+  } | null;
+}
+
+export interface ShipSceneAsteroidState {
+  samples: ShipSceneAsteroidSample[];
+  targetedAsteroidId: string | null;
+}
+
 export interface ShipSceneContextState {
   playerName: string;
   characterId: string;
@@ -27,6 +42,7 @@ export interface ShipSceneContextState {
   camera?: ShipSceneCameraState;
   world?: ShipSceneWorldState;
   flight?: ShipSceneFlightState;
+  asteroid?: ShipSceneAsteroidState;
 }
 
 export interface ShipSceneRenderingState {
