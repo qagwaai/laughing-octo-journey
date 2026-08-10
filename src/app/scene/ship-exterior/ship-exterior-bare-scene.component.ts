@@ -18,9 +18,12 @@ import { MissionProgressSyncService } from '../../services/mission-progress-sync
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
+import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
 import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { appLogger } from '../../services/logger';
+import { environment } from '../../../environments/environment';
 import {
   type MarketListByLocationRequest,
   type MarketListByLocationResponse,
@@ -29,15 +32,16 @@ import { ShipSummary } from '../../model/ship-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { DEFAULT_SOLAR_SYSTEM_ID, type CelestialBodyUpsertRequest } from '../../model/celestial-body-upsert';
 import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
+import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabilities';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
+import { FloatingDebrisController } from './floating-debris-controller';
 import { ShipSceneRegistry } from './ship-scene-registry';
 import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
 import { collectShipExteriorRouteFeeds, type ShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
 import {
   formatShipExteriorRouteFeedSummary,
-  summarizeShipExteriorRouteFeeds,
   type ShipExteriorRouteFeedCounts,
 } from './ship-exterior-route-feed-summary';
 import {
@@ -58,6 +62,7 @@ import {
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
 } from './ship-exterior-bare-scene-test-api';
+import { seedRouteFeedsWithDevStation } from './ship-exterior-dev-station-seed';
 
 const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
 const ROUTE_FEED_DISCOVERY_LIMIT = 250;
@@ -74,15 +79,15 @@ export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: b
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
-  private static readonly TEST_TARGET_HOLD_MS = 2500;
-
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly shipService = inject(ShipService);
   private readonly marketService = inject(MarketService);
   private readonly socketService = inject(SocketService);
+  private readonly shipExteriorSocketService = inject(ShipExteriorSocketService);
   private readonly missionProgressSyncService = inject(MissionProgressSyncService);
   private readonly shipExteriorViewStateService = inject(ShipExteriorViewStateService);
+  private readonly floatingDebrisStateService = inject(FloatingDebrisStateService);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -152,12 +157,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return `QUALITY SCALER // ${snapshot?.isPaused ? 'PAUSED' : 'ACTIVE'}`;
   });
   readonly activeRouteFeedLine = computed(() => {
-    const key = this.activeContextKey();
-    if (!key) {
-      return 'ROUTE // ---';
-    }
-
-    return formatShipExteriorRouteFeedSummary(this.getRouteFeedCountsForContextKey(key));
+    this.runtimeRevision();
+    this.activeContextKey();
+    return formatShipExteriorRouteFeedSummary(this.getActiveRouteFeedCounts());
   });
   readonly activeAsteroidLine = computed(() => {
     const active = this.registry.getActiveContext();
@@ -167,8 +169,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     const samples = active.getAsteroidSamples();
     const targetedId = active.getTargetedAsteroidId() ?? 'none';
-    return `ASTEROIDS // ${samples.length} / ${targetedId} / ${active.getAsteroidLayoutSignature()}`;
+    const hoveredId = active.getHoveredAsteroidId() ?? 'none';
+    return `ASTEROIDS // ${samples.length} / ${targetedId} / ${hoveredId} / ${active.getAsteroidLayoutSignature()}`;
   });
+  readonly floatingDebrisItems = computed(() => this.floatingDebrisStateService.items());
   readonly objectiveMessage = computed(() => {
     this.runtimeRevision();
     this.activeContextKey();
@@ -181,7 +185,21 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   );
 
   private readonly registry = new ShipSceneRegistry();
-  private readonly routeFeedsByContextKey = signal<Record<string, ShipExteriorRouteFeeds>>({});
+  private readonly floatingDebrisController = new FloatingDebrisController({
+    socketService: this.shipExteriorSocketService,
+    sessionService: this.sessionService,
+    stateService: this.floatingDebrisStateService,
+    getPlayerName: () => this.navigationPlayerName(),
+    getCharacterId: () => this.navigationCharacterId(),
+    getActiveShipId: () => this.registry.getActiveContext()?.getState().shipId ?? null,
+    getCelestialBodyId: () => this.registry.getActiveContext()?.getState().shipId ?? null,
+    getShipPositionKm: () => {
+      const active = this.registry.getActiveContext();
+      const state = active?.getState();
+      return state?.flight?.currentLocationKm ?? state?.world?.shipPosition ?? null;
+    },
+    getSolarSystemId: () => DEFAULT_SOLAR_SYSTEM_ID,
+  });
   private readonly inputAdapter = new ShipExteriorInputAdapter(
     {
       onWindowPointerDown: (event) => this.onWindowPointerDown(event),
@@ -210,6 +228,19 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private viewReady = false;
   private hasBootstrappedContexts = false;
   private readonly runtimeRevision = signal(0);
+  private readonly testHoverScanCandidateId = signal<string | null>(null);
+  private readonly testHoverScanContextKey = signal<string | null>(null);
+  private testHoverScanTimeoutId: number | null = null;
+  private readonly floatingDebrisSync = effect(() => {
+    this.activeContextKey();
+    this.floatingDebrisItems();
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return;
+    }
+
+    active.setDebrisItems(this.floatingDebrisItems());
+  });
   private readonly navigationPlayerName = signal<string>('unknown-player');
   private readonly navigationCharacterId = signal<string>('unknown-character');
   private readonly launchController = new ShipExteriorLaunchController({
@@ -239,6 +270,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   ngOnInit(): void {
     this.resolveNavigationIdentity();
     this.bootstrapContexts();
+    this.floatingDebrisController.start();
     this.inputAdapter.attach();
     this.registerTestApi();
 
@@ -262,7 +294,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     this.resizeObserver?.disconnect();
+    this.clearHoverScanTimer();
     this.clearTestTargetHoldTimer();
+    this.floatingDebrisController.stop();
     this.teardownAllContexts();
   }
 
@@ -284,6 +318,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.attachVisibleCanvas();
     this.logContextActivation(contextKey);
     this.bumpRuntimeRevision();
+    this.floatingDebrisController.requestNearbyItems();
     return true;
   }
 
@@ -442,11 +477,29 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     });
   }
 
-  private onWindowPointerDown(_event: PointerEvent): void {
+  private onWindowPointerDown(event: PointerEvent): void {
+    const active = this.registry.getActiveContext();
+    if (active && !active.flightModeEnabled() && event.button === 0 && event.ctrlKey) {
+      const hoveredId = active.getHoveredAsteroidId();
+      if (hoveredId) {
+        this.beginAsteroidTargetHold(hoveredId);
+        event.preventDefault();
+        return;
+      }
+    }
+
     this.syncPointerLockForActiveContext(true);
   }
 
-  private onWindowPointerUp(_event: PointerEvent): void {}
+  private onWindowPointerUp(event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+
+    if (this.testTargetHoldCandidateId()) {
+      this.clearTestTargetHoldTimer();
+    }
+  }
 
   private onWindowContextMenu(event: MouseEvent): void {
     event.preventDefault();
@@ -483,6 +536,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private onWindowMouseMove(event: MouseEvent): void {
     const active = this.registry.getActiveContext();
     if (!active?.flightModeEnabled()) {
+      const hoveredId = active?.updateHoveredAsteroidFromPointer(event.clientX, event.clientY) ?? null;
+      this.syncAsteroidHoverScanFromHover(active?.contextKey ?? null, hoveredId);
       return;
     }
 
@@ -588,8 +643,40 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const context = this.registry.getOrCreateContext(contextKey, initialState);
     context.setState(initialState);
     this.ensureMissionGateStateForContext(context);
+    this.ensureDevStationForContext(context, ship);
     this.ensureRouteFeedsForContext(contextKey, ship, playerName, characterId);
     this.syncContextsSignal();
+  }
+
+  private ensureDevStationForContext(context: ShipSceneContext, ship: ShipSummary): void {
+    if (environment.production) {
+      return;
+    }
+
+    const routeFeeds = context.getRouteFeeds();
+    if (routeFeeds?.stations.length) {
+      return;
+    }
+
+    const shipId = ship.id?.trim();
+    const solarSystemId = ship.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+    const positionKm = ship.spatial?.positionKm ?? context.getState().world?.shipPosition;
+    if (!shipId || !positionKm) {
+      return;
+    }
+
+    context.setRouteFeeds(
+      this.resolveRouteFeedsForContext(
+        routeFeeds ?? {
+          gates: [],
+          stations: [],
+          encounterShips: [],
+        },
+        shipId,
+        solarSystemId,
+        positionKm,
+      ),
+    );
   }
 
   private ensureRouteFeedsForContext(
@@ -602,11 +689,36 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const solarSystemId = ship.spatial?.solarSystemId?.trim() ?? '';
     const positionKm = ship.spatial?.positionKm;
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-    if (!shipId || !solarSystemId || !positionKm || !sessionKey || !playerName || !characterId) {
+    const context = this.registry.getContext(contextKey);
+    if (!context) {
       return;
     }
 
-    if (this.routeFeedsByContextKey()[contextKey]) {
+    const currentRouteFeeds = context.getRouteFeeds();
+    if (currentRouteFeeds && currentRouteFeeds.stations.length > 0) {
+      return;
+    }
+
+    if (!shipId || !positionKm) {
+      return;
+    }
+
+    if (!solarSystemId || !sessionKey || !playerName || !characterId) {
+      if (!environment.production) {
+        context.setRouteFeeds(
+          this.resolveRouteFeedsForContext(
+            currentRouteFeeds ?? {
+              gates: [],
+              stations: [],
+              encounterShips: [],
+            },
+            shipId,
+            solarSystemId || DEFAULT_SOLAR_SYSTEM_ID,
+            positionKm,
+          ),
+        );
+        this.bumpRuntimeRevision();
+      }
       return;
     }
 
@@ -623,49 +735,61 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     };
 
     this.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
-      if (!response.success) {
-        this.storeRouteFeedsForContext(contextKey, {
-          gates: [],
-          stations: [],
-          encounterShips: [],
-        });
-        return;
-      }
-
       const context = this.registry.getContext(contextKey);
       const contextShipId = context?.getState().shipId?.trim() ?? '';
       if (!context || contextShipId !== shipId) {
         return;
       }
 
-      this.storeRouteFeedsForContext(contextKey, collectShipExteriorRouteFeeds(response.markets));
+      const currentRouteFeeds = context.getRouteFeeds();
+      if (!response.success) {
+        context.setRouteFeeds(
+          this.resolveRouteFeedsForContext(
+            currentRouteFeeds ?? {
+              gates: [],
+              stations: [],
+              encounterShips: [],
+            },
+            shipId,
+            solarSystemId,
+            positionKm,
+          ),
+        );
+        this.bumpRuntimeRevision();
+        return;
+      }
+
+      context.setRouteFeeds(
+        this.resolveRouteFeedsForContext(
+          collectShipExteriorRouteFeeds(response.markets),
+          shipId,
+          solarSystemId,
+          positionKm,
+        ),
+      );
+      this.bumpRuntimeRevision();
     });
   }
 
-  private storeRouteFeedsForContext(contextKey: string, routeFeeds: ShipExteriorRouteFeeds): void {
-    this.routeFeedsByContextKey.update((current) => ({
-      ...current,
-      [contextKey]: routeFeeds,
-    }));
-    this.bumpRuntimeRevision();
-  }
-
-  private getRouteFeedCountsForContextKey(contextKey: string): ShipExteriorRouteFeedCounts | null {
-    const routeFeeds = this.routeFeedsByContextKey()[contextKey];
-    if (!routeFeeds) {
-      return null;
-    }
-
-    return summarizeShipExteriorRouteFeeds(routeFeeds);
-  }
-
   private getActiveRouteFeedCounts(): ShipExteriorRouteFeedCounts | null {
-    const key = this.activeContextKey();
-    if (!key) {
-      return null;
+    return this.registry.getActiveContext()?.getRouteFeedCounts() ?? null;
+  }
+
+  private resolveRouteFeedsForContext(
+    routeFeeds: ShipExteriorRouteFeeds,
+    shipId: string,
+    solarSystemId: string,
+    positionKm: { x: number; y: number; z: number },
+  ): ShipExteriorRouteFeeds {
+    if (environment.production) {
+      return routeFeeds;
     }
 
-    return this.getRouteFeedCountsForContextKey(key);
+    return seedRouteFeedsWithDevStation(routeFeeds, {
+      shipId,
+      solarSystemId,
+      positionKm,
+    });
   }
 
   private ensureFallbackContexts(playerName: string, characterId: string): void {
@@ -685,6 +809,21 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         },
       });
       this.ensureMissionGateStateForContext(context);
+      if (!environment.production) {
+        const shipPosition = context.getState().world?.shipPosition ?? { x: 0, y: 0, z: 0 };
+        context.setRouteFeeds(
+          this.resolveRouteFeedsForContext(
+            {
+              gates: [],
+              stations: [],
+              encounterShips: [],
+            },
+            shipId,
+            DEFAULT_SOLAR_SYSTEM_ID,
+            shipPosition,
+          ),
+        );
+      }
     }
 
     this.syncContextsSignal();
@@ -811,9 +950,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private teardownAllContexts(): void {
     this.registry.dispose();
+    this.floatingDebrisStateService.clear();
     this.contexts.set([]);
     this.activeContextKey.set(null);
-    this.routeFeedsByContextKey.set({});
     this.hasBootstrappedContexts = false;
 
     if (!this.viewReady) {
@@ -847,6 +986,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
         forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
         getTargetedAsteroidId: () => this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null,
+        getHoveredAsteroidId: () => this.registry.getActiveContext()?.getHoveredAsteroidId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
         simulateDebrisCollection: (remainingDebrisCount?: number) => this.simulateDebrisCollection(remainingDebrisCount),
         simulateManufacture: (itemType: string) => this.simulateManufacture(itemType),
@@ -868,6 +1008,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
     this.bumpRuntimeRevision();
 
+    this.clearHoverScanTimer();
     this.clearTestTargetHoldTimer();
     this.testInventoryRewards.set([]);
     if (active) {
@@ -885,6 +1026,63 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return resetState;
   }
 
+  private beginAsteroidHoverScan(sampleId: string): boolean {
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return false;
+    }
+
+    const sampleExists = active.getAsteroidSamples().some((sample) => sample.id === sampleId);
+    if (!sampleExists) {
+      return false;
+    }
+
+    this.clearHoverScanTimer();
+    this.testHoverScanCandidateId.set(sampleId);
+    this.testHoverScanContextKey.set(active.contextKey);
+    this.testHoverScanTimeoutId = window.setTimeout(() => {
+      if (this.testHoverScanCandidateId() === sampleId) {
+        const contextKey = this.testHoverScanContextKey();
+        if (contextKey) {
+          this.forceCompleteIronScanInContext(contextKey, sampleId);
+        }
+      }
+      this.clearHoverScanTimer();
+    }, this.resolveHoverScanHoldMs());
+
+    return true;
+  }
+
+  private clearHoverScanTimer(): void {
+    if (this.testHoverScanTimeoutId !== null) {
+      clearTimeout(this.testHoverScanTimeoutId);
+      this.testHoverScanTimeoutId = null;
+    }
+    this.testHoverScanCandidateId.set(null);
+    this.testHoverScanContextKey.set(null);
+  }
+
+  private syncAsteroidHoverScanFromHover(contextKey: string | null, hoveredAsteroidId: string | null): void {
+    if (!contextKey) {
+      this.clearHoverScanTimer();
+      return;
+    }
+
+    if (!hoveredAsteroidId) {
+      if (this.testHoverScanContextKey() === contextKey) {
+        this.clearHoverScanTimer();
+      }
+      return;
+    }
+
+    if (
+      this.testHoverScanContextKey() !== contextKey ||
+      this.testHoverScanCandidateId() !== hoveredAsteroidId
+    ) {
+      this.beginAsteroidHoverScan(hoveredAsteroidId);
+    }
+  }
+
   private beginAsteroidTargetHold(sampleId: string): boolean {
     const active = this.registry.getActiveContext();
     if (!active) {
@@ -899,6 +1097,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.clearTestTargetHoldTimer();
     this.testTargetHoldCandidateId.set(sampleId);
     this.testTargetHoldContextKey.set(active.contextKey);
+    active.setTargetHoldCandidateId(sampleId);
     this.testTargetHoldTimeoutId = window.setTimeout(() => {
       if (this.testTargetHoldCandidateId() === sampleId) {
         const contextKey = this.testTargetHoldContextKey();
@@ -907,7 +1106,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         }
       }
       this.clearTestTargetHoldTimer();
-    }, ShipExteriorBareSceneComponent.TEST_TARGET_HOLD_MS);
+    }, this.resolveTargetLockHoldMs());
 
     return true;
   }
@@ -930,8 +1129,35 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       clearTimeout(this.testTargetHoldTimeoutId);
       this.testTargetHoldTimeoutId = null;
     }
+    this.registry.getActiveContext()?.setTargetHoldCandidateId(null);
     this.testTargetHoldCandidateId.set(null);
     this.testTargetHoldContextKey.set(null);
+  }
+
+  private resolveTargetLockHoldMs(): number {
+    const activeShip = this.sessionService.activeShip();
+    const sensorTier = this.resolveActiveSensorArrayTier(activeShip?.inventory ?? []);
+    return resolveSensorArrayTargetLockHoldMs(sensorTier);
+  }
+
+  private resolveActiveSensorArrayTier(inventory: readonly ShipItem[]): number {
+    let resolvedTier = 1;
+    for (const item of inventory) {
+      if (item.itemType !== 'sensor-array') {
+        continue;
+      }
+
+      const tier = Number.isFinite(item.tier) && item.tier ? Math.trunc(item.tier) : 1;
+      if (tier > resolvedTier) {
+        resolvedTier = tier;
+      }
+    }
+
+    return resolvedTier;
+  }
+
+  private resolveHoverScanHoldMs(): number {
+    return 10_000;
   }
 
   private createInitialMissionGateStateForTestApi(characterId: string = this.navigationCharacterId().trim() || 'unknown-character'): ShipExteriorMissionGateState {
@@ -1082,6 +1308,41 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     });
   }
 
+  private forceCompleteIronScanInContext(contextKey: string, sampleId: string): ShipExteriorMissionGateState | null {
+    const context = this.registry.getContext(contextKey);
+    if (!context) {
+      return null;
+    }
+
+    const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
+    if (!exists) {
+      return null;
+    }
+
+    context.setTargetedAsteroidId(sampleId);
+    context.setTargetHoldCandidateId(null);
+    const nextSamples = context.getAsteroidSamples().map((sample) =>
+      sample.id === sampleId
+        ? {
+            ...sample,
+            scanned: true,
+            scanProgress: 100,
+            revealedMaterial: { material: 'Iron', rarity: 'Common' },
+          }
+        : sample,
+    );
+    context.setAsteroidSamples(nextSamples);
+    this.bumpRuntimeRevision();
+    return this.updateMissionGateState((state) => {
+      const identifyCompleted = this.setStepStatus(state, 'identify_iron_asteroid', 'completed');
+      const neutralizeActive = this.setStepStatus(identifyCompleted, 'neutralize_identified_asteroid', 'active');
+      return {
+        ...neutralizeActive,
+        activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
+      };
+    });
+  }
+
   private forceTargetAsteroid(sampleId: string): boolean {
     const active = this.registry.getActiveContext();
     if (!active) {
@@ -1103,6 +1364,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     context.setTargetedAsteroidId(sampleId);
+    context.setTargetHoldCandidateId(null);
     this.bumpRuntimeRevision();
     return true;
   }

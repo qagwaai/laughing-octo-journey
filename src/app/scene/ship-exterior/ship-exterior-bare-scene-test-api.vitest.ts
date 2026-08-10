@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { createInitialMissionGateState } from '../../mission/ship-exterior-mission';
 import {
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
@@ -15,7 +16,14 @@ describe('ship exterior bare scene test api', () => {
   });
 
   it('exposes the mission reset hook on the formal test api', () => {
-    const resetMissionGateState = vi.fn(() => ({ reset: true }));
+    const resetMissionGateState = vi.fn(() =>
+      createInitialMissionGateState({
+        missionId: 'first-target',
+        characterId: 'char-1',
+        steps: [],
+        nowIso: '2026-08-10T00:00:00.000Z',
+      }),
+    );
     const api: ShipExteriorBareSceneTestApi = {
       contextKeys: { asReadonly: () => [] } as never,
       activeContextKey: { asReadonly: () => null } as never,
@@ -37,6 +45,7 @@ describe('ship exterior bare scene test api', () => {
         forceCompleteIronScan: vi.fn(),
         forceTargetAsteroid: vi.fn(),
         getTargetedAsteroidId: vi.fn(),
+        getHoveredAsteroidId: vi.fn(),
         launchFromHotkey: vi.fn(),
         simulateDebrisCollection: vi.fn(),
         simulateManufacture: vi.fn(),

@@ -22,6 +22,13 @@ test.describe('Login', () => {
     await expect(loginPage.localeSelect).toHaveValue('en');
   });
 
+  test('changing locale does not auto-navigate away from login', async ({ page }) => {
+    await loginPage.localeSelect.selectOption('it');
+    await page.waitForTimeout(6000);
+
+    await expect(page).toHaveURL(/left:login/);
+  });
+
   test('submit button is disabled when form is empty', async ({ page }) => {
     await expect(loginPage.submitButton).toBeDisabled();
   });

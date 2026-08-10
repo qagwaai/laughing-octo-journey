@@ -57,6 +57,10 @@ export function resolveSensorArrayCapabilities(tier: number): ItemTierCapabiliti
   };
 }
 
+export function resolveSensorArrayTargetLockHoldMs(tier: number): number {
+  return resolveSensorArrayCapabilities(tier).scanDurationMs;
+}
+
 export function resolveTractorBeamCapabilities(tier: number): TractorBeamTierCapabilities {
   const clampedTier = clampSensorArrayTier(tier);
   const progress = (clampedTier - SENSOR_ARRAY_MIN_TIER) / (SENSOR_ARRAY_MAX_TIER - SENSOR_ARRAY_MIN_TIER);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
+import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import { OrbitCameraControls } from './orbit-camera-controls';
 
 export interface ShipSceneCameraState {
@@ -35,6 +36,8 @@ export interface ShipSceneAsteroidSample {
 export interface ShipSceneAsteroidState {
   samples: ShipSceneAsteroidSample[];
   targetedAsteroidId: string | null;
+  hoveredAsteroidId?: string | null;
+  targetHoldCandidateId?: string | null;
 }
 
 export interface ShipSceneContextState {
@@ -45,6 +48,7 @@ export interface ShipSceneContextState {
   world?: ShipSceneWorldState;
   flight?: ShipSceneFlightState;
   asteroid?: ShipSceneAsteroidState;
+  debris?: FloatingDebrisItem[];
   mission?: ShipExteriorMissionGateState;
 }
 
@@ -54,7 +58,11 @@ export interface ShipSceneRenderingState {
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
   cube: THREE.Mesh;
+  shipGroup: THREE.Group;
+  stationGroup: THREE.Group;
+  gateGroup: THREE.Group;
   asteroidGroup: THREE.Group;
+  debrisGroup: THREE.Group;
   starfieldPoints: THREE.Points;
   starfieldSignatureLocal: string;
   asteroidLayoutSignatureLocal: string;

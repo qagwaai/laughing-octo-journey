@@ -29,6 +29,7 @@ export interface ShipExteriorLegacyTestApi {
   forceCompleteIronScan: (sampleId?: string) => ShipExteriorMissionGateState | null;
   forceTargetAsteroid: (sampleId: string) => boolean;
   getTargetedAsteroidId: () => string | null;
+  getHoveredAsteroidId: () => string | null;
   launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
   simulateDebrisCollection: (remainingDebrisCount?: number) => ShipExteriorMissionGateState;
   simulateManufacture: (itemType: string) => ShipExteriorMissionGateState;

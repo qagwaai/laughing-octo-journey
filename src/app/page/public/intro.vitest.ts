@@ -261,6 +261,19 @@ describe('IntroPage Logic', () => {
       expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], { preserveFragment: true });
     });
 
+    it('should cancel the auto knot redirect when leaving intro for login', () => {
+      vi.useFakeTimers();
+      const { component, mockRouter } = setup();
+
+      component.navigateToLogin();
+      vi.advanceTimersByTime(6000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], {
+        preserveFragment: true,
+      });
+    });
+
     it('should navigate to knot in the right outlet after 5 seconds', () => {
       vi.useFakeTimers();
       const { mockRouter } = setup();

@@ -17,6 +17,15 @@ export default class IntroPage implements OnInit, OnDestroy {
   private router = inject(Router);
   private knotNavigationTimerId: number | null = null;
 
+  private clearKnotNavigationTimer(): void {
+    if (this.knotNavigationTimerId === null) {
+      return;
+    }
+
+    clearTimeout(this.knotNavigationTimerId);
+    this.knotNavigationTimerId = null;
+  }
+
   ngOnInit(): void {
     this.knotNavigationTimerId = window.setTimeout(() => {
       this.router.navigate([{ outlets: { primary: ['knot'], left: ['intro'], right: null } }], {
@@ -30,6 +39,7 @@ export default class IntroPage implements OnInit, OnDestroy {
    * Routes to the registration outlet.
    */
   navigateToRegistration(): void {
+    this.clearKnotNavigationTimer();
     this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
   }
 
@@ -37,14 +47,11 @@ export default class IntroPage implements OnInit, OnDestroy {
    * Routes to the login outlet.
    */
   navigateToLogin(): void {
+    this.clearKnotNavigationTimer();
     this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
   }
 
   ngOnDestroy(): void {
-    if (this.knotNavigationTimerId === null) {
-      return;
-    }
-    clearTimeout(this.knotNavigationTimerId);
-    this.knotNavigationTimerId = null;
+    this.clearKnotNavigationTimer();
   }
 }

@@ -65,6 +65,30 @@ describe('ShipSceneContext', () => {
     });
   });
 
+  it('stores route feeds inside the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.hasRouteFeeds()).toBe(false);
+    expect(context.getRouteFeedCounts()).toBeNull();
+
+    context.setRouteFeeds({
+      gates: [{ gateId: 'gate-1' } as never],
+      stations: [{ marketId: 'station-1' } as never],
+      encounterShips: [{ shipId: 'ship-1' } as never],
+    });
+
+    expect(context.hasRouteFeeds()).toBe(true);
+    expect(context.getRouteFeedCounts()).toEqual({
+      gates: 1,
+      stations: 1,
+      encounterShips: 1,
+    });
+  });
+
   it('does not increment rendered frame count while paused or without rendering state', () => {
     const context = new ShipSceneContext('player::char::ship', {
       playerName: 'player',
@@ -113,6 +137,7 @@ describe('ShipSceneContext', () => {
     });
 
     expect(context.getTargetedAsteroidId()).toBeNull();
+    expect(context.getHoveredAsteroidId()).toBeNull();
     expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-iron-1']);
 
     context.setAsteroidSamples([
@@ -132,12 +157,72 @@ describe('ShipSceneContext', () => {
       },
     ]);
     context.setTargetedAsteroidId('sample-beta');
+    context.setHoveredAsteroidId('sample-alpha');
 
     expect(context.getTargetedAsteroidId()).toBe('sample-beta');
+    expect(context.getHoveredAsteroidId()).toBe('sample-alpha');
+    expect(context.getTargetHoldCandidateId()).toBeNull();
     expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-alpha', 'sample-beta']);
     expect(context.getAsteroidSamples().find((sample) => sample.id === 'sample-alpha')?.serverCelestialBodyId).toBe(
       'cb-sample-alpha',
     );
+
+    context.setTargetHoldCandidateId('sample-alpha');
+    expect(context.getTargetHoldCandidateId()).toBe('sample-alpha');
+  });
+
+  it('stores debris items inside the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.getDebrisItems()).toEqual([]);
+
+    context.setDebrisItems([
+      {
+        id: 'debris-1',
+        itemType: 'cargo-canister',
+        displayName: 'Cargo Canister',
+        positionKm: { x: 1, y: 2, z: 3 },
+        externalObjectDescriptor: {
+          descriptorId: 'debris-cargo-canister-test',
+          schemaVersion: 'sw-13-m0-v1',
+          domain: 'debris',
+          objectFamily: 'cargo-canister',
+          roleCue: 'salvage',
+          factionCue: 'unattributed',
+          fallbackTier: 'standard',
+          displayLabel: 'Cargo Canister',
+          silhouetteProfile: 'cargo-canister',
+          materialProfile: 'cargo-canister',
+          emissiveProfile: 'low',
+        },
+      },
+    ]);
+
+    expect(context.getDebrisItems()).toEqual([
+      {
+        id: 'debris-1',
+        itemType: 'cargo-canister',
+        displayName: 'Cargo Canister',
+        positionKm: { x: 1, y: 2, z: 3 },
+        externalObjectDescriptor: {
+          descriptorId: 'debris-cargo-canister-test',
+          schemaVersion: 'sw-13-m0-v1',
+          domain: 'debris',
+          objectFamily: 'cargo-canister',
+          roleCue: 'salvage',
+          factionCue: 'unattributed',
+          fallbackTier: 'standard',
+          displayLabel: 'Cargo Canister',
+          silhouetteProfile: 'cargo-canister',
+          materialProfile: 'cargo-canister',
+          emissiveProfile: 'low',
+        },
+      },
+    ]);
   });
 
   it('keeps asteroid layout signatures ship-local and deterministic', () => {

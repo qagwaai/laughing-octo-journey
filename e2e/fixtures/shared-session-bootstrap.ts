@@ -32,9 +32,16 @@ export async function bootstrapSharedGameMainSession(options: SharedSessionBoots
     await loginViaUI(page, mock);
   }
 
-  await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  try {
+    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  } catch {
+    const loginVisibleAfterFirstAttempt = await isLoginFormVisible();
+    const onLoginRouteAfterFirstAttempt = page.url().includes('left:login');
 
-  if ((await isLoginFormVisible()) || page.url().includes('left:login')) {
+    if (!loginVisibleAfterFirstAttempt && !onLoginRouteAfterFirstAttempt) {
+      throw new Error(`Expected character list route, but received url=${page.url()}.`);
+    }
+
     registerSessionHandlers?.(mock);
     await loginViaUI(page, mock);
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });

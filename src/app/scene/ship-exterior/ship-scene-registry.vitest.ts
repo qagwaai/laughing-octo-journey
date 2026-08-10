@@ -230,4 +230,47 @@ describe('ShipSceneRegistry', () => {
     expect(b.getTargetedAsteroidId()).toBe('b-1');
     expect(b.getAsteroidSamples().map((sample) => sample.id)).toEqual(['b-1']);
   });
+
+  it('keeps route feeds ship-local across A -> B -> A activation', () => {
+    const registry = new ShipSceneRegistry();
+    const aKey = createKey('ship-a');
+    const bKey = createKey('ship-b');
+
+    const a = registry.getOrCreateContext(aKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-a',
+    });
+    const b = registry.getOrCreateContext(bKey, {
+      playerName: 'player-one',
+      characterId: 'char-a',
+      shipId: 'ship-b',
+    });
+
+    a.setRouteFeeds({
+      gates: [{ gateId: 'gate-a' } as never],
+      stations: [],
+      encounterShips: [],
+    });
+
+    registry.activate(bKey);
+    b.setRouteFeeds({
+      gates: [],
+      stations: [{ marketId: 'station-b' } as never],
+      encounterShips: [],
+    });
+
+    registry.activate(aKey);
+
+    expect(a.getRouteFeedCounts()).toEqual({
+      gates: 1,
+      stations: 0,
+      encounterShips: 0,
+    });
+    expect(b.getRouteFeedCounts()).toEqual({
+      gates: 0,
+      stations: 1,
+      encounterShips: 0,
+    });
+  });
 });
