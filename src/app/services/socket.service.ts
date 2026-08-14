@@ -189,6 +189,10 @@ export class SocketService {
       timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
       isResponseForRequest: (response) =>
         isCelestialBodyUpsertResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      shouldIgnoreMismatch: (response) => {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
       onResponseMatched: (response) => onResponse?.(response),
       onResponseMismatched: (response) => {
         appLogger.warn(
@@ -249,6 +253,10 @@ export class SocketService {
       timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
       isResponseForRequest: (response) =>
         isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      shouldIgnoreMismatch: (response) => {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
       onResponseMatched: (response) => onResponse?.(response),
       onResponseMismatched: (response) => {
         appLogger.warn(

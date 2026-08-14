@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
+import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { GuardedLeftMenu } from './guarded-left-menu';
 
@@ -11,6 +12,7 @@ describe('GuardedLeftMenu', () => {
   let fixture: ComponentFixture<GuardedLeftMenu>;
   let navigateSpy: ReturnType<typeof vi.fn>;
   let contextService: LeftPanelNavigationContextService;
+  let sessionService: SessionService;
   let missionStateService: {
     loadState: ReturnType<typeof vi.fn>;
     lastSaved: ReturnType<typeof vi.fn>;
@@ -36,6 +38,7 @@ describe('GuardedLeftMenu', () => {
         { provide: Router, useValue: { navigate: navigateSpy } },
         { provide: ShipExteriorMissionStateService, useValue: missionStateService },
         LeftPanelNavigationContextService,
+        SessionService,
       ],
     })
       .overrideComponent(GuardedLeftMenu, {
@@ -48,6 +51,7 @@ describe('GuardedLeftMenu', () => {
     fixture = TestBed.createComponent(GuardedLeftMenu);
     component = fixture.componentInstance;
     contextService = TestBed.inject(LeftPanelNavigationContextService);
+    sessionService = TestBed.inject(SessionService);
     contextService.setMenuMode('unpinned');
   });
 
@@ -243,6 +247,7 @@ describe('GuardedLeftMenu', () => {
       ],
     } as any);
 
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
     component.playerName = 'Pioneer';
     component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
     component.ngOnChanges({
@@ -269,6 +274,7 @@ describe('GuardedLeftMenu', () => {
       steps: [{ key: 'repair_scavenger_pod', status: 'active' }],
     } as any);
 
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
     component.playerName = 'Pioneer';
     component.joinCharacter = { id: 'c-1', characterName: 'Nova' } as any;
     component.ngOnChanges({

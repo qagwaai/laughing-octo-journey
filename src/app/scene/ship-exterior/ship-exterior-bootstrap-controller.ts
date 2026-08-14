@@ -1,12 +1,11 @@
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
-import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
-import type { MissionScenePlugin } from '../../mission/mission-scene-plugin';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
+import { type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
 
 interface ShipExteriorBootstrapControllerDeps {
   missionId: string;
@@ -16,16 +15,14 @@ interface ShipExteriorBootstrapControllerDeps {
   getCharacterId: () => string | null;
   getPreferredShipId: () => string | null;
   getLaunchSeedHint: () => number | null;
-  missionScenePlugin: MissionScenePlugin;
-  setAsteroidSamples: (samples: AsteroidScanSample[]) => void;
-  persistSeededAsteroidsAsUnscanned: (samples: readonly AsteroidScanSample[]) => void;
   updateTargetingCapabilityFromShipList: (ships: ShipListByOwnerResponse['ships']) => void;
+  emitColdBootAsteroidSeedIntent: (intent: ShipExteriorColdBootAsteroidSeedIntent) => void;
 }
 
 /**
  * Owns the ship-exterior asteroid bootstrap flow for both the new and resume
- * paths. The controller manages the socket subscriptions and decides when to
- * fall back to seeded samples.
+ * paths. The controller manages the socket subscriptions and emits explicit
+ * seed intents when a cold-boot asteroid refresh is needed.
  */
 export class ShipExteriorBootstrapController {
   private unsubscribeShipListResponse?: () => void;
@@ -59,11 +56,8 @@ export class ShipExteriorBootstrapController {
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName || !characterId || !sessionKey) {
-      const samples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
-      this.deps.setAsteroidSamples(samples);
-      appLogger.info('ColdBootScan (in-progress) seeded asteroids with fallback random center.', {
-        count: samples.length,
-      });
+      this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
+      appLogger.info('ColdBootScan (in-progress) requested fallback asteroid seeding.');
       return;
     }
 
@@ -87,9 +81,8 @@ export class ShipExteriorBootstrapController {
         const center = preferredShip?.spatial?.positionKm;
 
         if (!center) {
-          const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
-          this.deps.setAsteroidSamples(fallbackSamples);
-          appLogger.warn('ColdBootScan (in-progress) ship missing location; using fallback random center.');
+          this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
+          appLogger.warn('ColdBootScan (in-progress) ship missing location; requested fallback asteroid seeding.');
           return;
         }
 
@@ -107,21 +100,25 @@ export class ShipExteriorBootstrapController {
         this.unsubscribeCelestialBodyListResponse = this.deps.socketService.listCelestialBodies(
           cbRequest,
           (cbResponse: CelestialBodyListResponse) => {
-            const seededSamples = this.deps.missionScenePlugin.seedPolicy.createResumedSamples({
-              playerName,
-              characterId,
-              center,
-              launchSeedHint: this.deps.getLaunchSeedHint(),
-              existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
+            this.deps.emitColdBootAsteroidSeedIntent({
+              kind: 'resume',
+              actor: {
+                playerName,
+                characterId,
+                sessionKey,
+              },
+              context: {
+                playerName,
+                characterId,
+                center,
+                launchSeedHint: this.deps.getLaunchSeedHint(),
+                existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
+              },
             });
-
-            this.deps.setAsteroidSamples(seededSamples);
-            this.deps.persistSeededAsteroidsAsUnscanned(seededSamples);
-            appLogger.info('ColdBootScan (in-progress) seeded with existing and top-up asteroids.', {
+            appLogger.info('ColdBootScan (in-progress) requested resumed asteroid seeding.', {
               existing: cbResponse.success
                 ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length
                 : 0,
-              total: seededSamples.length,
               centerKm: center,
             });
           },
@@ -136,9 +133,8 @@ export class ShipExteriorBootstrapController {
     const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName || !characterId || !sessionKey) {
-      const samples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
-      this.deps.setAsteroidSamples(samples);
-      appLogger.info('ColdBootScan seeded asteroids with fallback random center.', { count: samples.length });
+      this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
+      appLogger.info('ColdBootScan requested fallback asteroid seeding.');
       return;
     }
 
@@ -155,9 +151,8 @@ export class ShipExteriorBootstrapController {
       request,
       (response: ShipListByOwnerResponse) => {
         if (!response.success) {
-          const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
-          this.deps.setAsteroidSamples(fallbackSamples);
-          appLogger.warn('ColdBootScan starter ship lookup failed; using fallback random center.', response.message);
+          this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
+          appLogger.warn('ColdBootScan starter ship lookup failed; requested fallback asteroid seeding.', response.message);
           return;
         }
 
@@ -166,22 +161,28 @@ export class ShipExteriorBootstrapController {
         const preferredShip = this.resolvePreferredShip(response.ships);
         const center = preferredShip?.spatial?.positionKm;
         if (!center) {
-          const fallbackSamples = this.deps.missionScenePlugin.seedPolicy.createFallbackSamples();
-          this.deps.setAsteroidSamples(fallbackSamples);
-          appLogger.warn('ColdBootScan ship list missing required spatial.positionKm; using fallback random center.');
+          this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
+          appLogger.warn(
+            'ColdBootScan ship list missing required spatial.positionKm; requested fallback asteroid seeding.',
+          );
           return;
         }
 
-        const samples = this.deps.missionScenePlugin.seedPolicy.createNewSamples({
-          playerName,
-          characterId,
-          center,
-          launchSeedHint: this.deps.getLaunchSeedHint(),
+        this.deps.emitColdBootAsteroidSeedIntent({
+          kind: 'starter-ship',
+          actor: {
+            playerName,
+            characterId,
+            sessionKey,
+          },
+          context: {
+            playerName,
+            characterId,
+            center,
+            launchSeedHint: this.deps.getLaunchSeedHint(),
+          },
         });
-        this.deps.setAsteroidSamples(samples);
-        this.deps.persistSeededAsteroidsAsUnscanned(samples);
-        appLogger.info('ColdBootScan seeded asteroids around starter ship center.', {
-          count: samples.length,
+        appLogger.info('ColdBootScan requested starter-ship asteroid seeding.', {
           centerKm: center,
         });
       },

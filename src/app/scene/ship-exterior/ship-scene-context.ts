@@ -51,15 +51,7 @@ const FLIGHT_CONFIG = {
   mouseSensitivityMax: 0.01,
   maxPitchRad: Math.PI / 2 - 0.02,
 };
-const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [
-  {
-    id: 'sample-iron-1',
-    serverCelestialBodyId: null,
-    scanned: false,
-    scanProgress: 0,
-    revealedMaterial: { material: 'Iron', rarity: 'Common' },
-  },
-];
+const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [];
 
 function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroidSample {
   return {

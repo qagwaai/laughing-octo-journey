@@ -154,26 +154,55 @@ function matchesCelestialBodyUpsertRequestIdentity(
     return false;
   }
 
-  return (
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation) &&
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType) &&
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId)
-  );
+  const operationMatches =
+    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation);
+  const entityTypeMatches =
+    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType);
+  const containerIdMatches =
+    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId);
+  const charIdMatches =
+    !left.characterId || !right.characterId
+      ? true
+      : normalizeIdentityValue(left.characterId) === normalizeIdentityValue(right.characterId);
+
+  return operationMatches && entityTypeMatches && containerIdMatches && charIdMatches;
 }
 
 export function isCelestialBodyUpsertResponseForRequest(
   response: CelestialBodyUpsertResponse,
   expectedCorrelationId: string,
   expectedRequestIdentity: CelestialBodyUpsertRequestIdentity,
-  _expectedRequest: CelestialBodyUpsertRequest,
+  expectedRequest: CelestialBodyUpsertRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
   if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
     return false;
   }
 
+  if (response.celestialBody) {
+    const expectedSourceScanId = normalizeIdentityValue(expectedRequest.celestialBody?.sourceScanId);
+    const responseSourceScanId = normalizeIdentityValue(response.celestialBody.sourceScanId);
+    if (expectedSourceScanId && responseSourceScanId && expectedSourceScanId !== responseSourceScanId) {
+      return false;
+    }
+
+    const expectedCatalogId = normalizeIdentityValue(expectedRequest.celestialBody?.catalogId);
+    const responseCatalogId = normalizeIdentityValue(response.celestialBody.catalogId);
+    if (expectedCatalogId && responseCatalogId && expectedCatalogId !== responseCatalogId) {
+      return false;
+    }
+
+    const expectedCharacterId = normalizeIdentityValue(
+      expectedRequest.createdByCharacterId ?? expectedRequestIdentity.characterId,
+    );
+    const responseCharacterId = normalizeIdentityValue(response.celestialBody.createdByCharacterId);
+    if (expectedCharacterId && responseCharacterId && expectedCharacterId !== responseCharacterId) {
+      return false;
+    }
+  }
+
   if (!response.requestIdentity) {
-    return false;
+    return true;
   }
 
   return matchesCelestialBodyUpsertRequestIdentity(response.requestIdentity, expectedRequestIdentity);

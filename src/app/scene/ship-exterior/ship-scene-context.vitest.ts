@@ -138,7 +138,7 @@ describe('ShipSceneContext', () => {
 
     expect(context.getTargetedAsteroidId()).toBeNull();
     expect(context.getHoveredAsteroidId()).toBeNull();
-    expect(context.getAsteroidSamples().map((sample) => sample.id)).toEqual(['sample-iron-1']);
+    expect(context.getAsteroidSamples()).toEqual([]);
 
     context.setAsteroidSamples([
       {

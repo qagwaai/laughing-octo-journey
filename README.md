@@ -16,6 +16,23 @@ This is a template to get started with Angular Three.
 - Clone this repository and run `npm install` to install the dependencies.
 - Run `npm start` to start the development server.
 
+### Strict Dev Server (fail-closed serving)
+
+`npm start` runs `ng serve` through a local wrapper builder,
+[`tools/strict-dev-server`](tools/strict-dev-server/index.js) (wired up in
+`angular.json`). While the latest rebuild is failing, the server returns a
+**503 error page for every request** instead of silently serving the last
+successful (stale) bundle to new page loads. The error page auto-reloads every
+2 seconds and recovers on its own once the build is green.
+
+> **Upgrade caveat:** the wrapper vendors a copy of the stock dev-server
+> options schema at `tools/strict-dev-server/schema.json`. After upgrading
+> `@angular/build`, re-copy it:
+>
+> ```bash
+> cp node_modules/@angular/build/src/builders/dev-server/schema.json tools/strict-dev-server/schema.json
+> ```
+
 ## Tooling Commands
 
 - `npm run lint` - Lint TypeScript sources (app + e2e + top-level TS configs)
@@ -169,3 +186,7 @@ This repository is provided under an **All Rights Reserved** model.
 
 Commercial use is prohibited unless you obtain a separate written commercial license from the repository owner.
 For commercial licensing requests, contact: qagwaai@gmail.com
+
+
+my notes:
+npx playwright test e2e/tests/cold-boot-asteroid-parity.spec.ts --project=chromium --headed --reporter=line

@@ -1,16 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
-
-type Sample = { id: string; scanned: boolean; scanProgress: number };
-
-function makeSamples(prefix: string): Sample[] {
-  return [
-    { id: `${prefix}-1`, scanned: false, scanProgress: 0 },
-    { id: `${prefix}-2`, scanned: false, scanProgress: 0 },
-  ];
-}
 
 function makeControllerHarness(overrides?: {
   playerName?: string;
@@ -19,15 +10,7 @@ function makeControllerHarness(overrides?: {
   launchSeedHint?: number | null;
   preferredShipId?: string | null;
 }) {
-  const fallbackSamples = makeSamples('fallback');
-  const resumedSamples = makeSamples('resumed');
-  const newSamples = makeSamples('new');
-
-  const createFallbackSamples = vi.fn().mockReturnValue(fallbackSamples);
-  const createResumedSamples = vi.fn().mockReturnValue(resumedSamples);
-  const createNewSamples = vi.fn().mockReturnValue(newSamples);
-  const setAsteroidSamples = vi.fn();
-  const persistSeededAsteroidsAsUnscanned = vi.fn();
+  const emitColdBootAsteroidSeedIntent = vi.fn();
   const updateTargetingCapabilityFromShipList = vi.fn();
 
   const unsubscribeShipListResponse = vi.fn();
@@ -48,16 +31,8 @@ function makeControllerHarness(overrides?: {
     getCharacterId: () => (overrides?.characterId === undefined ? 'char-1' : overrides.characterId),
     getPreferredShipId: () => (overrides?.preferredShipId === undefined ? null : overrides.preferredShipId),
     getLaunchSeedHint: () => (overrides?.launchSeedHint === undefined ? 17 : overrides.launchSeedHint),
-    missionScenePlugin: {
-      seedPolicy: {
-        createFallbackSamples,
-        createResumedSamples,
-        createNewSamples,
-      },
-    } as any,
-    setAsteroidSamples,
-    persistSeededAsteroidsAsUnscanned,
     updateTargetingCapabilityFromShipList,
+    emitColdBootAsteroidSeedIntent,
   } as any;
 
   const controller = new ShipExteriorBootstrapController(deps);
@@ -66,17 +41,10 @@ function makeControllerHarness(overrides?: {
     controller,
     deps,
     socketService,
-    createFallbackSamples,
-    createResumedSamples,
-    createNewSamples,
-    setAsteroidSamples,
-    persistSeededAsteroidsAsUnscanned,
+    emitColdBootAsteroidSeedIntent,
     updateTargetingCapabilityFromShipList,
     unsubscribeShipListResponse,
     unsubscribeCelestialBodyListResponse,
-    fallbackSamples,
-    resumedSamples,
-    newSamples,
   };
 }
 
@@ -86,8 +54,7 @@ describe('ShipExteriorBootstrapController', () => {
 
     harness.controller.seedAsteroidsForInProgressMission();
 
-    expect(harness.createFallbackSamples).toHaveBeenCalled();
-    expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.fallbackSamples);
+    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
     expect(harness.socketService.listShipsByOwner).not.toHaveBeenCalled();
   });
 
@@ -97,12 +64,9 @@ describe('ShipExteriorBootstrapController', () => {
       callback({ success: true, ships: [{ id: 'starter-1', spatial: null }] });
       return harness.unsubscribeShipListResponse;
     });
-
     harness.controller.seedAsteroidsForInProgressMission();
-
     expect(harness.updateTargetingCapabilityFromShipList).toHaveBeenCalled();
-    expect(harness.createFallbackSamples).toHaveBeenCalled();
-    expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.fallbackSamples);
+    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
     expect(harness.socketService.listCelestialBodies).not.toHaveBeenCalled();
   });
 
@@ -126,17 +90,21 @@ describe('ShipExteriorBootstrapController', () => {
 
     harness.controller.seedAsteroidsForInProgressMission();
 
-    expect(harness.createResumedSamples).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({
+      kind: 'resume',
+      actor: {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        sessionKey: 'session-key',
+      },
+      context: expect.objectContaining({
         playerName: 'Pioneer',
         characterId: 'char-1',
         center,
         launchSeedHint: 42,
         existingBodies,
       }),
-    );
-    expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.resumedSamples);
-    expect(harness.persistSeededAsteroidsAsUnscanned).toHaveBeenCalledWith(harness.resumedSamples);
+    });
   });
 
   it('uses fallback samples when starter-ship list request fails', () => {
@@ -148,9 +116,7 @@ describe('ShipExteriorBootstrapController', () => {
 
     harness.controller.seedAsteroidsAroundStarterShip();
 
-    expect(harness.createFallbackSamples).toHaveBeenCalled();
-    expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.fallbackSamples);
-    expect(harness.persistSeededAsteroidsAsUnscanned).not.toHaveBeenCalled();
+    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
   });
 
   it('seeds new samples around starter ship center when ship lookup succeeds', () => {
@@ -166,16 +132,20 @@ describe('ShipExteriorBootstrapController', () => {
     harness.controller.seedAsteroidsAroundStarterShip();
 
     expect(harness.updateTargetingCapabilityFromShipList).toHaveBeenCalledWith(ships);
-    expect(harness.createNewSamples).toHaveBeenCalledWith(
-      expect.objectContaining({
+    expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({
+      kind: 'starter-ship',
+      actor: {
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        sessionKey: 'session-key',
+      },
+      context: expect.objectContaining({
         playerName: 'Pioneer',
         characterId: 'char-1',
         center,
         launchSeedHint: 99,
       }),
-    );
-    expect(harness.setAsteroidSamples).toHaveBeenCalledWith(harness.newSamples);
-    expect(harness.persistSeededAsteroidsAsUnscanned).toHaveBeenCalledWith(harness.newSamples);
+    });
   });
 
   it('unsubscribes ship and celestial-body listeners on dispose', () => {

@@ -23,19 +23,22 @@ import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.s
 import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { appLogger } from '../../services/logger';
-import { environment } from '../../../environments/environment';
 import {
   type MarketListByLocationRequest,
   type MarketListByLocationResponse,
 } from '../../model/market-list';
+import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 import { ShipSummary } from '../../model/ship-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { DEFAULT_SOLAR_SYSTEM_ID, type CelestialBodyUpsertRequest } from '../../model/celestial-body-upsert';
 import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabilities';
+import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
+import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
+import { seedColdBootAsteroids as resolveColdBootAsteroidSamples, type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
 import { FloatingDebrisController } from './floating-debris-controller';
 import { ShipSceneRegistry } from './ship-scene-registry';
 import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
@@ -62,8 +65,6 @@ import {
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
 } from './ship-exterior-bare-scene-test-api';
-import { seedRouteFeedsWithDevStation } from './ship-exterior-dev-station-seed';
-
 const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
 const ROUTE_FEED_DISCOVERY_LIMIT = 250;
 
@@ -162,6 +163,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return formatShipExteriorRouteFeedSummary(this.getActiveRouteFeedCounts());
   });
   readonly activeAsteroidLine = computed(() => {
+    this.runtimeRevision();
+    this.activeContextKey();
     const active = this.registry.getActiveContext();
     if (!active) {
       return 'ASTEROIDS // ---';
@@ -185,6 +188,32 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   );
 
   private readonly registry = new ShipSceneRegistry();
+  private readonly missionScenePlugin = resolveMissionScenePlugin(FIRST_TARGET_MISSION_ID);
+  private readonly pendingColdBootAsteroidSeedIntent =
+    signal<ShipExteriorColdBootAsteroidSeedIntent | null>(null);
+  private readonly bootstrapController = new ShipExteriorBootstrapController({
+    missionId: FIRST_TARGET_MISSION_ID,
+    sessionService: this.sessionService,
+    socketService: this.shipExteriorSocketService,
+    getPlayerName: () => this.navigationPlayerName().trim() || 'unknown-player',
+    getCharacterId: () =>
+      this.navigationCharacterId().trim() || this.sessionService.activeCharacter()?.id?.trim() || 'unknown-character',
+    getPreferredShipId: () => this.sessionService.activeShip()?.id?.trim() ?? null,
+    getLaunchSeedHint: () => null,
+    updateTargetingCapabilityFromShipList: () => undefined,
+    emitColdBootAsteroidSeedIntent: (intent) => {
+      this.pendingColdBootAsteroidSeedIntent.set(intent);
+    },
+  });
+  private readonly coldBootAsteroidSeedEffect = effect(() => {
+    this.activeContextKey();
+    const intent = this.pendingColdBootAsteroidSeedIntent();
+    if (!intent) {
+      return;
+    }
+
+    this.applyPendingColdBootAsteroidSeedIntent(intent);
+  });
   private readonly floatingDebrisController = new FloatingDebrisController({
     socketService: this.shipExteriorSocketService,
     sessionService: this.sessionService,
@@ -296,6 +325,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.resizeObserver?.disconnect();
     this.clearHoverScanTimer();
     this.clearTestTargetHoldTimer();
+    this.bootstrapController.dispose();
     this.floatingDebrisController.stop();
     this.teardownAllContexts();
   }
@@ -428,6 +458,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       this.upsertContextFromShip(initialShip, playerName, activeCharacterId);
     }
 
+    this.seedColdBootAsteroids();
+
     const sessionKey = this.sessionService.getSessionKey();
     if (!sessionKey || !playerName || !activeCharacterId || activeCharacterId === 'unknown-character') {
       this.ensureFallbackContexts(playerName, activeCharacterId);
@@ -454,6 +486,121 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.syncContextsSignal();
     this.activateFirstContextIfNeeded();
+  }
+
+  private seedColdBootAsteroids(): void {
+    if (this.sessionService.activeShip()?.id?.trim()) {
+      this.bootstrapController.seedAsteroidsAroundStarterShip();
+      return;
+    }
+
+    this.bootstrapController.seedAsteroidsForInProgressMission();
+  }
+
+  private resolveSeedTargetContext(): ShipSceneContext | null {
+    const active = this.registry.getActiveContext();
+    if (active) {
+      return active;
+    }
+
+    const preferredShipId = this.sessionService.activeShip()?.id?.trim() ?? null;
+    if (preferredShipId) {
+      const shipMatch = this.registry
+        .getAllContexts()
+        .find((context) => (context.getState().shipId ?? '').trim() === preferredShipId);
+      if (shipMatch) {
+        return shipMatch;
+      }
+    }
+
+    return (
+      this.registry
+        .getAllContexts()
+        .find((context) => !(context.contextKey.includes('fallback-ship'))) ??
+      this.registry.getAllContexts()[0] ??
+      null
+    );
+  }
+
+  private applyPendingColdBootAsteroidSeedIntent(intent: ShipExteriorColdBootAsteroidSeedIntent): void {
+    const targetContext = this.resolveSeedTargetContext();
+    if (!targetContext) {
+      this.pendingColdBootAsteroidSeedIntent.set(null);
+      return;
+    }
+
+    const samples = resolveColdBootAsteroidSamples(intent, this.missionScenePlugin.seedPolicy);
+    targetContext.setAsteroidSamples(samples);
+    this.activateContext(targetContext.contextKey);
+    if (intent.kind !== 'fallback') {
+      this.persistSeededAsteroidsAsUnscanned(samples, intent);
+    }
+    this.pendingColdBootAsteroidSeedIntent.set(null);
+    this.bumpRuntimeRevision();
+  }
+
+  private persistSeededAsteroidsAsUnscanned(
+    samples: readonly AsteroidScanSample[],
+    intent: Extract<ShipExteriorColdBootAsteroidSeedIntent, { kind: 'starter-ship' | 'resume' }>,
+  ): void {
+    const playerName = intent.actor.playerName.trim();
+    const characterId = intent.actor.characterId.trim();
+    const sessionKey = intent.actor.sessionKey.trim();
+
+    if (!sessionKey || !playerName || !characterId || characterId === 'unknown-character') {
+      return;
+    }
+
+    samples.forEach((sample) => {
+      const request: CelestialBodyUpsertRequest = {
+        sessionKey,
+        playerName,
+        createdByCharacterId: characterId,
+        celestialBody: {
+          id: sample.serverCelestialBodyId?.trim() || `cb-${characterId}-${FIRST_TARGET_MISSION_ID}-${sample.id}`,
+          catalogId: `sol-${characterId}-${FIRST_TARGET_MISSION_ID}-${sample.id}`,
+          sourceScanId: sample.id,
+          createdByCharacterId: characterId,
+          bodyType: 'asteroid',
+          displayName: `Asteroid ${sample.id}`,
+          missionId: FIRST_TARGET_MISSION_ID,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          spatial: {
+            solarSystemId: DEFAULT_SOLAR_SYSTEM_ID,
+            frame: 'barycentric',
+            positionKm: sample.solarSystemLocation.positionKm,
+            epochMs: Date.now(),
+          },
+          motion: {
+            velocityKmPerSec: sample.capturedKinematics.velocityKmPerSec,
+            angularVelocityRadPerSec: sample.capturedKinematics.angularVelocityRadPerSec,
+          },
+          physical: {
+            estimatedMassKg: sample.capturedKinematics.estimatedMassKg,
+            estimatedDiameterM: sample.capturedKinematics.estimatedDiameterM,
+          },
+          physicalCatalog: {
+            estimatedMassKg: sample.capturedKinematics.estimatedMassKg,
+            estimatedDiameterM: sample.capturedKinematics.estimatedDiameterM,
+            radiusKm: sample.capturedKinematics.estimatedDiameterM / 2000,
+          },
+          visualization: {
+            colorHex: '#8f99a7',
+            textureKey: null,
+          },
+          meshProfileKey: sample.meshProfileKey ?? null,
+          composition: sample.revealedMaterial ?? undefined,
+          observability: {
+            visibility: 'visible',
+            scanState: sample.scanned ? 'scanned' : 'unscanned',
+          },
+          state: sample.scanned ? 'active' : 'unscanned',
+        },
+      };
+
+      this.socketService.upsertCelestialBody(request);
+    });
   }
 
   private resolveNavigationIdentity(): void {
@@ -643,40 +790,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const context = this.registry.getOrCreateContext(contextKey, initialState);
     context.setState(initialState);
     this.ensureMissionGateStateForContext(context);
-    this.ensureDevStationForContext(context, ship);
     this.ensureRouteFeedsForContext(contextKey, ship, playerName, characterId);
     this.syncContextsSignal();
-  }
-
-  private ensureDevStationForContext(context: ShipSceneContext, ship: ShipSummary): void {
-    if (environment.production) {
-      return;
-    }
-
-    const routeFeeds = context.getRouteFeeds();
-    if (routeFeeds?.stations.length) {
-      return;
-    }
-
-    const shipId = ship.id?.trim();
-    const solarSystemId = ship.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
-    const positionKm = ship.spatial?.positionKm ?? context.getState().world?.shipPosition;
-    if (!shipId || !positionKm) {
-      return;
-    }
-
-    context.setRouteFeeds(
-      this.resolveRouteFeedsForContext(
-        routeFeeds ?? {
-          gates: [],
-          stations: [],
-          encounterShips: [],
-        },
-        shipId,
-        solarSystemId,
-        positionKm,
-      ),
-    );
   }
 
   private ensureRouteFeedsForContext(
@@ -704,21 +819,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     if (!solarSystemId || !sessionKey || !playerName || !characterId) {
-      if (!environment.production) {
-        context.setRouteFeeds(
-          this.resolveRouteFeedsForContext(
-            currentRouteFeeds ?? {
-              gates: [],
-              stations: [],
-              encounterShips: [],
-            },
-            shipId,
-            solarSystemId || DEFAULT_SOLAR_SYSTEM_ID,
-            positionKm,
-          ),
-        );
-        this.bumpRuntimeRevision();
-      }
       return;
     }
 
@@ -741,55 +841,18 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         return;
       }
 
-      const currentRouteFeeds = context.getRouteFeeds();
       if (!response.success) {
-        context.setRouteFeeds(
-          this.resolveRouteFeedsForContext(
-            currentRouteFeeds ?? {
-              gates: [],
-              stations: [],
-              encounterShips: [],
-            },
-            shipId,
-            solarSystemId,
-            positionKm,
-          ),
-        );
         this.bumpRuntimeRevision();
         return;
       }
 
-      context.setRouteFeeds(
-        this.resolveRouteFeedsForContext(
-          collectShipExteriorRouteFeeds(response.markets),
-          shipId,
-          solarSystemId,
-          positionKm,
-        ),
-      );
+      context.setRouteFeeds(collectShipExteriorRouteFeeds(response.markets));
       this.bumpRuntimeRevision();
     });
   }
 
   private getActiveRouteFeedCounts(): ShipExteriorRouteFeedCounts | null {
     return this.registry.getActiveContext()?.getRouteFeedCounts() ?? null;
-  }
-
-  private resolveRouteFeedsForContext(
-    routeFeeds: ShipExteriorRouteFeeds,
-    shipId: string,
-    solarSystemId: string,
-    positionKm: { x: number; y: number; z: number },
-  ): ShipExteriorRouteFeeds {
-    if (environment.production) {
-      return routeFeeds;
-    }
-
-    return seedRouteFeedsWithDevStation(routeFeeds, {
-      shipId,
-      solarSystemId,
-      positionKm,
-    });
   }
 
   private ensureFallbackContexts(playerName: string, characterId: string): void {
@@ -809,21 +872,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         },
       });
       this.ensureMissionGateStateForContext(context);
-      if (!environment.production) {
-        const shipPosition = context.getState().world?.shipPosition ?? { x: 0, y: 0, z: 0 };
-        context.setRouteFeeds(
-          this.resolveRouteFeedsForContext(
-            {
-              gates: [],
-              stations: [],
-              encounterShips: [],
-            },
-            shipId,
-            DEFAULT_SOLAR_SYSTEM_ID,
-            shipPosition,
-          ),
-        );
-      }
     }
 
     this.syncContextsSignal();
@@ -1493,6 +1541,12 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       sessionKey,
       playerName: resolvedPlayerName,
       createdByCharacterId: resolvedCharacterId,
+      requestIdentity: {
+        operation: 'celestial-body-upsert',
+        entityType: 'celestial-body',
+        containerId: params.sample.id,
+        characterId: resolvedCharacterId,
+      },
       celestialBody: {
         id: requestedCelestialBodyId,
         catalogId: `sol-${resolvedCharacterId}-${FIRST_TARGET_MISSION_ID}-${params.sample.id}`,

@@ -202,7 +202,8 @@ describe('SocketService', () => {
           requestIdentity: {
             operation: 'celestial-body-upsert',
             entityType: 'celestial-body',
-            containerId: 'cb-1',
+            containerId: 'sample-a1',
+            characterId: 'char-1',
           },
         }),
       );
