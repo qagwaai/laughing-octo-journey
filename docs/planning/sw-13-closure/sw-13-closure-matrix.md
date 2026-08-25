@@ -37,15 +37,17 @@ This document contained a 2026-06-26 snapshot that predates the hard-replace cut
    - `npm run sw13:adoption:check`
 4. Any row below that references removed monolith paths is historical evidence, not current-state implementation evidence.
 
-### Current Gate Snapshot (2026-07-31)
+### Current Gate Snapshot (2026-08-25)
 
-- ◧ G1 Documentation reconciliation
-- ◧ G2 Multi-ship per-ship scene retention
-- ◧ G3 Route feed completeness and SW-13A reconciliation
-- ◧ G4 SW-13B evidence integrity and reproducibility
-- ☐ G5 M5 worksheet and M6 go/no-go publication
+- ☑ G1 Documentation reconciliation
+- ☑ G2 Multi-ship per-ship scene retention
+- ☑ G3 Route feed completeness and SW-13A reconciliation
+- ☑ G4 SW-13B evidence integrity and reproducibility
+- ☑ G5 M5 worksheet and M6 go/no-go publication
 
-Current closure readiness: 0/5 gates green (G1-G4 active, G5 open)
+Current closure readiness: 5/5 gates green
+
+Final closure decision: Go — approved by Pete on 2026-08-25. Synthetic pod-path validation confirms A -> B -> A ship retention with no reseed/rebuild and no cross-ship state bleed; cold-boot asteroid seed gaps remain separate legacy bootstrap issues and do not block closure.
 
 ### Immediate Next Action After This Reconciliation
 
@@ -119,7 +121,7 @@ Current closure readiness: 4/5 gates green
 | Gate | Description | Status | Owner | Reviewer | Evidence Needed |
 | --- | --- | --- | --- | --- | --- |
 | G1 | Documentation reconciliation across SW-13, SW-13A, SW-13B | Complete | Nova | Pete | SW-13A addendum published 2026-07-31; SW-13B monolith paths replaced with current bare-scene/vitest evidence links 2026-07-31. |
-| G2 | Multi-ship per-ship scene retention in ship-external view | Partial (architecture delivered; parity slices open) | Nova | Pete | ShipSceneRegistry keep-alive architecture delivered through Milestone 3C. Remaining: asteroids, missions, route-feed parity wired per-ship context; manual validation gate. |
+| G2 | Multi-ship per-ship scene retention in ship-external view | Complete | Nova | Pete | Synthetic pod-path manual validation confirms A -> B -> A isolation, no reseed/rebuild for initialized ships, inactive-scene pause, and no cross-ship state bleed. Legacy cold-boot asteroid seed gap is a separate bootstrap/data issue and does not block the final closure decision. |
 | G3 | Route feed completeness and SW-13A contract-backed family coverage | Complete | Forge + Nova | Pete | Route-feed adapter and layer confirmed for gates, stations, and encounter ships. SW-13A addendum published. |
 | G4 | SW-13B evidence integrity and reproducibility | Complete | Nova | Pete | All `.spec.ts` → `.vitest.ts` corrections applied; monolith `ship-exterior-view.ts` reference updated; deleted test file noted in historical run logs; matrix M2/M3 rows updated 2026-07-31. |
 | G5 | M5 worksheet completion and M6 go/no-go publication | Complete | Nova | Pete | [sw-13-m5-manual-test-worksheet.md](../sw-13/sw-13-m5-manual-test-worksheet.md) — all 20 steps Pass; [sw-13-m6-go-nogo-record-2026-07-31.md](../sw-13/sw-13-m6-go-nogo-record-2026-07-31.md) — Go decision recorded. |

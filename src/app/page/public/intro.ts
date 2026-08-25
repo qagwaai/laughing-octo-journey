@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 
 @Component({
@@ -15,6 +15,7 @@ export default class IntroPage implements OnInit, OnDestroy {
   private static readonly KNOT_NAVIGATION_DELAY_MS = 5000;
   protected readonly t = locale;
   private router = inject(Router);
+  private activatedRoute = inject(ActivatedRoute);
   private knotNavigationTimerId: number | null = null;
 
   private clearKnotNavigationTimer(): void {
@@ -27,8 +28,12 @@ export default class IntroPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (this.activatedRoute.outlet !== 'primary') {
+      return;
+    }
+
     this.knotNavigationTimerId = window.setTimeout(() => {
-      this.router.navigate([{ outlets: { primary: ['knot'], left: ['intro'], right: null } }], {
+      this.router.navigate([{ outlets: { primary: ['knot'], right: null } }], {
         preserveFragment: true,
       });
       this.knotNavigationTimerId = null;

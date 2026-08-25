@@ -125,6 +125,36 @@ Implementation addendum (2026-06-29, ownership-gate validation slice):
 Validation owner: Pete
 Execution owners: Nova (+ Forge as needed for contract/runtime integration alignment)
 
+## 10A. Manual Validation Addendum (2026-08-25)
+
+Validation method used for the ship-local retention proof:
+
+1. Create or select Ship A and open View Exterior.
+2. Mutate ship-local state on Ship A in a way that is clearly unique to that ship.
+3. Switch to Ship B and open View Exterior for Ship B.
+4. Mutate ship-local state on Ship B to a visibly different state.
+5. Return to Ship A.
+6. Confirm that Ship A returns to its prior state without reseed/rebuild and without cross-ship state bleed.
+
+Observed result:
+
+1. Ship A and Ship B behave as distinct resident scene instances.
+2. Switching ships is activation-only; revisiting an already initialized ship does not reseed or rebuild the scene.
+3. Inactive scenes remain resident but paused.
+4. Ship-local state does not bleed across ship instances.
+5. A -> B -> A returns to the prior Ship A state without state loss or reconstruction.
+
+Important distinction:
+
+1. The cold-boot asteroid seeding path is a separate bootstrap/data issue and is not evidence of scene-retention failure.
+2. Older characters may legitimately lack seeded asteroid state if the cold-boot seed sequence was not executed.
+3. The synthetic “Buy Test Scavenger Pod” path is therefore the correct validation harness for ship-to-ship retention when asteroid seeding is not part of the scenario.
+
+Status:
+
+- Manual validation for the multi-ship retention architecture target: Pass.
+- Cold-boot asteroid seed gap: Separate legacy/bootstrap issue; not a blocker for per-ship scene retention.
+
 ## 11. Execution Communication Protocol (Patch vs Replacement)
 
 This section records the explicit language needed to avoid accidental incremental patching when G2 requires an architectural replacement.

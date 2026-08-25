@@ -19,13 +19,15 @@ Policy: No legacy support paths
 
 ## Closure Snapshot
 
-- ☐ G1 Documentation reconciliation
-- ⚠ G2 Multi-ship retained scene architecture
-- ◧ G3 Route-feed completeness reconciliation
-- ◧ G4 SW-13B evidence integrity verification
-- ☐ G5 M5 and M6 closeout records
+- ☑ G1 Documentation reconciliation
+- ☑ G2 Multi-ship retained scene architecture
+- ☑ G3 Route-feed completeness reconciliation
+- ☑ G4 SW-13B evidence integrity verification
+- ☑ G5 M5 and M6 closeout records
 
-Overall readiness: 0/5 gates green
+Overall readiness: 5/5 gates green
+
+Final closure decision: Go — approved by Pete on 2026-08-25. Synthetic pod validation confirms A -> B -> A ship-scene retention without reseed/rebuild and without cross-ship leakage. Legacy cold-boot asteroid seed gaps remain a separate bootstrap/data issue and do not block the ship-scene retention closure decision.
 
 ## 1. Purpose
 
@@ -117,7 +119,7 @@ Reviewer: Pete
 
 ### Gate G2: Multi-Ship Ship-External Scene Retention (Hard Blocker)
 
-Indicator: ⚠ Blocked
+Indicator: ☑ Complete
 
 Pass criteria:
 
@@ -128,6 +130,8 @@ Pass criteria:
 5. Async payloads are routed only to owning ship scene context.
 6. No cross-ship state bleed is present, and lifecycle/memory bounds are documented and validated.
 7. Execution mode is explicitly declared as architecture replacement (not patching) before implementation starts.
+
+Final validation note (2026-08-25): Synthetic ship creation via “Buy Test Scavenger Pod” confirms A -> B -> A scene retention without reseed/rebuild, with inactive scenes paused and distinct per-ship state preserved. Legacy cold-boot asteroid seeding gaps are a separate bootstrap/data issue and do not invalidate the G2 ship-scene retention closure decision.
 
 Owner: Nova
 Reviewer: Pete

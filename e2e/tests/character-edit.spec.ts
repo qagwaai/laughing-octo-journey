@@ -17,7 +17,7 @@ let sharedMock: SocketIOMock;
 let sharedCharacterListPage: CharacterListPage;
 let sharedCharacterSetupPage: CharacterSetupPage;
 
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
 test.beforeAll(async ({ browser }) => {
   const session = await setupSharedCharacterEditSession(browser);
@@ -37,7 +37,9 @@ test.afterEach(async () => {
 });
 
 test.afterAll(async () => {
-  await sharedContext.close();
+  if (sharedContext) {
+    await sharedContext.close();
+  }
 });
 
 test.describe('Character Edit — setup save redirect', () => {

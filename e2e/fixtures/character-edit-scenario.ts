@@ -63,7 +63,12 @@ export async function setupSharedCharacterEditSession(browser: Browser): Promise
   }
 
   if ((await characterListPage.characterItems.count()) === 0) {
-    await characterListPage.loadButton.click();
+    const loadButtonVisible = await characterListPage.loadButton
+      .isVisible({ timeout: 2_000 })
+      .catch(() => false);
+    if (loadButtonVisible) {
+      await characterListPage.loadButton.click();
+    }
   }
   await expect(characterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
 

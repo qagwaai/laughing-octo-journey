@@ -115,6 +115,29 @@ Out of scope:
 4. Rationale: the failure belongs to the readiness-migration gap already captured by the SW-13 test-foundation investment plan, not the active-only flight behavior validated manually.
 5. Closure path: after this commit, migrate this spec to readiness-contract checkpoints (`sw13.v1`) and re-run focused e2e gate.
 
+## Manual Validation Note (2026-08-25)
+
+Manual validation of the multi-ship scene-retention architecture was completed using the synthetic ship creation path (`Buy Test Scavenger Pod`) rather than the cold-boot asteroid seeding flow.
+
+Observed result:
+
+1. Ship A and Ship B each behaved as distinct resident ship-exterior scene instances.
+2. Switching ships was activation-only; revisiting an already initialized ship did not reseed or rebuild the scene.
+3. Inactive scenes remained resident but paused.
+4. Ship-local state did not bleed across ship instances.
+5. A -> B -> A returned to the prior Ship A state with no cross-ship state corruption.
+
+Important distinction:
+
+1. The cold-boot asteroid seeding path remains a separate bootstrap/data issue and is not evidence of multi-ship scene-retention failure.
+2. Older characters may legitimately lack seeded asteroid state if the cold-boot seed sequence was not executed.
+3. The synthetic pod path is therefore the correct validation harness for ship-to-ship retention when asteroid seeding is not part of the scenario.
+
+Interpretation:
+
+- Manual validation for the per-ship retention architecture target: PASS.
+- Legacy asteroid seed gap: separate issue, not a blocker for ship-scene retention validation.
+
 ## Canonical Planning Reference
 
 Use this as the source-of-truth checkpoint document:

@@ -56,16 +56,16 @@ SW-13 is closed for the approved scope. The following are deferred by design and
 
 | Gate | Status |
 | --- | --- |
-| G1 Documentation reconciliation | ☑ Complete (2026-07-31) |
-| G2 Multi-ship per-ship scene retention | ⚠ Partial (architecture delivered; parity slices open — non-blocking for M6) |
+| G1 Documentation reconciliation | ☑ Complete (2026-07-31; final closeout confirmed 2026-08-25) |
+| G2 Multi-ship per-ship scene retention | ☑ Complete (manual validation via synthetic pod path; A -> B -> A passes without reseed/rebuild and without cross-ship bleed) |
 | G3 Route feed completeness and SW-13A | ☑ Complete (2026-07-31) |
 | G4 SW-13B evidence integrity | ☑ Complete (2026-07-31) |
 | G5 M5 worksheet and M6 go/no-go | ☑ Complete (this record) |
 
-Note: G2 remains partial (parity slices are tracked implementation work, not documentation gaps). This does not block the M6 go/no-go decision; G2 parity slices are scoped to the ongoing SW-13B lane and are not SW-13 M6 blockers per the closeout-note scope definition.
+Note: The synthetic pod validation path is the correct ship-retention proof for the closure decision. Legacy cold-boot asteroid seeding is a separate bootstrap/data issue affecting old characters and does not invalidate the G2 ship-scene retention result. The final closure decision supersedes the earlier partial read from the 2026-07-31 record.
 
 ## Approval
 
 - Owner: qagwaai (Pete)
-- Decision date: 2026-07-31
+- Decision date: 2026-08-25
 - Decision: **Go**
