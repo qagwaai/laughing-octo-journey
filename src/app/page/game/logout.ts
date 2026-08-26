@@ -5,6 +5,7 @@ import { locale } from '../../i18n/locale';
 import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { SessionService } from '../../services/session.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ExternalAnchorsComponent } from '../../component/external-anchors';
 
 interface LogoutNavigationState {
@@ -26,6 +27,7 @@ export default class LogoutPage {
   protected readonly t = locale;
   private router = inject(Router);
   private sessionService = inject(SessionService);
+  private socketLifecycle = inject(SocketLifecycleService);
   private navigationState: LogoutNavigationState = resolveNavigationState<LogoutNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
@@ -42,11 +44,14 @@ export default class LogoutPage {
   }
 
   /**
-   * Leaves the active game session view and returns to character list + knot scene.
+   * Leaves the active game session view and returns to character list.
+   * Uses 'intro' as the primary route to avoid NgtStore injection errors
+   * that occur when transitioning directly from ship-exterior-view to the
+   * knot scene (the ngt-canvas hasn't remounted before knot is instantiated).
    */
   navigateToCharacterList(): void {
-    this.router.navigate([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
-      preserveFragment: true,
+    this.socketLifecycle.disconnect();
+    this.router.navigate([{ outlets: { primary: ['intro'], left: ['character-list'], right: null } }], {
       state: { playerName: this.playerName() },
     });
   }

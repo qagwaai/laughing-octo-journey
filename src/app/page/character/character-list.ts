@@ -60,11 +60,6 @@ export default class CharacterListPage implements OnDestroy {
       this.sessionService.setPlayerName(resolvedPlayerName);
     }
 
-    this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
-      this.sessionService.clearSession();
-      this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-    });
-
     this.socketLifecycleService.runWhenConnected(() => this.loadCharacters());
   }
 
@@ -74,6 +69,8 @@ export default class CharacterListPage implements OnDestroy {
 
   /**
    * Loads character summaries for the current player context.
+   * Subscribes to invalid-session only after a successful response so that
+   * server-side game-session teardown events during reconnect do not misfire.
    */
   loadCharacters(): void {
     const playerName = this.playerName().trim();
@@ -91,6 +88,11 @@ export default class CharacterListPage implements OnDestroy {
       this.isLoading.set(false);
       if (response.success) {
         this.characters.set(this.normalizeCharacters(response.characters));
+        this.unsubscribeInvalidSession?.();
+        this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+          this.sessionService.clearSession();
+          this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+        });
       } else {
         this.characters.set([]);
         this.errorMessage.set(response.message);

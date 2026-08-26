@@ -731,10 +731,21 @@ describe('CharacterListPage', () => {
       });
     });
 
-    it('should clear session and navigate to login on invalid-session event', () => {
+    it('should clear session and navigate to login on invalid-session event after successful load', () => {
       TestBed.createComponent(CharacterListPage);
 
       expect(sessionService.hasSession()).toBe(true);
+
+      // Simulate socket connect → triggers loadCharacters → registers the response listener
+      socketService.triggerOnceEvent('connect');
+
+      // Deliver a successful character-list response to arm the invalid-session listener
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: '',
+        playerName: 'Pioneer',
+        characters: [],
+      } satisfies CharacterListResponse);
 
       socketService.triggerEvent(INVALID_SESSION_EVENT, { message: 'Session expired.' });
 
@@ -750,6 +761,15 @@ describe('CharacterListPage', () => {
   describe('ngOnDestroy()', () => {
     it('should unsubscribe all listeners on destroy', () => {
       const { component } = setup({ socketService, sessionService });
+
+      // Simulate socket connect + successful load to arm the invalid-session listener
+      socketService.triggerOnceEvent('connect');
+      socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
+        success: true,
+        message: '',
+        playerName: 'Pioneer',
+        characters: [],
+      } satisfies CharacterListResponse);
 
       expect(socketService.registeredListeners.has(INVALID_SESSION_EVENT)).toBe(true);
 

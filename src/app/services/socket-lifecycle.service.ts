@@ -9,6 +9,10 @@ export class SocketLifecycleService {
     this.socketService.connect(this.socketService.serverUrl);
   }
 
+  disconnect(): void {
+    this.socketService.disconnect();
+  }
+
   runWhenConnected(action: () => void): void {
     this.ensureConnected();
 

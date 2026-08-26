@@ -37,6 +37,7 @@ const PARTITIONS = [
       /^market-hub-.*\.spec\.ts$/,
       /^mission-board\.spec\.ts$/,
       /^print-queue\.spec\.ts$/,
+      /^leave-game-session\.spec\.ts$/,
       /^repair-retrofit\.spec\.ts$/,
     ],
   },

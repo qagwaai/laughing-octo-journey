@@ -3,7 +3,7 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 
-const ADOPTION_LOG_PATH = 'docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md';
+const ADOPTION_LOG_PATH = 'scripts/sw-13-governance-adoption-log-2026-07-20.md';
 
 const STATEFUL_SPEC_PATTERNS = [
   /^e2e\/tests\/character-.*\.spec\.ts$/,
@@ -32,9 +32,9 @@ const SW13_SCOPE_PATH_PATTERNS = [
   /^README\.md$/,
   /^CONTRIBUTING\.md$/,
   /^\.github\/pull_request_template\.md$/,
-  /^docs\/planning\/sw-13-closure\/sw-13-reviewer-governance-checklist-2026-07-16\.md$/,
-  /^docs\/planning\/sw-13-closure\/sw-13-test-foundation-investment-plan-2026-07-11\.md$/,
-  /^docs\/planning\/sw-13-closure\/sw-13-closure-status-2026-07-10\.md$/,
+  /^scripts\/sw-13-reviewer-governance-checklist-2026-07-16\.md$/,
+  /^scripts\/sw-13-test-foundation-investment-plan-2026-07-11\.md$/,
+  /^scripts\/sw-13-closure-status-2026-07-10\.md$/,
 ];
 
 function normalizePath(input) {
