@@ -52,6 +52,7 @@ const FLIGHT_CONFIG = {
   maxPitchRad: Math.PI / 2 - 0.02,
 };
 const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [];
+const SCAN_RING_PHASE_WRAP_PERIOD = Math.PI * 20;
 
 function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroidSample {
   return {
@@ -642,10 +643,10 @@ export class ShipSceneContext {
       this.renderingState.orbitControls.setTarget(this.renderingState.cube.position);
     }
     if (this.state.asteroid?.hoveredAsteroidId) {
-      this.asteroidHoverScanPhase = (this.asteroidHoverScanPhase + 0.12) % (Math.PI * 2);
+      this.asteroidHoverScanPhase = (this.asteroidHoverScanPhase + 0.12) % SCAN_RING_PHASE_WRAP_PERIOD;
     }
     if (this.state.asteroid?.targetHoldCandidateId) {
-      this.asteroidTargetHoldPhase = (this.asteroidTargetHoldPhase + 0.16) % (Math.PI * 2);
+      this.asteroidTargetHoldPhase = (this.asteroidTargetHoldPhase + 0.16) % SCAN_RING_PHASE_WRAP_PERIOD;
     }
     if ((this.state.debris?.length ?? 0) > 0) {
       this.debrisPulsePhase = (this.debrisPulsePhase + 0.1) % (Math.PI * 2);
