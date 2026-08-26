@@ -335,6 +335,72 @@ test.describe('Ship Exterior Test Utilities', () => {
       .toBe(true);
   });
 
+  test('scan completion reveals details without setting target lock, while hold-to-lock still works', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+    registerShipExteriorSessionHandlers(mock, {
+      missionStatus: 'active',
+      includeSensorArray: true,
+    });
+
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
+
+    const sampleId = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      return api?.getAsteroidSamples?.()[0]?.id ?? null;
+    });
+
+    expect(sampleId).not.toBeNull();
+
+    const scanStateAfterCompletion = await page.evaluate((id) => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            forceCompleteIronScan: (sampleId?: string) => unknown;
+            getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+            getTargetedAsteroidId: () => string | null;
+            getTargetHoldCandidateId: () => string | null;
+            beginAsteroidTargetHold: (sampleId: string) => boolean;
+          };
+        }
+      ).__shipExteriorTestUtils;
+
+      if (!api || !id) {
+        return null;
+      }
+
+      api.forceCompleteIronScan(id);
+      const sample = api.getAsteroidSamples().find((candidate) => candidate.id === id);
+      const holdStarted = api.beginAsteroidTargetHold(id);
+      const holdCandidate = api.getTargetHoldCandidateId();
+      const targeted = api.getTargetedAsteroidId();
+
+      return {
+        scanned: sample?.scanned ?? false,
+        scanProgress: sample?.scanProgress ?? 0,
+        targeted,
+        holdCandidate,
+        holdStarted,
+      };
+    }, sampleId);
+
+    expect(scanStateAfterCompletion).not.toBeNull();
+    expect(scanStateAfterCompletion?.scanned).toBe(true);
+    expect(scanStateAfterCompletion?.scanProgress).toBe(100);
+    expect(scanStateAfterCompletion?.targeted).toBeNull();
+    expect(scanStateAfterCompletion?.holdCandidate).toBe(sampleId);
+    expect(scanStateAfterCompletion?.holdStarted).toBe(true);
+  });
+
   test('supports deterministic mission progression without real 3D pointer raycast', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();

@@ -34,9 +34,19 @@ export class ShipExteriorSessionController {
   }
 
   beginTargetHold(asteroidId: string, onConfirm: () => void, holdMs: number): void {
+    console.debug('[ship-exterior-target-lock]', 'session-controller.beginTargetHold', {
+      asteroidId,
+      holdMs,
+      previousCandidate: this.targetHoldCandidate(),
+    });
     this.clearTargetHoldTimer();
     this.targetHoldCandidate.set(asteroidId);
     this.targetHoldTimeoutId = window.setTimeout(() => {
+      console.debug('[ship-exterior-target-lock]', 'session-controller.target-hold-timer-fired', {
+        asteroidId,
+        currentCandidate: this.targetHoldCandidate(),
+        holdMs,
+      });
       if (this.targetHoldCandidate() === asteroidId) {
         onConfirm();
       }
@@ -46,6 +56,9 @@ export class ShipExteriorSessionController {
 
   clearTargetHoldTimer(): void {
     if (this.targetHoldTimeoutId !== null) {
+      console.debug('[ship-exterior-target-lock]', 'session-controller.clearTargetHoldTimer', {
+        clearedTimeoutId: this.targetHoldTimeoutId,
+      });
       clearTimeout(this.targetHoldTimeoutId);
       this.targetHoldTimeoutId = null;
     }

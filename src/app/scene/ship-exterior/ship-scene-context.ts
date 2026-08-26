@@ -1149,17 +1149,16 @@ export class ShipSceneContext {
       hoverScanGroup?: THREE.Group;
       targetHoldGroup?: THREE.Group;
     };
+    const isScanned = this.state.asteroid?.samples.some((sample) => sample.id === visual.id && sample.scanned) ?? false;
+    const shouldShowHoverRing = visual.isHovered && !isScanned;
 
-    if (!visual.isHovered) {
+    if (!shouldShowHoverRing) {
       if (userData.hoverScanGroup) {
         mesh.remove(userData.hoverScanGroup);
         disposeHoverScanGroup(userData.hoverScanGroup);
         delete userData.hoverScanGroup;
       }
-      return;
-    }
-
-    if (!userData.hoverScanGroup) {
+    } else if (!userData.hoverScanGroup) {
       const group = new THREE.Group();
       group.name = `${mesh.name}-hover-scan-group`;
 
@@ -1180,15 +1179,17 @@ export class ShipSceneContext {
       userData.hoverScanGroup = group;
     }
 
-    const group = userData.hoverScanGroup;
-    const ring = group.children[0] as THREE.Mesh | undefined;
-    if (ring) {
-      ring.rotation.x = Math.PI / 2;
-      ring.rotation.y = this.asteroidHoverScanPhase * 0.9;
-      ring.scale.setScalar(1 + Math.sin(this.asteroidHoverScanPhase) * 0.06);
-      const material = ring.material;
-      if (!Array.isArray(material) && material instanceof THREE.MeshBasicMaterial) {
-        material.opacity = 0.66 + Math.max(0, Math.sin(this.asteroidHoverScanPhase)) * 0.18;
+    if (userData.hoverScanGroup) {
+      const group = userData.hoverScanGroup;
+      const ring = group.children[0] as THREE.Mesh | undefined;
+      if (ring) {
+        ring.rotation.x = Math.PI / 2;
+        ring.rotation.y = this.asteroidHoverScanPhase * 0.9;
+        ring.scale.setScalar(1 + Math.sin(this.asteroidHoverScanPhase) * 0.06);
+        const material = ring.material;
+        if (!Array.isArray(material) && material instanceof THREE.MeshBasicMaterial) {
+          material.opacity = 0.66 + Math.max(0, Math.sin(this.asteroidHoverScanPhase)) * 0.18;
+        }
       }
     }
 
@@ -1201,6 +1202,13 @@ export class ShipSceneContext {
     const userData = mesh.userData as {
       targetHoldGroup?: THREE.Group;
     };
+
+    console.debug('[ship-exterior-target-lock]', 'syncAsteroidTargetHoldGroup', {
+      visualId: visual.id,
+      isHolding,
+      hoverState: this.state.asteroid?.hoveredAsteroidId ?? null,
+      targetHoldCandidateId: asteroid?.targetHoldCandidateId ?? null,
+    });
 
     if (!isHolding) {
       if (userData.targetHoldGroup) {

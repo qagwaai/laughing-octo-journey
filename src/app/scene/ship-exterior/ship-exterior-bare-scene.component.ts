@@ -36,6 +36,7 @@ import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabi
 import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { ShipExteriorSessionController } from './ship-exterior-session-controller';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
 import { seedColdBootAsteroids as resolveColdBootAsteroidSamples, type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
@@ -91,6 +92,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly floatingDebrisStateService = inject(FloatingDebrisStateService);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sessionController = new ShipExteriorSessionController();
 
   readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
   readonly contexts = signal<ShipSceneContext[]>([]);
@@ -325,6 +327,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.resizeObserver?.disconnect();
     this.clearHoverScanTimer();
     this.clearTestTargetHoldTimer();
+    this.sessionController.dispose();
     this.bootstrapController.dispose();
     this.floatingDebrisController.stop();
     this.teardownAllContexts();
@@ -336,6 +339,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return false;
     }
 
+    this.registry.getAllContexts().forEach((context) => context.setTargetHoldCandidateId(null));
+    this.sessionController.clearTargetHoldTimer();
     this.activeContextKey.set(contextKey);
     const activeState = this.registry.getActiveContext()?.getState();
     if (activeState) {
@@ -625,11 +630,26 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowPointerDown(event: PointerEvent): void {
+    console.debug('[ship-exterior-target-lock]', 'pointerdown', {
+      button: event.button,
+      buttons: event.buttons,
+      isFlightMode: this.registry.getActiveContext()?.flightModeEnabled() ?? false,
+      hoveredAsteroidId: this.registry.getActiveContext()?.getHoveredAsteroidId() ?? null,
+    });
+
     const active = this.registry.getActiveContext();
-    if (active && !active.flightModeEnabled() && event.button === 0 && event.ctrlKey) {
+    if (active && !active.flightModeEnabled() && event.button === 2) {
       const hoveredId = active.getHoveredAsteroidId();
+      console.debug('[ship-exterior-target-lock]', 'right-button-pointerdown-evaluated', {
+        hoveredAsteroidId: hoveredId,
+        contextKey: active.contextKey,
+      });
       if (hoveredId) {
-        this.beginAsteroidTargetHold(hoveredId);
+        const started = this.beginAsteroidTargetHold(hoveredId);
+        console.debug('[ship-exterior-target-lock]', 'right-button-target-hold-started', {
+          hoveredAsteroidId: hoveredId,
+          started,
+        });
         event.preventDefault();
         return;
       }
@@ -639,13 +659,15 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowPointerUp(event: PointerEvent): void {
-    if (event.button !== 0) {
+    if (event.button !== 2) {
       return;
     }
 
-    if (this.testTargetHoldCandidateId()) {
-      this.clearTestTargetHoldTimer();
-    }
+    console.debug('[ship-exterior-target-lock]', 'pointerup-right-button', {
+      currentTargetHoldCandidate: this.testTargetHoldCandidateId(),
+      currentTargetHoldContextKey: this.testTargetHoldContextKey(),
+    });
+    this.clearTestTargetHoldTimer();
   }
 
   private onWindowContextMenu(event: MouseEvent): void {
@@ -1080,8 +1102,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return false;
     }
 
-    const sampleExists = active.getAsteroidSamples().some((sample) => sample.id === sampleId);
-    if (!sampleExists) {
+    const sample = active.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
+    if (!sample || sample.scanned) {
+      this.clearHoverScanTimer();
       return false;
     }
 
@@ -1113,12 +1136,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private syncAsteroidHoverScanFromHover(contextKey: string | null, hoveredAsteroidId: string | null): void {
     if (!contextKey) {
       this.clearHoverScanTimer();
+      this.clearTestTargetHoldTimer();
       return;
     }
 
     if (!hoveredAsteroidId) {
       if (this.testHoverScanContextKey() === contextKey) {
         this.clearHoverScanTimer();
+      }
+      if (this.registry.getActiveContext()?.contextKey === contextKey) {
+        this.clearTestTargetHoldTimer();
       }
       return;
     }
@@ -1133,12 +1160,33 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private beginAsteroidTargetHold(sampleId: string): boolean {
     const active = this.registry.getActiveContext();
+    console.debug('[ship-exterior-target-lock]', 'beginAsteroidTargetHold', {
+      sampleId,
+      contextKey: active?.contextKey ?? null,
+      sensorArrayAvailable: this.hasActiveSensorArrayCapability(),
+    });
+
     if (!active) {
       return false;
     }
 
     const sampleExists = active.getAsteroidSamples().some((sample) => sample.id === sampleId);
     if (!sampleExists) {
+      console.debug('[ship-exterior-target-lock]', 'beginAsteroidTargetHold:sample-missing', { sampleId });
+      return false;
+    }
+
+    if (!this.hasActiveSensorArrayCapability()) {
+      console.debug('[ship-exterior-target-lock]', 'beginAsteroidTargetHold:sensor-array-missing', {
+        sampleId,
+        activeShipId: this.sessionService.activeShip()?.id ?? null,
+      });
+      this.activeLaunchToast.set({
+        message: 'Target lock unavailable: the active ship requires a sensor array.',
+        tone: 'error',
+        seed: null,
+      });
+      this.clearTestTargetHoldTimer();
       return false;
     }
 
@@ -1146,15 +1194,23 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.testTargetHoldCandidateId.set(sampleId);
     this.testTargetHoldContextKey.set(active.contextKey);
     active.setTargetHoldCandidateId(sampleId);
-    this.testTargetHoldTimeoutId = window.setTimeout(() => {
-      if (this.testTargetHoldCandidateId() === sampleId) {
-        const contextKey = this.testTargetHoldContextKey();
-        if (contextKey) {
-          this.forceTargetAsteroidInContext(contextKey, sampleId);
-        }
+    const holdMs = this.resolveTargetLockHoldMs();
+    console.debug('[ship-exterior-target-lock]', 'beginAsteroidTargetHold:starting-timer', {
+      sampleId,
+      contextKey: active.contextKey,
+      holdMs,
+    });
+    this.sessionController.beginTargetHold(sampleId, () => {
+      const contextKey = this.testTargetHoldContextKey();
+      console.debug('[ship-exterior-target-lock]', 'beginAsteroidTargetHold:confirm-callback', {
+        sampleId,
+        contextKey,
+      });
+      if (contextKey) {
+        this.forceTargetAsteroidInContext(contextKey, sampleId);
       }
       this.clearTestTargetHoldTimer();
-    }, this.resolveTargetLockHoldMs());
+    }, holdMs);
 
     return true;
   }
@@ -1173,13 +1229,24 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private clearTestTargetHoldTimer(): void {
+    console.debug('[ship-exterior-target-lock]', 'clearTestTargetHoldTimer', {
+      currentCandidate: this.testTargetHoldCandidateId(),
+      currentContextKey: this.testTargetHoldContextKey(),
+      activeContextKey: this.registry.getActiveContext()?.contextKey ?? null,
+    });
     if (this.testTargetHoldTimeoutId !== null) {
       clearTimeout(this.testTargetHoldTimeoutId);
       this.testTargetHoldTimeoutId = null;
     }
+    this.sessionController.clearTargetHoldTimer();
     this.registry.getActiveContext()?.setTargetHoldCandidateId(null);
     this.testTargetHoldCandidateId.set(null);
     this.testTargetHoldContextKey.set(null);
+  }
+
+  private hasActiveSensorArrayCapability(): boolean {
+    const activeShip = this.sessionService.activeShip();
+    return (activeShip?.inventory ?? []).some((item) => item.itemType === 'sensor-array');
   }
 
   private resolveTargetLockHoldMs(): number {
@@ -1367,7 +1434,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return null;
     }
 
-    context.setTargetedAsteroidId(sampleId);
     context.setTargetHoldCandidateId(null);
     const nextSamples = context.getAsteroidSamples().map((sample) =>
       sample.id === sampleId
@@ -1401,19 +1467,30 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private forceTargetAsteroidInContext(contextKey: string, sampleId: string): boolean {
+    console.debug('[ship-exterior-target-lock]', 'forceTargetAsteroidInContext', {
+      contextKey,
+      sampleId,
+    });
     const context = this.registry.getContext(contextKey);
     if (!context) {
+      console.debug('[ship-exterior-target-lock]', 'forceTargetAsteroidInContext:missing-context', { contextKey, sampleId });
       return false;
     }
 
     const exists = context.getAsteroidSamples().some((sample) => sample.id === sampleId);
     if (!exists) {
+      console.debug('[ship-exterior-target-lock]', 'forceTargetAsteroidInContext:missing-sample', { contextKey, sampleId });
       return false;
     }
 
     context.setTargetedAsteroidId(sampleId);
     context.setTargetHoldCandidateId(null);
     this.bumpRuntimeRevision();
+    console.debug('[ship-exterior-target-lock]', 'forceTargetAsteroidInContext:targeted', {
+      contextKey,
+      sampleId,
+      targetedAsteroidId: context.getTargetedAsteroidId(),
+    });
     return true;
   }
 

@@ -171,6 +171,24 @@ describe('ShipSceneContext', () => {
     expect(context.getTargetHoldCandidateId()).toBe('sample-alpha');
   });
 
+  it('keeps hold candidate state distinct from the confirmed target state', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    context.setAsteroidSamples([
+      { id: 'sample-alpha', scanned: false, scanProgress: 0 },
+      { id: 'sample-beta', scanned: false, scanProgress: 0 },
+    ]);
+    context.setTargetHoldCandidateId('sample-alpha');
+    context.setTargetedAsteroidId('sample-beta');
+
+    expect(context.getTargetHoldCandidateId()).toBe('sample-alpha');
+    expect(context.getTargetedAsteroidId()).toBe('sample-beta');
+  });
+
   it('stores debris items inside the ship-local context', () => {
     const context = new ShipSceneContext('player::char::ship', {
       playerName: 'player',
