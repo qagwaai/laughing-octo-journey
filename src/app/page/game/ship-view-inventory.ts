@@ -13,7 +13,7 @@ import {
   EXPENDABLE_DART_DRONE_ITEM_TYPE,
 } from '../../model/domain/expendable-dart-drone';
 import type { ItemUpsertResponse } from '../../model/item-upsert';
-import { ShipItem } from '../../model/ship-item';
+import type { ItemDamageStatus, ShipItem } from '../../model/ship-item';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -44,11 +44,14 @@ export interface InventoryGroup {
   name: string;
   quantity: number;
   tier: number | null;
+  damageStatus: ItemDamageStatus;
+  statusBucket: InventoryStatusBucket;
   item: ShipItem;
 }
 
 type InventorySortKey = 'name' | 'tier';
 type SortDirection = 'asc' | 'desc';
+type InventoryStatusBucket = 'operational' | 'damaged';
 type DevInventoryActionKey = 'add-dart-drone' | 'add-sensor-array' | 'add-tractor-beam';
 
 interface DevInventoryAction {
@@ -143,7 +146,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
     const highestTierByItemType = new Map<string, number>();
 
     for (const item of inventory) {
-      if (typeof item.tier !== 'number') {
+      if (this.resolveInventoryStatusBucket(item) !== 'operational' || typeof item.tier !== 'number') {
         continue;
       }
 
@@ -260,6 +263,8 @@ export default class ShipViewInventoryPage implements OnDestroy {
         name: item.displayName,
         quantity: 1,
         tier: typeof item.tier === 'number' ? item.tier : null,
+        damageStatus: item.damageStatus,
+        statusBucket: this.resolveInventoryStatusBucket(item),
         item,
       });
     }
@@ -273,7 +278,11 @@ export default class ShipViewInventoryPage implements OnDestroy {
     const direction = this.sortDirection() === 'asc' ? 1 : -1;
     return [...groups].sort((left, right) => {
       if (activeSortKey === 'name') {
-        return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+        const nameCompare = left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+        if (nameCompare !== 0) {
+          return nameCompare;
+        }
+        return this.compareInventoryStatusBuckets(left, right);
       }
 
       // Always push missing tiers to the end so real tiers remain visible first.
@@ -288,7 +297,11 @@ export default class ShipViewInventoryPage implements OnDestroy {
       }
 
       if (left.tier === right.tier) {
-        return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+        const nameCompare = left.name.localeCompare(right.name, undefined, { sensitivity: 'base' }) * direction;
+        if (nameCompare !== 0) {
+          return nameCompare;
+        }
+        return this.compareInventoryStatusBuckets(left, right);
       }
 
       return (left.tier - right.tier) * direction;
@@ -322,7 +335,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
   }
 
   protected isEquippedGroup(group: InventoryGroup): boolean {
-    if (group.tier === null) {
+    if (group.statusBucket !== 'operational' || group.tier === null) {
       return false;
     }
 
@@ -330,7 +343,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
   }
 
   protected hasNonIntactStatus(group: InventoryGroup): boolean {
-    return group.item.damageStatus !== 'intact';
+    return group.statusBucket === 'damaged';
   }
 
   ngOnDestroy(): void {}
@@ -563,7 +576,20 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
   private buildInventoryGroupKey(item: ShipItem): string {
     const tierToken = typeof item.tier === 'number' ? String(item.tier) : 'none';
-    return `${item.itemType}::tier:${tierToken}`;
+    return `${item.itemType}::tier:${tierToken}::status:${this.resolveInventoryStatusBucket(item)}`;
+  }
+
+  private resolveInventoryStatusBucket(item: Pick<ShipItem, 'damageStatus'>): InventoryStatusBucket {
+    return item.damageStatus === 'damaged' || item.damageStatus === 'disabled' || item.damageStatus === 'destroyed'
+      ? 'damaged'
+      : 'operational';
+  }
+
+  private compareInventoryStatusBuckets(left: InventoryGroup, right: InventoryGroup): number {
+    if (left.statusBucket === right.statusBucket) {
+      return 0;
+    }
+    return left.statusBucket === 'operational' ? -1 : 1;
   }
 
   /**

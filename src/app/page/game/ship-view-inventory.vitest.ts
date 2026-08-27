@@ -58,6 +58,8 @@ interface InventoryGroup {
   name: string;
   quantity: number;
   tier: number | null;
+  damageStatus: 'intact' | 'damaged' | 'disabled' | 'destroyed';
+  statusBucket: 'operational' | 'damaged';
   item: ItemStub;
 }
 
@@ -194,6 +196,54 @@ describe('ShipViewInventoryPage', () => {
     expect(groups.every((group) => group.quantity === 1)).toBe(true);
   });
 
+  it('should split operational and damaged items into separate rows for the same item type and tier', () => {
+    const { component, fixture } = setup({
+      socketService,
+      sessionService,
+      navigationState: {
+        joinShip: {
+          id: 's-1',
+          name: 'Scavenger I',
+          inventory: [
+            makeItem({ id: 'sensor-operational', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 1 }),
+            makeItem({
+              id: 'sensor-damaged',
+              itemType: 'sensor-array',
+              displayName: 'Sensor Array',
+              tier: 1,
+              damageStatus: 'damaged',
+            }),
+          ],
+        },
+      },
+    });
+
+    const groups = component['inventoryGroups']() as InventoryGroup[];
+    const sensorGroups = groups.filter((group) => group.itemType === 'sensor-array');
+
+    expect(sensorGroups).toHaveLength(2);
+    expect(sensorGroups.map((group) => group.quantity)).toEqual([1, 1]);
+    expect(sensorGroups.map((group) => group.statusBucket)).toEqual(['operational', 'damaged']);
+
+    fixture.detectChanges();
+    const native = fixture.nativeElement as HTMLElement;
+    const rows = Array.from(native.querySelectorAll('tbody tr'))
+      .map((row) => {
+        const cells = Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+        return {
+          name: cells[0] ?? '',
+          qty: cells[2] ?? '',
+          hasEquippedBadge: row.querySelector('.equipped-badge') !== null,
+          hasDamagedBadge: row.querySelector('.damaged-badge') !== null,
+        };
+      })
+      .filter((row) => row.name.includes('Sensor Array'));
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ qty: '1', hasEquippedBadge: true, hasDamagedBadge: false });
+    expect(rows[1]).toMatchObject({ qty: '1', hasEquippedBadge: false, hasDamagedBadge: true });
+  });
+
   it('should render tier values and dash fallback in the inventory table', () => {
     const { fixture } = setup({
       socketService,
@@ -278,8 +328,11 @@ describe('ShipViewInventoryPage', () => {
     fixture.detectChanges();
     const native = fixture.nativeElement as HTMLElement;
     const damagedBadges = Array.from(native.querySelectorAll('tbody .damaged-badge')) as HTMLElement[];
+    const rows = Array.from(native.querySelectorAll('tbody tr'));
+    const tractorBeamRow = rows.find((row) => (row.textContent ?? '').includes('Tractor Beam')) ?? null;
 
     expect(damagedBadges.length).toBe(1);
+    expect(tractorBeamRow?.querySelector('.equipped-badge')).toBeNull();
     expect(damagedBadges[0].textContent?.trim()).toBe('D');
     expect(damagedBadges[0].getAttribute('title')).toBe('Damaged/Unavailable');
     expect(native.textContent).toContain('Tractor Beam');
