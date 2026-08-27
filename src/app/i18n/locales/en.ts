@@ -238,7 +238,8 @@ export const en = {
         starterShipUpdateFailed: 'Character created, but starter ship position update failed.',
         bustSaveBlocked: 'Character data saved, but bust profile save was blocked.',
         bustSaveValidationFailed: 'Bust profile contains invalid values. Update selectors and retry.',
-        bustSaveUnexpectedError: 'Character data saved, but bust profile could not be saved due to an unexpected error.',
+        bustSaveUnexpectedError:
+          'Character data saved, but bust profile could not be saved due to an unexpected error.',
       },
     },
   },

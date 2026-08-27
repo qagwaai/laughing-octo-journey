@@ -16,7 +16,10 @@ describe('ShipExteriorInputAdapter', () => {
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('mousemove', fixture.handlers.onWindowMouseMove);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown as EventListener);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledWith(
+      'keydown',
+      fixture.handlers.onWindowKeyDown as EventListener,
+    );
     expect(fixture.doc.addEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp as EventListener);
     expect(fixture.doc.addEventListener).toHaveBeenCalledWith(
       'mousemove',
@@ -51,7 +54,10 @@ describe('ShipExteriorInputAdapter', () => {
       'keydown',
       fixture.handlers.onWindowKeyDown as EventListener,
     );
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp as EventListener);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
+      'keyup',
+      fixture.handlers.onWindowKeyUp as EventListener,
+    );
     expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
       'mousemove',
       fixture.handlers.onWindowMouseMove as EventListener,

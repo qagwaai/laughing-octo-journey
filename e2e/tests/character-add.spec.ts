@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { characterAddResponse, characterListResponse, setupCharacterAddTest } from '../fixtures/character-add-scenario';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 
@@ -106,9 +106,9 @@ test.describe('Character Add — from character list', () => {
 
     expect(receivedAddRequest).toEqual(
       expect.objectContaining({
-      playerName: TEST_PLAYER,
-      characterName: 'Nova Prime',
-      sessionKey: 'test-session-key-abc123',
+        playerName: TEST_PLAYER,
+        characterName: 'Nova Prime',
+        sessionKey: 'test-session-key-abc123',
       }),
     );
     expect(receivedShipListRequest).toEqual(
@@ -216,9 +216,7 @@ test.describe('Character Add — from character list', () => {
     let addRequestCount = 0;
     mock.on('character-list-request', () => ({
       event: 'character-list-response',
-      data: characterListResponse([
-        { id: 'char-existing-001', characterName: 'Nova Prime', level: 3 },
-      ]),
+      data: characterListResponse([{ id: 'char-existing-001', characterName: 'Nova Prime', level: 3 }]),
     }));
     mock.on('character-add-request', () => {
       addRequestCount += 1;

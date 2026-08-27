@@ -8,8 +8,6 @@ import {
   hasPrintableItemInInventory,
   HULL_PATCH_KIT_PRINTABLE_ITEM,
   isPrintableItemQueued,
-  PRINTABLE_ITEMS,
-  resolvePrintableItemDefinition,
 } from './printable-item';
 import type { ShipItem } from './ship-item';
 

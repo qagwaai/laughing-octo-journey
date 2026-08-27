@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { ExternalAnchorsComponent } from '../../component/external-anchors';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
-import { ExternalAnchorsComponent } from '../../component/external-anchors';
+import { resolveNavigationState } from '../navigation-state';
 
 interface LogoutNavigationState {
   playerName?: string;

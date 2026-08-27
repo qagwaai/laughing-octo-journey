@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
   GENERIC_EXPLORATION_MISSION_ID,
   GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION,
@@ -6,12 +7,8 @@ import {
   createGenericExplorationInitialGateState,
   createGenericExplorationPlugin,
 } from './generic-exploration-ship-exterior-mission';
-import {
-  evaluateMissionGateOnScan,
-  resolveShipExteriorMission,
-} from './ship-exterior-mission';
 import { resolveMissionScenePlugin } from './mission-scene-plugin';
-import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
+import { evaluateMissionGateOnScan, resolveShipExteriorMission } from './ship-exterior-mission';
 
 function makeSample(id: string): AsteroidScanSample {
   return {
@@ -42,9 +39,7 @@ describe('GenericExplorationShipExteriorMission', () => {
   beforeEach(() => __resetExplorationScanCountsForTest());
 
   it('is registered with resolveShipExteriorMission', () => {
-    expect(resolveShipExteriorMission(GENERIC_EXPLORATION_MISSION_ID)).toBe(
-      GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION,
-    );
+    expect(resolveShipExteriorMission(GENERIC_EXPLORATION_MISSION_ID)).toBe(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION);
   });
 
   it('exposes a single survey gate step', () => {
@@ -95,8 +90,6 @@ describe('GenericExplorationShipExteriorMission', () => {
     }
 
     expect(gateState.steps[0].status).toBe('completed');
-    expect(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION.resolveMissionStatusFromGateState(gateState)).toBe(
-      'completed',
-    );
+    expect(GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION.resolveMissionStatusFromGateState(gateState)).toBe('completed');
   });
 });

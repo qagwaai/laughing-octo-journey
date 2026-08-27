@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 import {
   advanceMissionToManufactureStep,
-  resetFirstTargetCuePersistence,
   registerFirstTargetCueMock,
+  resetFirstTargetCuePersistence,
   waitForShipExteriorTestApi,
 } from '../fixtures/first-target-cue-scenario';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
@@ -13,7 +13,6 @@ const test = createJoinedGameTest({
 });
 
 test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ sharedPage }) => {
-
   await waitForShipExteriorTestApi(sharedPage);
   await advanceMissionToManufactureStep(sharedPage);
 
@@ -39,23 +38,24 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await advanceMissionToManufactureStep(sharedPage);
 
   await expect
-    .poll(async () =>
-      sharedPage.evaluate(() => {
-        const api = (
-          window as Window & {
-            __shipExteriorTestUtils?: {
-              simulateManufacture?: (itemType: string) => unknown;
-              getMissionGateState?: () => {
-                steps?: Array<{ key?: string; status?: string }>;
-              } | null;
-            };
-          }
-        ).__shipExteriorTestUtils;
-        api?.simulateManufacture?.('hull-patch-kit');
-        const gateState = api?.getMissionGateState?.();
-        const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
-        return repairStep?.status ?? null;
-      }),
+    .poll(
+      async () =>
+        sharedPage.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                simulateManufacture?: (itemType: string) => unknown;
+                getMissionGateState?: () => {
+                  steps?: Array<{ key?: string; status?: string }>;
+                } | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          api?.simulateManufacture?.('hull-patch-kit');
+          const gateState = api?.getMissionGateState?.();
+          const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
+          return repairStep?.status ?? null;
+        }),
       { timeout: 10000 },
     )
     .toBe('active');
@@ -63,10 +63,13 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   const repairRetrofitButton = sharedPage.locator('button[aria-label="Repair & Retrofit"]');
   const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
   await expect
-    .poll(async () => {
-      const className = await repairRetrofitButton.getAttribute('class');
-      return className?.includes('is-guided-target') ?? false;
-    }, { timeout: 10000 })
+    .poll(
+      async () => {
+        const className = await repairRetrofitButton.getAttribute('class');
+        return className?.includes('is-guided-target') ?? false;
+      },
+      { timeout: 10000 },
+    )
     .toBe(true);
   await expect(repairRetrofitButton.locator('.menu-badge')).toHaveText('NEXT', { timeout: 10000 });
   await expect(overlay).toBeVisible({ timeout: 10000 });
@@ -91,9 +94,13 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 
           return {
             repairStepStatus: repairStep?.status ?? null,
-            targetLabel: document.querySelector('.left-pane-mission-guidance-overlay .overlay-target strong')?.textContent?.trim() ?? '',
+            targetLabel:
+              document
+                .querySelector('.left-pane-mission-guidance-overlay .overlay-target strong')
+                ?.textContent?.trim() ?? '',
             instruction:
-              document.querySelector('.left-pane-mission-guidance-overlay .overlay-instruction')?.textContent?.trim() ?? '',
+              document.querySelector('.left-pane-mission-guidance-overlay .overlay-instruction')?.textContent?.trim() ??
+              '',
           };
         });
       },
@@ -111,13 +118,11 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await expect(sharedPage).toHaveURL(/left:repair-retrofit/);
 });
 
-test.skip(
-  'keeps overlay dismissed for the same step across refresh, then shows again when step changes',
-  async ({
-    sharedPage,
-    sharedMock,
-    prepareJoinedPage,
-  }) => {
+test.skip('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({
+  sharedPage,
+  sharedMock,
+  prepareJoinedPage,
+}) => {
   const recoverJoinedCuePage = async () => {
     sharedMock.reset();
     registerFirstTargetCueMock(sharedMock);
@@ -148,23 +153,24 @@ test.skip(
   await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).not.toBeVisible();
 
   await expect
-    .poll(async () =>
-      sharedPage.evaluate(() => {
-        const api = (
-          window as Window & {
-            __shipExteriorTestUtils?: {
-              simulateManufacture?: (itemType: string) => unknown;
-              getMissionGateState?: () => {
-                steps?: Array<{ key?: string; status?: string }>;
-              } | null;
-            };
-          }
-        ).__shipExteriorTestUtils;
-        api?.simulateManufacture?.('hull-patch-kit');
-        const gateState = api?.getMissionGateState?.();
-        const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
-        return repairStep?.status ?? null;
-      }),
+    .poll(
+      async () =>
+        sharedPage.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                simulateManufacture?: (itemType: string) => unknown;
+                getMissionGateState?: () => {
+                  steps?: Array<{ key?: string; status?: string }>;
+                } | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          api?.simulateManufacture?.('hull-patch-kit');
+          const gateState = api?.getMissionGateState?.();
+          const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
+          return repairStep?.status ?? null;
+        }),
       { timeout: 10000 },
     )
     .toBe('active');

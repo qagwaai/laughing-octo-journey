@@ -75,6 +75,7 @@ A partition enforcement gate (`npm run e2e:partition:check`) runs automatically 
 - No unclassified or multiply-assigned specs break builds
 
 If you add a new e2e test:
+
 1. Save the spec file in `e2e/tests/`
 2. The gate will fail with clear guidance on which partition it should join
 3. Update the patterns in `scripts/check-e2e-partitions.mjs` to include your spec name
@@ -186,7 +187,6 @@ This repository is provided under an **All Rights Reserved** model.
 
 Commercial use is prohibited unless you obtain a separate written commercial license from the repository owner.
 For commercial licensing requests, contact: qagwaai@gmail.com
-
 
 my notes:
 npx playwright test e2e/tests/cold-boot-asteroid-parity.spec.ts --project=chromium --headed --reporter=line

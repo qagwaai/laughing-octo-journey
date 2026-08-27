@@ -48,11 +48,7 @@ describe('InventoryRewardService', () => {
   });
 
   it('expands material rewards into ship items and persists them', () => {
-    const nextShip = service.applyMaterialRewards(
-      [{ material: 'Iron', quantity: 2 }],
-      activeShip,
-      'char-42',
-    );
+    const nextShip = service.applyMaterialRewards([{ material: 'Iron', quantity: 2 }], activeShip, 'char-42');
 
     expect(nextShip?.inventory).toHaveLength(3);
     expect(nextShip?.inventory.map((item: any) => item.itemType)).toEqual(['scrap', 'iron', 'iron']);
@@ -88,24 +84,26 @@ describe('InventoryRewardService', () => {
     sessionService.activeCharacter.mockReturnValue({ id: '' });
 
     service.persistRewardItemsToBackend(
-      [{
-        id: 'item-3',
-        itemType: 'iron',
-        displayName: 'Iron',
-        launchable: false,
-        state: 'contained',
-        damageStatus: 'intact',
-        container: null,
-        owningPlayerId: 'player-7',
-        owningCharacterId: 'char-42',
-        spatial: null,
-        destroyedAt: null,
-        destroyedReason: null,
-        discoveredAt: null,
-        discoveredByCharacterId: null,
-        createdAt: '2026-08-27T00:00:00.000Z',
-        updatedAt: '2026-08-27T00:00:00.000Z',
-      }],
+      [
+        {
+          id: 'item-3',
+          itemType: 'iron',
+          displayName: 'Iron',
+          launchable: false,
+          state: 'contained',
+          damageStatus: 'intact',
+          container: null,
+          owningPlayerId: 'player-7',
+          owningCharacterId: 'char-42',
+          spatial: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: '2026-08-27T00:00:00.000Z',
+          updatedAt: '2026-08-27T00:00:00.000Z',
+        },
+      ],
       { playerName: '', characterId: '', shipId: 'ship-42' },
     );
 

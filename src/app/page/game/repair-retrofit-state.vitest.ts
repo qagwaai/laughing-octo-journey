@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { ShipSubsystemDamage } from '../../model/ship-damage';
 import {
   describeSummaryForSystems,
   mapOverallStatusToShipStatus,
   resolveOverallStatusFromSystems,
 } from './repair-retrofit-state';
-import { ShipSubsystemDamage } from '../../model/ship-damage';
 
 describe('repair-retrofit-state helpers', () => {
   describe('mapOverallStatusToShipStatus', () => {
@@ -51,7 +51,7 @@ describe('repair-retrofit-state helpers', () => {
 
     it('describes critical subsystem count with singular/plural wording', () => {
       const oneCritical: ShipSubsystemDamage[] = [
-        { code: 'eng', severity: 'critical', label: 'Eng', summary: 'crit', repairPriority: 0 }
+        { code: 'eng', severity: 'critical', label: 'Eng', summary: 'crit', repairPriority: 0 },
       ];
       const twoCritical: ShipSubsystemDamage[] = [
         { code: 'eng', severity: 'critical', label: 'Eng', summary: 'crit', repairPriority: 0 },
@@ -64,7 +64,7 @@ describe('repair-retrofit-state helpers', () => {
 
     it('describes major subsystem count when no critical systems remain', () => {
       const oneMajor: ShipSubsystemDamage[] = [
-        { code: 'sensor', severity: 'major', label: 'Sen', summary: 'maj', repairPriority: 0 }
+        { code: 'sensor', severity: 'major', label: 'Sen', summary: 'maj', repairPriority: 0 },
       ];
       const twoMajor: ShipSubsystemDamage[] = [
         { code: 'sensor', severity: 'major', label: 'Sen', summary: 'maj', repairPriority: 0 },

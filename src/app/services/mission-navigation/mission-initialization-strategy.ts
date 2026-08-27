@@ -11,9 +11,9 @@
  * entry points to mission-specific knowledge.
  */
 
-import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
-import type { ShipDamagePreset } from '../../model/ship-damage';
 import type { MissionStatus } from '../../model/mission';
+import type { ShipDamagePreset } from '../../model/ship-damage';
+import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 
 /**
  * Initialization parameters passed to a strategy to build mission context.

@@ -27,8 +27,7 @@
   <div class="planet-view-header" data-testid="planet-view-header">
     <div class="planet-view-header__title">{{ selectedBody()!.displayName }}</div>
     <div class="planet-view-header__meta">
-      {{ selectedBody()!.bodyType }}
-      @if (moonCount() > 0) {
+      {{ selectedBody()!.bodyType }} @if (moonCount() > 0) {
       <span class="planet-view-header__badge">{{ moonCount() }} moons</span>
       }
     </div>

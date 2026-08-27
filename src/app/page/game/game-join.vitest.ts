@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createMockSessionService,
@@ -9,9 +9,9 @@ import {
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
-import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import GameJoinPage from './game-join';
 
 function setup(options: {
@@ -102,7 +102,10 @@ describe('GameJoinPage', () => {
 
   it('should hydrate player and character from persisted session state when router state is missing', () => {
     sessionService.setPlayerName('Persisted Pioneer');
-    sessionService.setMissionEntryContext('Persisted Pioneer', { id: 'c-2', characterName: 'Hydrated Character' } as never);
+    sessionService.setMissionEntryContext('Persisted Pioneer', {
+      id: 'c-2',
+      characterName: 'Hydrated Character',
+    } as never);
 
     const { component } = setup({
       socketService,

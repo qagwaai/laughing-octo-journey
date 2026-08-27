@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -12,8 +12,8 @@ import type { MarketSummary } from '../../model/market-list';
 import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE_EVENT } from '../../model/market-list';
 import { estimateTravelHours } from '../../model/math/drive-profile';
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
-import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { ITEM_LIST_BY_OWNER_REQUEST_EVENT, ITEM_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ownership-operations';
+import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';

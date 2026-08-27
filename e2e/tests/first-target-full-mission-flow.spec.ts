@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import {
-  configureFirstTargetFlowMock,
   FIRST_TARGET_MISSION_ID,
   setupFirstTargetFlowTest,
   TEST_CHARACTER_ID,
@@ -117,9 +116,7 @@ test.describe('First Target Mission Flow', () => {
       }
     }, firstSampleId);
 
-    await expect
-      .poll(() => launchItemRequests.length)
-      .toBeGreaterThan(0);
+    await expect.poll(() => launchItemRequests.length).toBeGreaterThan(0);
     expect(launchItemRequests[0]?.targetCelestialBodyId).not.toBe(firstSampleId);
     if (celestialBodyUpsertRequests.length > 0) {
       expect(celestialBodyUpsertRequests[0]?.celestialBody?.sourceScanId).toBe(firstSampleId);
@@ -213,7 +210,6 @@ test.describe('First Target Mission Flow', () => {
         { timeout: 30_000 },
       )
       .toEqual({ allCompleted: true, hasCompletionObjective: true, hasDebrisObjective: false });
-
   });
 
   test('normalizes legacy 3-step persisted gate into active repair step', async ({ page }) => {

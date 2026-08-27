@@ -32,11 +32,7 @@ export class ConsumedItemShadowService {
    * Returns inventory filtered to remove consumed items, while logging an error when
    * a consumed item reappears from the backend.
    */
-  filterInventory(
-    playerName: string,
-    characterId: string,
-    inventory: readonly ShipItem[] | undefined,
-  ): ShipItem[] {
+  filterInventory(playerName: string, characterId: string, inventory: readonly ShipItem[] | undefined): ShipItem[] {
     const key = this.buildKey(playerName, characterId);
     const inventoryArray = [...(inventory ?? [])];
     if (!key) {
@@ -91,7 +87,9 @@ export class ConsumedItemShadowService {
         return new Set<string>();
       }
 
-      return new Set<string>(parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0));
+      return new Set<string>(
+        parsed.filter((item): item is string => typeof item === 'string' && item.trim().length > 0),
+      );
     } catch {
       return new Set<string>();
     }

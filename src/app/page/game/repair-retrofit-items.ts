@@ -32,8 +32,8 @@ import { SessionService, SocketService } from '../../services';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
-import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
 import {
   describeSummaryForSystems,
@@ -105,7 +105,10 @@ export default class RepairRetrofitItemsPage {
     () =>
       !this.hasHullPatchKit() &&
       !this.isHullPatchKitQueued() &&
-      !!findConsumableMaterialsForPrintableItem(this.resolveVisibleInventory(this.joinShip()), this.hullPatchKitPrintableItem),
+      !!findConsumableMaterialsForPrintableItem(
+        this.resolveVisibleInventory(this.joinShip()),
+        this.hullPatchKitPrintableItem,
+      ),
   );
 
   private resolveVisibleInventory(ship: ShipSummary | null): ShipItem[] {
@@ -606,21 +609,19 @@ export default class RepairRetrofitItemsPage {
 
         // Fire-and-forget item upsert for kit destruction
         if (kitItem) {
-          this.socketService.upsertItem(
-            {
-              playerName,
-              sessionKey,
-              correlationSource: 'repair-retrofit-items.repair-ship-asset',
-              item: {
-                id: kitItem.id,
-                state: 'destroyed',
-                damageStatus: 'destroyed',
-                container: null,
-                spatial: null,
-                motion: null,
-              },
+          this.socketService.upsertItem({
+            playerName,
+            sessionKey,
+            correlationSource: 'repair-retrofit-items.repair-ship-asset',
+            item: {
+              id: kitItem.id,
+              state: 'destroyed',
+              damageStatus: 'destroyed',
+              container: null,
+              spatial: null,
+              motion: null,
             },
-          );
+          });
         }
       },
     );
@@ -876,7 +877,7 @@ export default class RepairRetrofitItemsPage {
 
       // Check if item is usable (contained and not destroyed)
       const isUsableState = item.state === 'contained' || item.state === null;
-      const isNotDestroyed = (item.destroyedAt == null && item.destroyedReason == null);
+      const isNotDestroyed = item.destroyedAt == null && item.destroyedReason == null;
 
       if (isUsableState && isNotDestroyed) {
         return item;

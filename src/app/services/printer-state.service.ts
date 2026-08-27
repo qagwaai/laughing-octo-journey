@@ -72,9 +72,7 @@ export class PrinterStateService {
    */
   expireQueueItem(playerName: string, characterId: string, itemId: string): void {
     const updated = this.queueSignal().map((item) =>
-      item.id === itemId
-        ? { ...item, startedAt: new Date(Date.now() - item.durationMs - 1000).toISOString() }
-        : item,
+      item.id === itemId ? { ...item, startedAt: new Date(Date.now() - item.durationMs - 1000).toISOString() } : item,
     );
     this.queueSignal.set(updated);
     this.saveToStorage(playerName, characterId, updated);

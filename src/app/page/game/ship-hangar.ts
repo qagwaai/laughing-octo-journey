@@ -1,17 +1,15 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { environment } from '../../../environments/environment';
-import { resolveNavigationState } from '../navigation-state';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import { type MarketBuyResponse } from '../../model/market-buy';
+import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
 import { type MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
-import { type MarketBuyResponse } from '../../model/market-buy';
-import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -20,12 +18,14 @@ import {
   coerceShipTier,
   type ShipSummary,
 } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { isValidShipSpatial } from '../../model/spatial';
-import { SessionService } from '../../services/session.service';
+import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
-import { ShipService } from '../../services/ship.service';
-import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { MissionService } from '../../services/mission.service';
+import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import {
   ShipHangarLastSuccessfulLoad,
@@ -34,7 +34,7 @@ import {
   unregisterSw13AppTestReadinessApi,
   updateShipHangarReadinessSnapshot,
 } from '../../services/sw13-app-test-readiness-contract';
-import { appLogger } from '../../services/logger';
+import { resolveNavigationState } from '../navigation-state';
 
 interface ShipHangarNavigationState {
   playerName?: string;
@@ -341,9 +341,7 @@ export default class ShipHangarPage implements OnDestroy {
   }
 
   protected getSetActiveShipLabel(ship: ShipSummary): string {
-    return this.isShipActive(ship)
-      ? this.t.game.shipHangar.shipActiveLabel
-      : this.t.game.shipHangar.shipSetActiveLabel;
+    return this.isShipActive(ship) ? this.t.game.shipHangar.shipActiveLabel : this.t.game.shipHangar.shipSetActiveLabel;
   }
 
   private getFirstTargetMissionStatus(): MissionStatus | undefined {
@@ -494,6 +492,4 @@ export default class ShipHangarPage implements OnDestroy {
       updatedAtEpochMs: Date.now(),
     });
   }
-
-
 }

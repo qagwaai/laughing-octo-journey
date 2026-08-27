@@ -43,7 +43,7 @@ export const it: DeepPartial<EnLocale> = {
     registration: {
       title: 'Registrazione',
       localeLabel: 'Lingua',
-      rememberHandleLabel: "Ricorda il mio handle su questo dispositivo",
+      rememberHandleLabel: 'Ricorda il mio handle su questo dispositivo',
       rememberHandleHint: 'Memorizzato localmente su questo dispositivo.',
       submitLabel: 'Crea account e accedi',
       submittingLabel: 'Creazione account e accesso in corso...',
@@ -621,7 +621,8 @@ export const it: DeepPartial<EnLocale> = {
       },
       attributes: {
         sectionTitle: 'Attributi profilo',
-        sectionDescription: 'Attributi di setup del personaggio in sola lettura attualmente persistiti per questo pilota.',
+        sectionDescription:
+          'Attributi di setup del personaggio in sola lettura attualmente persistiti per questo pilota.',
         emptyLabel: 'Nessun attributo profilo disponibile al momento.',
       },
       credits: {

@@ -1,16 +1,8 @@
 <ngt-color *args="['#02060f']" attach="background" />
 <ngt-ambient-light [intensity]="0.15" />
 <ngt-point-light [position]="[0, 0, 0]" [intensity]="2.05" [distance]="120" [decay]="2" />
-<ngt-directional-light
-  [position]="[26, 18, 14]"
-  [intensity]="0.46"
-  [color]="'#d6dff0'"
-/>
-<ngt-directional-light
-  [position]="[-22, 10, -20]"
-  [intensity]="0.42"
-  [color]="'#6f87ad'"
-/>
+<ngt-directional-light [position]="[26, 18, 14]" [intensity]="0.46" [color]="'#d6dff0'" />
+<ngt-directional-light [position]="[-22, 10, -20]" [intensity]="0.42" [color]="'#6f87ad'" />
 <ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08, enableZoom: false }" />
 
 <ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
@@ -20,45 +12,45 @@
 
 <ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-2">
   <ngt-circle-geometry *args="[28, 128]" />
-  <ngt-mesh-basic-material
-    [color]="'#7ea2c9'"
-    [transparent]="true"
-    [opacity]="0.05"
-    [side]="2"
-    [depthWrite]="false"
-  />
+  <ngt-mesh-basic-material [color]="'#7ea2c9'" [transparent]="true" [opacity]="0.05" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 
 <ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-1">
   <ngt-ring-geometry *args="[27.92, 28.08, 192]" />
-  <ngt-mesh-basic-material
-    [color]="'#ffffff'"
-    [transparent]="true"
-    [opacity]="0.3"
-    [side]="2"
-    [depthWrite]="false"
-  />
+  <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="0.3" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 
 @for (orbit of orbitEllipses(); track orbit.id) {
-<ngt-mesh [position]="orbit.center" [rotation]="orbit.rotation" [scale]="[orbit.radiusX, orbit.radiusZ, 1]" [renderOrder]="orbit.isMarketStation ? 20 : 0">
+<ngt-mesh
+  [position]="orbit.center"
+  [rotation]="orbit.rotation"
+  [scale]="[orbit.radiusX, orbit.radiusZ, 1]"
+  [renderOrder]="orbit.isMarketStation ? 20 : 0"
+>
   <ngt-ring-geometry *args="orbit.isMarketStation ? [0.96, 1.04, 256] : [0.9995, 1.0005, 256]" />
-  <ngt-mesh-basic-material [color]="orbit.color" [transparent]="true" [opacity]="orbit.opacity" [side]="2" [depthWrite]="false" [depthTest]="orbit.isMarketStation ? false : true" />
+  <ngt-mesh-basic-material
+    [color]="orbit.color"
+    [transparent]="true"
+    [opacity]="orbit.opacity"
+    [side]="2"
+    [depthWrite]="false"
+    [depthTest]="orbit.isMarketStation ? false : true"
+  />
 </ngt-mesh>
-}
-
-@for (body of stars(); track body.id) {
-<ngt-mesh [position]="body.position" [name]="body.displayName"
+} @for (body of stars(); track body.id) {
+<ngt-mesh
+  [position]="body.position"
+  [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
-  <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : body.color" />
+  <ngt-mesh-basic-material
+    [color]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : body.color"
+  />
 </ngt-mesh>
-}
-
-@for (ship of renderedShips(); track ship.id) {
+} @for (ship of renderedShips(); track ship.id) {
 <ngt-group [position]="ship.position" [name]="ship.displayName">
   <app-viewer-ship-mesh
     [model]="ship.model"
@@ -67,10 +59,10 @@
     [isActive]="ship.isActive"
   />
 </ngt-group>
-}
-
-@for (body of nonStars(); track body.id) {
-<ngt-mesh [position]="body.position" [name]="body.displayName"
+} @for (body of nonStars(); track body.id) {
+<ngt-mesh
+  [position]="body.position"
+  [name]="body.displayName"
   [scale]="body.geometryScale"
   [rotation]="body.geometryRotation"
   (pointerover)="onBodyPointerOver(body.source)"
@@ -91,7 +83,9 @@
   } @else if (body.geometryKind === 'cylinder') {
   <ngt-cylinder-geometry *args="[body.radius * 0.72, body.radius * 0.9, body.radius * 2.2, body.geometrySegments]" />
   } @else if (body.geometryKind === 'torus') {
-  <ngt-torus-geometry *args="[body.radius * 1.2, body.geometryTorusTubeRadius, body.geometrySegments, body.geometrySegments * 2]" />
+  <ngt-torus-geometry
+    *args="[body.radius * 1.2, body.geometryTorusTubeRadius, body.geometrySegments, body.geometrySegments * 2]"
+  />
   } @else {
   <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
   }

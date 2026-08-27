@@ -1,9 +1,9 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { SocketIOMock } from './socket-mock';
 import { TEST_PLAYER } from '../helpers/auth-helper';
-import { bootstrapSharedGameMainSession } from './shared-session-bootstrap';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import { bootstrapSharedGameMainSession } from './shared-session-bootstrap';
+import { SocketIOMock } from './socket-mock';
 import {
   registerViewerCharacterList,
   registerViewerGameJoin,
@@ -35,7 +35,12 @@ export const SOL_BODIES: any[] = [
     id: 'earth',
     bodyType: 'planet',
     displayName: 'Earth',
-    spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 149597870.7, y: 0, z: 0 }, epochMs: 1715000000000 },
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 149597870.7, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
     orbitalElements: {
       anchorBodyId: 'sun',
       semiMajorAxisKm: 149597870.7,
@@ -56,7 +61,12 @@ export const ACTIVE_SHIP = {
   model: 'Scavenger Pod',
   tier: 1,
   status: null,
-  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 10000000, y: 0, z: 0 }, epochMs: 1715000000000 },
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 10000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
 };
 
 export const INACTIVE_SHIP = {
@@ -65,7 +75,12 @@ export const INACTIVE_SHIP = {
   model: 'Scavenger Pod',
   tier: 1,
   status: null,
-  spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 20000000, y: 0, z: 0 }, epochMs: 1715000000000 },
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 20000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
 };
 
 export const SHIP_IN_OTHER_SYSTEM = {
@@ -74,7 +89,12 @@ export const SHIP_IN_OTHER_SYSTEM = {
   model: 'Scavenger Pod',
   tier: 1,
   status: null,
-  spatial: { solarSystemId: 'proxima', frame: 'barycentric', positionKm: { x: 5000000, y: 0, z: 0 }, epochMs: 1715000000000 },
+  spatial: {
+    solarSystemId: 'proxima',
+    frame: 'barycentric',
+    positionKm: { x: 5000000, y: 0, z: 0 },
+    epochMs: 1715000000000,
+  },
 };
 
 export function makeShipListResponse(ships: any[]) {

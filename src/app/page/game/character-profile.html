@@ -42,8 +42,7 @@
         />
         @if (portraitLoadFailed()) {
         <p class="portrait-window__empty">{{ t.game.characterProfile.portrait.unavailableLabel }}</p>
-        }
-        } @else {
+        } } @else {
         <p class="portrait-window__empty">
           {{ bustDescriptorLoadFailed() ? t.game.characterProfile.portrait.unavailableLabel :
           t.game.characterProfile.portrait.waitingLabel }}

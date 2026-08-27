@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createMockSessionService, createMockSocketService } from '../../../testing';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { SocketService } from '../../services/socket.service';
 import RepairRetrofitPage from './repair-retrofit';
 
 interface NavigationState {
@@ -296,7 +296,9 @@ describe('RepairRetrofitPage', () => {
             model: 'Scavenger Pod',
             tier: 1,
             spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 10, y: 0, z: 0 }, epochMs: 0 },
-            inventory: [{ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' }],
+            inventory: [
+              { id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' },
+            ],
           },
         ],
       });
@@ -307,7 +309,7 @@ describe('RepairRetrofitPage', () => {
 
     expect(component['activeShip']()?.id).toBe('s-1');
     expect(component['shipLoadError']()).toBeNull();
-    expect((component['activeShip']()?.inventory?.length ?? 0)).toBeGreaterThan(0);
+    expect(component['activeShip']()?.inventory?.length ?? 0).toBeGreaterThan(0);
     expect(setActiveShipSpy).toHaveBeenCalled();
     // No explicit ship profile was returned; in-progress mission falls back to cold-boot profile.
     expect(component['damageProfile']()?.origin).toBe('cold-boot-scripted');

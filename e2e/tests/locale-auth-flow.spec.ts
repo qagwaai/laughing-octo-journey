@@ -25,9 +25,7 @@ test.describe('Locale auth flow', () => {
 
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
     await expect(characterListPage.heading).toHaveText('Lista Personaggi');
-    await expect(characterListPage.subtitle).toHaveText(
-      'Rivedi i personaggi creati per il tuo profilo giocatore.',
-    );
+    await expect(characterListPage.subtitle).toHaveText('Rivedi i personaggi creati per il tuo profilo giocatore.');
     await expect(characterListPage.joinButton(0)).toHaveText('Entra nel gioco');
   });
 

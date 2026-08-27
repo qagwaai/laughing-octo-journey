@@ -24,10 +24,7 @@ test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
 test.describe('Market Hub cross-system route badges', () => {
   test.setTimeout(60_000);
 
-  test('renders in-system, gate-route, and no-route badges correctly', async ({
-    sharedGameShell,
-    sharedMock,
-  }) => {
+  test('renders in-system, gate-route, and no-route badges correctly', async ({ sharedGameShell, sharedMock }) => {
     await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage, () => undefined);
 
     const marketRows = sharedMarketHubPage.marketItems;

@@ -200,7 +200,10 @@ export class AsteroidPersistenceService {
     }
 
     const requestedCelestialBodyId = this.buildCelestialBodyId(resolvedCharacterId, params.sample.id);
-    const fallbackPositionKm = this.resolveFallbackTargetPositionKm(params.sample.id, params.basePositionKm ?? { x: 0, y: 0, z: 0 });
+    const fallbackPositionKm = this.resolveFallbackTargetPositionKm(
+      params.sample.id,
+      params.basePositionKm ?? { x: 0, y: 0, z: 0 },
+    );
     const request: CelestialBodyUpsertRequest = {
       sessionKey,
       playerName: resolvedPlayerName,
@@ -275,9 +278,7 @@ export class AsteroidPersistenceService {
     sampleId: string,
     basePositionKm: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
   ): { x: number; y: number; z: number } {
-    const hash = sampleId
-      .split('')
-      .reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+    const hash = sampleId.split('').reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
     const offset = (Math.abs(hash) % 1500) + 300;
     return {
       x: basePositionKm.x + offset,

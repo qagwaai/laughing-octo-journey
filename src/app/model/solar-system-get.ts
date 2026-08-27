@@ -1,6 +1,6 @@
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import { Triple } from './shared/triple';
 import { SolarSystemSummary } from './solar-system-list';
-import type { ExternalObjectDescriptor } from './external-object-descriptor';
 
 export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';

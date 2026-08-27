@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { MISSION_IDS, resolveMissionById } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -13,7 +12,6 @@ import {
   type MarketListByLocationResponse,
   type MarketSummary,
 } from '../../model/market-list';
-import { resolveOwnershipFailureMessage } from '../../model/ownership-error';
 import {
   estimateTravelHours,
   resolveDriveProfileForShip,
@@ -21,15 +19,17 @@ import {
 } from '../../model/math/drive-profile';
 import { resolveJumpGateHops } from '../../model/math/jump-gate';
 import type { CharacterMissionProgress } from '../../model/mission';
+import { resolveOwnershipFailureMessage } from '../../model/ownership-error';
 import type { Triple } from '../../model/shared/triple';
-import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipSummary } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
+import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { OwnershipOperationsService } from '../../services/ownership-operations.service';
 import { SessionService } from '../../services/session.service';
-import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipService } from '../../services/ship.service';
-import { appLogger } from '../../services/logger';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 
 const ASTRONOMICAL_UNIT_KM = 149_597_870.7;
 const DEFAULT_MARKET_RADIUS_AU = 0.5;
@@ -137,9 +137,7 @@ export default class MarketHubPage {
   protected readonly activeM01Mission = computed(
     () =>
       this.missions().find(
-        (m) =>
-          m.missionId === MISSION_IDS.m01 &&
-          (m.status === 'available' || m.status === 'active'),
+        (m) => m.missionId === MISSION_IDS.m01 && (m.status === 'available' || m.status === 'active'),
       ) ?? null,
   );
 
@@ -199,14 +197,11 @@ export default class MarketHubPage {
         return;
       }
 
-      appLogger.log(
-        'MarketHubPage.ensureActiveShipPosition: hard fail selecting ship with usable spatial data',
-        {
-          reason: resolved.reason,
-          playerName,
-          characterId,
-        },
-      );
+      appLogger.log('MarketHubPage.ensureActiveShipPosition: hard fail selecting ship with usable spatial data', {
+        reason: resolved.reason,
+        playerName,
+        characterId,
+      });
       this.marketListError.set(this.t.game.marketHub.errors.loadMarketsRequiresPosition);
       this.markets.set([]);
       this.isDockedAtAnyMarket.set(false);

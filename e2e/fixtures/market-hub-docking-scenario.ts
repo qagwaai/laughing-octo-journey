@@ -1,6 +1,6 @@
 import { TEST_PLAYER } from '../helpers/auth-helper';
-import { SocketIOMock } from './socket-mock';
 import { registerMarketSharedSession } from './market-hub-session-helpers';
+import { SocketIOMock } from './socket-mock';
 
 export const MARKET_HUB_DOCKING_CHARACTER = {
   id: 'char-market-2',

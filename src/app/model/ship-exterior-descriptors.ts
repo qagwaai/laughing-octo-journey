@@ -1,9 +1,9 @@
+import type { AsteroidMaterialProfile } from './catalog/asteroid-materials';
 import type {
   ExternalObjectDescriptor,
   ExternalObjectDomain,
   ExternalObjectFallbackTier,
 } from './external-object-descriptor';
-import type { AsteroidMaterialProfile } from './catalog/asteroid-materials';
 
 export interface ShipExteriorSw13FamilyBaseline {
   debris: readonly string[];

@@ -6,7 +6,9 @@ export interface ShipExteriorRouteFeedCounts {
   encounterShips: number;
 }
 
-export function summarizeShipExteriorRouteFeeds(feeds: ShipExteriorRouteFeeds | null | undefined): ShipExteriorRouteFeedCounts {
+export function summarizeShipExteriorRouteFeeds(
+  feeds: ShipExteriorRouteFeeds | null | undefined,
+): ShipExteriorRouteFeedCounts {
   return {
     gates: feeds?.gates.length ?? 0,
     stations: feeds?.stations.length ?? 0,

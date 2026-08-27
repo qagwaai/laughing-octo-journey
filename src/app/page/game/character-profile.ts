@@ -5,14 +5,14 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
-import { PlayerCharacterSummary } from '../../model/character-list';
 import { type BustDescriptorInput, type CharacterBustReadResponse } from '../../model/bust-descriptor';
 import { readCachedCharacterBustDescriptor } from '../../model/character-bust-cache';
-import { buildPortraitFilename } from '../character/components/character-preview-image/character-preview-image';
+import { PlayerCharacterSummary } from '../../model/character-list';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
+import { buildPortraitFilename } from '../character/components/character-preview-image/character-preview-image';
+import { resolveNavigationState } from '../navigation-state';
 
 const PORTRAIT_BASE_PATH = '/images/portraits';
 const CHARACTER_PROFILE_BUST_READ_TIMEOUT_MS = 5000;
@@ -42,8 +42,9 @@ export default class CharacterProfilePage {
   private router = inject(Router);
   private bustAdapter = inject(BustDescriptorAdapterService);
   private sessionService = inject(SessionService);
-  private navigationState: CharacterProfileNavigationState =
-    resolveNavigationState<CharacterProfileNavigationState>(this.router);
+  private navigationState: CharacterProfileNavigationState = resolveNavigationState<CharacterProfileNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

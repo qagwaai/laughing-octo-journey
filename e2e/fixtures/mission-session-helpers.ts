@@ -17,11 +17,7 @@ type ShipListOptions = {
   message?: string;
 };
 
-export function registerMissionCharacterList(
-  mock: SocketIOMock,
-  characters: object[],
-  playerName = TEST_PLAYER,
-): void {
+export function registerMissionCharacterList(mock: SocketIOMock, characters: object[], playerName = TEST_PLAYER): void {
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {

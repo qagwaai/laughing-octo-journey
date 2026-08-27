@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
 import {
   configureShipExteriorResumeMock,
   SHIP_EXTERIOR_RESUME_CHARACTER_ID,
   SHIP_EXTERIOR_RESUME_SHIP_ID,
 } from '../fixtures/ship-exterior-resume-scenario';
+import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ShipHangarPage } from '../page-objects/ship-hangar.page';

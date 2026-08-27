@@ -2,12 +2,12 @@
  * Ship list socket contracts plus ship-domain coercion helpers for UI-safe consumption.
  */
 import type { DriveProfileInput } from './drive-profile';
-import { coerceShipOwnershipOrNull, type ShipOwnership } from './ship-owner';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import { coerceShipDamageProfile, type ShipDamageProfile } from './ship-damage';
 import { ShipItem, coerceShipItem } from './ship-item';
+import { coerceShipOwnershipOrNull, type ShipOwnership } from './ship-owner';
 import { ObservabilityState, SpatialState } from './spatial';
 import { Triple } from './triple';
-import type { ExternalObjectDescriptor } from './external-object-descriptor';
 
 export { ShipItem } from './ship-item';
 

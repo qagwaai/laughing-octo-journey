@@ -1,8 +1,5 @@
 import { Injectable } from '@angular/core';
-import { appLogger } from './logger';
 import type { MissionStatus } from '../model/mission';
-import type { ShipDamagePreset } from '../model/ship-damage';
-import { resolveMissionInitializationStrategy } from './mission-navigation/mission-initialization-strategy';
 import {
   MISSION_ADD_REQUEST_EVENT,
   MISSION_ADD_RESPONSE_EVENT,
@@ -13,20 +10,23 @@ import {
 import {
   MISSION_LIST_REQUEST_EVENT,
   MISSION_LIST_RESPONSE_EVENT,
-  type MissionListRequestIdentity,
   MissionListRequest,
+  type MissionListRequestIdentity,
   MissionListResponse,
 } from '../model/mission-list';
 import {
   MISSION_UPSERT_REQUEST_EVENT,
   MISSION_UPSERT_RESPONSE_EVENT,
-  type MissionUpsertRequestIdentity,
   MissionUpsertRequest,
+  type MissionUpsertRequestIdentity,
   MissionUpsertResponse,
 } from '../model/mission-upsert.model';
+import type { ShipDamagePreset } from '../model/ship-damage';
+import { appLogger } from './logger';
+import { resolveMissionInitializationStrategy } from './mission-navigation/mission-initialization-strategy';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
-import { SocketService } from './socket.service';
 import { SocketLifecycleService } from './socket-lifecycle.service';
+import { SocketService } from './socket.service';
 
 function buildDefaultMissionListRequestIdentity(request: MissionListRequest): MissionListRequestIdentity {
   return {
@@ -244,14 +244,7 @@ export class MissionService {
         addRequest.requestIdentity = addRequestIdentity;
 
         unsubscribeAdd = this.socketService.on(MISSION_ADD_RESPONSE_EVENT, (addResponse: MissionAddResponse) => {
-          if (
-            !isMissionAddResponseForRequest(
-              addResponse,
-              addRequest.correlationId!,
-              addRequestIdentity,
-              addRequest,
-            )
-          ) {
+          if (!isMissionAddResponseForRequest(addResponse, addRequest.correlationId!, addRequestIdentity, addRequest)) {
             appLogger.warn(
               `[socket-correlation] Dropping unmatched mission-add response. responseCorrelationId=${addResponse.correlationId ?? 'missing'} expectedCorrelationId=${addRequest.correlationId} responsePlayerName=${addResponse.playerName ?? 'missing'} responseCharacterId=${addResponse.characterId ?? 'missing'}`,
             );
@@ -465,10 +458,7 @@ export class MissionService {
   /**
    * Resolves the damage preset for a mission from its registered initialization strategy.
    */
-  getMissionDamagePreset(
-    missionId: string,
-    status?: MissionStatus | null,
-  ): ShipDamagePreset | undefined {
+  getMissionDamagePreset(missionId: string, status?: MissionStatus | null): ShipDamagePreset | undefined {
     const strategy = resolveMissionInitializationStrategy(missionId);
     return strategy.resolveDamagePreset?.({ missionId, missionStatus: status ?? null });
   }

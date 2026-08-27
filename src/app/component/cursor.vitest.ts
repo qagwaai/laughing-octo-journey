@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOCUMENT, ElementRef, Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cursor, OBJECT_EVENTS_FN } from './cursor';
 
 describe('Cursor', () => {

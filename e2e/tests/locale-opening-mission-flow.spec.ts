@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
-import {
-  setupLocaleOpeningMissionFlowTest,
-} from '../fixtures/locale-opening-mission-flow-scenario';
+import { setupLocaleOpeningMissionFlowTest } from '../fixtures/locale-opening-mission-flow-scenario';
 import { MissionBoardPage } from '../page-objects/mission-board.page';
 
 test.describe('Locale opening and mission flow', () => {

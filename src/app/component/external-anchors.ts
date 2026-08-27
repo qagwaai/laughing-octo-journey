@@ -29,29 +29,29 @@ const defaultExternalAnchors: ReadonlyArray<ExternalAnchorItem> = [
     href: 'https://www.meshy.ai/',
     text: 'Meshy',
     ariaLabel: 'Visit Meshy website',
-  }
+  },
 ];
 
 @Component({
   selector: 'app-external-anchors',
   template: `
     @if (anchors().length > 0) {
-    <div class="external-anchors" [class.external-anchors-stack]="layout() === 'stack'">
-      @for (anchor of anchors(); track anchor.href + anchor.text) {
-      <a
-        class="angular-three-mark"
-        [href]="anchor.href"
-        [target]="anchor.target ?? '_blank'"
-        [rel]="anchor.rel ?? 'noopener noreferrer'"
-        [attr.aria-label]="anchor.ariaLabel"
-      >
-        @if (anchor.showOrb !== false) {
-        <span class="angular-three-orb" aria-hidden="true"></span>
+      <div class="external-anchors" [class.external-anchors-stack]="layout() === 'stack'">
+        @for (anchor of anchors(); track anchor.href + anchor.text) {
+          <a
+            class="angular-three-mark"
+            [href]="anchor.href"
+            [target]="anchor.target ?? '_blank'"
+            [rel]="anchor.rel ?? 'noopener noreferrer'"
+            [attr.aria-label]="anchor.ariaLabel"
+          >
+            @if (anchor.showOrb !== false) {
+              <span class="angular-three-orb" aria-hidden="true"></span>
+            }
+            <span class="angular-three-text">{{ anchor.text }}</span>
+          </a>
         }
-        <span class="angular-three-text">{{ anchor.text }}</span>
-      </a>
-      }
-    </div>
+      </div>
     }
   `,
   styleUrl: './external-anchors.css',

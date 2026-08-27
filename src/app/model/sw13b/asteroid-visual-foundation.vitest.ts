@@ -1,6 +1,6 @@
 import {
-  buildSw13bGeneratedVisualSample,
   buildSw13bDeterministicScreenshotManifest,
+  buildSw13bGeneratedVisualSample,
   buildSw13bPhaseASeedSet,
   buildSw13bPhaseAVisualSamples,
   computeSw13bVisualMetrics,

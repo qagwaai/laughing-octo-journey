@@ -23,7 +23,11 @@
   <section class="ship-exterior-bare-scene__objective" aria-live="polite">
     <p>{{ objectiveMessage() }}</p>
     <div class="ship-exterior-bare-scene__objective-actions">
-      <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="selectFirstScannedIronTargetForTest()">
+      <button
+        type="button"
+        class="ship-exterior-bare-scene__target-btn"
+        (click)="selectFirstScannedIronTargetForTest()"
+      >
         TARGET IRON
       </button>
       <label class="ship-exterior-bare-scene__launch-form-label">

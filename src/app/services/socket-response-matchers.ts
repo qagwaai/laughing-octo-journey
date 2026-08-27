@@ -1,27 +1,16 @@
 import {
-  type CelestialBodyListRequestIdentity,
   type CelestialBodyListRequest,
+  type CelestialBodyListRequestIdentity,
   type CelestialBodyListResponse,
 } from '../model/celestial-body-list';
 import {
-  type CelestialBodyUpsertRequestIdentity,
   type CelestialBodyUpsertRequest,
+  type CelestialBodyUpsertRequestIdentity,
   type CelestialBodyUpsertResponse,
 } from '../model/celestial-body-upsert';
-import {
-  type ItemUpsertRequestIdentity,
-  type ItemUpsertResponse,
-} from '../model/item-upsert';
-import {
-  type LaunchItemRequestIdentity,
-  type LaunchItemRequest,
-  type LaunchItemResponse,
-} from '../model/launch-item';
-import {
-  type ShipUpsertRequestIdentity,
-  type ShipUpsertRequest,
-  type ShipUpsertResponse,
-} from '../model/ship-upsert';
+import { type ItemUpsertRequestIdentity, type ItemUpsertResponse } from '../model/item-upsert';
+import { type LaunchItemRequest, type LaunchItemRequestIdentity, type LaunchItemResponse } from '../model/launch-item';
+import { type ShipUpsertRequest, type ShipUpsertRequestIdentity, type ShipUpsertResponse } from '../model/ship-upsert';
 import { matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 
 function matchesRequestIdentity(
@@ -90,7 +79,8 @@ function matchesLaunchResponseCoreFields(
   }
 
   return (
-    normalizeIdentityValue(response.requestIdentity.operation) === normalizeIdentityValue(expectedRequestIdentity.operation) &&
+    normalizeIdentityValue(response.requestIdentity.operation) ===
+      normalizeIdentityValue(expectedRequestIdentity.operation) &&
     normalizeIdentityValue(response.itemType) === normalizeIdentityValue(expectedRequestIdentity.entityType) &&
     normalizeIdentityValue(response.shipId) === normalizeIdentityValue(expectedRequestIdentity.containerId) &&
     normalizeIdentityValue(response.itemId) === normalizeIdentityValue(expectedRequestIdentity.itemId)
@@ -154,12 +144,9 @@ function matchesCelestialBodyUpsertRequestIdentity(
     return false;
   }
 
-  const operationMatches =
-    normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation);
-  const entityTypeMatches =
-    normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType);
-  const containerIdMatches =
-    normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId);
+  const operationMatches = normalizeIdentityValue(left.operation) === normalizeIdentityValue(right.operation);
+  const entityTypeMatches = normalizeIdentityValue(left.entityType) === normalizeIdentityValue(right.entityType);
+  const containerIdMatches = normalizeIdentityValue(left.containerId) === normalizeIdentityValue(right.containerId);
   const charIdMatches =
     !left.characterId || !right.characterId
       ? true

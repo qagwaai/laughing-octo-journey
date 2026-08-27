@@ -1,18 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
-import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import { createCanonicalStarterShipInventory } from '../../model/domain/starter-ship';
 import {
   EXPENDABLE_DART_DRONE_DISPLAY_NAME,
   EXPENDABLE_DART_DRONE_ITEM_TYPE,
 } from '../../model/domain/expendable-dart-drone';
+import { createCanonicalStarterShipInventory } from '../../model/domain/starter-ship';
 import type { ItemUpsertResponse } from '../../model/item-upsert';
+import type { ShipSubsystemDamage } from '../../model/ship-damage';
 import type { ItemDamageStatus, ShipItem } from '../../model/ship-item';
 import {
   coerceShipDamageProfileOrNull,
@@ -24,13 +24,13 @@ import {
   ShipSummary,
 } from '../../model/ship-list';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
-import type { ShipSubsystemDamage } from '../../model/ship-damage';
-import { SessionService } from '../../services/session.service';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { appLogger } from '../../services/logger';
+import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
-import { appLogger } from '../../services/logger';
+import { resolveNavigationState } from '../navigation-state';
 
 interface ShipViewInventoryNavigationState {
   playerName?: string;
@@ -130,8 +130,9 @@ export default class ShipViewInventoryPage implements OnDestroy {
   private shipService = inject(ShipService);
   private consumedItemShadowService = inject(ConsumedItemShadowService);
   private sessionService = inject(SessionService);
-  private navigationState: ShipViewInventoryNavigationState =
-    resolveNavigationState<ShipViewInventoryNavigationState>(this.router);
+  private navigationState: ShipViewInventoryNavigationState = resolveNavigationState<ShipViewInventoryNavigationState>(
+    this.router,
+  );
   private starterInventoryRepairInFlightShipIds = new Set<string>();
   private starterInventoryRepairAttemptedShipIds = new Set<string>();
 
@@ -635,11 +636,14 @@ export default class ShipViewInventoryPage implements OnDestroy {
 
       if (selected.reason === 'no-usable-spatial-ship') {
         const toastMessage = 'No ship with usable spatial data is available.';
-        appLogger.warn('ShipViewInventoryPage.refreshShipFromServer: hard fail due to missing usable ship spatial data', {
-          playerName,
-          characterId,
-          shipId,
-        });
+        appLogger.warn(
+          'ShipViewInventoryPage.refreshShipFromServer: hard fail due to missing usable ship spatial data',
+          {
+            playerName,
+            characterId,
+            shipId,
+          },
+        );
         this.refreshToastMessage.set(toastMessage);
       }
     });
@@ -898,9 +902,7 @@ export default class ShipViewInventoryPage implements OnDestroy {
           }
 
           const itemToMerge =
-            response.item && isResponseTypeMatch
-              ? response.item
-              : this.buildStarterItemProjection(shipId, starterItem);
+            response.item && isResponseTypeMatch ? response.item : this.buildStarterItemProjection(shipId, starterItem);
           this.mergeItemIntoCurrentShip(shipId, itemToMerge, starterItem.itemType);
 
           runItemUpsert(index + 1);

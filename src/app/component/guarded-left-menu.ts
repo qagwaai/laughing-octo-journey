@@ -10,12 +10,12 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { PlayerCharacterSummary } from '../model/character-list';
-import { resolveActiveFirstTargetCue } from './first-target-nav-guidance';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
+import { resolveActiveFirstTargetCue } from './first-target-nav-guidance';
 
 interface GuardedMenuItem {
   route: string;
@@ -85,10 +85,7 @@ export class GuardedLeftMenu implements OnChanges {
   }
 
   navigateLeft(route: string): void {
-    const outlets =
-      route === 'mission-board'
-        ? { left: ['game-main'], right: ['mission-board'] }
-        : { left: [route] };
+    const outlets = route === 'mission-board' ? { left: ['game-main'], right: ['mission-board'] } : { left: [route] };
 
     this.router.navigate([{ outlets }], {
       preserveFragment: true,
@@ -176,5 +173,4 @@ export class GuardedLeftMenu implements OnChanges {
     const activeCue = resolveActiveFirstTargetCue(state);
     this.activeGuidedRoute.set(activeCue?.route ?? null);
   }
-
 }

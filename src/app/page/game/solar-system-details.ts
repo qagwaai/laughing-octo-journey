@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
@@ -10,8 +10,8 @@ import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
-import { SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
 import { resolveNavigationState } from '../navigation-state';
+import { SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
 
 interface TypeGroup {
   type: string;
@@ -107,13 +107,11 @@ export default class SolarSystemDetailsPage {
       if (!groupMap.has(type)) groupMap.set(type, []);
       groupMap.get(type)!.push(row);
     }
-    return TYPE_GROUP_ORDER
-      .filter((type) => groupMap.has(type))
-      .map((type) => ({
-        type,
-        label: type === 'ship' ? this.t.game.viewer.detailsSectionShips : this.capitalize(type),
-        rows: groupMap.get(type)!,
-      }));
+    return TYPE_GROUP_ORDER.filter((type) => groupMap.has(type)).map((type) => ({
+      type,
+      label: type === 'ship' ? this.t.game.viewer.detailsSectionShips : this.capitalize(type),
+      rows: groupMap.get(type)!,
+    }));
   });
 
   protected readonly sortedByDistance = computed<DetailsRow[]>(() => {
@@ -170,15 +168,12 @@ export default class SolarSystemDetailsPage {
 
   protected goBackToSystemList(): void {
     this.viewerTargetService.clearTarget();
-    this.router.navigate(
-      [{ outlets: { left: ['viewer'] } }],
-      {
-        preserveFragment: true,
-        state: {
-          playerName: this.playerName(),
-          joinCharacter: this.joinCharacter(),
-        },
+    this.router.navigate([{ outlets: { left: ['viewer'] } }], {
+      preserveFragment: true,
+      state: {
+        playerName: this.playerName(),
+        joinCharacter: this.joinCharacter(),
       },
-    );
+    });
   }
 }

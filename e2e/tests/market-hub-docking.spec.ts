@@ -26,7 +26,9 @@ test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
 test.describe('Market Hub docking and radius behavior', () => {
   test('shows in-system route badge for local non-docked market', async ({ sharedGameShell, sharedMock }) => {
     const requests: MarketByLocationRequest[] = [];
-    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) => registerDefaultMarketHandler(mock, (request) => requests.push(request)));
+    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) =>
+      registerDefaultMarketHandler(mock, (request) => requests.push(request)),
+    );
 
     await expect
       .poll(
@@ -90,7 +92,9 @@ test.describe('Market Hub docking and radius behavior', () => {
     sharedPage,
   }) => {
     const requests: MarketByLocationRequest[] = [];
-    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) => registerDefaultMarketHandler(mock, (request) => requests.push(request)));
+    await setupAndOpenMarketHub(sharedGameShell, sharedMock, (mock) =>
+      registerDefaultMarketHandler(mock, (request) => requests.push(request)),
+    );
 
     await expect
       .poll(
@@ -125,8 +129,6 @@ test.describe('Market Hub docking and radius behavior', () => {
       await applyRadiusButton.click();
     }
 
-    await expect
-      .poll(() => requests.some((request) => request.distanceAu === 1), { timeout: 10_000 })
-      .toBe(true);
+    await expect.poll(() => requests.some((request) => request.distanceAu === 1), { timeout: 10_000 }).toBe(true);
   });
 });

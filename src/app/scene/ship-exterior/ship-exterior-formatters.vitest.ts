@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
+import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
+import type { ShipItem } from '../../model/ship-item';
 import {
   ASTRONOMICAL_UNIT_KM,
   DEFAULT_SUN_CONFIG,
@@ -15,9 +18,6 @@ import {
   resolveHotkeyNumber,
   resolveSunConfigForSolarSystem,
 } from './ship-exterior-formatters';
-import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
-import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
-import type { ShipItem } from '../../model/ship-item';
 
 describe('ship-exterior-formatters', () => {
   const kinematics: AsteroidKinematics = {
@@ -87,14 +87,15 @@ describe('ship-exterior-formatters', () => {
   });
 
   it('getLaunchableLabel truncates long names with ellipsis', () => {
-    const item = (overrides: Partial<ShipItem>): ShipItem => ({
-      id: 'i1',
-      itemType: 'expendable-dart-drone',
-      displayName: 'Short',
-      quantity: 1,
-      launchable: true,
-      ...overrides,
-    } as ShipItem);
+    const item = (overrides: Partial<ShipItem>): ShipItem =>
+      ({
+        id: 'i1',
+        itemType: 'expendable-dart-drone',
+        displayName: 'Short',
+        quantity: 1,
+        launchable: true,
+        ...overrides,
+      }) as ShipItem;
     expect(getLaunchableLabel(item({ displayName: 'Short' }))).toBe('Short');
     expect(getLaunchableLabel(item({ displayName: 'A really long display name' }))).toBe('A really ...');
     expect(getLaunchableLabel(item({ displayName: '', itemType: 'something' }))).toBe('something');

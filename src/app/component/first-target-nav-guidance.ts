@@ -28,16 +28,13 @@ export function resolveActiveFirstTargetCue(state: ShipExteriorMissionGateState 
   }
 
   return (
-    GUIDED_MISSION_CUES.find((cue) => state.steps.some((step) => step.key === cue.stepKey && step.status === 'active')) ??
-    null
+    GUIDED_MISSION_CUES.find((cue) =>
+      state.steps.some((step) => step.key === cue.stepKey && step.status === 'active'),
+    ) ?? null
   );
 }
 
-export function buildCueDismissalKey(
-  cue: GuidedMissionCue,
-  playerName: string,
-  characterId: string,
-): string | null {
+export function buildCueDismissalKey(cue: GuidedMissionCue, playerName: string, characterId: string): string | null {
   const normalizedPlayer = playerName.trim();
   const normalizedCharacter = characterId.trim();
   if (!normalizedPlayer || !normalizedCharacter) {

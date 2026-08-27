@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createMockSessionService,
@@ -12,9 +12,9 @@ import {
 } from '../../../testing';
 import { setActiveLocaleCode } from '../../i18n/locale';
 import { LOGIN_EVENT, LOGIN_RESPONSE_EVENT, type LoginResponse } from '../../model/login';
-import { REMEMBERED_PLAYER_HANDLE_STORAGE_KEY } from '../../model/remembered-player-handle';
 import type { RegisterResponse } from '../../model/register';
 import { REGISTER_EVENT, REGISTER_RESPONSE_EVENT } from '../../model/register';
+import { REMEMBERED_PLAYER_HANDLE_STORAGE_KEY } from '../../model/remembered-player-handle';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import RegistrationPage from './registration';

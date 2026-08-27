@@ -15,8 +15,7 @@ function emptyCharacterListResponse() {
   return characterListResponse([]);
 }
 
-export { emptyCharacterListResponse };
-export { characterListResponse };
+export { characterListResponse, emptyCharacterListResponse };
 
 export async function setupCharacterListTest(
   page: Parameters<typeof loginViaUI>[0],

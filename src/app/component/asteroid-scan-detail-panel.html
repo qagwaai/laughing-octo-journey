@@ -1,63 +1,60 @@
 @if (sample(); as s) {
-  <div class="scan-panel" [class.scan-panel--collapsed]="collapsed()">
-    <div class="scan-panel__header">
-      <span class="scan-panel__title">SCAN RESULT // {{ s.id }}</span>
-      <button
-        type="button"
-        class="scan-panel__toggle"
-        (click)="toggleCollapsed()"
-        [attr.aria-expanded]="!collapsed()"
-        aria-label="Toggle scan detail panel"
-      >
-        {{ collapsed() ? '▲' : '▼' }}
-      </button>
-    </div>
-
-    @if (!collapsed()) {
-      <div class="scan-panel__body">
-        <section class="scan-panel__section">
-          <span class="scan-panel__label">MATERIAL</span>
-          <span class="scan-panel__value scan-panel__value--primary">{{ materialLine() ?? '---' }}</span>
-        </section>
-        <section class="scan-panel__section">
-          <span class="scan-panel__label">RARITY</span>
-          <span class="scan-panel__value scan-panel__value--accent">{{ rarityLine() ?? '---' }}</span>
-        </section>
-
-        @if (hasKinematics()) {
-          <div class="scan-panel__divider"></div>
-          <section class="scan-panel__section">
-            <span class="scan-panel__label">VELOCITY</span>
-            <span class="scan-panel__value scan-panel__value--kinematic">{{ velocityLine() ?? '---' }}</span>
-          </section>
-          <section class="scan-panel__section">
-            <span class="scan-panel__label">SPIN</span>
-            <span class="scan-panel__value scan-panel__value--kinematic">{{ spinLine() ?? '---' }}</span>
-          </section>
-          <section class="scan-panel__section">
-            <span class="scan-panel__label">MASS</span>
-            <span class="scan-panel__value scan-panel__value--physical">{{ massLine() ?? '---' }}</span>
-          </section>
-          <section class="scan-panel__section">
-            <span class="scan-panel__label">DIAMETER</span>
-            <span class="scan-panel__value scan-panel__value--physical">{{ diameterLine() ?? '---' }}</span>
-          </section>
-        }
-
-        @if (hasLocation()) {
-          <div class="scan-panel__divider"></div>
-          <section class="scan-panel__section scan-panel__section--wide">
-            <span class="scan-panel__label">LOCATION</span>
-            <span class="scan-panel__value scan-panel__value--location">{{ locationLine() ?? '---' }}</span>
-          </section>
-          @if (clusterLine()) {
-            <section class="scan-panel__section scan-panel__section--wide">
-              <span class="scan-panel__label">CLUSTER OFFSET</span>
-              <span class="scan-panel__value scan-panel__value--location">{{ clusterLine() }}</span>
-            </section>
-          }
-        }
-      </div>
-    }
+<div class="scan-panel" [class.scan-panel--collapsed]="collapsed()">
+  <div class="scan-panel__header">
+    <span class="scan-panel__title">SCAN RESULT // {{ s.id }}</span>
+    <button
+      type="button"
+      class="scan-panel__toggle"
+      (click)="toggleCollapsed()"
+      [attr.aria-expanded]="!collapsed()"
+      aria-label="Toggle scan detail panel"
+    >
+      {{ collapsed() ? '▲' : '▼' }}
+    </button>
   </div>
+
+  @if (!collapsed()) {
+  <div class="scan-panel__body">
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">MATERIAL</span>
+      <span class="scan-panel__value scan-panel__value--primary">{{ materialLine() ?? '---' }}</span>
+    </section>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">RARITY</span>
+      <span class="scan-panel__value scan-panel__value--accent">{{ rarityLine() ?? '---' }}</span>
+    </section>
+
+    @if (hasKinematics()) {
+    <div class="scan-panel__divider"></div>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">VELOCITY</span>
+      <span class="scan-panel__value scan-panel__value--kinematic">{{ velocityLine() ?? '---' }}</span>
+    </section>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">SPIN</span>
+      <span class="scan-panel__value scan-panel__value--kinematic">{{ spinLine() ?? '---' }}</span>
+    </section>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">MASS</span>
+      <span class="scan-panel__value scan-panel__value--physical">{{ massLine() ?? '---' }}</span>
+    </section>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">DIAMETER</span>
+      <span class="scan-panel__value scan-panel__value--physical">{{ diameterLine() ?? '---' }}</span>
+    </section>
+    } @if (hasLocation()) {
+    <div class="scan-panel__divider"></div>
+    <section class="scan-panel__section scan-panel__section--wide">
+      <span class="scan-panel__label">LOCATION</span>
+      <span class="scan-panel__value scan-panel__value--location">{{ locationLine() ?? '---' }}</span>
+    </section>
+    @if (clusterLine()) {
+    <section class="scan-panel__section scan-panel__section--wide">
+      <span class="scan-panel__label">CLUSTER OFFSET</span>
+      <span class="scan-panel__value scan-panel__value--location">{{ clusterLine() }}</span>
+    </section>
+    } }
+  </div>
+  }
+</div>
 }

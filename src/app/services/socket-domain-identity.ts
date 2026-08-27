@@ -1,14 +1,11 @@
+import { type CelestialBodyListRequest, type CelestialBodyListRequestIdentity } from '../model/celestial-body-list';
 import {
-  type CelestialBodyListRequestIdentity,
-  type CelestialBodyListRequest,
-} from '../model/celestial-body-list';
-import {
-  type CelestialBodyUpsertRequestIdentity,
   type CelestialBodyUpsertRequest,
+  type CelestialBodyUpsertRequestIdentity,
 } from '../model/celestial-body-upsert';
-import { type ItemUpsertRequestIdentity, type ItemUpsertRequest } from '../model/item-upsert';
-import { type LaunchItemRequestIdentity, type LaunchItemRequest } from '../model/launch-item';
-import { type ShipUpsertRequestIdentity, type ShipUpsertRequest } from '../model/ship-upsert';
+import { type ItemUpsertRequest, type ItemUpsertRequestIdentity } from '../model/item-upsert';
+import { type LaunchItemRequest, type LaunchItemRequestIdentity } from '../model/launch-item';
+import { type ShipUpsertRequest, type ShipUpsertRequestIdentity } from '../model/ship-upsert';
 import { normalizeIdentityValue } from './socket-correlation';
 
 export function buildDomainPipelineKey(input: {
@@ -60,10 +57,9 @@ export function buildDefaultCelestialBodyUpsertRequestIdentity(
     operation: 'celestial-body-upsert',
     entityType: 'celestial-body',
     containerId:
-      request.celestialBody?.sourceScanId?.trim() ||
-      request.celestialBody?.id?.trim() ||
-      'unknown-celestial-body',
-    characterId: request.createdByCharacterId?.trim() || request.celestialBody?.createdByCharacterId?.trim() || undefined,
+      request.celestialBody?.sourceScanId?.trim() || request.celestialBody?.id?.trim() || 'unknown-celestial-body',
+    characterId:
+      request.createdByCharacterId?.trim() || request.celestialBody?.createdByCharacterId?.trim() || undefined,
   };
 }
 

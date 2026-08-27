@@ -1,23 +1,18 @@
-import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
-import {
-  coerceExternalObjectDescriptor,
-  type ExternalObjectDomain,
-} from '../../model/external-object-descriptor';
-import { isValidShipSpatial } from '../../model/math/spatial';
+import { coerceExternalObjectDescriptor, type ExternalObjectDomain } from '../../model/external-object-descriptor';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
-import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
+import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
+import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
+import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
-import type { SessionService } from '../../services/session.service';
-import type { SolarSystemSummary } from '../../model/solar-system-list';
-import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
 
 interface ViewerDataFacadeDeps {
   solarSystemService: SolarSystemService;
@@ -112,8 +107,7 @@ export class ViewerDataFacade {
     );
   }
 
-  dispose(): void {
-  }
+  dispose(): void {}
 
   private mergeUniqueBodies(bodies: ViewerBody[]): ViewerBody[] {
     const dedupedBodies: ViewerBody[] = [];
@@ -281,9 +275,7 @@ export class ViewerDataFacade {
         sessionKey,
         ship: update,
       };
-      appLogger.warn(
-        `Repairing ship ${ship.id} with invalid spatial; re-running deterministic asteroid-belt upsert.`,
-      );
+      appLogger.warn(`Repairing ship ${ship.id} with invalid spatial; re-running deterministic asteroid-belt upsert.`);
       this.deps.socketService.upsertShip(upsertRequest, (upsertResponse: ShipUpsertResponse) => {
         if (!upsertResponse.success) {
           appLogger.warn(`Ship spatial repair failed for ${ship.id}:`, upsertResponse.message);

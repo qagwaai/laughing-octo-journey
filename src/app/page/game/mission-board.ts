@@ -1,10 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { appLogger } from '../../services/logger';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import {
   createInitialMissionGateState,
   parseMissionGateState,
@@ -20,12 +18,14 @@ import {
 } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
-import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { type MissionListRequest, type MissionListResponse } from '../../model/mission-list';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { appLogger } from '../../services/logger';
 import { MissionBoardService } from '../../services/mission-board.service';
 import { SessionService } from '../../services/session.service';
-import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 
 type MissionLane = 'available' | 'active' | 'completed';
 type MissionLaneFilter = 'all' | MissionLane;
@@ -70,8 +70,9 @@ export default class MissionBoardPage {
   private sessionService = inject(SessionService);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private unsubscribeMissionListResponse?: () => void;
-  private navigationState: MissionBoardNavigationState =
-    resolveNavigationState<MissionBoardNavigationState>(this.router);
+  private navigationState: MissionBoardNavigationState = resolveNavigationState<MissionBoardNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -112,15 +113,18 @@ export default class MissionBoardPage {
       }
 
       this.reportedViolationSignatures.add(signature);
-      appLogger.error('[mission-board-contract] Contract violation: unknown mission status in mission board lane mapping.', {
-        feature: 'SW-01',
-        component: 'mission-board',
-        playerName,
-        characterId,
-        missionId: diagnostic.missionId,
-        observedStatus: diagnostic.status,
-        canonicalStatuses: ['available', 'active', 'completed'],
-      });
+      appLogger.error(
+        '[mission-board-contract] Contract violation: unknown mission status in mission board lane mapping.',
+        {
+          feature: 'SW-01',
+          component: 'mission-board',
+          playerName,
+          characterId,
+          missionId: diagnostic.missionId,
+          observedStatus: diagnostic.status,
+          canonicalStatuses: ['available', 'active', 'completed'],
+        },
+      );
     }
   });
 
@@ -246,7 +250,10 @@ export default class MissionBoardPage {
   );
 
   protected readonly shouldRenderLaneSection = computed(
-    () => !this.isLoadingMissions() && !this.missionListError() && (this.hasLaneContent() || this.visibleUnknownStatusViolations().length > 0),
+    () =>
+      !this.isLoadingMissions() &&
+      !this.missionListError() &&
+      (this.hasLaneContent() || this.visibleUnknownStatusViolations().length > 0),
   );
 
   protected readonly hasNoResultsForSelectedFilter = computed(() => {

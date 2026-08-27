@@ -41,7 +41,14 @@ export const ASTEROID_MATERIALS: AsteroidMaterialProfile[] = [
   { rarity: 'Exotic', material: 'Gold', textureColor: '#cf9e45', roughness: 0.3, metalness: 0.9 },
   { rarity: 'Exotic', material: 'Rhodium', textureColor: '#dde7ff', roughness: 0.26, metalness: 0.92 },
   { rarity: 'Exotic', material: 'Antimony', textureColor: '#a9b9d2', roughness: 0.4, metalness: 0.6 },
-  { rarity: 'Exotic', material: 'Unobtainium', textureColor: '#7deaff', roughness: 0.28, metalness: 0.64, emissiveBoost: 0.45 },
+  {
+    rarity: 'Exotic',
+    material: 'Unobtainium',
+    textureColor: '#7deaff',
+    roughness: 0.28,
+    metalness: 0.64,
+    emissiveBoost: 0.45,
+  },
 ];
 
 export function pickWeightedAsteroidMaterial(

@@ -165,9 +165,7 @@ describe('MissionProgressSyncService', () => {
       gateState: createGateStateWithStatuses(['pending-retry', 'pending-retry', 'pending-retry', 'pending-retry']),
     });
 
-    expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'active' }),
-    );
+    expect(missionService.upsertMissionStatus).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
   });
 
   it('should skip sync when missionId is empty', async () => {

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-import { ShipDamageController } from './ship-damage-controller';
-import { resolveShipDamageProfileFromPreset } from '../../model/ship-damage';
+import { describe, expect, it } from 'vitest';
 import type { ShipDamageProfile } from '../../model/ship-damage';
+import { resolveShipDamageProfileFromPreset } from '../../model/ship-damage';
 import type { ShipSummary } from '../../model/ship-list';
+import { ShipDamageController } from './ship-damage-controller';
 
 describe('ShipDamageController', () => {
   const validProfile: ShipDamageProfile = resolveShipDamageProfileFromPreset(

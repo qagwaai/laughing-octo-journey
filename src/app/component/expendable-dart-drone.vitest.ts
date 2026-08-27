@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BEFORE_RENDER_FN, ExpendableDartShip, GLTF_RESOURCE_FN } from './expendable-dart-drone';
 
 describe('ExpendableDartShip', () => {

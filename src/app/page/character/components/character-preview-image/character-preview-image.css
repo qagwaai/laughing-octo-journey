@@ -68,7 +68,9 @@
   object-fit: contain;
   object-position: center top;
   opacity: 0;
-  transition: opacity 260ms ease, transform 260ms ease;
+  transition:
+    opacity 260ms ease,
+    transform 260ms ease;
   transform: scale(1.01);
 }
 

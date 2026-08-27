@@ -16,17 +16,16 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
 import { NgtCanvas } from 'angular-three/dom';
 import { filter, map, startWith, Subscription } from 'rxjs';
-import { RoutedScene } from './routed-scene';
 import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
+import { RoutedScene } from './routed-scene';
+import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
 import { RenderStatsService } from './services/render-stats.service';
 import { SceneVisibilityService } from './services/scene-visibility.service';
 import { ShipExteriorViewHostService } from './services/ship-exterior-view-host.service';
-import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
-import { environment } from '../environments/environment';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
@@ -99,7 +98,9 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected color = signal('#ff0000');
   protected stats = this.renderStats.enabled;
   protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
-  protected readonly shipExteriorHudFacade = createShipExteriorViewFacade(() => this.shipExteriorViewHost.source() ?? undefined);
+  protected readonly shipExteriorHudFacade = createShipExteriorViewFacade(
+    () => this.shipExteriorViewHost.source() ?? undefined,
+  );
   protected readonly shipExteriorHudVisible = computed(() => this.shipExteriorViewHost.source() !== null);
   protected readonly shipExteriorObjectivePanel = computed(() => this.shipExteriorHudFacade.objectivePanel());
   protected readonly shipExteriorPropertiesPanel = computed(() => this.shipExteriorHudFacade.propertiesPanel());
@@ -234,7 +235,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
     window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
     this.onStatsChange(this.stats());
-
   }
 
   reset() {

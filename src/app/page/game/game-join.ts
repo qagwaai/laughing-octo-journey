@@ -3,11 +3,9 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { summarizeShipMotion } from '../../model/math/kinematics';
 import { type SpatialState } from '../../model/math/spatial';
-import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -17,10 +15,12 @@ import {
   type ShipMotion,
   type ShipSummary,
 } from '../../model/ship-list';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { GameSessionService } from '../../services/game-session.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 
 interface GameJoinNavigationState {
   playerName?: string;
@@ -77,11 +77,16 @@ export default class GameJoinPage {
   }
 
   private resolveInitialPlayerName(): string {
-   return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
+    return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
   }
 
   private resolveInitialJoinCharacter(): PlayerCharacterSummary | null {
-   return this.navigationState.joinCharacter ?? this.sessionService.getMissionEntryContext()?.joinCharacter ?? this.sessionService.activeCharacter() ?? null;
+    return (
+      this.navigationState.joinCharacter ??
+      this.sessionService.getMissionEntryContext()?.joinCharacter ??
+      this.sessionService.activeCharacter() ??
+      null
+    );
   }
 
   /**

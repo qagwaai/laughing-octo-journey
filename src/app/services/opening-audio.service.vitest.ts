@@ -64,9 +64,7 @@ describe('OpeningAudioService', () => {
     resume = vi.fn(async () => {
       this.state = 'running';
     });
-    createDynamicsCompressor = vi.fn(
-      () => new MockDynamicsCompressorNode() as unknown as DynamicsCompressorNode,
-    );
+    createDynamicsCompressor = vi.fn(() => new MockDynamicsCompressorNode() as unknown as DynamicsCompressorNode);
     createGain = vi.fn(() => new MockGainNode() as unknown as GainNode);
     createOscillator = vi.fn(() => new MockOscillatorNode() as unknown as OscillatorNode);
     createBiquadFilter = vi.fn(() => new MockBiquadFilterNode() as unknown as BiquadFilterNode);
@@ -382,7 +380,9 @@ describe('OpeningAudioService', () => {
     expect(service.playAiTransmissionLine('Wake up, pilot')).toBe(true);
     expect(speechSynthesis.cancel).toHaveBeenCalled();
     expect(speechSynthesis.speak).toHaveBeenCalled();
-    const utterance = (speechSynthesis.speak as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as MockSpeechSynthesisUtterance;
+    const utterance = (speechSynthesis.speak as unknown as ReturnType<typeof vi.fn>).mock.calls.at(
+      -1,
+    )?.[0] as MockSpeechSynthesisUtterance;
     expect(utterance.text).toBe('Wake up, pilot');
     expect(utterance.rate).toBe(0.92);
     expect(utterance.pitch).toBe(0.72);

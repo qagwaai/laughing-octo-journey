@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppComponent } from './app.component';
 import { OpeningAudioService } from './services';
@@ -145,11 +145,19 @@ describe('AppComponent (Vitest)', () => {
     const { routerEvents$ } = setup();
     const sceneVisibility = TestBed.inject(SceneVisibilityService);
 
-    routerEvents$.next(new NavigationEnd(1, '/ship-exterior-view(right:opening-cold-boot-scan)', '/ship-exterior-view(right:opening-cold-boot-scan)'));
+    routerEvents$.next(
+      new NavigationEnd(
+        1,
+        '/ship-exterior-view(right:opening-cold-boot-scan)',
+        '/ship-exterior-view(right:opening-cold-boot-scan)',
+      ),
+    );
     expect(sceneVisibility.isSceneHidden()).toBe(false);
     expect(sceneVisibility.sceneFrameloop()).toBe('always');
 
-    routerEvents$.next(new NavigationEnd(2, '/ship-exterior-view(right:market-hub)', '/ship-exterior-view(right:market-hub)'));
+    routerEvents$.next(
+      new NavigationEnd(2, '/ship-exterior-view(right:market-hub)', '/ship-exterior-view(right:market-hub)'),
+    );
     expect(sceneVisibility.isSceneHidden()).toBe(true);
     expect(sceneVisibility.sceneFrameloop()).toBe('demand');
   });

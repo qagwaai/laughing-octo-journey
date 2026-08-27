@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
 import {
   configureNavigateAwayPersistenceMock,
   SHIP_EXTERIOR_FLIGHT_PERSISTENCE_CHARACTER_ID,
   SHIP_EXTERIOR_FLIGHT_PERSISTENCE_SHIP_ID,
 } from '../fixtures/ship-exterior-flight-persistence-scenario';
+import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ShipHangarPage } from '../page-objects/ship-hangar.page';
@@ -49,17 +49,20 @@ async function moveForwardInFlightMode(
   let movedCoords: { x: number; y: number; z: number } | null = null;
   try {
     await expect
-      .poll(async () => {
-        const coords = await readCoords(page);
-        if (!coords) {
-          return false;
-        }
-        if (coords.z === coordsBeforeMove.z) {
-          return false;
-        }
-        movedCoords = coords;
-        return true;
-      }, { timeout: 5_000 })
+      .poll(
+        async () => {
+          const coords = await readCoords(page);
+          if (!coords) {
+            return false;
+          }
+          if (coords.z === coordsBeforeMove.z) {
+            return false;
+          }
+          movedCoords = coords;
+          return true;
+        },
+        { timeout: 5_000 },
+      )
       .toBe(true);
   } finally {
     await page.keyboard.up('KeyW');
@@ -73,37 +76,40 @@ async function moveForwardInFlightMode(
   let previousCoords: { x: number; y: number; z: number } | null = null;
   let stableReadCount = 0;
   await expect
-    .poll(async () => {
-      const coords = await readCoords(page);
-      if (!coords) {
-        return false;
-      }
+    .poll(
+      async () => {
+        const coords = await readCoords(page);
+        if (!coords) {
+          return false;
+        }
 
-      const movedFromStart =
-        coords.x !== coordsBeforeMove.x || coords.y !== coordsBeforeMove.y || coords.z !== coordsBeforeMove.z;
-      if (!movedFromStart) {
-        return false;
-      }
+        const movedFromStart =
+          coords.x !== coordsBeforeMove.x || coords.y !== coordsBeforeMove.y || coords.z !== coordsBeforeMove.z;
+        if (!movedFromStart) {
+          return false;
+        }
 
-      if (
-        previousCoords &&
-        coords.x === previousCoords.x &&
-        coords.y === previousCoords.y &&
-        coords.z === previousCoords.z
-      ) {
-        stableReadCount += 1;
-      } else {
-        stableReadCount = 0;
-      }
+        if (
+          previousCoords &&
+          coords.x === previousCoords.x &&
+          coords.y === previousCoords.y &&
+          coords.z === previousCoords.z
+        ) {
+          stableReadCount += 1;
+        } else {
+          stableReadCount = 0;
+        }
 
-      previousCoords = coords;
-      if (stableReadCount < 2) {
-        return false;
-      }
+        previousCoords = coords;
+        if (stableReadCount < 2) {
+          return false;
+        }
 
-      settledCoords = coords;
-      return true;
-    }, { timeout: 5_000 })
+        settledCoords = coords;
+        return true;
+      },
+      { timeout: 5_000 },
+    )
     .toBe(true);
 
   return settledCoords ?? movedCoords;

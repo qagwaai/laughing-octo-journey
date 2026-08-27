@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
 import { locale } from '../../../../i18n/locale';
 import {
   CHARACTER_BUST_INITIAL_CAMERA_PRESET,

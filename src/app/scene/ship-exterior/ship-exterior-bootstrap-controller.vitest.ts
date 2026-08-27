@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
+import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
 
 function makeControllerHarness(overrides?: {
@@ -60,10 +60,12 @@ describe('ShipExteriorBootstrapController', () => {
 
   it('falls back when in-progress mission ship list has no usable center', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
-      callback({ success: true, ships: [{ id: 'starter-1', spatial: null }] });
-      return harness.unsubscribeShipListResponse;
-    });
+    harness.socketService.listShipsByOwner.mockImplementation(
+      (_request: unknown, callback: (response: any) => void) => {
+        callback({ success: true, ships: [{ id: 'starter-1', spatial: null }] });
+        return harness.unsubscribeShipListResponse;
+      },
+    );
     harness.controller.seedAsteroidsForInProgressMission();
     expect(harness.updateTargetingCapabilityFromShipList).toHaveBeenCalled();
     expect(harness.emitColdBootAsteroidSeedIntent).toHaveBeenCalledWith({ kind: 'fallback' });
@@ -73,12 +75,17 @@ describe('ShipExteriorBootstrapController', () => {
   it('hydrates resumed samples from celestial bodies for in-progress mission', () => {
     const harness = makeControllerHarness({ launchSeedHint: 42 });
     const center = { x: 10, y: 20, z: 30 };
-    const existingBodies = [{ id: 'cb-1', state: 'active' }, { id: 'cb-2', state: 'destroyed' }];
+    const existingBodies = [
+      { id: 'cb-1', state: 'active' },
+      { id: 'cb-2', state: 'destroyed' },
+    ];
 
-    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
-      callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: center } }] });
-      return harness.unsubscribeShipListResponse;
-    });
+    harness.socketService.listShipsByOwner.mockImplementation(
+      (_request: unknown, callback: (response: any) => void) => {
+        callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: center } }] });
+        return harness.unsubscribeShipListResponse;
+      },
+    );
     harness.socketService.listCelestialBodies.mockImplementation((request: any, callback: (response: any) => void) => {
       expect(request.solarSystemId).toBe(DEFAULT_SOLAR_SYSTEM_ID);
       expect(request.distanceKm).toBe(DEFAULT_CLUSTER_SPREAD_KM * 2);
@@ -109,10 +116,12 @@ describe('ShipExteriorBootstrapController', () => {
 
   it('uses fallback samples when starter-ship list request fails', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
-      callback({ success: false, message: 'ship-list failed' });
-      return harness.unsubscribeShipListResponse;
-    });
+    harness.socketService.listShipsByOwner.mockImplementation(
+      (_request: unknown, callback: (response: any) => void) => {
+        callback({ success: false, message: 'ship-list failed' });
+        return harness.unsubscribeShipListResponse;
+      },
+    );
 
     harness.controller.seedAsteroidsAroundStarterShip();
 
@@ -124,10 +133,12 @@ describe('ShipExteriorBootstrapController', () => {
     const center = { x: 400, y: 500, z: 600 };
     const ships = [{ id: 'starter-ship', spatial: { positionKm: center } }];
 
-    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
-      callback({ success: true, ships });
-      return harness.unsubscribeShipListResponse;
-    });
+    harness.socketService.listShipsByOwner.mockImplementation(
+      (_request: unknown, callback: (response: any) => void) => {
+        callback({ success: true, ships });
+        return harness.unsubscribeShipListResponse;
+      },
+    );
 
     harness.controller.seedAsteroidsAroundStarterShip();
 
@@ -150,12 +161,14 @@ describe('ShipExteriorBootstrapController', () => {
 
   it('unsubscribes ship and celestial-body listeners on dispose', () => {
     const harness = makeControllerHarness();
-    harness.socketService.listShipsByOwner.mockImplementation((_request: unknown, callback: (response: any) => void) => {
-      callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }] });
-      return harness.unsubscribeShipListResponse;
-    });
-    harness.socketService.listCelestialBodies.mockImplementation((_request: unknown, _callback: (response: any) => void) =>
-      harness.unsubscribeCelestialBodyListResponse,
+    harness.socketService.listShipsByOwner.mockImplementation(
+      (_request: unknown, callback: (response: any) => void) => {
+        callback({ success: true, ships: [{ id: 'starter-1', spatial: { positionKm: { x: 1, y: 2, z: 3 } } }] });
+        return harness.unsubscribeShipListResponse;
+      },
+    );
+    harness.socketService.listCelestialBodies.mockImplementation(
+      (_request: unknown, _callback: (response: any) => void) => harness.unsubscribeCelestialBodyListResponse,
     );
 
     harness.controller.seedAsteroidsForInProgressMission();

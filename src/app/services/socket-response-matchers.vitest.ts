@@ -282,9 +282,7 @@ describe('socket-response-matchers', () => {
 
     // All five matchers: the `response.correlationId?.trim() ?? ''` fallback arm fires
     // when correlationId is explicitly undefined (not just absent from emitted payload).
-    expect(
-      isItemUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any),
-    ).toBe(false);
+    expect(isItemUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any)).toBe(false);
 
     expect(
       isShipUpsertResponseForRequest({ correlationId: undefined } as any, 'corr', identity as any, {} as any),

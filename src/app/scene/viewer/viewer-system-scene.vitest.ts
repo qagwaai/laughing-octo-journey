@@ -1,6 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ViewerBody } from '../../model/solar-system-get';
+import { describe, expect, it } from 'vitest';
 import type { ShipSummary } from '../../model/ship-list';
+import type { ViewerBody } from '../../model/solar-system-get';
+import {
+  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
+} from './viewer-formatters';
+import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
   degToRad,
   mapBodiesToRendered,
@@ -11,13 +18,6 @@ import {
   resolveZoomDistance,
   resolveZoomPercent,
 } from './viewer-system-scene';
-import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
-import {
-  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
-  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
-  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
-  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
-} from './viewer-formatters';
 
 const star: ViewerBody = {
   id: 'star-1',
@@ -451,7 +451,11 @@ describe('resolveTargetScenePosition', () => {
   it('resolves a body target id to the body position', () => {
     const bodyPos: [number, number, number] = [1, 2, 3];
     const shipPos: [number, number, number] = [8, 0, 0];
-    const result = resolveTargetScenePosition('earth', [{ id: 'earth', position: bodyPos }], [{ id: 'ship-1', position: shipPos }]);
+    const result = resolveTargetScenePosition(
+      'earth',
+      [{ id: 'earth', position: bodyPos }],
+      [{ id: 'ship-1', position: shipPos }],
+    );
     expect(result).toEqual(bodyPos);
   });
 
@@ -465,7 +469,11 @@ describe('resolveTargetScenePosition', () => {
   });
 
   it('returns null when target id does not exist in bodies or ships', () => {
-    const result = resolveTargetScenePosition('missing', [{ id: 'earth', position: [1, 2, 3] }], [{ id: 'ship-1', position: [8, 0, 0] }]);
+    const result = resolveTargetScenePosition(
+      'missing',
+      [{ id: 'earth', position: [1, 2, 3] }],
+      [{ id: 'ship-1', position: [8, 0, 0] }],
+    );
     expect(result).toBeNull();
   });
 });

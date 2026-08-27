@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createMockSessionService } from '../../../testing';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS } from '../../model/opening-sequence';
-import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { MissionService } from '../../services/mission.service';
 import { OpeningAudioService } from '../../services/opening-audio.service';
 import { SessionService } from '../../services/session.service';
 import ColdBootOpeningPage from './cold-boot';

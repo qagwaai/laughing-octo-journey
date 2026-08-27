@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import {
   DEFAULT_MISSION_SCENE_HUD_CONFIG,
   createDefaultSeedPolicy,
@@ -7,7 +8,6 @@ import {
   resolveMissionScenePlugin,
 } from './mission-scene-plugin';
 import { resolveShipExteriorMission } from './ship-exterior-mission';
-import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 
 describe('MissionScenePlugin', () => {
   it('builds a default plugin from a mission definition', () => {
@@ -73,9 +73,9 @@ describe('MissionScenePlugin', () => {
 
   it('resolveMissionScenePlugin uses a registered factory when present', () => {
     const customMissionId = 'unit-test-mission-' + Math.random();
-    const factory = vi.fn().mockImplementation((def) =>
-      createMissionScenePlugin(def, { hudConfig: { showLaunchPanel: false } }),
-    );
+    const factory = vi
+      .fn()
+      .mockImplementation((def) => createMissionScenePlugin(def, { hudConfig: { showLaunchPanel: false } }));
     registerMissionScenePlugin(customMissionId, factory);
 
     // Unknown mission ids fall back to the default mission, so the factory
@@ -83,9 +83,9 @@ describe('MissionScenePlugin', () => {
     // path: register against the default mission and verify the override is
     // applied.
     const defaultId = resolveShipExteriorMission(undefined).missionId;
-    const overrideFactory = vi.fn().mockImplementation((def) =>
-      createMissionScenePlugin(def, { hudConfig: { showScanPanel: false } }),
-    );
+    const overrideFactory = vi
+      .fn()
+      .mockImplementation((def) => createMissionScenePlugin(def, { hudConfig: { showScanPanel: false } }));
     registerMissionScenePlugin(defaultId, overrideFactory);
 
     const plugin = resolveMissionScenePlugin(defaultId);

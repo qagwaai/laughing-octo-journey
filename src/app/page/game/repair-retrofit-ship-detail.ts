@@ -16,15 +16,15 @@ import {
   type ShipDamageProfile,
 } from '../../model/ship-damage';
 import { type ShipItem } from '../../model/ship-item';
-import { type ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { type ShipSummary } from '../../model/ship-list';
+import { type ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
-import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { resolveNavigationState } from '../navigation-state';
 import {
   describeSummaryForSystems,
@@ -290,9 +290,7 @@ export default class RepairRetrofitShipDetailPage {
             },
             (itemResponse: ItemUpsertResponse) => {
               if (!itemResponse.success) {
-                this.persistError.set(
-                  itemResponse.message || this.t.game.repairRetrofitShipDetail.persistFailedLabel,
-                );
+                this.persistError.set(itemResponse.message || this.t.game.repairRetrofitShipDetail.persistFailedLabel);
               }
 
               refreshSnapshot();

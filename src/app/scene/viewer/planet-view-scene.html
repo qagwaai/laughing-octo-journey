@@ -4,8 +4,7 @@
 <ngt-directional-light [position]="[16, 8, 12]" [intensity]="1.1" />
 <ngt-directional-light [position]="[-12, 2, -10]" [intensity]="0.46" />
 
-@let star = starMarker();
-@if (star) {
+@let star = starMarker(); @if (star) {
 <ngt-point-light [position]="star.position" [intensity]="3" [distance]="220" [decay]="1.7" />
 }
 
@@ -24,9 +23,7 @@
   <ngt-mesh-basic-material [transparent]="true" [opacity]="0" [side]="1" [depthWrite]="false" />
 </ngt-mesh>
 
-@let _textures = textures();
-@let selected = selectedBody();
-@if (selected) {
+@let _textures = textures(); @let selected = selectedBody(); @if (selected) {
 <ngt-mesh
   [position]="[0, 0, 0]"
   [name]="selected.displayName"
@@ -70,9 +67,7 @@
     [metalness]="0"
   />
 </ngt-mesh>
-}
-
-@if (star) {
+} @if (star) {
 <ngt-sprite [position]="star.position" [name]="star.displayName" [scale]="[star.glowSize, star.glowSize, 1]">
   <ngt-sprite-material
     [map]="_textures?.starGlow ?? null"
@@ -81,5 +76,4 @@
     [sizeAttenuation]="true"
   />
 </ngt-sprite>
-}
-}
+} }

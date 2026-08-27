@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import {
   clearMissionGatePendingRetry,
@@ -314,7 +314,9 @@ describe('evaluateMissionGateOnLaunch', () => {
     expect(evaluation.changed).toBe(true);
     expect(evaluation.completedStepKey).toBe('identify_iron_asteroid');
     expect(evaluation.gateState.steps.find((step) => step.key === 'identify_iron_asteroid')?.status).toBe('completed');
-    expect(evaluation.gateState.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status).toBe('active');
+    expect(evaluation.gateState.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status).toBe(
+      'active',
+    );
   });
 });
 

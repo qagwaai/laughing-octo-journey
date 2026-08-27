@@ -10,75 +10,73 @@ import {
   Component,
   computed,
   DestroyRef,
-  ElementRef,
   effect,
+  ElementRef,
+  inject,
   OnDestroy,
   OnInit,
-  inject,
   signal,
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { MarketService } from '../../services/market.service';
-import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
-import { SessionService } from '../../services/session.service';
-import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
-import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
-import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
-import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
-import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
-import { appLogger } from '../../services/logger';
-import {
-  type MarketListByLocationRequest,
-  type MarketListByLocationResponse,
-} from '../../model/market-list';
-import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
-import { generateRandomAsteroidKinematics } from '../../model/math/asteroid-kinematics';
-import { ShipSummary } from '../../model/ship-list';
-import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
-import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
-import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabilities';
+import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
 import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
-import { ShipSceneContext } from './ship-scene-context';
-import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
-import { ShipExteriorSessionController } from './ship-exterior-session-controller';
-import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
-import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
-import { AsteroidPersistenceService } from './asteroid-persistence.service';
-import { AsteroidScanController } from './asteroid-scan-controller';
-import { InventoryRewardService } from './inventory-reward.service';
-import { MissionGateSimulator } from './mission-gate-simulator';
-import { NavigationStateReader } from './navigation-state-reader';
-import { seedColdBootAsteroids as resolveColdBootAsteroidSamples, type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
-import { FloatingDebrisController } from './floating-debris-controller';
-import { ShipSceneRegistry } from './ship-scene-registry';
-import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
-import { collectShipExteriorRouteFeeds, type ShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
-import {
-  formatShipExteriorRouteFeedSummary,
-  type ShipExteriorRouteFeedCounts,
-} from './ship-exterior-route-feed-summary';
 import {
   createInitialMissionGateState,
   resolveShipExteriorMission,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
-import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
-import type { ShipItem } from '../../model/ship-item';
+import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
+import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabilities';
 import type {
   LaunchItemRequest,
   LaunchItemResponse,
   LaunchItemYieldedItem,
   LaunchItemYieldedMaterial,
 } from '../../model/launch-item';
+import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
+import { generateRandomAsteroidKinematics } from '../../model/math/asteroid-kinematics';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import type { ShipItem } from '../../model/ship-item';
+import { ShipSummary } from '../../model/ship-list';
+import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
+import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import { MarketService } from '../../services/market.service';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { SessionService } from '../../services/session.service';
+import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
+import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
+import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
+import { ShipService } from '../../services/ship.service';
+import { SocketService } from '../../services/socket.service';
+import { AsteroidPersistenceService } from './asteroid-persistence.service';
+import { AsteroidScanController } from './asteroid-scan-controller';
+import { FloatingDebrisController } from './floating-debris-controller';
+import { InventoryRewardService } from './inventory-reward.service';
+import { MissionGateSimulator } from './mission-gate-simulator';
+import { NavigationStateReader } from './navigation-state-reader';
 import {
-  type ShipExteriorLegacyAsteroidSample,
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
+  type ShipExteriorLegacyAsteroidSample,
 } from './ship-exterior-bare-scene-test-api';
-import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
+import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
+import {
+  seedColdBootAsteroids as resolveColdBootAsteroidSamples,
+  type ShipExteriorColdBootAsteroidSeedIntent,
+} from './ship-exterior-cold-boot-asteroid-seed';
+import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
+import { collectShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
+import {
+  formatShipExteriorRouteFeedSummary,
+  type ShipExteriorRouteFeedCounts,
+} from './ship-exterior-route-feed-summary';
+import { ShipExteriorSessionController } from './ship-exterior-session-controller';
+import { ShipSceneContext } from './ship-scene-context';
+import { ShipSceneRegistry } from './ship-scene-registry';
+import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
 const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
 const ROUTE_FEED_DISCOVERY_LIMIT = 250;
 
@@ -215,19 +213,18 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   readonly objectiveMessage = computed(() => {
     this.missionRevision();
     this.activeContextKey();
-    return this.getActiveMissionGateState()?.activeObjectiveText ?? 'Mission objectives complete. Await further directives.';
+    return (
+      this.getActiveMissionGateState()?.activeObjectiveText ?? 'Mission objectives complete. Await further directives.'
+    );
   });
   readonly selectedLaunchHotkey = signal<1 | 2 | 3 | 4 | 5>(1);
   readonly launchQuestionAnswer = signal('');
-  readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error'; seed: number | null } | null>(
-    null,
-  );
+  readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error'; seed: number | null } | null>(null);
 
   // CHANGE ANCHOR: scene registry and bootstrap controllers
   private readonly registry = new ShipSceneRegistry();
   private readonly missionScenePlugin = resolveMissionScenePlugin(FIRST_TARGET_MISSION_ID);
-  private readonly pendingColdBootAsteroidSeedIntent =
-    signal<ShipExteriorColdBootAsteroidSeedIntent | null>(null);
+  private readonly pendingColdBootAsteroidSeedIntent = signal<ShipExteriorColdBootAsteroidSeedIntent | null>(null);
   private readonly bootstrapController = new ShipExteriorBootstrapController({
     missionId: FIRST_TARGET_MISSION_ID,
     sessionService: this.sessionService,
@@ -574,9 +571,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     return (
-      this.registry
-        .getAllContexts()
-        .find((context) => !(context.contextKey.includes('fallback-ship'))) ??
+      this.registry.getAllContexts().find((context) => !context.contextKey.includes('fallback-ship')) ??
       this.registry.getAllContexts()[0] ??
       null
     );
@@ -737,7 +732,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         return;
       }
 
-      if (typeof rendering.canvas.requestPointerLock === 'function' && document.pointerLockElement !== rendering.canvas) {
+      if (
+        typeof rendering.canvas.requestPointerLock === 'function' &&
+        document.pointerLockElement !== rendering.canvas
+      ) {
         rendering.canvas.requestPointerLock();
       }
       return;
@@ -1034,7 +1032,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         getTargetedAsteroidId: () => this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null,
         getHoveredAsteroidId: () => this.registry.getActiveContext()?.getHoveredAsteroidId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
-        simulateDebrisCollection: (remainingDebrisCount?: number) => this.simulateDebrisCollection(remainingDebrisCount),
+        simulateDebrisCollection: (remainingDebrisCount?: number) =>
+          this.simulateDebrisCollection(remainingDebrisCount),
         simulateManufacture: (itemType: string) => this.simulateManufacture(itemType),
         simulateRepair: (repairKind: string) => this.simulateRepair(repairKind),
         getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
@@ -1111,7 +1110,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     if (!this.hasActiveSensorArrayCapability()) {
-
       this.activeLaunchToast.set({
         message: 'Target lock unavailable: the active ship requires a sensor array.',
         tone: 'error',
@@ -1127,24 +1125,25 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     active.setTargetHoldCandidateId(sampleId);
     const holdMs = this.resolveTargetLockHoldMs();
 
-    this.sessionController.beginTargetHold(sampleId, () => {
-      const contextKey = this.testTargetHoldContextKey();
+    this.sessionController.beginTargetHold(
+      sampleId,
+      () => {
+        const contextKey = this.testTargetHoldContextKey();
 
-      if (contextKey) {
-        this.forceTargetAsteroidInContext(contextKey, sampleId);
-      }
-      this.clearTestTargetHoldTimer();
-    }, holdMs);
+        if (contextKey) {
+          this.forceTargetAsteroidInContext(contextKey, sampleId);
+        }
+        this.clearTestTargetHoldTimer();
+      },
+      holdMs,
+    );
 
     return true;
   }
 
   private unhoverAsteroid(sampleId: string): boolean {
     const activeContextKey = this.registry.getActiveContext()?.contextKey ?? null;
-    if (
-      this.testTargetHoldCandidateId() !== sampleId ||
-      this.testTargetHoldContextKey() !== activeContextKey
-    ) {
+    if (this.testTargetHoldCandidateId() !== sampleId || this.testTargetHoldContextKey() !== activeContextKey) {
       return false;
     }
 
@@ -1194,7 +1193,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return 10_000;
   }
 
-  private createInitialMissionGateStateForTestApi(characterId: string = this.navigationCharacterId().trim() || 'unknown-character'): ShipExteriorMissionGateState {
+  private createInitialMissionGateStateForTestApi(
+    characterId: string = this.navigationCharacterId().trim() || 'unknown-character',
+  ): ShipExteriorMissionGateState {
     return createInitialMissionGateState({
       missionId: FIRST_TARGET_MISSION_ID,
       characterId,
@@ -1206,7 +1207,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return this.registry.getActiveContext()?.getMissionGateState() ?? null;
   }
 
-  private buildMissionStateContext(state: { playerName: string; characterId: string; shipId: string }): ShipExteriorMissionStateContext | null {
+  private buildMissionStateContext(state: {
+    playerName: string;
+    characterId: string;
+    shipId: string;
+  }): ShipExteriorMissionStateContext | null {
     const playerName = state.playerName.trim();
     const characterId = state.characterId.trim();
     const shipId = state.shipId.trim();
@@ -1298,7 +1303,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }));
   }
 
-  private ensureContextAsteroidSamplesForMissionProgress(context: ShipSceneContext): readonly ShipSceneAsteroidSample[] {
+  private ensureContextAsteroidSamplesForMissionProgress(
+    context: ShipSceneContext,
+  ): readonly ShipSceneAsteroidSample[] {
     const existing = context.getAsteroidSamples();
     if (existing.length > 0) {
       return existing;
@@ -1318,8 +1325,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     const samples = this.ensureContextAsteroidSamplesForMissionProgress(active);
-    const requestedSample = sampleId ? samples.find((sample) => sample.id === sampleId) ?? null : null;
-    const targetSample = requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
+    const requestedSample = sampleId ? (samples.find((sample) => sample.id === sampleId) ?? null) : null;
+    const targetSample =
+      requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
     if (!targetSample) {
       return null;
     }
@@ -1376,7 +1384,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     const samples = this.ensureContextAsteroidSamplesForMissionProgress(context);
     const requestedSample = samples.find((sample) => sample.id === sampleId) ?? null;
-    const targetSample = requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
+    const targetSample =
+      requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
     if (!targetSample) {
       return null;
     }
@@ -1472,7 +1481,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const activeState = active?.getState();
     const resolvedPlayerName = activeState?.playerName?.trim() || this.navigationPlayerName();
     const resolvedCharacterId =
-      activeState?.characterId?.trim() || this.sessionService.activeCharacter()?.id?.trim() || this.navigationCharacterId();
+      activeState?.characterId?.trim() ||
+      this.sessionService.activeCharacter()?.id?.trim() ||
+      this.navigationCharacterId();
 
     const samples = active ? this.ensureContextAsteroidSamplesForMissionProgress(active) : [];
     const targetId = active?.getTargetedAsteroidId() ?? samples[0]?.id ?? null;
@@ -1549,7 +1560,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     });
   }
 
-
   // CHANGE ANCHOR: inventory-reward delegation
   private consumeLaunchedItem(response: LaunchItemResponse): void {
     this.inventoryRewardService.consumeLaunchedItem(response);
@@ -1578,7 +1588,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    const rewardTypes = materials.flatMap((material) => Array.from({ length: material.quantity }, () => material.material.toLowerCase()));
+    const rewardTypes = materials.flatMap((material) =>
+      Array.from({ length: material.quantity }, () => material.material.toLowerCase()),
+    );
     this.testInventoryRewards.update((types) => [...types, ...rewardTypes]);
   }
 

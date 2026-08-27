@@ -3,12 +3,12 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemListResponse, SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
+import { resolveNavigationState } from '../navigation-state';
 
 interface ViewerNavigationState {
   playerName?: string;

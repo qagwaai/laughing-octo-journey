@@ -1,9 +1,8 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { loginViaUI } from '../helpers/auth-helper';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
 import { CharacterSetupPage } from '../page-objects/character-setup.page';
-import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
 export const BASE_CHARACTER = { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 };
@@ -63,9 +62,7 @@ export async function setupSharedCharacterEditSession(browser: Browser): Promise
   }
 
   if ((await characterListPage.characterItems.count()) === 0) {
-    const loadButtonVisible = await characterListPage.loadButton
-      .isVisible({ timeout: 2_000 })
-      .catch(() => false);
+    const loadButtonVisible = await characterListPage.loadButton.isVisible({ timeout: 2_000 }).catch(() => false);
     if (loadButtonVisible) {
       await characterListPage.loadButton.click();
     }

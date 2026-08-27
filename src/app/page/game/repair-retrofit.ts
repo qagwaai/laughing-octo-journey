@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -12,14 +11,12 @@ import {
   createColdBootStarterShipDamageProfile,
   type ShipDamageProfile,
 } from '../../model/ship-damage';
-import {
-  coerceShipInventory,
-  type ShipSummary,
-} from '../../model/ship-list';
+import { coerceShipInventory, type ShipSummary } from '../../model/ship-list';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
-import { SessionService, ShipService, SocketService } from '../../services';
+import { SessionService, ShipService } from '../../services';
 import { appLogger } from '../../services/logger';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 import {
   type RepairAssetFilter,
   type RepairAssetGrouping,
@@ -50,8 +47,9 @@ export default class RepairRetrofitPage {
   private shipService = inject(ShipService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
-  private navigationState: RepairRetrofitNavigationState =
-    resolveNavigationState<RepairRetrofitNavigationState>(this.router);
+  private navigationState: RepairRetrofitNavigationState = resolveNavigationState<RepairRetrofitNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

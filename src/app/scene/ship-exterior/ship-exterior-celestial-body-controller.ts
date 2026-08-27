@@ -1,11 +1,15 @@
-import { AsyncSerialQueue } from './async-serial-queue';
-import { DEFAULT_SOLAR_SYSTEM_ID, type CelestialBodyUpsertRequest, type CelestialBodyUpsertResponse } from '../../model/celestial-body-upsert';
-import { type AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import { type AsteroidMaterialProfile } from '../../model/catalog/asteroid-materials';
+import {
+  DEFAULT_SOLAR_SYSTEM_ID,
+  type CelestialBodyUpsertRequest,
+  type CelestialBodyUpsertResponse,
+} from '../../model/celestial-body-upsert';
+import { type AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
+import { AsyncSerialQueue } from './async-serial-queue';
 
 interface CelestialBodyUpsertQueueItem {
   sampleId: string;

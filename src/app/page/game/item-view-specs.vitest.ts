@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import type { ShipItem } from '../../model/ship-item';

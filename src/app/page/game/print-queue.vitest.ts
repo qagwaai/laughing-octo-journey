@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { signal } from '@angular/core';
 import {
@@ -14,10 +14,10 @@ import {
 } from '../../../testing';
 import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
-import { ShipService } from '../../services/ship.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import PrintQueuePage from './print-queue';
 
@@ -148,7 +148,12 @@ describe('PrintQueuePage', () => {
     };
 
     it('sets printer error when no returned ship has usable spatial data', () => {
-      const { component, fixture, mockShipService } = setup({ socketService, sessionService, printerService, navigationState });
+      const { component, fixture, mockShipService } = setup({
+        socketService,
+        sessionService,
+        printerService,
+        navigationState,
+      });
       mockShipService.listShipsByOwner.mockImplementation((_request: any, cb: (response: any) => void) => {
         cb({
           success: true,
@@ -344,7 +349,9 @@ describe('PrintQueuePage', () => {
       const { component } = setup({ socketService, sessionService, printerService, navigationState });
       component['activeShip'].set(
         makeActiveShip({
-          inventory: [makeContainedInventoryItem('kit-existing', HULL_PATCH_KIT_PRINTABLE_ITEM.itemType, 'Hull Patch Kit')],
+          inventory: [
+            makeContainedInventoryItem('kit-existing', HULL_PATCH_KIT_PRINTABLE_ITEM.itemType, 'Hull Patch Kit'),
+          ],
         }),
       );
 
@@ -593,7 +600,10 @@ describe('PrintQueuePage', () => {
     it('collects completed jobs when ship inventory is undefined', () => {
       const removeSpy = vi.spyOn(printerService, 'removeFromQueue');
       (socketService as any).upsertItem = vi.fn().mockImplementation((_request: any, cb: any) => {
-        cb({ success: true, item: makeContainedInventoryItem('printed-undefined', 'hull-patch-kit', 'Hull Patch Kit') });
+        cb({
+          success: true,
+          item: makeContainedInventoryItem('printed-undefined', 'hull-patch-kit', 'Hull Patch Kit'),
+        });
       });
 
       const { component } = setup({ socketService, sessionService, printerService, navigationState });

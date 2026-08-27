@@ -1,9 +1,9 @@
 import { EXPENDABLE_DART_DRONE_DISPLAY_NAME, EXPENDABLE_DART_DRONE_ITEM_TYPE } from './expendable-dart-drone';
 import {
-  coerceShipOwnership,
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
   coerceShipModel,
+  coerceShipOwnership,
   coerceShipStatus,
   coerceShipTier,
   DEFAULT_SHIP_MODEL,
@@ -81,7 +81,6 @@ describe('ship-list inventory helpers', () => {
     expect(result[0].launchable).toBe(false);
     expect(result[1].launchable).toBe(true);
   });
-
 });
 
 describe('DEFAULT_SHIP_MODEL', () => {

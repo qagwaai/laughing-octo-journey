@@ -1,6 +1,6 @@
 <div class="ops-page-container">
   @if (showGuardedMenu()) {
-    <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
+  <app-guarded-left-menu [playerName]="playerName()" [joinCharacter]="joinCharacter()"></app-guarded-left-menu>
   }
   <div class="page-main">
     <div class="page-header">
@@ -41,8 +41,7 @@
       <p role="alert">{{ missionListError() }}</p>
       } @else if (shouldRenderEmptyState()) {
       <p>{{ t.game.missionBoard.missionEmptyStatus }}</p>
-      } @else {
-      @if (shouldRenderLaneSection()) {
+      } @else { @if (shouldRenderLaneSection()) {
       <section
         class="contract-violation"
         role="alert"
@@ -54,7 +53,8 @@
         <ul aria-label="Contract violation mission statuses">
           @for (violation of visibleUnknownStatusViolations(); track violation.missionId + ':' + violation.status) {
           <li>
-            {{ getMissionTitle(violation.missionId) }}: <strong>{{ violation.status }}</strong>
+            {{ getMissionTitle(violation.missionId) }}:
+            <strong>{{ violation.status }}</strong>
           </li>
           }
         </ul>
@@ -80,11 +80,12 @@
               </p>
               <p>
                 <strong>{{ t.game.missionBoard.statusLabel }}</strong>
-                <span class="mission-status" [attr.data-status]="entry.status">{{ getMissionStatusLabel(entry.status) }}</span>
+                <span class="mission-status" [attr.data-status]="entry.status">
+                  {{ getMissionStatusLabel(entry.status) }}
+                </span>
               </p>
 
-              @if (entry.source === 'assigned' && entry.assignedMission; as mission) {
-              @if (mission.startedAt) {
+              @if (entry.source === 'assigned' && entry.assignedMission; as mission) { @if (mission.startedAt) {
               <p>
                 <strong>{{ t.game.missionBoard.startedAtLabel }}</strong>
                 {{ formatDate(mission.startedAt) }}
@@ -103,10 +104,7 @@
                 <strong>{{ t.game.missionBoard.nextStepLabel }}</strong>
                 {{ stageInfo.nextStep }}
               </p>
-              }
-              }
-
-              @if (entry.source === 'catalog-available' && entry.catalogMission; as mission) {
+              } } @if (entry.source === 'catalog-available' && entry.catalogMission; as mission) {
               <p>
                 <strong>{{ t.game.missionBoard.typeLabel }}</strong>
                 {{ getMissionTypeLabel(mission.type) }}
@@ -117,8 +115,7 @@
                 <strong>{{ t.game.missionBoard.rewardCreditsLabel }}</strong>
                 {{ mission.rewards.credits }} {{ t.game.missionBoard.rewardCreditsSuffix }}
               </p>
-              }
-              }
+              } }
             </li>
             }
           </ul>
@@ -129,8 +126,7 @@
 
       @if (hasNoResultsForSelectedFilter()) {
       <p class="filter-empty-state">{{ t.game.missionBoard.filterEmptyState }}</p>
-      }
-      }
+      } }
 
       <!-- Catalog missions still locked -->
       @if (lockedCatalogMissions().length > 0) {

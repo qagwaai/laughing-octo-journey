@@ -17,16 +17,13 @@ import {
   type BustScar,
   type BustSkinTone,
   type BustTattoo,
-  type CharacterBustReadResponse
+  type CharacterBustReadResponse,
 } from '../../model/bust-descriptor';
 import { CharacterAddRequest, CharacterAddResponse } from '../../model/character-add';
 import { writeCachedCharacterBustDescriptor } from '../../model/character-bust-cache';
 import { CharacterEditRequest, CharacterEditResponse } from '../../model/character-edit';
 import { PlayerCharacterSummary } from '../../model/character-list';
-import {
-  normalizeCharacterName,
-  pickSuggestedCharacterName,
-} from '../../model/character-name-suggestions';
+import { normalizeCharacterName, pickSuggestedCharacterName } from '../../model/character-name-suggestions';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
@@ -141,7 +138,15 @@ export default class CharacterSetupPage implements OnDestroy {
     'shaved',
     'slicked',
   ];
-  protected readonly hairColorOptions: BustHairColor[] = ['black', 'brown', 'auburn', 'blonde', 'silver', 'white', 'red'];
+  protected readonly hairColorOptions: BustHairColor[] = [
+    'black',
+    'brown',
+    'auburn',
+    'blonde',
+    'silver',
+    'white',
+    'red',
+  ];
   protected readonly eyeStyleOptions = ['narrow', 'wide', 'almond', 'hooded', 'round'] as const;
   protected readonly eyeColorOptions = ['brown', 'hazel', 'green', 'blue', 'grey', 'amber', 'violet'] as const;
   protected readonly expressionPresetOptions: BustExpressionPreset[] = [
@@ -152,7 +157,14 @@ export default class CharacterSetupPage implements OnDestroy {
     'warm',
     'weary',
   ];
-  protected readonly apparelAccentOptions: BustApparelAccent[] = ['none', 'collar', 'hood', 'visor', 'goggles', 'headband'];
+  protected readonly apparelAccentOptions: BustApparelAccent[] = [
+    'none',
+    'collar',
+    'hood',
+    'visor',
+    'goggles',
+    'headband',
+  ];
   protected readonly facialHairOptions: BustFacialHair[] = ['none', 'stubble', 'short-beard', 'full-beard', 'goatee'];
   protected readonly scarOptions: BustScar[] = ['none', 'cheek-left', 'cheek-right', 'brow-left', 'brow-right', 'chin'];
   protected readonly tattooOptions: BustTattoo[] = ['none', 'temple-left', 'temple-right', 'neck-left', 'neck-right'];
@@ -236,8 +248,8 @@ export default class CharacterSetupPage implements OnDestroy {
         this.successMessage.set(response.message);
         this.errorMessage.set(null);
         const persistedCharacterId = isEditMode
-          ? this.editCharacter()?.id?.trim() ?? ''
-          : (response as CharacterAddResponse).characterId?.trim() ?? '';
+          ? (this.editCharacter()?.id?.trim() ?? '')
+          : ((response as CharacterAddResponse).characterId?.trim() ?? '');
 
         if (persistedCharacterId) {
           if (isEditMode) {
@@ -536,9 +548,9 @@ export default class CharacterSetupPage implements OnDestroy {
       hairColor: (value.hairColor ?? DEFAULT_BUST_DESCRIPTOR.hairColor) as BustHairColor,
       eyeStyle: (value.eyeStyle ?? DEFAULT_BUST_DESCRIPTOR.eyeStyle) as BustDescriptorInput['eyeStyle'],
       eyeColor: (value.eyeColor ?? DEFAULT_BUST_DESCRIPTOR.eyeColor) as BustDescriptorInput['eyeColor'],
-      expressionPreset: (value.expressionPreset ??
-        DEFAULT_BUST_DESCRIPTOR.expressionPreset) as BustExpressionPreset,
-      apparelAccent: (value.apparelAccent ?? DEFAULT_BUST_DESCRIPTOR.apparelAccent) as BustDescriptorInput['apparelAccent'],
+      expressionPreset: (value.expressionPreset ?? DEFAULT_BUST_DESCRIPTOR.expressionPreset) as BustExpressionPreset,
+      apparelAccent: (value.apparelAccent ??
+        DEFAULT_BUST_DESCRIPTOR.apparelAccent) as BustDescriptorInput['apparelAccent'],
       facialHair: (value.facialHair ?? DEFAULT_BUST_DESCRIPTOR.facialHair) as BustDescriptorInput['facialHair'],
       scar: (value.scar ?? DEFAULT_BUST_DESCRIPTOR.scar) as BustDescriptorInput['scar'],
       tattoo: (value.tattoo ?? DEFAULT_BUST_DESCRIPTOR.tattoo) as BustDescriptorInput['tattoo'],
@@ -708,9 +720,9 @@ export default class CharacterSetupPage implements OnDestroy {
       return;
     }
 
-    void this.router.navigate(
-      [{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }],
-      { preserveFragment: true, replaceUrl: true },
-    );
+    void this.router.navigate([{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }], {
+      preserveFragment: true,
+      replaceUrl: true,
+    });
   }
 }

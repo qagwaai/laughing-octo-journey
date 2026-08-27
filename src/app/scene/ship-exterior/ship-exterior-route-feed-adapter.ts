@@ -15,11 +15,7 @@ function normalize(value: string | undefined): string {
   return value?.trim().toLowerCase() ?? '';
 }
 
-function mergeUniqueById<T, K extends keyof T>(
-  target: Map<string, T>,
-  rows: readonly T[] | undefined,
-  idKey: K,
-): void {
+function mergeUniqueById<T, K extends keyof T>(target: Map<string, T>, rows: readonly T[] | undefined, idKey: K): void {
   if (!Array.isArray(rows)) {
     return;
   }

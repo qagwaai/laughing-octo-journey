@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
-import { appLogger } from './logger';
 import {
   MISSION_LIST_REQUEST_EVENT,
   MISSION_LIST_RESPONSE_EVENT,
-  type MissionListRequestIdentity,
   type MissionListRequest,
+  type MissionListRequestIdentity,
   type MissionListResponse,
 } from '../model/mission-list';
+import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
@@ -64,7 +64,14 @@ export class MissionBoardService {
     };
 
     const unsubscribe = this.socketService.on(MISSION_LIST_RESPONSE_EVENT, (response: MissionListResponse) => {
-      if (!isMissionListResponseForRequest(response, expectedCorrelationId, expectedRequestIdentity, requestWithCorrelation)) {
+      if (
+        !isMissionListResponseForRequest(
+          response,
+          expectedCorrelationId,
+          expectedRequestIdentity,
+          requestWithCorrelation,
+        )
+      ) {
         appLogger.warn(
           `[socket-correlation] Dropping unmatched mission-list response in mission-board wrapper. responseCorrelationId=${response.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId} responsePlayerName=${response.playerName ?? 'missing'} expectedPlayerName=${requestWithCorrelation.playerName} responseCharacterId=${response.characterId ?? 'missing'} expectedCharacterId=${requestWithCorrelation.characterId}`,
         );

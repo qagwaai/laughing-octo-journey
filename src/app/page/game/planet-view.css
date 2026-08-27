@@ -164,7 +164,10 @@
   color: #ebf5ff;
   padding: 0.36rem 0.5rem;
   cursor: pointer;
-  transition: border-color 110ms ease, background-color 110ms ease, transform 110ms ease;
+  transition:
+    border-color 110ms ease,
+    background-color 110ms ease,
+    transform 110ms ease;
 }
 
 .planet-view-panel__moon-item:hover,

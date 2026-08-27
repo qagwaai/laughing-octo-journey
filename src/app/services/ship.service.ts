@@ -2,15 +2,15 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-  type ShipListByOwnerRequestIdentity,
   type ShipListByOwnerRequest,
+  type ShipListByOwnerRequestIdentity,
   type ShipListByOwnerResponse,
 } from '../model/ship-list-by-owner';
 import {
   SHIP_TRANSFER_REQUEST_EVENT,
   SHIP_TRANSFER_RESPONSE_EVENT,
-  type ShipTransferRequestIdentity,
   type ShipTransferRequest,
+  type ShipTransferRequestIdentity,
   type ShipTransferResponse,
 } from '../model/ship-transfer';
 import { appLogger } from './logger';
@@ -140,9 +140,7 @@ function isShipTransferResponseForRequest(
 
 function emitSocketCorrelationWarning(operation: string, detail: Record<string, unknown>): void {
   const detailKeys = Object.keys(detail);
-  const serializedDetail = detailKeys
-    .map((key) => `${key}=${detail[key] ?? 'missing'}`)
-    .join(' ');
+  const serializedDetail = detailKeys.map((key) => `${key}=${detail[key] ?? 'missing'}`).join(' ');
 
   appLogger.warn(`[socket-correlation] Dropping unmatched ${operation} response. ${serializedDetail}`);
 
@@ -180,36 +178,39 @@ export class ShipService {
       requestIdentity: expectedRequestIdentity,
     };
 
-    const unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
-      if (
-        !isShipListByOwnerResponseForRequest(
-          response,
-          expectedCorrelationId,
-          expectedRequestIdentity,
-          requestWithCorrelation,
-        )
-      ) {
-        const responseCorrelationId = response.correlationId?.trim() ?? '';
-        if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
-          // Another in-flight request won this response; ignore without contract-variance warning noise.
+    const unsubscribe = this.socketService.on(
+      SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+      (response: ShipListByOwnerResponse) => {
+        if (
+          !isShipListByOwnerResponseForRequest(
+            response,
+            expectedCorrelationId,
+            expectedRequestIdentity,
+            requestWithCorrelation,
+          )
+        ) {
+          const responseCorrelationId = response.correlationId?.trim() ?? '';
+          if (responseCorrelationId && responseCorrelationId !== expectedCorrelationId) {
+            // Another in-flight request won this response; ignore without contract-variance warning noise.
+            return;
+          }
+
+          emitSocketCorrelationWarning('ship-list-by-owner', {
+            responseCorrelationId: response.correlationId ?? null,
+            responseOwnerType: response.owner?.ownerType ?? null,
+            responseOwnerCharacterId: response.owner?.characterId ?? null,
+            expectedCorrelationId,
+            expectedOwnerKey: expectedRequestIdentity.containerId,
+          });
           return;
         }
 
-        emitSocketCorrelationWarning('ship-list-by-owner', {
-          responseCorrelationId: response.correlationId ?? null,
-          responseOwnerType: response.owner?.ownerType ?? null,
-          responseOwnerCharacterId: response.owner?.characterId ?? null,
-          expectedCorrelationId,
-          expectedOwnerKey: expectedRequestIdentity.containerId,
+        unsubscribe();
+        this.zone.run(() => {
+          onResponse(response);
         });
-        return;
-      }
-
-      unsubscribe();
-      this.zone.run(() => {
-        onResponse(response);
-      });
-    });
+      },
+    );
 
     this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, requestWithCorrelation);
   }

@@ -1,7 +1,7 @@
 import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from '../../mission/first-target-ship-exterior-mission';
-import type { AsteroidScanSample } from '../ship-exterior-asteroid-sample';
 import type { CelestialBodyListItem } from '../celestial-body-list';
 import type { ExternalObjectFallbackTier } from '../external-object-descriptor';
+import type { AsteroidScanSample } from '../ship-exterior-asteroid-sample';
 import type { Sw13bGapItem, Sw13bTier } from './sw-13b-m0b-asteroid-baseline';
 
 export interface Sw13bM2bDeterminismEvidence {

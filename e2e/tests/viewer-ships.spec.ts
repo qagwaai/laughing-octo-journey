@@ -1,5 +1,4 @@
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import {
   ACTIVE_SHIP,
   INACTIVE_SHIP,
@@ -10,9 +9,10 @@ import {
   setupSharedViewerShipsSession,
   type SharedViewerShipsSession,
 } from '../fixtures/viewer-ships-scenario';
+import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
-import { ViewerPage } from '../page-objects/viewer.page';
 import { ViewerShipsPage } from '../page-objects/viewer-ships.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 async function getCanvasFrameSignature(canvas: Locator): Promise<string> {
   const image = await canvas.screenshot();
@@ -119,8 +119,7 @@ test.describe.serial('Viewer — Character Ships', () => {
     const isolatedViewerPage = new ViewerPage(page);
 
     const glbResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
+      (response) => response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
     );
 
     mock.on('solar-system-get-request', () => ({

@@ -58,7 +58,7 @@ export function resolveTractorBeamVisualState({
   const basisB = new Vector3().crossVectors(normalized, basisA).normalize();
 
   for (let index = 0; index < particleCount; index += 1) {
-    const travel = ((elapsedSeconds * 1.8 + index / particleCount) % 1 + 1) % 1;
+    const travel = (((elapsedSeconds * 1.8 + index / particleCount) % 1) + 1) % 1;
     const along = direction.clone().multiplyScalar(travel);
     const swirlRadius = 0.05 + 0.035 * Math.sin((elapsedSeconds + index) * 2.4);
     const swirlAngle = elapsedSeconds * 7 + index * 0.9;

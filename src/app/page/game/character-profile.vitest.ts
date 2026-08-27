@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { CreditLedgerEntry } from '../../model/domain/character-economy';
 import type { CharacterBustReadResponse } from '../../model/bust-descriptor';
+import type { CreditLedgerEntry } from '../../model/domain/character-economy';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { SessionService } from '../../services/session.service';
 import CharacterProfilePage from './character-profile';
@@ -38,11 +38,13 @@ const TEST_BUST_RESPONSE: CharacterBustReadResponse = {
   },
 };
 
-function setup(options: {
-  navigationState?: Record<string, unknown>;
-  bustReadResponse?: CharacterBustReadResponse;
-  sessionKey?: string | null;
-} = {}) {
+function setup(
+  options: {
+    navigationState?: Record<string, unknown>;
+    bustReadResponse?: CharacterBustReadResponse;
+    sessionKey?: string | null;
+  } = {},
+) {
   const resolvedSessionKey = Object.prototype.hasOwnProperty.call(options, 'sessionKey')
     ? (options.sessionKey ?? null)
     : 'session-key';

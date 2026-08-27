@@ -14,12 +14,8 @@
 
 import type { MissionStatus } from '../model/mission';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
-import {
-  createMissionScenePlugin,
-  registerMissionScenePlugin,
-  type MissionScenePlugin,
-} from './mission-scene-plugin';
 import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from './first-target-ship-exterior-mission';
+import { createMissionScenePlugin, registerMissionScenePlugin, type MissionScenePlugin } from './mission-scene-plugin';
 import {
   createInitialMissionGateState,
   registerShipExteriorMission,
@@ -114,9 +110,7 @@ export const GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefin
   },
 };
 
-export function createGenericExplorationInitialGateState(
-  characterId: string,
-): ShipExteriorMissionGateState {
+export function createGenericExplorationInitialGateState(characterId: string): ShipExteriorMissionGateState {
   resetExplorationScanCount(characterId);
   return createInitialMissionGateState({
     missionId: GENERIC_EXPLORATION_MISSION_ID,
@@ -131,9 +125,7 @@ export function createGenericExplorationInitialGateState(
  * accumulates the per-character scan count consulted by
  * `doesScanCompleteGateStep`.
  */
-export function createGenericExplorationPlugin(
-  definition: ShipExteriorMissionDefinition,
-): MissionScenePlugin {
+export function createGenericExplorationPlugin(definition: ShipExteriorMissionDefinition): MissionScenePlugin {
   return createMissionScenePlugin(definition, {
     hudConfig: {
       showRepairBay: false,

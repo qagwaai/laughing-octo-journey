@@ -1,7 +1,7 @@
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
-import type { ViewerBody, SolarSystemGetResponse } from '../../model/solar-system-get';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
+import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
@@ -134,18 +134,20 @@ export class SolarSystemDetailsFacade {
       if (!response.success) {
         return;
       }
-      const marketRows = (response.markets ?? []).map((m: MarketSummary): DetailsRow => ({
-        id: m.marketId,
-        displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
-        bodyType: 'station',
-        diameterM: null,
-        semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
-        isShip: false,
-        isActiveShip: false,
-        shipModel: null,
-        shipTier: null,
-        shipStatus: null,
-      }));
+      const marketRows = (response.markets ?? []).map(
+        (m: MarketSummary): DetailsRow => ({
+          id: m.marketId,
+          displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
+          bodyType: 'station',
+          diameterM: null,
+          semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
+          isShip: false,
+          isActiveShip: false,
+          shipModel: null,
+          shipTier: null,
+          shipStatus: null,
+        }),
+      );
       const merged = [...existingRows, ...marketRows];
       merged.sort((a, b) => sortOrder(a.bodyType) - sortOrder(b.bodyType));
       this.deps.setBodyRows(merged);
@@ -176,18 +178,20 @@ export class SolarSystemDetailsFacade {
 
       const activeShipId = this.deps.getActiveShipId();
       const systemShips = (response.ships ?? []).filter((ship) => ship.spatial?.solarSystemId === solarSystemId);
-      this.deps.setShipRows(systemShips.map((ship: ShipSummary) => ({
-        id: ship.id,
-        displayName: ship.name,
-        bodyType: 'ship',
-        diameterM: null,
-        semiMajorAxisKm: null,
-        isShip: true,
-        isActiveShip: ship.id === activeShipId,
-        shipModel: ship.model ?? null,
-        shipTier: ship.tier ?? null,
-        shipStatus: ship.status ?? null,
-      })));
+      this.deps.setShipRows(
+        systemShips.map((ship: ShipSummary) => ({
+          id: ship.id,
+          displayName: ship.name,
+          bodyType: 'ship',
+          diameterM: null,
+          semiMajorAxisKm: null,
+          isShip: true,
+          isActiveShip: ship.id === activeShipId,
+          shipModel: ship.model ?? null,
+          shipTier: ship.tier ?? null,
+          shipStatus: ship.status ?? null,
+        })),
+      );
     });
   }
 }

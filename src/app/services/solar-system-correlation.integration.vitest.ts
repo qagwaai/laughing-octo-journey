@@ -1,12 +1,11 @@
 import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
 import {
-  SOLAR_SYSTEM_LIST_REQUEST_EVENT,
   SOLAR_SYSTEM_LIST_RESPONSE_EVENT,
   type SolarSystemListRequest,
   type SolarSystemListResponse,
 } from '../model/solar-system-list';
-import { SolarSystemService } from './solar-system.service';
 import { SocketService } from './socket.service';
+import { SolarSystemService } from './solar-system.service';
 
 type Listener<T = unknown> = (payload: T) => void;
 

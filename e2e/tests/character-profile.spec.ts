@@ -1,10 +1,10 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
   characterBustReadResponse,
   registerCharacterProfileSessionHandlers,
 } from '../fixtures/character-profile-scenario';
 import { bootstrapSharedGameMainSession } from '../fixtures/shared-session-bootstrap';
+import { SocketIOMock } from '../fixtures/socket-mock';
 import { GameShellPage } from '../page-objects/game-shell.page';
 
 let sharedContext: BrowserContext;

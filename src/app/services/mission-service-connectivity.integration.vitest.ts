@@ -1,5 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { MISSION_LIST_REQUEST_EVENT, MISSION_LIST_RESPONSE_EVENT, type MissionListRequest } from '../model/mission-list';
+import {
+  MISSION_LIST_REQUEST_EVENT,
+  MISSION_LIST_RESPONSE_EVENT,
+  type MissionListRequest,
+} from '../model/mission-list';
 import { MissionService } from './mission.service';
 import { SocketService } from './socket.service';
 

@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Triplet } from '@pmndrs/cannon-worker-api';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Button, BUTTON_BOX_FN } from './button';
 

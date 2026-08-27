@@ -37,7 +37,9 @@ export class ShipHangarPage {
   constructor(private readonly page: Page) {}
 
   async openAndWaitForLoadedReadiness(options: ShipHangarOpenLoadedReadinessOptions) {
-    const shipHangarButton = this.page.locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible').first();
+    const shipHangarButton = this.page
+      .locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible')
+      .first();
     await shipHangarButton.scrollIntoViewIfNeeded();
     await shipHangarButton.click();
     await expect(this.page).toHaveURL(/left:ship-hangar/);

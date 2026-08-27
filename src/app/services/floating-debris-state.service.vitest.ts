@@ -217,4 +217,3 @@ describe('FloatingDebrisStateService', () => {
     expect(service.removeById('does-not-exist')).toBe(false);
   });
 });
-

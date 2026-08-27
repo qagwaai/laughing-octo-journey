@@ -1,6 +1,15 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, signal, viewChild } from '@angular/core';
-import type { BustDescriptorInput } from '../../../../model/bust-descriptor';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { locale } from '../../../../i18n/locale';
+import type { BustDescriptorInput } from '../../../../model/bust-descriptor';
 
 const PORTRAIT_BASE_PATH = '/images/portraits';
 
@@ -10,19 +19,21 @@ export interface PortraitImageState {
 }
 
 export function buildPortraitFilename(descriptor: BustDescriptorInput): string {
-  return [
-    descriptor.faceShape,
-    descriptor.skinTone,
-    descriptor.hairStyle,
-    descriptor.hairColor,
-    descriptor.eyeStyle,
-    descriptor.eyeColor,
-    descriptor.expressionPreset,
-    descriptor.apparelAccent,
-    descriptor.facialHair,
-    descriptor.scar,
-    descriptor.tattoo,
-  ].join('__') + '.jpeg';
+  return (
+    [
+      descriptor.faceShape,
+      descriptor.skinTone,
+      descriptor.hairStyle,
+      descriptor.hairColor,
+      descriptor.eyeStyle,
+      descriptor.eyeColor,
+      descriptor.expressionPreset,
+      descriptor.apparelAccent,
+      descriptor.facialHair,
+      descriptor.scar,
+      descriptor.tattoo,
+    ].join('__') + '.jpeg'
+  );
 }
 
 @Component({
@@ -103,7 +114,9 @@ export default class CharacterPreviewImageComponent {
     return this.portraitFilename();
   });
 
-  protected readonly statusLabel = computed(() => (this.missingFilename() ? 'missing' : this.currentLoaded() ? 'loaded' : 'loading'));
+  protected readonly statusLabel = computed(() =>
+    this.missingFilename() ? 'missing' : this.currentLoaded() ? 'loaded' : 'loading',
+  );
 
   protected handleImageLoad(): void {
     this.currentLoaded.set(true);

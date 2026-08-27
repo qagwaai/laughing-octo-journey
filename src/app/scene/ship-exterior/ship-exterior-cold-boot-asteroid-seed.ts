@@ -1,8 +1,8 @@
+import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from '../../mission/first-target-ship-exterior-mission';
+import type { MissionScenePluginSeedPolicy } from '../../mission/mission-scene-plugin';
 import type { CelestialBodyListItem } from '../../model/celestial-body-list';
 import type { Triple } from '../../model/shared/triple';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
-import type { MissionScenePluginSeedPolicy } from '../../mission/mission-scene-plugin';
-import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from '../../mission/first-target-ship-exterior-mission';
 
 export interface ShipExteriorColdBootAsteroidSeedContext {
   playerName: string;
@@ -41,9 +41,7 @@ export type ShipExteriorColdBootAsteroidSeedIntent =
       >;
     };
 
-function resolveSeedPolicy(
-  seedPolicy?: Partial<MissionScenePluginSeedPolicy>,
-): MissionScenePluginSeedPolicy {
+function resolveSeedPolicy(seedPolicy?: Partial<MissionScenePluginSeedPolicy>): MissionScenePluginSeedPolicy {
   const defaultSeedPolicy: MissionScenePluginSeedPolicy = {
     createFallbackSamples: () => FIRST_TARGET_SHIP_EXTERIOR_MISSION.createFallbackAsteroidSamples(),
     createNewSamples: ({ playerName, characterId, center, launchSeedHint }) =>
@@ -92,7 +90,10 @@ export function createColdBootAsteroidSamplesForStarterShip(
 }
 
 export function createColdBootAsteroidSamplesForResume(
-  context: Pick<ShipExteriorColdBootAsteroidSeedContext, 'playerName' | 'characterId' | 'center' | 'launchSeedHint' | 'existingBodies'>,
+  context: Pick<
+    ShipExteriorColdBootAsteroidSeedContext,
+    'playerName' | 'characterId' | 'center' | 'launchSeedHint' | 'existingBodies'
+  >,
   seedPolicy?: Partial<MissionScenePluginSeedPolicy>,
 ): AsteroidScanSample[] {
   return resolveSeedPolicy(seedPolicy).createResumedSamples({

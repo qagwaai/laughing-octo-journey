@@ -64,7 +64,6 @@ export function assignAsteroidRenderTiers(
     forcedHeroIds.add(context.activeScanAsteroidId);
   }
 
-
   let heroAssigned = 0;
   let nearAssigned = 0;
   // Phase 3: dynamic cap scaling for frame-pressure
@@ -89,7 +88,6 @@ export function assignAsteroidRenderTiers(
     result.set(candidate.id, 'hero');
     heroAssigned += 1;
   }
-
 
   for (const { sample, distance } of ranked) {
     if (result.has(sample.id)) {
@@ -122,10 +120,7 @@ export function assignAsteroidRenderTiers(
   return result;
 }
 
-export function resolveAsteroidTierDetailOverride(
-  tier: AsteroidRenderTier,
-  scanned: boolean,
-): number | null {
+export function resolveAsteroidTierDetailOverride(tier: AsteroidRenderTier, scanned: boolean): number | null {
   if (!scanned) {
     return null;
   }

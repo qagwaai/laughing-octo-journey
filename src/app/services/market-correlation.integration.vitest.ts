@@ -1,6 +1,5 @@
 import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
 import {
-  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
   MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
   type MarketListByLocationRequest,
   type MarketListByLocationResponse,

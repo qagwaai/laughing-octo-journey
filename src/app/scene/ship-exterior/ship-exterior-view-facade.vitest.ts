@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createShipExteriorViewFacade,
-  type ShipExteriorViewFacadeSource,
   type ShipExteriorLaunchHotkeySlot,
+  type ShipExteriorViewFacadeSource,
 } from './ship-exterior-view-facade';
 
 describe('ShipExteriorViewFacade', () => {

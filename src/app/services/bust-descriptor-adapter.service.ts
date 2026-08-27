@@ -56,8 +56,7 @@ function hasMatchingCorrelation(
   expectedCorrelationId: string,
   expectedRequestIdentity: BustRequestIdentity,
 ): boolean {
-  const responseCorrelationId =
-    typeof response.correlationId === 'string' ? response.correlationId.trim() : '';
+  const responseCorrelationId = typeof response.correlationId === 'string' ? response.correlationId.trim() : '';
   if (!responseCorrelationId || responseCorrelationId !== expectedCorrelationId) {
     return false;
   }
@@ -77,9 +76,7 @@ function hasMatchingCorrelation(
 export class BustDescriptorAdapterService implements BustDescriptorAdapter {
   private socketService = inject(SocketService);
 
-  createCharacterBust(
-    request: CharacterBustCreateRequest,
-  ): Observable<CharacterBustCreateTerminalResponse> {
+  createCharacterBust(request: CharacterBustCreateRequest): Observable<CharacterBustCreateTerminalResponse> {
     return this.sendBustRequest(
       request,
       CHARACTER_BUST_CREATE_REQUEST_EVENT,
@@ -103,9 +100,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
     );
   }
 
-  updateCharacterBust(
-    request: CharacterBustUpdateRequest,
-  ): Observable<CharacterBustUpdateTerminalResponse> {
+  updateCharacterBust(request: CharacterBustUpdateRequest): Observable<CharacterBustUpdateTerminalResponse> {
     return this.sendBustRequest(
       request,
       CHARACTER_BUST_UPDATE_REQUEST_EVENT,
@@ -170,8 +165,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
       const requestWithCorrelation = {
         ...request,
         correlationId: expectedCorrelationId,
-        correlationSource:
-          request.correlationSource?.trim() || `bust-descriptor-adapter.${correlationSourceSuffix}`,
+        correlationSource: request.correlationSource?.trim() || `bust-descriptor-adapter.${correlationSourceSuffix}`,
         requestIdentity: expectedRequestIdentity,
       };
 
@@ -182,11 +176,7 @@ export class BustDescriptorAdapterService implements BustDescriptorAdapter {
         }
 
         if (
-          !hasMatchingCorrelation(
-            rawResponse as CorrelatedBustResponse,
-            expectedCorrelationId,
-            expectedRequestIdentity,
-          )
+          !hasMatchingCorrelation(rawResponse as CorrelatedBustResponse, expectedCorrelationId, expectedRequestIdentity)
         ) {
           const responseCorrelationId =
             typeof (rawResponse as CorrelatedBustResponse)?.correlationId === 'string'

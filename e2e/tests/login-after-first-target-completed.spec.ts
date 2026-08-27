@@ -1,8 +1,6 @@
 import { expect } from '@playwright/test';
-import {
-  registerSharedSessionHandlers,
-} from '../fixtures/login-after-first-target-completed-scenario';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
+import { registerSharedSessionHandlers } from '../fixtures/login-after-first-target-completed-scenario';
 import { MissionBoardPage } from '../page-objects/mission-board.page';
 
 const test = createJoinedGameTest({

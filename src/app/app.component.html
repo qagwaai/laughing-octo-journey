@@ -3,7 +3,6 @@
   <div class="relative flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
     <router-outlet name="left" />
     <app-left-pane-mission-guidance-overlay />
-
   </div>
 
   <!-- Divider -->
@@ -32,7 +31,7 @@
   </div>
 
   <!-- Right Canvas Area -->
-  <div class="relative min-w-0 max-h-dvh max-w-full flex-1 overflow-hidden" #rightPanel>
+  <div class="relative max-h-dvh max-w-full min-w-0 flex-1 overflow-hidden" #rightPanel>
     @if (shipExteriorPrimaryActive()) {
       <div class="absolute inset-0 z-0">
         <router-outlet />
@@ -108,7 +107,7 @@
         <div class="mb-1 text-xs font-semibold tracking-wide">
           {{ contractVarianceToast()?.level === 'error' ? 'Contract Variance Error' : 'Contract Variance Warning' }}
         </div>
-        <div class="mb-2 break-words leading-snug">{{ contractVarianceToast()?.message }}</div>
+        <div class="mb-2 leading-snug break-words">{{ contractVarianceToast()?.message }}</div>
         <button
           type="button"
           class="rounded border border-current/60 px-2 py-1 text-xs hover:bg-white/10"

@@ -32,15 +32,11 @@ async function readCoords(page: Page): Promise<{ x: number; y: number; z: number
 }
 
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
-  await expect
-    .poll(() => readCoordZ(page), { timeout: 10_000 })
-    .not.toBeNull();
+  await expect.poll(() => readCoordZ(page), { timeout: 10_000 }).not.toBeNull();
 }
 
 test.describe('Ship Exterior — flight mode smoke', () => {
-  test('toggles flight, integrates WASD movement, then unlocks cleanly on disable', async ({
-    page,
-  }) => {
+  test('toggles flight, integrates WASD movement, then unlocks cleanly on disable', async ({ page }) => {
     const mock = new SocketIOMock(page);
     const gameShell = new GameShellPage(page);
     await mock.setup();
@@ -63,9 +59,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
 
     // Enabling flight should not immediately jump location telemetry.
-    await expect
-      .poll(() => readCoords(page))
-      .toEqual(coordsBeforeEnable);
+    await expect.poll(() => readCoords(page)).toEqual(coordsBeforeEnable);
 
     // --- Hold W then S; they should drive Z in opposite directions. ---
     const zBaseline = coordsBeforeEnable?.z ?? 0;
@@ -74,14 +68,17 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     let zAfterW: number | null = null;
     try {
       await expect
-        .poll(async () => {
-          const z = await readCoordZ(page);
-          if (z === null || z === zBaseline) {
-            return false;
-          }
-          zAfterW = z;
-          return true;
-        }, { timeout: 5_000 })
+        .poll(
+          async () => {
+            const z = await readCoordZ(page);
+            if (z === null || z === zBaseline) {
+              return false;
+            }
+            zAfterW = z;
+            return true;
+          },
+          { timeout: 5_000 },
+        )
         .toBe(true);
     } finally {
       await page.keyboard.up('KeyW');
@@ -97,13 +94,16 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await page.keyboard.down('KeyS');
     try {
       await expect
-        .poll(async () => {
-          const z = await readCoordZ(page);
-          if (z === null) {
-            return false;
-          }
-          return wDelta > 0 ? z < zAfterW : z > zAfterW;
-        }, { timeout: 5_000 })
+        .poll(
+          async () => {
+            const z = await readCoordZ(page);
+            if (z === null) {
+              return false;
+            }
+            return wDelta > 0 ? z < zAfterW : z > zAfterW;
+          },
+          { timeout: 5_000 },
+        )
         .toBe(true);
     } finally {
       await page.keyboard.up('KeyS');
@@ -118,10 +118,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     // Acquisition is async, so the release may race with the click handler —
     // poll to give the browser a frame to settle.
     await expect
-      .poll(
-        () => page.evaluate(() => document.pointerLockElement === document.body),
-        { timeout: 5_000 },
-      )
+      .poll(() => page.evaluate(() => document.pointerLockElement === document.body), { timeout: 5_000 })
       .toBe(false);
   });
 
@@ -148,10 +145,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
 
     await expect
-      .poll(
-        () => page.evaluate(() => document.pointerLockElement === document.body),
-        { timeout: 5_000 },
-      )
+      .poll(() => page.evaluate(() => document.pointerLockElement === document.body), { timeout: 5_000 })
       .toBe(false);
   });
 });

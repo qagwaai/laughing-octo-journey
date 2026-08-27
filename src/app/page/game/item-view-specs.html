@@ -19,9 +19,7 @@
         <div class="blueprint-meta-chip">{{ metaLabel }}</div>
         }
       </div>
-      }
-
-      @if (imageNotFound()) {
+      } @if (imageNotFound()) {
       <p class="image-not-found">{{ t.game.itemViewSpecs.imageNotFoundPrefix }} {{ blueprintImagePath() }}</p>
       } @else {
       <img

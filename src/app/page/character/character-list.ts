@@ -9,9 +9,9 @@ import type { CharacterMissionProgress, MissionStatus } from '../../model/missio
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
-import { SessionService } from '../../services/session.service';
-import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { MissionService } from '../../services/mission.service';
+import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
 
@@ -64,7 +64,7 @@ export default class CharacterListPage implements OnDestroy {
   }
 
   private resolveInitialPlayerName(): string {
-   return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
+    return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
   }
 
   /**

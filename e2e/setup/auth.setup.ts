@@ -1,6 +1,6 @@
+import { test as setup } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { test as setup } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI } from '../helpers/auth-helper';
 

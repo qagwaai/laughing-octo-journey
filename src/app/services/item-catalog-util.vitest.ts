@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { ItemCatalogService } from './item-catalog.service';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getItemOrToast } from './item-catalog-util';
+import { ItemCatalogService } from './item-catalog.service';
 import { MissingItemToastService } from './missing-item-toast.service';
 
 describe('getItemOrToast', () => {

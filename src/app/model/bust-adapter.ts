@@ -7,6 +7,9 @@ import type { Observable } from 'rxjs';
 import type {
   BustBlockedSaveResponse,
   BustDescriptor,
+  BustDescriptorInput,
+  BustDescriptorOverrides,
+  BustValidationErrorResponse,
   CharacterBustCreateRequest,
   CharacterBustCreateTerminalResponse,
   CharacterBustReadRequest,
@@ -19,9 +22,6 @@ import type {
   NpcBustReadResponse,
   NpcBustUpdateRequest,
   NpcBustUpdateTerminalResponse,
-  BustDescriptorInput,
-  BustDescriptorOverrides,
-  BustValidationErrorResponse,
 } from './bust-descriptor';
 
 /**
@@ -30,13 +30,9 @@ import type {
  * Must not bypass Forge normalization or add ad hoc fallback correction.
  */
 export interface BustDescriptorAdapter {
-  createCharacterBust(
-    request: CharacterBustCreateRequest,
-  ): Observable<CharacterBustCreateTerminalResponse>;
+  createCharacterBust(request: CharacterBustCreateRequest): Observable<CharacterBustCreateTerminalResponse>;
   readCharacterBust(request: CharacterBustReadRequest): Observable<CharacterBustReadResponse>;
-  updateCharacterBust(
-    request: CharacterBustUpdateRequest,
-  ): Observable<CharacterBustUpdateTerminalResponse>;
+  updateCharacterBust(request: CharacterBustUpdateRequest): Observable<CharacterBustUpdateTerminalResponse>;
 
   createNpcBust(request: NpcBustCreateRequest): Observable<NpcBustCreateTerminalResponse>;
   readNpcBust(request: NpcBustReadRequest): Observable<NpcBustReadResponse>;

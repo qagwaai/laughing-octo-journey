@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -67,8 +67,9 @@ function setup(options: {
   const shipService =
     options.shipService ??
     ({
-      listShipsByOwner: vi.fn().mockImplementation(
-        (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
+      listShipsByOwner: vi
+        .fn()
+        .mockImplementation((req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
           cb({
             success: true,
             message: 'ok',
@@ -83,7 +84,7 @@ function setup(options: {
             },
             ships: [],
           }),
-      ),
+        ),
     } as { listShipsByOwner: ReturnType<typeof vi.fn> });
 
   TestBed.configureTestingModule({
@@ -311,8 +312,9 @@ describe('CharacterListPage', () => {
     beforeEach(() => {
       router = makeMockRouter('Pioneer');
       shipServiceStub = {
-        listShipsByOwner: vi.fn().mockImplementation(
-          (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
+        listShipsByOwner: vi
+          .fn()
+          .mockImplementation((req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
             cb({
               success: true,
               message: 'ok',
@@ -327,7 +329,7 @@ describe('CharacterListPage', () => {
               },
               ships: [],
             }),
-        ),
+          ),
       };
       TestBed.configureTestingModule({
         imports: [CharacterListPage],
@@ -541,16 +543,13 @@ describe('CharacterListPage', () => {
         event: GAME_JOIN_REQUEST_EVENT,
         data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
       });
-      expect(router.navigate).toHaveBeenCalledWith(
-        [{ outlets: { right: ['mission-board'], left: ['game-main'] } }],
-        {
-          preserveFragment: true,
-          state: {
-            playerName: 'Pioneer',
-            joinCharacter: character,
-          },
+      expect(router.navigate).toHaveBeenCalledWith([{ outlets: { right: ['mission-board'], left: ['game-main'] } }], {
+        preserveFragment: true,
+        state: {
+          playerName: 'Pioneer',
+          joinCharacter: character,
         },
-      );
+      });
     });
 
     it('should set error and not navigate when playerName is empty for game join', () => {
@@ -706,8 +705,9 @@ describe('CharacterListPage', () => {
           {
             provide: ShipService,
             useValue: {
-              listShipsByOwner: vi.fn().mockImplementation(
-                (req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
+              listShipsByOwner: vi
+                .fn()
+                .mockImplementation((req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) =>
                   cb({
                     success: true,
                     message: 'ok',
@@ -722,7 +722,7 @@ describe('CharacterListPage', () => {
                     },
                     ships: [],
                   }),
-              ),
+                ),
             },
           },
           { provide: Router, useValue: router },

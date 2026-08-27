@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { locale } from '../i18n/locale';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
 import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';

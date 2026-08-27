@@ -1,7 +1,7 @@
-import { GameShellPage } from '../page-objects/game-shell.page';
 import { TEST_PLAYER } from '../helpers/auth-helper';
-import { SocketIOMock } from './socket-mock';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { registerMarketSharedSession } from './market-hub-session-helpers';
+import { SocketIOMock } from './socket-mock';
 
 export const MARKET_HUB_CHARACTER = {
   id: 'char-market-1',

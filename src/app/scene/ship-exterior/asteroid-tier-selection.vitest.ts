@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 import {
   assignAsteroidRenderTiers,
@@ -8,11 +8,7 @@ import {
   type AsteroidTierContext,
 } from './asteroid-tier-selection';
 
-function makeSample(
-  id: string,
-  position: [number, number, number],
-  scanned = true,
-): AsteroidScanSample {
+function makeSample(id: string, position: [number, number, number], scanned = true): AsteroidScanSample {
   return {
     id,
     serverCelestialBodyId: null,
@@ -113,12 +109,24 @@ describe('assignAsteroidRenderTiers', () => {
 
   it('reduces near tier capacity when capMultiplier drops below 1', () => {
     const samples = Array.from({ length: 12 }, (_, i) => makeSample(`a${i}`, [0, 0, i + 1]));
-    const fullTiers = assignAsteroidRenderTiers(samples, baseContext(), DEFAULT_ASTEROID_TIER_CAPS, DEFAULT_ASTEROID_TIER_DISTANCES, {
-      capMultiplier: 1,
-    });
-    const reducedTiers = assignAsteroidRenderTiers(samples, baseContext(), DEFAULT_ASTEROID_TIER_CAPS, DEFAULT_ASTEROID_TIER_DISTANCES, {
-      capMultiplier: 0.25,
-    });
+    const fullTiers = assignAsteroidRenderTiers(
+      samples,
+      baseContext(),
+      DEFAULT_ASTEROID_TIER_CAPS,
+      DEFAULT_ASTEROID_TIER_DISTANCES,
+      {
+        capMultiplier: 1,
+      },
+    );
+    const reducedTiers = assignAsteroidRenderTiers(
+      samples,
+      baseContext(),
+      DEFAULT_ASTEROID_TIER_CAPS,
+      DEFAULT_ASTEROID_TIER_DISTANCES,
+      {
+        capMultiplier: 0.25,
+      },
+    );
 
     const fullNearCount = Array.from(fullTiers.values()).filter((tier) => tier === 'near').length;
     const reducedNearCount = Array.from(reducedTiers.values()).filter((tier) => tier === 'near').length;

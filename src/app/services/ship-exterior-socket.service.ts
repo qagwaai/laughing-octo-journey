@@ -1,17 +1,16 @@
 import { Injectable, inject } from '@angular/core';
-import { appLogger } from './logger';
 import {
   CELESTIAL_BODY_LIST_REQUEST_EVENT,
   CELESTIAL_BODY_LIST_RESPONSE_EVENT,
-  type CelestialBodyListRequestIdentity,
   type CelestialBodyListRequest,
+  type CelestialBodyListRequestIdentity,
   type CelestialBodyListResponse,
 } from '../model/celestial-body-list';
 import {
   ITEM_LIST_BY_LOCATION_REQUEST_EVENT,
   ITEM_LIST_BY_LOCATION_RESPONSE_EVENT,
-  type ItemListByLocationRequestIdentity,
   type ItemListByLocationRequest,
+  type ItemListByLocationRequestIdentity,
   type ItemListByLocationResponse,
 } from '../model/item-list-by-location';
 import {
@@ -23,10 +22,11 @@ import {
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-  type ShipListByOwnerRequestIdentity,
   type ShipListByOwnerRequest,
+  type ShipListByOwnerRequestIdentity,
   type ShipListByOwnerResponse,
 } from '../model/ship-list-by-owner';
+import { appLogger } from './logger';
 import { SocketService } from './socket.service';
 
 function createCorrelationId(operation: string): string {
@@ -115,10 +115,7 @@ export class ShipExteriorSocketService {
     return reasons.join('|') || 'unknown';
   }
 
-  private isForeignOperationPayload(
-    expectedOperation: string,
-    responseOperation: string | undefined,
-  ): boolean {
+  private isForeignOperationPayload(expectedOperation: string, responseOperation: string | undefined): boolean {
     const normalizedResponseOperation = this.normalizeIdentityValue(responseOperation);
     if (!normalizedResponseOperation) {
       return false;
@@ -422,8 +419,7 @@ export class ShipExteriorSocketService {
     onResponse: (response: ShipListByOwnerResponse) => void,
   ): () => void {
     const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('ship-list-by-owner');
-    const expectedRequestIdentity =
-      request.requestIdentity ?? this.buildDefaultShipListByOwnerRequestIdentity(request);
+    const expectedRequestIdentity = request.requestIdentity ?? this.buildDefaultShipListByOwnerRequestIdentity(request);
     const requestWithCorrelation: ShipListByOwnerRequest = {
       ...request,
       correlationId: expectedCorrelationId,
@@ -451,26 +447,64 @@ export class ShipExteriorSocketService {
 
     const callbacks = new Set<(response: ShipListByOwnerResponse) => void>([onResponse]);
 
-    const unsubscribe = this.socketService.on(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, (response: ShipListByOwnerResponse) => {
-      if (
-        !this.isShipListByOwnerResponseForRequest(
-          response,
-          expectedCorrelationId,
-          expectedRequestIdentity,
-          requestWithCorrelation,
-        )
-      ) {
+    const unsubscribe = this.socketService.on(
+      SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+      (response: ShipListByOwnerResponse) => {
         if (
-          this.isForeignOperationPayload(
-            expectedRequestIdentity.operation,
-            response.requestIdentity?.operation,
+          !this.isShipListByOwnerResponseForRequest(
+            response,
+            expectedCorrelationId,
+            expectedRequestIdentity,
+            requestWithCorrelation,
           )
         ) {
-          const contractViolationDetail = {
-            code: 'socket-contract-violation',
+          if (this.isForeignOperationPayload(expectedRequestIdentity.operation, response.requestIdentity?.operation)) {
+            const contractViolationDetail = {
+              code: 'socket-contract-violation',
+              channel: 'ship-exterior-wrapper',
+              operation: 'ship-list-by-owner',
+              reason: 'foreign-operation-on-channel',
+              requestEvent: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+              responseEvent: SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
+              expectedCorrelationId,
+              expectedRequestOperation: expectedRequestIdentity.operation,
+              expectedRequestEntityType: expectedRequestIdentity.entityType,
+              expectedRequestContainerId: expectedRequestIdentity.containerId,
+              responseCorrelationId: response.correlationId ?? null,
+              responseRequestOperation: response.requestIdentity?.operation ?? null,
+              responseRequestEntityType: response.requestIdentity?.entityType ?? null,
+              responseRequestContainerId: response.requestIdentity?.containerId ?? null,
+            };
+            appLogger.error(
+              `[socket-correlation] Contract violation: foreign operation payload on ship-list-by-owner response channel. ${this.serializeWarningDetail(contractViolationDetail)}`,
+            );
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+              window.dispatchEvent(
+                new CustomEvent('socket-correlation-warning', {
+                  detail: contractViolationDetail,
+                }),
+              );
+            }
+            return;
+          }
+
+          const mismatchReason = this.buildIdentityMismatchReason(
+            expectedCorrelationId,
+            response.correlationId,
+            expectedRequestIdentity,
+            response.requestIdentity,
+          );
+          const isStaleCorrelationOnlyResponse =
+            mismatchReason === 'correlation-id' &&
+            this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
+          if (isStaleCorrelationOnlyResponse) {
+            return;
+          }
+          const warningDetail = {
+            code: 'socket-correlation-unmatched',
             channel: 'ship-exterior-wrapper',
             operation: 'ship-list-by-owner',
-            reason: 'foreign-operation-on-channel',
+            reason: mismatchReason,
             requestEvent: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
             responseEvent: SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
             expectedCorrelationId,
@@ -478,85 +512,45 @@ export class ShipExteriorSocketService {
             expectedRequestEntityType: expectedRequestIdentity.entityType,
             expectedRequestContainerId: expectedRequestIdentity.containerId,
             responseCorrelationId: response.correlationId ?? null,
+            responseOwnerType: response.owner?.ownerType ?? null,
+            responseOwnerCharacterId: response.owner?.characterId ?? null,
             responseRequestOperation: response.requestIdentity?.operation ?? null,
             responseRequestEntityType: response.requestIdentity?.entityType ?? null,
             responseRequestContainerId: response.requestIdentity?.containerId ?? null,
           };
-          appLogger.error(
-            `[socket-correlation] Contract violation: foreign operation payload on ship-list-by-owner response channel. ${this.serializeWarningDetail(contractViolationDetail)}`,
+          appLogger.warn(
+            `[socket-correlation] Dropping unmatched ship-list-by-owner response in ship-exterior wrapper. ${this.serializeWarningDetail(warningDetail)}`,
           );
           if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
             window.dispatchEvent(
               new CustomEvent('socket-correlation-warning', {
-                detail: contractViolationDetail,
+                detail: warningDetail,
               }),
             );
           }
           return;
         }
 
-        const mismatchReason = this.buildIdentityMismatchReason(
-          expectedCorrelationId,
-          response.correlationId,
-          expectedRequestIdentity,
-          response.requestIdentity,
-        );
-        const isStaleCorrelationOnlyResponse =
-          mismatchReason === 'correlation-id' &&
-          this.matchesShipListByOwnerRequestIdentity(response.requestIdentity, expectedRequestIdentity);
-        if (isStaleCorrelationOnlyResponse) {
+        const activeFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
+        if (!activeFlight) {
+          unsubscribe();
           return;
         }
-        const warningDetail = {
-          code: 'socket-correlation-unmatched',
-          channel: 'ship-exterior-wrapper',
-          operation: 'ship-list-by-owner',
-          reason: mismatchReason,
-          requestEvent: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-          responseEvent: SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
-          expectedCorrelationId,
-          expectedRequestOperation: expectedRequestIdentity.operation,
-          expectedRequestEntityType: expectedRequestIdentity.entityType,
-          expectedRequestContainerId: expectedRequestIdentity.containerId,
-          responseCorrelationId: response.correlationId ?? null,
-          responseOwnerType: response.owner?.ownerType ?? null,
-          responseOwnerCharacterId: response.owner?.characterId ?? null,
-          responseRequestOperation: response.requestIdentity?.operation ?? null,
-          responseRequestEntityType: response.requestIdentity?.entityType ?? null,
-          responseRequestContainerId: response.requestIdentity?.containerId ?? null,
-        };
-        appLogger.warn(
-          `[socket-correlation] Dropping unmatched ship-list-by-owner response in ship-exterior wrapper. ${this.serializeWarningDetail(warningDetail)}`,
-        );
-        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-          window.dispatchEvent(
-            new CustomEvent('socket-correlation-warning', {
-              detail: warningDetail,
-            }),
-          );
-        }
-        return;
-      }
 
-      const activeFlight = this.pendingShipListFlightsByKey.get(singleFlightKey);
-      if (!activeFlight) {
+        this.pendingShipListFlightsByKey.delete(singleFlightKey);
         unsubscribe();
-        return;
-      }
-
-      this.pendingShipListFlightsByKey.delete(singleFlightKey);
-      unsubscribe();
-      for (const callback of activeFlight.callbacks) {
-        try {
-          callback(response);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          appLogger.error(
-            `[ship-exterior-socket] ship-list callback failed after response match. correlationId=${expectedCorrelationId} message=${message}`,
-          );
+        for (const callback of activeFlight.callbacks) {
+          try {
+            callback(response);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            appLogger.error(
+              `[ship-exterior-socket] ship-list callback failed after response match. correlationId=${expectedCorrelationId} message=${message}`,
+            );
+          }
         }
-      }
-    });
+      },
+    );
 
     this.pendingShipListFlightsByKey.set(singleFlightKey, {
       callbacks,

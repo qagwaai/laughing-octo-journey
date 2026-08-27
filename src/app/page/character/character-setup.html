@@ -28,8 +28,7 @@
         <button type="button" class="shuffle-name-btn" (click)="shuffleSuggestedName()">
           {{ t.character.setup.shuffleNameLabel }}
         </button>
-        }
-        @if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
+        } @if (characterForm.get('characterName')?.invalid && characterForm.get('characterName')?.touched) {
         <span class="field-error">
           @if (characterForm.get('characterName')?.errors?.['required']) { {{
           t.character.setup.errors.characterNameRequired }} } @if
@@ -38,8 +37,7 @@
           (characterForm.get('characterName')?.errors?.['maxlength']) { {{
           t.character.setup.errors.characterNameMaxLength }} }
         </span>
-        }
-        @if (duplicateNameError()) {
+        } @if (duplicateNameError()) {
         <span class="field-error">{{ duplicateNameError() }}</span>
         }
       </div>
@@ -183,12 +181,7 @@
         {{ bustBlockedSave()!.blockedSave.retryable ? t.character.setup.bust.retryableLabel :
         t.character.setup.bust.notRetryableLabel }}
       </p>
-      <button
-        type="button"
-        class="retry-btn"
-        [disabled]="isSubmitting()"
-        (click)="retryBustSave()"
-      >
+      <button type="button" class="retry-btn" [disabled]="isSubmitting()" (click)="retryBustSave()">
         {{ t.character.setup.bust.retrySaveLabel }}
       </button>
     </div>

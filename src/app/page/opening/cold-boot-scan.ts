@@ -8,5 +8,4 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 /**
  * Blank route placeholder for the ship-exterior scan sequence.
  */
-export default class ColdBootScanPage {
-}
+export default class ColdBootScanPage {}

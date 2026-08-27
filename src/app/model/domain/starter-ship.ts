@@ -3,8 +3,8 @@
  */
 import { generateRandomAsteroidBeltClusterCenterKm } from '../math/celestial-body-location';
 import { SpatialState } from '../math/spatial';
-import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER, ShipMotion } from '../ship-list';
 import { ShipItem } from '../ship-item';
+import { DEFAULT_SHIP_MODEL, DEFAULT_SHIP_TIER, ShipMotion } from '../ship-list';
 import { ShipUpsertPayload } from '../ship-upsert';
 
 const STARTER_INVENTORY_TEMPLATE: ReadonlyArray<{

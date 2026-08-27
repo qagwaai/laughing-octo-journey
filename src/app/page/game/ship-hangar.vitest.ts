@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createMockSessionService,
@@ -9,13 +9,13 @@ import {
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
-import { SessionService } from '../../services/session.service';
-import { SocketService } from '../../services/socket.service';
-import { MarketService } from '../../services/market.service';
-import { MissionService } from '../../services/mission.service';
-import { MissionNavigationService } from '../../services/mission-navigation';
-import { ShipService } from '../../services/ship.service';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
+import { MarketService } from '../../services/market.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
+import { MissionService } from '../../services/mission.service';
+import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
+import { SocketService } from '../../services/socket.service';
 import { getSw13AppTestReadinessSnapshot } from '../../services/sw13-app-test-readiness-contract';
 import ShipHangarPage from './ship-hangar';
 const FIRST_TARGET_MISSION_ID = 'first-target';
@@ -60,7 +60,7 @@ function setup(options: {
     listMarketsByLocation: vi.fn(),
     buyMarket: vi.fn(),
   };
-  
+
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: vi.fn(),
@@ -69,9 +69,11 @@ function setup(options: {
   options.socketService.connected = options.connected ?? false;
 
   const missionService = {
-    isMissionInProgress: vi.fn().mockImplementation(
-      (status: string | undefined | null) => status === 'ACTIVE' || status === 'ACTIVE' || status === 'ACTIVE',
-    ),
+    isMissionInProgress: vi
+      .fn()
+      .mockImplementation(
+        (status: string | undefined | null) => status === 'ACTIVE' || status === 'ACTIVE' || status === 'ACTIVE',
+      ),
     getMissionDamagePreset: vi.fn().mockReturnValue('cold-boot-starter-damaged'),
   };
 
@@ -1269,12 +1271,14 @@ describe('ShipHangarPage', () => {
   });
 
   describe('buyScavengerPodFromClosestMarket', () => {
-    function setupBuyContext(options: {
-      playerName?: string;
-      characterId?: string;
-      sessionKey?: string | null;
-      activeShip?: ReturnType<typeof createShip> | null;
-    } = {}) {
+    function setupBuyContext(
+      options: {
+        playerName?: string;
+        characterId?: string;
+        sessionKey?: string | null;
+        activeShip?: ReturnType<typeof createShip> | null;
+      } = {},
+    ) {
       const playerName = options.playerName ?? 'Pioneer';
       const characterId = options.characterId ?? 'c-1';
       const localSessionService = createMockSessionService(options.sessionKey ?? 'test-session-key');
@@ -1317,9 +1321,7 @@ describe('ShipHangarPage', () => {
 
       component.buyScavengerPodFromClosestMarket();
 
-      expect(component['devToolError']()).toBe(
-        'Active ship spatial data is required to locate the closest market.',
-      );
+      expect(component['devToolError']()).toBe('Active ship spatial data is required to locate the closest market.');
       expect(component['isBuyingTestShip']()).toBe(false);
     });
 

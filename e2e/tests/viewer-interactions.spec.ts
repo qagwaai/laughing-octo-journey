@@ -148,9 +148,9 @@ test.describe('Viewer — Interaction Behaviors', () => {
     // Scene route should be loaded
     await viewerPage.expectSceneRoute();
 
-       // Interact with the scene
-       await page.locator('.viewer-scene-host').hover();
-       await page.mouse.move(100, 100);
+    // Interact with the scene
+    await page.locator('.viewer-scene-host').hover();
+    await page.mouse.move(100, 100);
 
     // Scene should remain in expected state
     await viewerPage.expectSceneRoute();
@@ -220,11 +220,11 @@ test.describe('Viewer — Interaction Behaviors', () => {
 
     await navigateToScene(page);
 
-  // Scene route should be active and handling the edge case bodies
-  await viewerPage.expectSceneRoute();
+    // Scene route should be active and handling the edge case bodies
+    await viewerPage.expectSceneRoute();
 
     // Interact with scene despite edge-case data
-  await page.locator('.viewer-scene-host').hover();
+    await page.locator('.viewer-scene-host').hover();
     await page.mouse.move(100, 100);
 
     // Scene should handle edge cases gracefully

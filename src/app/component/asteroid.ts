@@ -21,11 +21,11 @@ import {
   type AsteroidMeshGeometryKind,
   type AsteroidMeshProfile,
 } from '../model/catalog/asteroid-mesh-profiles';
-import { buildSw13bGeneratedVisualSample } from '../model/sw13b/asteroid-visual-generator';
-import { computeSw13bVisualMetrics } from '../model/sw13b/asteroid-visual-metrics';
 import { AsteroidKinematics } from '../model/math/asteroid-kinematics';
 import { CelestialBodyLocation } from '../model/math/celestial-body-location';
 import { Triple } from '../model/shared/triple';
+import { buildSw13bGeneratedVisualSample } from '../model/sw13b/asteroid-visual-generator';
+import { computeSw13bVisualMetrics } from '../model/sw13b/asteroid-visual-metrics';
 import type { AsteroidRenderTier } from '../scene/ship-exterior/asteroid-tier-selection';
 
 export interface AsteroidHoverEvent {
@@ -49,13 +49,7 @@ export interface AsteroidRockRevealSelection {
   detail: number;
 }
 
-export type AsteroidInteractionState =
-  | 'idle'
-  | 'scanning'
-  | 'scanned'
-  | 'hovered'
-  | 'targeting'
-  | 'targeted';
+export type AsteroidInteractionState = 'idle' | 'scanning' | 'scanned' | 'hovered' | 'targeting' | 'targeted';
 
 export interface AsteroidVisualState {
   interaction: AsteroidInteractionState;
@@ -257,7 +251,10 @@ export function resolveAsteroidGeometryDetail(
   return Math.max(0, Math.min(scannedDefault, detailOverride));
 }
 
-export function resolveAsteroidPbrRoughness(scanned: boolean, revealedMaterial: AsteroidMaterialProfile | null): number {
+export function resolveAsteroidPbrRoughness(
+  scanned: boolean,
+  revealedMaterial: AsteroidMaterialProfile | null,
+): number {
   if (!scanned) {
     return 0.92;
   }
@@ -265,7 +262,10 @@ export function resolveAsteroidPbrRoughness(scanned: boolean, revealedMaterial: 
   return revealedMaterial?.roughness ?? 0.6;
 }
 
-export function resolveAsteroidPbrMetalness(scanned: boolean, revealedMaterial: AsteroidMaterialProfile | null): number {
+export function resolveAsteroidPbrMetalness(
+  scanned: boolean,
+  revealedMaterial: AsteroidMaterialProfile | null,
+): number {
   if (!scanned) {
     return 0.03;
   }
@@ -380,18 +380,24 @@ function buildDeterministicRockGeometry(params: {
       depth,
     };
   });
-  const shardAxes = Array.from({ length: params.shardStrength > 0.01 ? (params.shardStrength > 0.5 ? 8 : 5) : 0 }, (_, index) => {
-    const axis = createUnitVectorFromSeed(seed, 0xc2b2ae35 + index * 67);
-    const taper = 0.04 + seededUnit(seed, 0x27d4eb2f + index * 71) * 0.14;
-    const length = 0.32 + seededUnit(seed, 0x165667b1 + index * 73) * 0.42;
-    return { axis, taper, length };
-  });
-  const razorAxes = Array.from({ length: params.razorStrength > 0.15 ? (params.razorStrength > 0.6 ? 6 : 3) : 0 }, (_, index) => {
-    const axis = createUnitVectorFromSeed(seed, 0x94d049bb + index * 79);
-    const taper = 0.01 + seededUnit(seed, 0xa0761d65 + index * 83) * 0.08;
-    const length = 0.42 + seededUnit(seed, 0xe7037ed1 + index * 89) * 0.58;
-    return { axis, taper, length };
-  });
+  const shardAxes = Array.from(
+    { length: params.shardStrength > 0.01 ? (params.shardStrength > 0.5 ? 8 : 5) : 0 },
+    (_, index) => {
+      const axis = createUnitVectorFromSeed(seed, 0xc2b2ae35 + index * 67);
+      const taper = 0.04 + seededUnit(seed, 0x27d4eb2f + index * 71) * 0.14;
+      const length = 0.32 + seededUnit(seed, 0x165667b1 + index * 73) * 0.42;
+      return { axis, taper, length };
+    },
+  );
+  const razorAxes = Array.from(
+    { length: params.razorStrength > 0.15 ? (params.razorStrength > 0.6 ? 6 : 3) : 0 },
+    (_, index) => {
+      const axis = createUnitVectorFromSeed(seed, 0x94d049bb + index * 79);
+      const taper = 0.01 + seededUnit(seed, 0xa0761d65 + index * 83) * 0.08;
+      const length = 0.42 + seededUnit(seed, 0xe7037ed1 + index * 89) * 0.58;
+      return { axis, taper, length };
+    },
+  );
 
   for (let index = 0; index < position.count; index += 1) {
     const x = position.getX(index);
@@ -482,8 +488,10 @@ export function resolveAsteroidRockGeometry(params: {
   const swayA = seededUnit(seed, 0xabc001);
   const swayB = seededUnit(seed, 0xabc002);
   const swayC = seededUnit(seed, 0xabc003);
-  const shardStrength = heroBoost > 0 ? Math.max(0, Math.min(1, 0.35 + swayC * 0.55)) : Math.max(0, Math.min(0.22, swayC * 0.18));
-  const razorStrength = heroBoost > 0 ? Math.min(1, 0.42 + swayA * 0.48 + shardStrength * 0.2) : Math.min(0.26, 0.08 + swayA * 0.14);
+  const shardStrength =
+    heroBoost > 0 ? Math.max(0, Math.min(1, 0.35 + swayC * 0.55)) : Math.max(0, Math.min(0.22, swayC * 0.18));
+  const razorStrength =
+    heroBoost > 0 ? Math.min(1, 0.42 + swayA * 0.48 + shardStrength * 0.2) : Math.min(0.26, 0.08 + swayA * 0.14);
   const geometry = buildDeterministicRockGeometry({
     radius: 0.55,
     detail: Math.max(1, Math.min(3, params.detail)),
@@ -607,7 +615,9 @@ export class Asteroid {
   protected revealedMaterialColor = computed(() => this.revealedMaterial()?.textureColor ?? '#8df7b2');
   protected pbrRoughness = computed(() => resolveAsteroidPbrRoughness(this.scanned(), this.revealedMaterial()));
   protected pbrMetalness = computed(() => resolveAsteroidPbrMetalness(this.scanned(), this.revealedMaterial()));
-  protected emissiveColor = computed(() => resolveAsteroidEmissiveColorFromState(this.visualState(), this.revealedMaterial()));
+  protected emissiveColor = computed(() =>
+    resolveAsteroidEmissiveColorFromState(this.visualState(), this.revealedMaterial()),
+  );
   protected resolvedEmissiveIntensity = computed(() =>
     resolveAsteroidEmissiveIntensityFromState(this.visualState(), this.revealedMaterial()),
   );
@@ -679,7 +689,9 @@ export class Asteroid {
     // Keep billboard at a constant apparent size; calibrated to look right at ~6 units
     return Math.max(1, d / 6);
   });
-  protected materialColor = computed(() => resolveAsteroidMaterialColorFromState(this.visualState(), this.revealedMaterial()));
+  protected materialColor = computed(() =>
+    resolveAsteroidMaterialColorFromState(this.visualState(), this.revealedMaterial()),
+  );
   protected beamOpacity = computed(() => resolveAsteroidBeamOpacityFromState(this.visualState()));
   protected showScanFx = computed(() => {
     if (this.morphPulse() > 0) {

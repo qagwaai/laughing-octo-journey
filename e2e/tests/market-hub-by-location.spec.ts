@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
-import { TEST_PLAYER } from '../helpers/auth-helper';
 import {
   MARKET_HUB_CHARACTER,
   MARKET_HUB_SHIP_WITH_POSITION,
@@ -8,6 +7,7 @@ import {
   registerSharedSessionHandlers,
   type MarketByLocationRequest,
 } from '../fixtures/market-hub-by-location-scenario';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { MarketHubPage } from '../page-objects/market-hub.page';
 
 const test = createJoinedGameTest({
@@ -25,7 +25,10 @@ test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
 });
 
 test.describe('Market Hub by-location contract', () => {
-  test('emits by-location request and renders markets ordered by authoritative distance', async ({ sharedGameShell, sharedMock }) => {
+  test('emits by-location request and renders markets ordered by authoritative distance', async ({
+    sharedGameShell,
+    sharedMock,
+  }) => {
     const requests: MarketByLocationRequest[] = [];
     await openMarketHubWithDefaultData(sharedGameShell, sharedMock, (request) => requests.push(request));
 

@@ -54,7 +54,10 @@ export class ShipExteriorInputAdapter {
     this.doc.removeEventListener('keydown', this.handlers.onWindowKeyDown as EventListener);
     this.doc.removeEventListener('keyup', this.handlers.onWindowKeyUp as EventListener);
     this.doc.removeEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
-    this.win.removeEventListener('socket-correlation-warning', this.handlers.onSocketCorrelationWarning as EventListener);
+    this.win.removeEventListener(
+      'socket-correlation-warning',
+      this.handlers.onSocketCorrelationWarning as EventListener,
+    );
     this.doc.removeEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
     this.attached = false;
   }

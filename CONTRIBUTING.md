@@ -27,9 +27,9 @@ For pull requests that touch SW-13 stabilization scope (stateful gameplay tests,
 
 1. Complete the SW-13 section in the pull request template.
 2. Use the reviewer checklist artifact during author self-review and code review:
-	- `docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md`
+   - `docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md`
 3. Update the governance adoption log (or document why not applicable):
-	- `docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md`
+   - `docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md`
 4. Include focused validation commands in the PR description (smallest impacted subset first).
 5. If Ship Hangar stateful gameplay specs were modified, confirm deterministic sw13.v1 readiness assertions are present.
 6. Label expected failures versus regressions explicitly when applicable.

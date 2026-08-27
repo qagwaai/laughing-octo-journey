@@ -1,17 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createMockSessionService, createMockSocketService, type MockSocketService } from '../../../testing';
 import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
-import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { SessionService } from '../../services/session.service';
+import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
-import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { SocketService } from '../../services/socket.service';
 import RepairRetrofitShipDetailPage from './repair-retrofit-ship-detail';
 import { describeSummaryForSystems } from './repair-retrofit-state';
@@ -107,9 +107,11 @@ function setup(state?: NavigationState) {
   };
   const mockConsumedItemShadowService = {
     markConsumed: vi.fn(),
-    filterInventory: vi.fn().mockImplementation(
-      (_playerName: string, _characterId: string, inventory: any[] | undefined) => [...(inventory ?? [])],
-    ),
+    filterInventory: vi
+      .fn()
+      .mockImplementation((_playerName: string, _characterId: string, inventory: any[] | undefined) => [
+        ...(inventory ?? []),
+      ]),
   };
 
   TestBed.configureTestingModule({
@@ -830,7 +832,9 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     mockShipService.listShipsByOwner.mockImplementation((_request: any, cb: (response: any) => void) => {
       cb({
         success: true,
-        ships: [{ id: 'other-ship', name: 'Other', model: 'Scavenger Pod', tier: 1, spatial: mockSpatial, inventory: [] }],
+        ships: [
+          { id: 'other-ship', name: 'Other', model: 'Scavenger Pod', tier: 1, spatial: mockSpatial, inventory: [] },
+        ],
       });
     });
 

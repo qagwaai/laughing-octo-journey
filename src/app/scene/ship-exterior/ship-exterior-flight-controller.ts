@@ -311,6 +311,6 @@ export class ShipExteriorFlightController {
       new Euler(orientation.pitchRad, orientation.yawRad, orientation.rollRad, 'YXZ'),
     );
     const sceneEuler = new Euler().setFromQuaternion(orientationQuaternion.invert(), 'XYZ');
-    this.flightWorldRotation.set([+(sceneEuler.x).toFixed(4), +(sceneEuler.y).toFixed(4), +(sceneEuler.z).toFixed(4)]);
+    this.flightWorldRotation.set([+sceneEuler.x.toFixed(4), +sceneEuler.y.toFixed(4), +sceneEuler.z.toFixed(4)]);
   }
 }

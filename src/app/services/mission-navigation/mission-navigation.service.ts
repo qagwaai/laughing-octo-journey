@@ -15,17 +15,14 @@
 import { Injectable, inject } from '@angular/core';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import type { PlayerCharacterSummary } from '../../model/character-list';
-import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
+import type { MissionStatus } from '../../model/mission';
 import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import type { ShipSummary } from '../../model/ship-list';
-import type { MissionStatus } from '../../model/mission';
+import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
+import { appLogger } from '../logger';
 import { SessionService } from '../session.service';
 import { ShipService } from '../ship.service';
-import { appLogger } from '../logger';
-import {
-  resolveMissionInitializationStrategy,
-  type MissionInitializationStrategy,
-} from './mission-initialization-strategy';
+import { resolveMissionInitializationStrategy } from './mission-initialization-strategy';
 
 /**
  * Input context for preparing mission navigation.
@@ -107,11 +104,7 @@ export class MissionNavigationService {
     });
 
     // Fetch the real ship from backend
-    const shipFetchResult = await this.fetchActiveShip(
-      playerName,
-      characterId,
-      context.sessionKey,
-    );
+    const shipFetchResult = await this.fetchActiveShip(playerName, characterId, context.sessionKey);
 
     // Build navigation state
     const navigationState: PreparedMissionNavigationState = {
@@ -138,11 +131,7 @@ export class MissionNavigationService {
    * Fetches the active ship from backend via ShipService.
    * @private
    */
-  private async fetchActiveShip(
-    playerName: string,
-    characterId: string,
-    sessionKey: string,
-  ): Promise<ShipFetchResult> {
+  private async fetchActiveShip(playerName: string, characterId: string, sessionKey: string): Promise<ShipFetchResult> {
     if (!sessionKey.trim()) {
       return { ship: null, success: false, message: 'missing-session-key' };
     }
@@ -157,45 +146,39 @@ export class MissionNavigationService {
         },
       };
 
-      this.shipService.listShipsByOwner(
-        request,
-        (response: ShipListByOwnerResponse) => {
-          if (response.success) {
-            const selectedShip = resolveActiveShipSelection({
-              ships: response.ships ?? [],
-              sessionActiveShipId: this.sessionService.activeShip()?.id,
-            });
+      this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
+        if (response.success) {
+          const selectedShip = resolveActiveShipSelection({
+            ships: response.ships ?? [],
+            sessionActiveShipId: this.sessionService.activeShip()?.id,
+          });
 
-            if (selectedShip.ship) {
-              const ship = selectedShip.ship;
-              this.sessionService.setActiveShip(ship);
-              resolve({ ship, success: true });
-              return;
-            }
-
-            appLogger.log(
-              'MissionNavigationService.fetchActiveShip: hard fail selecting ship with usable spatial data',
-              {
-                reason: selectedShip.reason,
-                playerName,
-                characterId,
-              },
-            );
-            resolve({
-              ship: null,
-              success: false,
-              message: selectedShip.reason,
-            });
+          if (selectedShip.ship) {
+            const ship = selectedShip.ship;
+            this.sessionService.setActiveShip(ship);
+            resolve({ ship, success: true });
             return;
           }
 
+          appLogger.log('MissionNavigationService.fetchActiveShip: hard fail selecting ship with usable spatial data', {
+            reason: selectedShip.reason,
+            playerName,
+            characterId,
+          });
           resolve({
             ship: null,
             success: false,
-            message: response.message || 'ship-list-failed',
+            message: selectedShip.reason,
           });
-        },
-      );
+          return;
+        }
+
+        resolve({
+          ship: null,
+          success: false,
+          message: response.message || 'ship-list-failed',
+        });
+      });
     });
   }
 

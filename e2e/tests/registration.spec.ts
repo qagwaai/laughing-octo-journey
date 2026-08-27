@@ -5,7 +5,6 @@ import {
   characterListResponse,
   setupSuccessfulRegistrationMock,
 } from '../fixtures/registration-scenario';
-import { SocketIOMock } from '../fixtures/socket-mock';
 import { LoginPage } from '../page-objects/login.page';
 import { RegistrationPage } from '../page-objects/registration.page';
 

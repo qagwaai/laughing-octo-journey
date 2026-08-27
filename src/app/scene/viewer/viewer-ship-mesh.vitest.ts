@@ -1,12 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SHIP_GLTF_RESOURCE_FN } from '../../component/ship-model-mesh';
-import {
-  resolveViewerShipMeshKind,
-  ViewerScavengerPodMesh,
-  ViewerShipMesh,
-} from './viewer-ship-mesh';
+import { resolveViewerShipMeshKind, ViewerScavengerPodMesh, ViewerShipMesh } from './viewer-ship-mesh';
 
 describe('viewer-ship-mesh', () => {
   let shipGltfResourceSpy: ReturnType<typeof vi.fn>;

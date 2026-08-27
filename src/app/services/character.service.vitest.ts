@@ -136,18 +136,12 @@ describe('CharacterService', () => {
   it('isolates concurrent character-add requests under out-of-order responses', () => {
     const received: Record<string, CharacterAddResponse | undefined> = {};
 
-    service.addCharacter(
-      { playerName: 'Pioneer', characterName: 'Nyx', sessionKey: 'session-1' },
-      (response) => {
-        received['nyx'] = response;
-      },
-    );
-    service.addCharacter(
-      { playerName: 'Pioneer', characterName: 'Orin', sessionKey: 'session-1' },
-      (response) => {
-        received['orin'] = response;
-      },
-    );
+    service.addCharacter({ playerName: 'Pioneer', characterName: 'Nyx', sessionKey: 'session-1' }, (response) => {
+      received['nyx'] = response;
+    });
+    service.addCharacter({ playerName: 'Pioneer', characterName: 'Orin', sessionKey: 'session-1' }, (response) => {
+      received['orin'] = response;
+    });
 
     const nyxPayload = socketService.emittedEvents[0].data as CharacterAddRequest;
     const orinPayload = socketService.emittedEvents[1].data as CharacterAddRequest;

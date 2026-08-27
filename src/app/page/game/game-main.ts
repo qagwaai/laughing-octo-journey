@@ -3,8 +3,8 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
+import { resolveNavigationState } from '../navigation-state';
 
 interface GameMainNavigationState {
   playerName?: string;

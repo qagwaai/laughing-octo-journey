@@ -1,7 +1,7 @@
+import type { Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
-import type { Page } from '@playwright/test';
 import {
   registerMissionCharacterList,
   registerMissionList,
@@ -33,9 +33,7 @@ export async function setupLocaleOpeningMissionFlowTest(
       id: options.characterId,
       characterName: options.characterName,
       level: options.characterName === 'Nova' ? 4 : 5,
-      missions: [
-        { missionId: FIRST_TARGET_MISSION_ID, status: options.missionStatus },
-      ],
+      missions: [{ missionId: FIRST_TARGET_MISSION_ID, status: options.missionStatus }],
     },
   ]);
 
@@ -112,7 +110,11 @@ export async function loginWithItalianLocale(page: Parameters<SocketIOMock['cons
   await page.locator('.page-main h1').waitFor({ state: 'visible' });
 }
 
-export function characterListResponse(characterId: string, characterName: string, missions: Array<{ missionId: string; status: string }>) {
+export function characterListResponse(
+  characterId: string,
+  characterName: string,
+  missions: Array<{ missionId: string; status: string }>,
+) {
   return {
     success: true,
     message: '',

@@ -18,10 +18,10 @@
  * migrates it to the plugin.
  */
 
-import type { LaunchItemResponse } from '../model/launch-item';
 import type { CelestialBodyListItem } from '../model/celestial-body-list';
-import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
+import type { LaunchItemResponse } from '../model/launch-item';
 import type { Triple } from '../model/shared/triple';
+import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
 import {
   resolveShipExteriorMission,
   type ShipExteriorMissionDefinition,
@@ -72,14 +72,8 @@ export interface MissionScenePluginHudConfig {
  */
 export interface MissionScenePluginHooks {
   onScan?(params: { sample: AsteroidScanSample; gateState: ShipExteriorMissionGateState }): void;
-  onLaunch?(params: {
-    response: LaunchItemResponse;
-    gateState: ShipExteriorMissionGateState;
-  }): void;
-  onManufacture?(params: {
-    manufacturedItemType: string;
-    gateState: ShipExteriorMissionGateState;
-  }): void;
+  onLaunch?(params: { response: LaunchItemResponse; gateState: ShipExteriorMissionGateState }): void;
+  onManufacture?(params: { manufacturedItemType: string; gateState: ShipExteriorMissionGateState }): void;
   onRepair?(params: { repairKind: string; gateState: ShipExteriorMissionGateState }): void;
 }
 
@@ -105,9 +99,7 @@ export const DEFAULT_MISSION_SCENE_HUD_CONFIG: MissionScenePluginHudConfig = Obj
 /**
  * Build a default seed policy by delegating to the mission definition.
  */
-export function createDefaultSeedPolicy(
-  definition: ShipExteriorMissionDefinition,
-): MissionScenePluginSeedPolicy {
+export function createDefaultSeedPolicy(definition: ShipExteriorMissionDefinition): MissionScenePluginSeedPolicy {
   return {
     createFallbackSamples: () => definition.createFallbackAsteroidSamples(),
     createNewSamples: (params) => definition.createNewAsteroidSamplesAroundShip(params),
@@ -147,10 +139,8 @@ export function createMissionScenePlugin(
  * cases where module evaluation order can leave a `const`-declared Map in the
  * temporal dead zone when registration is invoked from a side-effect import.
  */
-let missionScenePluginFactories: Map<
-  string,
-  (definition: ShipExteriorMissionDefinition) => MissionScenePlugin
-> | null = null;
+let missionScenePluginFactories: Map<string, (definition: ShipExteriorMissionDefinition) => MissionScenePlugin> | null =
+  null;
 
 function getMissionScenePluginFactories(): Map<
   string,

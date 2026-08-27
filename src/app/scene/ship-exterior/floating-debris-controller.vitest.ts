@@ -1,12 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
-import type {
-  ItemListByLocationRequest,
-  ItemListByLocationResponse,
-} from '../../model/item-list-by-location';
+import type { ItemListByLocationRequest, ItemListByLocationResponse } from '../../model/item-list-by-location';
 import type { ShipItem } from '../../model/ship-item';
 import type { Triple } from '../../model/triple';
-import { FloatingDebrisController, FLOATING_DEBRIS_POLL_INTERVAL_MS } from './floating-debris-controller';
+import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import { FLOATING_DEBRIS_POLL_INTERVAL_MS, FloatingDebrisController } from './floating-debris-controller';
 
 interface CapturedRequest {
   request: ItemListByLocationRequest;
@@ -14,13 +11,15 @@ interface CapturedRequest {
   unsubscribe: ReturnType<typeof vi.fn>;
 }
 
-function createDeps(overrides: Partial<{
-  playerName: string;
-  shipId: string | null;
-  sessionKey: string | null;
-  positionKm: Triple | null;
-  solarSystemId: string;
-}> = {}) {
+function createDeps(
+  overrides: Partial<{
+    playerName: string;
+    shipId: string | null;
+    sessionKey: string | null;
+    positionKm: Triple | null;
+    solarSystemId: string;
+  }> = {},
+) {
   const calls: CapturedRequest[] = [];
   const intervals: Array<{ handler: () => void; intervalMs: number; handle: number }> = [];
   let nextHandle = 1;
@@ -99,7 +98,12 @@ describe('FloatingDebrisController', () => {
   it('seeds a Tractor Beam when the first response is empty', () => {
     const { controller, calls, stateService } = createDeps();
     controller.start();
-    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
+    calls[0].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
@@ -135,7 +139,12 @@ describe('FloatingDebrisController', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [item] });
+    calls[0].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [item],
+    });
 
     const all = stateService.getAll();
     expect(all.length).toBe(1);
@@ -149,7 +158,12 @@ describe('FloatingDebrisController', () => {
 
     expect(stateService.getAll().length).toBe(1);
 
-    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
+    calls[0].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
 
     expect(stateService.getAll().length).toBe(1);
   });
@@ -205,13 +219,23 @@ describe('FloatingDebrisController', () => {
   it('does not seed again on a subsequent empty response', () => {
     const { controller, intervals, calls, stateService } = createDeps();
     controller.start();
-    calls[0].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
+    calls[0].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
     expect(stateService.getAll().length).toBe(1);
 
     // Simulate the timer tick that fires another request.
     intervals[0].handler();
     expect(calls.length).toBe(2);
-    calls[1].onResponse({ success: true, correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY, items: [] });
+    calls[1].onResponse({
+      success: true,
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+      items: [],
+    });
 
     expect(stateService.getAll().length).toBe(1);
   });
@@ -263,7 +287,12 @@ describe('FloatingDebrisController', () => {
     // Tractor Beam is already present. A failed list response must not add
     // or remove anything beyond that seed.
     const seededIds = stateService.getAll().map((d) => d.id);
-    calls[0].onResponse({ success: false, message: 'boom', correlationId: TEST_CORRELATION_ID, requestIdentity: TEST_REQUEST_IDENTITY });
+    calls[0].onResponse({
+      success: false,
+      message: 'boom',
+      correlationId: TEST_CORRELATION_ID,
+      requestIdentity: TEST_REQUEST_IDENTITY,
+    });
     expect(stateService.getAll().map((d) => d.id)).toEqual(seededIds);
   });
 });

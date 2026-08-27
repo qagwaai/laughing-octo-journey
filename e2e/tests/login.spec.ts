@@ -58,9 +58,7 @@ test.describe('Login', () => {
   });
 
   test('focuses player name when no remembered username exists', async ({ page }) => {
-    await expect
-      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
-      .toBe('playerName');
+    await expect.poll(async () => page.evaluate(() => document.activeElement?.id ?? null)).toBe('playerName');
   });
 
   test('focuses password when remembered username exists', async ({ page }) => {
@@ -71,8 +69,6 @@ test.describe('Login', () => {
     await loginPage.goto();
 
     await expect(loginPage.playerNameInput).toHaveValue('RememberedPilot');
-    await expect
-      .poll(async () => page.evaluate(() => document.activeElement?.id ?? null))
-      .toBe('password');
+    await expect.poll(async () => page.evaluate(() => document.activeElement?.id ?? null)).toBe('password');
   });
 });

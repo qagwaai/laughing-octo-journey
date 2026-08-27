@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
-import { SocketIOMock } from './socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { SocketIOMock } from './socket-mock';
 import {
   registerViewerCharacterList,
   registerViewerGameJoin,

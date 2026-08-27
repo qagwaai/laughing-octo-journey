@@ -1,8 +1,8 @@
-import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, shareReplay } from 'rxjs/operators';
 import { Observable, of } from 'rxjs';
+import { catchError, map, shareReplay } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { appLogger } from './logger';
 
@@ -75,12 +75,7 @@ export class ItemCatalogService {
 
   private buildCatalogEndpoints(): string[] {
     const apiBase = (environment.apiUrl ?? '').replace(/\/+$/, '');
-    const endpointCandidates = [
-      `${apiBase}/items`,
-      `${apiBase}/api/items`,
-      '/items',
-      '/api/items',
-    ];
+    const endpointCandidates = [`${apiBase}/items`, `${apiBase}/api/items`, '/items', '/api/items'];
 
     // Keep ordering while removing empty/duplicate entries.
     return endpointCandidates.filter((value, index, all) => Boolean(value) && all.indexOf(value) === index);

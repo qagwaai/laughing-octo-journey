@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getActiveLocaleCode, isSupportedLocaleCode, setActiveLocaleCode } from './locale';
 
 describe('i18n locale branch coverage', () => {

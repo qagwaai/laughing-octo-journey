@@ -1,14 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import {
   ACTIVE_SHIP,
   ALPHA_CENTAURI_SYSTEM,
+  setupViewerListTest,
   SIRIUS_SYSTEM,
   SOL_SYSTEM,
-  setupViewerListTest,
   solarSystemListResponse,
 } from '../fixtures/viewer-list-scenario';
+import { loginViaUI, TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
 import { ViewerPage } from '../page-objects/viewer.page';

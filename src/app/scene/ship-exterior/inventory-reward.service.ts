@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import type { ShipSummary } from '../../model/ship-list';
 import type { LaunchItemResponse, LaunchItemYieldedItem, LaunchItemYieldedMaterial } from '../../model/launch-item';
 import type { ShipItem } from '../../model/ship-item';
+import type { ShipSummary } from '../../model/ship-list';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -43,7 +43,10 @@ export class InventoryRewardService {
 
     const nowIso = new Date().toISOString();
     const rewardedInventoryItems: ShipItem[] = materials.flatMap((material) => {
-      const normalizedItemType = material.material.trim().toLowerCase().replace(/[\s_]+/g, '-');
+      const normalizedItemType = material.material
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_]+/g, '-');
       const quantity = Number.isFinite(material.quantity) && material.quantity > 0 ? Math.floor(material.quantity) : 0;
       return Array.from({ length: quantity }, (_, index) => ({
         id:

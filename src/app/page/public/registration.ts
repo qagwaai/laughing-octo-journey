@@ -8,7 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { resolveNavigationState } from '../navigation-state';
+import { ExternalAnchorsComponent } from '../../component/external-anchors';
 import {
   currentLocaleCode,
   isSupportedLocaleCode,
@@ -18,11 +18,11 @@ import {
   type SupportedLocaleCode,
 } from '../../i18n/locale';
 import { LoginRequest, LoginResponse } from '../../model/login';
-import { clearRememberedPlayerHandle, writeRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { RegisterRequest, RegisterResponse } from '../../model/register';
+import { clearRememberedPlayerHandle, writeRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
-import { ExternalAnchorsComponent } from '../../component/external-anchors';
+import { resolveNavigationState } from '../navigation-state';
 
 interface RegistrationNavigationState {
   preferredLocale?: string;
@@ -56,8 +56,9 @@ export default class RegistrationPage implements OnDestroy {
   private router = inject(Router);
   private unsubscribeRegisterResponse?: () => void;
   private unsubscribeLoginResponse?: () => void;
-  private navigationState: RegistrationNavigationState =
-    resolveNavigationState<RegistrationNavigationState>(this.router);
+  private navigationState: RegistrationNavigationState = resolveNavigationState<RegistrationNavigationState>(
+    this.router,
+  );
   private defaultLocale: SupportedLocaleCode =
     typeof this.navigationState.preferredLocale === 'string' &&
     isSupportedLocaleCode(this.navigationState.preferredLocale)

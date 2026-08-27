@@ -96,10 +96,7 @@ describe('ShipExteriorMissionStateService', () => {
   });
 
   it('should load legacy state without ship-specific storage', () => {
-    window.localStorage.setItem(
-      'ship-exterior-mission-state::first-target::Pioneer::char-1',
-      JSON.stringify(state),
-    );
+    window.localStorage.setItem('ship-exterior-mission-state::first-target::Pioneer::char-1', JSON.stringify(state));
 
     expect(service.loadState(context)).toEqual(state);
     expect(window.localStorage.getItem('ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1')).toBe(

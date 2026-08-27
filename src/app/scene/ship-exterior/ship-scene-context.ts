@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
-import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
-import type { ShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
-import { summarizeShipExteriorRouteFeeds, type ShipExteriorRouteFeedCounts } from './ship-exterior-route-feed-summary';
 import { resolveDescriptorRenderProfile } from '../viewer/viewer-descriptor-selectors';
 import { OrbitCameraControls } from './orbit-camera-controls';
 import type { ShipExteriorAsteroidVisual } from './ship-exterior-asteroid-visuals';
 import { buildAsteroidLayoutSignature, deriveAsteroidVisuals } from './ship-exterior-asteroid-visuals';
-import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
+import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
+import type { ShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
+import { summarizeShipExteriorRouteFeeds, type ShipExteriorRouteFeedCounts } from './ship-exterior-route-feed-summary';
 import {
   ShipSceneAsteroidSample,
   ShipSceneAsteroidState,
@@ -60,7 +60,11 @@ function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroid
     serverCelestialBodyId: sample.serverCelestialBodyId ?? null,
     revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : null,
     revealedKinematics: sample.revealedKinematics
-      ? { ...sample.revealedKinematics, velocityKmPerSec: { ...sample.revealedKinematics.velocityKmPerSec }, angularVelocityRadPerSec: { ...sample.revealedKinematics.angularVelocityRadPerSec } }
+      ? {
+          ...sample.revealedKinematics,
+          velocityKmPerSec: { ...sample.revealedKinematics.velocityKmPerSec },
+          angularVelocityRadPerSec: { ...sample.revealedKinematics.angularVelocityRadPerSec },
+        }
       : null,
     solarSystemLocation: sample.solarSystemLocation
       ? { positionKm: { ...sample.solarSystemLocation.positionKm } }
@@ -82,7 +86,9 @@ function cloneMissionGateState(state: ShipExteriorMissionGateState): ShipExterio
 function cloneDebrisItem(item: FloatingDebrisItem): FloatingDebrisItem {
   return {
     ...item,
-    externalObjectDescriptor: item.externalObjectDescriptor ? { ...item.externalObjectDescriptor } : item.externalObjectDescriptor,
+    externalObjectDescriptor: item.externalObjectDescriptor
+      ? { ...item.externalObjectDescriptor }
+      : item.externalObjectDescriptor,
     positionKm: { ...item.positionKm },
     velocityKmPerSec: item.velocityKmPerSec ? { ...item.velocityKmPerSec } : item.velocityKmPerSec,
   };
@@ -391,7 +397,8 @@ export class ShipSceneContext {
       asteroid: {
         ...asteroid,
         targetedAsteroidId: targetStillExists ? sampleId : null,
-        targetHoldCandidateId: targetStillExists && asteroid.targetHoldCandidateId === sampleId ? null : asteroid.targetHoldCandidateId,
+        targetHoldCandidateId:
+          targetStillExists && asteroid.targetHoldCandidateId === sampleId ? null : asteroid.targetHoldCandidateId,
       },
     };
   }
@@ -721,7 +728,11 @@ export class ShipSceneContext {
   }
 
   flightPointerLocked(): boolean {
-    return Boolean(this.renderingState?.canvas && typeof document !== 'undefined' && document.pointerLockElement === this.renderingState.canvas);
+    return Boolean(
+      this.renderingState?.canvas &&
+      typeof document !== 'undefined' &&
+      document.pointerLockElement === this.renderingState.canvas,
+    );
   }
 
   snapshotRuntime(): ShipSceneRuntimeSnapshot | null {
@@ -907,7 +918,10 @@ export class ShipSceneContext {
     });
   }
 
-  private createStationVisual(station: NonNullable<ShipExteriorRouteFeeds['stations']>[number], index: number): THREE.Group {
+  private createStationVisual(
+    station: NonNullable<ShipExteriorRouteFeeds['stations']>[number],
+    index: number,
+  ): THREE.Group {
     const group = new THREE.Group();
     group.name = station.marketId;
     this.applyStationVisual(group, station, index);
@@ -1093,7 +1107,10 @@ export class ShipSceneContext {
       this.state.asteroid?.hoveredAsteroidId ?? null,
     );
 
-    if (this.asteroidLayoutSignature !== nextSignature || this.renderingState.asteroidGroup.children.length !== visuals.length) {
+    if (
+      this.asteroidLayoutSignature !== nextSignature ||
+      this.renderingState.asteroidGroup.children.length !== visuals.length
+    ) {
       this.asteroidLayoutSignature = nextSignature;
       this.renderingState.asteroidLayoutSignatureLocal = nextSignature;
       disposeAsteroidGroup(this.renderingState.asteroidGroup);
@@ -1259,12 +1276,22 @@ export class ShipSceneContext {
 
     const canvas = this.renderingState.canvas;
     const rect = canvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0 || clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+    if (
+      rect.width <= 0 ||
+      rect.height <= 0 ||
+      clientX < rect.left ||
+      clientX > rect.right ||
+      clientY < rect.top ||
+      clientY > rect.bottom
+    ) {
       this.setHoveredAsteroidId(null);
       return null;
     }
 
-    this.hoverPointer.set(((clientX - rect.left) / rect.width) * 2 - 1, -(((clientY - rect.top) / rect.height) * 2 - 1));
+    this.hoverPointer.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -(((clientY - rect.top) / rect.height) * 2 - 1),
+    );
     this.hoverRaycaster.setFromCamera(this.hoverPointer, this.renderingState.camera);
 
     const intersections = this.hoverRaycaster.intersectObjects(this.renderingState.asteroidGroup.children, false);

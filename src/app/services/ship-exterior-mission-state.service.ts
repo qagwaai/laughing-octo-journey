@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
-import { resolveShipExteriorMission, type ShipExteriorMissionGateStepState } from '../mission/ship-exterior-mission';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
+import { resolveShipExteriorMission, type ShipExteriorMissionGateStepState } from '../mission/ship-exterior-mission';
 
 /**
  * Storage key identity used for mission gate-state persistence.
@@ -119,7 +119,9 @@ export class ShipExteriorMissionStateService {
     const stepDefinitions = mission.getGateStepDefinitions();
     const storedStepsByKey = new Map(state.steps.map((step) => [step.key, step] as const));
     const completedStepKeys = new Set(
-      state.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').map((step) => step.key),
+      state.steps
+        .filter((step) => step.status === 'completed' || step.status === 'pending-retry')
+        .map((step) => step.key),
     );
 
     const mergedSteps: ShipExteriorMissionGateStepState[] = stepDefinitions.map((definition) => {

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockSessionService,
   createMockSocketService,
@@ -182,9 +182,7 @@ describe('ViewerPage', () => {
     expect(component['selectedSystemId']()).toBe('sol');
     const args = mockRouter.navigate.mock.calls.at(-1)!;
     expect(args[0]).toEqual([{ outlets: { left: ['solar-system-details', 'sol'], right: ['viewer-scene', 'sol'] } }]);
-    expect(args[1].state).toEqual(
-      expect.objectContaining({ solarSystem: system, playerName: 'Pioneer' }),
-    );
+    expect(args[1].state).toEqual(expect.objectContaining({ solarSystem: system, playerName: 'Pioneer' }));
   });
 
   it('formats non-finite and finite distances', () => {

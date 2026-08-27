@@ -2,7 +2,6 @@
  * Printable item definitions and helper utilities for fabrication/repair queues.
  */
 import type { ShipItem } from './ship-item';
-import { getItemOrToast } from '../services/item-catalog-util';
 
 export interface PrintableConsumedMaterial {
   id: string;
@@ -95,7 +94,9 @@ export function hasPrintableItemInInventory(
   inventory: readonly ShipItem[] | undefined,
   printableItem: PrintableItemDefinition,
 ): boolean {
-  return (inventory ?? []).some((item) => isUsableContainedInventoryItem(item) && item.itemType === printableItem.itemType);
+  return (inventory ?? []).some(
+    (item) => isUsableContainedInventoryItem(item) && item.itemType === printableItem.itemType,
+  );
 }
 
 export function isPrintableItemQueued(

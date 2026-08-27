@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import ShipExteriorHudOverlayComponent from './ship-exterior-hud-overlay';
 
 function setup() {
@@ -129,8 +129,12 @@ describe('ShipExteriorHudOverlayComponent', () => {
     component.scanAllAsteroidsToHeroForTest.subscribe(() => emitted.push('scan-all'));
     component.hidePropertiesPanel.subscribe(() => emitted.push('hide-properties'));
 
-    const flightToggle = fixture.nativeElement.querySelector('.ship-exterior-flight-panel__toggle') as HTMLButtonElement;
-    const targetIron = fixture.nativeElement.querySelectorAll('.ship-exterior-test-target-button')[0] as HTMLButtonElement;
+    const flightToggle = fixture.nativeElement.querySelector(
+      '.ship-exterior-flight-panel__toggle',
+    ) as HTMLButtonElement;
+    const targetIron = fixture.nativeElement.querySelectorAll(
+      '.ship-exterior-test-target-button',
+    )[0] as HTMLButtonElement;
     const scanAll = fixture.nativeElement.querySelectorAll('.ship-exterior-test-target-button')[1] as HTMLButtonElement;
     const hotkeyTile = fixture.nativeElement.querySelector('.ship-exterior-hotkey-tile') as HTMLButtonElement;
 

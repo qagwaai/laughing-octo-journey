@@ -1,16 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  CUSTOM_ELEMENTS_SCHEMA,
   computed,
+  CUSTOM_ELEMENTS_SCHEMA,
   input,
   signal,
   viewChild,
 } from '@angular/core';
 import type { Triplet } from '@pmndrs/cannon-worker-api/dist/types';
 import { NgtArgs } from 'angular-three';
-import { NgtCanvas } from 'angular-three/dom';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { NgtCanvas } from 'angular-three/dom';
 import * as THREE from 'three';
 import { locale } from '../../../../i18n/locale';
 import type {
@@ -123,7 +123,10 @@ type OrbitControlsLike = {
   enabled?: boolean;
 };
 
-const BUST_CAMERA_PRESETS: Array<{ preset: BustCameraPreset; labelKey: keyof typeof locale.character.setup.bust.viewer.cameraPresets }> = [
+const BUST_CAMERA_PRESETS: Array<{
+  preset: BustCameraPreset;
+  labelKey: keyof typeof locale.character.setup.bust.viewer.cameraPresets;
+}> = [
   { preset: 'front', labelKey: 'front' },
   { preset: 'three-quarter', labelKey: 'threeQuarter' },
   { preset: 'left-profile', labelKey: 'leftProfile' },
@@ -134,11 +137,41 @@ const FACE_SHAPE_PROFILE: Record<
   BustFaceShape,
   { faceScale: Triplet; cheekScale: Triplet; noseScale: Triplet; browLift: number; jawDrop: number }
 > = {
-  oval: { faceScale: [1.02, 1.11, 0.94], cheekScale: [0.35, 0.29, 0.26], noseScale: [0.16, 0.24, 0.16], browLift: 0.08, jawDrop: 0.03 },
-  round: { faceScale: [1.08, 1.08, 0.98], cheekScale: [0.4, 0.31, 0.3], noseScale: [0.15, 0.22, 0.15], browLift: 0.06, jawDrop: 0.02 },
-  square: { faceScale: [1.1, 1.02, 0.96], cheekScale: [0.34, 0.27, 0.24], noseScale: [0.17, 0.24, 0.16], browLift: 0.03, jawDrop: -0.01 },
-  angular: { faceScale: [1.05, 1.06, 0.92], cheekScale: [0.3, 0.24, 0.22], noseScale: [0.18, 0.25, 0.15], browLift: 0.1, jawDrop: 0.01 },
-  narrow: { faceScale: [0.9, 1.14, 0.86], cheekScale: [0.26, 0.23, 0.19], noseScale: [0.15, 0.27, 0.14], browLift: 0.12, jawDrop: 0.05 },
+  oval: {
+    faceScale: [1.02, 1.11, 0.94],
+    cheekScale: [0.35, 0.29, 0.26],
+    noseScale: [0.16, 0.24, 0.16],
+    browLift: 0.08,
+    jawDrop: 0.03,
+  },
+  round: {
+    faceScale: [1.08, 1.08, 0.98],
+    cheekScale: [0.4, 0.31, 0.3],
+    noseScale: [0.15, 0.22, 0.15],
+    browLift: 0.06,
+    jawDrop: 0.02,
+  },
+  square: {
+    faceScale: [1.1, 1.02, 0.96],
+    cheekScale: [0.34, 0.27, 0.24],
+    noseScale: [0.17, 0.24, 0.16],
+    browLift: 0.03,
+    jawDrop: -0.01,
+  },
+  angular: {
+    faceScale: [1.05, 1.06, 0.92],
+    cheekScale: [0.3, 0.24, 0.22],
+    noseScale: [0.18, 0.25, 0.15],
+    browLift: 0.1,
+    jawDrop: 0.01,
+  },
+  narrow: {
+    faceScale: [0.9, 1.14, 0.86],
+    cheekScale: [0.26, 0.23, 0.19],
+    noseScale: [0.15, 0.27, 0.14],
+    browLift: 0.12,
+    jawDrop: 0.05,
+  },
 };
 
 const SKIN_TONE_COLOR: Record<BustSkinTone, { skin: string; shadow: string }> = {
@@ -179,7 +212,10 @@ const ACCESSORY_COLOR: Record<BustApparelAccent, string> = {
   headband: '#cf8245',
 };
 
-const HAIR_STYLE_PROFILE: Record<BustHairStyle, { hairScale: Triplet; hairOffset: Triplet; hairSheen: number; accessory: BustRenderProfile['accessory'] }> = {
+const HAIR_STYLE_PROFILE: Record<
+  BustHairStyle,
+  { hairScale: Triplet; hairOffset: Triplet; hairSheen: number; accessory: BustRenderProfile['accessory'] }
+> = {
   'short-crop': { hairScale: [1.04, 0.76, 1.02], hairOffset: [0, 0.32, -0.02], hairSheen: 0.28, accessory: 'none' },
   'mid-fade': { hairScale: [1.06, 0.82, 1.05], hairOffset: [0, 0.38, -0.02], hairSheen: 0.34, accessory: 'none' },
   'long-loose': { hairScale: [1.16, 0.96, 1.08], hairOffset: [0, 0.28, -0.1], hairSheen: 0.25, accessory: 'none' },
@@ -188,7 +224,10 @@ const HAIR_STYLE_PROFILE: Record<BustHairStyle, { hairScale: Triplet; hairOffset
   slicked: { hairScale: [1.04, 0.78, 1.02], hairOffset: [0, 0.35, -0.03], hairSheen: 0.52, accessory: 'none' },
 };
 
-const EXPRESSION_PROFILE: Record<BustExpressionPreset, { browTilt: number; mouthCurve: number; lipScaleY: number; eyeScaleY: number; browLift: number }> = {
+const EXPRESSION_PROFILE: Record<
+  BustExpressionPreset,
+  { browTilt: number; mouthCurve: number; lipScaleY: number; eyeScaleY: number; browLift: number }
+> = {
   neutral: { browTilt: 0, mouthCurve: 0.02, lipScaleY: 1, eyeScaleY: 1, browLift: 0.02 },
   focused: { browTilt: -0.18, mouthCurve: 0.0, lipScaleY: 0.88, eyeScaleY: 0.94, browLift: 0.0 },
   smirk: { browTilt: 0.12, mouthCurve: 0.14, lipScaleY: 0.94, eyeScaleY: 1, browLift: 0.03 },
@@ -197,13 +236,21 @@ const EXPRESSION_PROFILE: Record<BustExpressionPreset, { browTilt: number; mouth
   weary: { browTilt: 0.0, mouthCurve: -0.12, lipScaleY: 0.86, eyeScaleY: 0.84, browLift: -0.05 },
 };
 
-const ACCESSORY_PROFILE: Record<BustApparelAccent, { scale: Triplet; offset: Triplet; rotation: Triplet; accent: string }> = {
+const ACCESSORY_PROFILE: Record<
+  BustApparelAccent,
+  { scale: Triplet; offset: Triplet; rotation: Triplet; accent: string }
+> = {
   none: { scale: [0, 0, 0], offset: [0, 0, 0], rotation: [0, 0, 0], accent: '#000000' },
   collar: { scale: [1.22, 0.2, 1.02], offset: [0, -0.9, 0.02], rotation: [0, 0, 0], accent: ACCESSORY_COLOR.collar },
   hood: { scale: [1.26, 1.0, 1.15], offset: [0, -0.12, -0.12], rotation: [0, 0, 0], accent: ACCESSORY_COLOR.hood },
   visor: { scale: [1.12, 0.18, 1.0], offset: [0, 0.42, 0.42], rotation: [0, 0, 0], accent: ACCESSORY_COLOR.visor },
   goggles: { scale: [1.14, 0.18, 1.02], offset: [0, 0.39, 0.36], rotation: [0, 0, 0], accent: ACCESSORY_COLOR.goggles },
-  headband: { scale: [1.12, 0.11, 1.0], offset: [0, 0.57, 0.36], rotation: [0, 0, 0], accent: ACCESSORY_COLOR.headband },
+  headband: {
+    scale: [1.12, 0.11, 1.0],
+    offset: [0, 0.57, 0.36],
+    rotation: [0, 0, 0],
+    accent: ACCESSORY_COLOR.headband,
+  },
 };
 
 export function resolveBustCameraPose(preset: BustCameraPreset): BustCameraPose {
@@ -260,7 +307,11 @@ export function resolveBustRenderProfile(descriptor: BustDescriptorInput): BustR
     eyeSocketScale: [0.44, 0.34, 0.2],
     eyeSocketOffset: [0.28 + faceProfile.faceScale[0] * 0.01, 0.17 + expressionProfile.browLift * 0.42, 0.56],
     eyeLidScale: [0.48, 0.16, 0.24],
-    eyeScale: [eyeStyleScale[descriptor.eyeStyle][0] * 1.04, eyeStyleScale[descriptor.eyeStyle][1] * 0.98, eyeStyleScale[descriptor.eyeStyle][2] * 1.04],
+    eyeScale: [
+      eyeStyleScale[descriptor.eyeStyle][0] * 1.04,
+      eyeStyleScale[descriptor.eyeStyle][1] * 0.98,
+      eyeStyleScale[descriptor.eyeStyle][2] * 1.04,
+    ],
     eyeIrisScale: [0.44, 0.44, 0.44],
     eyePupilScale: [0.2, 0.2, 0.2],
     eyeHighlightScale: [0.06, 0.06, 0.06],
@@ -317,7 +368,9 @@ export class CharacterBustViewerComponent {
   protected readonly viewerReady = signal(false);
   protected readonly firstRenderMs = signal<number | null>(null);
   protected readonly sceneYOffset = signal(1.0);
-  protected readonly interactionLabel = signal<'idle' | 'rotate' | 'scene' | 'pinch' | 'zoom' | 'reset' | 'preset'>('idle');
+  protected readonly interactionLabel = signal<'idle' | 'rotate' | 'scene' | 'pinch' | 'zoom' | 'reset' | 'preset'>(
+    'idle',
+  );
   protected readonly interactionRevision = signal(0);
   protected readonly cameraState = signal<BustCameraState>({
     preset: CHARACTER_BUST_INITIAL_CAMERA_PRESET,
@@ -427,7 +480,9 @@ export class CharacterBustViewerComponent {
   }
 
   protected presetButtonClass(preset: BustCameraPreset): string {
-    return preset === this.cameraPreset() ? 'bust-viewer__preset-button bust-viewer__preset-button--active' : 'bust-viewer__preset-button';
+    return preset === this.cameraPreset()
+      ? 'bust-viewer__preset-button bust-viewer__preset-button--active'
+      : 'bust-viewer__preset-button';
   }
 
   protected hintText(): string {
@@ -449,7 +504,9 @@ export class CharacterBustViewerComponent {
       presetLabel: this.cameraPresetLabel(preset),
       position: pose.position,
       target: pose.target,
-      distance: controls?.object?.position?.distanceTo ? controls.object.position.distanceTo(controls.target) : pose.distance,
+      distance: controls?.object?.position?.distanceTo
+        ? controls.object.position.distanceTo(controls.target)
+        : pose.distance,
       azimuth,
       polar,
       sceneYOffset: this.sceneYOffset(),

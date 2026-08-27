@@ -1,10 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Component } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { ExternalAnchorItem, ExternalAnchorsComponent } from './external-anchors';
 
 @Component({
-  template: `<app-external-anchors [layout]="layout" />`,
+  template: `
+    <app-external-anchors [layout]="layout" />
+  `,
   imports: [ExternalAnchorsComponent],
 })
 class DefaultHostComponent {
@@ -12,7 +14,9 @@ class DefaultHostComponent {
 }
 
 @Component({
-  template: `<app-external-anchors [anchors]="anchors" [layout]="layout" />`,
+  template: `
+    <app-external-anchors [anchors]="anchors" [layout]="layout" />
+  `,
   imports: [ExternalAnchorsComponent],
 })
 class AnchoredHostComponent {

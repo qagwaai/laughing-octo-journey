@@ -23,7 +23,9 @@
   </ngt-canvas>
 
   <div class="viewer-scene-zoom" data-testid="viewer-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
-    <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">{{ t.game.viewer.planetViewZoomLabel }}</label>
+    <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">
+      {{ t.game.viewer.planetViewZoomLabel }}
+    </label>
     <input
       id="viewer-scene-zoom-input"
       type="range"
@@ -70,9 +72,7 @@
       <span>Show Effective Profile</span>
     </label>
   </div>
-  }
-
-  @if (focusedPlanet(); as focused) {
+  } @if (focusedPlanet(); as focused) {
   <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
     Focused: {{ focused.displayName }}
     <span class="viewer-focus-pill__type">({{ focused.bodyType }})</span>
@@ -82,38 +82,38 @@
   <div class="viewer-legend" data-testid="viewer-legend" aria-label="Map legend">
     <div class="viewer-legend__title">{{ t.game.viewer.legendTitle }}</div>
     <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch" style="background:#ffffff"></span>
+      <span class="viewer-legend__swatch" style="background: #ffffff"></span>
       <span>{{ t.game.viewer.legendPlanet }}</span>
     </div>
     <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#ffffff"></span>
+      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #ffffff"></span>
       <span>{{ t.game.viewer.legendPlanetOrbit }}</span>
     </div>
     <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch" style="background:#22c55e"></span>
+      <span class="viewer-legend__swatch" style="background: #22c55e"></span>
       <span>{{ t.game.viewer.legendMarketStation }}</span>
     </div>
     <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background:#86efac"></span>
+      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #86efac"></span>
       <span>{{ t.game.viewer.legendMarketOrbit }}</span>
     </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-gate">
-      <span class="viewer-legend__swatch" style="background:#38bdf8"></span>
+      <span class="viewer-legend__swatch" style="background: #38bdf8"></span>
       <span>{{ t.game.viewer.legendGateLandmark }}</span>
     </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#fbbf24"></span>
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #fbbf24"></span>
       <span>{{ t.game.viewer.legendActiveShip }}</span>
     </div>
     <div class="viewer-legend__item" data-testid="viewer-legend-inactive-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#3b82f6"></span>
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #3b82f6"></span>
       <span>{{ t.game.viewer.legendInactiveShip }}</span>
     </div>
     @if (hasUnknownSpatialShip()) {
-      <div class="viewer-legend__item" data-testid="viewer-legend-unknown-ship">
-        <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background:#ef4444"></span>
-        <span>{{ t.game.viewer.legendUnknownShip }}</span>
-      </div>
+    <div class="viewer-legend__item" data-testid="viewer-legend-unknown-ship">
+      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #ef4444"></span>
+      <span>{{ t.game.viewer.legendUnknownShip }}</span>
+    </div>
     }
   </div>
 
@@ -123,72 +123,160 @@
       {{ body.displayName }}
       <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
     </div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">ID</span><span class="viewer-detail-pane__value">{{ body.id }}</span></div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">ID</span>
+      <span class="viewer-detail-pane__value">{{ body.id }}</span>
+    </div>
     @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Descriptor Domain</span><span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span></div>
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Object Family</span><span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span></div>
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Fallback Tier</span><span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span></div>
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Radius Scale</span><span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span></div>
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Segments</span><span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span></div>
-      <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Profile Emissive</span><span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span></div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Descriptor Domain</span>
+      <span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Object Family</span>
+      <span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Fallback Tier</span>
+      <span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Profile Radius Scale</span>
+      <span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Profile Segments</span>
+      <span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Profile Emissive</span>
+      <span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span>
+    </div>
     }
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Spectral Class</span><span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Luminosity (Solar)</span><span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (Solar)</span><span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Planet Type</span><span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Color</span><span class="viewer-detail-pane__value">{{ body.visualization?.colorHex ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Texture</span><span class="viewer-detail-pane__value">{{ body.visualization?.textureKey ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Diameter (m)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mass (kg)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedMassKg ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Radius (km)</span><span class="viewer-detail-pane__value">{{ body.physicalCatalog?.radiusKm ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Anchor Body</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.anchorBodyId ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Semi-Major Axis (km)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Eccentricity</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Inclination (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Orbital Period (s)</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch</span><span class="viewer-detail-pane__value">{{ body.orbitalElements?.epoch ?? '—' }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Position (km)</span><span class="viewer-detail-pane__value">{{ body.spatial.positionKm.x }}, {{ body.spatial.positionKm.y }}, {{ body.spatial.positionKm.z }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Frame</span><span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Epoch (ms)</span><span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span></div>
-    <div class="viewer-detail-pane__row"><span class="viewer-detail-pane__label">Solar System</span><span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span></div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Spectral Class</span>
+      <span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Luminosity (Solar)</span>
+      <span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Mass (Solar)</span>
+      <span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Planet Type</span>
+      <span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Color</span>
+      <span class="viewer-detail-pane__value">{{ body.visualization?.colorHex ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Texture</span>
+      <span class="viewer-detail-pane__value">{{ body.visualization?.textureKey ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Diameter (m)</span>
+      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Mass (kg)</span>
+      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedMassKg ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Radius (km)</span>
+      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.radiusKm ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Anchor Body</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.anchorBodyId ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Eccentricity</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Inclination (deg)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Orbital Period (s)</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Epoch</span>
+      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.epoch ?? '—' }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Position (km)</span>
+      <span class="viewer-detail-pane__value">
+        {{ body.spatial.positionKm.x }}, {{ body.spatial.positionKm.y }}, {{ body.spatial.positionKm.z }}
+      </span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Frame</span>
+      <span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Epoch (ms)</span>
+      <span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span>
+    </div>
+    <div class="viewer-detail-pane__row">
+      <span class="viewer-detail-pane__label">Solar System</span>
+      <span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span>
+    </div>
     @if (resolveGateApproachMetadata(body); as gateApproachMetadata) {
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
-      </div>
-      <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
-        <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
-        <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}</span>
-      </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
+      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
+    </div>
+    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
+      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
+      <span class="viewer-detail-pane__value">
+        {{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}
+      </span>
+    </div>
     }
   </div>
-  }
-
-  @if (isPlanetTransitioning()) {
+  } @if (isPlanetTransitioning()) {
   <div class="viewer-scene-transition" data-testid="viewer-scene-transition"></div>
-  }
-  }
+  } }
 </div>

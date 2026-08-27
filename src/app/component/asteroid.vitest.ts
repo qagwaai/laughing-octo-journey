@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   Asteroid,
   ASTEROID_BEFORE_RENDER_FN,
@@ -13,8 +13,8 @@ import {
   resolveAsteroidMaterialColor,
   resolveAsteroidPbrMetalness,
   resolveAsteroidPbrRoughness,
-  resolveAsteroidRockRevealSelection,
   resolveAsteroidRockGeometry,
+  resolveAsteroidRockRevealSelection,
   resolveAsteroidSweepOpacity,
   resolveAsteroidVisualState,
   type AsteroidHoverEvent,

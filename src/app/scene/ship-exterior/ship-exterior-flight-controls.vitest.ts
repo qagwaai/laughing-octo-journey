@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   applyMouseLook,
   integrateFlightStep,
@@ -9,9 +9,7 @@ import {
 
 describe('ship-exterior-flight-controls', () => {
   it('maps key presses to 6DoF movement input', () => {
-    const input = resolveMovementInput(
-      new Set(['KeyW', 'KeyD', 'Space', 'KeyE', 'ShiftLeft']),
-    );
+    const input = resolveMovementInput(new Set(['KeyW', 'KeyD', 'Space', 'KeyE', 'ShiftLeft']));
 
     expect(input).toEqual({
       forward: 1,

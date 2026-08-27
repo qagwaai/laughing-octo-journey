@@ -1,7 +1,7 @@
-import { expect, test as base, type BrowserContext, type Page } from '@playwright/test';
-import { SocketIOMock } from './socket-mock';
+import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
 import { loginViaUI } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { SocketIOMock } from './socket-mock';
 
 export type SessionHandlerRegistrar = (mock: SocketIOMock) => void;
 
@@ -200,9 +200,7 @@ export function createJoinedGameTest(config: JoinedGameFixtureConfig) {
             if (!isNavigationRace) {
               throw error;
             }
-            await page
-              .waitForURL(/left:(login|game-main|character-list)/, { timeout: 5_000 })
-              .catch(() => null);
+            await page.waitForURL(/left:(login|game-main|character-list)/, { timeout: 5_000 }).catch(() => null);
           }
         }
 

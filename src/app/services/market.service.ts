@@ -1,12 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { appLogger } from './logger';
-import {
-  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
-  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
-  type MarketListRequestIdentity,
-  type MarketListByLocationRequest,
-  type MarketListByLocationResponse,
-} from '../model/market-list';
 import {
   MARKET_BUY_REQUEST_EVENT,
   MARKET_BUY_RESPONSE_EVENT,
@@ -14,12 +6,23 @@ import {
   type MarketBuyRequestIdentity,
   type MarketBuyResponse,
 } from '../model/market-buy';
+import {
+  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
+  type MarketListByLocationRequest,
+  type MarketListByLocationResponse,
+  type MarketListRequestIdentity,
+} from '../model/market-list';
+import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
 function normalizeLocationTypes(locationTypes: string[] | undefined): string {
   return Array.isArray(locationTypes)
-    ? locationTypes.map((locationType) => normalizeIdentityValue(locationType)).sort().join(',')
+    ? locationTypes
+        .map((locationType) => normalizeIdentityValue(locationType))
+        .sort()
+        .join(',')
     : '';
 }
 
@@ -92,7 +95,10 @@ function isMarketListByLocationResponseForRequest(
     return false;
   }
 
-  if (response.locationTypes && normalizeLocationTypes(response.locationTypes) !== normalizeLocationTypes(expectedRequest.locationTypes)) {
+  if (
+    response.locationTypes &&
+    normalizeLocationTypes(response.locationTypes) !== normalizeLocationTypes(expectedRequest.locationTypes)
+  ) {
     return false;
   }
 

@@ -1,6 +1,6 @@
-import { MissionGateSimulator } from './mission-gate-simulator';
 import { createInitialMissionGateState, resolveShipExteriorMission } from '../../mission/ship-exterior-mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { MissionGateSimulator } from './mission-gate-simulator';
 
 describe('MissionGateSimulator', () => {
   const createState = (characterId = 'char-42') =>
@@ -53,9 +53,7 @@ describe('MissionGateSimulator', () => {
       createInitialState: () => state,
       getCurrentState: () => ({
         ...state,
-        steps: state.steps.map((step) =>
-          step.key === 'repair_scavenger_pod' ? { ...step, status: 'active' } : step,
-        ),
+        steps: state.steps.map((step) => (step.key === 'repair_scavenger_pod' ? { ...step, status: 'active' } : step)),
       }),
       setState: vi.fn(),
       persistState: vi.fn(),

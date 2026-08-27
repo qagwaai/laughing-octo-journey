@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { NGT_STORE } from 'angular-three';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OPENING_STAGE_TIMINGS_MS } from '../../model/opening-sequence';
 import ColdBootHudScene from './cold-boot-hud-scene';

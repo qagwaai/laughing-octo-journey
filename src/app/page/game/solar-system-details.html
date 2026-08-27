@@ -25,14 +25,18 @@
             [class.details-view-toggle__btn--active]="viewMode() === 'type'"
             (click)="setViewMode('type')"
             [attr.aria-pressed]="viewMode() === 'type'"
-          >{{ t.game.viewer.detailsViewByType }}</button>
+          >
+            {{ t.game.viewer.detailsViewByType }}
+          </button>
           <button
             type="button"
             class="details-view-toggle__btn"
             [class.details-view-toggle__btn--active]="viewMode() === 'distance'"
             (click)="setViewMode('distance')"
             [attr.aria-pressed]="viewMode() === 'distance'"
-          >{{ t.game.viewer.detailsViewByDistance }}</button>
+          >
+            {{ t.game.viewer.detailsViewByDistance }}
+          </button>
         </div>
         }
       </div>
@@ -80,14 +84,12 @@
                 [class.details-row--active-ship]="row.isActiveShip"
               >
                 <td class="details-col-name">
-                  {{ row.displayName }}
-                  @if (row.isActiveShip) {
+                  {{ row.displayName }} @if (row.isActiveShip) {
                   <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
                   }
                 </td>
                 <td class="details-col-ship-model">
-                  {{ row.shipModel ?? '—' }}
-                  @if (row.shipTier !== null) { T{{ row.shipTier }} }
+                  {{ row.shipModel ?? '—' }} @if (row.shipTier !== null) { T{{ row.shipTier }} }
                 </td>
                 <td class="details-col-ship-status">{{ row.shipStatus ?? '—' }}</td>
                 <td class="details-col-action">
@@ -97,7 +99,9 @@
                     [class.details-target-btn--active]="activeTargetId() === row.id"
                     (click)="targetBody(row.id)"
                     [attr.aria-pressed]="activeTargetId() === row.id"
-                  >{{ t.game.viewer.detailsTargetButton }}</button>
+                  >
+                    {{ t.game.viewer.detailsTargetButton }}
+                  </button>
                 </td>
               </tr>
               }
@@ -127,7 +131,9 @@
                     [class.details-target-btn--active]="activeTargetId() === row.id"
                     (click)="targetBody(row.id)"
                     [attr.aria-pressed]="activeTargetId() === row.id"
-                  >{{ t.game.viewer.detailsTargetButton }}</button>
+                  >
+                    {{ t.game.viewer.detailsTargetButton }}
+                  </button>
                 </td>
               </tr>
               }
@@ -137,9 +143,7 @@
         </div>
         }
       </div>
-      }
-
-      } @else {
+      } } @else {
 
       <!-- DISTANCE VIEW: flat table sorted by orbit distance -->
       <div class="details-table-wrapper">
@@ -159,8 +163,7 @@
               [class.details-row--active-ship]="row.isActiveShip"
             >
               <td class="details-col-name">
-                {{ row.displayName }}
-                @if (row.isActiveShip) {
+                {{ row.displayName }} @if (row.isActiveShip) {
                 <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
                 }
               </td>
@@ -173,7 +176,9 @@
                   [class.details-target-btn--active]="activeTargetId() === row.id"
                   (click)="targetBody(row.id)"
                   [attr.aria-pressed]="activeTargetId() === row.id"
-                >{{ t.game.viewer.detailsTargetButton }}</button>
+                >
+                  {{ t.game.viewer.detailsTargetButton }}
+                </button>
               </td>
             </tr>
             }

@@ -43,10 +43,7 @@ export async function setupLoginSuccessMock(page: Parameters<SocketIOMock['const
   return { mock, loginResponse, TEST_PLAYER };
 }
 
-export async function openLoginAndWaitForSocket(
-  page: Parameters<SocketIOMock['constructor']>[0],
-  mock: SocketIOMock,
-) {
+export async function openLoginAndWaitForSocket(page: Parameters<SocketIOMock['constructor']>[0], mock: SocketIOMock) {
   const socketConnectedInApp = page
     .waitForEvent('console', {
       predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),

@@ -1,18 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createMockSessionService,
   createMockSocketService,
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
-import {
-  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
-  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
-} from '../../model/market-list';
+import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE_EVENT } from '../../model/market-list';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
@@ -106,7 +103,8 @@ describe('ViewerScenePage', () => {
   it('populates bodies on a successful response', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
+      ?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };
@@ -148,7 +146,8 @@ describe('ViewerScenePage', () => {
   it('hydrates market stations from market-list-by-location when solar-system-get has none', () => {
     const { component, socketService, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
+      ?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };
@@ -178,7 +177,9 @@ describe('ViewerScenePage', () => {
     });
     fixture.detectChanges();
 
-    expect(socketService.emittedEvents.some((entry) => entry.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)).toBe(true);
+    expect(socketService.emittedEvents.some((entry) => entry.event === MARKET_LIST_BY_LOCATION_REQUEST_EVENT)).toBe(
+      true,
+    );
 
     socketService.triggerEvent(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, {
       success: true,
@@ -227,7 +228,8 @@ describe('ViewerScenePage', () => {
   it('reports an error when the response indicates failure', () => {
     const { component, socketService } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
-    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
+      ?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };
@@ -311,7 +313,8 @@ describe('ViewerScenePage', () => {
     // `socketService.upsertShip(...)` call is observable in this test.
     (socketService as unknown as { upsertShip: ReturnType<typeof vi.fn> }).upsertShip = vi.fn();
 
-    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
+      ?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };
@@ -329,7 +332,9 @@ describe('ViewerScenePage', () => {
 
     expect(socketService.emittedEvents.some((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)).toBe(true);
 
-    const shipListRequest = socketService.emittedEvents.find((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)?.data as {
+    const shipListRequest = socketService.emittedEvents.find(
+      (entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+    )?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };
@@ -375,7 +380,8 @@ describe('ViewerScenePage', () => {
     sessionService.setActiveCharacter({ id: 'char-1', characterName: 'Nova', level: 5 });
     (socketService as unknown as { upsertShip: ReturnType<typeof vi.fn> }).upsertShip = vi.fn();
 
-    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)?.data as {
+    const getRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_GET_REQUEST_EVENT)
+      ?.data as {
       correlationId?: string;
       requestIdentity?: unknown;
     };

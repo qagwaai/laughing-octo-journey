@@ -1,15 +1,24 @@
-import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, HostListener, inject, signal, ElementRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+  ElementRef,
+  HostListener,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NgtCanvas } from 'angular-three/dom';
 import { NgtsStats } from 'angular-three-soba/stats';
+import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
+import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
-import { RenderStatsService } from '../../services/render-stats.service';
-import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
+import { resolveNavigationState } from '../navigation-state';
 
 interface PlanetViewNavigationState {
   playerName?: string;
@@ -34,9 +43,7 @@ export default class PlanetViewPage {
   private solarSystemService = inject(SolarSystemService);
   private renderStats = inject(RenderStatsService);
 
-  private navigationState: PlanetViewNavigationState = resolveNavigationState<PlanetViewNavigationState>(
-    this.router,
-  );
+  private navigationState: PlanetViewNavigationState = resolveNavigationState<PlanetViewNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected solarSystem = signal<SolarSystemSummary | null>(this.navigationState.solarSystem ?? null);

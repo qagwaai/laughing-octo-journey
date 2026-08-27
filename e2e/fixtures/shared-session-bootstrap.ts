@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { loginViaUI } from '../helpers/auth-helper';
-import type { SocketIOMock } from './socket-mock';
 import type { GameShellPage } from '../page-objects/game-shell.page';
+import type { SocketIOMock } from './socket-mock';
 
 interface SharedSessionBootstrapOptions {
   page: Page;
@@ -17,9 +17,7 @@ export async function bootstrapSharedGameMainSession(options: SharedSessionBoots
   registerSessionHandlers?.(mock);
 
   await page.goto('http://localhost:4200/(left:character-list)');
-  await page
-    .waitForURL(/left:(character-list|login)/, { timeout: 15_000 })
-    .catch(() => null);
+  await page.waitForURL(/left:(character-list|login)/, { timeout: 15_000 }).catch(() => null);
 
   const isLoginFormVisible = async (): Promise<boolean> =>
     page

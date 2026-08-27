@@ -3,10 +3,10 @@
  */
 
 export {
-  type MissionInitializationStrategy,
-  type MissionInitializationParams,
   registerMissionInitializationStrategy,
   resolveMissionInitializationStrategy,
+  type MissionInitializationParams,
+  type MissionInitializationStrategy,
 } from './mission-initialization-strategy';
 
 export {

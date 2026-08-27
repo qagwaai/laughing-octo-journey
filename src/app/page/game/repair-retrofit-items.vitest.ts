@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createMockPrinterStateService, createMockSessionService, createMockSocketService } from '../../../testing';
-import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { DEFAULT_SHIP_MODEL } from '../../model/ship-list';
+import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
+import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
-import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
 import { SessionService } from '../../services/session.service';
-import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
 import RepairRetrofitItemsPage from './repair-retrofit-items';
 import { type RepairAssetEntry, type RepairAssetFilter, type RepairAssetGrouping } from './repair-retrofit-state';
@@ -109,9 +109,11 @@ function setup(state?: NavigationState) {
   };
   const mockConsumedItemShadowService = {
     markConsumed: vi.fn(),
-    filterInventory: vi.fn().mockImplementation(
-      (_playerName: string, _characterId: string, inventory: any[] | undefined) => [...(inventory ?? [])],
-    ),
+    filterInventory: vi
+      .fn()
+      .mockImplementation((_playerName: string, _characterId: string, inventory: any[] | undefined) => [
+        ...(inventory ?? []),
+      ]),
   };
 
   TestBed.configureTestingModule({
@@ -583,9 +585,7 @@ describe('RepairRetrofitItemsPage - groupedAssets', () => {
       damageProfile: {
         overallStatus: 'damaged',
         summary: 'Breach.',
-        systems: [
-          { code: 'nav', label: 'Navigation', severity: 'critical', summary: 'Failed.' },
-        ],
+        systems: [{ code: 'nav', label: 'Navigation', severity: 'critical', summary: 'Failed.' }],
       },
     });
 
@@ -928,7 +928,9 @@ describe('RepairRetrofitItemsPage - queue and detail routing branches', () => {
 
     (mockSocket as unknown as { upsertItem: ReturnType<typeof vi.fn> }).upsertItem = vi
       .fn()
-      .mockImplementation((_request: any, cb?: (r: any) => void) => cb?.({ success: false, message: 'consume failed' }));
+      .mockImplementation((_request: any, cb?: (r: any) => void) =>
+        cb?.({ success: false, message: 'consume failed' }),
+      );
 
     component['queueForPrinting']();
 

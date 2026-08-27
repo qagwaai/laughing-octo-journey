@@ -13,25 +13,24 @@
 
   <div class="character-preview-image__frame">
     @if (previousSrc(); as previousSrcValue) {
-      <img class="character-preview-image__image character-preview-image__image--previous" [src]="previousSrcValue" alt="" aria-hidden="true" />
-    }
-
-    @if (currentSrc(); as currentSrcValue) {
-      <img
-        #currentImage
-        class="character-preview-image__image character-preview-image__image--current"
-        [class.character-preview-image__image--loaded]="currentLoaded()"
-        [src]="currentSrcValue"
-        [alt]="debugLabel()"
-        (load)="handleImageLoad()"
-        (error)="handleImageError()"
-      />
-    }
-
-    @if (missingFilename(); as missingName) {
-      <div class="character-preview-image__missing" role="status">
-        not-found - {{ missingName }}
-      </div>
+    <img
+      class="character-preview-image__image character-preview-image__image--previous"
+      [src]="previousSrcValue"
+      alt=""
+      aria-hidden="true"
+    />
+    } @if (currentSrc(); as currentSrcValue) {
+    <img
+      #currentImage
+      class="character-preview-image__image character-preview-image__image--current"
+      [class.character-preview-image__image--loaded]="currentLoaded()"
+      [src]="currentSrcValue"
+      [alt]="debugLabel()"
+      (load)="handleImageLoad()"
+      (error)="handleImageError()"
+    />
+    } @if (missingFilename(); as missingName) {
+    <div class="character-preview-image__missing" role="status">not-found - {{ missingName }}</div>
     }
   </div>
 

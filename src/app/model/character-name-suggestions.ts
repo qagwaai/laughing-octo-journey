@@ -116,9 +116,7 @@ export function pickSuggestedCharacterName(options: {
   const previous = options.previousSuggestion ? normalizeCharacterName(options.previousSuggestion) : null;
   const disallow = options.disallowName ? normalizeCharacterName(options.disallowName) : null;
 
-  const uniquePool = CHARACTER_NAME_SUGGESTIONS.filter(
-    (candidate) => !existing.has(normalizeCharacterName(candidate)),
-  );
+  const uniquePool = CHARACTER_NAME_SUGGESTIONS.filter((candidate) => !existing.has(normalizeCharacterName(candidate)));
 
   const withoutImmediateRepeat = uniquePool.filter((candidate) => {
     const normalized = normalizeCharacterName(candidate);

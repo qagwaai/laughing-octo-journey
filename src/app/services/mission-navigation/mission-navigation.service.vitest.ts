@@ -5,12 +5,12 @@
 import { TestBed } from '@angular/core/testing';
 import { SessionService } from '../session.service';
 import { ShipService } from '../ship.service';
-import { MissionNavigationService, type MissionNavigationContext } from './mission-navigation.service';
 import {
   registerMissionInitializationStrategy,
   resolveMissionInitializationStrategy,
   type MissionInitializationStrategy,
 } from './mission-initialization-strategy';
+import { MissionNavigationService, type MissionNavigationContext } from './mission-navigation.service';
 
 describe('MissionInitializationStrategy Registration', () => {
   it('should register and resolve custom strategies', () => {

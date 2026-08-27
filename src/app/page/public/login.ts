@@ -1,7 +1,16 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, inject, OnDestroy, signal, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  inject,
+  OnDestroy,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { resolveNavigationState } from '../navigation-state';
+import { ExternalAnchorsComponent } from '../../component/external-anchors';
 import {
   currentLocaleCode,
   isSupportedLocaleCode,
@@ -14,7 +23,7 @@ import { LoginRequest, LoginResponse } from '../../model/login';
 import { readRememberedPlayerHandle } from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
-import { ExternalAnchorsComponent } from '../../component/external-anchors';
+import { resolveNavigationState } from '../navigation-state';
 
 interface LoginNavigationState {
   preferredLocale?: string;
@@ -49,7 +58,10 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
   @ViewChild('passwordInput') private passwordInput?: ElementRef<HTMLInputElement>;
 
   protected loginForm = this.fb.group({
-    playerName: [this.rememberedPlayerName ?? '', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
+    playerName: [
+      this.rememberedPlayerName ?? '',
+      [Validators.required, Validators.minLength(3), Validators.maxLength(20)],
+    ],
     password: ['', [Validators.required, Validators.minLength(8)]],
     locale: [this.defaultLocale, [Validators.required]],
   });
@@ -60,7 +72,9 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
   protected canNavigateToRegister = signal(false);
 
   private focusInitialInput(): void {
-    const targetInput = this.rememberedPlayerName ? this.passwordInput?.nativeElement : this.playerNameInput?.nativeElement;
+    const targetInput = this.rememberedPlayerName
+      ? this.passwordInput?.nativeElement
+      : this.playerNameInput?.nativeElement;
     targetInput?.focus();
   }
 

@@ -11,8 +11,9 @@ export interface BrowserEventTarget {
 
 export function emitSocketCorrelationWarning(
   detail: SocketCorrelationWarningDetail,
-  eventTarget: BrowserEventTarget | null =
-    typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' ? window : null,
+  eventTarget: BrowserEventTarget | null = typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'
+    ? window
+    : null,
 ): void {
   if (!eventTarget) {
     return;

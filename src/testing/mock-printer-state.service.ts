@@ -41,9 +41,7 @@ export function createMockPrinterStateService(): MockPrinterStateService {
     expireQueueItem(_playerName: string, _characterId: string, itemId: string) {
       queue.set(
         queue().map((i) =>
-          i.id === itemId
-            ? { ...i, startedAt: new Date(Date.now() - i.durationMs - 1000).toISOString() }
-            : i,
+          i.id === itemId ? { ...i, startedAt: new Date(Date.now() - i.durationMs - 1000).toISOString() } : i,
         ),
       );
     },

@@ -1,10 +1,5 @@
-import { TEST_PLAYER } from '../helpers/auth-helper';
+import { registerMissionCharacterList, registerMissionGameJoin, registerMissionList } from './mission-session-helpers';
 import { SocketIOMock } from './socket-mock';
-import {
-  registerMissionCharacterList,
-  registerMissionGameJoin,
-  registerMissionList,
-} from './mission-session-helpers';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 

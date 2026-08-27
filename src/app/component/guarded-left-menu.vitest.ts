@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
 import { SessionService } from '../services/session.service';

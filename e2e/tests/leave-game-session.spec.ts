@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
-import { CharacterListPage } from '../page-objects/character-list.page';
 import {
   configureLeaveGameSessionMock,
   LEAVE_GAME_CHARACTER_ID,
   setupLeaveGameSessionTest,
 } from '../fixtures/leave-game-session-scenario';
+import { SocketIOMock } from '../fixtures/socket-mock';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { CharacterListPage } from '../page-objects/character-list.page';
 
 /**
  * Regression guard for the "Leave this game session" navigation flow.
@@ -49,10 +48,9 @@ test.describe('Leave game session — navigation regression', () => {
 
     // Navigate to the exact URL that was the reported regression scenario,
     // using domcontentloaded to avoid hanging on socket connections
-    await page.goto(
-      'http://localhost:4200/ship-exterior-view(left:logout//right:opening-cold-boot-scan)',
-      { waitUntil: 'domcontentloaded' },
-    );
+    await page.goto('http://localhost:4200/ship-exterior-view(left:logout//right:opening-cold-boot-scan)', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Wait for Angular to process the route and render the logout page in the left pane
     await expect(page.locator('button.character-list-link')).toBeVisible({ timeout: 15_000 });

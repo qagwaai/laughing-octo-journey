@@ -3,10 +3,10 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type ShipSummary } from '../../model/ship-list';
 import { PrinterStateService } from '../../services';
+import { resolveNavigationState } from '../navigation-state';
 import { type PrintQueueNavigationState } from './repair-retrofit-state';
 
 interface FabricationLabNavigationState {
@@ -29,8 +29,9 @@ export default class FabricationLabPage {
   protected readonly t = locale;
   private router = inject(Router);
   private printerService = inject(PrinterStateService);
-  private navigationState: FabricationLabNavigationState =
-    resolveNavigationState<FabricationLabNavigationState>(this.router);
+  private navigationState: FabricationLabNavigationState = resolveNavigationState<FabricationLabNavigationState>(
+    this.router,
+  );
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);

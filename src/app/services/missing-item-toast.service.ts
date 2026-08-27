@@ -9,7 +9,7 @@ export class MissingItemToastService {
     this.snackBar.open(
       `Item '${itemType}' is missing from the backend catalog. Please report this to the dev team.`,
       'Dismiss',
-      { duration: 8000, panelClass: 'snackbar-error' }
+      { duration: 8000, panelClass: 'snackbar-error' },
     );
   }
 }

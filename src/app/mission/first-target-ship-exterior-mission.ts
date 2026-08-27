@@ -3,26 +3,26 @@ import {
   pickWeightedAsteroidMaterial,
   type AsteroidMaterialProfile,
 } from '../model/catalog/asteroid-materials';
-import {
-  SW13B_M0B_PUBLISHED_ARTIFACTS,
-  type Sw13bAsteroidRegistryEntry,
-  type Sw13bTier,
-} from '../model/sw13b/sw-13b-m0b-asteroid-baseline';
+import { generateRandomAsteroidMeshProfile } from '../model/catalog/asteroid-mesh-profiles';
+import type { CelestialBodyListItem } from '../model/celestial-body-list';
+import type { LaunchItemResponse } from '../model/launch-item';
 import { generateRandomAsteroidKinematics } from '../model/math/asteroid-kinematics';
 import {
   DEFAULT_CLUSTER_SPREAD_KM,
   generateRandomAsteroidBeltClusterCenterKm,
   generateRandomCelestialBodyLocationNear,
 } from '../model/math/celestial-body-location';
-import { generateRandomAsteroidMeshProfile } from '../model/catalog/asteroid-mesh-profiles';
 import type { MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
-import { resolveAsteroidExternalObjectDescriptor } from '../model/ship-exterior-descriptors';
 import type { Triple } from '../model/shared/triple';
 import type { AsteroidScanSample } from '../model/ship-exterior-asteroid-sample';
-import type { LaunchItemResponse } from '../model/launch-item';
-import type { CelestialBodyListItem } from '../model/celestial-body-list';
+import { resolveAsteroidExternalObjectDescriptor } from '../model/ship-exterior-descriptors';
 import { coerceShipInventory } from '../model/ship-list';
+import {
+  SW13B_M0B_PUBLISHED_ARTIFACTS,
+  type Sw13bAsteroidRegistryEntry,
+  type Sw13bTier,
+} from '../model/sw13b/sw-13b-m0b-asteroid-baseline';
 import {
   registerMissionInitializationStrategy,
   type MissionInitializationStrategy,
@@ -123,7 +123,10 @@ const FIRST_TARGET_GATE_STEPS: readonly ShipExteriorMissionGateStepDefinition[] 
 ];
 
 function materialToSeedToken(material: string): string {
-  return material.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return material
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
 }
 
 function resolveRegistryEntry(material: string, tier: Sw13bTier): Sw13bAsteroidRegistryEntry {
@@ -443,7 +446,9 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
       return response.success === true && isLaunchTargetDestroyed(response) && launchResolutionIndicatesIron(response);
     }
 
-    return stepKey === 'neutralize_identified_asteroid' && response.success === true && isLaunchTargetDestroyed(response);
+    return (
+      stepKey === 'neutralize_identified_asteroid' && response.success === true && isLaunchTargetDestroyed(response)
+    );
   },
   doesManufactureCompleteGateStep(stepKey: string, manufacturedItemType: string) {
     return stepKey === 'manufacture_hull_patch_kit' && manufacturedItemType === 'hull-patch-kit';

@@ -41,8 +41,7 @@ export function resolveMovementInput(keys: ReadonlySet<string>): FlightMovementI
   const forward = (keys.has('KeyW') ? 1 : 0) + (keys.has('KeyS') ? -1 : 0);
   const right = (keys.has('KeyD') ? 1 : 0) + (keys.has('KeyA') ? -1 : 0);
   const up =
-    (keys.has('Space') ? 1 : 0) +
-    (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC') ? -1 : 0);
+    (keys.has('Space') ? 1 : 0) + (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC') ? -1 : 0);
   const roll = (keys.has('KeyE') ? 1 : 0) + (keys.has('KeyQ') ? -1 : 0);
 
   return {
@@ -94,9 +93,7 @@ export function integrateFlightStep(
   }
 
   const speed =
-    localVector.lengthSq() > 0
-      ? config.baseSpeedSceneUnitsPerSec * (input.boosting ? config.boostMultiplier : 1)
-      : 0;
+    localVector.lengthSq() > 0 ? config.baseSpeedSceneUnitsPerSec * (input.boosting ? config.boostMultiplier : 1) : 0;
 
   // The camera is locked to world -Z while the scene rotates around the player.
   // So the displacement applied to the scene group is in the *camera* (world) frame,

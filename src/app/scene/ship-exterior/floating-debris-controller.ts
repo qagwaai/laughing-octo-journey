@@ -1,12 +1,12 @@
-import { appLogger } from '../../services/logger';
-import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
-import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
-import { SessionService } from '../../services/session.service';
+import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { ItemListByLocationResponse } from '../../model/item-list-by-location';
-import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import { resolveDebrisExternalObjectDescriptor } from '../../model/ship-exterior-descriptors';
 import type { Triple } from '../../model/triple';
+import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import { appLogger } from '../../services/logger';
+import { SessionService } from '../../services/session.service';
+import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
 
 export const FLOATING_DEBRIS_RADIUS_KM = 50;
 export const FLOATING_DEBRIS_POLL_INTERVAL_MS = 5_000;

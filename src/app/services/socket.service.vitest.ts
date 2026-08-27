@@ -319,7 +319,6 @@ describe('SocketService', () => {
         CELESTIAL_BODY_UPSERT_REQUEST_EVENT,
       ]);
     });
-
   });
 
   describe('listCelestialBodies', () => {
@@ -716,7 +715,6 @@ describe('SocketService', () => {
       await new Promise((resolve) => setTimeout(resolve, 3200));
       expect(emittedEvents.map((entry) => entry.event)).toEqual([SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_REQUEST_EVENT]);
     });
-
   });
 
   describe('upsertItem', () => {
@@ -794,7 +792,8 @@ describe('SocketService', () => {
         }),
       );
 
-      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload as ItemUpsertRequest;
+      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)
+        ?.payload as ItemUpsertRequest;
       const correlationId = requestPayload.correlationId!;
       const requestIdentity = requestPayload.requestIdentity!;
 
@@ -888,7 +887,8 @@ describe('SocketService', () => {
         callbackResponse = response;
       });
 
-      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)?.payload as ItemUpsertRequest;
+      const requestPayload = emittedEvents.find((entry) => entry.event === ITEM_UPSERT_REQUEST_EVENT)
+        ?.payload as ItemUpsertRequest;
       const correlationId = requestPayload.correlationId!;
 
       const sameCorrelationMismatchResponse = {
@@ -1465,10 +1465,7 @@ describe('SocketService', () => {
       });
 
       await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(emittedEvents.map((entry) => entry.event)).toEqual([
-        LAUNCH_ITEM_REQUEST_EVENT,
-        LAUNCH_ITEM_REQUEST_EVENT,
-      ]);
+      expect(emittedEvents.map((entry) => entry.event)).toEqual([LAUNCH_ITEM_REQUEST_EVENT, LAUNCH_ITEM_REQUEST_EVENT]);
     });
 
     it('should emit launch-item immediately when no response callback is provided', () => {

@@ -3,12 +3,12 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 import { SocketIOMock } from './socket-mock';
-import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 import {
   registerViewerCharacterList,
   registerViewerGameJoin,
   registerViewerSolarSystemList,
 } from './viewer-fixture-helpers';
+import { loginAndJoinViewerSession } from './viewer-session-bootstrap';
 
 const CHARACTER = {
   id: 'char-vw-controls-1',

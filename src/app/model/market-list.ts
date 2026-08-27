@@ -1,7 +1,7 @@
-import { SpatialState } from './spatial';
-import { Triple } from './triple';
 import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import type { ShipOwnerDescriptor } from './ship-owner';
+import { SpatialState } from './spatial';
+import { Triple } from './triple';
 
 export const MARKET_LIST_REQUEST_EVENT = 'market-list-request';
 export const MARKET_LIST_RESPONSE_EVENT = 'market-list-response';

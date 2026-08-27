@@ -59,7 +59,11 @@ export function generateRandomAsteroidMeshProfile(random: () => number = Math.ra
     detail,
     revealGeometry,
     revealDetail,
-    scale: [Number(scaleX.toFixed(2)), Number(scaleY.toFixed(2)), Number(scaleZ.toFixed(2))] as [number, number, number],
+    scale: [Number(scaleX.toFixed(2)), Number(scaleY.toFixed(2)), Number(scaleZ.toFixed(2))] as [
+      number,
+      number,
+      number,
+    ],
   };
 
   return {
@@ -93,11 +97,20 @@ export function parseAsteroidMeshProfileKey(key: string | null | undefined): Ast
     return null;
   }
 
-  if (previewGeometryRaw !== 'dodecahedron' && previewGeometryRaw !== 'icosahedron' && previewGeometryRaw !== 'octahedron') {
+  if (
+    previewGeometryRaw !== 'dodecahedron' &&
+    previewGeometryRaw !== 'icosahedron' &&
+    previewGeometryRaw !== 'octahedron'
+  ) {
     return null;
   }
 
-  if (revealGeometryRaw !== 'dodecahedron' && revealGeometryRaw !== 'icosahedron' && revealGeometryRaw !== 'octahedron' && revealGeometryRaw !== 'rock') {
+  if (
+    revealGeometryRaw !== 'dodecahedron' &&
+    revealGeometryRaw !== 'icosahedron' &&
+    revealGeometryRaw !== 'octahedron' &&
+    revealGeometryRaw !== 'rock'
+  ) {
     return null;
   }
 

@@ -8,10 +8,9 @@ import {
   resolveShipExteriorMission,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
+import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
-import { resolveNavigationState } from '../navigation-state';
-import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import {
   describePrintableMaterials,
   findConsumableMaterialsForPrintableItem,
@@ -23,19 +22,16 @@ import {
   type PrintableConsumedMaterial,
   type PrintableItemDefinition,
 } from '../../model/printable-item';
-import {
-  coerceShipInventory,
-  type ShipItem,
-  type ShipSummary,
-} from '../../model/ship-list';
+import { coerceShipInventory, type ShipItem, type ShipSummary } from '../../model/ship-list';
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { SessionService, ShipService, SocketService } from '../../services';
 import { appLogger } from '../../services/logger';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import { PrinterStateService } from '../../services/printer-state.service';
-import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import { resolveNavigationState } from '../navigation-state';
 import { type PrintQueueNavigationState } from './repair-retrofit-state';
 
 @Component({
@@ -59,9 +55,7 @@ export default class PrintQueuePage {
   private printerService = inject(PrinterStateService);
   private destroyRef = inject(DestroyRef);
   private collectingItemIds = new Set<string>();
-  private navigationState: PrintQueueNavigationState = resolveNavigationState<PrintQueueNavigationState>(
-    this.router,
-  );
+  private navigationState: PrintQueueNavigationState = resolveNavigationState<PrintQueueNavigationState>(this.router);
 
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
@@ -182,7 +176,7 @@ export default class PrintQueuePage {
 
     this.printerError.set(null);
     this.printerSuccess.set(null);
-  this.isQueueingPrintableItem.set(true);
+    this.isQueueingPrintableItem.set(true);
 
     const actionCorrelationId = `print-queue.queue-printable-item:${printableItem.itemType}:${Date.now().toString(36)}:${Math.random()
       .toString(36)
@@ -196,28 +190,28 @@ export default class PrintQueuePage {
       0,
       actionCorrelationId,
       () => {
-      this.activeShip.update((current) => {
-        if (!current) {
-          return current;
-        }
+        this.activeShip.update((current) => {
+          if (!current) {
+            return current;
+          }
 
-        const consumedIds = new Set(consumedMaterials.map((item) => item.id));
-        return {
-          ...current,
-          inventory: (current.inventory ?? []).filter((item) => !consumedIds.has(item.id)),
-        };
-      });
+          const consumedIds = new Set(consumedMaterials.map((item) => item.id));
+          return {
+            ...current,
+            inventory: (current.inventory ?? []).filter((item) => !consumedIds.has(item.id)),
+          };
+        });
 
-      this.printerService.addToQueue(playerName, characterId, {
-        itemType: printableItem.itemType,
-        label: printableItem.displayName,
-        durationMs: printableItem.durationMs,
-        consumedMaterials,
-      });
-      this.isQueueingPrintableItem.set(false);
-      this.printerSuccess.set(
-        `${printableItem.displayName} queued for printing. ${this.describeConsumedMaterials(consumedMaterials)} consumed. Estimated time: ${formatPrintableDuration(printableItem.durationMs)}.`,
-      );
+        this.printerService.addToQueue(playerName, characterId, {
+          itemType: printableItem.itemType,
+          label: printableItem.displayName,
+          durationMs: printableItem.durationMs,
+          consumedMaterials,
+        });
+        this.isQueueingPrintableItem.set(false);
+        this.printerSuccess.set(
+          `${printableItem.displayName} queued for printing. ${this.describeConsumedMaterials(consumedMaterials)} consumed. Estimated time: ${formatPrintableDuration(printableItem.durationMs)}.`,
+        );
       },
     );
   }

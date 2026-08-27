@@ -21,7 +21,9 @@ test.describe('Print Queue', () => {
     await expect(page.getByRole('button', { name: 'Print Hull Patch Kit' })).toBeVisible();
   });
 
-  test('shows hard-fail error and keeps print action unavailable when no ship has usable spatial data', async ({ page }) => {
+  test('shows hard-fail error and keeps print action unavailable when no ship has usable spatial data', async ({
+    page,
+  }) => {
     await setupAndOpenPrintQueue({ usableShipSpatial: false, includeIron: false }, page);
 
     await expect(page.locator('p.status-line--error[role="alert"]')).toHaveText(

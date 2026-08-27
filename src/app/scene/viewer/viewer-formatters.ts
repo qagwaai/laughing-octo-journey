@@ -71,9 +71,7 @@ export function resolveSceneDistanceFromKm(distanceKm: number): number {
     return Math.max(0.08, +linear.toFixed(3));
   }
 
-  const ratio =
-    Math.log(distanceKm / VIEWER_SCENE_DISTANCE_REFERENCE_KM) /
-    Math.log(VIEWER_SCENE_DISTANCE_LOG_BASE);
+  const ratio = Math.log(distanceKm / VIEWER_SCENE_DISTANCE_REFERENCE_KM) / Math.log(VIEWER_SCENE_DISTANCE_LOG_BASE);
   return +((1 + ratio) * VIEWER_SCENE_DISTANCE_UNIT).toFixed(3);
 }
 
@@ -263,10 +261,13 @@ export function resolveBodyScenePosition(body: ViewerBody): [number, number, num
  * and mean anomaly. Applies orbital plane rotation to place the body correctly.
  * Returns null if orbital elements are incomplete.
  */
-export function resolveBodyOrbitalPositionRelativeToAnchor(body: ViewerBody, anchorPosition: [number, number, number]): [number, number, number] | null {
+export function resolveBodyOrbitalPositionRelativeToAnchor(
+  body: ViewerBody,
+  anchorPosition: [number, number, number],
+): [number, number, number] | null {
   const orbital = body.orbitalElements;
   const anchorId = orbital?.anchorBodyId;
-  
+
   // Need valid semi-major axis
   const semiMajorAxisKm = orbital?.semiMajorAxisKm;
   if (typeof semiMajorAxisKm !== 'number' || !Number.isFinite(semiMajorAxisKm) || semiMajorAxisKm <= 0) {
@@ -283,14 +284,11 @@ export function resolveBodyOrbitalPositionRelativeToAnchor(body: ViewerBody, anc
   // Clamp eccentricity
   const eRaw = orbital?.eccentricity;
   const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
-  
+
   const orbitProfile = resolveAnchoredOrbitSceneProfile(body);
   const scaledOrbitRadius = resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile.scale;
   const radiusX = Math.max(orbitProfile.minRadiusX, +scaledOrbitRadius.toFixed(3));
-  const radiusZ = Math.max(
-    orbitProfile.minRadiusZ,
-    +(radiusX * Math.sqrt(1 - e * e)).toFixed(3),
-  );
+  const radiusZ = Math.max(orbitProfile.minRadiusZ, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
 
   // Get mean anomaly (default to 0 if not available)
   const meanAnomalyDeg = orbital?.meanAnomalyAtEpochDeg ?? 0;
@@ -338,7 +336,10 @@ export function resolveBodyOrbitalPositionRelativeToAnchor(body: ViewerBody, anc
  * Bodies WITH an anchorBodyId are intentionally skipped here — they are resolved in a
  * second pass via resolveBodyOrbitalPositionRelativeToAnchor with the anchor's scene position.
  */
-function resolveBodyOrbitalPosition(body: ViewerBody, anchorPosition: [number, number, number]): [number, number, number] | null {
+function resolveBodyOrbitalPosition(
+  body: ViewerBody,
+  anchorPosition: [number, number, number],
+): [number, number, number] | null {
   const orbital = body.orbitalElements;
 
   // Bodies with an explicit anchor are handled in the second pass relative to their parent.
@@ -347,7 +348,7 @@ function resolveBodyOrbitalPosition(body: ViewerBody, anchorPosition: [number, n
   if (typeof anchorId === 'string' && anchorId.length > 0) {
     return null;
   }
-  
+
   // Need valid semi-major axis (this is the key indicator of orbital data)
   const semiMajorAxisKm = orbital?.semiMajorAxisKm;
   if (typeof semiMajorAxisKm !== 'number' || !Number.isFinite(semiMajorAxisKm) || semiMajorAxisKm <= 0) {
@@ -357,7 +358,7 @@ function resolveBodyOrbitalPosition(body: ViewerBody, anchorPosition: [number, n
   // Clamp eccentricity
   const eRaw = orbital?.eccentricity;
   const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
-  
+
   // Calculate semi-minor axis
   const radiusX = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X, resolveSceneDistanceFromKm(semiMajorAxisKm));
   const radiusZ = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));

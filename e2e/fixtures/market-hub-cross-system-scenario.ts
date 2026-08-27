@@ -1,9 +1,9 @@
 import { expect } from '@playwright/test';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { MarketHubPage } from '../page-objects/market-hub.page';
-import { TEST_PLAYER } from '../helpers/auth-helper';
-import { SocketIOMock } from './socket-mock';
 import { registerMarketSharedSession } from './market-hub-session-helpers';
+import { SocketIOMock } from './socket-mock';
 
 const CHARACTER = {
   id: 'char-market-cross-1',
@@ -60,7 +60,10 @@ export function registerSharedSessionHandlers(mock: SocketIOMock): void {
   });
 }
 
-export function registerDefaultMarketHandler(mock: SocketIOMock, onRequest: (req: MarketByLocationRequest) => void): void {
+export function registerDefaultMarketHandler(
+  mock: SocketIOMock,
+  onRequest: (req: MarketByLocationRequest) => void,
+): void {
   mock.on('market-list-by-location-request', (payload) => {
     const request = payload as MarketByLocationRequest;
     onRequest(request);

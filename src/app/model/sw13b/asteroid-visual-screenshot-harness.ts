@@ -37,15 +37,16 @@ export function buildSw13bDeterministicScreenshotManifest(params: {
 
   return params.samples.flatMap((sample) =>
     SW13B_CAMERA_PRESETS.map((preset) => ({
-      fileName: [
-        'sw13b',
-        sample.descriptor.surface.toLowerCase(),
-        normalizeSeed(sample.descriptor.seedId),
-        sample.descriptor.profileCode.toLowerCase(),
-        sample.descriptor.tier.toLowerCase(),
-        preset.distance,
-        `run${String(runIndex).padStart(2, '0')}`,
-      ].join('_') + '.png',
+      fileName:
+        [
+          'sw13b',
+          sample.descriptor.surface.toLowerCase(),
+          normalizeSeed(sample.descriptor.seedId),
+          sample.descriptor.profileCode.toLowerCase(),
+          sample.descriptor.tier.toLowerCase(),
+          preset.distance,
+          `run${String(runIndex).padStart(2, '0')}`,
+        ].join('_') + '.png',
       seedId: sample.descriptor.seedId,
       surface: sample.descriptor.surface,
       tier: sample.descriptor.tier,

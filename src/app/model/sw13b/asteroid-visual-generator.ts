@@ -54,7 +54,10 @@ function seededRandom(seed: string): () => number {
 }
 
 function materialSlug(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
 }
 
 function parseTier(raw: string): Sw13bVisualTier {
@@ -184,13 +187,9 @@ export function buildSw13bGeneratedVisualSample(params: {
   );
 
   const signature = hashFnv1a(
-    [
-      descriptor.seedId,
-      descriptor.surface,
-      parameterBundleHash,
-      radialProfile.join(','),
-      featureMask.join(','),
-    ].join('|'),
+    [descriptor.seedId, descriptor.surface, parameterBundleHash, radialProfile.join(','), featureMask.join(',')].join(
+      '|',
+    ),
   );
 
   return {

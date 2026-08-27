@@ -24,7 +24,7 @@ export class MissionGateSimulator {
           ? {
               ...step,
               status,
-              completedAt: status === 'completed' ? step.completedAt ?? new Date().toISOString() : step.completedAt,
+              completedAt: status === 'completed' ? (step.completedAt ?? new Date().toISOString()) : step.completedAt,
             }
           : step,
       ),

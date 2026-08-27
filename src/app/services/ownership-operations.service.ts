@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { appLogger } from './logger';
 import {
   ITEM_LIST_BY_OWNER_REQUEST_EVENT,
   ITEM_LIST_BY_OWNER_RESPONSE_EVENT,
@@ -31,6 +30,7 @@ import {
   type ShipSalvageClaimRequest,
   type ShipSalvageClaimResponse,
 } from '../model/ownership-operations';
+import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
@@ -71,12 +71,19 @@ function isCorrelatedMatch(
 export class OwnershipOperationsService {
   private socketService = inject(SocketService);
 
-  listShipsByNpcOwner(request: ShipListByNpcOwnerRequest, onResponse: (response: ShipListByNpcOwnerResponse) => void): void {
+  listShipsByNpcOwner(
+    request: ShipListByNpcOwnerRequest,
+    onResponse: (response: ShipListByNpcOwnerResponse) => void,
+  ): void {
     this.emitWithCorrelation(
       request,
       SHIP_LIST_BY_NPC_OWNER_REQUEST_EVENT,
       SHIP_LIST_BY_NPC_OWNER_RESPONSE_EVENT,
-      this.buildDefaultIdentity('ship-list-by-npc-owner', 'ship', `npc-pirate:${request.npcOwner.npcId?.trim() || 'unknown-npc'}`),
+      this.buildDefaultIdentity(
+        'ship-list-by-npc-owner',
+        'ship',
+        `npc-pirate:${request.npcOwner.npcId?.trim() || 'unknown-npc'}`,
+      ),
       'ownership-operations.listShipsByNpcOwner',
       onResponse,
     );
@@ -127,13 +134,20 @@ export class OwnershipOperationsService {
       request,
       MARKET_LISTING_CREATE_REQUEST_EVENT,
       MARKET_LISTING_CREATE_RESPONSE_EVENT,
-      this.buildDefaultIdentity('market-listing-create', 'market-listing', request.marketId?.trim() || 'unknown-market'),
+      this.buildDefaultIdentity(
+        'market-listing-create',
+        'market-listing',
+        request.marketId?.trim() || 'unknown-market',
+      ),
       'ownership-operations.createMarketListing',
       onResponse,
     );
   }
 
-  createMarketOffer(request: MarketOfferCreateRequest, onResponse: (response: MarketOfferCreateResponse) => void): void {
+  createMarketOffer(
+    request: MarketOfferCreateRequest,
+    onResponse: (response: MarketOfferCreateResponse) => void,
+  ): void {
     this.emitWithCorrelation(
       request,
       MARKET_OFFER_CREATE_REQUEST_EVENT,
@@ -144,7 +158,10 @@ export class OwnershipOperationsService {
     );
   }
 
-  acceptMarketOffer(request: MarketOfferAcceptRequest, onResponse: (response: MarketOfferAcceptResponse) => void): void {
+  acceptMarketOffer(
+    request: MarketOfferAcceptRequest,
+    onResponse: (response: MarketOfferAcceptResponse) => void,
+  ): void {
     this.emitWithCorrelation(
       request,
       MARKET_OFFER_ACCEPT_REQUEST_EVENT,

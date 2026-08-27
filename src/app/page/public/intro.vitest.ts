@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import IntroPage from './intro';
 
@@ -283,10 +283,9 @@ describe('IntroPage Logic', () => {
 
       vi.advanceTimersByTime(5000);
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], right: null } }],
-        { preserveFragment: true },
-      );
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'], right: null } }], {
+        preserveFragment: true,
+      });
     });
 
     it('should not start auto knot redirect in the left outlet', () => {

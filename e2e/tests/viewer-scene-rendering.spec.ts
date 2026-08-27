@@ -1,17 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
-import {
-  ACTIVE_SHIP,
-  SOL_SUMMARY,
-  SOL_SYSTEM_BODIES,
-  setupViewerSceneTest,
-  solarSystemGetResponse,
-} from '../fixtures/viewer-scene-rendering-scenario';
-import { GameShellPage } from '../page-objects/game-shell.page';
-import { ViewerPage } from '../page-objects/viewer.page';
+import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
 import {
   resolveDescriptorRenderProfile,
   resolveGateApproachMetadata,
@@ -21,7 +11,17 @@ import {
   SW13_M4_BALANCED_PERFORMANCE_BUDGET,
   validateSw13M4DescriptorEnvelope,
 } from '../../src/app/scene/viewer/viewer-performance-guardrails';
-import type { ExternalObjectDescriptor } from '../../src/app/model/external-object-descriptor';
+import { SocketIOMock } from '../fixtures/socket-mock';
+import {
+  ACTIVE_SHIP,
+  SOL_SUMMARY,
+  SOL_SYSTEM_BODIES,
+  setupViewerSceneTest,
+  solarSystemGetResponse,
+} from '../fixtures/viewer-scene-rendering-scenario';
+import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
+import { ViewerPage } from '../page-objects/viewer.page';
 
 const M2_DESCRIPTOR_FIXTURE_PATH = join(
   process.cwd(),
@@ -239,7 +239,6 @@ function createGateBodyFromLandmarkEntry(entry: GateLandmarkFixtureEntry, index:
   };
 }
 
-
 async function navigateToSystemScene(page: any, mock: any, bodies: any[] = SOL_SYSTEM_BODIES) {
   const gameShell = new GameShellPage(page);
   const viewerPage = new ViewerPage(page);
@@ -327,7 +326,9 @@ test.describe('Viewer — Scene Rendering', () => {
     const stationDescriptors = M2_SHIP_STATION_DESCRIPTORS.filter((descriptor) => descriptor.domain === 'stations');
 
     const ships = shipDescriptors.map((descriptor, index) => createShipFromDescriptor(descriptor, index));
-    const stationBodies = stationDescriptors.map((descriptor, index) => createStationBodyFromDescriptor(descriptor, index));
+    const stationBodies = stationDescriptors.map((descriptor, index) =>
+      createStationBodyFromDescriptor(descriptor, index),
+    );
 
     const { mock } = await setupViewerSceneTest(page, ships);
     await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, ...stationBodies]);
@@ -362,7 +363,9 @@ test.describe('Viewer — Scene Rendering', () => {
       expect(standOffKm).toBeLessThanOrEqual(windowMax);
     }
 
-    const mediumHazardEntries = M3_GATE_LANDMARK_ENTRIES.filter((entry) => entry.approachMetadata.hazardCue === 'medium');
+    const mediumHazardEntries = M3_GATE_LANDMARK_ENTRIES.filter(
+      (entry) => entry.approachMetadata.hazardCue === 'medium',
+    );
     expect(mediumHazardEntries.length).toBeGreaterThan(0);
     expect(mediumHazardEntries.every((entry) => entry.approachMetadata.warningEscalation === 'required')).toBe(true);
   });
@@ -470,12 +473,12 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock);
 
     // Verify the scene container is visible
-     const viewerPage = new ViewerPage(page);
-     // Component exists in DOM (might be hidden with CSS)
-     await viewerPage.expectSceneComponentPresent();
+    const viewerPage = new ViewerPage(page);
+    // Component exists in DOM (might be hidden with CSS)
+    await viewerPage.expectSceneComponentPresent();
 
     // Verify the canvas element exists (Angular Three renders to <ngt-canvas>)
-     const canvas = viewerPage.sceneCanvas;
+    const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible();
   });
 

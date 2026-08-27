@@ -2,29 +2,29 @@ import { Injectable, inject } from '@angular/core';
 import {
   CHARACTER_ADD_REQUEST_EVENT,
   CHARACTER_ADD_RESPONSE_EVENT,
-  type CharacterAddRequestIdentity,
   type CharacterAddRequest,
+  type CharacterAddRequestIdentity,
   type CharacterAddResponse,
 } from '../model/character-add';
 import {
   CHARACTER_DELETE_REQUEST_EVENT,
   CHARACTER_DELETE_RESPONSE_EVENT,
-  type CharacterDeleteRequestIdentity,
   type CharacterDeleteRequest,
+  type CharacterDeleteRequestIdentity,
   type CharacterDeleteResponse,
 } from '../model/character-delete';
 import {
   CHARACTER_EDIT_REQUEST_EVENT,
   CHARACTER_EDIT_RESPONSE_EVENT,
-  type CharacterEditRequestIdentity,
   type CharacterEditRequest,
+  type CharacterEditRequestIdentity,
   type CharacterEditResponse,
 } from '../model/character-edit';
 import {
   CHARACTER_LIST_REQUEST_EVENT,
   CHARACTER_LIST_RESPONSE_EVENT,
-  type CharacterListRequestIdentity,
   type CharacterListRequest,
+  type CharacterListRequestIdentity,
   type CharacterListResponse,
 } from '../model/character-list';
 import { appLogger } from './logger';
@@ -240,7 +240,12 @@ export class CharacterService {
       }
 
       if (
-        !isCharacterAddResponseForRequest(response, expectedCorrelationId, expectedRequestIdentity, requestWithCorrelation)
+        !isCharacterAddResponseForRequest(
+          response,
+          expectedCorrelationId,
+          expectedRequestIdentity,
+          requestWithCorrelation,
+        )
       ) {
         emitSocketCorrelationWarning('character-add', {
           responseCorrelationId: response.correlationId ?? null,
@@ -282,7 +287,12 @@ export class CharacterService {
       }
 
       if (
-        !isCharacterEditResponseForRequest(response, expectedCorrelationId, expectedRequestIdentity, requestWithCorrelation)
+        !isCharacterEditResponseForRequest(
+          response,
+          expectedCorrelationId,
+          expectedRequestIdentity,
+          requestWithCorrelation,
+        )
       ) {
         emitSocketCorrelationWarning('character-edit', {
           responseCorrelationId: response.correlationId ?? null,
@@ -324,7 +334,12 @@ export class CharacterService {
       }
 
       if (
-        !isCharacterListResponseForRequest(response, expectedCorrelationId, expectedRequestIdentity, requestWithCorrelation)
+        !isCharacterListResponseForRequest(
+          response,
+          expectedCorrelationId,
+          expectedRequestIdentity,
+          requestWithCorrelation,
+        )
       ) {
         emitSocketCorrelationWarning('character-list', {
           responseCorrelationId: response.correlationId ?? null,

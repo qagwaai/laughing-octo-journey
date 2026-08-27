@@ -562,7 +562,11 @@ export function evaluateMissionGateOnDebrisCollection(params: {
       continue;
     }
 
-    if (!params.mission.doesDebrisCollectionCompleteGateStep?.(step.key, { remainingDebrisCount: params.remainingDebrisCount })) {
+    if (
+      !params.mission.doesDebrisCollectionCompleteGateStep?.(step.key, {
+        remainingDebrisCount: params.remainingDebrisCount,
+      })
+    ) {
       continue;
     }
 

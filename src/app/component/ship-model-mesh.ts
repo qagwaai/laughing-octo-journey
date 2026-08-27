@@ -7,8 +7,8 @@ import {
   InjectionToken,
   input,
 } from '@angular/core';
-import { gltfResource as _gltfResource } from 'angular-three-soba/loaders';
 import { NgtArgs } from 'angular-three';
+import { gltfResource as _gltfResource } from 'angular-three-soba/loaders';
 import * as THREE from 'three';
 
 export const SHIP_GLTF_RESOURCE_FN = new InjectionToken('SHIP_GLTF_RESOURCE_FN', {
@@ -44,10 +44,7 @@ export class ShipModelMesh {
   targeted = input(false);
   isActive = input(false);
 
-  protected gltfData = inject(SHIP_GLTF_RESOURCE_FN)(
-    () => ({ ship: this.assetPath() }),
-    { onLoad() {} },
-  );
+  protected gltfData = inject(SHIP_GLTF_RESOURCE_FN)(() => ({ ship: this.assetPath() }), { onLoad() {} });
 
   protected scene = computed(() => {
     const gltf = this.gltfData.asReadonly().value()?.ship;
@@ -56,9 +53,7 @@ export class ShipModelMesh {
     const cloned = gltf.scene.clone(true);
 
     const hullColor = new THREE.Color(this.color());
-    const emissiveColor = new THREE.Color(
-      this.targeted() ? '#92400e' : this.isActive() ? '#78350f' : '#1e3a5f',
-    );
+    const emissiveColor = new THREE.Color(this.targeted() ? '#92400e' : this.isActive() ? '#78350f' : '#1e3a5f');
     const emissiveIntensity = this.targeted() ? 0.65 : 0.4;
 
     cloned.traverse((child) => {

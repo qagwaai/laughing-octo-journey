@@ -106,26 +106,22 @@ test.describe('Market Hub grouped sections', () => {
 
     await sharedGameShell.openMarketHub();
 
-    await expect
-      .poll(() => requests.some((request) => request.distanceAu === 0.5), { timeout: 15_000 })
-      .toBe(true);
+    await expect.poll(() => requests.some((request) => request.distanceAu === 0.5), { timeout: 15_000 }).toBe(true);
 
     const requestsBeforeRadiusChange = requests.length;
     await sharedPage.selectOption('#radiusAu', '5');
     await expect
-      .poll(
-        () => requests.slice(requestsBeforeRadiusChange).some((request) => request.distanceAu === 5),
-        { timeout: 10_000 },
-      )
+      .poll(() => requests.slice(requestsBeforeRadiusChange).some((request) => request.distanceAu === 5), {
+        timeout: 10_000,
+      })
       .toBe(true);
 
     const requestsBeforeToggle = requests.length;
     await sharedMarketHubPage.showOutOfRangeToggle.check();
     await expect
-      .poll(
-        () => requests.slice(requestsBeforeToggle).some((request) => request.distanceAu === 1_000_000),
-        { timeout: 10_000 },
-      )
+      .poll(() => requests.slice(requestsBeforeToggle).some((request) => request.distanceAu === 1_000_000), {
+        timeout: 10_000,
+      })
       .toBe(true);
   });
 });

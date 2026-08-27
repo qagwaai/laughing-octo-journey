@@ -1,7 +1,6 @@
 import { expect, type Page } from '@playwright/test';
-import { loginViaUI } from '../helpers/auth-helper';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
-import { TEST_PLAYER } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
 const PRINT_QUEUE_CHARACTER_ID = 'char-print-e2e';

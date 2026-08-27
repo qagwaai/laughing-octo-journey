@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
 import { Router } from '@angular/router';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveNavigationState } from './navigation-state';
 
 describe('resolveNavigationState', () => {

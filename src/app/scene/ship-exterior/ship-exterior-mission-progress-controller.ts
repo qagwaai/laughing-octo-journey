@@ -1,4 +1,3 @@
-import { AsyncSerialQueue } from './async-serial-queue';
 import {
   clearMissionGatePendingRetry,
   evaluateMissionGateOnDebrisCollection,
@@ -9,6 +8,7 @@ import {
 } from '../../mission/ship-exterior-mission';
 import { MissionService } from '../../services/mission.service';
 import { SessionService } from '../../services/session.service';
+import { AsyncSerialQueue } from './async-serial-queue';
 
 interface MissionProgressUpsertQueueItem {
   gateState: ShipExteriorMissionGateState;

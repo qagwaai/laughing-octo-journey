@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
 import CharacterPreviewImageComponent, { buildPortraitFilename } from './character-preview-image';
 
 describe('CharacterPreviewImageComponent', () => {
@@ -54,8 +54,12 @@ describe('CharacterPreviewImageComponent', () => {
     (component as any).handleImageError();
     fixture.detectChanges();
 
-    expect((component as any).debugLabel()).toContain('not-found - oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg');
-    expect(fixture.nativeElement.textContent).toContain('not-found - oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg');
+    expect((component as any).debugLabel()).toContain(
+      'not-found - oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'not-found - oval__medium__short-crop__brown__almond__green__focused__collar__none__none__none.jpeg',
+    );
   });
 
   it('marks a cached image as loaded when the img element is already complete', () => {
@@ -75,7 +79,9 @@ describe('CharacterPreviewImageComponent', () => {
     });
     fixture.detectChanges();
 
-    const currentImage = fixture.nativeElement.querySelector('.character-preview-image__image--current') as HTMLImageElement;
+    const currentImage = fixture.nativeElement.querySelector(
+      '.character-preview-image__image--current',
+    ) as HTMLImageElement;
     Object.defineProperty(currentImage, 'complete', { configurable: true, get: () => true });
     Object.defineProperty(currentImage, 'naturalWidth', { configurable: true, get: () => 1024 });
 

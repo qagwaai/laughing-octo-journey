@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
-import type { ShipExteriorMissionDefinition, ShipExteriorMissionGateStepDefinition } from '../../mission/ship-exterior-mission';
-import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
+import type {
+  ShipExteriorMissionDefinition,
+  ShipExteriorMissionGateState,
+  ShipExteriorMissionGateStepDefinition,
+} from '../../mission/ship-exterior-mission';
 import type { LaunchItemResponse } from '../../model/launch-item';
+import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 
 function createMissionDefinition(): ShipExteriorMissionDefinition {
   const steps: readonly ShipExteriorMissionGateStepDefinition[] = [];
@@ -119,11 +122,7 @@ describe('ShipExteriorLaunchController', () => {
       },
     ]);
     expect(applyYieldedItems).not.toHaveBeenCalled();
-    expect(setLaunchToast).toHaveBeenCalledWith(
-      'Launch complete — Iron ×1',
-      'success',
-      42,
-    );
+    expect(setLaunchToast).toHaveBeenCalledWith('Launch complete — Iron ×1', 'success', 42);
     expect(queuePostLaunchRefresh).not.toHaveBeenCalled();
     expect(enqueueMissionProgressUpsert).not.toHaveBeenCalled();
     expect(invokePluginHook).not.toHaveBeenCalled();
@@ -202,11 +201,7 @@ describe('ShipExteriorLaunchController', () => {
         launchable: false,
       },
     ]);
-    expect(setLaunchToast).toHaveBeenCalledWith(
-      'Target destroyed — Iron Fragment ×2',
-      'success',
-      7,
-    );
+    expect(setLaunchToast).toHaveBeenCalledWith('Target destroyed — Iron Fragment ×2', 'success', 7);
   });
 
   it('chains launch gate progression when one launch satisfies consecutive steps', () => {
@@ -301,16 +296,19 @@ describe('ShipExteriorLaunchController', () => {
 
     expect(setMissionGateState).toHaveBeenCalledTimes(1);
     const finalGateState = setMissionGateState.mock.calls[0][0];
-    expect(finalGateState.steps.find((step: { key: string; status: string }) => step.key === 'identify_iron_asteroid')?.status).toBe(
-      'completed',
-    );
     expect(
-      finalGateState.steps.find((step: { key: string; status: string }) => step.key === 'neutralize_identified_asteroid')
+      finalGateState.steps.find((step: { key: string; status: string }) => step.key === 'identify_iron_asteroid')
         ?.status,
     ).toBe('completed');
-    expect(finalGateState.steps.find((step: { key: string; status: string }) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
-      'active',
-    );
+    expect(
+      finalGateState.steps.find(
+        (step: { key: string; status: string }) => step.key === 'neutralize_identified_asteroid',
+      )?.status,
+    ).toBe('completed');
+    expect(
+      finalGateState.steps.find((step: { key: string; status: string }) => step.key === 'manufacture_hull_patch_kit')
+        ?.status,
+    ).toBe('active');
     expect(persistMissionGateState).toHaveBeenCalledTimes(1);
     expect(enqueueMissionProgressUpsert).toHaveBeenCalledTimes(1);
   });

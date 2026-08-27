@@ -633,7 +633,9 @@ describe('ShipExteriorSocketService', () => {
 
     service.launchItem(request);
 
-    const emittedLaunch = socketService.emittedEvents.find((e) => e.eventName === 'launchItem')?.payload as LaunchItemRequest | undefined;
+    const emittedLaunch = socketService.emittedEvents.find((e) => e.eventName === 'launchItem')?.payload as
+      | LaunchItemRequest
+      | undefined;
     const correlationId = (emittedLaunch?.correlationId ?? 'corr-launch-1') as string;
     const requestIdentity = emittedLaunch?.requestIdentity ?? {
       operation: 'launch-item',
@@ -683,9 +685,7 @@ describe('ShipExteriorSocketService', () => {
     } as LaunchItemResponse);
 
     expect(received).toHaveLength(0);
-    expect(dispatchSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'socket-correlation-warning' }),
-    );
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'socket-correlation-warning' }));
     unsubscribe();
   });
 });

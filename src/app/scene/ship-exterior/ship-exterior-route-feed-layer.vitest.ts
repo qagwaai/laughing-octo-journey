@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Component, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
   ShipExteriorRouteFeedLayer,
   type ShipExteriorRouteSceneEncounterShip,
@@ -11,11 +11,7 @@ import {
 
 @Component({
   template: `
-    <app-ship-exterior-route-feed-layer
-      [gates]="gates"
-      [stations]="stations"
-      [encounterShips]="encounterShips"
-    />
+    <app-ship-exterior-route-feed-layer [gates]="gates" [stations]="stations" [encounterShips]="encounterShips" />
   `,
   imports: [ShipExteriorRouteFeedLayer],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],

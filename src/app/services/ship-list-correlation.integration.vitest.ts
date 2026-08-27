@@ -364,9 +364,8 @@ describe('ship-list correlation integration', () => {
         callbackA,
       );
 
-      const firstRequest = socketService.emittedEvents.find(
-        (entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT,
-      )?.data as ShipListByOwnerRequest;
+      const firstRequest = socketService.emittedEvents.find((entry) => entry.event === SHIP_LIST_BY_OWNER_REQUEST_EVENT)
+        ?.data as ShipListByOwnerRequest;
 
       unsubscribeA();
 

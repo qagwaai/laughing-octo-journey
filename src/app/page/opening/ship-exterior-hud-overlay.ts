@@ -60,7 +60,9 @@ import type {
             (input)="onFlightSensitivityInput($event)"
           />
         </label>
-        <span class="ship-exterior-flight-panel__lock">{{ flightPanel.pointerLocked ? 'MOUSE LOCKED' : 'MOUSE FREE' }}</span>
+        <span class="ship-exterior-flight-panel__lock">
+          {{ flightPanel.pointerLocked ? 'MOUSE LOCKED' : 'MOUSE FREE' }}
+        </span>
       </div>
     </section>
 
@@ -128,7 +130,8 @@ import type {
           <span class="ship-exterior-hotkey-tile__key">{{ slot.hotkey }}</span>
           <span class="ship-exterior-hotkey-tile__name">{{ slot.label }}</span>
         </button>
-      } @if (launchPanel.showQuickTargetIronControl) {
+      }
+      @if (launchPanel.showQuickTargetIronControl) {
         <button type="button" class="ship-exterior-test-target-button" (click)="quickTargetIronAsteroidForTest.emit()">
           TARGET IRON
         </button>

@@ -11,33 +11,28 @@ interface ShipExteriorResumeMockOptions {
   inventory?: unknown[];
 }
 
-export function configureShipExteriorResumeMock(
-  mock: SocketIOMock,
-  options: ShipExteriorResumeMockOptions = {},
-): void {
+export function configureShipExteriorResumeMock(mock: SocketIOMock, options: ShipExteriorResumeMockOptions = {}): void {
   const missionStatus = options.missionStatus ?? 'active';
-  const inventory =
-    options.inventory ??
-    [
-      {
-        id: 'item-drone-1',
-        itemType: 'expendable-dart-drone',
-        displayName: 'Expendable Dart Drone',
-        launchable: true,
-        state: 'contained',
-        damageStatus: 'intact',
-        container: { containerType: 'ship', containerId: SHIP_EXTERIOR_RESUME_SHIP_ID },
-        owningPlayerId: TEST_PLAYER,
-        owningCharacterId: SHIP_EXTERIOR_RESUME_CHARACTER_ID,
-        kinematics: null,
-        destroyedAt: null,
-        destroyedReason: null,
-        discoveredAt: null,
-        discoveredByCharacterId: null,
-        createdAt: '2026-05-01T00:00:00.000Z',
-        updatedAt: '2026-05-01T00:00:00.000Z',
-      },
-    ];
+  const inventory = options.inventory ?? [
+    {
+      id: 'item-drone-1',
+      itemType: 'expendable-dart-drone',
+      displayName: 'Expendable Dart Drone',
+      launchable: true,
+      state: 'contained',
+      damageStatus: 'intact',
+      container: { containerType: 'ship', containerId: SHIP_EXTERIOR_RESUME_SHIP_ID },
+      owningPlayerId: TEST_PLAYER,
+      owningCharacterId: SHIP_EXTERIOR_RESUME_CHARACTER_ID,
+      kinematics: null,
+      destroyedAt: null,
+      destroyedReason: null,
+      discoveredAt: null,
+      discoveredByCharacterId: null,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+    },
+  ];
 
   mock.on('character-list-request', () => ({
     event: 'character-list-response',

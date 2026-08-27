@@ -1,7 +1,4 @@
-import {
-  ShipExteriorViewStateService,
-  type ShipExteriorViewStateContext,
-} from './ship-exterior-view-state.service';
+import { ShipExteriorViewStateService, type ShipExteriorViewStateContext } from './ship-exterior-view-state.service';
 
 describe('ShipExteriorViewStateService', () => {
   let service: ShipExteriorViewStateService;
@@ -92,7 +89,10 @@ describe('ShipExteriorViewStateService', () => {
   });
 
   it('returns null when payload is missing finite numeric fields', () => {
-    sessionStorage.setItem('ship-exterior:view-state:pioneer:char-1:ship-1', JSON.stringify({ yawRad: 1, pitchRad: 'x' }));
+    sessionStorage.setItem(
+      'ship-exterior:view-state:pioneer:char-1:ship-1',
+      JSON.stringify({ yawRad: 1, pitchRad: 'x' }),
+    );
     expect(service.loadOrientation(context)).toBeNull();
   });
 

@@ -1,10 +1,10 @@
-import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
+import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
+import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
-import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import { type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
 
 interface ShipExteriorBootstrapControllerDeps {
@@ -152,7 +152,10 @@ export class ShipExteriorBootstrapController {
       (response: ShipListByOwnerResponse) => {
         if (!response.success) {
           this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
-          appLogger.warn('ColdBootScan starter ship lookup failed; requested fallback asteroid seeding.', response.message);
+          appLogger.warn(
+            'ColdBootScan starter ship lookup failed; requested fallback asteroid seeding.',
+            response.message,
+          );
           return;
         }
 

@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { getActiveLocaleCode, locale } from '../../i18n/locale';
-import { resolveNavigationState } from '../navigation-state';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { OPENING_STAGE_TIMINGS_MS, resolveOpeningSequenceContent } from '../../model/opening-sequence';
 import { MissionService, OpeningAudioService, SessionService } from '../../services';
 import { MissionNavigationService } from '../../services/mission-navigation';
+import { resolveNavigationState } from '../navigation-state';
 
 interface ColdBootNavigationState {
   playerName?: string;
@@ -217,6 +217,11 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
    * Rehydrates the selected character from route state or persisted session context.
    */
   private resolveJoinCharacter() {
-    return this.navigationState.joinCharacter ?? this.sessionService.getMissionEntryContext()?.joinCharacter ?? this.sessionService.activeCharacter() ?? null;
+    return (
+      this.navigationState.joinCharacter ??
+      this.sessionService.getMissionEntryContext()?.joinCharacter ??
+      this.sessionService.activeCharacter() ??
+      null
+    );
   }
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ViewerDataFacade } from './viewer-data-facade';
 import type { ViewerBody } from '../../model/solar-system-get';
-import type { SolarSystemService } from '../../services/solar-system.service';
 import type { MarketService } from '../../services/market.service';
 import type { ShipService } from '../../services/ship.service';
 import type { SocketService } from '../../services/socket.service';
+import type { SolarSystemService } from '../../services/solar-system.service';
+import { ViewerDataFacade } from './viewer-data-facade';
 
 interface FacadeHarness {
   facade: ViewerDataFacade;
@@ -113,7 +113,10 @@ function debrisBodyWithDescriptor(id: string): ViewerBody {
   };
 }
 
-function gateBodyWithDescriptor(id: string, objectFamily: 'ring-gate' | 'segmented-arch' | 'relay-spindle'): ViewerBody {
+function gateBodyWithDescriptor(
+  id: string,
+  objectFamily: 'ring-gate' | 'segmented-arch' | 'relay-spindle',
+): ViewerBody {
   return {
     id,
     bodyType: 'gate',
@@ -330,7 +333,9 @@ describe('ViewerDataFacade', () => {
     const { facade, state, services } = createHarness();
     state.activeCharacterId = null;
 
-    const asteroidDescriptors = Array.from({ length: 16 }, (_, index) => asteroidBodyWithDescriptor(`asteroid-${index}`));
+    const asteroidDescriptors = Array.from({ length: 16 }, (_, index) =>
+      asteroidBodyWithDescriptor(`asteroid-${index}`),
+    );
     const gates = [
       gateBodyWithDescriptor('gate-ring', 'ring-gate'),
       gateBodyWithDescriptor('gate-segmented', 'segmented-arch'),
@@ -356,7 +361,9 @@ describe('ViewerDataFacade', () => {
     const { facade, state, services } = createHarness();
     state.activeCharacterId = null;
 
-    const asteroidDescriptors = Array.from({ length: 17 }, (_, index) => asteroidBodyWithDescriptor(`asteroid-${index}`));
+    const asteroidDescriptors = Array.from({ length: 17 }, (_, index) =>
+      asteroidBodyWithDescriptor(`asteroid-${index}`),
+    );
 
     services.solarSystemService.getSolarSystem.mockImplementation((_request: unknown, cb: (response: any) => void) => {
       cb({
@@ -523,8 +530,14 @@ describe('ViewerDataFacade', () => {
       cb({
         success: true,
         ships: [
-          { id: 'ship-1', spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 } },
-          { id: 'ship-2', spatial: { solarSystemId: 'alpha', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 } },
+          {
+            id: 'ship-1',
+            spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+          },
+          {
+            id: 'ship-2',
+            spatial: { solarSystemId: 'alpha', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+          },
           { id: 'ship-3' },
         ],
       });

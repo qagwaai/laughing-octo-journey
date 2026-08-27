@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createMockSessionService,
@@ -9,8 +9,8 @@ import {
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
-import { SessionService } from '../../services/session.service';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { SocketService } from '../../services/socket.service';
@@ -229,7 +229,9 @@ describe('ShipViewInventoryPage', () => {
     const native = fixture.nativeElement as HTMLElement;
     const rows = Array.from(native.querySelectorAll('tbody tr'))
       .map((row) => {
-        const cells = Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+        const cells = Array.from(row.querySelectorAll('td')).map(
+          (cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        );
         return {
           name: cells[0] ?? '',
           qty: cells[2] ?? '',
@@ -266,7 +268,9 @@ describe('ShipViewInventoryPage', () => {
     expect(headers.some((text) => text.includes('Tier'))).toBe(true);
 
     const rows = Array.from(native.querySelectorAll('tbody tr'));
-    const cellsByRow = rows.map((row) => Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim() ?? ''));
+    const cellsByRow = rows.map((row) =>
+      Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim() ?? ''),
+    );
     const laserRow = cellsByRow.find((cells) => cells[0].includes('Basic Mining Laser'));
     const sensorRow = cellsByRow.find((cells) => cells[0].includes('Sensor Array'));
     expect(laserRow?.[1]).toBe('2');
@@ -294,7 +298,9 @@ describe('ShipViewInventoryPage', () => {
     const native = fixture.nativeElement as HTMLElement;
     const rows = Array.from(native.querySelectorAll('tbody tr'));
     const rowData = rows.map((row) => {
-      const cells = Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+      const cells = Array.from(row.querySelectorAll('td')).map(
+        (cell) => cell.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      );
       return {
         row,
         name: cells[0] ?? '',
@@ -318,8 +324,20 @@ describe('ShipViewInventoryPage', () => {
           id: 's-1',
           name: 'Scavenger I',
           inventory: [
-            makeItem({ id: 'beam-1', itemType: 'ship-tractor-beam', displayName: 'Tractor Beam', tier: 20, damageStatus: 'damaged' }),
-            makeItem({ id: 'sensor-1', itemType: 'sensor-array', displayName: 'Sensor Array', tier: 12, damageStatus: 'intact' }),
+            makeItem({
+              id: 'beam-1',
+              itemType: 'ship-tractor-beam',
+              displayName: 'Tractor Beam',
+              tier: 20,
+              damageStatus: 'damaged',
+            }),
+            makeItem({
+              id: 'sensor-1',
+              itemType: 'sensor-array',
+              displayName: 'Sensor Array',
+              tier: 12,
+              damageStatus: 'intact',
+            }),
           ],
         },
       },
@@ -377,10 +395,16 @@ describe('ShipViewInventoryPage', () => {
     });
 
     component['toggleSort']('name');
-    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual(['Alpha Tool', 'Zeta Tool']);
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual([
+      'Alpha Tool',
+      'Zeta Tool',
+    ]);
 
     component['toggleSort']('name');
-    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual(['Zeta Tool', 'Alpha Tool']);
+    expect((component['inventoryGroups']() as InventoryGroup[]).map((g) => g.name)).toEqual([
+      'Zeta Tool',
+      'Alpha Tool',
+    ]);
   });
 
   it('should toggle active sort class between item and tier headers', () => {
@@ -521,7 +545,13 @@ describe('ShipViewInventoryPage', () => {
               destroyedAt: '2026-05-18T00:00:00.000Z',
               destroyedReason: 'scrapped',
             }),
-            makeItem({ id: 'iron-1', itemType: 'iron', displayName: 'Iron', state: 'contained', damageStatus: 'intact' }),
+            makeItem({
+              id: 'iron-1',
+              itemType: 'iron',
+              displayName: 'Iron',
+              state: 'contained',
+              damageStatus: 'intact',
+            }),
           ],
         },
       },
@@ -1003,7 +1033,9 @@ describe('ShipViewInventoryPage', () => {
       },
     });
 
-    const addTractorBeamSpy = vi.spyOn(component as any, 'addTractorBeamToInventory').mockImplementation(() => undefined);
+    const addTractorBeamSpy = vi
+      .spyOn(component as any, 'addTractorBeamToInventory')
+      .mockImplementation(() => undefined);
     component['runDevInventoryAction']('add-tractor-beam');
     expect(addTractorBeamSpy).toHaveBeenCalled();
   });
@@ -1237,11 +1269,7 @@ describe('ShipViewInventoryPage', () => {
 
     expect(upsertItemSpy).toHaveBeenCalledTimes(3);
     const itemTypes = upsertItemSpy.mock.calls.map((args) => args[0].item.itemType).sort();
-    expect(itemTypes).toEqual([
-      'expendable-dart-drone',
-      'sensor-array',
-      'ship-tractor-beam',
-    ].sort());
+    expect(itemTypes).toEqual(['expendable-dart-drone', 'sensor-array', 'ship-tractor-beam'].sort());
     expect(refreshCallCount).toBe(2);
   });
 
@@ -1276,7 +1304,9 @@ describe('ShipViewInventoryPage', () => {
 
     expect(component['joinShip']()?.id).toBe('s-1');
     expect(component['refreshToastMessage']()).toBe('No ship with usable spatial data is available.');
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('No ship with usable spatial data is available.');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'No ship with usable spatial data is available.',
+    );
   });
 
   describe('DOM smoke tests', () => {

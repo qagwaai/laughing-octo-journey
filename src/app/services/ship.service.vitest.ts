@@ -11,8 +11,8 @@ import {
   type ShipTransferRequest,
   type ShipTransferResponse,
 } from '../model/ship-transfer';
-import { SocketService } from './socket.service';
 import { ShipService } from './ship.service';
+import { SocketService } from './socket.service';
 
 type Listener<T = unknown> = (payload: T) => void;
 

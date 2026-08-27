@@ -8,11 +8,7 @@ type RegisterMarketSessionOptions = {
   joinEvent?: string;
 };
 
-export function registerMarketCharacterList(
-  mock: SocketIOMock,
-  character: object,
-  playerName = TEST_PLAYER,
-): void {
+export function registerMarketCharacterList(mock: SocketIOMock, character: object, playerName = TEST_PLAYER): void {
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -46,16 +42,8 @@ export function registerMarketShipListByOwner(
   }));
 }
 
-export function registerMarketSharedSession(
-  mock: SocketIOMock,
-  options: RegisterMarketSessionOptions,
-): void {
-  const {
-    character,
-    ships,
-    playerName = TEST_PLAYER,
-    joinEvent = 'game-join',
-  } = options;
+export function registerMarketSharedSession(mock: SocketIOMock, options: RegisterMarketSessionOptions): void {
+  const { character, ships, playerName = TEST_PLAYER, joinEvent = 'game-join' } = options;
 
   registerMarketCharacterList(mock, character, playerName);
   registerMarketGameJoin(mock, joinEvent);

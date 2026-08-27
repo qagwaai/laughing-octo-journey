@@ -21,10 +21,7 @@ export class JaxsShip {
   rotation = input<Triplet>([0, 0, 0]);
   scale = input<number>(0.12);
 
-  protected shipModel = gltfResource(
-    () => ({ ship: 'models/Jaxs_Ship_texture.glb' }),
-    { onLoad() {} },
-  );
+  protected shipModel = gltfResource(() => ({ ship: 'models/Jaxs_Ship_texture.glb' }), { onLoad() {} });
 
   protected shipScene = computed(() => this.shipModel.asReadonly().value()?.ship?.scene ?? null);
 }

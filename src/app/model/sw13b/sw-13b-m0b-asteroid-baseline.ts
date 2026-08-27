@@ -96,7 +96,10 @@ function hashFnv1a(input: string): string {
 }
 
 function materialSlug(material: string): string {
-  return material.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return material
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
 }
 
 function profileCode(profilePreset: string): string {
@@ -108,12 +111,7 @@ function profileCode(profilePreset: string): string {
   return profilePreset.slice(0, 2).toUpperCase();
 }
 
-function buildSeedId(params: {
-  tier: Sw13bTier;
-  material: string;
-  profilePreset: string;
-  ordinal: number;
-}): string {
+function buildSeedId(params: { tier: Sw13bTier; material: string; profilePreset: string; ordinal: number }): string {
   const seedSurface = 'DS';
   const ordinal = String(params.ordinal).padStart(3, '0');
   return `AST-${seedSurface}-${params.tier}-${materialSlug(params.material)}-${profileCode(params.profilePreset)}-${ordinal}-r1`;
@@ -304,7 +302,8 @@ function buildInitialGapList(owner: string, contentReviewer: string, targetClosu
     },
     {
       gapId: 'GAP-SW13B-M0B-002',
-      summary: 'Closed: dense hero scene remains a soft-warning profile per M0B policy and is accepted for baseline publication.',
+      summary:
+        'Closed: dense hero scene remains a soft-warning profile per M0B policy and is accepted for baseline publication.',
       status: 'closed',
       owner,
       contentReviewer,

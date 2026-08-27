@@ -2,11 +2,7 @@
  * Canonical ship ownership descriptors returned by owner-aware ship contract endpoints.
  */
 
-export type ShipOwnerType =
-  | 'unknown'
-  | 'player-character'
-  | 'npc-pirate'
-  | 'unowned';
+export type ShipOwnerType = 'unknown' | 'player-character' | 'npc-pirate' | 'unowned';
 
 export interface ShipOwnerDescriptor {
   ownerType: ShipOwnerType;

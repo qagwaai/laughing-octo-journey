@@ -136,23 +136,14 @@ export function resolvePlanetViewBodyRadiusKm(body: ViewerBody, relativeDistance
 
     const normalizedDistance =
       typeof orbitalDistanceKm === 'number' && Number.isFinite(orbitalDistanceKm) && orbitalDistanceKm > 0
-        ? clamp(
-            Math.log10(1 + orbitalDistanceKm) / Math.log10(1 + PLANET_VIEW_MOON_FALLBACK_DISTANCE_KM),
-            0,
-            1,
-          )
+        ? clamp(Math.log10(1 + orbitalDistanceKm) / Math.log10(1 + PLANET_VIEW_MOON_FALLBACK_DISTANCE_KM), 0, 1)
         : 0.5;
 
-    const radiusFromDistanceKm =
-      PLANET_VIEW_MOON_FALLBACK_BASE_RADIUS_KM + normalizedDistance * 1200;
+    const radiusFromDistanceKm = PLANET_VIEW_MOON_FALLBACK_BASE_RADIUS_KM + normalizedDistance * 1200;
 
     const jitter = ((resolveStableHash(body.id) % 23) - 11) / 100;
     const variedRadiusKm = radiusFromDistanceKm * (1 + jitter);
-    return clamp(
-      variedRadiusKm,
-      PLANET_VIEW_MOON_FALLBACK_MIN_RADIUS_KM,
-      PLANET_VIEW_MOON_FALLBACK_MAX_RADIUS_KM,
-    );
+    return clamp(variedRadiusKm, PLANET_VIEW_MOON_FALLBACK_MIN_RADIUS_KM, PLANET_VIEW_MOON_FALLBACK_MAX_RADIUS_KM);
   }
   return 6200;
 }
@@ -192,7 +183,11 @@ export function resolveOrbitAngleRad(body: ViewerBody): number {
   return (hash % 360) * (Math.PI / 180);
 }
 
-export function resolveStarMarker(selected: ViewerBody, allBodies: ViewerBody[], maxOrbitRadius: number): StarMarker | null {
+export function resolveStarMarker(
+  selected: ViewerBody,
+  allBodies: ViewerBody[],
+  maxOrbitRadius: number,
+): StarMarker | null {
   const nearestStar = allBodies.find((body) => body.bodyType === 'star');
   if (!nearestStar) {
     return null;
@@ -462,7 +457,11 @@ export class PlanetViewScene {
   }
 
   onBodyPointerDown(
-    event: { button?: number; nativeEvent?: { button?: number; preventDefault?: () => void }; stopPropagation?: () => void },
+    event: {
+      button?: number;
+      nativeEvent?: { button?: number; preventDefault?: () => void };
+      stopPropagation?: () => void;
+    },
     body: ViewerBody,
   ): void {
     event.stopPropagation?.();
@@ -486,7 +485,11 @@ export class PlanetViewScene {
     this.exitRequested.emit();
   }
 
-  private isRightButton(event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number } }): boolean {
+  private isRightButton(event: {
+    button?: number;
+    buttons?: number;
+    nativeEvent?: { button?: number; buttons?: number };
+  }): boolean {
     const button = event.button ?? event.nativeEvent?.button;
     const buttons = event.buttons ?? event.nativeEvent?.buttons;
     return button === 2 || (button === undefined && typeof buttons === 'number' && (buttons & 2) === 2);

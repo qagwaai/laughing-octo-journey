@@ -1,7 +1,6 @@
-import { TEST_PLAYER } from '../helpers/auth-helper';
-import { loginViaUI } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
 import type { Page } from '@playwright/test';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { GameShellPage } from '../page-objects/game-shell.page';
 import { SocketIOMock } from './socket-mock';
 
 export const FIRST_TARGET_MISSION_ID = 'first-target';

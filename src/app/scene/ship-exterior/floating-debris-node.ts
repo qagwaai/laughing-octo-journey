@@ -174,8 +174,7 @@ export class FloatingDebrisNode {
   }): void {
     const button = event.button ?? event.nativeEvent?.button;
     const buttons = event.buttons ?? event.nativeEvent?.buttons;
-    const isRightButton =
-      button === 2 || (button === undefined && typeof buttons === 'number' && (buttons & 2) === 2);
+    const isRightButton = button === 2 || (button === undefined && typeof buttons === 'number' && (buttons & 2) === 2);
     if (!isRightButton) {
       return;
     }

@@ -11,4 +11,4 @@ export {
   evaluateSw13bRockyVisualGate,
 } from './asteroid-visual-metrics';
 
-export { buildSw13bDeterministicScreenshotManifest, SW13B_CAMERA_PRESETS } from './asteroid-visual-screenshot-harness';
+export { SW13B_CAMERA_PRESETS, buildSw13bDeterministicScreenshotManifest } from './asteroid-visual-screenshot-harness';

@@ -1,15 +1,14 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { loginViaUI } from '../helpers/auth-helper';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
-import { TEST_PLAYER } from '../helpers/auth-helper';
-import { SocketIOMock } from './socket-mock';
 import {
   registerMissionCharacterList,
   registerMissionGameJoin,
   registerMissionList,
   registerMissionShipListByOwner,
 } from './mission-session-helpers';
+import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TRANSITION_TEST_CHARACTER = { id: 'char-mission-test', characterName: 'Pioneer One', level: 1 };

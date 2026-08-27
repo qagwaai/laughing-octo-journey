@@ -1,7 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, CUSTOM_ELEMENTS_SCHEMA, OnDestroy, ElementRef } from '@angular/core';
-import { Router, ActivatedRoute } from '@angular/router';
-import { NgtCanvas } from 'angular-three/dom';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  CUSTOM_ELEMENTS_SCHEMA,
+  ElementRef,
+  inject,
+  OnDestroy,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
+import { NgtCanvas } from 'angular-three/dom';
+import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
 import {
   EXTERNAL_OBJECT_SCHEMA_VERSION,
@@ -9,27 +19,26 @@ import {
   type ExternalObjectDomain,
 } from '../../model/external-object-descriptor';
 import { isValidShipSpatial } from '../../model/math/spatial';
+import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
-import type { ShipSummary } from '../../model/ship-list';
-import { MarketService } from '../../services/market.service';
-import { SessionService } from '../../services/session.service';
-import { ShipService } from '../../services/ship.service';
-import { SocketService } from '../../services/socket.service';
-import { SolarSystemService } from '../../services/solar-system.service';
-import { ViewerTargetService } from '../../services/viewer-target.service';
-import { RenderStatsService } from '../../services/render-stats.service';
-import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
-import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import {
   resolveDescriptorRenderProfile,
   resolveGateApproachMetadata,
   type DescriptorRenderProfile,
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
-import { ViewerDataFacade } from './viewer-data-facade';
+import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
+import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
+import { MarketService } from '../../services/market.service';
+import { RenderStatsService } from '../../services/render-stats.service';
+import { SessionService } from '../../services/session.service';
+import { ShipService } from '../../services/ship.service';
+import { SocketService } from '../../services/socket.service';
+import { SolarSystemService } from '../../services/solar-system.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 import { resolveNavigationState } from '../navigation-state';
-import { environment } from '../../../environments/environment';
+import { ViewerDataFacade } from './viewer-data-facade';
 
 interface ViewerSceneNavigationState {
   playerName?: string;
@@ -260,12 +269,11 @@ export default class ViewerScenePage implements OnDestroy {
     activeShipId: this.sessionService.activeShip()?.id ?? null,
   }));
 
-
   private planetTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     // Subscribe to route param changes
-    this.route.paramMap.subscribe(params => {
+    this.route.paramMap.subscribe((params) => {
       const id = params.get('solarSystemId');
       this.solarSystemId.set(id);
       if (id) {
@@ -359,9 +367,7 @@ export default class ViewerScenePage implements OnDestroy {
     // deltaMode 0 = pixels (~100 per notch), 1 = lines, 2 = pages.
     // Scroll up (negative deltaY) decreases zoom level → camera moves closer.
     const STEP_PER_LINE = 5;
-    const delta = event.deltaMode === 0
-      ? (event.deltaY / 100) * STEP_PER_LINE
-      : event.deltaY * STEP_PER_LINE;
+    const delta = event.deltaMode === 0 ? (event.deltaY / 100) * STEP_PER_LINE : event.deltaY * STEP_PER_LINE;
 
     this.onZoomChange(this.zoomLevel() + delta);
   }
@@ -459,5 +465,4 @@ export default class ViewerScenePage implements OnDestroy {
 
     this.showEffectiveRenderProfile.set(target.checked);
   }
-
 }

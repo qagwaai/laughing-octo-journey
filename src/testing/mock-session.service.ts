@@ -40,7 +40,9 @@ export function createMockSessionService(initialKey: string | null = null): Mock
   const activeShip = createSignal<ShipSummary | null>(null);
   const activeCharacter = createSignal<PlayerCharacterSummary | null>(null);
   const playerNameState = createSignal<string | null>(null);
-  const missionEntryContextState = createSignal<{ playerName: string; joinCharacter: PlayerCharacterSummary } | null>(null);
+  const missionEntryContextState = createSignal<{ playerName: string; joinCharacter: PlayerCharacterSummary } | null>(
+    null,
+  );
 
   return {
     get storedKey() {

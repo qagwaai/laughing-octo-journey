@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createMockSessionService, createMockSocketService, type MockSocketService } from '../../../testing';
 import { SessionService } from '../../services/session.service';

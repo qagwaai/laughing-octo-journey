@@ -1,5 +1,5 @@
-import { evaluateMissionGateOnLaunch, type ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { ShipExteriorMissionDefinition } from '../../mission/ship-exterior-mission';
+import { evaluateMissionGateOnLaunch, type ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { LaunchItemResponse, LaunchItemYieldedItem, LaunchItemYieldedMaterial } from '../../model/launch-item';
 import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
 
@@ -240,6 +240,9 @@ export class ShipExteriorLaunchController {
     // Launch success can trigger immediate item-upsert writes for material rewards.
     // Briefly delaying mission-upsert reduces optimistic concurrency collisions on the
     // same character aggregate while preserving user-visible progress behavior.
-    setTimeout(() => this.deps.enqueueMissionProgressUpsert(item), ShipExteriorLaunchController.MISSION_PROGRESS_UPSERT_AFTER_REWARD_DELAY_MS);
+    setTimeout(
+      () => this.deps.enqueueMissionProgressUpsert(item),
+      ShipExteriorLaunchController.MISSION_PROGRESS_UPSERT_AFTER_REWARD_DELAY_MS,
+    );
   }
 }

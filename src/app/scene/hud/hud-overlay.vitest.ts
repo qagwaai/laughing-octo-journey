@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { HudOverlay } from './hud-overlay';
 

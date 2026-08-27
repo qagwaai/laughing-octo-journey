@@ -11,9 +11,7 @@ describe('SW-13B M0B asteroid baseline artifacts', () => {
 
     const expected = new Set(ASTEROID_MATERIALS.map((row) => row.material.toLowerCase()));
     const actual = new Set(
-      artifacts.registry
-        .map((entry) => entry.seedId.split('-')[3] ?? 'unknown')
-        .map((token) => token.toLowerCase()),
+      artifacts.registry.map((entry) => entry.seedId.split('-')[3] ?? 'unknown').map((token) => token.toLowerCase()),
     );
 
     expect(actual).toEqual(expected);

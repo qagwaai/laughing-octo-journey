@@ -4,10 +4,10 @@
  * Extracted from ship-exterior-view.ts so that they can be unit-tested in isolation
  * (no Angular TestBed, no DOM, no signals) and reused across mission plugins.
  */
-import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
 import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
-import type { ShipItem } from '../../model/ship-item';
+import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
 import type { Triple } from '../../model/shared/triple';
+import type { ShipItem } from '../../model/ship-item';
 
 /** One astronomical unit in kilometers (IAU). */
 export const ASTRONOMICAL_UNIT_KM = 149_597_870.7;

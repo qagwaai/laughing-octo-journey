@@ -1,12 +1,12 @@
 import { expect, type Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
-import { SocketIOMock } from './socket-mock';
 import {
   registerMissionCharacterList,
   registerMissionGameJoin,
   registerMissionList,
   registerMissionShipListByOwner,
 } from './mission-session-helpers';
+import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const FAB_LAB_HINT_DISMISS_PREFIX = 'first-target:fabrication-lab-hint-dismissed';
@@ -219,10 +219,7 @@ export function configureFirstTargetCueMock(mock: SocketIOMock): void {
   });
 }
 
-export async function waitForShipExteriorTestApi(
-  sharedPage: Page,
-  recover?: () => Promise<void>,
-): Promise<void> {
+export async function waitForShipExteriorTestApi(sharedPage: Page, recover?: () => Promise<void>): Promise<void> {
   const isShipExteriorApiReady = async (): Promise<boolean> =>
     sharedPage
       .evaluate(() => {
@@ -259,9 +256,7 @@ export async function waitForShipExteriorTestApi(
         }
 
         const targetIronButton = sharedPage.getByRole('button', { name: 'TARGET IRON' });
-        const canOpenShipExterior = await targetIronButton
-          .isVisible({ timeout: 500 })
-          .catch(() => false);
+        const canOpenShipExterior = await targetIronButton.isVisible({ timeout: 500 }).catch(() => false);
         if (canOpenShipExterior) {
           await targetIronButton.click();
         } else if (!sharedPage.url().includes('right:opening-cold-boot-scan')) {

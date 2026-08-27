@@ -1,8 +1,8 @@
 /**
  * 3D printer domain item constants and coercion helpers.
  */
-import { ShipItem, coerceShipItem } from '../ship-item';
 import { getItemOrToast } from '../../services/item-catalog-util';
+import { ShipItem, coerceShipItem } from '../ship-item';
 
 export { ItemContainer, ItemDamageStatus, ItemKinematics, ItemState, ShipItem } from '../ship-item';
 

@@ -1,10 +1,9 @@
-import { TestBed } from '@angular/core/testing';
+import { createMockSocketLifecycleService, type MockSocketLifecycleService } from '../../testing';
 import { MISSION_ADD_REQUEST_EVENT, MISSION_ADD_RESPONSE_EVENT } from '../model/mission-add';
 import { MISSION_LIST_RESPONSE_EVENT } from '../model/mission-list';
 import { MISSION_UPSERT_REQUEST_EVENT, MISSION_UPSERT_RESPONSE_EVENT } from '../model/mission-upsert.model';
-import { SocketLifecycleService } from './socket-lifecycle.service';
 import { MissionService } from './mission.service';
-import { createMockSocketLifecycleService, type MockSocketLifecycleService } from '../../testing';
+import { SocketLifecycleService } from './socket-lifecycle.service';
 
 type Listener = (payload: any) => void;
 

@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { loginViaUI } from '../helpers/auth-helper';
-import type { SocketIOMock } from './socket-mock';
 import type { GameShellPage } from '../page-objects/game-shell.page';
+import type { SocketIOMock } from './socket-mock';
 
 interface ViewerSessionBootstrapOptions {
   page: Page;

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { describe, expect, it, vi, afterEach } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MissingItemToastService } from './missing-item-toast.service';
 
 describe('MissingItemToastService', () => {

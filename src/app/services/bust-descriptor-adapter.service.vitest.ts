@@ -4,17 +4,14 @@ import {
   CHARACTER_BUST_CREATE_RESPONSE_EVENT,
   CHARACTER_BUST_READ_REQUEST_EVENT,
   CHARACTER_BUST_READ_RESPONSE_EVENT,
-  CHARACTER_BUST_UPDATE_REQUEST_EVENT,
   CHARACTER_BUST_UPDATE_RESPONSE_EVENT,
   NPC_BUST_CREATE_REQUEST_EVENT,
   NPC_BUST_CREATE_RESPONSE_EVENT,
-  NPC_BUST_READ_REQUEST_EVENT,
   NPC_BUST_READ_RESPONSE_EVENT,
-  NPC_BUST_UPDATE_REQUEST_EVENT,
   NPC_BUST_UPDATE_RESPONSE_EVENT,
-  type CharacterBustCreateTerminalResponse,
   type BustValidationErrorResponse,
   type CharacterBustCreateRequest,
+  type CharacterBustCreateTerminalResponse,
   type CharacterBustReadRequest,
   type CharacterBustReadResponse,
   type CharacterBustUpdateRequest,
@@ -26,8 +23,8 @@ import {
   type NpcBustUpdateRequest,
   type NpcBustUpdateTerminalResponse,
 } from '../model/bust-descriptor';
-import { SocketService } from './socket.service';
 import { BustDescriptorAdapterService } from './bust-descriptor-adapter.service';
+import { SocketService } from './socket.service';
 
 const DEFAULT_BUST_DESCRIPTOR_INPUT = {
   presetVersion: 'v1',

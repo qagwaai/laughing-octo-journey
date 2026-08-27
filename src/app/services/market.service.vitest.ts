@@ -1,18 +1,18 @@
 import { TestBed } from '@angular/core/testing';
 import {
-  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
-  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
-  type MarketListByLocationRequest,
-  type MarketListByLocationResponse,
-} from '../model/market-list';
-import {
   MARKET_BUY_REQUEST_EVENT,
   MARKET_BUY_RESPONSE_EVENT,
   type MarketBuyRequest,
   type MarketBuyResponse,
 } from '../model/market-buy';
-import { SocketService } from './socket.service';
+import {
+  MARKET_LIST_BY_LOCATION_REQUEST_EVENT,
+  MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
+  type MarketListByLocationRequest,
+  type MarketListByLocationResponse,
+} from '../model/market-list';
 import { MarketService } from './market.service';
+import { SocketService } from './socket.service';
 
 type Listener<T = unknown> = (payload: T) => void;
 

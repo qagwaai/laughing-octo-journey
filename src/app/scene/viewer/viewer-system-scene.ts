@@ -14,31 +14,39 @@ import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { BufferGeometry, Color, Euler, IcosahedronGeometry, Quaternion, Vector3 } from 'three';
 import { isValidShipSpatial } from '../../model/math/spatial';
+import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
-import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
+import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
-  VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
-  VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
-  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
-  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
-  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
-  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
-  resolveAnchoredOrbitSceneProfile,
   isGateBody,
-  isStarBody,
   isMarketStationBody,
+  isStarBody,
+  resolveAnchoredOrbitSceneProfile,
   resolveBodyColor,
-  resolveBodySceneRadius,
-  resolveBodyScenePosition,
   resolveBodyOrbitalPositionRelativeToAnchor,
+  resolveBodyScenePosition,
+  resolveBodySceneRadius,
   resolveOrbitColor,
   resolveSceneDistanceFromKm,
+  VIEWER_SCENE_ACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_INACTIVE_SHIP_COLOR,
+  VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
+  VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+  VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
+  VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
 } from './viewer-formatters';
 import { ViewerShipMesh } from './viewer-ship-mesh';
-import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 
-type BodyGeometryKind = 'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus' | 'rock-deformed';
+type BodyGeometryKind =
+  | 'sphere'
+  | 'box'
+  | 'icosahedron'
+  | 'octahedron'
+  | 'capsule'
+  | 'cylinder'
+  | 'torus'
+  | 'rock-deformed';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -464,9 +472,12 @@ function resolveAsteroidGeometryVariant(
 
   const detail = kind === 'rock-deformed' ? (heroBoost > 1 ? 3 : 2) : 0;
   const rockSeed = kind === 'rock-deformed' ? seedSource : null;
-  const rockDisplacement = kind === 'rock-deformed' ? +(0.125 + swayA * 0.06 + (heroBoost > 1 ? 0.075 : 0)).toFixed(4) : 0;
-  const rockCraterCount = kind === 'rock-deformed' ? Math.max(4, Math.floor(4 + swayC * 3 + (heroBoost > 1 ? 4 : 0))) : 0;
-  const rockLobeStrength = kind === 'rock-deformed' ? +(heroBoost > 1 ? 0.62 + swayB * 0.18 : 0.3 + swayB * 0.12).toFixed(4) : 0;
+  const rockDisplacement =
+    kind === 'rock-deformed' ? +(0.125 + swayA * 0.06 + (heroBoost > 1 ? 0.075 : 0)).toFixed(4) : 0;
+  const rockCraterCount =
+    kind === 'rock-deformed' ? Math.max(4, Math.floor(4 + swayC * 3 + (heroBoost > 1 ? 4 : 0))) : 0;
+  const rockLobeStrength =
+    kind === 'rock-deformed' ? +(heroBoost > 1 ? 0.62 + swayB * 0.18 : 0.3 + swayB * 0.12).toFixed(4) : 0;
   const rockMinRadiusRatio = kind === 'rock-deformed' ? (heroBoost > 1 ? 0.46 : 0.56) : 0.78;
 
   return {
@@ -566,15 +577,15 @@ function buildDeterministicRockGeometry(params: {
     const nz = z / length;
 
     const macro =
-      Math.sin((nx * 2.7 + ny * 0.8 + nz * 0.45) + phaseA) +
-      Math.sin((ny * 2.4 + nz * 0.7 + nx * 0.35) + phaseB) +
-      Math.sin((nz * 2.9 + nx * 0.6 + ny * 0.3) + phaseC);
+      Math.sin(nx * 2.7 + ny * 0.8 + nz * 0.45 + phaseA) +
+      Math.sin(ny * 2.4 + nz * 0.7 + nx * 0.35 + phaseB) +
+      Math.sin(nz * 2.9 + nx * 0.6 + ny * 0.3 + phaseC);
     const meso =
       Math.sin((nx - ny * 0.75 + nz * 0.32) * 5.4 + phaseD) * 0.45 +
       Math.sin((ny - nz * 0.7 + nx * 0.28) * 5.1 + phaseE) * 0.38;
     const shelf =
-      (Math.abs(Math.sin((nx * 3.6 + ny * 1.7 + nz * 1.2) + phaseB)) - 0.5) * 2 +
-      (Math.abs(Math.sin((ny * 3.1 + nz * 1.6 + nx * 1.1) + phaseD)) - 0.5) * 1.4;
+      (Math.abs(Math.sin(nx * 3.6 + ny * 1.7 + nz * 1.2 + phaseB)) - 0.5) * 2 +
+      (Math.abs(Math.sin(ny * 3.1 + nz * 1.6 + nx * 1.1 + phaseD)) - 0.5) * 1.4;
     const lobePrimary = nx * lobeAxisPrimary[0] + ny * lobeAxisPrimary[1] + nz * lobeAxisPrimary[2];
     const lobeSecondary = nx * lobeAxisSecondary[0] + ny * lobeAxisSecondary[1] + nz * lobeAxisSecondary[2];
     const lobeTertiary = nx * lobeAxisTertiary[0] + ny * lobeAxisTertiary[1] + nz * lobeAxisTertiary[2];
@@ -746,7 +757,9 @@ export function mapBodiesToRendered(
       body,
       descriptorProfile?.color ?? defaultMaterialColor,
     );
-    const resolvedRadius = +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(4);
+    const resolvedRadius = +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(
+      4,
+    );
 
     return {
       source: body,
@@ -776,12 +789,19 @@ export function mapBodiesToRendered(
         descriptorProfile?.emissiveIntensity ?? resolveDefaultMaterialEmissiveIntensity(body, isGate, isMarketStation),
       materialRoughness:
         normalizeToken(body.bodyType) === 'asteroid'
-          ? Math.min(0.98, (descriptorProfile?.roughness ?? 0.84) + seededUnit(createDeterministicSeed(body.id), 0x44) * 0.1)
-          : descriptorProfile?.roughness ?? 0.8,
+          ? Math.min(
+              0.98,
+              (descriptorProfile?.roughness ?? 0.84) + seededUnit(createDeterministicSeed(body.id), 0x44) * 0.1,
+            )
+          : (descriptorProfile?.roughness ?? 0.8),
       materialMetalness:
         normalizeToken(body.bodyType) === 'asteroid'
-          ? Math.max(0.01, (descriptorProfile?.metalness ?? 0.08) + (seededUnit(createDeterministicSeed(body.id), 0x55) - 0.5) * 0.04)
-          : descriptorProfile?.metalness ?? 0.05,
+          ? Math.max(
+              0.01,
+              (descriptorProfile?.metalness ?? 0.08) +
+                (seededUnit(createDeterministicSeed(body.id), 0x55) - 0.5) * 0.04,
+            )
+          : (descriptorProfile?.metalness ?? 0.05),
     };
   });
 
@@ -819,7 +839,11 @@ export function mapBodiesToRendered(
     const dyKm = candidatePosKm.y - targetPositionKm.y;
     const dzKm = candidatePosKm.z - targetPositionKm.z;
     const localDistanceKm = Math.hypot(dxKm, dyKm, dzKm);
-    if (!Number.isFinite(localDistanceKm) || localDistanceKm <= 0 || localDistanceKm > VIEWER_LOCAL_ASTEROID_VIEW_RANGE_KM) {
+    if (
+      !Number.isFinite(localDistanceKm) ||
+      localDistanceKm <= 0 ||
+      localDistanceKm > VIEWER_LOCAL_ASTEROID_VIEW_RANGE_KM
+    ) {
       return candidate;
     }
 
@@ -878,7 +902,7 @@ export function mapShipsToRendered(ships: ShipSummary[], activeShipId: string | 
       id: ship.id,
       model,
       displayName: ship.name?.trim() || ship.id,
-      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : descriptorColor ?? defaultShipColor,
+      color: isActive ? VIEWER_SCENE_ACTIVE_SHIP_COLOR : (descriptorColor ?? defaultShipColor),
       recognitionDistanceKm: descriptorProfile?.recognitionDistanceKm ?? 40_000,
       position: scenePos,
       isActive,
@@ -952,7 +976,9 @@ export class ViewerSystemScene {
     mapBodiesToRendered(this.bodies(), this.zoomLevel(), this.targetBodyId(), this.ships()),
   );
 
-  protected readonly renderedShips = computed<RenderedShip[]>(() => mapShipsToRendered(this.ships(), this.activeShipId()));
+  protected readonly renderedShips = computed<RenderedShip[]>(() =>
+    mapShipsToRendered(this.ships(), this.activeShipId()),
+  );
 
   protected readonly focusedPlanetId = signal<string | null>(null);
 
@@ -971,7 +997,9 @@ export class ViewerSystemScene {
     return ids;
   });
 
-  protected readonly stars = computed(() => (this.focusedPlanetId() ? [] : this.rendered().filter((b: RenderedBody) => b.isStar)));
+  protected readonly stars = computed(() =>
+    this.focusedPlanetId() ? [] : this.rendered().filter((b: RenderedBody) => b.isStar),
+  );
   protected readonly nonStars = computed(() => {
     const focusIds = this.focusedBodyIds();
     const allNonStars = this.rendered().filter((b: RenderedBody) => !b.isStar);
@@ -1076,7 +1104,7 @@ export class ViewerSystemScene {
         } else if (!hoveredId) {
           opacity = 0.18; // default always-on low opacity
         } else if (hoveredId === body.id) {
-          opacity = 0.9;  // hovered body's own orbit
+          opacity = 0.9; // hovered body's own orbit
         } else if (highlightedIds.has(body.id)) {
           opacity = 0.35; // related orbits (parent/children)
         } else {
@@ -1092,7 +1120,7 @@ export class ViewerSystemScene {
           radiusZ,
           rotation: resolveOrbitRotationEuler(orbital),
           opacity: orbitOpacity,
-            color: resolveOrbitColor(body.source),
+          color: resolveOrbitColor(body.source),
           isMarketStation: body.isMarketStation,
         };
       })
@@ -1135,7 +1163,10 @@ export class ViewerSystemScene {
       this.syncOrbitControlsTarget();
 
       if (camera && controls && !this.cameraTween) {
-        const targetDistance = resolveZoomDistance(this.zoomLevel(), this.rendered().map((body) => body.source));
+        const targetDistance = resolveZoomDistance(
+          this.zoomLevel(),
+          this.rendered().map((body) => body.source),
+        );
         controls.minDistance = targetDistance;
         controls.maxDistance = targetDistance;
         controls.update();
@@ -1197,7 +1228,12 @@ export class ViewerSystemScene {
   }
 
   onBodyPointerDown(
-    event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void }; stopPropagation?: () => void },
+    event: {
+      button?: number;
+      buttons?: number;
+      nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void };
+      stopPropagation?: () => void;
+    },
     body: ViewerBody,
   ) {
     if (!this.isRightButton(event) || body.bodyType !== 'planet') {
@@ -1211,15 +1247,20 @@ export class ViewerSystemScene {
     if (this.planetViewRequestTimer) {
       clearTimeout(this.planetViewRequestTimer);
     }
-    this.planetViewRequestTimer = setTimeout(() => {
-      this.planetViewRequest.emit(body);
-      this.planetViewRequestTimer = null;
-    }, Math.round(VIEWER_CAMERA_TWEEN_DURATION_SEC * 1000));
+    this.planetViewRequestTimer = setTimeout(
+      () => {
+        this.planetViewRequest.emit(body);
+        this.planetViewRequestTimer = null;
+      },
+      Math.round(VIEWER_CAMERA_TWEEN_DURATION_SEC * 1000),
+    );
   }
 
-  onScenePointerDown(
-    event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void } },
-  ) {
+  onScenePointerDown(event: {
+    button?: number;
+    buttons?: number;
+    nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void };
+  }) {
     if (this.isRightButton(event) && this.activeTargetFlightId()) {
       event.nativeEvent?.preventDefault?.();
       this.activeTargetFlightId.set(null);
@@ -1244,7 +1285,11 @@ export class ViewerSystemScene {
     }
   }
 
-  private isRightButton(event: { button?: number; buttons?: number; nativeEvent?: { button?: number; buttons?: number } }): boolean {
+  private isRightButton(event: {
+    button?: number;
+    buttons?: number;
+    nativeEvent?: { button?: number; buttons?: number };
+  }): boolean {
     const button = event.button ?? event.nativeEvent?.button;
     const buttons = event.buttons ?? event.nativeEvent?.buttons;
     return button === 2 || (button === undefined && typeof buttons === 'number' && (buttons & 2) === 2);
@@ -1372,7 +1417,12 @@ export class ViewerSystemScene {
     if (camera) {
       const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
       const distance = controls?.target ? camera.position.distanceTo(controls.target) : camera.position.length();
-      this.zoomLevelChange.emit(resolveZoomPercent(distance, this.rendered().map((body) => body.source)));
+      this.zoomLevelChange.emit(
+        resolveZoomPercent(
+          distance,
+          this.rendered().map((body) => body.source),
+        ),
+      );
     }
 
     if (camera && tween?.kind === 'target-fly') {

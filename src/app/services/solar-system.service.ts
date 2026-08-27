@@ -1,19 +1,19 @@
 import { Injectable, inject } from '@angular/core';
-import { appLogger } from './logger';
 import {
   SOLAR_SYSTEM_GET_REQUEST_EVENT,
   SOLAR_SYSTEM_GET_RESPONSE_EVENT,
-  type SolarSystemGetRequestIdentity,
   type SolarSystemGetRequest,
+  type SolarSystemGetRequestIdentity,
   type SolarSystemGetResponse,
 } from '../model/solar-system-get';
 import {
   SOLAR_SYSTEM_LIST_REQUEST_EVENT,
   SOLAR_SYSTEM_LIST_RESPONSE_EVENT,
-  type SolarSystemListRequestIdentity,
   type SolarSystemListRequest,
+  type SolarSystemListRequestIdentity,
   type SolarSystemListResponse,
 } from '../model/solar-system-list';
+import { appLogger } from './logger';
 import { createCorrelationId, matchesBasicRequestIdentity, normalizeIdentityValue } from './socket-correlation';
 import { SocketService } from './socket.service';
 
@@ -149,7 +149,8 @@ export class SolarSystemService {
       requestId: request.requestId ?? this.nextRequestId(),
     };
     const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('solar-system-list');
-    const expectedRequestIdentity = request.requestIdentity ?? buildDefaultSolarSystemListRequestIdentity(requestWithId);
+    const expectedRequestIdentity =
+      request.requestIdentity ?? buildDefaultSolarSystemListRequestIdentity(requestWithId);
     const requestWithCorrelation: SolarSystemListRequest = {
       ...requestWithId,
       correlationId: expectedCorrelationId,

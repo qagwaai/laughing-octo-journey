@@ -1,8 +1,7 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
   BASE_CHARACTER,
   characterListResponse,
-  registerCharacterEditHandlers,
   resetSharedCharacterEditSession,
   setupSharedCharacterEditSession,
 } from '../fixtures/character-edit-scenario';
@@ -131,7 +130,9 @@ test.describe('Character Edit — setup save redirect', () => {
     await sharedCharacterSetupPage.characterNameInput.blur();
 
     await expect(sharedCharacterSetupPage.submitButton).toBeDisabled();
-    await expect(sharedCharacterSetupPage.fieldError).toContainText('Character name already exists. Choose a unique name.');
+    await expect(sharedCharacterSetupPage.fieldError).toContainText(
+      'Character name already exists. Choose a unique name.',
+    );
     expect(editRequestCount).toBe(0);
   });
 

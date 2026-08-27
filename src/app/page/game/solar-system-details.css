@@ -82,7 +82,10 @@
   padding: 0.22rem 0.65rem;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 
 .details-view-toggle__btn:hover {
@@ -119,7 +122,9 @@
   padding: 0.35rem 0.7rem;
   cursor: pointer;
   text-align: left;
-  transition: background 120ms, border-color 120ms;
+  transition:
+    background 120ms,
+    border-color 120ms;
 }
 
 .details-type-header:hover {
@@ -257,7 +262,10 @@
   padding: 0.2rem 0.55rem;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 
 .details-target-btn:hover {
@@ -275,7 +283,6 @@
 .details-target-btn--active:hover {
   background: rgba(180, 90, 20, 0.6);
 }
-
 
 .page-main {
   min-width: 0;
@@ -383,7 +390,10 @@
   padding: 0.2rem 0.55rem;
   font-size: 0.78rem;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms, color 120ms;
+  transition:
+    background 120ms,
+    border-color 120ms,
+    color 120ms;
 }
 
 .details-target-btn:hover {

@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import {
   registerMissionCharacterList,
   registerMissionGameJoin,
   registerMissionList,
   registerMissionShipListByOwner,
 } from '../fixtures/mission-session-helpers';
+import { SocketIOMock } from '../fixtures/socket-mock';
+import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
@@ -335,7 +335,9 @@ test.describe('Ship Exterior Test Utilities', () => {
       .toBe(true);
   });
 
-  test('scan completion reveals details without setting target lock, while hold-to-lock still works', async ({ page }) => {
+  test('scan completion reveals details without setting target lock, while hold-to-lock still works', async ({
+    page,
+  }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();
     registerShipExteriorSessionHandlers(mock, {
@@ -692,12 +694,9 @@ test.describe('Ship Exterior Test Utilities', () => {
         repair: 'completed',
         objective: 'Mission objectives complete. Await further directives.',
       });
-
   });
 
-  test('preserves completed local gate when backend reports started without statusDetail', async ({
-    page,
-  }) => {
+  test('preserves completed local gate when backend reports started without statusDetail', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();
 
@@ -791,9 +790,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe(
       'completed',
     );
-    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe(
-      'completed',
-    );
+    expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('completed');
     expect(gateAfterBackendRefresh.activeObjectiveText).toContain('Mission objectives complete');
   });
 

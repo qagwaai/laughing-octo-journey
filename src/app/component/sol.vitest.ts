@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import * as THREE from 'three';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BEFORE_RENDER_FN, Sol, TEXTURE_RESOURCE_FN } from './sol';
 
 describe('Sol', () => {

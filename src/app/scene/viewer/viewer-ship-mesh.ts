@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, CUSTOM_ELEMENTS_SCHEMA, input } from '@angular/core';
 import { NgtArgs } from 'angular-three';
+import { ShipModelMesh } from '../../component/ship-model-mesh';
 import { resolveShipAssetPath } from '../../model/catalog/ship-asset-catalog';
 import { coerceShipModel } from '../../model/ship-list';
-import { ShipModelMesh } from '../../component/ship-model-mesh';
 
 export type ViewerShipMeshKind = 'glb' | 'generic';
 
@@ -21,12 +21,7 @@ export function resolveViewerShipMeshKind(model: unknown): ViewerShipMeshKind {
   selector: 'app-viewer-scavenger-pod-mesh',
   template: `
     <ngt-group [scale]="0.1">
-      <app-ship-model-mesh
-        [assetPath]="assetPath"
-        [color]="color()"
-        [targeted]="targeted()"
-        [isActive]="isActive()"
-      />
+      <app-ship-model-mesh [assetPath]="assetPath" [color]="color()" [targeted]="targeted()" [isActive]="isActive()" />
     </ngt-group>
   `,
   imports: [ShipModelMesh],

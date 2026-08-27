@@ -1,10 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ShipItem } from '../../model/ship-item';
 import type { ShipSummary } from '../../model/ship-list';
-import {
-  ShipExteriorStateFacade,
-  type ShipExteriorStateFacadeDependencies,
-} from './ship-exterior-state-facade';
+import { ShipExteriorStateFacade, type ShipExteriorStateFacadeDependencies } from './ship-exterior-state-facade';
 
 describe('ShipExteriorStateFacade', () => {
   function createShip(id: string, inventory: ShipItem[]): ShipSummary {

@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import { Component, CUSTOM_ELEMENTS_SCHEMA, ViewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { describe, expect, it } from 'vitest';
+import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import {
-  FloatingDebrisNode,
   FLOATING_DEBRIS_BEFORE_RENDER_FN,
+  FloatingDebrisNode,
   type FloatingDebrisHoverEvent,
   type FloatingDebrisPointerEvent,
 } from './floating-debris-node';
-import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 
 @Component({
   template: `

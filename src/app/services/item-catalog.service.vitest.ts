@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { environment } from '../../environments/environment';
-import { appLogger } from './logger';
 import { ItemCatalogService } from './item-catalog.service';
+import { appLogger } from './logger';
 
 describe('ItemCatalogService', () => {
   const base = (environment.apiUrl ?? '').replace(/\/+$/, '');

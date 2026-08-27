@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { RoutedScene } from './routed-scene';
 

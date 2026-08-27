@@ -1,5 +1,5 @@
-import { coerceShipInventory, type ShipSummary } from '../../model/ship-list';
 import type { ShipItem } from '../../model/ship-item';
+import { coerceShipInventory, type ShipSummary } from '../../model/ship-list';
 
 export interface ShipExteriorStateFacadeDependencies {
   getNavigationShip(): ShipSummary | null;

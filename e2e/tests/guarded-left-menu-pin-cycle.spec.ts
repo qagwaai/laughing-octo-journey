@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { registerGuardedLeftMenuPinCycleHandlers } from '../fixtures/guarded-left-menu-pin-cycle-scenario';
 import { bootstrapSharedGameMainSession } from '../fixtures/shared-session-bootstrap';
 import { SocketIOMock } from '../fixtures/socket-mock';

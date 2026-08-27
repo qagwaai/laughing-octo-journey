@@ -5,8 +5,8 @@ import {
   type MissionListRequest,
   type MissionListResponse,
 } from '../model/mission-list';
-import { SocketService } from './socket.service';
 import { MissionBoardService } from './mission-board.service';
+import { SocketService } from './socket.service';
 
 type Listener<T = unknown> = (payload: T) => void;
 
