@@ -95,7 +95,14 @@ jobs:
           API_BASE_URL: http://localhost:3000
           OPENAPI_URL: http://localhost:3000/openapi.yaml
           SOCKET_BASE_URL: http://localhost:3000
-        run: npm run e2e
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/playwright-junit.xml
+        run: npm run e2e -- --reporter=html,junit
+
+      - name: Generate E2E summary artifact
+        if: always()
+        working-directory: frontend
+        run: |
+          node -e "const fs=require('node:fs'); const path='test-results/playwright-junit.xml'; if(!fs.existsSync(path)){console.error('Missing JUnit report at '+path); process.exit(1);} const xml=fs.readFileSync(path,'utf8'); const suites=[...xml.matchAll(/<testsuite\b[^>]*>/g)].map((m)=>m[0]); const totals={tests:0,failures:0,errors:0,skipped:0,time:0}; const readAttr=(tag,name)=>{const match=tag.match(new RegExp(name+'=\"([^\"]+)\"')); return match?Number(match[1]):0;}; for(const tag of suites){totals.tests+=readAttr(tag,'tests'); totals.failures+=readAttr(tag,'failures'); totals.errors+=readAttr(tag,'errors'); totals.skipped+=readAttr(tag,'skipped'); totals.time+=readAttr(tag,'time');} const failed=totals.failures+totals.errors; const passed=Math.max(totals.tests-failed-totals.skipped,0); const lines=['# Playwright E2E Summary','','- Total: '+totals.tests,'- Passed: '+passed,'- Failed: '+failed,'- Skipped: '+totals.skipped,'- Duration (seconds): '+totals.time.toFixed(2)]; fs.mkdirSync('test-results/summary',{recursive:true}); fs.writeFileSync('test-results/summary/e2e-summary.md',lines.join('\n')+'\n'); fs.writeFileSync('test-results/summary/e2e-summary.json',JSON.stringify({total:totals.tests,passed,failed,skipped:totals.skipped,durationSeconds:Number(totals.time.toFixed(2))},null,2)+'\n'); if(process.env.GITHUB_STEP_SUMMARY){fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');}"
 
       # ── Upload results ───────────────────────────────────────────────────────
       - name: Upload Playwright HTML report
@@ -112,4 +119,12 @@ jobs:
         with:
           name: playwright-test-results
           path: frontend/test-results/
+          retention-days: 30
+
+      - name: Upload E2E summary
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-summary
+          path: frontend/test-results/summary/
           retention-days: 30
