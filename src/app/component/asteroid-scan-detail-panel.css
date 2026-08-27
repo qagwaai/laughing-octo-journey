@@ -1,0 +1,117 @@
+.scan-panel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 300px;
+  background: rgba(8, 20, 35, 0.92);
+  border: 1px solid rgba(82, 182, 220, 0.55);
+  border-radius: 6px;
+  font-family: 'Space Mono', Consolas, Monaco, monospace;
+  font-size: 0.64rem;
+  color: #cce8ff;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.scan-panel--collapsed {
+  width: 220px;
+}
+
+.scan-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: rgba(20, 55, 85, 0.88);
+  border-bottom: 1px solid rgba(82, 182, 220, 0.3);
+}
+
+.scan-panel__title {
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: #7dd8ff;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-panel__toggle {
+  background: none;
+  border: none;
+  color: #7dd8ff;
+  cursor: pointer;
+  font-size: 0.58rem;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.scan-panel__toggle:hover {
+  color: #b9f2ff;
+}
+
+.scan-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.scan-panel__divider {
+  height: 1px;
+  background: rgba(82, 182, 220, 0.22);
+  margin: 4px 0;
+}
+
+.scan-panel__section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 10px;
+}
+
+.scan-panel__section--wide {
+  flex-direction: column;
+  gap: 2px;
+}
+
+.scan-panel__label {
+  font-size: 0.56rem;
+  color: rgba(160, 210, 255, 0.6);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.scan-panel__value {
+  font-size: 0.63rem;
+  text-align: right;
+  word-break: break-all;
+}
+
+.scan-panel__value--primary {
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.scan-panel__value--accent {
+  color: #9ed6ff;
+}
+
+.scan-panel__value--kinematic {
+  color: #b8f7d4;
+}
+
+.scan-panel__value--physical {
+  color: #ffd97a;
+}
+
+.scan-panel__value--location {
+  color: #c4d8ff;
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+}

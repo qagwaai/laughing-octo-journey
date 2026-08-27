@@ -59,6 +59,13 @@ function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroid
     ...sample,
     serverCelestialBodyId: sample.serverCelestialBodyId ?? null,
     revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : null,
+    revealedKinematics: sample.revealedKinematics
+      ? { ...sample.revealedKinematics, velocityKmPerSec: { ...sample.revealedKinematics.velocityKmPerSec }, angularVelocityRadPerSec: { ...sample.revealedKinematics.angularVelocityRadPerSec } }
+      : null,
+    solarSystemLocation: sample.solarSystemLocation
+      ? { positionKm: { ...sample.solarSystemLocation.positionKm } }
+      : null,
+    clusterCenterKm: sample.clusterCenterKm ? { ...sample.clusterCenterKm } : null,
   };
 }
 
@@ -1202,13 +1209,6 @@ export class ShipSceneContext {
     const userData = mesh.userData as {
       targetHoldGroup?: THREE.Group;
     };
-
-    console.debug('[ship-exterior-target-lock]', 'syncAsteroidTargetHoldGroup', {
-      visualId: visual.id,
-      isHolding,
-      hoverState: this.state.asteroid?.hoveredAsteroidId ?? null,
-      targetHoldCandidateId: asteroid?.targetHoldCandidateId ?? null,
-    });
 
     if (!isHolding) {
       if (userData.targetHoldGroup) {

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
+import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
+import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
+import type { Triple } from '../../model/shared/triple';
 import { OrbitCameraControls } from './orbit-camera-controls';
 
 export interface ShipSceneCameraState {
@@ -31,6 +34,9 @@ export interface ShipSceneAsteroidSample {
     material: string;
     rarity: string;
   } | null;
+  revealedKinematics?: AsteroidKinematics | null;
+  solarSystemLocation?: CelestialBodyLocation | null;
+  clusterCenterKm?: Triple | null;
 }
 
 export interface ShipSceneAsteroidState {

@@ -69,7 +69,9 @@
     </section>
   }
 
-  <div class="ship-exterior-bare-scene__viewport" #canvasHost></div>
+  <div class="ship-exterior-bare-scene__viewport" #canvasHost>
+    <app-asteroid-scan-detail-panel [sample]="activeScanDetailSample()" />
+  </div>
 
   <footer class="ship-exterior-bare-scene__debug" aria-live="polite">
     <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>
