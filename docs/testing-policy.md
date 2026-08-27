@@ -60,7 +60,19 @@ For test-sensitive pull requests, verify:
 - [ ] At least one negative-path assertion exists when risk increased
 - [ ] Existing tests were updated if contracts or flow changed
 - [ ] No brittle timing assumptions were introduced in Playwright
+- [ ] Stateful gameplay specs that use Ship Hangar surfaces assert readiness via sw13.v1 contract (for example waitForLoadedReadiness)
+- [ ] If SW-13 stabilization scope is touched, governance adoption evidence is added or updated in docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md
 - [ ] CI remains green and runtime remains reasonable
+
+Suggested validation command for SW-13 stabilization scope:
+- `npm run sw13:adoption:check`
+
+## SW-13 Readiness Gate
+
+Stateful gameplay governance for SW-13 uses an automated gate:
+- Command: npm run e2e:readiness:check
+- Hooked into: pree2e and pree2e:spec
+- Rule: Any stateful gameplay e2e spec that touches Ship Hangar surfaces must include a deterministic readiness assertion through the sw13.v1 contract.
 
 ## Current Practical Baseline
 For major feature areas in this repository, the pragmatic target is:

@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export class CharacterListPage {
   constructor(private readonly page: Page) {}
@@ -109,5 +109,9 @@ export class CharacterListPage {
 
   async clickCancelDelete() {
     await this.cancelDeleteButton.click();
+  }
+
+  async expectCharacterCount(expectedCount: number, timeout = 10_000) {
+    await expect(this.characterItems).toHaveCount(expectedCount, { timeout });
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
@@ -165,6 +165,7 @@ function emitSocketCorrelationWarning(operation: string, detail: Record<string, 
  */
 export class ShipService {
   private socketService = inject(SocketService);
+  private zone = inject(NgZone);
 
   /**
    * Requests ships by normalized ownership descriptor and resolves only matching responses.
@@ -205,7 +206,9 @@ export class ShipService {
       }
 
       unsubscribe();
-      onResponse(response);
+      this.zone.run(() => {
+        onResponse(response);
+      });
     });
 
     this.socketService.emit(SHIP_LIST_BY_OWNER_REQUEST_EVENT, requestWithCorrelation);
@@ -243,7 +246,9 @@ export class ShipService {
       }
 
       unsubscribe();
-      onResponse(response);
+      this.zone.run(() => {
+        onResponse(response);
+      });
     });
 
     this.socketService.emit(SHIP_TRANSFER_REQUEST_EVENT, requestWithCorrelation);

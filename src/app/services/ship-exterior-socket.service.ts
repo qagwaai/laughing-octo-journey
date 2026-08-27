@@ -547,7 +547,14 @@ export class ShipExteriorSocketService {
       this.pendingShipListFlightsByKey.delete(singleFlightKey);
       unsubscribe();
       for (const callback of activeFlight.callbacks) {
-        callback(response);
+        try {
+          callback(response);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          appLogger.error(
+            `[ship-exterior-socket] ship-list callback failed after response match. correlationId=${expectedCorrelationId} message=${message}`,
+          );
+        }
       }
     });
 

@@ -92,6 +92,12 @@ export class ShipExteriorCelestialBodyController {
         sessionKey,
         playerName,
         createdByCharacterId,
+        requestIdentity: {
+          operation: 'celestial-body-upsert',
+          entityType: 'celestial-body',
+          containerId: sample.id,
+          characterId: createdByCharacterId,
+        },
         celestialBody: {
           id: requestedCelestialBodyId,
           catalogId: deterministicCatalogId,

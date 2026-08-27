@@ -1,0 +1,9 @@
+{
+  "builders": {
+    "dev-server": {
+      "implementation": "./index.js",
+      "schema": "./schema.json",
+      "description": "Angular dev-server wrapper that returns a 503 error page instead of serving stale bundles while the application build is failing."
+    }
+  }
+}

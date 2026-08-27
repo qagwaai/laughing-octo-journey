@@ -17,11 +17,16 @@ import GameJoinPage from './game-join';
 function setup(options: {
   socketService: MockSocketService;
   sessionService: MockSessionService;
-  navigationState?: Record<string, unknown>;
+  navigationState?: Record<string, unknown> | null;
   connected?: boolean;
 }) {
   const mockRouter = {
-    getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
+    getCurrentNavigation: () =>
+      options.navigationState === undefined
+        ? { extras: { state: { playerName: 'Pioneer' } } }
+        : options.navigationState === null
+          ? null
+          : { extras: { state: options.navigationState } },
     navigate: vi.fn(),
   };
 
@@ -93,6 +98,35 @@ describe('GameJoinPage', () => {
     expect(component['characterName']()).toBe('Unknown Character');
     expect(component['shipListError']()).toBe('Character id is required to load ships.');
     expect(socketService.emittedEvents.length).toBe(0);
+  });
+
+  it('should hydrate player and character from persisted session state when router state is missing', () => {
+    sessionService.setPlayerName('Persisted Pioneer');
+    sessionService.setMissionEntryContext('Persisted Pioneer', { id: 'c-2', characterName: 'Hydrated Character' } as never);
+
+    const { component } = setup({
+      socketService,
+      sessionService,
+      navigationState: null,
+      connected: true,
+    });
+
+    expect(component['playerName']()).toBe('Persisted Pioneer');
+    expect(component['joinCharacter']()).toEqual({ id: 'c-2', characterName: 'Hydrated Character' });
+    expect(component['characterName']()).toBe('Hydrated Character');
+    expect(socketService.emittedEvents[0]).toEqual(
+      expect.objectContaining({
+        event: SHIP_LIST_BY_OWNER_REQUEST_EVENT,
+        data: expect.objectContaining({
+          playerName: 'Persisted Pioneer',
+          sessionKey: 'test-session-key',
+          owner: {
+            ownerType: 'player-character',
+            characterId: 'c-2',
+          },
+        }),
+      }),
+    );
   });
 
   it('should request ships when connect event fires for initially disconnected socket', () => {

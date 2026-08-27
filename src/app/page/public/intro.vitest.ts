@@ -1,11 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import IntroPage from './intro';
 
-function setup() {
+function setup(outlet: string = 'primary') {
   const mockRouter = {
     getCurrentNavigation: () => null,
     navigate: vi.fn(),
@@ -13,7 +13,10 @@ function setup() {
 
   TestBed.configureTestingModule({
     imports: [IntroPage],
-    providers: [{ provide: Router, useValue: mockRouter }],
+    providers: [
+      { provide: Router, useValue: mockRouter },
+      { provide: ActivatedRoute, useValue: { outlet } },
+    ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });
 
@@ -23,6 +26,10 @@ function setup() {
 }
 
 describe('IntroPage Logic', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should create component instance', () => {
     const { component } = setup();
     expect(component).toBeTruthy();
@@ -255,6 +262,40 @@ describe('IntroPage Logic', () => {
       const { component, mockRouter } = setup();
       component.navigateToLogin();
       expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+    });
+
+    it('should cancel the auto knot redirect when leaving intro for login', () => {
+      vi.useFakeTimers();
+      const { component, mockRouter } = setup();
+
+      component.navigateToLogin();
+      vi.advanceTimersByTime(6000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledTimes(1);
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }], {
+        preserveFragment: true,
+      });
+    });
+
+    it('should navigate to knot in the right outlet after 5 seconds', () => {
+      vi.useFakeTimers();
+      const { mockRouter } = setup();
+
+      vi.advanceTimersByTime(5000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(
+        [{ outlets: { primary: ['knot'], right: null } }],
+        { preserveFragment: true },
+      );
+    });
+
+    it('should not start auto knot redirect in the left outlet', () => {
+      vi.useFakeTimers();
+      const { mockRouter } = setup('left');
+
+      vi.advanceTimersByTime(5000);
+
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
   });
 

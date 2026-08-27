@@ -15,16 +15,29 @@ describe('ShipExteriorMissionStateService', () => {
       missionId: 'first-target',
       playerName: 'Pioneer',
       characterId: 'char-1',
+      shipId: 'ship-1',
     };
     state = {
       missionId: 'first-target',
       characterId: 'char-1',
-      activeObjectiveText: 'Identify an Iron asteroid',
+      activeObjectiveText: 'Objective: Identify an Iron asteroid via full scan.',
       updatedAt: '2026-04-28T00:00:00.000Z',
       steps: [
         {
           key: 'identify_iron_asteroid',
           status: 'active',
+        },
+        {
+          key: 'neutralize_identified_asteroid',
+          status: 'locked',
+        },
+        {
+          key: 'manufacture_hull_patch_kit',
+          status: 'locked',
+        },
+        {
+          key: 'repair_scavenger_pod',
+          status: 'locked',
         },
       ],
     };
@@ -37,7 +50,7 @@ describe('ShipExteriorMissionStateService', () => {
   });
 
   it('should return null for malformed payloads', () => {
-    window.localStorage.setItem('ship-exterior-mission-state::first-target::Pioneer::char-1', '{not-json');
+    window.localStorage.setItem('ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1', '{not-json');
 
     expect(service.loadState(context)).toBeNull();
   });
@@ -49,6 +62,17 @@ describe('ShipExteriorMissionStateService', () => {
       service.loadState({
         ...context,
         characterId: 'char-2',
+      }),
+    ).toBeNull();
+  });
+
+  it('should isolate states between ships', () => {
+    service.saveState(context, state);
+
+    expect(
+      service.loadState({
+        ...context,
+        shipId: 'ship-2',
       }),
     ).toBeNull();
   });
@@ -69,5 +93,47 @@ describe('ShipExteriorMissionStateService', () => {
         playerName: 'Pioneer  ',
       }),
     ).toEqual(state);
+  });
+
+  it('should load legacy state without ship-specific storage', () => {
+    window.localStorage.setItem(
+      'ship-exterior-mission-state::first-target::Pioneer::char-1',
+      JSON.stringify(state),
+    );
+
+    expect(service.loadState(context)).toEqual(state);
+    expect(window.localStorage.getItem('ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1')).toBe(
+      JSON.stringify(state),
+    );
+  });
+
+  it('should normalize legacy first-target state that is missing the repair step', () => {
+    window.localStorage.setItem(
+      'ship-exterior-mission-state::first-target::Pioneer::char-1::ship-1',
+      JSON.stringify({
+        missionId: 'first-target',
+        characterId: 'char-1',
+        activeObjectiveText: 'Mission objectives complete. Await further directives.',
+        updatedAt: '2026-04-30T00:00:00.000Z',
+        steps: [
+          { key: 'identify_iron_asteroid', status: 'completed' },
+          { key: 'neutralize_identified_asteroid', status: 'completed' },
+          { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        ],
+      }),
+    );
+
+    expect(service.loadState(context)).toEqual({
+      missionId: 'first-target',
+      characterId: 'char-1',
+      activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
+      updatedAt: '2026-04-30T00:00:00.000Z',
+      steps: [
+        { key: 'identify_iron_asteroid', status: 'completed' },
+        { key: 'neutralize_identified_asteroid', status: 'completed' },
+        { key: 'manufacture_hull_patch_kit', status: 'completed' },
+        { key: 'repair_scavenger_pod', status: 'active' },
+      ],
+    });
   });
 });

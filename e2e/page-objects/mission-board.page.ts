@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export class MissionBoardPage {
   constructor(private readonly page: Page) {}
@@ -37,5 +37,54 @@ export class MissionBoardPage {
 
   filterButton(filter: 'all' | 'available' | 'active' | 'completed') {
     return this.boardRoot.locator(`.lane-filter__button[data-filter="${filter}"]`).first();
+  }
+
+  guardedNavButton(label: string) {
+    return this.boardRoot.locator(`button[aria-label="${label}"]`);
+  }
+
+  guardedMenu() {
+    return this.boardRoot.locator('app-guarded-left-menu');
+  }
+
+  laneStatusBadges(lane: 'available' | 'active' | 'completed', status: string) {
+    return this.lane(lane).locator(`.mission-status[data-status="${status}"]`);
+  }
+
+  contractViolationBanner() {
+    return this.boardRoot.locator('.contract-violation');
+  }
+
+  contractViolationStatusBadges() {
+    return this.boardRoot.locator('.mission-status[data-status="contract-violation"]');
+  }
+
+  async expectLaneItemCount(lane: 'available' | 'active' | 'completed', expectedCount: number, timeout = 10_000) {
+    await expect(this.laneItems(lane)).toHaveCount(expectedCount, { timeout });
+  }
+
+  async expectLaneStatusCount(
+    lane: 'available' | 'active' | 'completed',
+    status: string,
+    expectedCount: number,
+    timeout = 10_000,
+  ) {
+    await expect(this.laneStatusBadges(lane, status)).toHaveCount(expectedCount, { timeout });
+  }
+
+  async expectGuardedNavHidden(label: string) {
+    await expect(this.guardedNavButton(label)).not.toBeVisible();
+  }
+
+  async expectGuardedMenuHidden() {
+    await expect(this.guardedMenu()).not.toBeVisible();
+  }
+
+  async expectNoContractViolationStatusBadge() {
+    await expect(this.contractViolationStatusBadges()).not.toBeVisible();
+  }
+
+  async expectContractViolationContains(text: string | RegExp) {
+    await expect(this.contractViolationBanner()).toContainText(text);
   }
 }

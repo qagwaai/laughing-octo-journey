@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const authStatePath = 'e2e/.auth/user.json';
+const authFlowSpecs = [
+  '**/login.spec.ts',
+  '**/registration.spec.ts',
+  '**/registration-auto-login-failure.spec.ts',
+  '**/locale-auth-flow.spec.ts',
+];
+
 function parseWorkerCount(rawValue: string | undefined): number | undefined {
   if (!rawValue) {
     return undefined;
@@ -33,7 +41,21 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: '**/setup/*.setup.ts',
+      workers: 1,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
       name: 'chromium',
+      dependencies: ['setup'],
+      testIgnore: ['**/setup/*.setup.ts', ...authFlowSpecs],
+      use: { ...devices['Desktop Chrome'], storageState: authStatePath },
+    },
+    {
+      name: 'chromium-auth',
+      testMatch: authFlowSpecs,
+      testIgnore: ['**/setup/*.setup.ts'],
       use: { ...devices['Desktop Chrome'] },
     },
     // {

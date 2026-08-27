@@ -51,16 +51,18 @@ describe('authGuard', () => {
     expect(router.createUrlTree).not.toHaveBeenCalled();
   });
 
-  it('should redirect to left:login when no session exists', () => {
+  it('should redirect to intro + login outlets when no session exists', () => {
     sessionService.hasSession.mockReturnValue(false);
     const result = TestBed.runInInjectionContext(() => authGuard(null!, null!));
-    expect(router.createUrlTree).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }]);
+    expect(router.createUrlTree).toHaveBeenCalledWith([
+      { outlets: { primary: ['intro'], left: ['login'], right: null } },
+    ]);
     expect(result).not.toBe(true);
   });
 
   it('should return the UrlTree produced by router.createUrlTree on redirect', () => {
     sessionService.hasSession.mockReturnValue(false);
-    const tree = { url: '/left:login' } as unknown as UrlTree;
+    const tree = { url: '/intro(left:login)' } as unknown as UrlTree;
     router.createUrlTree.mockReturnValue(tree);
     const result = TestBed.runInInjectionContext(() => authGuard(null!, null!));
     expect(result).toBe(tree);
@@ -74,7 +76,9 @@ describe('authGuard', () => {
     sessionService.hasSession.mockReturnValue(false);
     const blocked = TestBed.runInInjectionContext(() => authGuard(null!, null!));
     expect(blocked).not.toBe(true);
-    expect(router.createUrlTree).toHaveBeenCalledWith([{ outlets: { left: ['login'] } }]);
+    expect(router.createUrlTree).toHaveBeenCalledWith([
+      { outlets: { primary: ['intro'], left: ['login'], right: null } },
+    ]);
   });
 
   it('should allow reactivation after session becomes available', () => {

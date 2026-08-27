@@ -152,8 +152,8 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
       return;
     }
 
-    const playerName = this.navigationState.playerName?.trim() ?? '';
-    const joinCharacter = this.navigationState.joinCharacter;
+    const playerName = this.resolvePlayerName();
+    const joinCharacter = this.resolveJoinCharacter();
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
     const prepared = joinCharacter
@@ -171,7 +171,8 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
       {
         preserveFragment: true,
         state: {
-          ...this.navigationState,
+          playerName,
+          joinCharacter,
           ...(prepared ? { joinShip: prepared.joinShip, missionContext: prepared.missionContext } : {}),
         },
       },
@@ -183,8 +184,8 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
    * Builds mission upsert payload from current navigation/session context.
    */
   private buildMissionRequest() {
-    const playerName = this.navigationState.playerName?.trim() ?? '';
-    const characterId = this.navigationState.joinCharacter?.id?.trim() ?? '';
+    const playerName = this.resolvePlayerName();
+    const characterId = this.resolveJoinCharacter()?.id?.trim() ?? '';
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName || !characterId || !sessionKey) {
@@ -198,5 +199,24 @@ export default class ColdBootOpeningPage implements OnInit, OnDestroy {
       missionId: FIRST_TARGET_MISSION_ID,
       status: 'active' as const,
     };
+  }
+
+  /**
+   * Rehydrates the player name from route state or persisted session context.
+   */
+  private resolvePlayerName(): string {
+    return (
+      this.navigationState.playerName?.trim() ||
+      this.sessionService.getMissionEntryContext()?.playerName?.trim() ||
+      this.sessionService.getPlayerName()?.trim() ||
+      ''
+    );
+  }
+
+  /**
+   * Rehydrates the selected character from route state or persisted session context.
+   */
+  private resolveJoinCharacter() {
+    return this.navigationState.joinCharacter ?? this.sessionService.getMissionEntryContext()?.joinCharacter ?? this.sessionService.activeCharacter() ?? null;
   }
 }

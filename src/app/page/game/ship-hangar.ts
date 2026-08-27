@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
@@ -27,6 +27,13 @@ import { ShipService } from '../../services/ship.service';
 import { MissionService } from '../../services/mission.service';
 import { MissionNavigationService } from '../../services/mission-navigation';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
+import {
+  ShipHangarLastSuccessfulLoad,
+  ShipHangarLoadState,
+  registerSw13AppTestReadinessApi,
+  unregisterSw13AppTestReadinessApi,
+  updateShipHangarReadinessSnapshot,
+} from '../../services/sw13-app-test-readiness-contract';
 import { appLogger } from '../../services/logger';
 
 interface ShipHangarNavigationState {
@@ -44,7 +51,7 @@ interface ShipHangarNavigationState {
 /**
  * Ship hangar page for ship listing, selection, and navigation into ship sub-flows.
  */
-export default class ShipHangarPage {
+export default class ShipHangarPage implements OnDestroy {
   protected readonly t = locale;
   private router = inject(Router);
   private socketLifecycleService = inject(SocketLifecycleService);
@@ -64,43 +71,66 @@ export default class ShipHangarPage {
   protected ships = signal<ShipSummary[]>([]);
   protected isLoadingShips = signal(false);
   protected shipListError = signal<string | null>(null);
+  protected hangarLoadState = signal<ShipHangarLoadState>('idle');
   protected showDevTools = computed(() => !environment.production);
   protected isBuyingTestShip = signal(false);
   protected devToolStatus = signal<string | null>(null);
   protected devToolError = signal<string | null>(null);
+  protected lastSuccessfulShipLoad = signal<ShipHangarLastSuccessfulLoad | null>(null);
+
+  private shipListRequestGeneration = 0;
+  private latestActiveShipListRequestGeneration = 0;
 
   constructor() {
+    registerSw13AppTestReadinessApi(!environment.production);
+    this.publishHangarReadinessSnapshot();
     this.socketLifecycleService.runWhenConnected(() => this.loadShipsForCharacter());
+  }
+
+  ngOnDestroy(): void {
+    unregisterSw13AppTestReadinessApi();
   }
 
   /**
    * Loads ships for active player/character context and normalizes response payloads.
    */
   loadShipsForCharacter(): void {
+    const nextGeneration = this.shipListRequestGeneration + 1;
+    this.shipListRequestGeneration = nextGeneration;
+
     const playerName = this.playerName().trim();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
     const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
 
     if (!playerName) {
       this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresPlayer);
+      this.hangarLoadState.set('error');
       this.ships.set([]);
+      this.publishHangarReadinessSnapshot(nextGeneration);
       return;
     }
 
     if (!characterId) {
       this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresCharacterId);
+      this.hangarLoadState.set('error');
       this.ships.set([]);
+      this.publishHangarReadinessSnapshot(nextGeneration);
       return;
     }
 
     if (!sessionKey) {
       this.shipListError.set(this.t.game.shipHangar.errors.loadShipsRequiresSessionKey);
+      this.hangarLoadState.set('error');
       this.ships.set([]);
+      this.publishHangarReadinessSnapshot(nextGeneration);
       return;
     }
 
+    this.latestActiveShipListRequestGeneration = nextGeneration;
     this.isLoadingShips.set(true);
+    this.hangarLoadState.set('loading');
     this.shipListError.set(null);
+    this.publishHangarReadinessSnapshot(nextGeneration);
 
     const request: ShipListByOwnerRequest = {
       playerName,
@@ -111,10 +141,15 @@ export default class ShipHangarPage {
       },
     };
     this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
+      if (nextGeneration !== this.latestActiveShipListRequestGeneration) {
+        return;
+      }
+
       this.isLoadingShips.set(false);
       if (response.success) {
         const normalizedShips = (response.ships ?? []).map((ship) => this.normalizeShipSummary(ship));
         this.ships.set(normalizedShips);
+        this.hangarLoadState.set(normalizedShips.length > 0 ? 'loaded' : 'empty');
 
         const selected = resolveActiveShipSelection({
           ships: normalizedShips,
@@ -124,6 +159,12 @@ export default class ShipHangarPage {
         if (selected.ship) {
           this.sessionService.setActiveShip(selected.ship);
           this.shipListError.set(null);
+          this.lastSuccessfulShipLoad.set({
+            requestGeneration: nextGeneration,
+            shipCount: normalizedShips.length,
+            loadedAtEpochMs: Date.now(),
+          });
+          this.publishHangarReadinessSnapshot(nextGeneration);
           return;
         }
 
@@ -133,13 +174,23 @@ export default class ShipHangarPage {
             characterId,
           });
           this.shipListError.set('No ship with usable spatial data is available.');
+          this.hangarLoadState.set('error');
+          this.publishHangarReadinessSnapshot(nextGeneration);
           return;
         }
 
+        this.lastSuccessfulShipLoad.set({
+          requestGeneration: nextGeneration,
+          shipCount: normalizedShips.length,
+          loadedAtEpochMs: Date.now(),
+        });
         this.shipListError.set(null);
+        this.publishHangarReadinessSnapshot(nextGeneration);
       } else {
         this.ships.set([]);
+        this.hangarLoadState.set('error');
         this.shipListError.set(response.message);
+        this.publishHangarReadinessSnapshot(nextGeneration);
       }
     });
   }
@@ -415,6 +466,7 @@ export default class ShipHangarPage {
     }
 
     this.sessionService.setActiveShip(ship);
+    this.publishHangarReadinessSnapshot();
   }
 
   navigateToCharacterProfile(): void {
@@ -424,6 +476,22 @@ export default class ShipHangarPage {
         playerName: this.playerName(),
         joinCharacter: this.joinCharacter(),
       },
+    });
+  }
+
+  private publishHangarReadinessSnapshot(requestGeneration?: number): void {
+    updateShipHangarReadinessSnapshot({
+      state: this.hangarLoadState(),
+      requestGeneration: requestGeneration ?? this.latestActiveShipListRequestGeneration,
+      shipCount: this.ships().length,
+      error: this.shipListError(),
+      routeContext: {
+        playerName: this.playerName().trim() || null,
+        characterId: this.joinCharacter()?.id?.trim() || null,
+        shipId: this.sessionService.activeShip()?.id?.trim() || null,
+      },
+      lastSuccessfulLoad: this.lastSuccessfulShipLoad(),
+      updatedAtEpochMs: Date.now(),
     });
   }
 

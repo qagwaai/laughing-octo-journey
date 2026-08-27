@@ -1,233 +1,96 @@
-import { expect, test, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
-import { GameShellPage } from '../page-objects/game-shell.page';
+import { expect } from '@playwright/test';
+import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
+import {
+  getDefaultGroupedMarkets,
+  openMarketHubWithDefaultData,
+  registerSessionHandlers,
+  type MarketByLocationRequest,
+} from '../fixtures/market-hub-grouped-sections-scenario';
 import { MarketHubPage } from '../page-objects/market-hub.page';
 
-const CHARACTER = {
-  id: 'char-market-grouped',
-  characterName: 'Pathfinder',
-  level: 2,
-  missions: [{ missionId: 'first-target', status: 'active' }],
-};
+const { nearMarket: NEAR_MARKET, distantMarket: DISTANT_MARKET, ship: SHIP } = getDefaultGroupedMarkets();
 
-/** Standard-cruise drive: 0.5 AU range. Near Exchange (0.2 AU) is reachable;
- *  Distant Exchange (2.5 AU) exceeds that range and should appear only when
- *  the "show out-of-range" toggle is enabled. */
-const SHIP = {
-  id: `starter-pod-${CHARACTER.id}`,
-  name: 'Scavenger Pod',
-  model: 'Scavenger Pod',
-  tier: 1,
-  driveProfile: {
-    id: 'standard-cruise',
-    name: 'Standard Cruise Drive',
-    rangeAu: 0.5,
-    cruiseSpeedAuPerHour: 0.3,
-    fuelCostPerAu: 1,
-  },
-  status: 'ACTIVE',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 413_700_000, y: 0, z: 0 },
-    epochMs: 1_777_000_000_000,
-  },
-  motion: {
-    velocityKmPerSec: { x: 0, y: 0, z: 0 },
-    angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
-  },
-  observability: {
-    sensorConfidence: 1,
-    source: {
-      solarSystemId: 'sol',
-      sourceType: 'server-feed',
-      observedAt: new Date(1_777_000_000_000).toISOString(),
-    },
-  },
-};
+let sharedMarketHubPage: MarketHubPage;
 
-const NEAR_MARKET = {
-  marketId: 'sol-near-exchange',
-  solarSystemId: 'sol',
-  marketName: 'Near Exchange',
-  siteType: 'station',
-  siteName: 'Inner Belt Ring',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 413_729_950, y: 0, z: 0 },
-    epochMs: Date.now(),
-  },
-  distanceAu: 0.2,
-  isDocked: false,
-  priceMultiplier: 1,
-  driftPercentPerHour: 6,
-  restockIntervalMinutes: 60,
-};
+const test = createJoinedGameTest({
+  registerSessionHandlers,
+  joinButtonText: 'Join Game in Progress',
+});
 
-const DISTANT_MARKET = {
-  marketId: 'sol-distant-exchange',
-  solarSystemId: 'sol',
-  marketName: 'Distant Exchange',
-  siteType: 'station',
-  siteName: 'Outer Rim Hub',
-  spatial: {
-    solarSystemId: 'sol',
-    frame: 'barycentric',
-    positionKm: { x: 414_073_947, y: 0, z: 0 },
-    epochMs: Date.now(),
-  },
-  distanceAu: 2.5,
-  isDocked: false,
-  priceMultiplier: 1.2,
-  driftPercentPerHour: 8,
-  restockIntervalMinutes: 120,
-};
+test.describe.configure({ mode: 'serial', timeout: 60_000 });
 
-type MarketByLocationRequest = { distanceAu: number };
-
-async function setupAndOpenMarketHub(page: Page) {
-  const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
-  const marketHubPage = new MarketHubPage(page);
-  await mock.setup();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characters: [CHARACTER],
-    },
-  }));
-
-  mock.on('game-join', () => null);
-
-  mock.on('ship-list-by-owner-request', () => ({
-    event: 'ship-list-by-owner-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      characterId: CHARACTER.id,
-      ships: [SHIP],
-    },
-  }));
-
-  mock.on('market-list-by-location-request', () => ({
-    event: 'market-list-by-location-response',
-    data: {
-      success: true,
-      message: '',
-      playerName: TEST_PLAYER,
-      solarSystemId: 'sol',
-      positionKm: SHIP.spatial.positionKm,
-      locationTypes: ['station'],
-      isDocked: false,
-      dockedMarketId: null,
-      markets: [NEAR_MARKET, DISTANT_MARKET],
-    },
-  }));
-
-  await loginViaUI(page, mock);
-
-  await gameShell.joinGame('Join Game in Progress');
-  await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-
-  await gameShell.openMarketHub();
-
-  // Wait for at least one rendered market row before returning.
-  await expect.poll(() => marketHubPage.marketItems.count(), { timeout: 15_000 }).toBeGreaterThan(0);
-}
+test.beforeEach(async ({ sharedPage, prepareJoinedPage }) => {
+  await prepareJoinedPage();
+  sharedMarketHubPage = new MarketHubPage(sharedPage);
+});
 
 test.describe('Market Hub grouped sections', () => {
-  test('shows reachable markets section by default with in-range markets only', async ({ page }) => {
-    await setupAndOpenMarketHub(page);
-    const marketHubPage = new MarketHubPage(page);
+  test('shows reachable markets section by default with in-range markets only', async ({
+    sharedGameShell,
+    sharedMock,
+    sharedPage,
+  }) => {
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
-    // Reachable section heading is visible.
-    const reachableHeading = marketHubPage.reachableHeading;
+    const reachableHeading = sharedMarketHubPage.reachableHeading;
     await reachableHeading.scrollIntoViewIfNeeded();
     await expect(reachableHeading).toBeVisible();
 
-    // Near Exchange is within drive range — shown in the reachable section.
-    const reachableItems = marketHubPage.marketItems;
-    await expect(reachableItems).toHaveCount(1);
+    const reachableItems = sharedMarketHubPage.marketItems;
+    await sharedMarketHubPage.waitForMarketItemCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
     await expect(reachableItems.nth(0)).toContainText('In-system');
 
-    // Beyond Current Drive section heading must NOT be visible yet.
-    await expect(marketHubPage.beyondCurrentDriveHeading).not.toBeVisible();
-
-    // Distant Exchange must not be visible.
-    await expect(page.getByRole('heading', { name: 'Distant Exchange' })).not.toBeVisible();
+    await expect(sharedMarketHubPage.beyondCurrentDriveHeading).not.toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: 'Distant Exchange' })).not.toBeVisible();
   });
 
-  test('enabling the toggle reveals the Beyond Current Drive section', async ({ page }) => {
-    await setupAndOpenMarketHub(page);
-    const marketHubPage = new MarketHubPage(page);
+  test('enabling the toggle reveals the Beyond Current Drive section', async ({
+    sharedGameShell,
+    sharedMock,
+    sharedPage,
+  }) => {
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
-    // Toggle is unchecked by default.
-    await expect(marketHubPage.showOutOfRangeToggle).not.toBeChecked();
+    await expect(sharedMarketHubPage.showOutOfRangeToggle).not.toBeChecked();
+    await sharedMarketHubPage.enableOutOfRangeMarkets();
 
-    // Enable the toggle.
-    await marketHubPage.enableOutOfRangeMarkets();
+    await expect(sharedMarketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
 
-    // Beyond Current Drive section heading appears.
-    await expect(marketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
-
-    // Distant Exchange now visible with Out of range badge.
-    await expect(page.getByRole('heading', { name: 'Distant Exchange' })).toBeVisible();
-    const outOfRangeItems = marketHubPage.marketList(1).locator('.market-item');
+    await expect(sharedPage.getByRole('heading', { name: 'Distant Exchange' })).toBeVisible();
+    const outOfRangeItems = sharedMarketHubPage.marketList(1).locator('.market-item');
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     await expect(outOfRangeItems).toHaveCount(1);
     await expect(outOfRangeItems.nth(0)).toContainText('Out of range');
 
-    // Reachable section still shows Near Exchange.
-    const reachableItems = marketHubPage.marketList(0).locator('.market-item');
+    const reachableItems = sharedMarketHubPage.marketList(0).locator('.market-item');
+    await sharedMarketHubPage.waitForMarketItemCount(2);
     await expect(reachableItems).toHaveCount(1);
     await expect(reachableItems.nth(0)).toContainText('Near Exchange');
   });
 
-  test('out-of-range market shows required drive upgrade info', async ({ page }) => {
-    await setupAndOpenMarketHub(page);
-    const marketHubPage = new MarketHubPage(page);
-    await marketHubPage.enableOutOfRangeMarkets();
-    await expect(marketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
+  test('out-of-range market shows required drive upgrade info', async ({ sharedGameShell, sharedMock }) => {
+    await openMarketHubWithDefaultData(sharedGameShell, sharedMock, sharedMarketHubPage);
 
-    const distantMarket = marketHubPage.marketItemInList(1, 0);
+    await sharedMarketHubPage.enableOutOfRangeMarkets();
+    await expect(sharedMarketHubPage.beyondCurrentDriveHeading).toBeVisible({ timeout: 5_000 });
+
+    const distantMarket = sharedMarketHubPage.marketItemInList(1, 0);
     await expect(distantMarket).toContainText('Requires drive range upgrade.');
     await expect(distantMarket).toContainText('Rapid Transit Thruster');
-
-    // Transact button must be disabled for the out-of-range market.
     await expect(distantMarket.locator('.transact-btn')).toBeDisabled();
   });
 
-  test('sends selected radius to server without clamping to drive range', async ({ page }) => {
-    const mock = new SocketIOMock(page);
-    const gameShell = new GameShellPage(page);
-    const marketHubPage = new MarketHubPage(page);
-    await mock.setup();
-
+  test('sends selected radius to server without clamping to drive range', async ({
+    sharedGameShell,
+    sharedMock,
+    sharedPage,
+  }) => {
     const requests: MarketByLocationRequest[] = [];
 
-    mock.on('character-list-request', () => ({
-      event: 'character-list-response',
-      data: { success: true, message: '', playerName: TEST_PLAYER, characters: [CHARACTER] },
-    }));
-    mock.on('game-join', () => null);
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: TEST_PLAYER,
-        characterId: CHARACTER.id,
-        ships: [SHIP],
-      },
-    }));
-    mock.on('market-list-by-location-request', (payload) => {
+    sharedMock.reset();
+    registerSessionHandlers(sharedMock);
+    sharedMock.on('market-list-by-location-request', (payload) => {
       requests.push(payload as MarketByLocationRequest);
       return {
         event: 'market-list-by-location-response',
@@ -241,19 +104,14 @@ test.describe('Market Hub grouped sections', () => {
       };
     });
 
-    await loginViaUI(page, mock);
-    await gameShell.joinGame('Join Game in Progress');
-    await expect(page).toHaveURL(/left:game-main/, { timeout: 10_000 });
-    await gameShell.openMarketHub();
+    await sharedGameShell.openMarketHub();
 
-    // Wait for the Market Hub default radius request (0.5 AU).
     await expect
       .poll(() => requests.some((request) => request.distanceAu === 0.5), { timeout: 15_000 })
       .toBe(true);
 
-    // Select a radius of 5 AU — still within the toggle-off path, no clamping.
     const requestsBeforeRadiusChange = requests.length;
-    await page.selectOption('#radiusAu', '5');
+    await sharedPage.selectOption('#radiusAu', '5');
     await expect
       .poll(
         () => requests.slice(requestsBeforeRadiusChange).some((request) => request.distanceAu === 5),
@@ -261,9 +119,8 @@ test.describe('Market Hub grouped sections', () => {
       )
       .toBe(true);
 
-    // Enable the out-of-range toggle — should trigger the unlimited (1,000,000 AU) request.
     const requestsBeforeToggle = requests.length;
-    await marketHubPage.showOutOfRangeToggle.check();
+    await sharedMarketHubPage.showOutOfRangeToggle.check();
     await expect
       .poll(
         () => requests.slice(requestsBeforeToggle).some((request) => request.distanceAu === 1_000_000),

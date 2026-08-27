@@ -89,6 +89,7 @@ export class SocketIOMock {
   private pendingGetResolve: ((packet: string) => void) | null = null;
   private readonly handlers = new Map<string, SocketEventHandler>();
   private readonly debugEnabled = process.env['PW_SOCKET_MOCK_DEBUG'] === '1';
+  private readonly connectWaiters: Array<() => void> = [];
 
   constructor(
     private readonly page: Page,
@@ -110,6 +111,13 @@ export class SocketIOMock {
     this.connectResolve = resolve;
   });
 
+  /** Resolves on the next namespace reconnect after the current one. */
+  waitForNextConnect(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.connectWaiters.push(resolve);
+    });
+  }
+
   /** Register a handler that auto-responds when the client emits the given event. */
   on(event: string, handler: SocketEventHandler): this {
     this.handlers.set(event, handler);
@@ -125,6 +133,20 @@ export class SocketIOMock {
       resolve(packet);
     } else {
       this.responseQueue.push(packet);
+    }
+  }
+
+  /**
+   * Clears any queued packets so a reused live page starts from a clean mock state.
+   * Flushes any pending GET long-poll with a server ping so the polling cycle
+   * continues cleanly instead of silently hanging until the 25 s keepalive fires.
+   */
+  reset(): void {
+    this.responseQueue.length = 0;
+    if (this.pendingGetResolve) {
+      const resolve = this.pendingGetResolve;
+      this.pendingGetResolve = null;
+      resolve('2'); // server ping — client will pong and issue a fresh GET poll
     }
   }
 
@@ -258,6 +280,10 @@ export class SocketIOMock {
         if (packet.startsWith('40')) {
           this.connectResolve?.();
           this.connectResolve = null;
+          while (this.connectWaiters.length > 0) {
+            const resolve = this.connectWaiters.shift();
+            resolve?.();
+          }
         }
         return;
       }

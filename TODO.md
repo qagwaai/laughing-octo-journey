@@ -135,6 +135,7 @@ Remaining uncovered branches in locale.ts (10/34) are primarily global object gu
 - [ ] Add `requestId` correlation to mission socket requests/responses to eliminate cross-response matching ambiguity and reduce timeout flakes
 - [x] Align frontend contract assumptions to OpenAPI (`openapi.yaml`, prefer `http://localhost:3000/openapi.yaml`) for mission catalog IDs, prerequisite graph, `statusDetail`, `requestId`, alias events, and asteroid seeding edge cases
 - [ ] Normalize the list of in game parts with those that are part of first-target, and need fixing
+- [ ] `tools/strict-dev-server/schema.json` is a vendored copy of the `@angular/build` dev-server options schema — re-copy it from `node_modules/@angular/build/src/builders/dev-server/schema.json` whenever `@angular/build` is upgraded (see README "Strict Dev Server")
 
 ---
 

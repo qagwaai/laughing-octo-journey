@@ -5,7 +5,7 @@ const primaryRoutes: Routes = [
   // Primary outlet routes (right panel - canvas scenes)
   {
     path: 'ship-exterior-view',
-    loadComponent: () => import('./scene/ship-exterior-view'),
+    loadComponent: () => import('./scene/ship-exterior/ship-exterior-bare-scene.component'),
     canActivate: [authGuard],
   },
   {
@@ -260,7 +260,7 @@ const rightOutletRoutes: Routes = [
 const routes: Routes = [
   ...primaryRoutes,
   ...leftOutletRoutes,
-  { path: '', redirectTo: '/knot(left:intro)', pathMatch: 'full' },
+  { path: '', redirectTo: '/intro(left:intro)', pathMatch: 'full' },
   ...rightOutletRoutes,
 ];
 

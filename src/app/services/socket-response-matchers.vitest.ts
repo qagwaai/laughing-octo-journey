@@ -67,7 +67,7 @@ describe('socket-response-matchers', () => {
     expect(bad).toBe(false);
   });
 
-  it('matches launch responses only when optional identity fields align', () => {
+  it('matches launch responses only when core request identity and required top-level fields align', () => {
     const expectedIdentity = {
       operation: 'launch-item',
       entityType: 'expendable-dart-drone',
@@ -81,17 +81,60 @@ describe('socket-response-matchers', () => {
     const good = isLaunchItemResponseForRequest(
       {
         correlationId: 'corr-1',
-        requestIdentity: { ...expectedIdentity },
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        shipId: 'ship-1',
+        hotkey: 1,
+        targetCelestialBodyId: 'cb-1',
+        characterId: 'char-1',
+        requestIdentity: {
+          operation: 'launch-item',
+          entityType: 'expendable-dart-drone',
+          containerId: 'ship-1',
+          itemId: 'item-1',
+        },
       } as any,
       'corr-1',
       expectedIdentity as any,
       {} as any,
     );
 
-    const bad = isLaunchItemResponseForRequest(
+    const badCoreIdentity = isLaunchItemResponseForRequest(
       {
         correlationId: 'corr-1',
-        requestIdentity: { ...expectedIdentity, hotkey: 2 },
+        itemId: 'different-item',
+        itemType: 'expendable-dart-drone',
+        shipId: 'ship-1',
+        hotkey: 1,
+        targetCelestialBodyId: 'cb-1',
+        characterId: 'char-1',
+        requestIdentity: {
+          operation: 'launch-item',
+          entityType: 'expendable-dart-drone',
+          containerId: 'ship-1',
+          itemId: 'item-1',
+        },
+      } as any,
+      'corr-1',
+      expectedIdentity as any,
+      {} as any,
+    );
+
+    const badTopLevelRequired = isLaunchItemResponseForRequest(
+      {
+        correlationId: 'corr-1',
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        shipId: 'ship-1',
+        hotkey: 2,
+        targetCelestialBodyId: 'cb-1',
+        characterId: 'char-1',
+        requestIdentity: {
+          operation: 'launch-item',
+          entityType: 'expendable-dart-drone',
+          containerId: 'ship-1',
+          itemId: 'item-1',
+        },
       } as any,
       'corr-1',
       expectedIdentity as any,
@@ -99,7 +142,78 @@ describe('socket-response-matchers', () => {
     );
 
     expect(good).toBe(true);
-    expect(bad).toBe(false);
+    expect(badCoreIdentity).toBe(false);
+    expect(badTopLevelRequired).toBe(false);
+  });
+
+  it('matches launch responses when required fields are present at top-level response', () => {
+    const expectedIdentity = {
+      operation: 'launch-item',
+      entityType: 'expendable-dart-drone',
+      containerId: 'ship-1',
+      itemId: 'item-1',
+      hotkey: 1,
+      targetCelestialBodyId: 'cb-1',
+      characterId: 'char-1',
+    };
+
+    const good = isLaunchItemResponseForRequest(
+      {
+        correlationId: 'corr-1',
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        shipId: 'ship-1',
+        hotkey: 1,
+        targetCelestialBodyId: 'cb-1',
+        characterId: 'char-1',
+        requestIdentity: {
+          operation: 'launch-item',
+          entityType: 'expendable-dart-drone',
+          containerId: 'ship-1',
+          itemId: 'item-1',
+        },
+      } as any,
+      'corr-1',
+      expectedIdentity as any,
+      {} as any,
+    );
+
+    expect(good).toBe(true);
+  });
+
+  it('matches launch responses when hotkey is serialized as a string', () => {
+    const expectedIdentity = {
+      operation: 'launch-item',
+      entityType: 'expendable-dart-drone',
+      containerId: 'ship-1',
+      itemId: 'item-1',
+      hotkey: 1,
+      targetCelestialBodyId: 'cb-1',
+      characterId: 'char-1',
+    };
+
+    const good = isLaunchItemResponseForRequest(
+      {
+        correlationId: 'corr-1',
+        itemId: 'item-1',
+        itemType: 'expendable-dart-drone',
+        shipId: 'ship-1',
+        hotkey: '1',
+        targetCelestialBodyId: 'cb-1',
+        characterId: 'char-1',
+        requestIdentity: {
+          operation: 'launch-item',
+          entityType: 'expendable-dart-drone',
+          containerId: 'ship-1',
+          itemId: 'item-1',
+        },
+      } as any,
+      'corr-1',
+      expectedIdentity as any,
+      {} as any,
+    );
+
+    expect(good).toBe(true);
   });
 
   it('matches celestial-body upsert/list responses only when expected identity matches', () => {

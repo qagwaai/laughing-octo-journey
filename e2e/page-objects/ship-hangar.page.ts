@@ -1,7 +1,48 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+
+type ShipHangarReadinessState = 'idle' | 'loading' | 'loaded' | 'empty' | 'error';
+
+interface ShipHangarReadinessSnapshot {
+  state: ShipHangarReadinessState;
+  requestGeneration: number;
+  shipCount: number;
+  error: string | null;
+  routeContext: {
+    playerName: string | null;
+    characterId: string | null;
+    shipId: string | null;
+  };
+  lastSuccessfulLoad: {
+    requestGeneration: number;
+    shipCount: number;
+    loadedAtEpochMs: number;
+  } | null;
+  updatedAtEpochMs: number;
+}
+
+interface Sw13AppTestReadinessSnapshot {
+  version: 'sw13.v1';
+  hangar: ShipHangarReadinessSnapshot;
+}
+
+interface ShipHangarLoadedReadinessOptions {
+  minimumShipCount?: number;
+  routeContext: ShipHangarReadinessSnapshot['routeContext'];
+  timeout?: number;
+}
+
+type ShipHangarOpenLoadedReadinessOptions = ShipHangarLoadedReadinessOptions;
 
 export class ShipHangarPage {
   constructor(private readonly page: Page) {}
+
+  async openAndWaitForLoadedReadiness(options: ShipHangarOpenLoadedReadinessOptions) {
+    const shipHangarButton = this.page.locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible').first();
+    await shipHangarButton.scrollIntoViewIfNeeded();
+    await shipHangarButton.click();
+    await expect(this.page).toHaveURL(/left:ship-hangar/);
+    await this.waitForLoadedReadiness(options);
+  }
 
   get shipItems() {
     return this.page.locator('.ship-item');
@@ -11,16 +52,58 @@ export class ShipHangarPage {
     return this.shipItems.nth(index);
   }
 
+  async waitForShipRowVisible(index: number, timeout = 10_000) {
+    await expect(this.shipItem(index)).toBeVisible({ timeout });
+  }
+
   shipItemByName(name: string) {
     return this.page.locator('.ship-item').filter({ hasText: name }).first();
+  }
+
+  async waitForShipByNameVisible(name: string, timeout = 20_000) {
+    await expect(this.shipItemByName(name)).toBeVisible({ timeout });
   }
 
   activeShipControlButton(index: number) {
     return this.shipItem(index).locator('button.inventory-link').nth(3);
   }
 
+  exteriorViewButton(index: number) {
+    return this.shipItem(index).locator('button', { hasText: 'View Exterior' });
+  }
+
+  viewSpecsButton(index: number) {
+    return this.shipItem(index).locator('button', { hasText: 'View Specs' });
+  }
+
+  async openSpecsForShip(index: number, options: { rowTimeout?: number } = {}) {
+    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
+    await this.viewSpecsButton(index).click();
+  }
+
+  async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
+    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
+    await this.exteriorViewButton(index).click();
+  }
+
   activeShipControlButtonByName(name: string) {
     return this.shipItemByName(name).locator('button.inventory-link').nth(3);
+  }
+
+  async expectActiveShipControlByName(name: string, options: { text: string; enabled: boolean; timeout?: number }) {
+    const control = this.activeShipControlButtonByName(name);
+    await expect(control).toHaveText(options.text, { timeout: options.timeout ?? 10_000 });
+    if (options.enabled) {
+      await expect(control).toBeEnabled({ timeout: options.timeout ?? 10_000 });
+    } else {
+      await expect(control).toBeDisabled({ timeout: options.timeout ?? 10_000 });
+    }
+  }
+
+  async setActiveShipByName(name: string) {
+    const control = this.activeShipControlButtonByName(name);
+    await expect(control).toBeEnabled({ timeout: 10_000 });
+    await control.click();
   }
 
   setActiveShipButton(index: number) {
@@ -33,5 +116,57 @@ export class ShipHangarPage {
 
   get shipBadgeName() {
     return this.page.locator('app-character-ship-badge .ship-badge-name');
+  }
+
+  async getReadinessSnapshot() {
+    return this.page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __sw13AppTestReadiness?: {
+            version: 'sw13.v1';
+            getSnapshot: () => Sw13AppTestReadinessSnapshot;
+          };
+        }
+      ).__sw13AppTestReadiness;
+
+      return api?.version === 'sw13.v1' ? api.getSnapshot() : null;
+    });
+  }
+
+  async waitForLoadedReadiness(options: ShipHangarLoadedReadinessOptions) {
+    const minimumShipCount = options.minimumShipCount ?? 1;
+    const expectedReadiness = {
+      version: 'sw13.v1',
+      state: 'loaded',
+      shipCount: expect.any(Number),
+      lastSuccessfulShipCount: expect.any(Number),
+      error: null,
+      ...(options.routeContext ? { routeContext: expect.objectContaining(options.routeContext) } : {}),
+    };
+
+    await expect
+      .poll(
+        async () => {
+          const snapshot = await this.getReadinessSnapshot();
+          return snapshot
+            ? {
+                version: snapshot.version,
+                state: snapshot.hangar.state,
+                shipCount: snapshot.hangar.shipCount,
+                lastSuccessfulShipCount: snapshot.hangar.lastSuccessfulLoad?.shipCount ?? null,
+                error: snapshot.hangar.error,
+                routeContext: snapshot.hangar.routeContext,
+              }
+            : null;
+        },
+        { timeout: options.timeout ?? 15_000 },
+      )
+      .toMatchObject(expectedReadiness);
+
+    await expect
+      .poll(async () => (await this.getReadinessSnapshot())?.hangar.shipCount ?? 0, {
+        timeout: options.timeout ?? 15_000,
+      })
+      .toBeGreaterThanOrEqual(minimumShipCount);
   }
 }

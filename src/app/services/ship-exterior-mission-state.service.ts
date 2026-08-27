@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { resolveShipExteriorMission, type ShipExteriorMissionGateStepState } from '../mission/ship-exterior-mission';
 import type { ShipExteriorMissionGateState } from '../mission/ship-exterior-mission';
 
 /**
@@ -8,6 +9,7 @@ export interface ShipExteriorMissionStateContext {
   missionId: string;
   playerName: string;
   characterId: string;
+  shipId: string;
 }
 
 @Injectable({
@@ -39,7 +41,12 @@ export class ShipExteriorMissionStateService {
       }
     }
 
-    return this.loadFallbackStateByMissionAndCharacter(context);
+    const legacyState = this.loadFallbackStateByMissionAndCharacter(context);
+    if (legacyState) {
+      this.saveState(context, legacyState);
+    }
+
+    return legacyState;
   }
 
   private loadFallbackStateByMissionAndCharacter(
@@ -57,11 +64,13 @@ export class ShipExteriorMissionStateService {
         continue;
       }
 
-      const [prefix, storedMissionId, _storedPlayerName, storedCharacterId] = key.split('::');
+      const parts = key.split('::');
+      const [prefix, storedMissionId, _storedPlayerName, storedCharacterId] = parts;
       if (
         prefix !== ShipExteriorMissionStateService.STORAGE_PREFIX ||
         storedMissionId !== missionId ||
-        storedCharacterId !== characterId
+        storedCharacterId !== characterId ||
+        parts.length !== 4
       ) {
         continue;
       }
@@ -95,10 +104,71 @@ export class ShipExteriorMissionStateService {
         return null;
       }
 
-      return parsed;
+      return this.normalizeStoredState(parsed);
     } catch {
       return null;
     }
+  }
+
+  private normalizeStoredState(state: ShipExteriorMissionGateState): ShipExteriorMissionGateState {
+    const mission = resolveShipExteriorMission(state.missionId);
+    if (!mission) {
+      return state;
+    }
+
+    const stepDefinitions = mission.getGateStepDefinitions();
+    const storedStepsByKey = new Map(state.steps.map((step) => [step.key, step] as const));
+    const completedStepKeys = new Set(
+      state.steps.filter((step) => step.status === 'completed' || step.status === 'pending-retry').map((step) => step.key),
+    );
+
+    const mergedSteps: ShipExteriorMissionGateStepState[] = stepDefinitions.map((definition) => {
+      const storedStep = storedStepsByKey.get(definition.key);
+      if (storedStep) {
+        return { ...storedStep };
+      }
+
+      return {
+        key: definition.key,
+        status: definition.prerequisiteStepKeys?.every((key) => completedStepKeys.has(key)) ? 'active' : 'locked',
+      };
+    });
+
+    return {
+      ...state,
+      activeObjectiveText: this.resolveObjectiveText(mergedSteps, stepDefinitions),
+      steps: mergedSteps,
+    };
+  }
+
+  private resolveObjectiveText(
+    stepStates: readonly ShipExteriorMissionGateStepState[],
+    stepDefinitions: NonNullable<ReturnType<typeof resolveShipExteriorMission>> extends infer Mission
+      ? Mission extends { getGateStepDefinitions: () => infer Steps }
+        ? Steps extends readonly (infer StepDefinition)[]
+          ? readonly StepDefinition[]
+          : never
+        : never
+      : never,
+  ): string {
+    const activeStep = stepDefinitions.find((step) => {
+      const state = stepStates.find((candidate) => candidate.key === step.key);
+      return state?.status === 'active';
+    });
+
+    if (activeStep) {
+      return activeStep.objectiveText;
+    }
+
+    const pendingStep = stepDefinitions.find((step) => {
+      const state = stepStates.find((candidate) => candidate.key === step.key);
+      return state?.status === 'pending-retry';
+    });
+    if (pendingStep) {
+      return `${pendingStep.objectiveText} (sync pending)`;
+    }
+
+    return 'Mission objectives complete. Await further directives.';
   }
 
   /**
@@ -124,9 +194,25 @@ export class ShipExteriorMissionStateService {
     }
 
     window.localStorage.removeItem(key);
+    const legacyKey = this.buildLegacyStorageKey(context);
+    if (legacyKey) {
+      window.localStorage.removeItem(legacyKey);
+    }
   }
 
   private buildStorageKey(context: ShipExteriorMissionStateContext): string | null {
+    const missionId = context.missionId?.trim();
+    const playerName = context.playerName?.trim();
+    const characterId = context.characterId?.trim();
+    const shipId = context.shipId?.trim();
+    if (!missionId || !playerName || !characterId || !shipId) {
+      return null;
+    }
+
+    return `${ShipExteriorMissionStateService.STORAGE_PREFIX}::${missionId}::${playerName}::${characterId}::${shipId}`;
+  }
+
+  private buildLegacyStorageKey(context: ShipExteriorMissionStateContext): string | null {
     const missionId = context.missionId?.trim();
     const playerName = context.playerName?.trim();
     const characterId = context.characterId?.trim();

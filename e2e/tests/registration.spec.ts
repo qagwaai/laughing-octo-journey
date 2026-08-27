@@ -1,4 +1,10 @@
 import { expect, test } from '@playwright/test';
+import {
+  LOGIN_RESPONSE,
+  REGISTER_RESPONSE,
+  characterListResponse,
+  setupSuccessfulRegistrationMock,
+} from '../fixtures/registration-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { LoginPage } from '../page-objects/login.page';
 import { RegistrationPage } from '../page-objects/registration.page';
@@ -57,37 +63,11 @@ test.describe('Registration', () => {
   });
 
   test('auto-logs in and redirects to character list after successful registration', async ({ page }) => {
-    const registerResponse = {
-      success: true,
-      message: 'Registration successful!',
-    };
-    const loginResponse = {
-      success: true,
-      message: 'Login successful!',
-      sessionKey: 'session-001',
-    };
-
-    const mock = new SocketIOMock(page);
-    await mock.setup();
-
-    mock.on('register', () => ({
-      event: 'register-response',
-      data: registerResponse,
-    }));
-
-    mock.on('login', () => ({
-      event: 'login-response',
-      data: loginResponse,
-    }));
+    const { mock } = await setupSuccessfulRegistrationMock(page);
 
     mock.on('character-list-request', () => ({
       event: 'character-list-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: 'validplayer',
-        characters: [],
-      },
+      data: characterListResponse('validplayer'),
     }));
 
     await registrationPage.goto();
@@ -95,51 +75,25 @@ test.describe('Registration', () => {
 
     await registrationPage.register('validplayer', 'player@example.com', 'password123');
     // Deterministic fallback deliveries for heavily parallelized runs.
-    mock.push('register-response', registerResponse);
-    mock.push('login-response', loginResponse);
+    mock.push('register-response', REGISTER_RESPONSE);
+    mock.push('login-response', LOGIN_RESPONSE);
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
   });
 
   test('stores opted-in handle and prefills login player name', async ({ page }) => {
-    const registerResponse = {
-      success: true,
-      message: 'Registration successful!',
-    };
-    const loginResponse = {
-      success: true,
-      message: 'Login successful!',
-      sessionKey: 'session-001',
-    };
-
-    const mock = new SocketIOMock(page);
-    await mock.setup();
-
-    mock.on('register', () => ({
-      event: 'register-response',
-      data: registerResponse,
-    }));
-
-    mock.on('login', () => ({
-      event: 'login-response',
-      data: loginResponse,
-    }));
+    const { mock } = await setupSuccessfulRegistrationMock(page);
 
     mock.on('character-list-request', () => ({
       event: 'character-list-response',
-      data: {
-        success: true,
-        message: '',
-        playerName: 'rememberedpilot',
-        characters: [],
-      },
+      data: characterListResponse('rememberedpilot'),
     }));
 
     await registrationPage.goto();
     await mock.connected;
 
     await registrationPage.register('rememberedpilot', 'remembered@example.com', 'password123', 'en', true);
-    mock.push('register-response', registerResponse);
-    mock.push('login-response', loginResponse);
+    mock.push('register-response', REGISTER_RESPONSE);
+    mock.push('login-response', LOGIN_RESPONSE);
     await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
 
     await loginPage.goto();

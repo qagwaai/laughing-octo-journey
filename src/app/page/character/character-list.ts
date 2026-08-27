@@ -39,7 +39,7 @@ export default class CharacterListPage implements OnDestroy {
   private unsubscribeInvalidSession?: () => void;
   private navigationState: { playerName?: string } = resolveNavigationState<{ playerName?: string }>(this.router);
 
-  protected playerName = signal<string>(this.navigationState.playerName ?? '');
+  protected playerName = signal<string>(this.resolveInitialPlayerName());
   protected characters = signal<PlayerCharacterSummary[]>([]);
   protected isLoading = signal(false);
   protected errorMessage = signal<string | null>(null);
@@ -54,16 +54,23 @@ export default class CharacterListPage implements OnDestroy {
   }
 
   constructor() {
-    this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
-      this.sessionService.clearSession();
-      this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-    });
+    const resolvedPlayerName = this.resolveInitialPlayerName();
+    if (resolvedPlayerName) {
+      this.playerName.set(resolvedPlayerName);
+      this.sessionService.setPlayerName(resolvedPlayerName);
+    }
 
     this.socketLifecycleService.runWhenConnected(() => this.loadCharacters());
   }
 
+  private resolveInitialPlayerName(): string {
+   return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
+  }
+
   /**
    * Loads character summaries for the current player context.
+   * Subscribes to invalid-session only after a successful response so that
+   * server-side game-session teardown events during reconnect do not misfire.
    */
   loadCharacters(): void {
     const playerName = this.playerName().trim();
@@ -81,6 +88,11 @@ export default class CharacterListPage implements OnDestroy {
       this.isLoading.set(false);
       if (response.success) {
         this.characters.set(this.normalizeCharacters(response.characters));
+        this.unsubscribeInvalidSession?.();
+        this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
+          this.sessionService.clearSession();
+          this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
+        });
       } else {
         this.characters.set([]);
         this.errorMessage.set(response.message);
@@ -246,6 +258,7 @@ export default class CharacterListPage implements OnDestroy {
       return;
     }
 
+    this.sessionService.setMissionEntryContext(playerName, character);
     const request: GameJoinRequest = {
       playerName,
       characterId: character.id,

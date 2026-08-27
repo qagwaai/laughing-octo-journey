@@ -189,6 +189,10 @@ export class SocketService {
       timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
       isResponseForRequest: (response) =>
         isCelestialBodyUpsertResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      shouldIgnoreMismatch: (response) => {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
       onResponseMatched: (response) => onResponse?.(response),
       onResponseMismatched: (response) => {
         appLogger.warn(
@@ -249,6 +253,10 @@ export class SocketService {
       timeoutMs: DEFAULT_NO_RESPONSE_LOG_DELAY_MS,
       isResponseForRequest: (response) =>
         isCelestialBodyListResponseForRequest(response, correlationId, requestIdentity, requestWithCorrelation),
+      shouldIgnoreMismatch: (response) => {
+        const responseCorrelationId = response.correlationId?.trim() ?? '';
+        return !!responseCorrelationId && responseCorrelationId !== correlationId;
+      },
       onResponseMatched: (response) => onResponse?.(response),
       onResponseMismatched: (response) => {
         appLogger.warn(
@@ -439,7 +447,7 @@ export class SocketService {
       onResponseMatched: (response) => onResponse(response),
       onResponseMismatched: (response) => {
         appLogger.warn(
-          `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} responseCorrelationId=${response.correlationId ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'}`,
+          `[socket-correlation] Dropping mismatched launch-item response. expectedCorrelationId=${correlationId} expectedOperation=${requestIdentity.operation ?? 'missing'} expectedItemId=${requestIdentity.itemId ?? 'missing'} expectedItemType=${requestIdentity.entityType} expectedShipId=${requestIdentity.containerId} expectedHotkey=${requestIdentity.hotkey ?? 'missing'} expectedTargetCelestialBodyId=${requestIdentity.targetCelestialBodyId ?? 'missing'} expectedCharacterId=${requestIdentity.characterId ?? 'missing'} responseCorrelationId=${response.correlationId ?? 'missing'} responseOperation=${response.requestIdentity?.operation ?? 'missing'} responseItemId=${response.itemId ?? 'missing'} responseItemType=${response.itemType ?? 'missing'} responseShipId=${response.shipId ?? 'missing'} responseHotkey=${response.hotkey ?? 'missing'} responseTargetCelestialBodyId=${response.targetCelestialBodyId ?? 'missing'} responseCharacterId=${response.characterId ?? 'missing'}`,
         );
         emitSocketCorrelationWarning({
           operation: 'launch-item',
@@ -473,11 +481,19 @@ export class SocketService {
     }
 
     const socketAtSubscription = this.socket;
-    socketAtSubscription.on(eventName, callback);
+    const safeCallback = (data: any) => {
+      try {
+        callback(data);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        appLogger.error(`[socket-service] listener callback failed for event '${eventName}': ${message}`);
+      }
+    };
+    socketAtSubscription.on(eventName, safeCallback);
 
     // Return unsubscribe function
     return () => {
-      socketAtSubscription.off(eventName, callback);
+      socketAtSubscription.off(eventName, safeCallback);
     };
   }
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -10,19 +10,6 @@ function setup() {
     imports: [RoutedScene],
     providers: [provideRouter([])],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  });
-
-  TestBed.overrideComponent(RoutedScene, {
-    set: {
-      imports: [],
-      template: `
-				@defer (prefetch on idle) {
-					<router-outlet />
-				} @placeholder (minimum 5s) {
-					<app-loading-scene />
-				}
-			`,
-    },
   });
 
   const fixture = TestBed.createComponent(RoutedScene);

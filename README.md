@@ -16,6 +16,23 @@ This is a template to get started with Angular Three.
 - Clone this repository and run `npm install` to install the dependencies.
 - Run `npm start` to start the development server.
 
+### Strict Dev Server (fail-closed serving)
+
+`npm start` runs `ng serve` through a local wrapper builder,
+[`tools/strict-dev-server`](tools/strict-dev-server/index.js) (wired up in
+`angular.json`). While the latest rebuild is failing, the server returns a
+**503 error page for every request** instead of silently serving the last
+successful (stale) bundle to new page loads. The error page auto-reloads every
+2 seconds and recovers on its own once the build is green.
+
+> **Upgrade caveat:** the wrapper vendors a copy of the stock dev-server
+> options schema at `tools/strict-dev-server/schema.json`. After upgrading
+> `@angular/build`, re-copy it:
+>
+> ```bash
+> cp node_modules/@angular/build/src/builders/dev-server/schema.json tools/strict-dev-server/schema.json
+> ```
+
 ## Tooling Commands
 
 - `npm run lint` - Lint TypeScript sources (app + e2e + top-level TS configs)
@@ -27,6 +44,60 @@ This is a template to get started with Angular Three.
 - `npm run test:spec -- src/path/to/your.vitest.ts` - Focused Vitest file run
 - `npm run e2e:spec -- e2e/tests/your.spec.ts` - Focused Playwright spec run
 - `npm run verify:quick` - Quick local gate (`lint + typecheck`)
+
+## E2E Testing Strategy
+
+E2E tests are organized into **four partitions** for focused iteration and faster developer feedback:
+
+### Partitions
+
+1. **auth-route** (21 tests) — Auth & locale flows
+   - `npm run e2e:auth-route`
+   - Tests login, registration, and locale-specific auth behavior
+
+2. **viewer-3d** (61 tests) — Rendering & 3D scene interaction
+   - `npm run e2e:3d`
+   - Tests viewer rendering, viewer-ships, planet zoom, and ship-exterior flight/persistence
+
+3. **stateful-gameplay** (74 tests) — Game state & workflows
+   - `npm run e2e:stateful`
+   - Tests character lifecycle, mission board, market hub, repair, print queue, and first-target progression
+
+4. **full suite** (156 app tests + setup) — All tests
+   - `npm run e2e:full` or `npm run e2e`
+   - Required for merge gate; use this to catch cross-partition issues
+
+### Partition Gate
+
+A partition enforcement gate (`npm run e2e:partition:check`) runs automatically before every `npm run build` and `npm run e2e:*` command. The gate ensures:
+
+- Every new spec is assigned to exactly one partition
+- No unclassified or multiply-assigned specs break builds
+
+If you add a new e2e test:
+1. Save the spec file in `e2e/tests/`
+2. The gate will fail with clear guidance on which partition it should join
+3. Update the patterns in `scripts/check-e2e-partitions.mjs` to include your spec name
+4. Re-run build or e2e command to confirm the gate passes
+
+### Recommended Workflow
+
+- **Local development**: Run your targeted partition (`e2e:auth-route`, `e2e:3d`, or `e2e:stateful`)
+- **Pre-commit**: Run the full suite (`e2e:full`) to catch cross-partition breakage
+- **CI**: Full suite is the merge gate
+
+## SW-13 Stabilization Governance
+
+For PRs touching SW-13 stabilization scope (stateful gameplay tests, readiness assertions, viewer harness/spec cleanup, or governance docs):
+
+1. Follow the reviewer checklist:
+   - [docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md](docs/planning/sw-13-closure/sw-13-reviewer-governance-checklist-2026-07-16.md)
+2. Complete the SW-13 section in the PR template:
+   - [.github/pull_request_template.md](.github/pull_request_template.md)
+3. Update governance adoption evidence:
+   - [docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md](docs/planning/sw-13-closure/sw-13-governance-adoption-log-2026-07-20.md)
+4. Follow contributor governance guidance:
+   - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Features
 
@@ -115,3 +186,7 @@ This repository is provided under an **All Rights Reserved** model.
 
 Commercial use is prohibited unless you obtain a separate written commercial license from the repository owner.
 For commercial licensing requests, contact: qagwaai@gmail.com
+
+
+my notes:
+npx playwright test e2e/tests/cold-boot-asteroid-parity.spec.ts --project=chromium --headed --reporter=line

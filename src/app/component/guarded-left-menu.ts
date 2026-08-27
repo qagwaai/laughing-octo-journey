@@ -14,6 +14,7 @@ import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { PlayerCharacterSummary } from '../model/character-list';
 import { resolveActiveFirstTargetCue } from './first-target-nav-guidance';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
+import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 
 interface GuardedMenuItem {
@@ -33,12 +34,20 @@ export class GuardedLeftMenu implements OnChanges {
   private router = inject(Router);
   private missionStateService = inject(ShipExteriorMissionStateService);
   private leftPanelContext = inject(LeftPanelNavigationContextService);
+  private sessionService = inject(SessionService);
 
   constructor() {
     effect(() => {
       // React to scene-side mission state saves (e.g., after launch) even when
       // this menu's inputs are unchanged in the left outlet.
       this.missionStateService.lastSaved();
+      this.refreshFirstTargetGuidance();
+    });
+
+    effect(() => {
+      this.leftPanelContext.playerName();
+      this.leftPanelContext.joinCharacter();
+      this.sessionService.activeShip();
       this.refreshFirstTargetGuidance();
     });
   }
@@ -154,15 +163,15 @@ export class GuardedLeftMenu implements OnChanges {
       return;
     }
 
-    const inMemoryState = this.missionStateService.lastSaved();
-    const state =
-      inMemoryState?.missionId === FIRST_TARGET_MISSION_ID && inMemoryState.characterId === characterId
-        ? inMemoryState
-        : this.missionStateService.loadState({
-            missionId: FIRST_TARGET_MISSION_ID,
-            playerName,
-            characterId,
-          });
+    const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+    const state = shipId
+      ? this.missionStateService.loadState({
+          missionId: FIRST_TARGET_MISSION_ID,
+          playerName,
+          characterId,
+          shipId,
+        })
+      : null;
 
     const activeCue = resolveActiveFirstTargetCue(state);
     this.activeGuidedRoute.set(activeCue?.route ?? null);

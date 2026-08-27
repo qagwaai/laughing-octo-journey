@@ -1,45 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { SocketIOMock } from '../fixtures/socket-mock';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
-import { CharacterListPage } from '../page-objects/character-list.page';
-import { CharacterSetupPage } from '../page-objects/character-setup.page';
-
-function characterListResponse(characters: object[]) {
-  return {
-    success: true,
-    message: '',
-    playerName: TEST_PLAYER,
-    characters,
-  };
-}
-
-function characterAddResponse(characterId: string, characterName: string) {
-  return {
-    success: true,
-    message: 'Character created.',
-    playerName: TEST_PLAYER,
-    characterId,
-    characterName,
-  };
-}
-
-async function setupCharacterAddTest(page: Page) {
-  const mock = new SocketIOMock(page);
-  await mock.setup();
-
-  mock.on('character-list-request', () => ({
-    event: 'character-list-response',
-    data: characterListResponse([]),
-  }));
-
-  await loginViaUI(page, mock);
-
-  return {
-    mock,
-    characterListPage: new CharacterListPage(page),
-    characterSetupPage: new CharacterSetupPage(page),
-  };
-}
+import { characterAddResponse, characterListResponse, setupCharacterAddTest } from '../fixtures/character-add-scenario';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 
 test.describe('Character Add — from character list', () => {
   test('adds a character, runs starter-ship chain, and shows the new character in list', async ({ page }) => {
@@ -182,7 +143,7 @@ test.describe('Character Add — from character list', () => {
       );
     }
 
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
     await expect(characterListPage.characterName(0)).toHaveText('Nova Prime');
   });
 
@@ -265,7 +226,7 @@ test.describe('Character Add — from character list', () => {
     });
 
     await characterListPage.clickLoad();
-    await expect(characterListPage.characterItems).toHaveCount(1);
+    await characterListPage.expectCharacterCount(1);
 
     await characterListPage.clickSetup();
     await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });

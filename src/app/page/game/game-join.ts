@@ -47,20 +47,41 @@ export default class GameJoinPage {
   private unsubscribeInvalidSession?: () => void;
   private navigationState: GameJoinNavigationState = resolveNavigationState<GameJoinNavigationState>(this.router);
 
-  protected playerName = signal<string>(this.navigationState.playerName ?? '');
-  protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
-  protected characterName = signal<string>(this.joinCharacter()?.characterName ?? 'Unknown Character');
+  protected playerName = signal<string>(this.resolveInitialPlayerName());
+  protected joinCharacter = signal<PlayerCharacterSummary | null>(this.resolveInitialJoinCharacter());
+  protected characterName = signal<string>(this.resolveInitialJoinCharacter()?.characterName ?? 'Unknown Character');
   protected ships = signal<ShipSummary[]>([]);
   protected isLoadingShips = signal(false);
   protected shipListError = signal<string | null>(null);
 
   constructor() {
+    const resolvedPlayerName = this.resolveInitialPlayerName();
+    const resolvedJoinCharacter = this.resolveInitialJoinCharacter();
+    if (resolvedPlayerName) {
+      this.playerName.set(resolvedPlayerName);
+      this.sessionService.setPlayerName(resolvedPlayerName);
+    }
+    if (resolvedJoinCharacter) {
+      this.joinCharacter.set(resolvedJoinCharacter);
+      this.characterName.set(resolvedJoinCharacter.characterName ?? 'Unknown Character');
+    } else {
+      this.characterName.set('Unknown Character');
+    }
+
     this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
       this.sessionService.clearSession();
       this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
     });
 
     this.socketLifecycleService.runWhenConnected(() => this.loadShipsForCharacter());
+  }
+
+  private resolveInitialPlayerName(): string {
+   return this.navigationState.playerName?.trim() || this.sessionService.getPlayerName()?.trim() || '';
+  }
+
+  private resolveInitialJoinCharacter(): PlayerCharacterSummary | null {
+   return this.navigationState.joinCharacter ?? this.sessionService.getMissionEntryContext()?.joinCharacter ?? this.sessionService.activeCharacter() ?? null;
   }
 
   /**
@@ -82,6 +103,7 @@ export default class GameJoinPage {
       return;
     }
 
+    this.sessionService.setMissionEntryContext(playerName, character);
     this.sessionService.setActiveCharacter(character);
     this.isLoadingShips.set(true);
     this.shipListError.set(null);

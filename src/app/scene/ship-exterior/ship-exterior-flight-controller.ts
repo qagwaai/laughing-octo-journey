@@ -98,6 +98,10 @@ export class ShipExteriorFlightController {
   }
 
   setFlightModeEnabled(enabled: boolean): void {
+    if (this.flightModeEnabled() === enabled) {
+      return;
+    }
+
     this.flightModeEnabled.set(enabled);
     this.flightPressedKeys.clear();
     this.flightTrackingAccumulatorMs = 0;

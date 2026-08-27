@@ -389,6 +389,232 @@ describe('ShipService', () => {
     expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('routes correlation-less ship-list fallback responses to only the matching concurrent owner request', () => {
+    const received: Record<string, ShipListByOwnerResponse | undefined> = {};
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-a', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received['a'] = response;
+      },
+    );
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-b', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received['b'] = response;
+      },
+    );
+
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(2);
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-char-b',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-b',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received['b']).toEqual(expect.objectContaining({ success: true, message: 'legacy-char-b' }));
+    expect(received['a']).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-char-a',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-a',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received['a']).toEqual(expect.objectContaining({ success: true, message: 'legacy-char-a' }));
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('routes N=3 correlation-less ship-list fallback responses to only matching concurrent owner requests', () => {
+    const received: Record<string, ShipListByOwnerResponse | undefined> = {};
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-a', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received['a'] = response;
+      },
+    );
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-b', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received['b'] = response;
+      },
+    );
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-c', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received['c'] = response;
+      },
+    );
+
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(3);
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-char-c',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-c',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received['c']).toEqual(expect.objectContaining({ success: true, message: 'legacy-char-c' }));
+    expect(received['a']).toBeUndefined();
+    expect(received['b']).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(2);
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-char-a',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-a',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received['a']).toEqual(expect.objectContaining({ success: true, message: 'legacy-char-a' }));
+    expect(received['b']).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-char-b',
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-b',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received['b']).toEqual(expect.objectContaining({ success: true, message: 'legacy-char-b' }));
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects matching-correlation ship-list responses when requestIdentity mismatches', () => {
+    let received: ShipListByOwnerResponse | undefined;
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-1', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    const correlationId = requestPayload.correlationId!;
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-identity',
+      correlationId,
+      requestIdentity: {
+        operation: 'ship-list-by-owner',
+        entityType: 'ship',
+        containerId: 'player-character:char-99',
+      },
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-1',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('rejects matching-correlation ship-list responses when owner payload mismatches and requestIdentity is absent', () => {
+    let received: ShipListByOwnerResponse | undefined;
+
+    service.listShipsByOwner(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        owner: { ownerType: 'player-character', characterId: 'char-1', playerId: 'player-1' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipListByOwnerRequest;
+    const correlationId = requestPayload.correlationId!;
+
+    socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-owner-for-correlation',
+      correlationId,
+      owner: {
+        ownerType: 'player-character',
+        playerId: 'player-1',
+        characterId: 'char-2',
+        npcId: null,
+        factionId: null,
+      },
+      ships: [],
+    } as unknown as ShipListByOwnerResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_LIST_BY_OWNER_RESPONSE_EVENT)).toBe(1);
+  });
+
   it('accepts ship-list fallback response when owner payload is missing', () => {
     let received: ShipListByOwnerResponse | undefined;
     service.listShipsByOwner(
@@ -453,6 +679,122 @@ describe('ShipService', () => {
     socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
       success: true,
       message: 'wrong-id',
+      shipId: 'ship-99',
+      toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+    } as ShipTransferResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('routes correlation-less ship-transfer fallback responses to only the matching concurrent ship request', () => {
+    const received: Record<string, ShipTransferResponse | undefined> = {};
+
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-a',
+        toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+      },
+      (response) => {
+        received['a'] = response;
+      },
+    );
+
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-b',
+        toOwner: { ownerType: 'player-character', characterId: 'char-3' } as any,
+      },
+      (response) => {
+        received['b'] = response;
+      },
+    );
+
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(2);
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-ship-b',
+      shipId: 'ship-b',
+      toOwner: { ownerType: 'player-character', characterId: 'char-3' } as any,
+    } as ShipTransferResponse);
+
+    expect(received['b']).toEqual(expect.objectContaining({ success: true, message: 'legacy-ship-b' }));
+    expect(received['a']).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'legacy-ship-a',
+      shipId: 'ship-a',
+      toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+    } as ShipTransferResponse);
+
+    expect(received['a']).toEqual(expect.objectContaining({ success: true, message: 'legacy-ship-a' }));
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(0);
+  });
+
+  it('rejects matching-correlation ship-transfer responses when requestIdentity mismatches', () => {
+    let received: ShipTransferResponse | undefined;
+
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-1',
+        toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipTransferRequest;
+    const correlationId = requestPayload.correlationId!;
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-identity',
+      correlationId,
+      requestIdentity: {
+        operation: 'ship-transfer',
+        entityType: 'ship',
+        containerId: 'ship-99',
+      },
+      shipId: 'ship-1',
+      toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+    } as ShipTransferResponse);
+
+    expect(received).toBeUndefined();
+    expect(socketService.listenerCount(SHIP_TRANSFER_RESPONSE_EVENT)).toBe(1);
+  });
+
+  it('rejects matching-correlation ship-transfer responses when ship id mismatches and requestIdentity is absent', () => {
+    let received: ShipTransferResponse | undefined;
+
+    service.transferShip(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 'session-1',
+        shipId: 'ship-1',
+        toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    const requestPayload = socketService.emittedEvents[0]?.payload as ShipTransferRequest;
+    const correlationId = requestPayload.correlationId!;
+
+    socketService.trigger(SHIP_TRANSFER_RESPONSE_EVENT, {
+      success: true,
+      message: 'wrong-ship-for-correlation',
+      correlationId,
       shipId: 'ship-99',
       toOwner: { ownerType: 'player-character', characterId: 'char-2' } as any,
     } as ShipTransferResponse);

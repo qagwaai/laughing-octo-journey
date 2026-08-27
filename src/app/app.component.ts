@@ -14,7 +14,6 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
-import { TweakpaneButton, TweakpaneCheckbox, TweakpaneColor, TweakpanePane } from 'angular-three-tweakpane';
 import { NgtCanvas } from 'angular-three/dom';
 import { filter, map, startWith, Subscription } from 'rxjs';
 import { RoutedScene } from './routed-scene';
@@ -72,10 +71,6 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   imports: [
     NgtCanvas,
-    TweakpanePane,
-    TweakpaneCheckbox,
-    TweakpaneColor,
-    TweakpaneButton,
     NgtsStats,
     RoutedScene,
     LeftPaneMissionGuidanceOverlay,
@@ -142,6 +137,11 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   );
 
   protected isColdBootScanOverlayActive = computed(() => this.currentUrl().includes('opening-cold-boot-scan'));
+
+  protected shipExteriorPrimaryActive = computed(() => {
+    const url = this.currentUrl();
+    return /(?:^|\/)ship-exterior-view(?:\(|$)/.test(url);
+  });
 
   protected showColdBootLookHint = computed(() => this.isColdBootSceneActive() && this.lookHintOpacity() > 0);
   protected contractVarianceToast = this.contractVarianceNotifier.activeToast;

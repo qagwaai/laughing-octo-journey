@@ -2,8 +2,16 @@ import { SessionService } from './session.service';
 
 describe('SessionService', () => {
   let service: SessionService;
+  const sessionStorageKey = 'stellar.sessionKey';
+  const playerNameStorageKey = 'stellar.playerName';
+  const activeCharacterStorageKey = 'stellar.activeCharacter';
+  const missionEntryContextStorageKey = 'stellar.missionEntryContext';
 
   beforeEach(() => {
+    window.sessionStorage.removeItem(sessionStorageKey);
+    window.sessionStorage.removeItem(playerNameStorageKey);
+    window.sessionStorage.removeItem(activeCharacterStorageKey);
+    window.sessionStorage.removeItem(missionEntryContextStorageKey);
     service = new SessionService();
   });
 
@@ -20,19 +28,71 @@ describe('SessionService', () => {
     service.setSessionKey('abc-123');
     expect(service.hasSession()).toBe(true);
     expect(service.getSessionKey()).toBe('abc-123');
+    expect(window.sessionStorage.getItem(sessionStorageKey)).toBe('abc-123');
   });
 
   it('should clear a session', () => {
     service.setSessionKey('abc-123');
+    service.setPlayerName('Pioneer');
+    service.setActiveCharacter({ id: 'char-1', characterName: 'Nova' } as never);
+    service.setMissionEntryContext('Pioneer', { id: 'char-1', characterName: 'Nova' } as never);
     service.clearSession();
     expect(service.hasSession()).toBe(false);
     expect(service.getSessionKey()).toBeNull();
+    expect(window.sessionStorage.getItem(sessionStorageKey)).toBeNull();
+    expect(window.sessionStorage.getItem(playerNameStorageKey)).toBeNull();
+    expect(window.sessionStorage.getItem(activeCharacterStorageKey)).toBeNull();
+    expect(window.sessionStorage.getItem(missionEntryContextStorageKey)).toBeNull();
   });
 
   it('should overwrite an existing session key', () => {
     service.setSessionKey('key-1');
     service.setSessionKey('key-2');
     expect(service.getSessionKey()).toBe('key-2');
+    expect(window.sessionStorage.getItem(sessionStorageKey)).toBe('key-2');
+  });
+
+  it('should hydrate from persisted session key', () => {
+    window.sessionStorage.setItem(sessionStorageKey, 'persisted-key');
+
+    const hydrated = new SessionService();
+
+    expect(hydrated.hasSession()).toBe(true);
+    expect(hydrated.getSessionKey()).toBe('persisted-key');
+  });
+
+  it('should persist and hydrate player name', () => {
+    service.setPlayerName('Pioneer');
+    expect(service.getPlayerName()).toBe('Pioneer');
+    expect(window.sessionStorage.getItem(playerNameStorageKey)).toBe('Pioneer');
+
+    const hydrated = new SessionService();
+
+    expect(hydrated.getPlayerName()).toBe('Pioneer');
+  });
+
+  it('should persist and hydrate active character', () => {
+    const character = { id: 'char-1', characterName: 'Nova' };
+    service.setActiveCharacter(character as never);
+    expect(service.activeCharacter()?.id).toBe('char-1');
+    expect(window.sessionStorage.getItem(activeCharacterStorageKey)).toContain('char-1');
+
+    const hydrated = new SessionService();
+
+    expect(hydrated.activeCharacter()?.id).toBe('char-1');
+    expect(hydrated.activeCharacter()?.characterName).toBe('Nova');
+  });
+
+  it('should persist and hydrate mission entry context', () => {
+    service.setMissionEntryContext('Pioneer', { id: 'char-1', characterName: 'Nova' } as never);
+    expect(service.getMissionEntryContext()?.playerName).toBe('Pioneer');
+    expect(service.getMissionEntryContext()?.joinCharacter.id).toBe('char-1');
+    expect(window.sessionStorage.getItem(missionEntryContextStorageKey)).toContain('char-1');
+
+    const hydrated = new SessionService();
+
+    expect(hydrated.getMissionEntryContext()?.playerName).toBe('Pioneer');
+    expect(hydrated.getMissionEntryContext()?.joinCharacter.characterName).toBe('Nova');
   });
 
   describe('active ship', () => {
@@ -208,12 +268,25 @@ describe('SessionService', () => {
       expect(service.activeShip()).toBeNull();
     });
 
+    it('should clear active character independently', () => {
+      service.setActiveCharacter({ id: 'char-1', characterName: 'Nova' } as never);
+      service.clearActiveCharacter();
+      expect(service.activeCharacter()).toBeNull();
+      expect(window.sessionStorage.getItem(activeCharacterStorageKey)).toBeNull();
+    });
+
     it('should clear active ship when clearSession is called', () => {
       service.setSessionKey('key-1');
       service.setActiveShip(ship as never);
+      service.setPlayerName('Pioneer');
+      service.setActiveCharacter({ id: 'char-1', characterName: 'Nova' } as never);
+      service.setMissionEntryContext('Pioneer', { id: 'char-1', characterName: 'Nova' } as never);
       service.clearSession();
       expect(service.activeShip()).toBeNull();
       expect(service.hasSession()).toBe(false);
+      expect(service.activeCharacter()).toBeNull();
+      expect(service.getPlayerName()).toBeNull();
+      expect(service.getMissionEntryContext()).toBeNull();
     });
   });
 });

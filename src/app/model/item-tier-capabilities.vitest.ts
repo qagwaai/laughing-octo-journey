@@ -1,6 +1,7 @@
 import {
   clampSensorArrayTier,
   resolveSensorArrayCapabilities,
+  resolveSensorArrayTargetLockHoldMs,
   resolveTractorBeamCapabilities,
   SENSOR_ARRAY_MAX_TIER,
   SENSOR_ARRAY_MIN_TIER,
@@ -55,6 +56,14 @@ describe('item-tier-capabilities model', () => {
 
       expect(tier10.scanDurationMs).toBeLessThan(tier5.scanDurationMs);
       expect(tier15.scanDurationMs).toBeLessThan(tier10.scanDurationMs);
+    });
+  });
+
+  describe('resolveSensorArrayTargetLockHoldMs', () => {
+    it('tracks sensor-array scan duration by tier', () => {
+      expect(resolveSensorArrayTargetLockHoldMs(1)).toBe(10_000);
+      expect(resolveSensorArrayTargetLockHoldMs(20)).toBe(2_400);
+      expect(resolveSensorArrayTargetLockHoldMs(5)).toBeLessThan(resolveSensorArrayTargetLockHoldMs(1));
     });
   });
 

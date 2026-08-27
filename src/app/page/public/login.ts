@@ -113,6 +113,7 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
         if (response.sessionKey) {
           this.sessionService.setSessionKey(response.sessionKey);
         }
+        this.sessionService.setPlayerName(request.playerName);
         this.successMessage.set(response.message);
         this.canNavigateToRegister.set(false);
         this.router.navigate([{ outlets: { left: ['character-list'] } }], {

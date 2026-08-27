@@ -20,6 +20,7 @@ import {
 } from '../../model/catalog/mission-catalog';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
+import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { type MissionListRequest, type MissionListResponse } from '../../model/mission-list';
 import { MissionBoardService } from '../../services/mission-board.service';
 import { SessionService } from '../../services/session.service';
@@ -258,9 +259,21 @@ export default class MissionBoardPage {
   });
 
   private readonly missionGateStageSync = effect(() => {
-    const savedGateState = this.missionStateService.lastSaved();
+    this.missionStateService.lastSaved();
     const characterId = this.joinCharacter()?.id?.trim() ?? '';
-    if (!savedGateState || !characterId || savedGateState.characterId !== characterId) {
+    const playerName = this.playerName().trim();
+    const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+    if (!characterId || !playerName || !shipId) {
+      return;
+    }
+
+    const savedGateState = this.missionStateService.loadState({
+      missionId: FIRST_TARGET_MISSION_ID,
+      playerName,
+      characterId,
+      shipId,
+    });
+    if (!savedGateState) {
       return;
     }
 
@@ -503,11 +516,15 @@ export default class MissionBoardPage {
     });
     const persistedGateState = playerName
       ? (() => {
-          const stored = this.missionStateService.loadState({
-            missionId: mission.missionId,
-            playerName,
-            characterId,
-          });
+          const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+          const stored = shipId
+            ? this.missionStateService.loadState({
+                missionId: mission.missionId,
+                playerName,
+                characterId,
+                shipId,
+              })
+            : null;
           if (!stored) {
             return null;
           }

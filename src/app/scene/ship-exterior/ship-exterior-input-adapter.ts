@@ -32,6 +32,9 @@ export class ShipExteriorInputAdapter {
     this.win.addEventListener('keydown', this.handlers.onWindowKeyDown);
     this.win.addEventListener('keyup', this.handlers.onWindowKeyUp);
     this.win.addEventListener('mousemove', this.handlers.onWindowMouseMove);
+    this.doc.addEventListener('keydown', this.handlers.onWindowKeyDown as EventListener);
+    this.doc.addEventListener('keyup', this.handlers.onWindowKeyUp as EventListener);
+    this.doc.addEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
     this.win.addEventListener('socket-correlation-warning', this.handlers.onSocketCorrelationWarning as EventListener);
     this.doc.addEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
     this.attached = true;
@@ -48,6 +51,9 @@ export class ShipExteriorInputAdapter {
     this.win.removeEventListener('keydown', this.handlers.onWindowKeyDown);
     this.win.removeEventListener('keyup', this.handlers.onWindowKeyUp);
     this.win.removeEventListener('mousemove', this.handlers.onWindowMouseMove);
+    this.doc.removeEventListener('keydown', this.handlers.onWindowKeyDown as EventListener);
+    this.doc.removeEventListener('keyup', this.handlers.onWindowKeyUp as EventListener);
+    this.doc.removeEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
     this.win.removeEventListener('socket-correlation-warning', this.handlers.onSocketCorrelationWarning as EventListener);
     this.doc.removeEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
     this.attached = false;

@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
+import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { LeftPaneMissionGuidanceOverlay } from './left-pane-mission-guidance-overlay';
 
@@ -14,6 +15,7 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
     lastSaved: ReturnType<typeof vi.fn>;
   };
   let contextService: LeftPanelNavigationContextService;
+  let sessionService: SessionService;
   let navigateSpy: ReturnType<typeof vi.fn>;
 
   function missionStateServiceSpy() {
@@ -33,12 +35,14 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
       imports: [LeftPaneMissionGuidanceOverlay],
       providers: [
         LeftPanelNavigationContextService,
+        SessionService,
         { provide: ShipExteriorMissionStateService, useValue: missionStateService },
         { provide: Router, useValue: { navigate: navigateSpy } },
       ],
     }).compileComponents();
 
     contextService = TestBed.inject(LeftPanelNavigationContextService);
+    sessionService = TestBed.inject(SessionService);
     fixture = TestBed.createComponent(LeftPaneMissionGuidanceOverlay);
     component = fixture.componentInstance;
   });
@@ -63,6 +67,7 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
       steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
     } as any);
 
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
     contextService.updateContext('Pioneer', { id: 'c-1', characterName: 'Nova' } as any);
     fixture.detectChanges();
 
@@ -79,6 +84,7 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
       steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
     } as any);
 
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
     contextService.updateContext('Pioneer', { id: 'c-1', characterName: 'Nova' } as any);
     fixture.detectChanges();
 
@@ -101,6 +107,7 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
     } as any);
 
     const character = { id: 'c-1', characterName: 'Nova' } as any;
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
     contextService.updateContext('Pioneer', character);
     fixture.detectChanges();
 

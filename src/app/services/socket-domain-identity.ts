@@ -59,7 +59,11 @@ export function buildDefaultCelestialBodyUpsertRequestIdentity(
   return {
     operation: 'celestial-body-upsert',
     entityType: 'celestial-body',
-    containerId: request.celestialBody?.id?.trim() || 'unknown-celestial-body',
+    containerId:
+      request.celestialBody?.sourceScanId?.trim() ||
+      request.celestialBody?.id?.trim() ||
+      'unknown-celestial-body',
+    characterId: request.createdByCharacterId?.trim() || request.celestialBody?.createdByCharacterId?.trim() || undefined,
   };
 }
 

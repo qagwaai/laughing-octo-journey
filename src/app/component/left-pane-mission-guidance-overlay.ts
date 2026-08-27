@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { locale } from '../i18n/locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
+import { SessionService } from '../services/session.service';
 import { ShipExteriorMissionStateService } from '../services/ship-exterior-mission-state.service';
 import { buildCueDismissalKey, resolveActiveFirstTargetCue } from './first-target-nav-guidance';
 
@@ -17,6 +18,7 @@ export class LeftPaneMissionGuidanceOverlay {
   private readonly router = inject(Router);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly navContext = inject(LeftPanelNavigationContextService);
+  private readonly sessionService = inject(SessionService);
 
   protected readonly activeCue = signal<ReturnType<typeof resolveActiveFirstTargetCue>>(null);
   protected readonly visible = signal(false);
@@ -56,6 +58,7 @@ export class LeftPaneMissionGuidanceOverlay {
     effect(() => {
       this.navContext.playerName();
       this.navContext.joinCharacter();
+      this.sessionService.activeShip();
       this.refreshCue();
     });
   }
@@ -97,15 +100,15 @@ export class LeftPaneMissionGuidanceOverlay {
       return;
     }
 
-    const inMemoryState = this.missionStateService.lastSaved();
-    const state =
-      inMemoryState?.missionId === FIRST_TARGET_MISSION_ID && inMemoryState.characterId === characterId
-        ? inMemoryState
-        : this.missionStateService.loadState({
-            missionId: FIRST_TARGET_MISSION_ID,
-            playerName,
-            characterId,
-          });
+    const shipId = this.sessionService.activeShip()?.id?.trim() ?? '';
+    const state = shipId
+      ? this.missionStateService.loadState({
+          missionId: FIRST_TARGET_MISSION_ID,
+          playerName,
+          characterId,
+          shipId,
+        })
+      : null;
 
     const cue = resolveActiveFirstTargetCue(state);
     this.activeCue.set(cue);

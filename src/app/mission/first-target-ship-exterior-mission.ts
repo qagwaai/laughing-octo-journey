@@ -257,6 +257,44 @@ function generateAsteroidSamples(
   return samples;
 }
 
+function isLaunchTargetDestroyed(response: LaunchItemResponse): boolean {
+  if (response.resolution?.targetDestroyed === true) {
+    return true;
+  }
+
+  if (response.resolution?.targetCelestialBody?.state === 'destroyed') {
+    return true;
+  }
+
+  return response.resolution?.outcome === 'target-destroyed';
+}
+
+function normalizeLaunchToken(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+function launchResolutionIndicatesIron(response: LaunchItemResponse): boolean {
+  const yieldedMaterials = response.resolution?.yieldedMaterials ?? [];
+  if (yieldedMaterials.some((material) => normalizeLaunchToken(material.material) === 'iron')) {
+    return true;
+  }
+
+  const yieldedItems = response.resolution?.yieldedItems ?? [];
+  return yieldedItems.some((item) => {
+    const itemType = normalizeLaunchToken(item.itemType);
+    const displayName = normalizeLaunchToken(item.displayName);
+    return itemType.includes('iron') || displayName.includes('iron');
+  });
+}
+
 export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   missionId: FIRST_TARGET_MISSION_ID,
   canTargetAsteroids() {
@@ -279,7 +317,7 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
       };
     }
 
-    if (response.resolution?.outcome !== 'target-destroyed') {
+    if (!isLaunchTargetDestroyed(response)) {
       return {
         removeAsteroidSampleIds: [],
         shouldRefreshAfterLaunch: true,
@@ -401,11 +439,11 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
     return false;
   },
   doesLaunchCompleteGateStep(stepKey: string, response: LaunchItemResponse) {
-    return (
-      stepKey === 'neutralize_identified_asteroid' &&
-      response.success === true &&
-      response.resolution?.outcome === 'target-destroyed'
-    );
+    if (stepKey === 'identify_iron_asteroid') {
+      return response.success === true && isLaunchTargetDestroyed(response) && launchResolutionIndicatesIron(response);
+    }
+
+    return stepKey === 'neutralize_identified_asteroid' && response.success === true && isLaunchTargetDestroyed(response);
   },
   doesManufactureCompleteGateStep(stepKey: string, manufacturedItemType: string) {
     return stepKey === 'manufacture_hull_patch_kit' && manufacturedItemType === 'hull-patch-kit';

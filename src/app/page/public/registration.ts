@@ -139,6 +139,7 @@ export default class RegistrationPage implements OnDestroy {
             if (loginResponse.sessionKey) {
               this.sessionService.setSessionKey(loginResponse.sessionKey);
             }
+            this.sessionService.setPlayerName(request.playerName);
 
             this.router.navigate([{ outlets: { left: ['character-list'] } }], {
               preserveFragment: true,

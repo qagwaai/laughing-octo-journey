@@ -70,7 +70,8 @@ describe('socket-domain-identity helpers', () => {
 
   it('uses expected defaults for celestial-body upsert/list identities and list key', () => {
     const upsertIdentity = buildDefaultCelestialBodyUpsertRequestIdentity({
-      celestialBody: { id: ' cb-1 ' },
+      createdByCharacterId: ' char-1 ',
+      celestialBody: { id: ' cb-1 ', sourceScanId: ' sample-a1 ' },
     } as any);
     const listIdentity = buildDefaultCelestialBodyListRequestIdentity({
       solarSystemId: ' Sol ',
@@ -85,7 +86,8 @@ describe('socket-domain-identity helpers', () => {
     expect(upsertIdentity).toEqual({
       operation: 'celestial-body-upsert',
       entityType: 'celestial-body',
-      containerId: 'cb-1',
+      containerId: 'sample-a1',
+      characterId: 'char-1',
     });
     expect(listIdentity).toEqual({
       operation: 'celestial-body-list',

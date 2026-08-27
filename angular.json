@@ -88,7 +88,7 @@
           "defaultConfiguration": "production"
         },
         "serve": {
-          "builder": "@angular/build:dev-server",
+          "builder": "./tools/strict-dev-server:dev-server",
           "configurations": {
             "production": {
               "buildTarget": "ngt-template:build:production"

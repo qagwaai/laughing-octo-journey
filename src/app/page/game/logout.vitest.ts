@@ -5,12 +5,20 @@ import { Router } from '@angular/router';
 
 import { createMockSessionService, type MockSessionService } from '../../../testing';
 import { SessionService } from '../../services/session.service';
+import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import LogoutPage from './logout';
 
 function setup(options: { sessionService: MockSessionService; navigationState?: Record<string, unknown> }) {
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
     navigate: vi.fn(),
+    navigateByUrl: vi.fn(),
+  };
+
+  const mockSocketLifecycle = {
+    disconnect: vi.fn(),
+    ensureConnected: vi.fn(),
+    runWhenConnected: vi.fn(),
   };
 
   TestBed.configureTestingModule({
@@ -18,13 +26,14 @@ function setup(options: { sessionService: MockSessionService; navigationState?: 
     providers: [
       { provide: SessionService, useValue: options.sessionService },
       { provide: Router, useValue: mockRouter },
+      { provide: SocketLifecycleService, useValue: mockSocketLifecycle },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });
 
   const fixture = TestBed.createComponent(LogoutPage);
   fixture.detectChanges();
-  return { component: fixture.componentInstance, fixture, mockRouter };
+  return { component: fixture.componentInstance, fixture, mockRouter, mockSocketLifecycle };
 }
 
 describe('LogoutPage', () => {
@@ -48,17 +57,22 @@ describe('LogoutPage', () => {
   });
 
   describe('navigateToCharacterList()', () => {
-    it('should navigate to character-list in left outlet and knot in primary', () => {
+    it('should disconnect socket before navigating', () => {
+      const { component, mockSocketLifecycle } = setup({ sessionService });
+
+      component.navigateToCharacterList();
+
+      expect(mockSocketLifecycle.disconnect).toHaveBeenCalled();
+    });
+
+    it('should navigate to character-list in left outlet and intro in primary', () => {
       const { component, mockRouter } = setup({ sessionService });
 
       component.navigateToCharacterList();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
-        {
-          preserveFragment: true,
-          state: { playerName: '' },
-        },
+        [{ outlets: { primary: ['intro'], left: ['character-list'], right: null } }],
+        { state: { playerName: '' } },
       );
     });
 
@@ -71,11 +85,8 @@ describe('LogoutPage', () => {
       component.navigateToCharacterList();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
-        {
-          preserveFragment: true,
-          state: { playerName: 'Pioneer' },
-        },
+        [{ outlets: { primary: ['intro'], left: ['character-list'], right: null } }],
+        { state: { playerName: 'Pioneer' } },
       );
     });
 

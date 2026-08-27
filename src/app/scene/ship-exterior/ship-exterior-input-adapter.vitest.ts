@@ -8,7 +8,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
 
     expect(fixture.win.addEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(1);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
 
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
@@ -16,6 +16,12 @@ describe('ShipExteriorInputAdapter', () => {
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('mousemove', fixture.handlers.onWindowMouseMove);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown as EventListener);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp as EventListener);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledWith(
+      'mousemove',
+      fixture.handlers.onWindowMouseMove as EventListener,
+    );
     expect(fixture.win.addEventListener).toHaveBeenCalledWith(
       'socket-correlation-warning',
       fixture.handlers.onSocketCorrelationWarning as EventListener,
@@ -33,7 +39,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.detach();
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
@@ -41,6 +47,15 @@ describe('ShipExteriorInputAdapter', () => {
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('mousemove', fixture.handlers.onWindowMouseMove);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
+      'keydown',
+      fixture.handlers.onWindowKeyDown as EventListener,
+    );
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp as EventListener);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
+      'mousemove',
+      fixture.handlers.onWindowMouseMove as EventListener,
+    );
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith(
       'socket-correlation-warning',
       fixture.handlers.onSocketCorrelationWarning as EventListener,
@@ -58,7 +73,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
 
     expect(fixture.win.addEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(1);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
   });
 
   it('treats detach as no-op before attach and after first detach', () => {
@@ -70,7 +85,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.detach();
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(1);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
   });
 });
 
