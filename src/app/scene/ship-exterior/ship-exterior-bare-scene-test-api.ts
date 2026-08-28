@@ -27,8 +27,17 @@ export interface ShipExteriorLegacyScannableShipSample {
   scanProgress: number;
 }
 
+export interface ShipExteriorLegacyScannableDebrisSample {
+  id: string;
+  displayName: string;
+  itemType: string;
+  scanned: boolean;
+  scanProgress: number;
+}
+
 export interface ShipExteriorLegacyTestApi {
   getAsteroidSamples: () => ShipExteriorLegacyAsteroidSample[];
+  getScannableDebrisSamples: () => ShipExteriorLegacyScannableDebrisSample[];
   getScannableShipSamples: () => ShipExteriorLegacyScannableShipSample[];
   beginAsteroidTargetHold: (sampleId: string) => boolean;
   unhoverAsteroid: (sampleId: string) => boolean;
@@ -39,6 +48,8 @@ export interface ShipExteriorLegacyTestApi {
   forceTargetAsteroid: (sampleId: string) => boolean;
   getTargetedAsteroidId: () => string | null;
   getHoveredAsteroidId: () => string | null;
+  forceCompleteDebrisScan: (sampleId?: string) => boolean;
+  getHoveredScannableDebrisId: () => string | null;
   forceCompleteShipScan: (sampleId?: string) => boolean;
   getHoveredScannableShipId: () => string | null;
   launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;

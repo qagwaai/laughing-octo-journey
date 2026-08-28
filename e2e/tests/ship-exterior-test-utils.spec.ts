@@ -502,6 +502,105 @@ test.describe('Ship Exterior Test Utilities', () => {
       });
   });
 
+  test('debris scan utility completes scan without changing asteroid target lock state', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+    registerShipExteriorSessionHandlers(mock, {
+      missionStatus: 'active',
+      includeSensorArray: true,
+    });
+
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  simulateDebrisCollection?: (remainingDebrisCount?: number) => unknown;
+                  getScannableDebrisSamples?: () => Array<{ id: string }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            api?.simulateDebrisCollection?.(1);
+            return api?.getScannableDebrisSamples?.().length ?? 0;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(0);
+
+    const firstDebrisId = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getScannableDebrisSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+            getTargetedAsteroidId: () => string | null;
+            getTargetHoldCandidateId: () => string | null;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      const sample = api?.getScannableDebrisSamples?.()[0] ?? null;
+      return {
+        sample,
+        targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
+        targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
+      };
+    });
+
+    expect(firstDebrisId.sample?.id ?? null).not.toBeNull();
+    expect(firstDebrisId.sample).toMatchObject({
+      scanned: false,
+      scanProgress: 0,
+    });
+    expect(firstDebrisId.targetedAsteroidId).toBeNull();
+    expect(firstDebrisId.targetHoldCandidateId).toBeNull();
+
+    const completionResult = await page.evaluate((sampleId) => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            forceCompleteDebrisScan: (sampleId?: string) => boolean;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      return api?.forceCompleteDebrisScan(sampleId ?? undefined) ?? false;
+    }, firstDebrisId.sample?.id ?? null);
+
+    expect(completionResult).toBe(true);
+
+    await expect
+      .poll(async () =>
+        page.evaluate((sampleId) => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getScannableDebrisSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                getTargetedAsteroidId: () => string | null;
+                getTargetHoldCandidateId: () => string | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          const sample = api?.getScannableDebrisSamples().find((candidate) => candidate.id === sampleId) ?? null;
+          return {
+            scanned: sample?.scanned ?? false,
+            scanProgress: sample?.scanProgress ?? 0,
+            targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
+            targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
+          };
+        }, firstDebrisId.sample?.id ?? ''),
+      )
+      .toEqual({
+        scanned: true,
+        scanProgress: 100,
+        targetedAsteroidId: null,
+        targetHoldCandidateId: null,
+      });
+  });
+
   test('supports deterministic mission progression without real 3D pointer raycast', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();

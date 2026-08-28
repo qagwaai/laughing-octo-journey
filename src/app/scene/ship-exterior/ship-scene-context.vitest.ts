@@ -224,6 +224,39 @@ describe('ShipSceneContext', () => {
     ]);
   });
 
+  it('tracks scannable debris samples and hover state in the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.getHoveredScannableDebrisId()).toBeNull();
+    expect(context.getScannableDebrisSamples()).toEqual([]);
+
+    context.setScannableDebrisSamples([
+      {
+        id: 'debris-1',
+        displayName: 'Cargo Canister',
+        itemType: 'cargo-canister',
+        scanned: false,
+        scanProgress: 0,
+      },
+    ]);
+    context.setHoveredScannableDebrisId('debris-1');
+
+    expect(context.getHoveredScannableDebrisId()).toBe('debris-1');
+    expect(context.getScannableDebrisSamples()).toEqual([
+      {
+        id: 'debris-1',
+        displayName: 'Cargo Canister',
+        itemType: 'cargo-canister',
+        scanned: false,
+        scanProgress: 0,
+      },
+    ]);
+  });
+
   it('resolves ship hover targets from pointer raycasting', () => {
     const context = new ShipSceneContext('player::char::ship', {
       playerName: 'player',
@@ -238,6 +271,7 @@ describe('ShipSceneContext', () => {
     const intersectObjects = vi
       .fn()
       .mockReturnValueOnce([])
+      .mockReturnValueOnce([])
       .mockReturnValueOnce([{ object: shipNode }]);
     (context as any).hoverRaycaster = {
       setFromCamera: vi.fn(),
@@ -249,6 +283,7 @@ describe('ShipSceneContext', () => {
       },
       camera: {},
       asteroidGroup: { children: [] },
+      debrisGroup: { children: [] },
       shipGroup: { children: [shipNode] },
     };
 
@@ -258,7 +293,53 @@ describe('ShipSceneContext', () => {
     expect(context.getHoveredScannableShipId()).toBe('jaxs-ship');
     expect(context.getHoveredAsteroidId()).toBeNull();
     expect(intersectObjects).toHaveBeenNthCalledWith(1, [], false);
-    expect(intersectObjects).toHaveBeenNthCalledWith(2, [shipNode], true);
+    expect(intersectObjects).toHaveBeenNthCalledWith(2, [], true);
+    expect(intersectObjects).toHaveBeenNthCalledWith(3, [shipNode], true);
+  });
+
+  it('resolves debris hover targets from pointer raycasting', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+    context.setScannableDebrisSamples([
+      {
+        id: 'debris-1',
+        displayName: 'Cargo Canister',
+        itemType: 'cargo-canister',
+        scanned: false,
+        scanProgress: 0,
+      },
+    ]);
+    context.setHoveredScannableShipId('jaxs-ship');
+
+    const debrisNode = new THREE.Object3D();
+    debrisNode.userData['scannableDebrisId'] = 'debris-1';
+    const intersectObjects = vi
+      .fn()
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{ object: debrisNode }])
+      .mockReturnValueOnce([]);
+    (context as any).hoverRaycaster = {
+      setFromCamera: vi.fn(),
+      intersectObjects,
+    };
+    (context as any).renderingState = {
+      canvas: {
+        getBoundingClientRect: () => ({ left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100 }),
+      },
+      camera: {},
+      asteroidGroup: { children: [] },
+      debrisGroup: { children: [debrisNode] },
+      shipGroup: { children: [] },
+    };
+
+    const hoveredTarget = (context as any).updateHoveredScanTargetFromPointer(50, 50);
+
+    expect(hoveredTarget).toEqual({ kind: 'debris', id: 'debris-1' });
+    expect(context.getHoveredScannableDebrisId()).toBe('debris-1');
+    expect(context.getHoveredScannableShipId()).toBeNull();
   });
 
   it('prefers asteroid hover targets over ship targets when both are intersected', () => {

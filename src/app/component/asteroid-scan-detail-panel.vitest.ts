@@ -26,9 +26,10 @@ describe('AsteroidScanDetailPanel', () => {
     });
     fixture.detectChanges();
 
-    expect((component as any).isShipSample()).toBe(true);
+    expect((component as any).isAsteroidSample()).toBe(false);
+    expect((component as any).objectLine()).toBe('SHIP');
     expect((component as any).shipDesignationLine()).toBe('Jax Ship');
-    expect((component as any).shipModelLine()).toBe('models/Jaxs_Ship_texture.glb');
+    expect((component as any).profileLine()).toBe('models/Jaxs_Ship_texture.glb');
     expect((component as any).materialLine()).toBeNull();
     expect((component as any).rarityLine()).toBeNull();
     expect((component as any).hasKinematics()).toBe(false);
@@ -40,6 +41,35 @@ describe('AsteroidScanDetailPanel', () => {
     expect(text).toContain('DESIGNATION');
     expect(text).toContain('MODEL');
     expect(text).not.toContain('MATERIAL');
+  });
+
+  it('renders debris scan details in the shared panel', async () => {
+    const fixture = await createFixture();
+    const component = fixture.componentInstance;
+
+    fixture.componentRef.setInput('sample', {
+      kind: 'debris',
+      sample: {
+        id: 'debris-1',
+        displayName: 'Cargo Canister',
+        itemType: 'cargo-canister',
+        scanned: true,
+        scanProgress: 100,
+      },
+    });
+    fixture.detectChanges();
+
+    expect((component as any).isAsteroidSample()).toBe(false);
+    expect((component as any).objectLine()).toBe('DEBRIS');
+    expect((component as any).shipDesignationLine()).toBe('Cargo Canister');
+    expect((component as any).profileLine()).toBe('cargo-canister');
+    expect((component as any).materialLine()).toBeNull();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('OBJECT');
+    expect(text).toContain('DEBRIS');
+    expect(text).toContain('DESIGNATION');
+    expect(text).toContain('MODEL');
   });
 
   it('renders asteroid scan details for asteroid samples', async () => {
@@ -57,7 +87,7 @@ describe('AsteroidScanDetailPanel', () => {
     });
     fixture.detectChanges();
 
-    expect((component as any).isShipSample()).toBe(false);
+    expect((component as any).isAsteroidSample()).toBe(true);
     expect((component as any).materialLine()).toBe('Iron');
     expect((component as any).rarityLine()).toBe('Common');
 

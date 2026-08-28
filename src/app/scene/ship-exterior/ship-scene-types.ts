@@ -59,8 +59,21 @@ export interface ShipSceneScannableShipState {
   hoveredShipId?: string | null;
 }
 
+export interface ShipSceneScannableDebrisSample {
+  id: string;
+  displayName: string;
+  itemType: string;
+  scanned: boolean;
+  scanProgress: number;
+}
+
+export interface ShipSceneScannableDebrisState {
+  samples: ShipSceneScannableDebrisSample[];
+  hoveredDebrisId?: string | null;
+}
+
 export interface ShipSceneHoverScanTarget {
-  kind: 'asteroid' | 'ship';
+  kind: 'asteroid' | 'ship' | 'debris';
   id: string;
 }
 
@@ -73,6 +86,7 @@ export interface ShipSceneContextState {
   flight?: ShipSceneFlightState;
   asteroid?: ShipSceneAsteroidState;
   scannableShips?: ShipSceneScannableShipState;
+  scannableDebris?: ShipSceneScannableDebrisState;
   debris?: FloatingDebrisItem[];
   mission?: ShipExteriorMissionGateState;
 }

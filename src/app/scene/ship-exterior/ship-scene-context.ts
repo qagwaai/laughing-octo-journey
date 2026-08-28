@@ -17,6 +17,8 @@ import {
   ShipSceneHoverScanTarget,
   ShipSceneRenderingState,
   ShipSceneRuntimeSnapshot,
+  ShipSceneScannableDebrisSample,
+  ShipSceneScannableDebrisState,
   ShipSceneScannableShipSample,
   ShipSceneScannableShipState,
 } from './ship-scene-types';
@@ -57,6 +59,7 @@ const FLIGHT_CONFIG = {
   maxPitchRad: Math.PI / 2 - 0.02,
 };
 const DEFAULT_ASTEROID_SAMPLES: ReadonlyArray<ShipSceneAsteroidSample> = [];
+const DEFAULT_SCANNABLE_DEBRIS_SAMPLES: ReadonlyArray<ShipSceneScannableDebrisSample> = [];
 const DEFAULT_SCANNABLE_SHIP_SAMPLES: ReadonlyArray<ShipSceneScannableShipSample> = [
   {
     id: JAXS_SHIP_SCAN_ID,
@@ -94,6 +97,12 @@ function cloneScannableShipSample(sample: ShipSceneScannableShipSample): ShipSce
   return {
     ...sample,
     modelAssetPath: sample.modelAssetPath ?? null,
+  };
+}
+
+function cloneScannableDebrisSample(sample: ShipSceneScannableDebrisSample): ShipSceneScannableDebrisSample {
+  return {
+    ...sample,
   };
 }
 
@@ -144,8 +153,39 @@ function normalizeScannableShipState(state?: ShipSceneScannableShipState): ShipS
   };
 }
 
+function normalizeScannableDebrisState(state?: ShipSceneScannableDebrisState): ShipSceneScannableDebrisState {
+  const samples = (state?.samples ?? DEFAULT_SCANNABLE_DEBRIS_SAMPLES).map((sample) => cloneScannableDebrisSample(sample));
+  const hoveredDebrisId = state?.hoveredDebrisId ?? null;
+  const hoverStillExists = hoveredDebrisId ? samples.some((sample) => sample.id === hoveredDebrisId) : false;
+  return {
+    samples,
+    hoveredDebrisId: hoverStillExists ? hoveredDebrisId : null,
+  };
+}
+
 function normalizeDebrisItems(items?: readonly FloatingDebrisItem[]): FloatingDebrisItem[] {
   return (items ?? []).map((item) => cloneDebrisItem(item));
+}
+
+function deriveScannableDebrisStateFromItems(
+  items: readonly FloatingDebrisItem[],
+  previous: ShipSceneScannableDebrisState | undefined,
+): ShipSceneScannableDebrisState {
+  const previousById = new Map((previous?.samples ?? []).map((sample) => [sample.id, sample]));
+  const samples = items.map((item) => {
+    const prior = previousById.get(item.id);
+    return {
+      id: item.id,
+      displayName: item.displayName,
+      itemType: item.itemType,
+      scanned: prior?.scanned ?? false,
+      scanProgress: prior?.scanProgress ?? 0,
+    };
+  });
+  return normalizeScannableDebrisState({
+    samples,
+    hoveredDebrisId: previous?.hoveredDebrisId ?? null,
+  });
 }
 
 function hashStringToSeed(input: string): number {
@@ -329,6 +369,10 @@ export class ShipSceneContext {
     readonly contextKey: string,
     initialState: ShipSceneContextState,
   ) {
+    const normalizedInitialDebris = normalizeDebrisItems(initialState.debris);
+    const normalizedInitialScannableDebris = initialState.scannableDebris
+      ? normalizeScannableDebrisState(initialState.scannableDebris)
+      : deriveScannableDebrisStateFromItems(normalizedInitialDebris, undefined);
     this.state = {
       ...initialState,
       flight: {
@@ -341,8 +385,9 @@ export class ShipSceneContext {
       },
       asteroid: normalizeAsteroidState(initialState.asteroid),
       scannableShips: normalizeScannableShipState(initialState.scannableShips),
+      scannableDebris: normalizedInitialScannableDebris,
       mission: initialState.mission ? cloneMissionGateState(initialState.mission) : undefined,
-      debris: normalizeDebrisItems(initialState.debris),
+      debris: normalizedInitialDebris,
     };
     this.starfieldSeed = hashStringToSeed(this.state.shipId);
     this.starfieldSignature = `${this.starfieldSeed.toString(16).padStart(8, '0')}:${STARFIELD_POINT_COUNT}:${this.starfieldSeed % 360}`;
@@ -366,12 +411,18 @@ export class ShipSceneContext {
       : this.state.scannableShips;
     const mission = update.mission ? cloneMissionGateState(update.mission) : this.state.mission;
     const debris = update.debris ? normalizeDebrisItems(update.debris) : this.state.debris;
+    const scannableDebris = update.scannableDebris
+      ? normalizeScannableDebrisState(update.scannableDebris)
+      : update.debris
+        ? deriveScannableDebrisStateFromItems(debris ?? [], this.state.scannableDebris)
+        : this.state.scannableDebris;
     this.state = {
       ...this.state,
       ...update,
       flight: flight ?? this.state.flight,
       asteroid,
       scannableShips,
+      scannableDebris,
       mission,
       debris,
     };
@@ -382,9 +433,12 @@ export class ShipSceneContext {
   }
 
   setDebrisItems(items: readonly FloatingDebrisItem[]): void {
+    const normalizedDebris = normalizeDebrisItems(items);
+    const scannableDebris = deriveScannableDebrisStateFromItems(normalizedDebris, this.state.scannableDebris);
     this.state = {
       ...this.state,
-      debris: normalizeDebrisItems(items),
+      debris: normalizedDebris,
+      scannableDebris,
     };
   }
 
@@ -470,6 +524,52 @@ export class ShipSceneContext {
     };
 
     if (nextHoveredShipId && nextHoveredShipId !== previousHoveredShipId) {
+      this.asteroidHoverScanPhase = Math.PI / 2;
+    }
+  }
+
+  getScannableDebrisSamples(): readonly ShipSceneScannableDebrisSample[] {
+    let scannableDebris = this.state.scannableDebris;
+    if (!scannableDebris) {
+      scannableDebris = normalizeScannableDebrisState();
+      this.state = {
+        ...this.state,
+        scannableDebris,
+      };
+    }
+    return scannableDebris.samples.map((sample) => cloneScannableDebrisSample(sample));
+  }
+
+  setScannableDebrisSamples(samples: readonly ShipSceneScannableDebrisSample[]): void {
+    const previousHoveredDebrisId = this.state.scannableDebris?.hoveredDebrisId ?? null;
+    const nextState = normalizeScannableDebrisState({
+      samples: samples.map((sample) => cloneScannableDebrisSample(sample)),
+      hoveredDebrisId: previousHoveredDebrisId,
+    });
+    this.state = {
+      ...this.state,
+      scannableDebris: nextState,
+    };
+  }
+
+  getHoveredScannableDebrisId(): string | null {
+    return this.state.scannableDebris?.hoveredDebrisId ?? null;
+  }
+
+  setHoveredScannableDebrisId(debrisId: string | null): void {
+    const scannableDebris = this.state.scannableDebris ?? normalizeScannableDebrisState();
+    const hoverStillExists = debrisId ? scannableDebris.samples.some((sample) => sample.id === debrisId) : false;
+    const nextHoveredDebrisId = hoverStillExists ? debrisId : null;
+    const previousHoveredDebrisId = scannableDebris.hoveredDebrisId ?? null;
+    this.state = {
+      ...this.state,
+      scannableDebris: {
+        ...scannableDebris,
+        hoveredDebrisId: nextHoveredDebrisId,
+      },
+    };
+
+    if (nextHoveredDebrisId && nextHoveredDebrisId !== previousHoveredDebrisId) {
       this.asteroidHoverScanPhase = Math.PI / 2;
     }
   }
@@ -741,7 +841,11 @@ export class ShipSceneContext {
       this.renderingState.cube.position.set(offsetX, offsetY, offsetZ);
       this.renderingState.orbitControls.setTarget(this.renderingState.cube.position);
     }
-    if (this.state.asteroid?.hoveredAsteroidId || this.state.scannableShips?.hoveredShipId) {
+    if (
+      this.state.asteroid?.hoveredAsteroidId ||
+      this.state.scannableShips?.hoveredShipId ||
+      this.state.scannableDebris?.hoveredDebrisId
+    ) {
       this.asteroidHoverScanPhase = (this.asteroidHoverScanPhase + 0.12) % SCAN_RING_PHASE_WRAP_PERIOD;
     }
     if (this.state.asteroid?.targetHoldCandidateId) {
@@ -758,6 +862,7 @@ export class ShipSceneContext {
     }
     this.renderingState.orbitControls.update();
     this.syncDebrisVisuals();
+    this.syncScannableDebrisHoverScanShell();
     this.syncRouteFeedVisuals();
     this.syncAsteroidVisuals();
     this.syncScannableShipHoverScanShell();
@@ -899,6 +1004,71 @@ export class ShipSceneContext {
       node.userData['scannableShipId'] = JAXS_SHIP_SCAN_ID;
     });
     shipGroup.add(shipScene);
+  }
+
+  private syncScannableDebrisHoverScanShell(): void {
+    if (!this.renderingState) {
+      return;
+    }
+
+    const scannedDebrisIds = new Set(
+      this.getScannableDebrisSamples()
+        .filter((sample) => sample.scanned)
+        .map((sample) => sample.id),
+    );
+
+    this.renderingState.debrisGroup.children.forEach((child) => {
+      const childDebrisId = child.userData?.['scannableDebrisId'];
+      const debrisId = typeof childDebrisId === 'string' ? childDebrisId : null;
+      if (!debrisId) {
+        return;
+      }
+      const isHovered = this.state.scannableDebris?.hoveredDebrisId === debrisId;
+      const isScanned = scannedDebrisIds.has(debrisId);
+      const shouldShowHoverRing = isHovered && !isScanned;
+      const userData = child.userData as {
+        hoverScanGroup?: THREE.Group;
+      };
+
+      if (!shouldShowHoverRing) {
+        if (userData.hoverScanGroup) {
+          child.remove(userData.hoverScanGroup);
+          disposeHoverScanGroup(userData.hoverScanGroup);
+          delete userData.hoverScanGroup;
+        }
+        return;
+      }
+
+      if (!userData.hoverScanGroup) {
+        const group = new THREE.Group();
+        group.name = `${debrisId}-hover-scan-group`;
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(0.52, 0.022, 10, 64),
+          new THREE.MeshBasicMaterial({
+            color: new THREE.Color('#86e8ff'),
+            transparent: true,
+            opacity: 0.78,
+            depthWrite: false,
+          }),
+        );
+        ring.name = `${debrisId}-hover-scan-ring`;
+        ring.rotation.x = Math.PI / 2;
+        group.add(ring);
+        child.add(group);
+        userData.hoverScanGroup = group;
+      }
+
+      const ring = userData.hoverScanGroup?.children[0];
+      if (!(ring instanceof THREE.Mesh)) {
+        return;
+      }
+      ring.rotation.x = Math.PI / 2;
+      ring.rotation.y = this.asteroidHoverScanPhase * 0.9;
+      ring.scale.setScalar(1 + Math.sin(this.asteroidHoverScanPhase) * 0.06);
+      if (ring.material instanceof THREE.MeshBasicMaterial) {
+        ring.material.opacity = 0.66 + Math.max(0, Math.sin(this.asteroidHoverScanPhase)) * 0.18;
+      }
+    });
   }
 
   private syncScannableShipHoverScanShell(): void {
@@ -1199,6 +1369,7 @@ export class ShipSceneContext {
   }
 
   private applyDebrisVisual(group: THREE.Group, item: FloatingDebrisItem, index: number): void {
+    group.userData['scannableDebrisId'] = item.id;
     const profile = resolveDescriptorRenderProfile(item.externalObjectDescriptor ?? undefined);
     const family = item.externalObjectDescriptor?.objectFamily ?? 'field-shard';
     const geometry = this.resolveDebrisGeometry(family);
@@ -1234,6 +1405,9 @@ export class ShipSceneContext {
     group.rotation.y = pulse * 0.45;
     group.rotation.z = Math.cos(pulse) * 0.12;
     group.scale.setScalar(1 + Math.max(0, Math.sin(pulse * 1.2)) * 0.06);
+    group.traverse((node) => {
+      node.userData['scannableDebrisId'] = item.id;
+    });
   }
 
   private resolveDebrisGeometry(objectFamily: string): THREE.BufferGeometry {
@@ -1440,6 +1614,7 @@ export class ShipSceneContext {
       clientY > rect.bottom
     ) {
       this.setHoveredAsteroidId(null);
+      this.setHoveredScannableDebrisId(null);
       this.setHoveredScannableShipId(null);
       return null;
     }
@@ -1454,13 +1629,24 @@ export class ShipSceneContext {
     const hoveredAsteroidId = asteroidIntersections[0]?.object?.name ?? null;
     if (hoveredAsteroidId) {
       this.setHoveredAsteroidId(hoveredAsteroidId);
+      this.setHoveredScannableDebrisId(null);
       this.setHoveredScannableShipId(null);
       return { kind: 'asteroid', id: hoveredAsteroidId };
+    }
+
+    const debrisIntersections = this.hoverRaycaster.intersectObjects(this.renderingState.debrisGroup.children, true);
+    const hoveredDebrisId = this.resolveScannableDebrisIdFromIntersection(debrisIntersections[0]?.object ?? null);
+    if (hoveredDebrisId) {
+      this.setHoveredAsteroidId(null);
+      this.setHoveredScannableDebrisId(hoveredDebrisId);
+      this.setHoveredScannableShipId(null);
+      return { kind: 'debris', id: hoveredDebrisId };
     }
 
     const shipIntersections = this.hoverRaycaster.intersectObjects(this.renderingState.shipGroup.children, true);
     const hoveredShipId = this.resolveScannableShipIdFromIntersection(shipIntersections[0]?.object ?? null);
     this.setHoveredAsteroidId(null);
+    this.setHoveredScannableDebrisId(null);
     this.setHoveredScannableShipId(hoveredShipId);
     return hoveredShipId ? { kind: 'ship', id: hoveredShipId } : null;
   }
@@ -1477,6 +1663,19 @@ export class ShipSceneContext {
       const shipId = typeof cursorShipId === 'string' ? cursorShipId : null;
       if (shipId) {
         return shipId;
+      }
+      cursor = cursor.parent;
+    }
+    return null;
+  }
+
+  private resolveScannableDebrisIdFromIntersection(object: THREE.Object3D | null): string | null {
+    let cursor = object;
+    while (cursor) {
+      const cursorDebrisId = cursor.userData?.['scannableDebrisId'];
+      const debrisId = typeof cursorDebrisId === 'string' ? cursorDebrisId : null;
+      if (debrisId) {
+        return debrisId;
       }
       cursor = cursor.parent;
     }

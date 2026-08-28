@@ -1,8 +1,13 @@
 import { Component, computed, input, signal } from '@angular/core';
-import type { ShipSceneAsteroidSample, ShipSceneScannableShipSample } from '../scene/ship-exterior/ship-scene-types';
+import type {
+  ShipSceneAsteroidSample,
+  ShipSceneScannableDebrisSample,
+  ShipSceneScannableShipSample,
+} from '../scene/ship-exterior/ship-scene-types';
 
 type ShipExteriorScanDetail =
   | { kind: 'asteroid'; sample: ShipSceneAsteroidSample }
+  | { kind: 'debris'; sample: ShipSceneScannableDebrisSample }
   | { kind: 'ship'; sample: ShipSceneScannableShipSample };
 
 @Component({
@@ -23,7 +28,21 @@ export class AsteroidScanDetailPanel {
     const sample = this.sample();
     return sample?.kind === 'ship' ? sample.sample : null;
   });
-  protected isShipSample = computed(() => this.sample()?.kind === 'ship');
+  protected debrisSample = computed(() => {
+    const sample = this.sample();
+    return sample?.kind === 'debris' ? sample.sample : null;
+  });
+  protected isAsteroidSample = computed(() => this.sample()?.kind === 'asteroid');
+  protected objectLine = computed(() => {
+    const sample = this.sample();
+    if (sample?.kind === 'ship') {
+      return 'SHIP';
+    }
+    if (sample?.kind === 'debris') {
+      return 'DEBRIS';
+    }
+    return null;
+  });
 
   protected materialLine = computed(() => {
     const s = this.asteroidSample();
@@ -111,8 +130,18 @@ export class AsteroidScanDetailPanel {
     return `ΔX ${dx.toFixed(0)}  ΔY ${dy.toFixed(0)}  ΔZ ${dz.toFixed(0)} km  |  R ${dist.toFixed(0)} km`;
   });
 
-  protected shipModelLine = computed(() => this.shipSample()?.modelAssetPath ?? null);
-  protected shipDesignationLine = computed(() => this.shipSample()?.displayName ?? null);
+  protected shipDesignationLine = computed(() => {
+    if (this.shipSample()) {
+      return this.shipSample()?.displayName ?? null;
+    }
+    return this.debrisSample()?.displayName ?? null;
+  });
+  protected profileLine = computed(() => {
+    if (this.shipSample()) {
+      return this.shipSample()?.modelAssetPath ?? null;
+    }
+    return this.debrisSample()?.itemType ?? null;
+  });
   protected hasKinematics = computed(() => !!this.asteroidSample()?.revealedKinematics);
   protected hasLocation = computed(() => !!this.asteroidSample()?.solarSystemLocation);
 

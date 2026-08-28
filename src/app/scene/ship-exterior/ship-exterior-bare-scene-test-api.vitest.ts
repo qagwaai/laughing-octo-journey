@@ -37,6 +37,7 @@ describe('ship exterior bare scene test api', () => {
       resetMissionGateState,
       legacy: {
         getAsteroidSamples: vi.fn(),
+        getScannableDebrisSamples: vi.fn(),
         getScannableShipSamples: vi.fn(),
         beginAsteroidTargetHold: vi.fn(),
         unhoverAsteroid: vi.fn(),
@@ -47,6 +48,8 @@ describe('ship exterior bare scene test api', () => {
         forceTargetAsteroid: vi.fn(),
         getTargetedAsteroidId: vi.fn(),
         getHoveredAsteroidId: vi.fn(),
+        forceCompleteDebrisScan: vi.fn(),
+        getHoveredScannableDebrisId: vi.fn(),
         forceCompleteShipScan: vi.fn(),
         getHoveredScannableShipId: vi.fn(),
         launchFromHotkey: vi.fn(),
@@ -63,6 +66,9 @@ describe('ship exterior bare scene test api', () => {
     expect(window.__shipExteriorBareSceneTestUtils?.getMissionGateState).toBe(api.getMissionGateState);
     expect(window.__shipExteriorBareSceneTestUtils?.resetMissionGateState).toBe(resetMissionGateState);
     expect(window.__shipExteriorTestUtils?.resetMissionGateState).toBeDefined();
+    expect(window.__shipExteriorTestUtils?.getScannableDebrisSamples).toBeDefined();
+    expect(window.__shipExteriorTestUtils?.forceCompleteDebrisScan).toBeDefined();
+    expect(window.__shipExteriorTestUtils?.getHoveredScannableDebrisId).toBeDefined();
     expect(window.__shipExteriorTestUtils?.getScannableShipSamples).toBeDefined();
     expect(window.__shipExteriorTestUtils?.forceCompleteShipScan).toBeDefined();
     expect(window.__shipExteriorTestUtils?.getHoveredScannableShipId).toBeDefined();

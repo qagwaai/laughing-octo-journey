@@ -15,10 +15,10 @@
 
   @if (!collapsed()) {
   <div class="scan-panel__body">
-    @if (isShipSample()) {
+    @if (!isAsteroidSample()) {
     <section class="scan-panel__section">
       <span class="scan-panel__label">OBJECT</span>
-      <span class="scan-panel__value scan-panel__value--primary">SHIP</span>
+      <span class="scan-panel__value scan-panel__value--primary">{{ objectLine() ?? '---' }}</span>
     </section>
     <section class="scan-panel__section">
       <span class="scan-panel__label">DESIGNATION</span>
@@ -26,7 +26,7 @@
     </section>
     <section class="scan-panel__section scan-panel__section--wide">
       <span class="scan-panel__label">MODEL</span>
-      <span class="scan-panel__value scan-panel__value--location">{{ shipModelLine() ?? '---' }}</span>
+      <span class="scan-panel__value scan-panel__value--location">{{ profileLine() ?? '---' }}</span>
     </section>
     } @else {
     <section class="scan-panel__section">
