@@ -1,4 +1,4 @@
-import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import {
   MARKET_LIST_BY_LOCATION_RESPONSE_EVENT,
   type MarketListByLocationRequest,
@@ -8,6 +8,10 @@ import { MarketService } from './market.service';
 import { SocketService } from './socket.service';
 
 type Listener<T = unknown> = (payload: T) => void;
+
+const flushMicrotasks = async (): Promise<void> => {
+  await Promise.resolve();
+};
 
 class MockSocketService {
   emittedEvents: Array<{ event: string; data: unknown }> = [];
@@ -58,7 +62,7 @@ describe('market correlation integration', () => {
     marketService = TestBed.inject(MarketService);
   });
 
-  it('routes concurrent market-list-by-location responses to the matching request', fakeAsync(() => {
+  it('routes concurrent market-list-by-location responses to the matching request', async () => {
     const nearCallback = vi.fn();
     marketService.listMarketsByLocation(
       {
@@ -118,20 +122,20 @@ describe('market correlation integration', () => {
     };
 
     socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, farResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(farCallback).toHaveBeenCalledTimes(1);
     expect(farCallback).toHaveBeenCalledWith(farResponse);
     expect(nearCallback).not.toHaveBeenCalled();
 
     socketService.trigger(MARKET_LIST_BY_LOCATION_RESPONSE_EVENT, nearResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(nearCallback).toHaveBeenCalledTimes(1);
     expect(nearCallback).toHaveBeenCalledWith(nearResponse);
-  }));
+  });
 
-  it('drops legacy-style responses when correlation does not match', fakeAsync(() => {
+  it('drops legacy-style responses when correlation does not match', async () => {
     const nearCallback = vi.fn();
     marketService.listMarketsByLocation(
       {
@@ -174,7 +178,7 @@ describe('market correlation integration', () => {
       locationTypes: ['free-floating'],
       markets: [],
     } satisfies MarketListByLocationResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(farCallback).not.toHaveBeenCalled();
     expect(nearCallback).not.toHaveBeenCalled();
@@ -195,9 +199,9 @@ describe('market correlation integration', () => {
       locationTypes: ['station'],
       markets: [],
     } satisfies MarketListByLocationResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(nearCallback).not.toHaveBeenCalled();
     expect(farCallback).not.toHaveBeenCalled();
-  }));
+  });
 });

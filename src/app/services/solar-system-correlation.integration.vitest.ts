@@ -1,4 +1,4 @@
-import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import {
   SOLAR_SYSTEM_LIST_RESPONSE_EVENT,
   type SolarSystemListRequest,
@@ -8,6 +8,10 @@ import { SocketService } from './socket.service';
 import { SolarSystemService } from './solar-system.service';
 
 type Listener<T = unknown> = (payload: T) => void;
+
+const flushMicrotasks = async (): Promise<void> => {
+  await Promise.resolve();
+};
 
 class MockSocketService {
   emittedEvents: Array<{ event: string; data: unknown }> = [];
@@ -58,7 +62,7 @@ describe('solar-system correlation integration', () => {
     solarSystemService = TestBed.inject(SolarSystemService);
   });
 
-  it('routes concurrent solar-system-list responses to matching requests', fakeAsync(() => {
+  it('routes concurrent solar-system-list responses to matching requests', async () => {
     const curatedCallback = vi.fn();
     solarSystemService.listSolarSystems(
       {
@@ -120,20 +124,20 @@ describe('solar-system correlation integration', () => {
     };
 
     socketService.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, proceduralResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(proceduralCallback).toHaveBeenCalledTimes(1);
     expect(proceduralCallback).toHaveBeenCalledWith(proceduralResponse);
     expect(curatedCallback).not.toHaveBeenCalled();
 
     socketService.trigger(SOLAR_SYSTEM_LIST_RESPONSE_EVENT, curatedResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(curatedCallback).toHaveBeenCalledTimes(1);
     expect(curatedCallback).toHaveBeenCalledWith(curatedResponse);
-  }));
+  });
 
-  it('dispatches socket-correlation-warning when dropping mismatched list response', fakeAsync(() => {
+  it('dispatches socket-correlation-warning when dropping mismatched list response', async () => {
     const callback = vi.fn();
     const warningSpy = vi.fn();
     const listener = (event: Event): void => {
@@ -163,7 +167,7 @@ describe('solar-system correlation integration', () => {
         playerName: 'Pioneer',
         solarSystems: [],
       } satisfies SolarSystemListResponse);
-      flushMicrotasks();
+      await flushMicrotasks();
 
       expect(callback).not.toHaveBeenCalled();
       expect(warningSpy).toHaveBeenCalled();
@@ -175,5 +179,5 @@ describe('solar-system correlation integration', () => {
     } finally {
       window.removeEventListener('socket-correlation-warning', listener);
     }
-  }));
+  });
 });

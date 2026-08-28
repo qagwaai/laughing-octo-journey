@@ -1,4 +1,4 @@
-import { fakeAsync, flushMicrotasks, TestBed } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
@@ -10,6 +10,10 @@ import { ShipService } from './ship.service';
 import { SocketService } from './socket.service';
 
 type Listener<T = unknown> = (payload: T) => void;
+
+const flushMicrotasks = async (): Promise<void> => {
+  await Promise.resolve();
+};
 
 class MockSocketService {
   emittedEvents: Array<{ event: string; data: unknown }> = [];
@@ -63,7 +67,7 @@ describe('ship-list correlation integration', () => {
     shipExteriorSocketService = TestBed.inject(ShipExteriorSocketService);
   });
 
-  it('routes concurrent ship-list responses to the correct wrappers', fakeAsync(() => {
+  it('routes concurrent ship-list responses to the correct wrappers', async () => {
     const shipServiceCallback = vi.fn();
     shipService.listShipsByOwner(
       {
@@ -159,20 +163,20 @@ describe('ship-list correlation integration', () => {
     };
 
     socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, exteriorResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(shipExteriorCallback).toHaveBeenCalledTimes(1);
     expect(shipExteriorCallback).toHaveBeenCalledWith(exteriorResponse);
     expect(shipServiceCallback).not.toHaveBeenCalled();
 
     socketService.trigger(SHIP_LIST_BY_OWNER_RESPONSE_EVENT, shipServiceResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(shipServiceCallback).toHaveBeenCalledTimes(1);
     expect(shipServiceCallback).toHaveBeenCalledWith(shipServiceResponse);
-  }));
+  });
 
-  it('keeps ship-exterior strict when responses omit correlation metadata', fakeAsync(() => {
+  it('keeps ship-exterior strict when responses omit correlation metadata', async () => {
     const shipServiceCallback = vi.fn();
     shipService.listShipsByOwner(
       {
@@ -215,7 +219,7 @@ describe('ship-list correlation integration', () => {
         },
       ],
     } as ShipListByOwnerResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(shipExteriorCallback).not.toHaveBeenCalled();
     expect(shipServiceCallback).not.toHaveBeenCalled();
@@ -242,13 +246,13 @@ describe('ship-list correlation integration', () => {
         },
       ],
     } as ShipListByOwnerResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(shipExteriorCallback).not.toHaveBeenCalled();
     expect(shipServiceCallback).toHaveBeenCalledTimes(1);
-  }));
+  });
 
-  it('dispatches socket-correlation-warning when dropping mismatched ship-list response', fakeAsync(() => {
+  it('dispatches socket-correlation-warning when dropping mismatched ship-list response', async () => {
     const shipServiceCallback = vi.fn();
     const warningSpy = vi.fn();
     const listener = (event: Event): void => {
@@ -283,7 +287,7 @@ describe('ship-list correlation integration', () => {
         } as any,
         ships: [],
       } as ShipListByOwnerResponse);
-      flushMicrotasks();
+      await flushMicrotasks();
 
       expect(shipServiceCallback).not.toHaveBeenCalled();
       expect(warningSpy).toHaveBeenCalled();
@@ -295,9 +299,9 @@ describe('ship-list correlation integration', () => {
     } finally {
       window.removeEventListener('socket-correlation-warning', listener);
     }
-  }));
+  });
 
-  it('coalesces concurrent ship-exterior ship-list requests for the same owner', fakeAsync(() => {
+  it('coalesces concurrent ship-exterior ship-list requests for the same owner', async () => {
     const callbackA = vi.fn();
     const callbackB = vi.fn();
 
@@ -339,13 +343,13 @@ describe('ship-list correlation integration', () => {
       },
       ships: [],
     } as ShipListByOwnerResponse);
-    flushMicrotasks();
+    await flushMicrotasks();
 
     expect(callbackA).toHaveBeenCalledTimes(1);
     expect(callbackB).toHaveBeenCalledTimes(1);
-  }));
+  });
 
-  it('ignores stale correlation-only ship-list responses without emitting contract variance warning', fakeAsync(() => {
+  it('ignores stale correlation-only ship-list responses without emitting contract variance warning', async () => {
     const warningSpy = vi.fn();
     const callbackA = vi.fn();
     const callbackB = vi.fn();
@@ -398,7 +402,7 @@ describe('ship-list correlation integration', () => {
         },
         ships: [],
       } as ShipListByOwnerResponse);
-      flushMicrotasks();
+      await flushMicrotasks();
 
       expect(callbackA).not.toHaveBeenCalled();
       expect(callbackB).not.toHaveBeenCalled();
@@ -418,11 +422,11 @@ describe('ship-list correlation integration', () => {
         },
         ships: [],
       } as ShipListByOwnerResponse);
-      flushMicrotasks();
+      await flushMicrotasks();
 
       expect(callbackB).toHaveBeenCalledTimes(1);
     } finally {
       window.removeEventListener('socket-correlation-warning', listener);
     }
-  }));
+  });
 });
