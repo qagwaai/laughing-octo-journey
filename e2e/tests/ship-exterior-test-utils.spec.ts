@@ -403,6 +403,105 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(scanStateAfterCompletion?.holdStarted).toBe(true);
   });
 
+  test('ship scan utility exposes jaxs ship and completes scan without changing asteroid target lock state', async ({
+    page,
+  }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+    registerShipExteriorSessionHandlers(mock, {
+      missionStatus: 'active',
+      includeSensorArray: true,
+    });
+
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => {
+            const api = (
+              window as Window & {
+                __shipExteriorTestUtils?: {
+                  getScannableShipSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                };
+              }
+            ).__shipExteriorTestUtils;
+            return api?.getScannableShipSamples?.().length ?? 0;
+          }),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(0);
+
+    const initialState = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            getScannableShipSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+            getTargetedAsteroidId: () => string | null;
+            getTargetHoldCandidateId: () => string | null;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      const jaxsShip = api?.getScannableShipSamples().find((sample) => sample.id === 'jaxs-ship') ?? null;
+      return {
+        jaxsShip,
+        targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
+        targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
+      };
+    });
+
+    expect(initialState.jaxsShip).toMatchObject({
+      id: 'jaxs-ship',
+      scanned: false,
+      scanProgress: 0,
+    });
+    expect(initialState.targetedAsteroidId).toBeNull();
+    expect(initialState.targetHoldCandidateId).toBeNull();
+
+    const completionResult = await page.evaluate(() => {
+      const api = (
+        window as Window & {
+          __shipExteriorTestUtils?: {
+            forceCompleteShipScan: (sampleId?: string) => boolean;
+          };
+        }
+      ).__shipExteriorTestUtils;
+      return api?.forceCompleteShipScan('jaxs-ship') ?? false;
+    });
+
+    expect(completionResult).toBe(true);
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const api = (
+            window as Window & {
+              __shipExteriorTestUtils?: {
+                getScannableShipSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                getTargetedAsteroidId: () => string | null;
+                getTargetHoldCandidateId: () => string | null;
+              };
+            }
+          ).__shipExteriorTestUtils;
+          const jaxsShip = api?.getScannableShipSamples().find((sample) => sample.id === 'jaxs-ship') ?? null;
+          return {
+            scanned: jaxsShip?.scanned ?? false,
+            scanProgress: jaxsShip?.scanProgress ?? 0,
+            targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
+            targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
+          };
+        }),
+      )
+      .toEqual({
+        scanned: true,
+        scanProgress: 100,
+        targetedAsteroidId: null,
+        targetHoldCandidateId: null,
+      });
+  });
+
   test('supports deterministic mission progression without real 3D pointer raycast', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();

@@ -20,7 +20,7 @@ describe('AsteroidScanController', () => {
   });
 
   let controller: AsteroidScanController;
-  let activeContext: { contextKey: string; getAsteroidSamples: () => readonly ShipSceneAsteroidSample[] };
+  let activeContext: { contextKey: string; getScannableSamples: () => readonly ShipSceneAsteroidSample[] };
   let completed: Array<{ contextKey: string; sampleId: string }>;
 
   beforeEach(() => {
@@ -28,7 +28,7 @@ describe('AsteroidScanController', () => {
     completed = [];
     activeContext = {
       contextKey: 'context-1',
-      getAsteroidSamples: () => [createSample()],
+      getScannableSamples: () => [createSample()],
     };
     controller = new AsteroidScanController({
       getActiveContext: () => activeContext,
@@ -66,7 +66,7 @@ describe('AsteroidScanController', () => {
   it('ignores scanned samples', () => {
     activeContext = {
       contextKey: 'context-1',
-      getAsteroidSamples: () => [createSample({ scanned: true })],
+      getScannableSamples: () => [createSample({ scanned: true })],
     };
     controller = new AsteroidScanController({
       getActiveContext: () => activeContext,

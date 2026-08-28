@@ -1,8 +1,11 @@
-import type { ShipSceneAsteroidSample } from './ship-scene-types';
+interface HoverScannableSample {
+  id: string;
+  scanned: boolean;
+}
 
 export interface AsteroidScanContext {
   contextKey: string;
-  getAsteroidSamples(): readonly ShipSceneAsteroidSample[];
+  getScannableSamples(): readonly HoverScannableSample[];
 }
 
 export interface AsteroidScanControllerDeps {
@@ -25,7 +28,7 @@ export class AsteroidScanController {
       return false;
     }
 
-    const sample = active.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
+    const sample = active.getScannableSamples().find((candidate) => candidate.id === sampleId);
     if (!sample || sample.scanned) {
       this.clearHoverScanTimer();
       return false;

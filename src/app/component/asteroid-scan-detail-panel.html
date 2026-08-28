@@ -1,7 +1,7 @@
 @if (sample(); as s) {
 <div class="scan-panel" [class.scan-panel--collapsed]="collapsed()">
   <div class="scan-panel__header">
-    <span class="scan-panel__title">SCAN RESULT // {{ s.id }}</span>
+    <span class="scan-panel__title">SCAN RESULT // {{ s.sample.id }}</span>
     <button
       type="button"
       class="scan-panel__toggle"
@@ -15,6 +15,20 @@
 
   @if (!collapsed()) {
   <div class="scan-panel__body">
+    @if (isShipSample()) {
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">OBJECT</span>
+      <span class="scan-panel__value scan-panel__value--primary">SHIP</span>
+    </section>
+    <section class="scan-panel__section">
+      <span class="scan-panel__label">DESIGNATION</span>
+      <span class="scan-panel__value scan-panel__value--accent">{{ shipDesignationLine() ?? '---' }}</span>
+    </section>
+    <section class="scan-panel__section scan-panel__section--wide">
+      <span class="scan-panel__label">MODEL</span>
+      <span class="scan-panel__value scan-panel__value--location">{{ shipModelLine() ?? '---' }}</span>
+    </section>
+    } @else {
     <section class="scan-panel__section">
       <span class="scan-panel__label">MATERIAL</span>
       <span class="scan-panel__value scan-panel__value--primary">{{ materialLine() ?? '---' }}</span>
@@ -54,6 +68,7 @@
       <span class="scan-panel__value scan-panel__value--location">{{ clusterLine() }}</span>
     </section>
     } }
+    }
   </div>
   }
 </div>

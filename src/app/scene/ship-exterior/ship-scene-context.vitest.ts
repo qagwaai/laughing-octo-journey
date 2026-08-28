@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
 import { ShipSceneContext } from './ship-scene-context';
 
 describe('ShipSceneContext', () => {
@@ -187,6 +188,115 @@ describe('ShipSceneContext', () => {
 
     expect(context.getTargetHoldCandidateId()).toBe('sample-alpha');
     expect(context.getTargetedAsteroidId()).toBe('sample-beta');
+  });
+
+  it('tracks scannable ship samples and hover state in the ship-local context', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+
+    expect(context.getHoveredScannableShipId()).toBeNull();
+    expect(context.getScannableShipSamples().map((sample) => sample.id)).toContain('jaxs-ship');
+
+    context.setHoveredScannableShipId('jaxs-ship');
+    expect(context.getHoveredScannableShipId()).toBe('jaxs-ship');
+
+    context.setScannableShipSamples([
+      {
+        id: 'jaxs-ship',
+        displayName: 'Jax Ship',
+        modelAssetPath: 'models/Jaxs_Ship_texture.glb',
+        scanned: true,
+        scanProgress: 100,
+      },
+    ]);
+
+    expect(context.getScannableShipSamples()).toEqual([
+      {
+        id: 'jaxs-ship',
+        displayName: 'Jax Ship',
+        modelAssetPath: 'models/Jaxs_Ship_texture.glb',
+        scanned: true,
+        scanProgress: 100,
+      },
+    ]);
+  });
+
+  it('resolves ship hover targets from pointer raycasting', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0 }]);
+    context.setHoveredAsteroidId('sample-alpha');
+
+    const shipNode = new THREE.Object3D();
+    shipNode.userData['scannableShipId'] = 'jaxs-ship';
+    const intersectObjects = vi
+      .fn()
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{ object: shipNode }]);
+    (context as any).hoverRaycaster = {
+      setFromCamera: vi.fn(),
+      intersectObjects,
+    };
+    (context as any).renderingState = {
+      canvas: {
+        getBoundingClientRect: () => ({ left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100 }),
+      },
+      camera: {},
+      asteroidGroup: { children: [] },
+      shipGroup: { children: [shipNode] },
+    };
+
+    const hoveredTarget = (context as any).updateHoveredScanTargetFromPointer(50, 50);
+
+    expect(hoveredTarget).toEqual({ kind: 'ship', id: 'jaxs-ship' });
+    expect(context.getHoveredScannableShipId()).toBe('jaxs-ship');
+    expect(context.getHoveredAsteroidId()).toBeNull();
+    expect(intersectObjects).toHaveBeenNthCalledWith(1, [], false);
+    expect(intersectObjects).toHaveBeenNthCalledWith(2, [shipNode], true);
+  });
+
+  it('prefers asteroid hover targets over ship targets when both are intersected', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0 }]);
+    context.setHoveredScannableShipId('jaxs-ship');
+
+    const asteroidMesh = new THREE.Mesh();
+    asteroidMesh.name = 'sample-alpha';
+    const shipNode = new THREE.Object3D();
+    shipNode.userData['scannableShipId'] = 'jaxs-ship';
+    const intersectObjects = vi
+      .fn()
+      .mockReturnValueOnce([{ object: asteroidMesh }])
+      .mockReturnValueOnce([{ object: shipNode }]);
+    (context as any).hoverRaycaster = {
+      setFromCamera: vi.fn(),
+      intersectObjects,
+    };
+    (context as any).renderingState = {
+      canvas: {
+        getBoundingClientRect: () => ({ left: 0, top: 0, right: 100, bottom: 100, width: 100, height: 100 }),
+      },
+      camera: {},
+      asteroidGroup: { children: [asteroidMesh] },
+      shipGroup: { children: [shipNode] },
+    };
+
+    const hoveredTarget = (context as any).updateHoveredScanTargetFromPointer(25, 25);
+
+    expect(hoveredTarget).toEqual({ kind: 'asteroid', id: 'sample-alpha' });
+    expect(context.getHoveredAsteroidId()).toBe('sample-alpha');
+    expect(context.getHoveredScannableShipId()).toBeNull();
+    expect(intersectObjects).toHaveBeenCalledTimes(1);
   });
 
   it('stores debris items inside the ship-local context', () => {

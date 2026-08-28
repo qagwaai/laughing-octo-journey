@@ -60,6 +60,7 @@ import {
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
   type ShipExteriorLegacyAsteroidSample,
+  type ShipExteriorLegacyScannableShipSample,
 } from './ship-exterior-bare-scene-test-api';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
 import {
@@ -76,9 +77,18 @@ import {
 import { ShipExteriorSessionController } from './ship-exterior-session-controller';
 import { ShipSceneContext } from './ship-scene-context';
 import { ShipSceneRegistry } from './ship-scene-registry';
-import { buildShipSceneContextKey, ShipSceneAsteroidSample, ShipSceneContextState } from './ship-scene-types';
+import {
+  buildShipSceneContextKey,
+  ShipSceneAsteroidSample,
+  ShipSceneContextState,
+  ShipSceneHoverScanTarget,
+  ShipSceneScannableShipSample,
+} from './ship-scene-types';
 const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
 const ROUTE_FEED_DISCOVERY_LIMIT = 250;
+type ShipExteriorScanDetail =
+  | { kind: 'asteroid'; sample: ShipSceneAsteroidSample }
+  | { kind: 'ship'; sample: ShipSceneScannableShipSample };
 
 export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: boolean): boolean {
   return code === 'KeyF' || (code === 'Escape' && flightModeEnabled);
@@ -193,7 +203,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const hoveredId = active.getHoveredAsteroidId() ?? 'none';
     return `ASTEROIDS // ${samples.length} / ${targetedId} / ${hoveredId} / ${active.getAsteroidLayoutSignature()}`;
   });
-  readonly activeScanDetailSample = computed<ShipSceneAsteroidSample | null>(() => {
+  readonly activeScanDetailSample = computed<ShipExteriorScanDetail | null>(() => {
     this.asteroidRevision();
     this.activeContextKey();
     const active = this.registry.getActiveContext();
@@ -202,12 +212,19 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     const hoveredId = active.getHoveredAsteroidId();
-    if (!hoveredId) {
-      return null;
+    if (hoveredId) {
+      const sample = active.getAsteroidSamples().find((s) => s.id === hoveredId);
+      if (sample?.scanned) {
+        return { kind: 'asteroid', sample };
+      }
     }
 
-    const sample = active.getAsteroidSamples().find((s) => s.id === hoveredId);
-    return sample?.scanned ? (sample ?? null) : null;
+    const hoveredShipId = active.getHoveredScannableShipId();
+    if (!hoveredShipId) {
+      return null;
+    }
+    const hoveredShip = active.getScannableShipSamples().find((sample) => sample.id === hoveredShipId);
+    return hoveredShip?.scanned ? { kind: 'ship', sample: hoveredShip } : null;
   });
   readonly floatingDebrisItems = computed(() => this.floatingDebrisStateService.items());
   readonly objectiveMessage = computed(() => {
@@ -295,9 +312,51 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly missionRevision = signal(0);
   // CHANGE ANCHOR: mission gate simulator
   private readonly asteroidScanController = new AsteroidScanController({
-    getActiveContext: () => this.registry.getActiveContext(),
-    getContext: (contextKey) => this.registry.getContext(contextKey),
+    getActiveContext: () => {
+      const active = this.registry.getActiveContext();
+      if (!active) {
+        return null;
+      }
+      return {
+        contextKey: active.contextKey,
+        getScannableSamples: () => active.getAsteroidSamples(),
+      };
+    },
+    getContext: (contextKey) => {
+      const context = this.registry.getContext(contextKey);
+      if (!context) {
+        return null;
+      }
+      return {
+        contextKey: context.contextKey,
+        getScannableSamples: () => context.getAsteroidSamples(),
+      };
+    },
     onScanComplete: (contextKey, sampleId) => this.forceCompleteIronScanInContext(contextKey, sampleId),
+    resolveHoldMs: () => this.resolveHoverScanHoldMs(),
+  });
+  private readonly shipScanController = new AsteroidScanController({
+    getActiveContext: () => {
+      const active = this.registry.getActiveContext();
+      if (!active) {
+        return null;
+      }
+      return {
+        contextKey: active.contextKey,
+        getScannableSamples: () => active.getScannableShipSamples(),
+      };
+    },
+    getContext: (contextKey) => {
+      const context = this.registry.getContext(contextKey);
+      if (!context) {
+        return null;
+      }
+      return {
+        contextKey: context.contextKey,
+        getScannableSamples: () => context.getScannableShipSamples(),
+      };
+    },
+    onScanComplete: (contextKey, sampleId) => this.forceCompleteShipScanInContext(contextKey, sampleId),
     resolveHoldMs: () => this.resolveHoverScanHoldMs(),
   });
   private readonly missionGateSimulator = new MissionGateSimulator({
@@ -384,6 +443,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.clearHoverScanTimer();
     this.clearTestTargetHoldTimer();
     this.asteroidScanController.dispose();
+    this.shipScanController.dispose();
     this.sessionController.dispose();
     this.bootstrapController.dispose();
     this.floatingDebrisController.stop();
@@ -672,10 +732,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private onWindowMouseMove(event: MouseEvent): void {
     const active = this.registry.getActiveContext();
     if (!active?.flightModeEnabled()) {
-      const prevHoveredId = active?.getHoveredAsteroidId() ?? null;
-      const hoveredId = active?.updateHoveredAsteroidFromPointer(event.clientX, event.clientY) ?? null;
-      this.syncAsteroidHoverScanFromHover(active?.contextKey ?? null, hoveredId);
-      if (hoveredId !== prevHoveredId) {
+      const prevHoveredAsteroidId = active?.getHoveredAsteroidId() ?? null;
+      const prevHoveredShipId = active?.getHoveredScannableShipId() ?? null;
+      const hoveredTarget = active?.updateHoveredScanTargetFromPointer(event.clientX, event.clientY) ?? null;
+      this.syncHoverScanFromHover(active?.contextKey ?? null, hoveredTarget);
+      if (
+        active?.getHoveredAsteroidId() !== prevHoveredAsteroidId ||
+        active?.getHoveredScannableShipId() !== prevHoveredShipId
+      ) {
         this.bumpAsteroidRevision();
       }
       return;
@@ -1022,6 +1086,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       resetMissionGateState: () => this.resetMissionGateStateForTest(),
       legacy: {
         getAsteroidSamples: () => this.getActiveAsteroidSamples(),
+        getScannableShipSamples: () => this.getActiveScannableShipSamples(),
         beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
         unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
         getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
@@ -1031,6 +1096,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
         getTargetedAsteroidId: () => this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null,
         getHoveredAsteroidId: () => this.registry.getActiveContext()?.getHoveredAsteroidId() ?? null,
+        forceCompleteShipScan: (sampleId?: string) => this.forceCompleteShipScan(sampleId),
+        getHoveredScannableShipId: () => this.registry.getActiveContext()?.getHoveredScannableShipId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
         simulateDebrisCollection: (remainingDebrisCount?: number) =>
           this.simulateDebrisCollection(remainingDebrisCount),
@@ -1059,7 +1126,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         scanProgress: 0,
         revealedKinematics: null,
       }));
+      const resetScannableShips = active.getScannableShipSamples().map((sample) => ({
+        ...sample,
+        scanned: false,
+        scanProgress: 0,
+      }));
       active.setAsteroidSamples(resetSamples);
+      active.setScannableShipSamples(resetScannableShips);
       active.setTargetedAsteroidId(null);
       this.bumpRuntimeRevision();
     }
@@ -1067,25 +1140,21 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return resetState;
   }
 
-  // CHANGE ANCHOR: asteroid hover scan orchestration
-  private beginAsteroidHoverScan(sampleId: string): boolean {
-    return this.asteroidScanController.beginHoverScan(sampleId);
-  }
-
   // CHANGE ANCHOR: hover timer cleanup
   private clearHoverScanTimer(): void {
     this.asteroidScanController.clearHoverScanTimer();
+    this.shipScanController.clearHoverScanTimer();
   }
 
   // CHANGE ANCHOR: hover-to-scan synchronization
-  private syncAsteroidHoverScanFromHover(contextKey: string | null, hoveredAsteroidId: string | null): void {
+  private syncHoverScanFromHover(contextKey: string | null, hoveredTarget: ShipSceneHoverScanTarget | null): void {
     if (!contextKey) {
       this.clearHoverScanTimer();
       this.clearTestTargetHoldTimer();
       return;
     }
 
-    if (!hoveredAsteroidId) {
+    if (!hoveredTarget) {
       this.clearHoverScanTimer();
       if (this.registry.getActiveContext()?.contextKey === contextKey) {
         this.clearTestTargetHoldTimer();
@@ -1093,7 +1162,15 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    this.asteroidScanController.syncFromHover(contextKey, hoveredAsteroidId);
+    if (hoveredTarget.kind === 'asteroid') {
+      this.shipScanController.clearHoverScanTimer();
+      this.asteroidScanController.syncFromHover(contextKey, hoveredTarget.id);
+      return;
+    }
+
+    this.clearTestTargetHoldTimer();
+    this.asteroidScanController.clearHoverScanTimer();
+    this.shipScanController.syncFromHover(contextKey, hoveredTarget.id);
   }
 
   // CHANGE ANCHOR: target hold and sensor array behavior
@@ -1303,6 +1380,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }));
   }
 
+  private getActiveScannableShipSamples(): ShipExteriorLegacyScannableShipSample[] {
+    const samples = this.registry.getActiveContext()?.getScannableShipSamples() ?? [];
+    return samples.map((sample) => ({
+      ...sample,
+      modelAssetPath: sample.modelAssetPath ?? null,
+    }));
+  }
+
   private ensureContextAsteroidSamplesForMissionProgress(
     context: ShipSceneContext,
   ): readonly ShipSceneAsteroidSample[] {
@@ -1424,6 +1509,43 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
       };
     });
+  }
+
+  private forceCompleteShipScan(sampleId?: string): boolean {
+    const active = this.registry.getActiveContext();
+    if (!active) {
+      return false;
+    }
+
+    return this.forceCompleteShipScanInContext(active.contextKey, sampleId ?? '');
+  }
+
+  private forceCompleteShipScanInContext(contextKey: string, sampleId: string): boolean {
+    const context = this.registry.getContext(contextKey);
+    if (!context) {
+      return false;
+    }
+
+    const samples = context.getScannableShipSamples();
+    const targetSample = sampleId
+      ? (samples.find((sample) => sample.id === sampleId) ?? null)
+      : (samples.find((sample) => !sample.scanned) ?? samples[0] ?? null);
+    if (!targetSample) {
+      return false;
+    }
+
+    const nextSamples = samples.map((sample) =>
+      sample.id === targetSample.id
+        ? {
+            ...sample,
+            scanned: true,
+            scanProgress: 100,
+          }
+        : sample,
+    );
+    context.setScannableShipSamples(nextSamples);
+    this.bumpRuntimeRevision();
+    return true;
   }
 
   // CHANGE ANCHOR: target selection and launch flow

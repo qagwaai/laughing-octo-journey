@@ -1,5 +1,9 @@
 import { Component, computed, input, signal } from '@angular/core';
-import type { ShipSceneAsteroidSample } from '../scene/ship-exterior/ship-scene-types';
+import type { ShipSceneAsteroidSample, ShipSceneScannableShipSample } from '../scene/ship-exterior/ship-scene-types';
+
+type ShipExteriorScanDetail =
+  | { kind: 'asteroid'; sample: ShipSceneAsteroidSample }
+  | { kind: 'ship'; sample: ShipSceneScannableShipSample };
 
 @Component({
   selector: 'app-asteroid-scan-detail-panel',
@@ -8,28 +12,37 @@ import type { ShipSceneAsteroidSample } from '../scene/ship-exterior/ship-scene-
   styleUrls: ['./asteroid-scan-detail-panel.css'],
 })
 export class AsteroidScanDetailPanel {
-  sample = input<ShipSceneAsteroidSample | null>(null);
+  sample = input<ShipExteriorScanDetail | null>(null);
 
   protected collapsed = signal(false);
+  protected asteroidSample = computed(() => {
+    const sample = this.sample();
+    return sample?.kind === 'asteroid' ? sample.sample : null;
+  });
+  protected shipSample = computed(() => {
+    const sample = this.sample();
+    return sample?.kind === 'ship' ? sample.sample : null;
+  });
+  protected isShipSample = computed(() => this.sample()?.kind === 'ship');
 
   protected materialLine = computed(() => {
-    const s = this.sample();
-    if (!s?.scanned || !s.revealedMaterial) {
+    const s = this.asteroidSample();
+    if (!s || !s.scanned || !s.revealedMaterial) {
       return null;
     }
     return s.revealedMaterial.material;
   });
 
   protected rarityLine = computed(() => {
-    const s = this.sample();
-    if (!s?.scanned || !s.revealedMaterial) {
+    const s = this.asteroidSample();
+    if (!s || !s.scanned || !s.revealedMaterial) {
       return null;
     }
     return s.revealedMaterial.rarity;
   });
 
   protected velocityLine = computed(() => {
-    const k = this.sample()?.revealedKinematics;
+    const k = this.asteroidSample()?.revealedKinematics;
     if (!k) {
       return null;
     }
@@ -39,7 +52,7 @@ export class AsteroidScanDetailPanel {
   });
 
   protected spinLine = computed(() => {
-    const k = this.sample()?.revealedKinematics;
+    const k = this.asteroidSample()?.revealedKinematics;
     if (!k) {
       return null;
     }
@@ -49,7 +62,7 @@ export class AsteroidScanDetailPanel {
   });
 
   protected massLine = computed(() => {
-    const k = this.sample()?.revealedKinematics;
+    const k = this.asteroidSample()?.revealedKinematics;
     if (!k) {
       return null;
     }
@@ -64,7 +77,7 @@ export class AsteroidScanDetailPanel {
   });
 
   protected diameterLine = computed(() => {
-    const k = this.sample()?.revealedKinematics;
+    const k = this.asteroidSample()?.revealedKinematics;
     if (!k) {
       return null;
     }
@@ -74,7 +87,7 @@ export class AsteroidScanDetailPanel {
   });
 
   protected locationLine = computed(() => {
-    const loc = this.sample()?.solarSystemLocation;
+    const loc = this.asteroidSample()?.solarSystemLocation;
     if (!loc) {
       return null;
     }
@@ -83,11 +96,11 @@ export class AsteroidScanDetailPanel {
   });
 
   protected clusterLine = computed(() => {
-    const c = this.sample()?.clusterCenterKm;
+    const c = this.asteroidSample()?.clusterCenterKm;
     if (!c) {
       return null;
     }
-    const loc = this.sample()?.solarSystemLocation;
+    const loc = this.asteroidSample()?.solarSystemLocation;
     if (!loc) {
       return `X ${(c.x / 1e6).toFixed(3)}  Y ${(c.y / 1e6).toFixed(3)}  Z ${(c.z / 1e6).toFixed(3)} (Mkm)`;
     }
@@ -98,8 +111,10 @@ export class AsteroidScanDetailPanel {
     return `ΔX ${dx.toFixed(0)}  ΔY ${dy.toFixed(0)}  ΔZ ${dz.toFixed(0)} km  |  R ${dist.toFixed(0)} km`;
   });
 
-  protected hasKinematics = computed(() => !!this.sample()?.revealedKinematics);
-  protected hasLocation = computed(() => !!this.sample()?.solarSystemLocation);
+  protected shipModelLine = computed(() => this.shipSample()?.modelAssetPath ?? null);
+  protected shipDesignationLine = computed(() => this.shipSample()?.displayName ?? null);
+  protected hasKinematics = computed(() => !!this.asteroidSample()?.revealedKinematics);
+  protected hasLocation = computed(() => !!this.asteroidSample()?.solarSystemLocation);
 
   protected toggleCollapsed(): void {
     this.collapsed.update((v) => !v);

@@ -46,6 +46,24 @@ export interface ShipSceneAsteroidState {
   targetHoldCandidateId?: string | null;
 }
 
+export interface ShipSceneScannableShipSample {
+  id: string;
+  displayName: string;
+  modelAssetPath?: string | null;
+  scanned: boolean;
+  scanProgress: number;
+}
+
+export interface ShipSceneScannableShipState {
+  samples: ShipSceneScannableShipSample[];
+  hoveredShipId?: string | null;
+}
+
+export interface ShipSceneHoverScanTarget {
+  kind: 'asteroid' | 'ship';
+  id: string;
+}
+
 export interface ShipSceneContextState {
   playerName: string;
   characterId: string;
@@ -54,6 +72,7 @@ export interface ShipSceneContextState {
   world?: ShipSceneWorldState;
   flight?: ShipSceneFlightState;
   asteroid?: ShipSceneAsteroidState;
+  scannableShips?: ShipSceneScannableShipState;
   debris?: FloatingDebrisItem[];
   mission?: ShipExteriorMissionGateState;
 }
