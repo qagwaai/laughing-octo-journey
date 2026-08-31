@@ -116,28 +116,6 @@
   letter-spacing: 0.14em;
 }
 
-.ship-exterior-bare-scene__switches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ship-exterior-bare-scene__switch-btn {
-  border: 1px solid rgba(128, 188, 245, 0.45);
-  background: rgba(7, 18, 30, 0.85);
-  color: #cde7ff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.ship-exterior-bare-scene__switch-btn--active {
-  border-color: #4dd5ff;
-  color: #04121f;
-  background: linear-gradient(135deg, #53e2ff, #94f6ff);
-}
 
 .ship-exterior-bare-scene__viewport {
   position: relative;

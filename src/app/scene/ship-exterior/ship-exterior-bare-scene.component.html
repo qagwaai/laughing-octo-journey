@@ -5,18 +5,6 @@
       <button type="button" class="ship-exterior-bare-scene__flight-btn" (click)="toggleFlightMode()">
         {{ activeFlightStatusLine() }}
       </button>
-      <div class="ship-exterior-bare-scene__switches">
-        @for (context of contexts(); track context.contextKey) {
-          <button
-            type="button"
-            class="ship-exterior-bare-scene__switch-btn"
-            [class.ship-exterior-bare-scene__switch-btn--active]="activeContextKey() === context.contextKey"
-            (click)="activateContext(context.contextKey)"
-          >
-            {{ context.getState().shipId }}
-          </button>
-        }
-      </div>
     </div>
   </header>
 
