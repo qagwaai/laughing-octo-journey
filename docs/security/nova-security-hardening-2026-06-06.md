@@ -61,7 +61,6 @@ Status: Ready for Orion intake (repo-internal controls implemented and validatio
 - `.github/dependabot.yml`
 - `.github/workflows/sw-08-contract-safety-gate.yml`
 - `.github/workflows/security-hygiene.yml`
-- `.github/workflows/codeql-analysis.yml`
 - `src/app/page/character/components/character-bust-viewer/character-bust-viewer.ts`
 - `docs/security/nova-security-hardening-2026-06-06.md`
 
@@ -71,7 +70,7 @@ Added:
 - `Security Hygiene` workflow
   - `secret-scan` (gitleaks)
   - `dependency-audit` (npm audit high/critical + lockfile policy)
-- `CodeQL` workflow
+- `CodeQL` scanning is provided by GitHub code scanning **default setup** (repo settings), not an advanced workflow. An advanced `codeql-analysis.yml` workflow was removed because default setup rejects SARIF uploads from advanced configurations.
 
 Updated:
 - `SW-08 Contract Safety Gate`
