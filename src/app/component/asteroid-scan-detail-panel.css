@@ -16,10 +16,6 @@
   overflow: hidden;
 }
 
-.scan-panel--collapsed {
-  width: 220px;
-}
-
 .scan-panel__header {
   display: flex;
   align-items: center;
@@ -37,21 +33,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.scan-panel__toggle {
-  background: none;
-  border: none;
-  color: #7dd8ff;
-  cursor: pointer;
-  font-size: 0.58rem;
-  padding: 0 2px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.scan-panel__toggle:hover {
-  color: #b9f2ff;
 }
 
 .scan-panel__body {

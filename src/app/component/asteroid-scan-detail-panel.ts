@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import type {
   ShipSceneAsteroidSample,
   ShipSceneScannableDebrisSample,
@@ -19,7 +19,6 @@ type ShipExteriorScanDetail =
 export class AsteroidScanDetailPanel {
   sample = input<ShipExteriorScanDetail | null>(null);
 
-  protected collapsed = signal(false);
   protected asteroidSample = computed(() => {
     const sample = this.sample();
     return sample?.kind === 'asteroid' ? sample.sample : null;
@@ -144,8 +143,4 @@ export class AsteroidScanDetailPanel {
   });
   protected hasKinematics = computed(() => !!this.asteroidSample()?.revealedKinematics);
   protected hasLocation = computed(() => !!this.asteroidSample()?.solarSystemLocation);
-
-  protected toggleCollapsed(): void {
-    this.collapsed.update((v) => !v);
-  }
 }

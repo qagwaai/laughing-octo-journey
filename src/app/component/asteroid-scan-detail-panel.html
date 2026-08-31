@@ -1,19 +1,9 @@
 @if (sample(); as s) {
-<div class="scan-panel" [class.scan-panel--collapsed]="collapsed()">
+<div class="scan-panel">
   <div class="scan-panel__header">
     <span class="scan-panel__title">SCAN RESULT // {{ s.sample.id }}</span>
-    <button
-      type="button"
-      class="scan-panel__toggle"
-      (click)="toggleCollapsed()"
-      [attr.aria-expanded]="!collapsed()"
-      aria-label="Toggle scan detail panel"
-    >
-      {{ collapsed() ? '▲' : '▼' }}
-    </button>
   </div>
 
-  @if (!collapsed()) {
   <div class="scan-panel__body">
     @if (!isAsteroidSample()) {
     <section class="scan-panel__section">
@@ -70,6 +60,5 @@
     } }
     }
   </div>
-  }
 </div>
 }
