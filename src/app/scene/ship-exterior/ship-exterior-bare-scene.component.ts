@@ -620,7 +620,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     const sessionKey = this.sessionService.getSessionKey();
     if (!sessionKey || !playerName || !activeCharacterId || activeCharacterId === 'unknown-character') {
-      this.ensureFallbackContexts(playerName, activeCharacterId);
       this.activateFirstContextIfNeeded();
       return;
     }
@@ -636,7 +635,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.shipService.listShipsByOwner(request, (response) => {
       response.ships.forEach((ship) => this.upsertContextFromShip(ship, playerName, activeCharacterId));
-      this.ensureFallbackContexts(playerName, activeCharacterId);
       this.syncContextsSignal();
       this.activateFirstContextIfNeeded();
       this.attachVisibleCanvas();
@@ -666,20 +664,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     }
 
-    return (
-      this.registry.getAllContexts().find((context) => !context.contextKey.includes('fallback-ship')) ??
-      this.registry.getAllContexts()[0] ??
-      null
-    );
+    return this.registry.getAllContexts()[0] ?? null;
   }
 
   private applyPendingColdBootAsteroidSeedIntent(intent: ShipExteriorColdBootAsteroidSeedIntent): void {
-    let targetContext = this.resolveSeedTargetContext();
-    if (!targetContext) {
-      this.ensureFallbackContexts(this.navigationPlayerName(), this.navigationCharacterId());
-      targetContext = this.resolveSeedTargetContext();
-    }
-
+    const targetContext = this.resolveSeedTargetContext();
     if (!targetContext) {
       this.pendingColdBootAsteroidSeedIntent.set(null);
       return;
@@ -951,28 +940,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private getActiveRouteFeedCounts(): ShipExteriorRouteFeedCounts | null {
     return this.registry.getActiveContext()?.getRouteFeedCounts() ?? null;
-  }
-
-  private ensureFallbackContexts(playerName: string, characterId: string): void {
-    if (this.registry.getAllContexts().length >= 2) {
-      return;
-    }
-
-    const fallbackIds = ['fallback-ship-a', 'fallback-ship-b'];
-    for (const shipId of fallbackIds) {
-      const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
-      const context = this.registry.getOrCreateContext(contextKey, {
-        playerName,
-        characterId,
-        shipId,
-        world: {
-          shipPosition: { x: shipId.endsWith('a') ? -1 : 1.25, y: 0, z: 0 },
-        },
-      });
-      this.ensureMissionGateStateForContext(context);
-    }
-
-    this.syncContextsSignal();
   }
 
   private syncContextsSignal(): void {
