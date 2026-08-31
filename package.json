@@ -68,15 +68,15 @@
     "npm": "10.9.x"
   },
   "dependencies": {
-    "@angular/animations": "21.2.19",
-    "@angular/common": "21.2.19",
-    "@angular/compiler": "21.2.19",
-    "@angular/core": "21.2.19",
-    "@angular/forms": "21.2.19",
+    "@angular/animations": "21.2.22",
+    "@angular/common": "21.2.22",
+    "@angular/compiler": "21.2.22",
+    "@angular/core": "21.2.22",
+    "@angular/forms": "21.2.22",
     "@angular/material": "21.2.14",
-    "@angular/platform-browser": "21.2.19",
-    "@angular/platform-browser-dynamic": "21.2.19",
-    "@angular/router": "21.2.19",
+    "@angular/platform-browser": "21.2.22",
+    "@angular/platform-browser-dynamic": "21.2.22",
+    "@angular/router": "21.2.22",
     "@monogrid/gainmap-js": "^3.1.0",
     "@pmndrs/cannon-worker-api": "^2.4.0",
     "@pmndrs/vanilla": "^1.24.0",
@@ -105,10 +105,10 @@
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "^2.6.0",
     "@analogjs/vitest-angular": "^2.6.0",
-    "@angular/build": "21.2.19",
-    "@angular/cli": "21.2.19",
-    "@angular/compiler-cli": "21.2.19",
-    "@angular/localize": "21.2.19",
+    "@angular/build": "21.2.22",
+    "@angular/cli": "21.2.22",
+    "@angular/compiler-cli": "21.2.22",
+    "@angular/localize": "21.2.22",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.3.3",
@@ -128,7 +128,7 @@
     "vitest": "^4.1.8"
   },
   "overrides": {
-    "vite": "7.3.2"
+    "vite": "7.3.6"
   },
   "prettier": {
     "printWidth": 120,
