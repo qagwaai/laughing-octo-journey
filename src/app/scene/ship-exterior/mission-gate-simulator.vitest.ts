@@ -15,7 +15,7 @@ describe('MissionGateSimulator', () => {
     const activeState = {
       ...state,
       steps: state.steps.map((step) =>
-        step.key === 'manufacture_hull_patch_kit' ? { ...step, status: 'active' } : step,
+        step.key === 'manufacture_hull_patch_kit' ? { ...step, status: 'active' as const } : step,
       ),
     };
     const simulator = new MissionGateSimulator({

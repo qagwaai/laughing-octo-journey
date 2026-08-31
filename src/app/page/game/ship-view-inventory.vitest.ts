@@ -491,6 +491,8 @@ describe('ShipViewInventoryPage', () => {
       name: groupedItem.displayName,
       quantity: 3,
       tier: null,
+      damageStatus: 'intact',
+      statusBucket: 'operational',
       item: groupedItem as any,
     });
 

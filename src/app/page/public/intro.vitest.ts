@@ -241,7 +241,7 @@ describe('IntroPage Logic', () => {
     });
 
     it('should all public methods callable', () => {
-      const { component, mockRouter } = setup();
+      const { component } = setup();
       expect(() => {
         component.navigateToRegistration();
         component.navigateToLogin();

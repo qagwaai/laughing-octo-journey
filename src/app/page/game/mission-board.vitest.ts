@@ -740,7 +740,7 @@ describe('MissionBoardPage', () => {
     });
 
     it('should show error message when mission load fails', () => {
-      const { fixture, component } = setup({
+      const { fixture } = setup({
         socketService,
         sessionService,
         navigationState: {

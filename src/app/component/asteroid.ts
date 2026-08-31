@@ -40,7 +40,7 @@ export interface AsteroidPointerButtonEvent {
 
 export type AsteroidGeometryKind = AsteroidMeshGeometryKind;
 
-export interface AsteroidRevealProfile extends AsteroidMeshProfile {}
+export type AsteroidRevealProfile = AsteroidMeshProfile;
 
 export type AsteroidRockRevealGeometry = Exclude<AsteroidGeometryKind, 'rock'>;
 
@@ -190,7 +190,7 @@ export function resolveAsteroidMaterialColor(
   scanProgress: number,
   hovered: boolean,
   scanned: boolean,
-  revealedMaterial: AsteroidMaterialProfile | null,
+  _revealedMaterial: AsteroidMaterialProfile | null,
 ): string {
   if (scanned) {
     return '#8de8ff';

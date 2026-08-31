@@ -12,7 +12,7 @@ export interface ShipOwnerDescriptor {
   factionId: string | null;
 }
 
-export interface ShipOwnership extends ShipOwnerDescriptor {}
+export type ShipOwnership = ShipOwnerDescriptor;
 
 function coerceNullableString(value: unknown): string | null {
   if (value === null) {

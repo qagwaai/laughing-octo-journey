@@ -47,7 +47,7 @@ function buildProfileKey(profile: Omit<AsteroidMeshProfile, 'meshProfileKey'>): 
 export function generateRandomAsteroidMeshProfile(random: () => number = Math.random): AsteroidMeshProfile {
   const geometry = resolvePreviewGeometry(random);
   const detail = geometry === 'octahedron' ? 0 : clampDetail(random() > 0.65 ? 1 : 0);
-  const revealGeometry: 'rock' = 'rock';
+  const revealGeometry = 'rock' as const;
   const revealDetail = 2;
 
   const scaleX = 0.86 + random() * 0.42;

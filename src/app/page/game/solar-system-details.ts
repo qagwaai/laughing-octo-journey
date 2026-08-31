@@ -25,21 +25,7 @@ interface SolarSystemDetailsNavigationState {
   solarSystem?: SolarSystemSummary;
 }
 
-const BODY_TYPE_SORT_ORDER: Record<string, number> = {
-  star: 0,
-  planet: 1,
-  moon: 2,
-  asteroid: 3,
-  station: 4,
-  ship: 5,
-};
-
 const TYPE_GROUP_ORDER = ['star', 'planet', 'moon', 'asteroid', 'station', 'ship'];
-
-function sortOrder(bodyType: string): number {
-  const normalized = typeof bodyType === 'string' ? bodyType.trim().toLowerCase() : '';
-  return BODY_TYPE_SORT_ORDER[normalized] ?? 99;
-}
 
 @Component({
   selector: 'app-solar-system-details-page',

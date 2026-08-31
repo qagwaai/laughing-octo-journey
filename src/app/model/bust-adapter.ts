@@ -44,9 +44,7 @@ export interface BustDescriptorAdapter {
  * Selector control states map 1:1 to BustDescriptor domain fields.
  * Must only consume canonical enum values; no ad hoc fallbacks are permitted.
  */
-export interface BustDescriptorViewModel {
-  // TODO(M2): Map BustDescriptor domains → Angular selector control input states.
-}
+export type BustDescriptorViewModel = object;
 
 /**
  * TODO(M2): Result type for save operations surfaced in the builder UX.

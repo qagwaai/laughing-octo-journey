@@ -73,7 +73,7 @@ describe('Cursor', () => {
     });
 
     it('should register event handlers when element is a mesh', () => {
-      const directive = mockInjector.get(Cursor);
+      mockInjector.get(Cursor);
       expect(objectEventsSpy).toHaveBeenCalled();
     });
 

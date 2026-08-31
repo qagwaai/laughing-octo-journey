@@ -87,8 +87,8 @@ describe('SocketService', () => {
           emitCalled = true;
           if (cb) cb(data);
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -107,11 +107,11 @@ describe('SocketService', () => {
 
       const mockSocket = {
         connected: true,
-        emit: (event: string, data?: any) => {
+        emit: (_event: string, _data?: any) => {
           emitCalled = true;
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -132,7 +132,7 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
         on: (event: string, callback: (data: unknown) => void) => {
           const callbacks = onEvents.get(event) ?? [];
           callbacks.push(callback);
@@ -331,7 +331,7 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
         on: (event: string, callback: (data: unknown) => void) => {
           const callbacks = onEvents.get(event) ?? [];
           callbacks.push(callback);
@@ -492,7 +492,7 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
         on: (event: string, callback: (data: unknown) => void) => {
           const callbacks = onEvents.get(event) ?? [];
           callbacks.push(callback);
@@ -734,7 +734,7 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
         on: (event: string, callback: (data: unknown) => void) => {
           const callbacks = onEvents.get(event) ?? [];
           callbacks.push(callback);
@@ -931,9 +931,9 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -975,9 +975,9 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1325,7 +1325,7 @@ describe('SocketService', () => {
         emit: (event: string, data?: unknown) => {
           emittedEvents.push({ event, payload: data });
         },
-        once: (event: string, callback: (data: unknown) => void) => {},
+        once: (_event: string, _callback: (data: unknown) => void) => {},
         on: (event: string, callback: (data: unknown) => void) => {
           const callbacks = onEvents.get(event) ?? [];
           callbacks.push(callback);
@@ -1532,10 +1532,10 @@ describe('SocketService', () => {
 
       const mockSocket = {
         connected: true,
-        on: (event: string, callback: Function) => {
+        on: (_event: string, _callback: Function) => {
           onCalled = true;
         },
-        off: (event: string, callback?: Function) => {
+        off: (_event: string, _callback?: Function) => {
           offCalled = true;
         },
         disconnect: () => {},
@@ -1567,11 +1567,11 @@ describe('SocketService', () => {
 
       const mockSocket = {
         connected: true,
-        once: (event: string, callback: Function) => {
+        once: (_event: string, _callback: Function) => {
           onceCalled = true;
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1593,11 +1593,11 @@ describe('SocketService', () => {
 
       const mockSocket = {
         connected: true,
-        off: (event: string, callback?: Function) => {
+        off: (_event: string, _callback?: Function) => {
           offCalled = true;
         },
-        on: (event: string, callback: Function) => {},
-        once: (event: string, callback: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        once: (_event: string, _callback: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1613,11 +1613,11 @@ describe('SocketService', () => {
 
       const mockSocket = {
         connected: true,
-        off: (event: string, callback?: Function) => {
+        off: (_event: string, _callback?: Function) => {
           offCalled = true;
         },
-        on: (event: string, callback: Function) => {},
-        once: (event: string, callback: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        once: (_event: string, _callback: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1637,8 +1637,8 @@ describe('SocketService', () => {
         disconnect: () => {
           disconnectCalled = true;
         },
-        on: (event: string, callback: Function) => {},
-        off: (event: string, callback?: Function) => {},
+        on: (_event: string, _callback: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
       };
       replaceSocket(mockSocket);
       service['isConnected'].set(true);
@@ -1716,7 +1716,7 @@ describe('SocketService', () => {
             callback();
           }
         },
-        off: (event: string, callback?: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1736,7 +1736,7 @@ describe('SocketService', () => {
             callback('io server disconnect');
           }
         },
-        off: (event: string, callback?: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);
@@ -1754,7 +1754,7 @@ describe('SocketService', () => {
             callback(new Error('Connection failed'));
           }
         },
-        off: (event: string, callback?: Function) => {},
+        off: (_event: string, _callback?: Function) => {},
         disconnect: () => {},
       };
       replaceSocket(mockSocket);

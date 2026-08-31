@@ -7,7 +7,7 @@ export interface ShipExteriorViewStateContext {
   shipId: string;
 }
 
-export interface ShipExteriorViewStateSnapshot extends ShipExteriorViewStateContext {}
+export type ShipExteriorViewStateSnapshot = ShipExteriorViewStateContext;
 
 export interface ShipExteriorFlightPreferences {
   invertY: boolean;

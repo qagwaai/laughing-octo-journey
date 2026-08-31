@@ -793,7 +793,7 @@ describe('CharacterSetupPage', () => {
     });
 
     it('should handle failed character-add response', () => {
-      const { component, mockRouter, fixture } = setup({ socketService, sessionService });
+      const { component, mockRouter } = setup({ socketService, sessionService });
       component['characterForm'].patchValue({ characterName: 'Nova-Prime' });
       component.saveCharacter();
       const addRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1]

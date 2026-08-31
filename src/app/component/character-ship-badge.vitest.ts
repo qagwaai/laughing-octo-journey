@@ -5,8 +5,6 @@ import type { ShipSummary } from '../model/ship-list';
 import { SessionService } from '../services/session.service';
 import { CharacterShipBadge } from './character-ship-badge';
 
-type Listener = (...args: any[]) => void;
-
 class MockRouter {
   navigate = vi.fn();
 }

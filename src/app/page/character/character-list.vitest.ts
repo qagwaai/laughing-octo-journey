@@ -738,11 +738,14 @@ describe('CharacterListPage', () => {
 
       // Simulate socket connect → triggers loadCharacters → registers the response listener
       socketService.triggerOnceEvent('connect');
+      const listRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterListRequest;
 
       // Deliver a successful character-list response to arm the invalid-session listener
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: '',
+        correlationId: listRequest.correlationId!,
+        requestIdentity: listRequest.requestIdentity!,
         playerName: 'Pioneer',
         characters: [],
       } satisfies CharacterListResponse);
@@ -764,9 +767,12 @@ describe('CharacterListPage', () => {
 
       // Simulate socket connect + successful load to arm the invalid-session listener
       socketService.triggerOnceEvent('connect');
+      const listRequest = socketService.emittedEvents[socketService.emittedEvents.length - 1].data as CharacterListRequest;
       socketService.triggerEvent(CHARACTER_LIST_RESPONSE_EVENT, {
         success: true,
         message: '',
+        correlationId: listRequest.correlationId!,
+        requestIdentity: listRequest.requestIdentity!,
         playerName: 'Pioneer',
         characters: [],
       } satisfies CharacterListResponse);

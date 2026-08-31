@@ -61,8 +61,6 @@ export default class CharacterPreviewImageComponent {
   constructor() {
     effect(() => {
       const nextSrc = this.portraitSrc();
-      const nextFilename = this.portraitFilename();
-
       if (this.currentSrc() === nextSrc) {
         return;
       }

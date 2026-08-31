@@ -11,9 +11,6 @@ describe('AsteroidScanController', () => {
     revealedKinematics: null,
     solarSystemLocation: {
       positionKm: { x: 1, y: 2, z: 3 },
-      solarSystemId: 'sol',
-      frame: 'barycentric',
-      epochMs: 123,
     },
     clusterCenterKm: { x: 0, y: 0, z: 0 },
     ...overrides,

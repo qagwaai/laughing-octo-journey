@@ -116,7 +116,7 @@ export class FloatingDebrisController {
   private handleListResponse(
     response: ItemListByLocationResponse,
     shipPositionKm: Triple,
-    solarSystemId: string,
+    _solarSystemId: string,
   ): void {
     if (!response.success) {
       appLogger.warn('FloatingDebrisController list response unsuccessful', { message: response.message });

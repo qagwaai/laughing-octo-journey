@@ -48,10 +48,14 @@ describe('InventoryRewardService', () => {
   });
 
   it('expands material rewards into ship items and persists them', () => {
-    const nextShip = service.applyMaterialRewards([{ material: 'Iron', quantity: 2 }], activeShip, 'char-42');
+    const nextShip = service.applyMaterialRewards(
+      [{ material: 'Iron', rarity: 'Common', quantity: 2 }],
+      activeShip,
+      'char-42',
+    );
 
     expect(nextShip?.inventory).toHaveLength(3);
-    expect(nextShip?.inventory.map((item: any) => item.itemType)).toEqual(['scrap', 'iron', 'iron']);
+    expect(nextShip?.inventory?.map((item: any) => item.itemType)).toEqual(['scrap', 'iron', 'iron']);
     expect(socketService.upsertItem).toHaveBeenCalledTimes(2);
     expect(socketService.upsertItem.mock.calls[0][0].item.itemType).toBe('iron');
   });
@@ -74,7 +78,7 @@ describe('InventoryRewardService', () => {
     );
 
     expect(nextShip?.inventory).toHaveLength(4);
-    expect(nextShip?.inventory.filter((item: any) => item.itemType === 'repair-kit')).toHaveLength(3);
+    expect(nextShip?.inventory?.filter((item: any) => item.itemType === 'repair-kit')).toHaveLength(3);
     expect(socketService.upsertItem).toHaveBeenCalledTimes(3);
   });
 

@@ -146,7 +146,7 @@ describe('MissionService — error handling & timeout paths', () => {
     });
 
     it('should ignore response with mismatched playerName', async () => {
-      const promise = service.ensureMissionExists({
+      await service.ensureMissionExists({
         playerName: 'Pioneer',
         characterId: 'char-1',
         sessionKey: 'session-1',

@@ -180,8 +180,8 @@ describe('ShipSceneContext', () => {
     });
 
     context.setAsteroidSamples([
-      { id: 'sample-alpha', scanned: false, scanProgress: 0 },
-      { id: 'sample-beta', scanned: false, scanProgress: 0 },
+      { id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null },
+      { id: 'sample-beta', scanned: false, scanProgress: 0, revealedMaterial: null },
     ]);
     context.setTargetHoldCandidateId('sample-alpha');
     context.setTargetedAsteroidId('sample-beta');
@@ -263,7 +263,7 @@ describe('ShipSceneContext', () => {
       characterId: 'char',
       shipId: 'ship',
     });
-    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0 }]);
+    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
     context.setHoveredAsteroidId('sample-alpha');
 
     const shipNode = new THREE.Object3D();
@@ -348,7 +348,7 @@ describe('ShipSceneContext', () => {
       characterId: 'char',
       shipId: 'ship',
     });
-    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0 }]);
+    context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
     context.setHoveredScannableShipId('jaxs-ship');
 
     const asteroidMesh = new THREE.Mesh();

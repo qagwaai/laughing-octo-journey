@@ -219,7 +219,7 @@ describe('ColdBootOpeningPage', () => {
   });
 
   it('should start first mission and navigate to scanning pane when requested', async () => {
-    const { component, mockMission, mockSession, mockRouter, mockMissionNavigation } = setup({
+    const { component, mockMission, mockRouter, mockMissionNavigation } = setup({
       playerName: 'Pioneer',
       joinCharacter: { id: 'char-1', characterName: 'Nova' },
     });

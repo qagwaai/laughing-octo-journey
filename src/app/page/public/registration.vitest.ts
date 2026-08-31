@@ -366,13 +366,6 @@ describe('RegistrationPage', () => {
 });
 
 describe('passwordMatchValidator', () => {
-  function makeGroup(password: string, confirmPassword: string) {
-    return {
-      get: (key: string) => ({
-        value: key === 'password' ? password : confirmPassword,
-      }),
-    } as any;
-  }
 
   it('should return null when passwords match', () => {
     // This is tested implicitly via the form — the validator is embedded in the real component.
