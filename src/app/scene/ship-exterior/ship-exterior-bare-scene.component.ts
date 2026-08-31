@@ -269,6 +269,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   });
   private readonly coldBootAsteroidSeedEffect = effect(() => {
     this.activeContextKey();
+    // Re-evaluate whenever the context list changes so a seed intent that
+    // arrives before any scene context exists (e.g. on a hard refresh, while
+    // ship/session data is still loading) is retried once a context appears
+    // instead of being silently dropped.
+    this.contexts();
     const intent = this.pendingColdBootAsteroidSeedIntent();
     if (!intent) {
       return;
@@ -582,14 +587,26 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const playerName = this.navigationPlayerName();
     const characterId = this.navigationCharacterId();
 
-    this.upsertContextFromShip(activeShip, playerName, characterId);
     const contextKey = buildShipSceneContextKey({
       playerName,
       characterId,
       shipId: activeShip.id,
     });
 
+    this.upsertContextFromShip(activeShip, playerName, characterId);
     this.activateContext(contextKey);
+
+    // A ship switch (e.g. "View External" from the hangar) reuses the same
+    // routed component instance, so ngOnInit's one-time asteroid seeding never
+    // re-runs. bootstrapContexts() eagerly creates a context for every owned
+    // ship up front (via listShipsByOwner) but only seeds asteroids for the
+    // ship that was active at that moment, so any other owned ship's context
+    // starts out empty. Reseed here whenever the activated context has no
+    // asteroid samples yet, regardless of whether the context is brand new.
+    const activatedContext = this.registry.getContext(contextKey);
+    if (activatedContext && activatedContext.getAsteroidSamples().length === 0) {
+      this.seedColdBootAsteroids();
+    }
   });
 
   private readonly onSessionReset = effect(() => {
@@ -670,7 +687,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private applyPendingColdBootAsteroidSeedIntent(intent: ShipExteriorColdBootAsteroidSeedIntent): void {
     const targetContext = this.resolveSeedTargetContext();
     if (!targetContext) {
-      this.pendingColdBootAsteroidSeedIntent.set(null);
+      // Keep the intent pending: no scene context exists yet (e.g. ship/session
+      // data is still loading after a hard refresh). The effect re-runs when
+      // contexts() changes, so the intent will be applied once a context exists
+      // instead of being dropped.
       return;
     }
 

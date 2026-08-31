@@ -146,7 +146,7 @@ describe('MissionService — error handling & timeout paths', () => {
     });
 
     it('should ignore response with mismatched playerName', async () => {
-      await service.ensureMissionExists({
+      const promise = service.ensureMissionExists({
         playerName: 'Pioneer',
         characterId: 'char-1',
         sessionKey: 'session-1',
@@ -185,6 +185,21 @@ describe('MissionService — error handling & timeout paths', () => {
       // Should proceed to add
       const addListeners = socketService.emittedEvents.filter((e) => e.event === MISSION_ADD_REQUEST_EVENT);
       expect(addListeners.length).toBe(1);
+
+      // Settle the add response so the promise resolves and the pending timeout is cleared.
+      const addMetadata = metadataFor(MISSION_ADD_REQUEST_EVENT);
+      socketService.trigger(MISSION_ADD_RESPONSE_EVENT, {
+        success: true,
+        message: 'ok',
+        correlationId: addMetadata.correlationId!,
+        requestIdentity: addMetadata.requestIdentity!,
+        playerName: 'Pioneer',
+        characterId: 'char-1',
+        missionId: 'first-target',
+      });
+
+      const result = await promise;
+      expect(result).toBe('added');
     });
 
     it('should return timeout when response does not arrive within 5s', async () => {
