@@ -11,6 +11,7 @@ import { GameShellPage } from '../page-objects/game-shell.page';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-ship-exterior';
+const AUTHORITATIVE_DEBRIS_ID = 'debris-tractor-beam-1';
 
 function baseDroneInventoryItem() {
   return {
@@ -212,6 +213,40 @@ function registerShipExteriorSessionHandlers(
       },
     };
   });
+
+  mock.on('item-list-by-location', () => ({
+    event: 'item-list-by-location-response',
+    data: {
+      success: true,
+      message: '',
+      items: [
+        {
+          id: AUTHORITATIVE_DEBRIS_ID,
+          itemType: 'ship-tractor-beam',
+          displayName: 'Tractor Beam',
+          launchable: false,
+          state: 'deployed',
+          damageStatus: 'intact',
+          container: null,
+          owningPlayerId: TEST_PLAYER,
+          owningCharacterId: TEST_CHARACTER_ID,
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1_000_005, y: 0, z: 5 },
+            epochMs: Date.now(),
+          },
+          motion: null,
+          destroyedAt: null,
+          destroyedReason: null,
+          discoveredAt: null,
+          discoveredByCharacterId: null,
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+    },
+  }));
 }
 
 test.describe('Ship Exterior Test Utilities', () => {
@@ -521,19 +556,17 @@ test.describe('Ship Exterior Test Utilities', () => {
             const api = (
               window as Window & {
                 __shipExteriorTestUtils?: {
-                  simulateDebrisCollection?: (remainingDebrisCount?: number) => unknown;
                   getScannableDebrisSamples?: () => Array<{ id: string }>;
                 };
               }
             ).__shipExteriorTestUtils;
-            api?.simulateDebrisCollection?.(1);
-            return api?.getScannableDebrisSamples?.().length ?? 0;
+            return api?.getScannableDebrisSamples?.().map((sample) => sample.id) ?? [];
           }),
         { timeout: 15_000 },
       )
-      .toBeGreaterThan(0);
+      .toContain(AUTHORITATIVE_DEBRIS_ID);
 
-    const firstDebrisId = await page.evaluate(() => {
+    const initialDebrisState = await page.evaluate((authoritativeDebrisId) => {
       const api = (
         window as Window & {
           __shipExteriorTestUtils?: {
@@ -543,21 +576,22 @@ test.describe('Ship Exterior Test Utilities', () => {
           };
         }
       ).__shipExteriorTestUtils;
-      const sample = api?.getScannableDebrisSamples?.()[0] ?? null;
+      const sample =
+        api?.getScannableDebrisSamples?.().find((candidate) => candidate.id === authoritativeDebrisId) ?? null;
       return {
         sample,
         targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
         targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
       };
-    });
+    }, AUTHORITATIVE_DEBRIS_ID);
 
-    expect(firstDebrisId.sample?.id ?? null).not.toBeNull();
-    expect(firstDebrisId.sample).toMatchObject({
+    expect(initialDebrisState.sample).toMatchObject({
+      id: AUTHORITATIVE_DEBRIS_ID,
       scanned: false,
       scanProgress: 0,
     });
-    expect(firstDebrisId.targetedAsteroidId).toBeNull();
-    expect(firstDebrisId.targetHoldCandidateId).toBeNull();
+    expect(initialDebrisState.targetedAsteroidId).toBeNull();
+    expect(initialDebrisState.targetHoldCandidateId).toBeNull();
 
     const completionResult = await page.evaluate((sampleId) => {
       const api = (
@@ -568,7 +602,7 @@ test.describe('Ship Exterior Test Utilities', () => {
         }
       ).__shipExteriorTestUtils;
       return api?.forceCompleteDebrisScan(sampleId ?? undefined) ?? false;
-    }, firstDebrisId.sample?.id ?? null);
+    }, AUTHORITATIVE_DEBRIS_ID);
 
     expect(completionResult).toBe(true);
 
@@ -591,7 +625,7 @@ test.describe('Ship Exterior Test Utilities', () => {
             targetedAsteroidId: api?.getTargetedAsteroidId() ?? null,
             targetHoldCandidateId: api?.getTargetHoldCandidateId() ?? null,
           };
-        }, firstDebrisId.sample?.id ?? ''),
+        }, AUTHORITATIVE_DEBRIS_ID),
       )
       .toEqual({
         scanned: true,

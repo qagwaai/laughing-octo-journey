@@ -4,6 +4,7 @@ import type { ShipItem } from '../../model/ship-item';
 import type { Triple } from '../../model/triple';
 import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
 import { FLOATING_DEBRIS_POLL_INTERVAL_MS, FloatingDebrisController } from './floating-debris-controller';
+import { ShipSceneContext } from './ship-scene-context';
 
 interface CapturedRequest {
   request: ItemListByLocationRequest;
@@ -25,6 +26,7 @@ function createDeps(
   let nextHandle = 1;
   const cleared: number[] = [];
   const stateService = new FloatingDebrisStateService();
+  const onItemsChanged = vi.fn();
 
   const socketService = {
     listNearbyDeployedItems: vi
@@ -46,6 +48,7 @@ function createDeps(
     socketService: socketService as never,
     sessionService: sessionService as never,
     stateService,
+    onItemsChanged,
     getPlayerName: () => overrides.playerName ?? 'Pilot',
     getCharacterId: () => 'char-1',
     getActiveShipId: () => (overrides.shipId === undefined ? 'ship-1' : overrides.shipId),
@@ -62,7 +65,7 @@ function createDeps(
     },
   });
 
-  return { controller, stateService, socketService, calls, intervals, cleared };
+  return { controller, stateService, socketService, calls, intervals, cleared, onItemsChanged };
 }
 
 const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000006';
@@ -96,7 +99,7 @@ describe('FloatingDebrisController', () => {
   });
 
   it('seeds a Tractor Beam when the first response is empty', () => {
-    const { controller, calls, stateService } = createDeps();
+    const { controller, calls, stateService, onItemsChanged } = createDeps();
     controller.start();
     calls[0].onResponse({
       success: true,
@@ -110,6 +113,44 @@ describe('FloatingDebrisController', () => {
     expect(all[0].itemType).toBe('ship-tractor-beam');
     expect(all[0].displayName).toBe('Tractor Beam');
     expect(all[0].positionKm).toEqual({ x: 6, y: 2, z: 8 });
+    expect(onItemsChanged).toHaveBeenLastCalledWith(all);
+  });
+
+  it('publishes seeded debris into a ship scene context as a scannable sample', () => {
+    const context = new ShipSceneContext('Pilot::char-1::ship-1', {
+      playerName: 'Pilot',
+      characterId: 'char-1',
+      shipId: 'ship-1',
+      world: { shipPosition: { x: 1, y: 2, z: 3 } },
+    });
+    const stateService = new FloatingDebrisStateService();
+    const integratedController = new FloatingDebrisController({
+      socketService: {
+        listNearbyDeployedItems: vi.fn(() => vi.fn()),
+      } as never,
+      sessionService: { getSessionKey: () => 'session-abc' } as never,
+      stateService,
+      onItemsChanged: (items) => context.setDebrisItems(items),
+      getPlayerName: () => 'Pilot',
+      getCharacterId: () => 'char-1',
+      getActiveShipId: () => 'ship-1',
+      getCelestialBodyId: () => 'ship-1',
+      getShipPositionKm: () => ({ x: 1, y: 2, z: 3 }),
+      getSolarSystemId: () => 'sol-1',
+      setInterval: () => 1,
+    });
+
+    integratedController.start();
+
+    expect(context.getScannableDebrisSamples()).toEqual([
+      expect.objectContaining({
+        id: 'local-cold-boot-ship-tractor-beam',
+        itemType: 'ship-tractor-beam',
+        scanned: false,
+        scanProgress: 0,
+      }),
+    ]);
+    integratedController.stop();
   });
 
   it('does not seed when the response contains items', () => {

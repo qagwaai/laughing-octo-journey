@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { TEST_PLAYER } from '../helpers/auth-helper';
+import { openLoginAndWaitForSocket, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
 import {
@@ -79,19 +79,6 @@ export function setupLoginHandlers(mock: SocketIOMock) {
   }));
 
   return loginResponse;
-}
-
-export async function openLoginAndWaitForSocket(page: Parameters<SocketIOMock['constructor']>[0], mock: SocketIOMock) {
-  const socketConnectedInApp = page
-    .waitForEvent('console', {
-      predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-      timeout: 10_000,
-    })
-    .catch(() => null);
-
-  await page.goto('/(left:login)');
-  await mock.connected;
-  await socketConnectedInApp;
 }
 
 export async function loginWithItalianLocale(page: Parameters<SocketIOMock['constructor']>[0], mock: SocketIOMock) {

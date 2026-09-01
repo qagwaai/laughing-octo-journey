@@ -1,8 +1,9 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
+import { TEST_PLAYER } from '../helpers/auth-helper';
 import { CharacterListPage } from '../page-objects/character-list.page';
 import { CharacterSetupPage } from '../page-objects/character-setup.page';
+import { ensureCharacterListReady } from './shared-session-bootstrap';
 import { SocketIOMock } from './socket-mock';
 
 export const BASE_CHARACTER = { id: 'char-edit-001', characterName: 'Zara Voss', level: 5 };
@@ -41,32 +42,11 @@ export async function setupSharedCharacterEditSession(browser: Browser): Promise
   await mock.setup();
   registerCharacterEditHandlers(mock);
 
-  await page.goto('http://localhost:4200/(left:character-list)');
-
-  try {
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  } catch {
-    registerCharacterEditHandlers(mock);
-    await loginViaUI(page, mock);
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  const loginFormVisibleBeforeLoad = await page
-    .locator('#playerName')
-    .isVisible({ timeout: 1_000 })
-    .catch(() => false);
-  if (page.url().includes('left:login') || loginFormVisibleBeforeLoad) {
-    registerCharacterEditHandlers(mock);
-    await loginViaUI(page, mock);
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  if ((await characterListPage.characterItems.count()) === 0) {
-    const loadButtonVisible = await characterListPage.loadButton.isVisible({ timeout: 2_000 }).catch(() => false);
-    if (loadButtonVisible) {
-      await characterListPage.loadButton.click();
-    }
-  }
+  await ensureCharacterListReady({
+    page,
+    mock,
+    registerSessionHandlers: registerCharacterEditHandlers,
+  });
   await expect(characterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
 
   return { context, page, mock, characterListPage, characterSetupPage };
@@ -84,12 +64,10 @@ export async function resetSharedCharacterEditSession(session: {
   session.mock.reset();
   registerCharacterEditHandlers(session.mock);
 
-  let attempts = 0;
-  while (!session.page.url().includes('left:character-list') && attempts < 4) {
-    attempts += 1;
-    await session.page.goBack();
-  }
-
-  await expect(session.page).toHaveURL(/left:character-list/, { timeout: 10_000 });
+  await ensureCharacterListReady({
+    page: session.page,
+    mock: session.mock,
+    registerSessionHandlers: registerCharacterEditHandlers,
+  });
   await expect(session.characterListPage.characterItems).toHaveCount(1, { timeout: 10_000 });
 }

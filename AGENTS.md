@@ -203,6 +203,10 @@ PLAYWRIGHT_HTML_OPEN=never npx playwright test e2e/tests/market-hub-by-location.
 - Prefer focused tests for changed behavior first, then run broader suites.
 - Keep Playwright tests deterministic by mocking socket traffic via `SocketIOMock`.
 - Avoid brittle timing; use explicit waits on URL/state/locator expectations.
+- For mocked login, treat `SocketIOMock.connected` as authoritative readiness; do not spend test timeout waiting for incidental console messages.
+- When server data replaces a local fallback, wait for and act on the authoritative fixture ID rather than accepting the first transient item.
+- For timer-driven angular-three scenes, prefer Playwright Clock `fastForward()` plus stable UI-state assertions; `runFor()` may process every animation frame and exhaust the test budget under full-suite load.
+- Reuse `ensureCharacterListReady` for character-list setup and recovery instead of creating another URL/count/login recovery loop.
 - Use coverage target context from `docs/testing-policy.md`.
 
 ## Coding Guidance for AI Changes

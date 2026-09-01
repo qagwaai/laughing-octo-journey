@@ -18,6 +18,7 @@ export interface FloatingDebrisControllerDeps {
   socketService: ShipExteriorSocketService;
   sessionService: SessionService;
   stateService: FloatingDebrisStateService;
+  onItemsChanged: (items: readonly FloatingDebrisItem[]) => void;
   getPlayerName: () => string;
   getCharacterId: () => string | null;
   getActiveShipId: () => string | null;
@@ -130,12 +131,15 @@ export class FloatingDebrisController {
         this.deps.stateService.removeById(FloatingDebrisController.COLD_BOOT_TRACTOR_BEAM_ID);
       }
       this.deps.stateService.replaceFromShipItems(items);
+      this.publishItems();
       this.hasIngestedAnyResponse = true;
       return;
     }
 
     if (!this.hasSeededColdBoot && this.deps.stateService.getAll().length === 0) {
       this.seedColdBootTractorBeam(shipPositionKm);
+    } else {
+      this.publishItems();
     }
     this.hasIngestedAnyResponse = true;
   }
@@ -159,7 +163,12 @@ export class FloatingDebrisController {
       },
     };
     this.deps.stateService.upsertLocal([tractorBeam]);
+    this.publishItems();
     this.hasSeededColdBoot = true;
     appLogger.info('FloatingDebrisController seeded cold-boot Tractor Beam', { id: tractorBeam.id });
+  }
+
+  private publishItems(): void {
+    this.deps.onItemsChanged(this.deps.stateService.getAll());
   }
 }

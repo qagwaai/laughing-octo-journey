@@ -285,6 +285,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     socketService: this.shipExteriorSocketService,
     sessionService: this.sessionService,
     stateService: this.floatingDebrisStateService,
+    onItemsChanged: (items) => this.registry.getActiveContext()?.setDebrisItems(items),
     getPlayerName: () => this.navigationPlayerName(),
     getCharacterId: () => this.navigationCharacterId(),
     getActiveShipId: () => this.registry.getActiveContext()?.getState().shipId ?? null,
@@ -415,16 +416,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     },
     refreshView: () => this.bumpMissionRevision(),
-  });
-  private readonly floatingDebrisSync = effect(() => {
-    this.activeContextKey();
-    this.floatingDebrisItems();
-    const active = this.registry.getActiveContext();
-    if (!active) {
-      return;
-    }
-
-    active.setDebrisItems(this.floatingDebrisItems());
   });
   private readonly navigationPlayerName = signal<string>('unknown-player');
   private readonly navigationCharacterId = signal<string>('unknown-character');

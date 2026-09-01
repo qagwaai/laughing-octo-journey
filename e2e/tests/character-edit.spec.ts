@@ -80,7 +80,8 @@ test.describe('Character Edit — setup save redirect', () => {
     await sharedCharacterSetupPage.fillCharacterName('Zara Prime');
     await sharedCharacterSetupPage.clickSubmit();
 
-    await expect(sharedPage).toHaveURL(/left:character-list/);
+    // Edit persistence also waits for the bust descriptor update before routing.
+    await expect(sharedPage).toHaveURL(/left:character-list/, { timeout: 15_000 });
     await sharedCharacterListPage.expectCharacterCount(1);
     await expect(sharedCharacterListPage.characterName(0)).toHaveText('Zara Prime');
 

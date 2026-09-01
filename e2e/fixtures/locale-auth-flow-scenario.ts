@@ -1,3 +1,4 @@
+export { openLoginAndWaitForSocket } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
 export const TEST_PLAYER = 'localeplayer';
@@ -41,17 +42,4 @@ export async function setupLoginSuccessMock(page: Parameters<SocketIOMock['const
   }));
 
   return { mock, loginResponse, TEST_PLAYER };
-}
-
-export async function openLoginAndWaitForSocket(page: Parameters<SocketIOMock['constructor']>[0], mock: SocketIOMock) {
-  const socketConnectedInApp = page
-    .waitForEvent('console', {
-      predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-      timeout: 10_000,
-    })
-    .catch(() => null);
-
-  await page.goto('/(left:login)');
-  await mock.connected;
-  await socketConnectedInApp;
 }

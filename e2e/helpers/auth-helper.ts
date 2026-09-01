@@ -5,6 +5,30 @@ export const TEST_PLAYER = 'testplayer';
 export const TEST_PASSWORD = 'testpassword123';
 export const TEST_SESSION_KEY = 'test-session-key-abc123';
 
+const SOCKET_CONNECTION_TIMEOUT_MS = 10_000;
+
+/**
+ * Opens the login route and waits for the mock's authoritative namespace handshake.
+ */
+export async function openLoginAndWaitForSocket(page: Page, mock: SocketIOMock): Promise<void> {
+  await page.goto('/(left:login)');
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const connectionTimeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(`Socket.IO mock did not complete its namespace connection within ${SOCKET_CONNECTION_TIMEOUT_MS}ms`),
+      );
+    }, SOCKET_CONNECTION_TIMEOUT_MS);
+  });
+
+  try {
+    await Promise.race([mock.connected, connectionTimeout]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Logs in via the login form using a mocked socket.io server, then waits
  * for Angular to navigate to the character-list left outlet.
@@ -28,20 +52,10 @@ export async function loginViaUI(page: Page, mock: SocketIOMock): Promise<void> 
     data: loginResponse,
   }));
 
-  const socketConnectedInApp = page
-    .waitForEvent('console', {
-      predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-      timeout: 10_000,
-    })
-    .catch(() => null);
-
-  await page.goto('/(left:login)');
-
   // Wait until the socket.io namespace-connect handshake has completed so that
   // socket.connected === true before the form is submitted.  Without this,
   // SocketService.emit() silently drops the login event.
-  await mock.connected;
-  await socketConnectedInApp;
+  await openLoginAndWaitForSocket(page, mock);
 
   await page.locator('#playerName').fill(TEST_PLAYER);
   await page.locator('#password').fill(TEST_PASSWORD);

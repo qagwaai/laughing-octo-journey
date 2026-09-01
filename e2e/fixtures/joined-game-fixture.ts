@@ -1,6 +1,7 @@
 import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
 import { loginViaUI } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { ensureCharacterListReady } from './shared-session-bootstrap';
 import { SocketIOMock } from './socket-mock';
 
 export type SessionHandlerRegistrar = (mock: SocketIOMock) => void;
@@ -29,63 +30,6 @@ export type JoinedGameFixtures = {
   prepareJoinedPage: () => Promise<void>;
 };
 
-async function ensureCharacterListReady(
-  page: Page,
-  mock: SocketIOMock,
-  registerSessionHandlers: SessionHandlerRegistrar,
-  characterListUrl: string,
-): Promise<void> {
-  await page.goto(characterListUrl);
-
-  try {
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  } catch {
-    // Full-suite runs can briefly bounce back to login even after storageState hydrate.
-    registerSessionHandlers(mock);
-    await loginViaUI(page, mock);
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  const loginFormVisibleBeforeLoad = await page
-    .locator('#playerName')
-    .isVisible({ timeout: 1_000 })
-    .catch(() => false);
-  if (page.url().includes('left:login') || loginFormVisibleBeforeLoad) {
-    registerSessionHandlers(mock);
-    await loginViaUI(page, mock);
-    await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-  }
-
-  if ((await page.locator('.character-item').count()) === 0) {
-    const loginFormVisibleBeforeError = await page
-      .locator('#playerName')
-      .isVisible({ timeout: 1_000 })
-      .catch(() => false);
-    if (page.url().includes('left:login') || loginFormVisibleBeforeError) {
-      registerSessionHandlers(mock);
-      await loginViaUI(page, mock);
-      await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-    }
-
-    const characterItemCountAfterRecovery = await page.locator('.character-item').count();
-    if (characterItemCountAfterRecovery === 0 && !page.url().includes('left:character-list')) {
-      registerSessionHandlers(mock);
-      await loginViaUI(page, mock);
-      await expect(page).toHaveURL(/left:character-list/, { timeout: 10_000 });
-    }
-
-    const loadButton = page.locator('.load-btn').first();
-    const loadButtonVisible = (await loadButton.count()) > 0 && (await loadButton.isVisible());
-    if (!loadButtonVisible) {
-      throw new Error(`Character list is empty and load button is unavailable (url=${page.url()}).`);
-    }
-
-    await expect(loadButton).toBeEnabled({ timeout: 5_000 });
-    await loadButton.click();
-    await expect(page.locator('.character-item')).toHaveCount(1, { timeout: 10_000 });
-  }
-}
-
 async function ensureGameJoined(
   page: Page,
   gameShell: GameShellPage,
@@ -112,7 +56,12 @@ export function createJoinedGameTest(config: JoinedGameFixtureConfig) {
         await mock.setup();
         config.registerSessionHandlers(mock);
 
-        await ensureCharacterListReady(page, mock, config.registerSessionHandlers, characterListUrl);
+        await ensureCharacterListReady({
+          page,
+          mock,
+          registerSessionHandlers: config.registerSessionHandlers,
+          characterListUrl,
+        });
         await ensureGameJoined(page, gameShell, joinedUrlPattern, config.joinButtonText);
 
         await use({
