@@ -1,12 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
-import {
-  evaluateMissionGateOnRepair,
-  parseMissionGateState,
-  resolveShipExteriorMission,
-  type ShipExteriorMissionGateState,
-} from '../../mission/ship-exterior-mission';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
@@ -21,8 +15,7 @@ import { type ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { type ShipUpsertResponse } from '../../model/ship-upsert';
 import { SessionService, SocketService } from '../../services';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
-import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
-import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
@@ -51,8 +44,7 @@ export default class RepairRetrofitShipDetailPage {
   private shipService = inject(ShipService);
   private consumedItemShadowService = inject(ConsumedItemShadowService);
   private sessionService = inject(SessionService);
-  private missionProgressSyncService = inject(MissionProgressSyncService);
-  private missionStateService = inject(ShipExteriorMissionStateService);
+  private missionProgressFacade = inject(MissionProgressFacade);
   private navigationState: RepairDetailNavigationState = resolveNavigationState<RepairDetailNavigationState>(
     this.router,
   );
@@ -361,48 +353,17 @@ export default class RepairRetrofitShipDetailPage {
       return;
     }
 
-    const mission = resolveShipExteriorMission(missionId);
     const shipId = this.joinShip()?.id?.trim() ?? '';
-    const context = { missionId, playerName, characterId, shipId };
-    const stored = shipId ? this.missionStateService.loadState(context) : null;
-    const steps = mission.getGateStepDefinitions();
-    const gateState = stored
-      ? (parseMissionGateState({
-          rawStatusDetail: JSON.stringify(stored),
-          missionId,
-          characterId,
-          steps,
-        }) ?? stored)
-      : null;
-    if (!gateState) {
+    if (!shipId) {
       return;
     }
 
-    const evaluation = evaluateMissionGateOnRepair({
-      mission,
-      gateState,
-      repairKind: 'ship',
-    });
-    const nextGateState = evaluation.changed ? evaluation.gateState : gateState;
-
-    if (evaluation.changed) {
-      this.missionStateService.saveState(context, evaluation.gateState);
-    }
-
-    // Always perform an idempotent sync after ship repair so backend mission
-    // status remains aligned even if local gate state was already advanced.
-    void this.syncMissionProgressToBackend(nextGateState);
-  }
-
-  /**
-   * Syncs updated mission gate state to backend mission progress service.
-   */
-  private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
-    await this.missionProgressSyncService.syncGateState({
-      playerName: this.playerName(),
-      characterId: this.joinCharacter()?.id ?? '',
+    this.missionProgressFacade.advanceRepair({
+      missionId,
+      playerName,
+      characterId,
+      shipId,
       sessionKey: this.sessionService.getSessionKey() ?? '',
-      gateState,
-    });
+    }, 'ship');
   }
 }

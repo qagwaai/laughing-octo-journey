@@ -96,6 +96,7 @@ export function configureFirstTargetFlowMock(
       updatedAt: '2026-05-01T00:00:00.000Z',
     },
   ];
+  let hullPatchKitManufactured = false;
 
   if (options?.includeIronInShipInventory) {
     shipInventory.push({
@@ -166,7 +167,31 @@ export function configureFirstTargetFlowMock(
           name: 'Starter Pod',
           model: 'Scavenger Pod',
           status: 'Damaged',
-          inventory: shipInventory,
+          inventory: [
+            ...shipInventory,
+            ...(hullPatchKitManufactured
+              ? [
+                  {
+                    id: 'item-hull-patch-kit-1',
+                    itemType: 'hull-patch-kit',
+                    displayName: 'Hull Patch Kit',
+                    launchable: false,
+                    state: 'contained',
+                    damageStatus: 'intact',
+                    container: { containerType: 'ship' as const, containerId: 'ship-1' },
+                    owningPlayerId: TEST_PLAYER,
+                    owningCharacterId: TEST_CHARACTER_ID,
+                    kinematics: null,
+                    destroyedAt: null,
+                    destroyedReason: null,
+                    discoveredAt: null,
+                    discoveredByCharacterId: null,
+                    createdAt: '2026-05-01T00:00:00.000Z',
+                    updatedAt: '2026-05-01T00:00:00.000Z',
+                  },
+                ]
+              : []),
+          ],
           spatial: {
             solarSystemId: 'sol',
             frame: 'barycentric',
@@ -287,6 +312,20 @@ export function configureFirstTargetFlowMock(
     };
   });
 
+  mock.on('ship-upsert-request', (request) => {
+    const payload = request as { ship?: Record<string, unknown> };
+    return {
+      event: 'ship-upsert-response',
+      data: {
+        success: true,
+        message: '',
+        playerName: TEST_PLAYER,
+        characterId: TEST_CHARACTER_ID,
+        ship: payload.ship ?? {},
+      },
+    };
+  });
+
   mock.on('item-upsert-request', (request) => {
     const payload = request as {
       item?: {
@@ -302,6 +341,9 @@ export function configureFirstTargetFlowMock(
       };
     };
     const item = payload.item ?? {};
+    if (item.itemType === 'hull-patch-kit' && item.state === 'contained') {
+      hullPatchKitManufactured = true;
+    }
     return {
       event: 'item-upsert-response',
       data: {

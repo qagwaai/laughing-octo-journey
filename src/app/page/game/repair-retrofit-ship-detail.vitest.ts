@@ -7,6 +7,7 @@ import { createMockSessionService, createMockSocketService, type MockSocketServi
 import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -55,6 +56,11 @@ const mockMissionStateService = {
   lastSaved: { asReadonly: () => () => null },
   loadState: () => null,
   saveState: () => undefined,
+};
+
+const mockMissionProgressFacade = {
+  advanceManufacture: vi.fn(),
+  advanceRepair: vi.fn(),
 };
 
 function normalizeInventoryItem(item: any): any {
@@ -125,6 +131,7 @@ function setup(state?: NavigationState) {
       { provide: SessionService, useValue: mockSession },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSyncService },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionStateService },
+      { provide: MissionProgressFacade, useValue: mockMissionProgressFacade },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });

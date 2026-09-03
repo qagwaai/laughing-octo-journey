@@ -8,7 +8,9 @@ import { TEST_PLAYER } from '../helpers/auth-helper';
 
 test.describe('First Target Mission Flow', () => {
   test('validates all first-target mission gate steps in order', async ({ page }) => {
-    const { celestialBodyUpsertRequests, launchItemRequests } = await setupFirstTargetFlowTest(page);
+    const { celestialBodyUpsertRequests, launchItemRequests, gameShell } = await setupFirstTargetFlowTest(page, {
+      includeIronInShipInventory: true,
+    });
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
@@ -158,20 +160,34 @@ test.describe('First Target Mission Flow', () => {
       )
       .toContain('iron');
 
+    await gameShell.openNav('Fabrication Lab');
+    await expect(page).toHaveURL(/left:fabrication-lab/);
+    await page.getByRole('button', { name: 'View Print Queue' }).click();
+    await expect(page).toHaveURL(/right:print-queue/);
+
+    const printHullPatchKitButton = page.getByRole('button', { name: 'Print Hull Patch Kit' });
+    await expect(printHullPatchKitButton).toBeVisible();
+    await expect(printHullPatchKitButton).toBeEnabled();
+    await printHullPatchKitButton.click();
+    await expect(page.locator('.status-line--success')).toContainText('queued for printing');
+
+    const finishPrintButton = page.getByRole('button', { name: 'Finish (dev)' });
+    await expect(finishPrintButton).toBeVisible();
+    await finishPrintButton.click();
+    await expect(page.getByText('Hull Patch Kit print complete', { exact: false })).toBeVisible({ timeout: 10000 });
+
     await expect
       .poll(async () =>
         page.evaluate(() => {
           const api = (
             window as Window & {
               __shipExteriorTestUtils?: {
-                simulateManufacture: (itemType: string) => unknown;
                 getMissionGateState: () => {
                   steps: Array<{ key: string; status: string }>;
                 };
               };
             }
           ).__shipExteriorTestUtils;
-          api!.simulateManufacture('hull-patch-kit');
           const gate = api!.getMissionGateState();
           return {
             manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
@@ -181,6 +197,20 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({ manufacture: 'completed', repair: 'active' });
 
+    await gameShell.openNav('Repair & Retrofit');
+    await expect(page).toHaveURL(/left:repair-retrofit/);
+    const guidanceOverlay = page.locator('.left-pane-mission-guidance-overlay');
+    if (await guidanceOverlay.isVisible().catch(() => false)) {
+      await guidanceOverlay.locator('button.overlay-dismiss').click();
+    }
+    await page.getByRole('button', { name: 'View details' }).click();
+    await expect(page).toHaveURL(/right:repair-retrofit-items/);
+
+    const repairShipButton = page.getByRole('button', { name: 'Fully Repair Ship' });
+    await expect(repairShipButton).toBeVisible();
+    await expect(repairShipButton).toBeEnabled();
+    await repairShipButton.click();
+
     await expect
       .poll(
         async () =>
@@ -188,7 +218,6 @@ test.describe('First Target Mission Flow', () => {
             const api = (
               window as Window & {
                 __shipExteriorTestUtils?: {
-                  simulateRepair: (repairKind: string) => unknown;
                   getMissionGateState: () => {
                     steps: Array<{ key: string; status: string }>;
                     activeObjectiveText: string;
@@ -196,11 +225,7 @@ test.describe('First Target Mission Flow', () => {
                 };
               }
             ).__shipExteriorTestUtils;
-            if (!api?.simulateRepair || !api?.getMissionGateState) {
-              return { allCompleted: false, hasCompletionObjective: false, hasDebrisObjective: false };
-            }
-            api.simulateRepair('ship');
-            const gate = api.getMissionGateState();
+            const gate = api!.getMissionGateState();
             return {
               allCompleted: Boolean(gate?.steps.every((step) => step.status === 'completed')),
               hasCompletionObjective: Boolean(gate?.activeObjectiveText.includes('Mission objectives complete')),

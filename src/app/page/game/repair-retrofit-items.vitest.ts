@@ -7,6 +7,7 @@ import { createMockPrinterStateService, createMockSessionService, createMockSock
 import { DEFAULT_SHIP_MODEL } from '../../model/ship-list';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
@@ -35,6 +36,11 @@ const mockMissionStateService = {
   lastSaved: { asReadonly: () => () => null },
   loadState: () => null,
   saveState: () => undefined,
+};
+
+const mockMissionProgressFacade = {
+  advanceManufacture: vi.fn(),
+  advanceRepair: vi.fn(),
 };
 
 type MockSocketWithUpsert = ReturnType<typeof createMockSocketService> & {
@@ -127,6 +133,7 @@ function setup(state?: NavigationState) {
       { provide: PrinterStateService, useValue: mockPrinter },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSyncService },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionStateService },
+      { provide: MissionProgressFacade, useValue: mockMissionProgressFacade },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
   });

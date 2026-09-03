@@ -53,7 +53,6 @@ describe('ship exterior bare scene test api', () => {
         forceCompleteShipScan: vi.fn(),
         getHoveredScannableShipId: vi.fn(),
         launchFromHotkey: vi.fn(),
-        simulateDebrisCollection: vi.fn(),
         simulateManufacture: vi.fn(),
         simulateRepair: vi.fn(),
         getActiveShipInventoryItemTypes: vi.fn(),
@@ -72,5 +71,50 @@ describe('ship exterior bare scene test api', () => {
     expect(window.__shipExteriorTestUtils?.getScannableShipSamples).toBeDefined();
     expect(window.__shipExteriorTestUtils?.forceCompleteShipScan).toBeDefined();
     expect(window.__shipExteriorTestUtils?.getHoveredScannableShipId).toBeDefined();
+    expect(window.__shipExteriorTestUtils?.simulateManufacture).toBe(api.legacy.simulateManufacture);
+    expect(window.__shipExteriorTestUtils?.simulateRepair).toBe(api.legacy.simulateRepair);
+  });
+
+  it('does not register globals when the adapter is disabled', () => {
+    const api = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      snapshotActiveContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+      legacy: {} as never,
+    } satisfies ShipExteriorBareSceneTestApi;
+
+    registerShipExteriorBareSceneTestApi(api, false);
+
+    expect(window.__shipExteriorBareSceneTestUtils).toBeUndefined();
+    expect(window.__shipExteriorTestUtils).toBeUndefined();
+  });
+
+  it('removes both globals during adapter teardown', () => {
+    const api = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      snapshotActiveContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+      legacy: {} as never,
+    } satisfies ShipExteriorBareSceneTestApi;
+
+    registerShipExteriorBareSceneTestApi(api);
+    unregisterShipExteriorBareSceneTestApi();
+
+    expect(window.__shipExteriorBareSceneTestUtils).toBeUndefined();
+    expect(window.__shipExteriorTestUtils).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 # Ship Exterior Bare Scene Testing Separation Plan
 
 Date: 2026-09-01  
-Status: Approved for Implementation (Phase 0 Complete)  
+Status: Phase 4 In Progress; Phases 3-6 Remaining  
 Owner: Frontend gameplay reliability  
 Scope: Ship exterior mission simulation seams and their Playwright consumers
 
@@ -460,6 +460,70 @@ Validation evidence:
 
 **Implementation entry point:** begin with Phase 1 characterization only where it protects orchestration boundaries, then proceed directly to Phase 2 canonical evaluator delegation. Do not reintroduce timing waits, transient debris selection, or alternate simulation behavior.
 
+### 10.7 Phase 1 and Phase 2 implementation result
+
+Completed: 2026-09-03
+
+- Added simulator characterization for changed-state publication, persistence, refresh, canonical evidence, and canonical no-op behavior.
+- Replaced simulator manufacture and repair transition algorithms with calls to `evaluateMissionGateOnManufacture` and `evaluateMissionGateOnRepair`.
+- Replaced the debris no-op with a call to `evaluateMissionGateOnDebrisCollection`; the temporary browser API signature remains unchanged.
+- Preserved persisted mission keys and `ShipExteriorMissionGateState` shapes.
+- Confirmed production manufacture and repair paths already use the canonical evaluators; no broader facade or E2E adapter extraction was needed for this slice.
+- Preserved all Phase 0 stabilization behavior in sections 10.5 and 10.6, including authoritative fixture identities, `SocketIOMock.connected`, `ensureCharacterListReady`, and timer-safe `clock.fastForward()` coverage.
+
+**Phase 1 characterization exit gate: passed.** Boundary behavior is protected without adding tests for deleted simulator rules.
+
+**Phase 2 exit gate: passed.** Manufacture, repair, and debris transitions have no alternate simulator algorithms; the compatibility methods delegate to canonical evaluators.
+
+Remaining work:
+
+1. Phase 3: finish consolidating scene publication/refresh and add facade boundary characterization.
+2. Phase 4: extract and explicitly gate the E2E adapter while retaining only temporary legacy compatibility.
+3. Phase 5: rebalance Playwright coverage toward real fabrication and repair UI workflows.
+4. Phase 6: remove obsolete simulator methods, tests, and legacy globals after consumers migrate.
+
+### 10.8 Phase 3 implementation slice
+
+Started: 2026-09-03
+
+- Added `MissionProgressFacade` to coordinate canonical manufacture/repair evaluation, persisted-state loading and normalization, local persistence, and mission-status synchronization.
+- Migrated the fabrication queue, repair asset list, and ship repair detail workflows to the facade.
+- Added focused facade characterization for successful manufacture, wrong repair no-op, persistence, synchronization, and persisted state-shape compatibility.
+- Routed scene launch mission synchronization through the facade while retaining launch-specific contention backoff and scene publication callbacks.
+- Added an explicit production-build guard preventing browser test API registration while preserving dev/E2E compatibility.
+- Removed the remaining `simulateDebrisCollection` call from deterministic mission-flow setup; debris fixture identity remains authoritative and is not prepared through simulation.
+- Preserved the existing idempotent ship-repair synchronization behavior and all persisted keys/state shapes.
+- Scene test controls remain on the compatibility path until the facade can also own scene publication and refresh without widening this slice.
+
+Phase 3 remains in progress pending full scene publication/refresh consolidation; launch synchronization now uses the facade boundary.
+
+### 10.9 Phase 4 implementation slice
+
+Started: 2026-09-03
+
+- Guarded `registerTestApi()` from registering either legacy browser global when `environment.production` is true.
+- Made adapter enablement explicit at the registration boundary and added coverage for disabled registration and complete teardown of both globals.
+- Kept the existing dev/E2E API shape and legacy compatibility globals unchanged for incremental migration.
+- Explicit adapter extraction, teardown assertions, and removal of legacy globals remain for the rest of Phase 4.
+
+### 10.10 Phase 5 implementation slice
+
+Started: 2026-09-03
+
+- Removed the obsolete debris simulation call from `ship-exterior-test-utils.spec.ts`; the test now proceeds from authoritative mission state without treating debris simulation as fixture setup.
+- Added authoritative iron inventory to the first-target cue fixture.
+- Migrated the active “repair & retrofit menu cue after manufacture” scenario from `simulateManufacture` to the real Fabrication Lab, Print Queue, and dev completion workflow. Mission progression now reaches the scene through the production facade and item-upsert boundary.
+- The deterministic full-mission scene-reaction test remains simulation-backed until Phase 3 completes scene publication/refresh consolidation; it is not a user-workflow assertion.
+- The skipped refresh characterization and repair completion portion of the full-mission scene-reaction coverage still retain simulation calls intentionally; remaining active repair consumers require a separate workflow migration slice.
+- Added a facade publisher boundary keyed by the persisted mission context. The ship-exterior scene registers its active contexts and now receives changed manufacture/repair state immediately while retaining local persistence and backend synchronization.
+- Added facade characterization proving changed transitions publish to a registered scene consumer.
+- Retried the deterministic full-mission manufacture migration after scene publication consolidation: the test now uses the real Fabrication Lab and Print Queue workflow with authoritative iron inventory, while retaining simulation only for the later repair scene-reaction assertion.
+- Extended the full-mission socket fixture to retain the manufactured Hull Patch Kit across authoritative ship-list refreshes and acknowledge ship upserts.
+- Migrated the full-mission repair progression to the real Repair & Retrofit workflow; the scene assertion now observes facade-published completion state after the production ship repair path consumes the kit.
+- Removed the now-unused `simulateDebrisCollection` browser hook and simulator wrapper; debris progression has no remaining E2E consumers and is covered by the canonical evaluator instead of a compatibility control.
+- Added explicit adapter characterization that manufacture and repair simulation hooks remain legacy compatibility controls only; active fabrication and repair workflow coverage now uses production UI paths.
+- Kept those two legacy hooks until the dedicated scene-reaction/test-utility consumers are reclassified or removed in Phase 6.
+
 ## 11. Validation Commands
 
 Phase 0 focused baseline:
@@ -495,8 +559,8 @@ Run the broader Playwright suite after the focused acceptance set passes and com
 ## 12. Acceptance Criteria
 
 - [x] All affected baseline failures are classified.
-- [ ] No alternate mission transition algorithm exists for E2E tests.
-- [ ] Debris progression is either canonical or no longer exposed as a simulation.
+- [x] No alternate mission transition algorithm exists for E2E tests.
+- [x] Debris progression is canonical while the temporary compatibility API remains.
 - [ ] Mission transitions use one state publication, persistence, and synchronization boundary.
 - [ ] The scene component contains no simulation or test API registration methods.
 - [ ] Browser test hooks require explicit E2E enablement.

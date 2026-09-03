@@ -53,7 +53,6 @@ export interface ShipExteriorLegacyTestApi {
   forceCompleteShipScan: (sampleId?: string) => boolean;
   getHoveredScannableShipId: () => string | null;
   launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-  simulateDebrisCollection: (remainingDebrisCount?: number) => ShipExteriorMissionGateState;
   simulateManufacture: (itemType: string) => ShipExteriorMissionGateState;
   simulateRepair: (repairKind: string) => ShipExteriorMissionGateState;
   getActiveShipInventoryItemTypes: () => string[];
@@ -74,7 +73,14 @@ export interface ShipExteriorBareSceneTestApi {
   legacy: ShipExteriorLegacyTestApi;
 }
 
-export function registerShipExteriorBareSceneTestApi(api: ShipExteriorBareSceneTestApi): void {
+export function registerShipExteriorBareSceneTestApi(
+  api: ShipExteriorBareSceneTestApi,
+  enabled = true,
+): void {
+  if (!enabled) {
+    return;
+  }
+
   if (typeof window === 'undefined') {
     return;
   }

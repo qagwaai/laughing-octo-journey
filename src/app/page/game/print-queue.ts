@@ -2,12 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signa
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
-import {
-  evaluateMissionGateOnManufacture,
-  parseMissionGateState,
-  resolveShipExteriorMission,
-  type ShipExteriorMissionGateState,
-} from '../../mission/ship-exterior-mission';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -26,10 +20,9 @@ import { coerceShipInventory, type ShipItem, type ShipSummary } from '../../mode
 import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { SessionService, ShipService, SocketService } from '../../services';
 import { appLogger } from '../../services/logger';
-import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import type { PrintQueueItem } from '../../services/printer-state.service';
 import { PrinterStateService } from '../../services/printer-state.service';
-import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
 import { type PrintQueueNavigationState } from './repair-retrofit-state';
@@ -50,8 +43,7 @@ export default class PrintQueuePage {
   private socketService = inject(SocketService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
-  private missionProgressSyncService = inject(MissionProgressSyncService);
-  private missionStateService = inject(ShipExteriorMissionStateService);
+  private missionProgressFacade = inject(MissionProgressFacade);
   private printerService = inject(PrinterStateService);
   private destroyRef = inject(DestroyRef);
   private collectingItemIds = new Set<string>();
@@ -409,38 +401,18 @@ export default class PrintQueuePage {
       return;
     }
 
-    const mission = resolveShipExteriorMission(missionId);
     const shipId = this.activeShip()?.id?.trim() ?? '';
-    const context = { missionId, playerName, characterId, shipId };
-    const stored = shipId ? this.missionStateService.loadState(context) : null;
-    const steps = mission.getGateStepDefinitions();
-    const normalizedStored = stored
-      ? parseMissionGateState({
-          rawStatusDetail: JSON.stringify(stored),
-          missionId,
-          characterId,
-          steps,
-        })
-      : null;
-    const gateState = normalizedStored ?? stored;
-    if (!gateState) {
+    if (!shipId) {
       return;
     }
 
-    const evaluation = evaluateMissionGateOnManufacture({ mission, gateState, manufacturedItemType });
-    if (evaluation.changed) {
-      this.missionStateService.saveState(context, evaluation.gateState);
-      void this.syncMissionProgressToBackend(evaluation.gateState);
-    }
-  }
-
-  private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
-    await this.missionProgressSyncService.syncGateState({
-      playerName: this.playerName(),
-      characterId: this.joinCharacter()?.id ?? '',
+    this.missionProgressFacade.advanceManufacture({
+      missionId,
+      playerName,
+      characterId,
+      shipId,
       sessionKey: this.sessionService.getSessionKey() ?? '',
-      gateState,
-    });
+    }, manufacturedItemType);
   }
 
   private describeConsumedMaterials(consumedMaterials: readonly PrintableConsumedMaterial[]): string {

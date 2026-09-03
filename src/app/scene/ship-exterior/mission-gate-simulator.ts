@@ -1,4 +1,9 @@
-import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
+import {
+  evaluateMissionGateOnManufacture,
+  evaluateMissionGateOnRepair,
+  resolveShipExteriorMission,
+  type ShipExteriorMissionGateState,
+} from '../../mission/ship-exterior-mission';
 
 export interface MissionGateSimulatorDeps {
   createInitialState: (characterId?: string) => ShipExteriorMissionGateState;
@@ -50,48 +55,39 @@ export class MissionGateSimulator {
     return resetState;
   }
 
-  simulateDebrisCollection(_remainingDebrisCount?: number): ShipExteriorMissionGateState {
-    return this.deps.getCurrentState() ?? this.deps.createInitialState();
-  }
-
   simulateManufacture(itemType: string): ShipExteriorMissionGateState {
-    if (itemType !== 'hull-patch-kit') {
-      return this.deps.getCurrentState() ?? this.deps.createInitialState();
-    }
-
     const missionState = this.deps.getCurrentState() ?? this.deps.createInitialState();
-    const manufactureStep = missionState.steps.find((step) => step.key === 'manufacture_hull_patch_kit');
-    if (manufactureStep?.status !== 'active') {
+    const evaluation = evaluateMissionGateOnManufacture({
+      mission: resolveShipExteriorMission(missionState.missionId),
+      gateState: missionState,
+      manufacturedItemType: itemType,
+    });
+
+    if (!evaluation.changed) {
       return missionState;
     }
 
-    return this.updateState((state) => {
-      const manufactureCompleted = MissionGateSimulator.setStepStatus(state, 'manufacture_hull_patch_kit', 'completed');
-      const repairActive = MissionGateSimulator.setStepStatus(manufactureCompleted, 'repair_scavenger_pod', 'active');
-      return {
-        ...repairActive,
-        activeObjectiveText: 'Objective unlocked: Repair the Scavenger Pod at the Repair & Retrofit station.',
-      };
-    });
+    this.deps.setState(evaluation.gateState);
+    this.deps.persistState(evaluation.gateState);
+    this.deps.refreshView();
+    return evaluation.gateState;
   }
 
   simulateRepair(repairKind: string): ShipExteriorMissionGateState {
-    if (repairKind !== 'ship') {
-      return this.deps.getCurrentState() ?? this.deps.createInitialState();
-    }
-
     const missionState = this.deps.getCurrentState() ?? this.deps.createInitialState();
-    const repairStep = missionState.steps.find((step) => step.key === 'repair_scavenger_pod');
-    if (repairStep?.status !== 'active') {
+    const evaluation = evaluateMissionGateOnRepair({
+      mission: resolveShipExteriorMission(missionState.missionId),
+      gateState: missionState,
+      repairKind,
+    });
+
+    if (!evaluation.changed) {
       return missionState;
     }
 
-    return this.updateState((state) => {
-      const repairCompleted = MissionGateSimulator.setStepStatus(state, 'repair_scavenger_pod', 'completed');
-      return {
-        ...repairCompleted,
-        activeObjectiveText: 'Mission objectives complete. Await further directives.',
-      };
-    });
+    this.deps.setState(evaluation.gateState);
+    this.deps.persistState(evaluation.gateState);
+    this.deps.refreshView();
+    return evaluation.gateState;
   }
 }

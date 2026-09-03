@@ -19,6 +19,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
 import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
 import {
@@ -42,7 +43,7 @@ import { ShipSummary } from '../../model/ship-list';
 import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
 import { MarketService } from '../../services/market.service';
-import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { SessionService } from '../../services/session.service';
 import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -115,12 +116,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly asteroidPersistenceService = inject(AsteroidPersistenceService);
   private readonly inventoryRewardService = inject(InventoryRewardService);
   private readonly shipExteriorSocketService = inject(ShipExteriorSocketService);
-  private readonly missionProgressSyncService = inject(MissionProgressSyncService);
+  private readonly missionProgressFacade = inject(MissionProgressFacade);
   private readonly shipExteriorViewStateService = inject(ShipExteriorViewStateService);
   private readonly floatingDebrisStateService = inject(FloatingDebrisStateService);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessionController = new ShipExteriorSessionController();
+  private readonly missionPublicationDisposers = new Map<string, () => void>();
 
   readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
   // CHANGE ANCHOR: reactive scene state
@@ -431,7 +433,17 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     },
     enqueueMissionProgressUpsert: (item) => {
-      void this.syncMissionProgressToBackend(item.gateState);
+      const active = this.registry.getActiveContext();
+      const context = active ? this.buildMissionStateContext(active.getState()) : null;
+      if (context) {
+        this.missionProgressFacade.syncPublishedState(
+          {
+            ...context,
+            sessionKey: this.sessionService.getSessionKey() ?? '',
+          },
+          item.gateState,
+        );
+      }
     },
     removeAsteroidSamples: (sampleIds) => this.removeAsteroidSamples(sampleIds),
     consumeLaunchedItem: (response) => this.consumeLaunchedItem(response),
@@ -1073,6 +1085,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private teardownAllContexts(): void {
+    this.missionPublicationDisposers.forEach((dispose) => dispose());
+    this.missionPublicationDisposers.clear();
     this.registry.dispose();
     this.floatingDebrisStateService.clear();
     this.contexts.set([]);
@@ -1088,6 +1102,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private registerTestApi(): void {
+    if (environment.production) {
+      return;
+    }
+
     registerShipExteriorBareSceneTestApi({
       contextKeys: this.contextKeys,
       activeContextKey: this.activeContextKey.asReadonly(),
@@ -1118,14 +1136,12 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         forceCompleteShipScan: (sampleId?: string) => this.forceCompleteShipScan(sampleId),
         getHoveredScannableShipId: () => this.registry.getActiveContext()?.getHoveredScannableShipId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
-        simulateDebrisCollection: (remainingDebrisCount?: number) =>
-          this.simulateDebrisCollection(remainingDebrisCount),
         simulateManufacture: (itemType: string) => this.simulateManufacture(itemType),
         simulateRepair: (repairKind: string) => this.simulateRepair(repairKind),
         getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
         getActiveLaunchToast: () => this.activeLaunchToast(),
       },
-    });
+    }, !environment.production);
   }
 
   private resetMissionGateStateForTest(): ShipExteriorMissionGateState {
@@ -1341,6 +1357,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private ensureMissionGateStateForContext(context: ShipSceneContext): ShipExteriorMissionGateState {
+    this.registerMissionPublisher(context);
     const existing = context.getMissionGateState();
     if (existing) {
       return existing;
@@ -1358,6 +1375,23 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.bumpMissionRevision();
     return nextState;
+  }
+
+  private registerMissionPublisher(context: ShipSceneContext): void {
+    if (this.missionPublicationDisposers.has(context.contextKey)) {
+      return;
+    }
+
+    const storageContext = this.buildMissionStateContext(context.getState());
+    if (!storageContext) {
+      return;
+    }
+
+    const dispose = this.missionProgressFacade.registerPublisher(storageContext, (gateState) => {
+      context.setMissionGateState(gateState);
+      this.bumpMissionRevision();
+    });
+    this.missionPublicationDisposers.set(context.contextKey, dispose);
   }
 
   private persistMissionGateState(context: ShipSceneContext, state: ShipExteriorMissionGateState): void {
@@ -1818,19 +1852,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private setLaunchSeedHint(_launchSeed: number | null): void {
     this.bumpRuntimeRevision();
-  }
-
-  private async syncMissionProgressToBackend(gateState: ShipExteriorMissionGateState): Promise<void> {
-    await this.missionProgressSyncService.syncGateState({
-      playerName: this.navigationPlayerName(),
-      characterId: this.navigationCharacterId(),
-      sessionKey: this.sessionService.getSessionKey() ?? '',
-      gateState,
-    });
-  }
-
-  private simulateDebrisCollection(_remainingDebrisCount?: number): ShipExteriorMissionGateState {
-    return this.missionGateSimulator.simulateDebrisCollection(_remainingDebrisCount);
   }
 
   private simulateManufacture(itemType: string): ShipExteriorMissionGateState {

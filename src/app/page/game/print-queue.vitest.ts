@@ -13,6 +13,7 @@ import {
   type MockSocketService,
 } from '../../../testing';
 import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
@@ -74,6 +75,16 @@ function setup(options: {
   const mockMissionProgressSync = {
     syncGateState: vi.fn().mockReturnValue(Promise.resolve('skipped' as const)),
   };
+  const mockMissionProgressFacade = {
+    advanceManufacture: vi.fn((context: Parameters<ShipExteriorMissionStateService['loadState']>[0]) => {
+      const state = mockMissionState.loadState(context);
+      if (state) {
+        mockMissionState.saveState(context, state);
+      }
+      return state;
+    }),
+    advanceRepair: vi.fn(),
+  };
   const mockShipService = {
     listShipsByOwner: vi.fn(),
   };
@@ -87,6 +98,7 @@ function setup(options: {
       { provide: PrinterStateService, useValue: options.printerService },
       { provide: ShipExteriorMissionStateService, useValue: mockMissionState },
       { provide: MissionProgressSyncService, useValue: mockMissionProgressSync },
+      { provide: MissionProgressFacade, useValue: mockMissionProgressFacade },
       { provide: Router, useValue: mockRouter },
     ],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -100,6 +112,7 @@ function setup(options: {
     mockRouter,
     mockMissionState,
     mockMissionProgressSync,
+    mockMissionProgressFacade,
     mockShipService,
   };
 }

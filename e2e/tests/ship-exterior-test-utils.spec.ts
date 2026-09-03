@@ -844,15 +844,6 @@ test.describe('Ship Exterior Test Utilities', () => {
       )
       .toEqual({ neutralize: 'completed', manufacture: 'active' });
 
-    await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: { simulateDebrisCollection: (remainingDebrisCount?: number) => unknown };
-        }
-      ).__shipExteriorTestUtils;
-      api!.simulateDebrisCollection(0);
-    });
-
     await expect
       .poll(async () =>
         page.evaluate(() => {

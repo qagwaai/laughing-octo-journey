@@ -37,28 +37,21 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await waitForShipExteriorTestApi(sharedPage, prepareJoinedPage);
   await advanceMissionToManufactureStep(sharedPage);
 
-  await expect
-    .poll(
-      async () =>
-        sharedPage.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                simulateManufacture?: (itemType: string) => unknown;
-                getMissionGateState?: () => {
-                  steps?: Array<{ key?: string; status?: string }>;
-                } | null;
-              };
-            }
-          ).__shipExteriorTestUtils;
-          api?.simulateManufacture?.('hull-patch-kit');
-          const gateState = api?.getMissionGateState?.();
-          const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
-          return repairStep?.status ?? null;
-        }),
-      { timeout: 10000 },
-    )
-    .toBe('active');
+  await sharedPage.locator('button[aria-label="Fabrication Lab"]').click();
+  await expect(sharedPage).toHaveURL(/left:fabrication-lab/);
+  await sharedPage.getByRole('button', { name: 'View Print Queue' }).click();
+  await expect(sharedPage).toHaveURL(/right:print-queue/);
+
+  const printHullPatchKitButton = sharedPage.getByRole('button', { name: 'Print Hull Patch Kit' });
+  await expect(printHullPatchKitButton).toBeVisible();
+  await expect(printHullPatchKitButton).toBeEnabled();
+  await printHullPatchKitButton.click();
+  await expect(sharedPage.locator('.status-line--success')).toContainText('queued for printing');
+
+  const finishPrintButton = sharedPage.getByRole('button', { name: 'Finish (dev)' });
+  await expect(finishPrintButton).toBeVisible();
+  await finishPrintButton.click();
+  await expect(sharedPage.getByText('Hull Patch Kit print complete', { exact: false })).toBeVisible({ timeout: 10000 });
 
   const repairRetrofitButton = sharedPage.locator('button[aria-label="Repair & Retrofit"]');
   const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
