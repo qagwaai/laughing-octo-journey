@@ -343,15 +343,18 @@ describe('CharacterListPage', () => {
       });
     });
 
-    it('should navigate to character-setup with playerName in left outlet', () => {
+    it('should navigate to character-setup and bust preview with playerName', () => {
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       component.navigateToCharacterSetup();
 
-      expect(router.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-setup'] } }], {
-        preserveFragment: true,
-        state: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
-      });
+      expect(router.navigate).toHaveBeenCalledWith(
+        [{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }],
+        {
+          preserveFragment: true,
+          state: { playerName: 'Pioneer', mode: 'create', existingCharacters: [] },
+        },
+      );
     });
 
     it('should navigate to character-setup in edit mode with selected character state', () => {
@@ -360,10 +363,13 @@ describe('CharacterListPage', () => {
       const character = { id: '1', characterName: 'Nova', level: 5 };
       component.navigateToCharacterEdit(character as any);
 
-      expect(router.navigate).toHaveBeenCalledWith([{ outlets: { left: ['character-setup'] } }], {
-        preserveFragment: true,
-        state: { playerName: 'Pioneer', mode: 'edit', editCharacter: character, existingCharacters: [] },
-      });
+      expect(router.navigate).toHaveBeenCalledWith(
+        [{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }],
+        {
+          preserveFragment: true,
+          state: { playerName: 'Pioneer', mode: 'edit', editCharacter: character, existingCharacters: [] },
+        },
+      );
     });
 
     it('should navigate to opening-cold-boot in primary and left outlets with selected character state', () => {

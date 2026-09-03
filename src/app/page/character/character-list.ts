@@ -221,7 +221,7 @@ export default class CharacterListPage implements OnDestroy {
 
   navigateToCharacterSetup(): void {
     const playerName = this.playerName();
-    this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+    this.router.navigate([{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }], {
       preserveFragment: true,
       state: {
         playerName,
@@ -233,7 +233,7 @@ export default class CharacterListPage implements OnDestroy {
 
   navigateToCharacterEdit(character: PlayerCharacterSummary): void {
     const playerName = this.playerName();
-    this.router.navigate([{ outlets: { left: ['character-setup'] } }], {
+    this.router.navigate([{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }], {
       preserveFragment: true,
       state: {
         playerName,

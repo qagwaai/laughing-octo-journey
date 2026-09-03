@@ -367,6 +367,7 @@ test.describe('Character Add — from character list', () => {
 
     await characterListPage.clickSetup();
     await expect(page).toHaveURL(/right:character-bust-preview/, { timeout: 15000 });
+    await expect(characterSetupPage.bustPreviewPane).toBeVisible();
 
     await characterSetupPage.fillCharacterName('Nova Retry');
     await characterSetupPage.clickSubmit();

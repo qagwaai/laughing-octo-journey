@@ -182,7 +182,6 @@ export default class CharacterSetupPage implements OnDestroy {
   constructor() {
     this.initializeSuggestedName();
     this.syncPreviewDescriptor();
-    this.ensureBustPreviewPaneActive();
     this.initializeEditModeBustDescriptor();
 
     this.bustFormSubscription = this.characterForm.valueChanges.subscribe(() => {
@@ -715,14 +714,4 @@ export default class CharacterSetupPage implements OnDestroy {
     this.previewState.clear();
   }
 
-  private ensureBustPreviewPaneActive(): void {
-    if (this.router.url.includes('right:character-bust-preview')) {
-      return;
-    }
-
-    void this.router.navigate([{ outlets: { left: ['character-setup'], right: ['character-bust-preview'] } }], {
-      preserveFragment: true,
-      replaceUrl: true,
-    });
-  }
 }
