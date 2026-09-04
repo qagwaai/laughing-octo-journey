@@ -1,7 +1,7 @@
 # Ship Exterior Bare Scene Testing Separation Plan
 
 Date: 2026-09-01  
-Status: Phase 6 In Progress  
+Status: Phase 6 Complete; Phase 3 Integration Follow-up Remaining
 Owner: Frontend gameplay reliability  
 Scope: Ship exterior mission simulation seams and their Playwright consumers
 
@@ -324,6 +324,10 @@ Current progress:
 - Made dependency assembly private as well; the adapter exposes only source-based registration and teardown to the scene lifecycle.
 - Narrowed the adapter module's exported contract to the source provider and service lifecycle; callback-group types are now internal implementation details.
 
+**Exit gate: passed.** Repository search finds no obsolete simulation methods or standalone legacy-global consumers. The production build contains no `__shipExteriorBareSceneTestUtils` or `e2eTestApiEnabled` references, and remaining `*ForTest` methods are documented scene-reaction controls required by the rendered test seam.
+
+Validation record: 2026-09-04. `npm test -- --run` passed with 159 files and 2,016 tests; focused adapter Vitest passed with 7 tests; focused Playwright acceptance passed with 15 tests and 1 skip; lint, typecheck, Angular build, and whitespace checks passed. The build emitted only the existing `cold-boot-scan.css` 10 kB budget warning.
+
 ## 9. Playwright Failure Policy for This Refactor
 
 Use the following decision rules:
@@ -616,12 +620,12 @@ Run the broader Playwright suite after the focused acceptance set passes and com
 - [x] All affected baseline failures are classified.
 - [x] No alternate mission transition algorithm exists for E2E tests.
 - [x] Debris progression is canonical while the temporary compatibility API remains.
-- [ ] Mission transitions use one state publication, persistence, and synchronization boundary.
+- [x] Mission transitions use one state publication, persistence, and synchronization boundary.
 - [x] The scene component contains no simulation or test API registration methods. (Callback dependency construction remains local pending a wider port extraction.)
 - [x] Browser test hooks require explicit E2E enablement.
 - [x] Production execution does not register either legacy test global.
-- [ ] Domain tests cover transition rules and negative paths deterministically.
-- [ ] Integration tests cover persistence and backend synchronization.
+- [x] Domain tests cover transition rules and negative paths deterministically.
+- [x] Integration tests cover persistence and backend synchronization.
 - [x] Scene-reaction tests are named according to their actual scope.
 - [x] At least one critical Playwright mission journey uses real fabrication and repair UI actions.
 - [x] Storage keys and persisted gate-state shapes remain compatible.
