@@ -85,7 +85,11 @@ export class ShipHangarPage {
 
   async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
     await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
-    await this.exteriorViewButton(index).click();
+    const exteriorButton = this.exteriorViewButton(index);
+    await expect(exteriorButton).toBeVisible({ timeout: options.rowTimeout ?? 10_000 });
+    await expect(exteriorButton).toBeEnabled({ timeout: options.rowTimeout ?? 10_000 });
+    await exteriorButton.scrollIntoViewIfNeeded();
+    await exteriorButton.click({ force: true });
   }
 
   activeShipControlButtonByName(name: string) {

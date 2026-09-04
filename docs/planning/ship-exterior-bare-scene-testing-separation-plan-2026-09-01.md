@@ -1,7 +1,7 @@
 # Ship Exterior Bare Scene Testing Separation Plan
 
 Date: 2026-09-01  
-Status: Phase 4 In Progress; Phases 3-6 Remaining  
+Status: Phase 6 In Progress  
 Owner: Frontend gameplay reliability  
 Scope: Ship exterior mission simulation seams and their Playwright consumers
 
@@ -26,7 +26,6 @@ This is a baseline-triage gate, not a requirement to make every unrelated Playwr
 
 The component currently:
 
-- constructs [`MissionGateSimulator`](../../src/app/scene/ship-exterior/mission-gate-simulator.ts) directly;
 - registers browser-global test APIs during every `ngOnInit`;
 - exposes `resetMissionGateStateForTest` and `simulate*` wrappers;
 - allows browser scripts to mutate active mission state and local persistence;
@@ -67,19 +66,11 @@ The current arrangement creates four architectural risks:
 [`ShipExteriorBareSceneComponent.ngOnInit`](../../src/app/scene/ship-exterior/ship-exterior-bare-scene.component.ts) calls `registerTestApi()` in normal component initialization. [`registerShipExteriorBareSceneTestApi`](../../src/app/scene/ship-exterior/ship-exterior-bare-scene-test-api.ts) publishes mutable APIs as:
 
 - `window.__shipExteriorBareSceneTestUtils`
-- `window.__shipExteriorTestUtils`
+- the nested `legacy` surface on `window.__shipExteriorBareSceneTestUtils`
 
 The API is removed on component destruction, but it is still registered in normal production execution.
 
-### 5.2 Simulation logic duplicates canonical domain behavior
-
-[`MissionGateSimulator`](../../src/app/scene/ship-exterior/mission-gate-simulator.ts) hard-codes:
-
-- mission step keys;
-- accepted manufacture and repair types;
-- objective text;
-- status transitions;
-- current-time creation.
+### 5.2 Historical simulation logic duplicated canonical domain behavior
 
 Canonical evaluators already exist in [`ship-exterior-mission.ts`](../../src/app/mission/ship-exterior-mission.ts):
 
@@ -87,11 +78,11 @@ Canonical evaluators already exist in [`ship-exterior-mission.ts`](../../src/app
 - `evaluateMissionGateOnRepair`
 - `evaluateMissionGateOnDebrisCollection`
 
-The alternate simulator does not reproduce the full evidence, prerequisite, definition, and synchronization behavior of production workflows.
+The former alternate simulator has been deleted. Temporary browser compatibility callbacks now delegate through the application facade and do not contain an alternate transition algorithm.
 
 ### 5.3 Simulated state follows a different consistency path
 
-The component supplies simulator callbacks that update the active scene context, persist mission state, and refresh the view. Unlike production manufacture and repair workflows, this path does not synchronize mission progress through `MissionProgressSyncService`.
+The temporary compatibility callbacks update the active scene context through `MissionProgressFacade`, which owns persistence, publication, refresh notification, and mission synchronization. They remain test-only seams rather than user-workflow coverage.
 
 This means a successful simulation-driven test does not establish that:
 
@@ -112,7 +103,7 @@ The following specs consume simulation controls:
 - [`first-target-fabrication-menu-cue.spec.ts`](../../e2e/tests/first-target-fabrication-menu-cue.spec.ts)
 - [`ship-exterior-test-utils.spec.ts`](../../e2e/tests/ship-exterior-test-utils.spec.ts)
 
-Tests that call `simulateManufacture` or `simulateRepair` validate scene or guidance reactions to injected state. They do not validate manufacture or repair through the user-facing workflow.
+Historical tests that called `simulateManufacture` or `simulateRepair` validated scene or guidance reactions to injected state. They did not validate manufacture or repair through the user-facing workflow.
 
 ## 6. Target Architecture
 
@@ -285,6 +276,14 @@ The “full mission flow” designation is reserved for tests that execute the u
 
 **Exit gate:** production component lifecycle no longer assembles test APIs, and production execution exposes no test mutation global.
 
+Current progress:
+
+- Registration, teardown, composition, replacement, and enablement are owned by `ShipExteriorBareSceneTestAdapter`.
+- The component lifecycle directly delegates adapter registration and teardown.
+- The formal global is available only when `environment.e2eTestApiEnabled` is enabled and the build is non-production.
+
+**Exit gate: passed.** The scene lifecycle no longer performs browser-global registration, and production execution does not expose the adapter.
+
 ### Phase 5: Rebalance Playwright coverage
 
 1. Rename or rewrite tests that only validate scene reactions.
@@ -292,17 +291,33 @@ The “full mission flow” designation is reserved for tests that execute the u
 3. Prefer reusable page objects and socket fixtures over repeated `window` type declarations.
 4. Remove migrated legacy API members and compatibility code.
 
+Current progress:
+
+- Critical full-mission and fabrication-menu coverage uses real fabrication and repair UI workflows.
+- Local browser-utility mission progression is explicitly classified as scene-reaction coverage.
+- Manufacture/repair compatibility consumers have been removed; scene-reaction coverage now reads published state, while critical mission workflow coverage traverses the real UI and synchronization path. Scene-inspection E2E utilities now use the nested formal adapter legacy surface for scan and targeting controls.
+
 **Exit gate:** test names accurately describe coverage, and critical mission workflow coverage traverses the real UI and synchronization path.
+
+**Exit gate: passed.** Critical fabrication and repair journeys use production UI workflows, while remaining adapter-driven tests are explicitly scene-reaction coverage.
 
 ### Phase 6: Delete obsolete simulation code
 
-1. Delete [`mission-gate-simulator.ts`](../../src/app/scene/ship-exterior/mission-gate-simulator.ts).
-2. Delete or migrate [`mission-gate-simulator.vitest.ts`](../../src/app/scene/ship-exterior/mission-gate-simulator.vitest.ts).
-3. Remove component `simulate*` and `*ForTest` wrappers.
-4. Remove legacy global declarations once no consumers remain.
-5. Confirm production bundles and runtime do not contain or register the legacy mutation API.
+1. Remove component `simulate*` and `*ForTest` wrappers.
+2. Remove legacy global declarations once no consumers remain.
+3. Confirm production bundles and runtime do not contain or register the legacy mutation API.
 
 **Exit gate:** repository search finds no obsolete simulation methods or legacy global consumers.
+
+Current progress:
+
+- No `simulateManufacture`, `simulateRepair`, or `simulateDebrisCollection` references remain in application or E2E code.
+- The standalone `window.__shipExteriorTestUtils` global has been removed from declarations, registration, teardown, tests, and active E2E consumers.
+- Remaining `*ForTest` methods are scene-reaction controls exposed through the explicitly gated formal adapter; they are not mission-transition simulators.
+- Adapter global registration and teardown now live behind `ShipExteriorBareSceneTestAdapter`; the scene only supplies callbacks and delegates lifecycle operations.
+- Adapter enablement now uses the explicit `environment.e2eTestApiEnabled` flag in addition to the production guard; development/E2E behavior remains enabled and production remains disabled.
+- Formal/legacy API composition now also lives behind `ShipExteriorBareSceneTestAdapter`; the scene supplies only the callback dependencies.
+- The scene lifecycle now delegates directly to `ShipExteriorBareSceneTestAdapter`; callback dependency construction is isolated in `createTestAdapterDependencies`, and the remaining structural task is moving those providers out of the component where practical.
 
 ## 9. Playwright Failure Policy for This Refactor
 
@@ -477,10 +492,8 @@ Completed: 2026-09-03
 
 Remaining work:
 
-1. Phase 3: finish consolidating scene publication/refresh and add facade boundary characterization.
-2. Phase 4: extract and explicitly gate the E2E adapter while retaining only temporary legacy compatibility.
-3. Phase 5: rebalance Playwright coverage toward real fabrication and repair UI workflows.
-4. Phase 6: remove obsolete simulator methods, tests, and legacy globals after consumers migrate.
+1. Phase 5: complete migration or removal of remaining compatibility consumers.
+2. Phase 6: remove obsolete compatibility methods and legacy globals after consumers migrate.
 
 ### 10.8 Phase 3 implementation slice
 
@@ -501,10 +514,11 @@ Phase 3 remains in progress pending full scene publication/refresh consolidation
 
 Started: 2026-09-03
 
-- Guarded `registerTestApi()` from registering either legacy browser global when `environment.production` is true.
-- Made adapter enablement explicit at the registration boundary and added coverage for disabled registration and complete teardown of both globals.
-- Kept the existing dev/E2E API shape and legacy compatibility globals unchanged for incremental migration.
-- Explicit adapter extraction, teardown assertions, and removal of legacy globals remain for the rest of Phase 4.
+- Guarded the scene adapter from registering the formal browser global when `environment.production` is true.
+- Made adapter enablement explicit at the registration boundary and added coverage for disabled registration, teardown, and replacement of an existing hook.
+- Kept the existing dev/E2E API shape and nested legacy callback surface for incremental migration.
+- Extracted registration, teardown, API composition, and enablement into `ShipExteriorBareSceneTestAdapter`.
+- Removed the standalone compatibility global; all active consumers use the formal adapter and its nested legacy surface.
 
 ### 10.10 Phase 5 implementation slice
 
@@ -521,8 +535,31 @@ Started: 2026-09-03
 - Extended the full-mission socket fixture to retain the manufactured Hull Patch Kit across authoritative ship-list refreshes and acknowledge ship upserts.
 - Migrated the full-mission repair progression to the real Repair & Retrofit workflow; the scene assertion now observes facade-published completion state after the production ship repair path consumes the kit.
 - Removed the now-unused `simulateDebrisCollection` browser hook and simulator wrapper; debris progression has no remaining E2E consumers and is covered by the canonical evaluator instead of a compatibility control.
-- Added explicit adapter characterization that manufacture and repair simulation hooks remain legacy compatibility controls only; active fabrication and repair workflow coverage now uses production UI paths.
-- Kept those two legacy hooks until the dedicated scene-reaction/test-utility consumers are reclassified or removed in Phase 6.
+- Added explicit adapter characterization that manufacture and repair simulation hooks remained legacy compatibility controls only; active fabrication and repair workflow coverage uses production UI paths.
+- Extracted complete formal and legacy callback assembly into `createShipExteriorBareSceneTestApi`; registration and production gating remain owned by the scene boundary.
+- Removed manufacture/repair transition ownership from `MissionGateSimulator`; temporary compatibility callbacks now delegate directly through `MissionProgressFacade`, while simulator coverage remains limited to reset and scene-state helpers.
+- Reclassified the remaining local-utility mission-flow E2E as scene-reaction coverage and removed an unnecessary manufacture simulation from the wrong-sequence assertion; real UI workflow coverage remains in the fabrication and full-mission specs.
+- Marked the remaining manufacture/repair browser callbacks as deprecated compatibility seams in the formal legacy contract; they remain available only for the explicitly named scene-reaction characterization.
+- Deleted the obsolete `MissionGateSimulator` wrapper and inlined only its generic state publication/reset helpers at the scene boundary; canonical manufacture and repair delegation remains exclusively in `MissionProgressFacade`.
+- Removed the final manufacture/repair compatibility callbacks and their active/skipped E2E consumers; no `simulateManufacture` or `simulateRepair` references remain in application or E2E code.
+- Retained the legacy global temporarily because active scan, targeting, debris, ship, and hangar-resume E2E utilities still consume its scene-inspection controls; migration to `__shipExteriorBareSceneTestUtils.legacy` is the next adapter-cleanup slice.
+- Migrated the shared first-target cue fixture and fabrication-menu cue spec to consume the nested formal adapter legacy surface; the standalone legacy global remains only for the other active scene-inspection specs.
+- Migrated cold-boot asteroid parity coverage to the nested formal adapter legacy surface; the standalone legacy global remains only for the remaining multi-feature scene utility specs.
+- Confirmed `selectFirstScannedIronTargetForTest` remains required by the rendered TARGET IRON control and `ShipExteriorViewFacade`; it was retained alongside the other explicitly gated scene-reaction controls.
+- Migrated the initial readiness, asteroid-sample, and forced-scan accesses in full-mission coverage to the nested formal adapter legacy surface; the remaining full-mission reads are queued for the next compatibility migration slice.
+- Migrated all remaining full-mission scene-state reads to the nested formal adapter legacy surface; the standalone legacy global is now limited to ship-exterior utility and hangar-resume specs.
+- Migrated hangar-resume scan and targeting access to the nested formal adapter legacy surface; only the broad ship-exterior utility spec still consumes the standalone legacy global.
+- Migrated the asteroid targeting/hold-cancellation utility test to the nested formal adapter legacy surface; remaining ship-exterior utility tests are queued for subsequent focused slices.
+- Migrated all remaining ship-exterior utility coverage to the nested formal adapter legacy surface.
+- Removed the standalone `window.__shipExteriorTestUtils` declaration, registration, teardown, and adapter-test expectations; scene-inspection controls now have one browser-global entry point.
+- Extracted adapter global registration and teardown into `ShipExteriorBareSceneTestAdapter`; the scene no longer imports or directly invokes browser-global registration functions.
+- Moved formal/legacy API composition into `ShipExteriorBareSceneTestAdapter`; the scene no longer imports or invokes the API factory directly.
+- Isolated the scene's adapter dependency construction behind `createTestAdapterDependencies` so lifecycle wiring and callback assembly are separate.
+- Centralized the shared mission-state getter used by formal and legacy adapter surfaces, preserving the existing active-state fallback behavior.
+- Centralized the shared mission-state reset callback used by formal and legacy adapter surfaces, preserving the existing persistence and revision updates.
+- Centralized active-context lookup within adapter dependency construction so formal snapshot and legacy inspection callbacks use one scene-context access path.
+- Removed the scene-level registration wrapper; lifecycle code now delegates directly to the extracted adapter service.
+- Made adapter registration replace any prior browser hook before publishing the new API, preventing stale hooks during scene reinitialization; added characterization coverage for replacement behavior.
 
 ## 11. Validation Commands
 
@@ -535,7 +572,7 @@ npx playwright test e2e/tests/first-target-full-mission-flow.spec.ts e2e/tests/f
 Focused unit tests during canonicalization:
 
 ```bash
-npm run test:spec -- src/app/scene/ship-exterior/mission-gate-simulator.vitest.ts
+npm run test:spec -- src/app/services/mission-progression-facade.vitest.ts
 ```
 
 As tests move, replace the simulator path above with the canonical evaluator and facade test files.
@@ -562,14 +599,14 @@ Run the broader Playwright suite after the focused acceptance set passes and com
 - [x] No alternate mission transition algorithm exists for E2E tests.
 - [x] Debris progression is canonical while the temporary compatibility API remains.
 - [ ] Mission transitions use one state publication, persistence, and synchronization boundary.
-- [ ] The scene component contains no simulation or test API registration methods.
-- [ ] Browser test hooks require explicit E2E enablement.
-- [ ] Production execution does not register either legacy test global.
+- [x] The scene component contains no simulation or test API registration methods. (Callback dependency construction remains local pending a wider port extraction.)
+- [x] Browser test hooks require explicit E2E enablement.
+- [x] Production execution does not register either legacy test global.
 - [ ] Domain tests cover transition rules and negative paths deterministically.
 - [ ] Integration tests cover persistence and backend synchronization.
-- [ ] Scene-reaction tests are named according to their actual scope.
-- [ ] At least one critical Playwright mission journey uses real fabrication and repair UI actions.
-- [ ] Storage keys and persisted gate-state shapes remain compatible.
+- [x] Scene-reaction tests are named according to their actual scope.
+- [x] At least one critical Playwright mission journey uses real fabrication and repair UI actions.
+- [x] Storage keys and persisted gate-state shapes remain compatible.
 - [x] Focused tests, typecheck, lint, and Angular build pass.
 - [x] Broader E2E results are no worse than the recorded baseline.
 

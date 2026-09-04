@@ -241,11 +241,13 @@ test.describe('Cold boot asteroid parity', () => {
             page.evaluate(() => {
               const api = (
                 window as Window & {
-                  __shipExteriorTestUtils?: {
-                    getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                  __shipExteriorBareSceneTestUtils?: {
+                    legacy?: {
+                      getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                    };
                   };
                 }
-              ).__shipExteriorTestUtils;
+              ).__shipExteriorBareSceneTestUtils?.legacy;
               return api?.getAsteroidSamples?.().length ?? 0;
             }),
           { timeout: 30_000 },
@@ -255,11 +257,13 @@ test.describe('Cold boot asteroid parity', () => {
       const samples = await page.evaluate(() => {
         const api = (
           window as Window & {
-            __shipExteriorTestUtils?: {
-              getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+            __shipExteriorBareSceneTestUtils?: {
+              legacy?: {
+                getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+              };
             };
           }
-        ).__shipExteriorTestUtils;
+        ).__shipExteriorBareSceneTestUtils?.legacy;
         return api?.getAsteroidSamples?.() ?? [];
       });
 
@@ -277,11 +281,13 @@ test.describe('Cold boot asteroid parity', () => {
               await page.evaluate(() => {
                 const api = (
                   window as Window & {
-                    __shipExteriorTestUtils?: {
-                      getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                    __shipExteriorBareSceneTestUtils?: {
+                      legacy?: {
+                        getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                      };
                     };
                   }
-                ).__shipExteriorTestUtils;
+                ).__shipExteriorBareSceneTestUtils?.legacy;
                 return api?.getAsteroidSamples?.() ?? [];
               })
             ).length,
@@ -292,11 +298,13 @@ test.describe('Cold boot asteroid parity', () => {
       const samples = await page.evaluate(() => {
         const api = (
           window as Window & {
-            __shipExteriorTestUtils?: {
-              getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+            __shipExteriorBareSceneTestUtils?: {
+              legacy?: {
+                getAsteroidSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+              };
             };
           }
-        ).__shipExteriorTestUtils;
+        ).__shipExteriorBareSceneTestUtils?.legacy;
         return api?.getAsteroidSamples?.() ?? [];
       });
 

@@ -3,6 +3,7 @@
 
 export const environment = {
   production: false,
+  e2eTestApiEnabled: true,
   apiUrl: 'http://localhost:3000',
   logLevel: 'debug',
   viewerQaEnabledByDefault: true,

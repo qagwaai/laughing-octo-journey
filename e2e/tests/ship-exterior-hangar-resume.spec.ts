@@ -29,12 +29,14 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: {
-                  getAsteroidSamples?: () => Array<{ id: string }>;
-                  forceCompleteIronScan?: (sampleId?: string) => unknown;
+                __shipExteriorBareSceneTestUtils?: {
+                  legacy?: {
+                    getAsteroidSamples?: () => Array<{ id: string }>;
+                    forceCompleteIronScan?: (sampleId?: string) => unknown;
+                  };
                 };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getAsteroidSamples === 'function' && api.getAsteroidSamples().length > 0;
           }),
         { timeout: 15_000 },
@@ -44,12 +46,14 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     const scannedSampleId = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            getAsteroidSamples: () => Array<{ id: string }>;
-            forceCompleteIronScan: (sampleId?: string) => unknown;
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              getAsteroidSamples: () => Array<{ id: string }>;
+              forceCompleteIronScan: (sampleId?: string) => unknown;
+            };
           };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       const firstSampleId = api?.getAsteroidSamples()?.[0]?.id;
       if (firstSampleId) {
         api?.forceCompleteIronScan(firstSampleId);
@@ -64,11 +68,13 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
         page.evaluate((sampleId) => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
+                };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const sample = api?.getAsteroidSamples().find((candidate) => candidate.id === sampleId);
           return sample ? { scanned: sample.scanned, scanProgress: sample.scanProgress } : null;
         }, scannedSampleId),
@@ -135,11 +141,13 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: {
-                  getAsteroidSamples?: () => Array<{ id: string }>;
+                __shipExteriorBareSceneTestUtils?: {
+                  legacy?: {
+                    getAsteroidSamples?: () => Array<{ id: string }>;
+                  };
                 };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getAsteroidSamples === 'function' && api.getAsteroidSamples().length > 0;
           }),
         { timeout: 15_000 },
@@ -149,15 +157,17 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
     const interactionResult = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            getAsteroidSamples: () => Array<{ id: string }>;
-            forceTargetAsteroid: (sampleId: string) => boolean;
-            getTargetedAsteroidId: () => string | null;
-            launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-            getActiveLaunchToast: () => { message: string; tone: string } | null;
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              getAsteroidSamples: () => Array<{ id: string }>;
+              forceTargetAsteroid: (sampleId: string) => boolean;
+              getTargetedAsteroidId: () => string | null;
+              launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+              getActiveLaunchToast: () => { message: string; tone: string } | null;
+            };
           };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
 
       const sampleId = api?.getAsteroidSamples()?.[0]?.id;
       if (!api || !sampleId) {

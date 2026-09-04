@@ -9,9 +9,6 @@ import {
 import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
-const FAB_LAB_HINT_DISMISS_PREFIX = 'first-target:fabrication-lab-hint-dismissed';
-const REPAIR_HINT_DISMISS_PREFIX = 'first-target:repair-retrofit-hint-dismissed';
-
 export const FIRST_TARGET_CUE_CHARACTER_ID = 'char-fab-cue';
 
 export function registerFirstTargetCueMock(mock: SocketIOMock): void {
@@ -243,12 +240,14 @@ export async function waitForShipExteriorTestApi(sharedPage: Page, recover?: () 
       .evaluate(() => {
         const api = (
           window as Window & {
-            __shipExteriorTestUtils?: {
-              getMissionGateState?: () => unknown;
-              getAsteroidSamples?: () => unknown[];
+            __shipExteriorBareSceneTestUtils?: {
+              legacy?: {
+                getMissionGateState?: () => unknown;
+                getAsteroidSamples?: () => unknown[];
+              };
             };
           }
-        ).__shipExteriorTestUtils;
+        ).__shipExteriorBareSceneTestUtils?.legacy;
         return typeof api?.getMissionGateState === 'function';
       })
       .catch(() => false);
@@ -298,17 +297,19 @@ export async function advanceMissionToManufactureStep(sharedPage: Page): Promise
   await sharedPage.evaluate(() => {
     const api = (
       window as Window & {
-        __shipExteriorTestUtils?: {
-          forceCompleteIronScan?: () => unknown;
-          getAsteroidSamples?: () => Array<{
-            id: string;
-            scanned?: boolean;
-            revealedMaterial?: { material?: string } | null;
-          }>;
-          forceTargetAsteroid?: (sampleId: string) => boolean;
+        __shipExteriorBareSceneTestUtils?: {
+          legacy?: {
+            forceCompleteIronScan?: () => unknown;
+            getAsteroidSamples?: () => Array<{
+              id: string;
+              scanned?: boolean;
+              revealedMaterial?: { material?: string } | null;
+            }>;
+            forceTargetAsteroid?: (sampleId: string) => boolean;
+          };
         };
       }
-    ).__shipExteriorTestUtils;
+    ).__shipExteriorBareSceneTestUtils?.legacy;
 
     api?.forceCompleteIronScan?.();
 
@@ -323,11 +324,13 @@ export async function advanceMissionToManufactureStep(sharedPage: Page): Promise
   await sharedPage.evaluate(() => {
     const api = (
       window as Window & {
-        __shipExteriorTestUtils?: {
-          launchFromHotkey?: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+        __shipExteriorBareSceneTestUtils?: {
+          legacy?: {
+            launchFromHotkey?: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+          };
         };
       }
-    ).__shipExteriorTestUtils;
+    ).__shipExteriorBareSceneTestUtils?.legacy;
     api?.launchFromHotkey?.(1);
   });
 
@@ -336,43 +339,19 @@ export async function advanceMissionToManufactureStep(sharedPage: Page): Promise
       sharedPage.evaluate(() => {
         const api = (
           window as Window & {
-            __shipExteriorTestUtils?: {
-              getMissionGateState?: () => {
-                steps?: Array<{ key?: string; status?: string }>;
-              } | null;
+            __shipExteriorBareSceneTestUtils?: {
+              legacy?: {
+                getMissionGateState?: () => {
+                  steps?: Array<{ key?: string; status?: string }>;
+                } | null;
+              };
             };
           }
-        ).__shipExteriorTestUtils;
+        ).__shipExteriorBareSceneTestUtils?.legacy;
         const gateState = api?.getMissionGateState?.();
         const manufactureStep = gateState?.steps?.find((step) => step.key === 'manufacture_hull_patch_kit');
         return manufactureStep?.status ?? null;
       }),
     )
     .toBe('active');
-}
-
-export async function resetFirstTargetCuePersistence(sharedPage: Page): Promise<void> {
-  await sharedPage.evaluate(
-    ({ missionId, playerName, characterId, shipId, fabricationDismissPrefix, repairDismissPrefix }) => {
-      window.localStorage.removeItem(
-        `ship-exterior-mission-state::${missionId}::${playerName}::${characterId}::${shipId}`,
-      );
-      window.localStorage.removeItem(`ship-exterior-mission-state::${missionId}::${playerName}::${characterId}`);
-      window.localStorage.removeItem(`${fabricationDismissPrefix}::${playerName}::${characterId}`);
-      window.localStorage.removeItem(`${repairDismissPrefix}::${playerName}::${characterId}`);
-      // Clear session service persistence so a page.reload() starts with a clean session state.
-      window.localStorage.removeItem('stellar.sessionKey');
-      window.localStorage.removeItem('stellar.playerName');
-      window.localStorage.removeItem('stellar.activeCharacter');
-      window.localStorage.removeItem('stellar.missionEntryContext');
-    },
-    {
-      missionId: FIRST_TARGET_MISSION_ID,
-      playerName: TEST_PLAYER,
-      characterId: FIRST_TARGET_CUE_CHARACTER_ID,
-      shipId: 'ship-cue-1',
-      fabricationDismissPrefix: FAB_LAB_HINT_DISMISS_PREFIX,
-      repairDismissPrefix: REPAIR_HINT_DISMISS_PREFIX,
-    },
-  );
 }

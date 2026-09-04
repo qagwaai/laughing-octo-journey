@@ -2,7 +2,6 @@ import { expect } from '@playwright/test';
 import {
   advanceMissionToManufactureStep,
   registerFirstTargetCueMock,
-  resetFirstTargetCuePersistence,
   waitForShipExteriorTestApi,
 } from '../fixtures/first-target-cue-scenario';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
@@ -72,16 +71,15 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
         return sharedPage.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                simulateManufacture?: (itemType: string) => unknown;
-                getMissionGateState?: () => {
-                  steps?: Array<{ key?: string; status?: string }>;
-                } | null;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState?: () => {
+                    steps?: Array<{ key?: string; status?: string }>;
+                  } | null;
+                };
               };
             }
-          ).__shipExteriorTestUtils;
-          api?.simulateManufacture?.('hull-patch-kit');
-
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gateState = api?.getMissionGateState?.();
           const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
 
@@ -109,66 +107,4 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
 
   await repairRetrofitButton.click();
   await expect(sharedPage).toHaveURL(/left:repair-retrofit/);
-});
-
-test.skip('keeps overlay dismissed for the same step across refresh, then shows again when step changes', async ({
-  sharedPage,
-  sharedMock,
-  prepareJoinedPage,
-}) => {
-  const recoverJoinedCuePage = async () => {
-    sharedMock.reset();
-    registerFirstTargetCueMock(sharedMock);
-    await prepareJoinedPage();
-  };
-
-  await prepareJoinedPage();
-  await resetFirstTargetCuePersistence(sharedPage);
-  // Worker-scoped page reuse keeps Angular service state in memory; reload to guarantee a clean cue baseline.
-  await sharedPage.reload();
-  await recoverJoinedCuePage();
-
-  await waitForShipExteriorTestApi(sharedPage, recoverJoinedCuePage);
-
-  await advanceMissionToManufactureStep(sharedPage);
-
-  const overlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
-  await expect(overlay).toBeVisible();
-  await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
-
-  await overlay.locator('button.overlay-dismiss').click();
-  await expect(overlay).not.toBeVisible();
-
-  // Reset to game-main (fixture pattern instead of reload + re-login)
-  await recoverJoinedCuePage();
-
-  await waitForShipExteriorTestApi(sharedPage, recoverJoinedCuePage);
-  await expect(sharedPage.locator('.left-pane-mission-guidance-overlay')).not.toBeVisible();
-
-  await expect
-    .poll(
-      async () =>
-        sharedPage.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                simulateManufacture?: (itemType: string) => unknown;
-                getMissionGateState?: () => {
-                  steps?: Array<{ key?: string; status?: string }>;
-                } | null;
-              };
-            }
-          ).__shipExteriorTestUtils;
-          api?.simulateManufacture?.('hull-patch-kit');
-          const gateState = api?.getMissionGateState?.();
-          const repairStep = gateState?.steps?.find((step) => step.key === 'repair_scavenger_pod');
-          return repairStep?.status ?? null;
-        }),
-      { timeout: 10000 },
-    )
-    .toBe('active');
-
-  const repairOverlay = sharedPage.locator('.left-pane-mission-guidance-overlay');
-  await expect(repairOverlay).toBeVisible();
-  await expect(repairOverlay.locator('.overlay-target strong')).toHaveText('Repair & Retrofit');
 });

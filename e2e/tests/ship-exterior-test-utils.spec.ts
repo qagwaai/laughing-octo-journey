@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { ShipExteriorBareSceneTestApi } from '../../src/app/scene/ship-exterior/ship-exterior-bare-scene-test-api';
 import {
   registerMissionCharacterList,
   registerMissionGameJoin,
@@ -8,6 +9,12 @@ import {
 import { SocketIOMock } from '../fixtures/socket-mock';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+
+declare global {
+  interface Window {
+    __shipExteriorBareSceneTestUtils?: ShipExteriorBareSceneTestApi;
+  }
+}
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
 const TEST_CHARACTER_ID = 'char-ship-exterior';
@@ -269,11 +276,11 @@ test.describe('Ship Exterior Test Utilities', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: {
-                  getAsteroidSamples?: () => Array<{ id: string }>;
+                __shipExteriorBareSceneTestUtils?: {
+                  legacy?: { getAsteroidSamples?: () => Array<{ id: string }> };
                 };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return api?.getAsteroidSamples?.()[0]?.id ?? null;
           }),
         { timeout: 15_000 },
@@ -283,12 +290,14 @@ test.describe('Ship Exterior Test Utilities', () => {
     const started = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            getAsteroidSamples: () => Array<{ id: string }>;
-            beginAsteroidTargetHold: (id: string) => boolean;
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              getAsteroidSamples: () => Array<{ id: string }>;
+              beginAsteroidTargetHold: (id: string) => boolean;
+            };
           };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       const firstId = api?.getAsteroidSamples()?.[0]?.id;
       if (!firstId || !api) {
         return false;
@@ -303,9 +312,11 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: { getTargetHoldCandidateId: () => string | null };
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: { getTargetHoldCandidateId: () => string | null };
+              };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return api?.getTargetHoldCandidateId?.() ?? null;
         }),
       )
@@ -314,12 +325,14 @@ test.describe('Ship Exterior Test Utilities', () => {
     await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            getAsteroidSamples: () => Array<{ id: string }>;
-            unhoverAsteroid: (id: string) => boolean;
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              getAsteroidSamples: () => Array<{ id: string }>;
+              unhoverAsteroid: (id: string) => boolean;
+            };
           };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       const firstId = api?.getAsteroidSamples()?.[0]?.id;
       if (api && firstId) {
         api.unhoverAsteroid(firstId);
@@ -331,12 +344,14 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getTargetHoldCandidateId: () => string | null;
-                getTargetedAsteroidId: () => string | null;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getTargetHoldCandidateId: () => string | null;
+                  getTargetedAsteroidId: () => string | null;
+                };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return {
             holdCandidate: api?.getTargetHoldCandidateId?.() ?? null,
             targeted: api?.getTargetedAsteroidId?.() ?? null,
@@ -352,12 +367,14 @@ test.describe('Ship Exterior Test Utilities', () => {
         const state = await page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getTargetHoldCandidateId: () => string | null;
-                getTargetedAsteroidId: () => string | null;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getTargetHoldCandidateId: () => string | null;
+                  getTargetedAsteroidId: () => string | null;
+                };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return {
             holdCandidate: api?.getTargetHoldCandidateId?.() ?? null,
             targeted: api?.getTargetedAsteroidId?.() ?? null,
@@ -386,30 +403,14 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
 
     const sampleId = await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
       return api?.getAsteroidSamples?.()[0]?.id ?? null;
     });
 
     test.skip(sampleId === null, 'Cold-boot route may legitimately have no asteroid samples yet.');
 
     const scanStateAfterCompletion = await page.evaluate((id) => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            forceCompleteIronScan: (sampleId?: string) => unknown;
-            getAsteroidSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-            getTargetedAsteroidId: () => string | null;
-            getTargetHoldCandidateId: () => string | null;
-            beginAsteroidTargetHold: (sampleId: string) => boolean;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
 
       if (!api || !id) {
         return null;
@@ -456,13 +457,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       .poll(
         async () =>
           page.evaluate(() => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getScannableShipSamples?: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-                };
-              }
-            ).__shipExteriorTestUtils;
+            const api = window.__shipExteriorBareSceneTestUtils?.legacy;
             return api?.getScannableShipSamples?.().length ?? 0;
           }),
         { timeout: 15_000 },
@@ -470,15 +465,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       .toBeGreaterThan(0);
 
     const initialState = await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            getScannableShipSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-            getTargetedAsteroidId: () => string | null;
-            getTargetHoldCandidateId: () => string | null;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
       const jaxsShip = api?.getScannableShipSamples().find((sample) => sample.id === 'jaxs-ship') ?? null;
       return {
         jaxsShip,
@@ -496,13 +483,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(initialState.targetHoldCandidateId).toBeNull();
 
     const completionResult = await page.evaluate(() => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            forceCompleteShipScan: (sampleId?: string) => boolean;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
       return api?.forceCompleteShipScan('jaxs-ship') ?? false;
     });
 
@@ -511,15 +492,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect
       .poll(async () =>
         page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getScannableShipSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-                getTargetedAsteroidId: () => string | null;
-                getTargetHoldCandidateId: () => string | null;
-              };
-            }
-          ).__shipExteriorTestUtils;
+          const api = window.__shipExteriorBareSceneTestUtils?.legacy;
           const jaxsShip = api?.getScannableShipSamples().find((sample) => sample.id === 'jaxs-ship') ?? null;
           return {
             scanned: jaxsShip?.scanned ?? false,
@@ -553,13 +526,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       .poll(
         async () =>
           page.evaluate(() => {
-            const api = (
-              window as Window & {
-                __shipExteriorTestUtils?: {
-                  getScannableDebrisSamples?: () => Array<{ id: string }>;
-                };
-              }
-            ).__shipExteriorTestUtils;
+            const api = window.__shipExteriorBareSceneTestUtils?.legacy;
             return api?.getScannableDebrisSamples?.().map((sample) => sample.id) ?? [];
           }),
         { timeout: 15_000 },
@@ -567,15 +534,7 @@ test.describe('Ship Exterior Test Utilities', () => {
       .toContain(AUTHORITATIVE_DEBRIS_ID);
 
     const initialDebrisState = await page.evaluate((authoritativeDebrisId) => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            getScannableDebrisSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
-            getTargetedAsteroidId: () => string | null;
-            getTargetHoldCandidateId: () => string | null;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
       const sample =
         api?.getScannableDebrisSamples?.().find((candidate) => candidate.id === authoritativeDebrisId) ?? null;
       return {
@@ -594,13 +553,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(initialDebrisState.targetHoldCandidateId).toBeNull();
 
     const completionResult = await page.evaluate((sampleId) => {
-      const api = (
-        window as Window & {
-          __shipExteriorTestUtils?: {
-            forceCompleteDebrisScan: (sampleId?: string) => boolean;
-          };
-        }
-      ).__shipExteriorTestUtils;
+      const api = window.__shipExteriorBareSceneTestUtils?.legacy;
       return api?.forceCompleteDebrisScan(sampleId ?? undefined) ?? false;
     }, AUTHORITATIVE_DEBRIS_ID);
 
@@ -611,13 +564,13 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate((sampleId) => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
+              __shipExteriorBareSceneTestUtils?: { legacy?: {
                 getScannableDebrisSamples: () => Array<{ id: string; scanned: boolean; scanProgress: number }>;
                 getTargetedAsteroidId: () => string | null;
                 getTargetHoldCandidateId: () => string | null;
-              };
+              } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const sample = api?.getScannableDebrisSamples().find((candidate) => candidate.id === sampleId) ?? null;
           return {
             scanned: sample?.scanned ?? false,
@@ -669,9 +622,9 @@ test.describe('Ship Exterior Test Utilities', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+                __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState?: () => unknown } };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getMissionGateState === 'function';
           }),
         { timeout: 15_000 },
@@ -683,9 +636,9 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: { getAsteroidSamples?: () => unknown[] };
+              __shipExteriorBareSceneTestUtils?: { legacy?: { getAsteroidSamples?: () => unknown[] } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return api?.getAsteroidSamples?.().length ?? 0;
         }),
       )
@@ -694,9 +647,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     const initialGate = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { getMissionGateState: () => unknown };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState: () => unknown } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getMissionGateState() as {
         steps: Array<{ key: string; status: string }>;
       };
@@ -708,9 +661,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     const gateAfterForcedScan = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { forceCompleteIronScan: () => unknown | null };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { forceCompleteIronScan: () => unknown | null } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.forceCompleteIronScan() as {
         steps: Array<{ key: string; status: string }>;
       } | null;
@@ -723,24 +676,24 @@ test.describe('Ship Exterior Test Utilities', () => {
       'active',
     );
 
-    const manufactureWithoutLaunch = await page.evaluate(() => {
+    const gateBeforeLaunch = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { simulateManufacture: (itemType: string) => unknown };
+          __shipExteriorBareSceneTestUtils?: { legacy?: {
+            getMissionGateState: () => {
+              steps: Array<{ key: string; status: string }>;
+            } };
+          };
         }
-      ).__shipExteriorTestUtils;
-      return api!.simulateManufacture('hull-patch-kit') as {
-        steps: Array<{ key: string; status: string }>;
-      };
+      ).__shipExteriorBareSceneTestUtils?.legacy;
+      return api!.getMissionGateState();
     });
 
-    expect(manufactureWithoutLaunch.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).not.toBe(
-      'completed',
-    );
-    expect(manufactureWithoutLaunch.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
+    expect(gateBeforeLaunch.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe('locked');
+    expect(gateBeforeLaunch.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
   });
 
-  test('completes deterministic mission flow through local test utilities', async ({ page }) => {
+  test('drives deterministic scene reactions through local test utilities', async ({ page }) => {
     const mock = new SocketIOMock(page);
     await mock.setup();
 
@@ -759,12 +712,12 @@ test.describe('Ship Exterior Test Utilities', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: {
+                __shipExteriorBareSceneTestUtils?: { legacy?: {
                   getMissionGateState?: () => unknown;
                   getAsteroidSamples?: () => unknown[];
-                };
+                } };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
           }),
         { timeout: 15000 },
@@ -774,9 +727,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     const firstSampleId = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { getAsteroidSamples: () => Array<{ id: string }> };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { getAsteroidSamples: () => Array<{ id: string }> } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getAsteroidSamples()[0]?.id ?? null;
     });
 
@@ -785,9 +738,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     await page.evaluate((sampleId) => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { forceCompleteIronScan: (id?: string) => unknown };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { forceCompleteIronScan: (id?: string) => unknown } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       api!.forceCompleteIronScan(sampleId ?? undefined);
     }, firstSampleId);
 
@@ -796,12 +749,12 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate((sampleId) => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
+              __shipExteriorBareSceneTestUtils?: { legacy?: {
                 getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
                 getAsteroidSamples: () => Array<{ id: string; serverCelestialBodyId: string | null }>;
-              };
+              } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           const neutralizeStatus = gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status;
           return {
@@ -814,12 +767,12 @@ test.describe('Ship Exterior Test Utilities', () => {
     await page.evaluate((sampleId) => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
+          __shipExteriorBareSceneTestUtils?: { legacy?: {
             forceTargetAsteroid: (id: string) => boolean;
             launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-          };
+          } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       if (sampleId && api?.forceTargetAsteroid(sampleId)) {
         api.launchFromHotkey(1);
       }
@@ -830,11 +783,11 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
+              __shipExteriorBareSceneTestUtils?: { legacy?: {
                 getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
-              };
+              } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           return {
             neutralize: gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status,
@@ -847,13 +800,7 @@ test.describe('Ship Exterior Test Utilities', () => {
     await expect
       .poll(async () =>
         page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
-              };
-            }
-          ).__shipExteriorTestUtils;
+          const api = window.__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           return {
             manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
@@ -863,60 +810,6 @@ test.describe('Ship Exterior Test Utilities', () => {
       )
       .toEqual({ manufacture: 'active', repair: 'locked' });
 
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                simulateManufacture: (itemType: string) => unknown;
-                getMissionGateState: () => { steps: Array<{ key: string; status: string }> };
-              };
-            }
-          ).__shipExteriorTestUtils;
-          api!.simulateManufacture('hull-patch-kit');
-          const gate = api!.getMissionGateState();
-          return {
-            manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
-            repair: gate.steps.find((step) => step.key === 'repair_scavenger_pod')?.status,
-          };
-        }),
-      )
-      .toEqual({ manufacture: 'completed', repair: 'active' });
-
-    await expect
-      .poll(async () =>
-        page.evaluate(() => {
-          const api = (
-            window as Window & {
-              __shipExteriorTestUtils?: {
-                simulateRepair: (repairKind: string) => unknown;
-                getMissionGateState: () => {
-                  steps: Array<{ key: string; status: string }>;
-                  activeObjectiveText: string;
-                };
-              };
-            }
-          ).__shipExteriorTestUtils;
-          api!.simulateRepair('ship');
-          const gate = api!.getMissionGateState();
-          const statuses = new Map(gate.steps.map((step) => [step.key, step.status]));
-          return {
-            identify: statuses.get('identify_iron_asteroid') ?? null,
-            neutralize: statuses.get('neutralize_identified_asteroid') ?? null,
-            manufacture: statuses.get('manufacture_hull_patch_kit') ?? null,
-            repair: statuses.get('repair_scavenger_pod') ?? null,
-            objective: gate.activeObjectiveText,
-          };
-        }),
-      )
-      .toMatchObject({
-        identify: 'completed',
-        neutralize: 'completed',
-        manufacture: 'completed',
-        repair: 'completed',
-        objective: 'Mission objectives complete. Await further directives.',
-      });
   });
 
   test('preserves completed local gate when backend reports started without statusDetail', async ({ page }) => {
@@ -967,9 +860,9 @@ test.describe('Ship Exterior Test Utilities', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+                __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState?: () => unknown } };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getMissionGateState === 'function';
           }),
         { timeout: 15_000 },
@@ -981,9 +874,9 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState: () => unknown };
+              __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState: () => unknown } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState() as {
             steps: Array<{ key: string; status: string }>;
           };
@@ -995,9 +888,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     const gateAfterBackendRefresh = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { getMissionGateState: () => unknown };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState: () => unknown } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getMissionGateState() as {
         steps: Array<{ key: string; status: string }>;
         activeObjectiveText: string;
@@ -1065,9 +958,9 @@ test.describe('Ship Exterior Test Utilities', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: { getMissionGateState?: () => unknown };
+                __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState?: () => unknown } };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             return typeof api?.getMissionGateState === 'function';
           }),
         { timeout: 15_000 },
@@ -1079,9 +972,9 @@ test.describe('Ship Exterior Test Utilities', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: { getMissionGateState: () => unknown };
+              __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState: () => unknown } };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState() as {
             steps: Array<{ key: string; status: string }>;
           };
@@ -1093,9 +986,9 @@ test.describe('Ship Exterior Test Utilities', () => {
     const gateAfterBackendRefresh = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { getMissionGateState: () => unknown };
+          __shipExteriorBareSceneTestUtils?: { legacy?: { getMissionGateState: () => unknown } };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getMissionGateState() as {
         steps: Array<{ key: string; status: string }>;
         activeObjectiveText: string;

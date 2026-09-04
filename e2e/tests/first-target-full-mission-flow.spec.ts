@@ -19,11 +19,11 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState?: () => unknown;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: { getMissionGateState?: () => unknown };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return typeof api?.getMissionGateState === 'function';
         }),
       )
@@ -34,12 +34,14 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState?: () => unknown;
-                getAsteroidSamples?: () => unknown[];
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState?: () => unknown;
+                  getAsteroidSamples?: () => unknown[];
+                };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return typeof api?.getMissionGateState === 'function' && (api?.getAsteroidSamples?.().length ?? 0) > 0;
         }),
       )
@@ -48,13 +50,15 @@ test.describe('First Target Mission Flow', () => {
     const initialGate = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            getMissionGateState: () => {
-              steps: Array<{ key: string; status: string }>;
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              getMissionGateState: () => {
+                steps: Array<{ key: string; status: string }>;
+              };
             };
-          };
+          }
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getMissionGateState();
     });
 
@@ -66,9 +70,11 @@ test.describe('First Target Mission Flow', () => {
     const firstSampleId = await page.evaluate(() => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { getAsteroidSamples: () => Array<{ id: string }> };
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: { getAsteroidSamples: () => Array<{ id: string }> };
+          };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       return api!.getAsteroidSamples()[0]?.id ?? null;
     });
 
@@ -77,9 +83,11 @@ test.describe('First Target Mission Flow', () => {
     await page.evaluate((sampleId) => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: { forceCompleteIronScan: (id?: string) => unknown };
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: { forceCompleteIronScan: (id?: string) => unknown };
+          };
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       api!.forceCompleteIronScan(sampleId ?? undefined);
     }, firstSampleId);
 
@@ -88,13 +96,15 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => {
-                  steps: Array<{ key: string; status: string }>;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState: () => {
+                    steps: Array<{ key: string; status: string }>;
+                  };
                 };
-              };
+              }
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           return {
             identify: gate.steps.find((step) => step.key === 'identify_iron_asteroid')?.status,
@@ -107,12 +117,14 @@ test.describe('First Target Mission Flow', () => {
     await page.evaluate((sampleId) => {
       const api = (
         window as Window & {
-          __shipExteriorTestUtils?: {
-            forceTargetAsteroid: (id: string) => boolean;
-            launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-          };
+          __shipExteriorBareSceneTestUtils?: {
+            legacy?: {
+              forceTargetAsteroid: (id: string) => boolean;
+              launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
+            };
+          }
         }
-      ).__shipExteriorTestUtils;
+      ).__shipExteriorBareSceneTestUtils?.legacy;
       if (sampleId && api?.forceTargetAsteroid(sampleId)) {
         api.launchFromHotkey(1);
       }
@@ -129,13 +141,15 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => {
-                  steps: Array<{ key: string; status: string }>;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState: () => {
+                    steps: Array<{ key: string; status: string }>;
+                  };
                 };
-              };
+              }
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           return {
             neutralize: gate.steps.find((step) => step.key === 'neutralize_identified_asteroid')?.status,
@@ -150,11 +164,13 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getActiveShipInventoryItemTypes?: () => string[];
-              };
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getActiveShipInventoryItemTypes?: () => string[];
+                };
+              }
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           return api?.getActiveShipInventoryItemTypes?.() ?? [];
         }),
       )
@@ -181,13 +197,15 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => {
-                  steps: Array<{ key: string; status: string }>;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState: () => {
+                    steps: Array<{ key: string; status: string }>;
+                  };
                 };
-              };
+              }
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           const gate = api!.getMissionGateState();
           return {
             manufacture: gate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status,
@@ -217,14 +235,16 @@ test.describe('First Target Mission Flow', () => {
           page.evaluate(() => {
             const api = (
               window as Window & {
-                __shipExteriorTestUtils?: {
-                  getMissionGateState: () => {
-                    steps: Array<{ key: string; status: string }>;
-                    activeObjectiveText: string;
+                __shipExteriorBareSceneTestUtils?: {
+                  legacy?: {
+                    getMissionGateState: () => {
+                      steps: Array<{ key: string; status: string }>;
+                      activeObjectiveText: string;
+                    };
                   };
                 };
               }
-            ).__shipExteriorTestUtils;
+            ).__shipExteriorBareSceneTestUtils?.legacy;
             const gate = api!.getMissionGateState();
             return {
               allCompleted: Boolean(gate?.steps.every((step) => step.status === 'completed')),
@@ -274,14 +294,16 @@ test.describe('First Target Mission Flow', () => {
         page.evaluate(() => {
           const api = (
             window as Window & {
-              __shipExteriorTestUtils?: {
-                getMissionGateState: () => {
-                  steps: Array<{ key: string; status: string }>;
-                  activeObjectiveText: string;
+              __shipExteriorBareSceneTestUtils?: {
+                legacy?: {
+                  getMissionGateState: () => {
+                    steps: Array<{ key: string; status: string }>;
+                    activeObjectiveText: string;
+                  };
                 };
               };
             }
-          ).__shipExteriorTestUtils;
+          ).__shipExteriorBareSceneTestUtils?.legacy;
           if (!api?.getMissionGateState) {
             return { repair: '', objective: '' };
           }

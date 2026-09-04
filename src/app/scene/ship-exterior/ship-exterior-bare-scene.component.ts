@@ -19,7 +19,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { environment } from '../../../environments/environment';
 import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
 import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
 import {
@@ -55,16 +54,15 @@ import { AsteroidPersistenceService } from './asteroid-persistence.service';
 import { AsteroidScanController } from './asteroid-scan-controller';
 import { FloatingDebrisController } from './floating-debris-controller';
 import { InventoryRewardService } from './inventory-reward.service';
-import { MissionGateSimulator } from './mission-gate-simulator';
 import { NavigationStateReader } from './navigation-state-reader';
 import {
-  registerShipExteriorBareSceneTestApi,
-  unregisterShipExteriorBareSceneTestApi,
+  type ShipExteriorBareSceneTestApiFactoryDeps,
   type ShipExteriorLegacyAsteroidSample,
   type ShipExteriorLegacyScannableDebrisSample,
   type ShipExteriorLegacyScannableShipSample,
 } from './ship-exterior-bare-scene-test-api';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
+import { ShipExteriorBareSceneTestAdapter } from './ship-exterior-bare-scene-test-adapter.service';
 import {
   seedColdBootAsteroids as resolveColdBootAsteroidSamples,
   type ShipExteriorColdBootAsteroidSeedIntent,
@@ -120,6 +118,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly shipExteriorViewStateService = inject(ShipExteriorViewStateService);
   private readonly floatingDebrisStateService = inject(FloatingDebrisStateService);
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
+  private readonly testAdapter = inject(ShipExteriorBareSceneTestAdapter);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessionController = new ShipExteriorSessionController();
   private readonly missionPublicationDisposers = new Map<string, () => void>();
@@ -402,23 +401,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     onScanComplete: (contextKey, sampleId) => this.forceCompleteDebrisScanInContext(contextKey, sampleId),
     resolveHoldMs: () => this.resolveHoverScanHoldMs(),
   });
-  private readonly missionGateSimulator = new MissionGateSimulator({
-    createInitialState: (characterId) => this.createInitialMissionGateStateForTestApi(characterId),
-    getCurrentState: () => this.getActiveMissionGateState(),
-    setState: (state) => {
-      const active = this.registry.getActiveContext();
-      if (active) {
-        active.setMissionGateState(state);
-      }
-    },
-    persistState: (state) => {
-      const active = this.registry.getActiveContext();
-      if (active) {
-        this.persistMissionGateState(active, state);
-      }
-    },
-    refreshView: () => this.bumpMissionRevision(),
-  });
   private readonly navigationPlayerName = signal<string>('unknown-player');
   private readonly navigationCharacterId = signal<string>('unknown-character');
   private readonly launchController = new ShipExteriorLaunchController({
@@ -461,11 +443,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.bootstrapContexts();
     this.floatingDebrisController.start();
     this.inputAdapter.attach();
-    this.registerTestApi();
+    this.testAdapter.register(this.createTestAdapterDependencies());
 
     this.destroyRef.onDestroy(() => {
       this.inputAdapter.detach();
-      unregisterShipExteriorBareSceneTestApi();
+      this.testAdapter.unregister();
     });
   }
 
@@ -1101,23 +1083,26 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     host.querySelectorAll('canvas.ship-scene-canvas').forEach((node) => node.remove());
   }
 
-  private registerTestApi(): void {
-    if (environment.production) {
-      return;
-    }
+  private createTestAdapterDependencies(): ShipExteriorBareSceneTestApiFactoryDeps {
+    const getActiveContext = () => this.registry.getActiveContext();
+    const getMissionGateState = () =>
+      this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
+    const resetMissionGateState = () => this.resetMissionGateStateForTest();
 
-    registerShipExteriorBareSceneTestApi({
-      contextKeys: this.contextKeys,
-      activeContextKey: this.activeContextKey.asReadonly(),
-      activateContext: (contextKey: string) => this.activateContext(contextKey),
-      snapshotActiveContext: () => this.registry.getActiveContext()?.snapshotRuntime() ?? null,
-      toggleFlightMode: () => this.toggleFlightMode(),
-      setFlightInvertY: (enabled: boolean) => this.setFlightInvertY(enabled),
-      setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
-        this.setFlightMouseSensitivityFromSliderValue(rawValue),
-      getActiveRouteFeedCounts: () => this.getActiveRouteFeedCounts(),
-      getMissionGateState: () => this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
-      resetMissionGateState: () => this.resetMissionGateStateForTest(),
+    return {
+      formal: {
+        contextKeys: this.contextKeys,
+        activeContextKey: this.activeContextKey.asReadonly(),
+        activateContext: (contextKey: string) => this.activateContext(contextKey),
+        snapshotActiveContext: () => getActiveContext()?.snapshotRuntime() ?? null,
+        toggleFlightMode: () => this.toggleFlightMode(),
+        setFlightInvertY: (enabled: boolean) => this.setFlightInvertY(enabled),
+        setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
+          this.setFlightMouseSensitivityFromSliderValue(rawValue),
+        getActiveRouteFeedCounts: () => this.getActiveRouteFeedCounts(),
+        getMissionGateState,
+        resetMissionGateState,
+      },
       legacy: {
         getAsteroidSamples: () => this.getActiveAsteroidSamples(),
         getScannableDebrisSamples: () => this.getActiveScannableDebrisSamples(),
@@ -1125,30 +1110,33 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
         unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
         getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
-        getMissionGateState: () => this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
-        resetMissionGateState: () => this.resetMissionGateStateForTest(),
+        getMissionGateState,
+        resetMissionGateState,
+        getTargetedAsteroidId: () => getActiveContext()?.getTargetedAsteroidId() ?? null,
+        getHoveredAsteroidId: () => getActiveContext()?.getHoveredAsteroidId() ?? null,
         forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
         forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
-        getTargetedAsteroidId: () => this.registry.getActiveContext()?.getTargetedAsteroidId() ?? null,
-        getHoveredAsteroidId: () => this.registry.getActiveContext()?.getHoveredAsteroidId() ?? null,
         forceCompleteDebrisScan: (sampleId?: string) => this.forceCompleteDebrisScan(sampleId),
-        getHoveredScannableDebrisId: () => this.registry.getActiveContext()?.getHoveredScannableDebrisId() ?? null,
+        getHoveredScannableDebrisId: () => getActiveContext()?.getHoveredScannableDebrisId() ?? null,
         forceCompleteShipScan: (sampleId?: string) => this.forceCompleteShipScan(sampleId),
-        getHoveredScannableShipId: () => this.registry.getActiveContext()?.getHoveredScannableShipId() ?? null,
+        getHoveredScannableShipId: () => getActiveContext()?.getHoveredScannableShipId() ?? null,
         launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
-        simulateManufacture: (itemType: string) => this.simulateManufacture(itemType),
-        simulateRepair: (repairKind: string) => this.simulateRepair(repairKind),
         getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
         getActiveLaunchToast: () => this.activeLaunchToast(),
       },
-    }, !environment.production);
+    };
   }
 
   private resetMissionGateStateForTest(): ShipExteriorMissionGateState {
     const active = this.registry.getActiveContext();
-    const resetState = this.missionGateSimulator.resetForTest(
+    const resetState = this.createInitialMissionGateStateForTestApi(
       active?.getState().characterId?.trim() || this.navigationCharacterId().trim() || 'unknown-character',
     );
+    if (active) {
+      active.setMissionGateState(resetState);
+      this.persistMissionGateState(active, resetState);
+    }
+    this.bumpMissionRevision();
     this.bumpRuntimeRevision();
 
     this.clearHoverScanTimer();
@@ -1409,11 +1397,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   ): ShipExteriorMissionGateState {
     const active = this.registry.getActiveContext();
     if (!active) {
-      return this.missionGateSimulator.resetForTest();
+      return this.createInitialMissionGateStateForTestApi();
     }
 
     this.ensureMissionGateStateForContext(active);
-    return this.missionGateSimulator.updateState(updater);
+    const currentState = active.getMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
+    const nextState = updater(currentState);
+    active.setMissionGateState(nextState);
+    this.persistMissionGateState(active, nextState);
+    this.bumpMissionRevision();
+    return nextState;
   }
 
   private setStepStatus(
@@ -1421,7 +1414,20 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     key: string,
     status: 'locked' | 'active' | 'completed' | 'pending-retry',
   ): ShipExteriorMissionGateState {
-    return MissionGateSimulator.setStepStatus(state, key, status);
+    const updatedAt = new Date().toISOString();
+    return {
+      ...state,
+      updatedAt,
+      steps: state.steps.map((step) =>
+        step.key === key
+          ? {
+              ...step,
+              status,
+              completedAt: status === 'completed' ? (step.completedAt ?? updatedAt) : step.completedAt,
+            }
+          : step,
+      ),
+    };
   }
 
   private bumpFlightRevision(): void {
@@ -1852,14 +1858,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private setLaunchSeedHint(_launchSeed: number | null): void {
     this.bumpRuntimeRevision();
-  }
-
-  private simulateManufacture(itemType: string): ShipExteriorMissionGateState {
-    return this.missionGateSimulator.simulateManufacture(itemType);
-  }
-
-  private simulateRepair(repairKind: string): ShipExteriorMissionGateState {
-    return this.missionGateSimulator.simulateRepair(repairKind);
   }
 
   private getActiveShipInventoryItemTypes(): string[] {

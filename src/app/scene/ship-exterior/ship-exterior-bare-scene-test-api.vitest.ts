@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInitialMissionGateState } from '../../mission/ship-exterior-mission';
 import {
+  createShipExteriorBareSceneTestApi,
   registerShipExteriorBareSceneTestApi,
   unregisterShipExteriorBareSceneTestApi,
   type ShipExteriorBareSceneTestApi,
@@ -53,8 +54,6 @@ describe('ship exterior bare scene test api', () => {
         forceCompleteShipScan: vi.fn(),
         getHoveredScannableShipId: vi.fn(),
         launchFromHotkey: vi.fn(),
-        simulateManufacture: vi.fn(),
-        simulateRepair: vi.fn(),
         getActiveShipInventoryItemTypes: vi.fn(),
         getActiveLaunchToast: vi.fn(),
       },
@@ -64,15 +63,38 @@ describe('ship exterior bare scene test api', () => {
 
     expect(window.__shipExteriorBareSceneTestUtils?.getMissionGateState).toBe(api.getMissionGateState);
     expect(window.__shipExteriorBareSceneTestUtils?.resetMissionGateState).toBe(resetMissionGateState);
-    expect(window.__shipExteriorTestUtils?.resetMissionGateState).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.getScannableDebrisSamples).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.forceCompleteDebrisScan).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.getHoveredScannableDebrisId).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.getScannableShipSamples).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.forceCompleteShipScan).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.getHoveredScannableShipId).toBeDefined();
-    expect(window.__shipExteriorTestUtils?.simulateManufacture).toBe(api.legacy.simulateManufacture);
-    expect(window.__shipExteriorTestUtils?.simulateRepair).toBe(api.legacy.simulateRepair);
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.resetMissionGateState).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.getScannableDebrisSamples).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.forceCompleteDebrisScan).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.getHoveredScannableDebrisId).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.getScannableShipSamples).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.forceCompleteShipScan).toBeDefined();
+    expect(window.__shipExteriorBareSceneTestUtils?.legacy.getHoveredScannableShipId).toBeDefined();
+  });
+
+  it('keeps formal and legacy callbacks separate until registration', () => {
+    const formal = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      snapshotActiveContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+    } satisfies Omit<ShipExteriorBareSceneTestApi, 'legacy'>;
+    const legacy = {
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+    } as never;
+
+    const api = createShipExteriorBareSceneTestApi({ formal, legacy });
+
+    expect(api.contextKeys).toBe(formal.contextKeys);
+    expect(api.legacy).toBe(legacy);
+    expect(api.getMissionGateState).toBe(formal.getMissionGateState);
   });
 
   it('does not register globals when the adapter is disabled', () => {
@@ -93,10 +115,9 @@ describe('ship exterior bare scene test api', () => {
     registerShipExteriorBareSceneTestApi(api, false);
 
     expect(window.__shipExteriorBareSceneTestUtils).toBeUndefined();
-    expect(window.__shipExteriorTestUtils).toBeUndefined();
   });
 
-  it('removes both globals during adapter teardown', () => {
+  it('removes the adapter global during teardown', () => {
     const api = {
       contextKeys: { asReadonly: () => [] } as never,
       activeContextKey: { asReadonly: () => null } as never,
@@ -115,6 +136,27 @@ describe('ship exterior bare scene test api', () => {
     unregisterShipExteriorBareSceneTestApi();
 
     expect(window.__shipExteriorBareSceneTestUtils).toBeUndefined();
-    expect(window.__shipExteriorTestUtils).toBeUndefined();
+  });
+
+  it('replaces a previously registered adapter during registration', () => {
+    const firstApi = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      snapshotActiveContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+      legacy: {} as never,
+    } satisfies ShipExteriorBareSceneTestApi;
+    const secondApi = { ...firstApi, getMissionGateState: vi.fn() } satisfies ShipExteriorBareSceneTestApi;
+
+    registerShipExteriorBareSceneTestApi(firstApi);
+    registerShipExteriorBareSceneTestApi(secondApi);
+
+    expect(window.__shipExteriorBareSceneTestUtils).toBe(secondApi);
   });
 });

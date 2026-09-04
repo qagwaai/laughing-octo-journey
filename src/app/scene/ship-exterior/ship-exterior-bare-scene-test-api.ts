@@ -5,7 +5,6 @@ import type { ShipSceneRuntimeSnapshot } from './ship-scene-types';
 declare global {
   interface Window {
     __shipExteriorBareSceneTestUtils?: ShipExteriorBareSceneTestApi;
-    __shipExteriorTestUtils?: ShipExteriorLegacyTestApi;
   }
 }
 
@@ -53,8 +52,6 @@ export interface ShipExteriorLegacyTestApi {
   forceCompleteShipScan: (sampleId?: string) => boolean;
   getHoveredScannableShipId: () => string | null;
   launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => void;
-  simulateManufacture: (itemType: string) => ShipExteriorMissionGateState;
-  simulateRepair: (repairKind: string) => ShipExteriorMissionGateState;
   getActiveShipInventoryItemTypes: () => string[];
   getActiveLaunchToast: () => { message: string; tone: 'success' | 'error'; seed: number | null } | null;
 }
@@ -73,6 +70,20 @@ export interface ShipExteriorBareSceneTestApi {
   legacy: ShipExteriorLegacyTestApi;
 }
 
+export interface ShipExteriorBareSceneTestApiFactoryDeps {
+  formal: Omit<ShipExteriorBareSceneTestApi, 'legacy'>;
+  legacy: ShipExteriorLegacyTestApi;
+}
+
+export function createShipExteriorBareSceneTestApi(
+  deps: ShipExteriorBareSceneTestApiFactoryDeps,
+): ShipExteriorBareSceneTestApi {
+  return {
+    ...deps.formal,
+    legacy: deps.legacy,
+  };
+}
+
 export function registerShipExteriorBareSceneTestApi(
   api: ShipExteriorBareSceneTestApi,
   enabled = true,
@@ -85,7 +96,6 @@ export function registerShipExteriorBareSceneTestApi(
     return;
   }
   window.__shipExteriorBareSceneTestUtils = api;
-  window.__shipExteriorTestUtils = api.legacy;
 }
 
 export function unregisterShipExteriorBareSceneTestApi(): void {
@@ -93,5 +103,4 @@ export function unregisterShipExteriorBareSceneTestApi(): void {
     return;
   }
   delete window.__shipExteriorBareSceneTestUtils;
-  delete window.__shipExteriorTestUtils;
 }
