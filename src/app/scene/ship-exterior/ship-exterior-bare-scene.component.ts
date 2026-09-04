@@ -56,13 +56,15 @@ import { FloatingDebrisController } from './floating-debris-controller';
 import { InventoryRewardService } from './inventory-reward.service';
 import { NavigationStateReader } from './navigation-state-reader';
 import {
-  type ShipExteriorBareSceneTestApiFactoryDeps,
   type ShipExteriorLegacyAsteroidSample,
   type ShipExteriorLegacyScannableDebrisSample,
   type ShipExteriorLegacyScannableShipSample,
 } from './ship-exterior-bare-scene-test-api';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
-import { ShipExteriorBareSceneTestAdapter } from './ship-exterior-bare-scene-test-adapter.service';
+import {
+  ShipExteriorBareSceneTestAdapter,
+  type ShipExteriorBareSceneTestAdapterSources,
+} from './ship-exterior-bare-scene-test-adapter.service';
 import {
   seedColdBootAsteroids as resolveColdBootAsteroidSamples,
   type ShipExteriorColdBootAsteroidSeedIntent,
@@ -443,7 +445,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.bootstrapContexts();
     this.floatingDebrisController.start();
     this.inputAdapter.attach();
-    this.testAdapter.register(this.createTestAdapterDependencies());
+    this.testAdapter.registerFromSources(this.createTestAdapterSources());
 
     this.destroyRef.onDestroy(() => {
       this.inputAdapter.detach();
@@ -1083,47 +1085,33 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     host.querySelectorAll('canvas.ship-scene-canvas').forEach((node) => node.remove());
   }
 
-  private createTestAdapterDependencies(): ShipExteriorBareSceneTestApiFactoryDeps {
-    const getActiveContext = () => this.registry.getActiveContext();
-    const getMissionGateState = () =>
-      this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
-    const resetMissionGateState = () => this.resetMissionGateStateForTest();
-
+  private createTestAdapterSources(): ShipExteriorBareSceneTestAdapterSources {
     return {
-      formal: {
-        contextKeys: this.contextKeys,
-        activeContextKey: this.activeContextKey.asReadonly(),
-        activateContext: (contextKey: string) => this.activateContext(contextKey),
-        snapshotActiveContext: () => getActiveContext()?.snapshotRuntime() ?? null,
-        toggleFlightMode: () => this.toggleFlightMode(),
-        setFlightInvertY: (enabled: boolean) => this.setFlightInvertY(enabled),
-        setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
-          this.setFlightMouseSensitivityFromSliderValue(rawValue),
-        getActiveRouteFeedCounts: () => this.getActiveRouteFeedCounts(),
-        getMissionGateState,
-        resetMissionGateState,
-      },
-      legacy: {
-        getAsteroidSamples: () => this.getActiveAsteroidSamples(),
-        getScannableDebrisSamples: () => this.getActiveScannableDebrisSamples(),
-        getScannableShipSamples: () => this.getActiveScannableShipSamples(),
-        beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
-        unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
-        getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
-        getMissionGateState,
-        resetMissionGateState,
-        getTargetedAsteroidId: () => getActiveContext()?.getTargetedAsteroidId() ?? null,
-        getHoveredAsteroidId: () => getActiveContext()?.getHoveredAsteroidId() ?? null,
-        forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
-        forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
-        forceCompleteDebrisScan: (sampleId?: string) => this.forceCompleteDebrisScan(sampleId),
-        getHoveredScannableDebrisId: () => getActiveContext()?.getHoveredScannableDebrisId() ?? null,
-        forceCompleteShipScan: (sampleId?: string) => this.forceCompleteShipScan(sampleId),
-        getHoveredScannableShipId: () => getActiveContext()?.getHoveredScannableShipId() ?? null,
-        launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
-        getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
-        getActiveLaunchToast: () => this.activeLaunchToast(),
-      },
+      contextKeys: this.contextKeys,
+      activeContextKey: this.activeContextKey.asReadonly(),
+      activateContext: (contextKey: string) => this.activateContext(contextKey),
+      toggleFlightMode: () => this.toggleFlightMode(),
+      setFlightInvertY: (enabled: boolean) => this.setFlightInvertY(enabled),
+      setFlightMouseSensitivityFromSliderValue: (rawValue: number) =>
+        this.setFlightMouseSensitivityFromSliderValue(rawValue),
+      getActiveRouteFeedCounts: () => this.getActiveRouteFeedCounts(),
+      getActiveContext: () => this.registry.getActiveContext(),
+      getAsteroidSamples: () => this.getActiveAsteroidSamples(),
+      getScannableDebrisSamples: () => this.getActiveScannableDebrisSamples(),
+      getScannableShipSamples: () => this.getActiveScannableShipSamples(),
+      beginAsteroidTargetHold: (sampleId: string) => this.beginAsteroidTargetHold(sampleId),
+      unhoverAsteroid: (sampleId: string) => this.unhoverAsteroid(sampleId),
+      getTargetHoldCandidateId: () => this.testTargetHoldCandidateId(),
+      forceCompleteIronScan: (sampleId?: string) => this.forceCompleteIronScan(sampleId),
+      forceTargetAsteroid: (sampleId: string) => this.forceTargetAsteroid(sampleId),
+      forceCompleteDebrisScan: (sampleId?: string) => this.forceCompleteDebrisScan(sampleId),
+      forceCompleteShipScan: (sampleId?: string) => this.forceCompleteShipScan(sampleId),
+      launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
+      getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
+      getActiveLaunchToast: () => this.activeLaunchToast(),
+      getMissionGateState: () =>
+        this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
+      resetMissionGateState: () => this.resetMissionGateStateForTest(),
     };
   }
 

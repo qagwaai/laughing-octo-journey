@@ -6,6 +6,10 @@ import {
   unregisterShipExteriorBareSceneTestApi,
   type ShipExteriorBareSceneTestApi,
 } from './ship-exterior-bare-scene-test-api';
+import {
+  ShipExteriorBareSceneTestAdapter,
+  type ShipExteriorBareSceneTestAdapterSources,
+} from './ship-exterior-bare-scene-test-adapter.service';
 
 describe('ship exterior bare scene test api', () => {
   beforeEach(() => {
@@ -158,5 +162,80 @@ describe('ship exterior bare scene test api', () => {
     registerShipExteriorBareSceneTestApi(secondApi);
 
     expect(window.__shipExteriorBareSceneTestUtils).toBe(secondApi);
+  });
+
+  it('builds grouped dependencies from scene callback sources', () => {
+    const adapter = new ShipExteriorBareSceneTestAdapter();
+    const activeContext = { snapshotRuntime: vi.fn() };
+    const mission = {
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+    };
+    const sources = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getActiveContext: () => activeContext as never,
+      getAsteroidSamples: vi.fn(),
+      getScannableDebrisSamples: vi.fn(),
+      getScannableShipSamples: vi.fn(),
+      beginAsteroidTargetHold: vi.fn(),
+      unhoverAsteroid: vi.fn(),
+      getTargetHoldCandidateId: vi.fn(),
+      forceCompleteIronScan: vi.fn(),
+      forceTargetAsteroid: vi.fn(),
+      forceCompleteDebrisScan: vi.fn(),
+      forceCompleteShipScan: vi.fn(),
+      getMissionGateState: mission.getMissionGateState,
+      resetMissionGateState: mission.resetMissionGateState,
+      launchFromHotkey: vi.fn(),
+      getActiveShipInventoryItemTypes: vi.fn(),
+      getActiveLaunchToast: vi.fn(),
+    } satisfies ShipExteriorBareSceneTestAdapterSources;
+
+    adapter.registerFromSources(sources);
+
+    const dependencies = window.__shipExteriorBareSceneTestUtils;
+    dependencies?.snapshotActiveContext();
+    expect(activeContext.snapshotRuntime).toHaveBeenCalled();
+    expect(dependencies?.getMissionGateState).toBe(mission.getMissionGateState);
+    expect(dependencies?.legacy.resetMissionGateState).toBe(mission.resetMissionGateState);
+  });
+
+  it('registers the composed api from callback sources', () => {
+    const adapter = new ShipExteriorBareSceneTestAdapter();
+    const sources = {
+      contextKeys: { asReadonly: () => [] } as never,
+      activeContextKey: { asReadonly: () => null } as never,
+      activateContext: vi.fn(),
+      toggleFlightMode: vi.fn(),
+      setFlightInvertY: vi.fn(),
+      setFlightMouseSensitivityFromSliderValue: vi.fn(),
+      getActiveRouteFeedCounts: vi.fn(),
+      getActiveContext: () => null,
+      getAsteroidSamples: vi.fn(),
+      getScannableDebrisSamples: vi.fn(),
+      getScannableShipSamples: vi.fn(),
+      beginAsteroidTargetHold: vi.fn(),
+      unhoverAsteroid: vi.fn(),
+      getTargetHoldCandidateId: vi.fn(),
+      forceCompleteIronScan: vi.fn(),
+      forceTargetAsteroid: vi.fn(),
+      forceCompleteDebrisScan: vi.fn(),
+      forceCompleteShipScan: vi.fn(),
+      getMissionGateState: vi.fn(),
+      resetMissionGateState: vi.fn(),
+      launchFromHotkey: vi.fn(),
+      getActiveShipInventoryItemTypes: vi.fn(),
+      getActiveLaunchToast: vi.fn(),
+    };
+
+    adapter.registerFromSources(sources);
+
+    expect(window.__shipExteriorBareSceneTestUtils?.getMissionGateState).toBe(sources.getMissionGateState);
   });
 });
