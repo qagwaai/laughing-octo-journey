@@ -600,6 +600,25 @@ Closes the coverage gap recorded in the scan honesty follow-up: that behavior wa
 - Behavior is unchanged; this slice is a structural extraction plus new unit coverage.
 - Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
 
+#### Validation record for the 2026-09-08 slices
+
+**Validation environment defect.** The first five slices were reported green, but those runs executed in the primary `main` worktree, which is a separate directory that never contained these changes. The work was uncommitted in the `agents/phase-3-integration-follow-up` worktree and had therefore never been exercised. Once the branch was committed, merged with `origin/main`, and validated in the correct worktree, five defects surfaced immediately. Record where a validation run executed, not only its result.
+
+Defects found on first real validation, in order:
+
+1. `AsteroidScanRevealSample` declared `revealedMaterial.material` as optional while the canonical `MissionScanSample` requires it, breaking assignability at the gate evaluation and facade call sites. Fixed by extending `MissionScanSample` rather than restating its shape.
+2. The socket integration test's local `GateStepState` mirror omitted `evidence`, so the canonical field was unreachable through `Array.find`. Fixed by modelling the field in the mirror.
+3. `createHarness` in the scan controller spec defaulted the gate state with `??`, so an explicit `null` was replaced by a real state and the null-gate fallback path was never exercised. The test failed loudly rather than passing vacuously.
+4. `first-target-full-mission-flow.spec.ts` used `samples[0]` for scanning, targeting, and launching, relying on the old forced-Iron behavior to make them consistent. With honest reveal, the scan and the launch target must both be the genuinely Iron asteroid.
+5. The same spec asserted that `celestialBodyUpsertRequests[0]` carried the scanned sample's `sourceScanId`. Seeded asteroids are bulk-upserted as unscanned in sample order, so index 0 is always `sample-a1` regardless of what was scanned; the assertion verified seeding order while appearing to verify the scan, and passed only because the scanned sample used to be `samples[0]`. Now matched on the `scan-complete` request identity.
+
+Items 1-3 were defects in the new code and its tests. Items 4-5 were pre-existing test couplings that the honest-reveal change exposed; item 5 was a latent tautology.
+
+**Unresolved intermittency.** `ship-exterior-hangar-resume.spec.ts` "keeps scanned asteroid state after ship specs and View Exterior round-trip" failed once, then passed on re-run with no change to that spec or to production code, so it is intermittent rather than fixed. In the failing run the application state was provably correct: the genuinely Iron asteroid was scanned, the objective advanced, and `TARGET IRON` rendered. Only the "View Specs" click failed to move the right outlet, with no interception error and no competing navigation. No mechanism was confirmed. One candidate remains open: the E2E mission-upsert fixtures return responses without `correlationId` or `requestIdentity`, so `MissionService` drops them as unmatched and every mission sync now settles through the full 5000 ms timeout, matching the default 5000 ms URL assertion window. Now that scans synchronize, that dangling timer occurs in more tests than before.
+
+**Final result.** Unit, typecheck, build, and full E2E all pass on the merged branch.
+
+
 ### 10.9 Phase 4 implementation slice
 
 Started: 2026-09-03
