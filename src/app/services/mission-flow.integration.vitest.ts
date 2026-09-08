@@ -25,10 +25,20 @@ type Listener = (payload: any) => void;
 type StepStatus = 'locked' | 'active' | 'completed' | 'pending-retry';
 type MissionEvent = 'scan' | 'launch' | 'manufacture' | 'repair';
 
+interface GateStepEvidence {
+  sourceScanId: string;
+  celestialBodyId: string | null;
+  material: string | null;
+  completedAt: string;
+  characterId: string;
+  missionId: string;
+}
+
 interface GateStepState {
   key: string;
   status: StepStatus;
   completedAt?: string;
+  evidence?: GateStepEvidence;
 }
 
 interface GateState {
@@ -475,10 +485,7 @@ describe('Mission progression facade over the socket transport', () => {
     expect(request.missionId).toBe(missionId);
     expect(request.status).toBe('active');
 
-    const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState & {
-      steps: Array<GateStepState & { evidence?: Record<string, unknown> }>;
-      activeObjectiveText: string;
-    };
+    const statusDetail = JSON.parse(request.statusDetail ?? '{}') as GateState;
     const identifyStep = statusDetail.steps.find((step) => step.key === 'identify_iron_asteroid');
     expect(identifyStep?.status).toBe('completed');
     expect(identifyStep?.evidence).toMatchObject({
