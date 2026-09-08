@@ -134,9 +134,13 @@ test.describe('First Target Mission Flow', () => {
 
     await expect.poll(() => launchItemRequests.length).toBeGreaterThan(0);
     expect(launchItemRequests[0]?.targetCelestialBodyId).not.toBe(ironSampleId);
-    if (celestialBodyUpsertRequests.length > 0) {
-      expect(celestialBodyUpsertRequests[0]?.celestialBody?.sourceScanId).toBe(ironSampleId);
-    }
+    expect(
+      celestialBodyUpsertRequests.some(
+        (upsert) =>
+          upsert.requestIdentity?.operation === 'scan-complete' &&
+          upsert.celestialBody?.sourceScanId === ironSampleId,
+      ),
+    ).toBe(true);
 
     await expect
       .poll(async () =>
