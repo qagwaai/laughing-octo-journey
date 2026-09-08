@@ -1,6 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import {
+  missionUpsertCorrelationEcho,
   registerMissionCharacterList,
   registerMissionGameJoin,
   registerMissionList,
@@ -181,13 +182,14 @@ export function configureFirstTargetCueMock(mock: SocketIOMock): void {
     };
   });
 
-  mock.on('mission-upsert-request', () => ({
+  mock.on('mission-upsert-request', (request) => ({
     event: 'mission-upsert-response',
     data: {
       success: true,
       message: '',
       playerName: TEST_PLAYER,
       characterId: FIRST_TARGET_CUE_CHARACTER_ID,
+      ...missionUpsertCorrelationEcho(request),
     },
   }));
 

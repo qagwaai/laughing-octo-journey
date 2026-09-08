@@ -3,6 +3,7 @@ import { expect } from '@playwright/test';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import {
+  missionUpsertCorrelationEcho,
   registerMissionCharacterList,
   registerMissionGameJoin,
   registerMissionList,
@@ -75,7 +76,10 @@ export function registerFirstTargetToM01TransitionMock(mock: SocketIOMock, missi
     const req = data as { missionId?: string; status?: string };
     return {
       event: 'mission-upsert-response',
-      data: missionUpsertResponse(req.missionId ?? '', req.status ?? ''),
+      data: {
+        ...missionUpsertResponse(req.missionId ?? '', req.status ?? ''),
+        ...missionUpsertCorrelationEcho(data),
+      },
     };
   });
 

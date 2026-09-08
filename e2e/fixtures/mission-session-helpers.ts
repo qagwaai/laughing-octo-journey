@@ -33,6 +33,24 @@ export function registerMissionGameJoin(mock: SocketIOMock): void {
   mock.on('game-join-request', () => null);
 }
 
+/**
+ * Correlation fields a mission-upsert response must echo back.
+ *
+ * `MissionService` drops any mission-upsert response whose `correlationId` or
+ * `requestIdentity` does not match the pending request, so a fixture that omits them
+ * leaves every mission sync to settle through its full 5s timeout.
+ */
+export function missionUpsertCorrelationEcho(request: unknown): {
+  correlationId?: string;
+  requestIdentity?: unknown;
+} {
+  const payload = (request ?? {}) as { correlationId?: string; requestIdentity?: unknown };
+  return {
+    ...(payload.correlationId ? { correlationId: payload.correlationId } : {}),
+    ...(payload.requestIdentity ? { requestIdentity: payload.requestIdentity } : {}),
+  };
+}
+
 export function registerMissionShipListByOwner(mock: SocketIOMock, options: ShipListOptions): void {
   const { characterId, ships, playerName = TEST_PLAYER, message = '' } = options;
   mock.on('ship-list-by-owner-request', () => ({

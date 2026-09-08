@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { missionUpsertCorrelationEcho } from './mission-session-helpers';
 import { SocketIOMock } from './socket-mock';
 
 export const FIRST_TARGET_MISSION_ID = 'first-target';
@@ -319,6 +320,7 @@ export function configureFirstTargetFlowMock(
         message: '',
         playerName: TEST_PLAYER,
         characterId: TEST_CHARACTER_ID,
+        ...missionUpsertCorrelationEcho(request),
       },
     };
   });

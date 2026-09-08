@@ -1,4 +1,5 @@
 import { TEST_PLAYER } from '../helpers/auth-helper';
+import { missionUpsertCorrelationEcho } from './mission-session-helpers';
 import { SocketIOMock } from './socket-mock';
 
 const FIRST_TARGET_MISSION_ID = 'first-target';
@@ -150,13 +151,14 @@ export function configureShipExteriorResumeMock(mock: SocketIOMock, options: Shi
     };
   });
 
-  mock.on('mission-upsert-request', () => ({
+  mock.on('mission-upsert-request', (request) => ({
     event: 'mission-upsert-response',
     data: {
       success: true,
       message: '',
       playerName: TEST_PLAYER,
       characterId: SHIP_EXTERIOR_RESUME_CHARACTER_ID,
+      ...missionUpsertCorrelationEcho(request),
     },
   }));
 }
