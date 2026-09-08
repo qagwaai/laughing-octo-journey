@@ -1,6 +1,7 @@
 import {
   evaluateMissionGateOnScan,
   resolveShipExteriorMission,
+  type MissionScanSample,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
 import { generateRandomAsteroidKinematics, type AsteroidKinematics } from '../../model/math/asteroid-kinematics';
@@ -11,12 +12,13 @@ const IRON_MATERIAL_NAME = 'Iron';
 
 /**
  * Minimal asteroid sample contract required to reveal survey results.
+ *
+ * Extends the canonical mission scan contract so the reveal path and gate evaluation
+ * cannot drift apart.
  */
-export interface AsteroidScanRevealSample {
-  id: string;
+export interface AsteroidScanRevealSample extends MissionScanSample {
   scanned: boolean;
   scanProgress: number;
-  revealedMaterial?: { material?: string } | null;
   revealedKinematics?: AsteroidKinematics | null;
   capturedKinematics?: AsteroidKinematics | null;
 }
