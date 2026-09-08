@@ -83,7 +83,10 @@ function createHarness(options: {
   gateState?: ShipExteriorMissionGateState | null;
   identity?: boolean;
 }) {
-  const context = new FakeContext(options.samples, options.gateState ?? makeGateState());
+  const context = new FakeContext(
+    options.samples,
+    options.gateState === undefined ? makeGateState() : options.gateState,
+  );
   const advanceScanThroughFacade = vi.fn().mockReturnValue(null);
   const persistScanComplete = vi.fn();
   const onRuntimeChanged = vi.fn();
