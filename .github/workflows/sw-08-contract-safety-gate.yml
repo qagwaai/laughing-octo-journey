@@ -18,6 +18,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history so the pull request base commit is available to
+          # `git diff` below; the default shallow fetch omits it and git exits 128.
+          fetch-depth: 0
 
       - name: Use Node.js
         uses: actions/setup-node@v7

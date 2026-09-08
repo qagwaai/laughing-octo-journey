@@ -768,3 +768,154 @@ describe('parseMissionGateState — additional edge cases', () => {
     ).toBeNull();
   });
 });
+
+// ── canonical evidence and no-op state preservation ───────────────────────────
+
+describe('transition evidence and no-op preservation', () => {
+  const COMPLETED_AT = '2026-06-01T00:00:00.000Z';
+
+  function makeState(
+    statuses: Record<string, ShipExteriorMissionGateState['steps'][number]['status']>,
+  ): ShipExteriorMissionGateState {
+    const initial = makeInitialState();
+    return {
+      ...initial,
+      steps: initial.steps.map((step) => ({ ...step, status: statuses[step.key] ?? step.status })),
+    };
+  }
+
+  it('records canonical scan evidence on the completed step', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({ identify_iron_asteroid: 'active' });
+
+    const evaluation = evaluateMissionGateOnScan({
+      mission,
+      gateState,
+      sample: makeIronScanSample(),
+      completedAt: COMPLETED_AT,
+    });
+
+    const completedStep = evaluation.gateState.steps.find((step) => step.key === 'identify_iron_asteroid');
+    expect(completedStep?.completedAt).toBe(COMPLETED_AT);
+    expect(completedStep?.evidence).toEqual({
+      sourceScanId: 'scan-1',
+      celestialBodyId: 'ast-1',
+      material: 'Iron',
+      completedAt: COMPLETED_AT,
+      characterId: gateState.characterId,
+      missionId: gateState.missionId,
+    });
+    expect(evaluation.gateState.updatedAt).toBe(COMPLETED_AT);
+  });
+
+  it('records canonical manufacture evidence identifying the produced item', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({
+      identify_iron_asteroid: 'completed',
+      neutralize_identified_asteroid: 'completed',
+      manufacture_hull_patch_kit: 'active',
+    });
+
+    const evaluation = evaluateMissionGateOnManufacture({
+      mission,
+      gateState,
+      manufacturedItemType: 'hull-patch-kit',
+      completedAt: COMPLETED_AT,
+    });
+
+    const completedStep = evaluation.gateState.steps.find((step) => step.key === 'manufacture_hull_patch_kit');
+    expect(completedStep?.evidence).toMatchObject({
+      sourceScanId: `manufacture:hull-patch-kit:${COMPLETED_AT}`,
+      celestialBodyId: null,
+      material: null,
+      completedAt: COMPLETED_AT,
+    });
+  });
+
+  it('records canonical repair evidence identifying the repair kind', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({
+      identify_iron_asteroid: 'completed',
+      neutralize_identified_asteroid: 'completed',
+      manufacture_hull_patch_kit: 'completed',
+      repair_scavenger_pod: 'active',
+    });
+
+    const evaluation = evaluateMissionGateOnRepair({
+      mission,
+      gateState,
+      repairKind: 'ship',
+      completedAt: COMPLETED_AT,
+    });
+
+    const completedStep = evaluation.gateState.steps.find((step) => step.key === 'repair_scavenger_pod');
+    expect(completedStep?.evidence).toMatchObject({
+      sourceScanId: `repair:ship:${COMPLETED_AT}`,
+      completedAt: COMPLETED_AT,
+    });
+  });
+
+  it('does not complete the iron step for a sample with no revealed material', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({ identify_iron_asteroid: 'active' });
+
+    const evaluation = evaluateMissionGateOnScan({
+      mission,
+      gateState,
+      sample: { ...makeIronScanSample(), revealedMaterial: null },
+      completedAt: COMPLETED_AT,
+    });
+
+    expect(evaluation.changed).toBe(false);
+    expect(evaluation.gateState.steps).toEqual(gateState.steps);
+  });
+
+  it('does not regress later progress when an already-identified asteroid is rescanned', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({
+      identify_iron_asteroid: 'completed',
+      neutralize_identified_asteroid: 'completed',
+      manufacture_hull_patch_kit: 'active',
+    });
+
+    const evaluation = evaluateMissionGateOnScan({
+      mission,
+      gateState,
+      sample: makeIronScanSample(),
+      completedAt: COMPLETED_AT,
+    });
+
+    expect(evaluation.changed).toBe(false);
+    expect(evaluation.gateState.steps).toEqual(gateState.steps);
+    expect(evaluation.gateState.updatedAt).toBe(gateState.updatedAt);
+  });
+
+  it('preserves updatedAt and step state for every unchanged transition', () => {
+    const mission = resolveShipExteriorMission(FIRST_TARGET_MISSION_ID);
+    const gateState = makeState({
+      identify_iron_asteroid: 'completed',
+      neutralize_identified_asteroid: 'completed',
+      manufacture_hull_patch_kit: 'active',
+    });
+
+    const wrongManufacture = evaluateMissionGateOnManufacture({
+      mission,
+      gateState,
+      manufacturedItemType: 'conduit-seals',
+      completedAt: COMPLETED_AT,
+    });
+    const wrongRepair = evaluateMissionGateOnRepair({
+      mission,
+      gateState,
+      repairKind: 'ship',
+      completedAt: COMPLETED_AT,
+    });
+
+    for (const evaluation of [wrongManufacture, wrongRepair]) {
+      expect(evaluation.changed).toBe(false);
+      expect(evaluation.completedStepKey).toBeNull();
+      expect(evaluation.gateState.steps).toEqual(gateState.steps);
+      expect(evaluation.gateState.updatedAt).toBe(gateState.updatedAt);
+    }
+  });
+});

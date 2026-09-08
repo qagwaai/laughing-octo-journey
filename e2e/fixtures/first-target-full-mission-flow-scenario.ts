@@ -1,10 +1,22 @@
 import type { Page } from '@playwright/test';
 import { loginViaUI, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { missionUpsertCorrelationEcho } from './mission-session-helpers';
 import { SocketIOMock } from './socket-mock';
 
 export const FIRST_TARGET_MISSION_ID = 'first-target';
 export const TEST_CHARACTER_ID = 'char-first-target';
+
+/**
+ * Celestial body upsert captured from the socket mock.
+ *
+ * `requestIdentity.operation` distinguishes scan-completion upserts from the bulk
+ * upserts emitted when asteroids are first seeded as unscanned.
+ */
+export interface CapturedCelestialBodyUpsert {
+  celestialBody?: { id?: string; sourceScanId?: string };
+  requestIdentity?: { operation?: string; containerId?: string };
+}
 
 export async function setupFirstTargetFlowTest(
   page: Page,
@@ -13,13 +25,13 @@ export async function setupFirstTargetFlowTest(
   mock: SocketIOMock;
   gameShell: GameShellPage;
   missionUpsertRequests: Array<{ status?: string }>;
-  celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }>;
+  celestialBodyUpsertRequests: CapturedCelestialBodyUpsert[];
   launchItemRequests: Array<{ targetCelestialBodyId?: string }>;
 }> {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   const missionUpsertRequests: Array<{ status?: string }> = [];
-  const celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }> = [];
+  const celestialBodyUpsertRequests: CapturedCelestialBodyUpsert[] = [];
   const launchItemRequests: Array<{ targetCelestialBodyId?: string }> = [];
 
   await mock.setup();
@@ -39,7 +51,7 @@ export async function setupFirstTargetFlowTest(
 export function configureFirstTargetFlowMock(
   mock: SocketIOMock,
   missionUpsertRequests: Array<{ status?: string }>,
-  celestialBodyUpsertRequests: Array<{ celestialBody?: { id?: string; sourceScanId?: string } }>,
+  celestialBodyUpsertRequests: CapturedCelestialBodyUpsert[],
   launchItemRequests: Array<{ targetCelestialBodyId?: string }>,
   options?: { includeIronInShipInventory?: boolean },
 ): void {
@@ -224,7 +236,7 @@ export function configureFirstTargetFlowMock(
   }));
 
   mock.on('celestial-body-upsert-request', (request) => {
-    celestialBodyUpsertRequests.push(request as { celestialBody?: { id?: string; sourceScanId?: string } });
+    celestialBodyUpsertRequests.push(request as CapturedCelestialBodyUpsert);
     const payload = request as {
       celestialBody?: {
         id?: string;
@@ -308,6 +320,7 @@ export function configureFirstTargetFlowMock(
         message: '',
         playerName: TEST_PLAYER,
         characterId: TEST_CHARACTER_ID,
+        ...missionUpsertCorrelationEcho(request),
       },
     };
   });

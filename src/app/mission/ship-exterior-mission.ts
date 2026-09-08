@@ -94,6 +94,18 @@ export interface ShipExteriorMissionGateDebrisCollectionEvaluation {
   unlockedStepKeys: string[];
 }
 
+/**
+ * Minimal scan-sample contract required to evaluate mission gate progression.
+ *
+ * Scene and persisted asteroid sample shapes both satisfy this structurally, so gate
+ * evaluation does not depend on rendering or persistence-specific sample fields.
+ */
+export interface MissionScanSample {
+  id: string;
+  serverCelestialBodyId?: string | null;
+  revealedMaterial?: { material: string } | null;
+}
+
 export interface ShipExteriorMissionDefinition {
   readonly missionId: string;
   canTargetAsteroids(params: ShipExteriorMissionTargetingParams): boolean;
@@ -117,7 +129,7 @@ export interface ShipExteriorMissionDefinition {
     existingBodies: import('../model/celestial-body-list').CelestialBodyListItem[];
   }): import('../model/ship-exterior-asteroid-sample').AsteroidScanSample[];
   getGateStepDefinitions(): readonly ShipExteriorMissionGateStepDefinition[];
-  doesScanCompleteGateStep(stepKey: string, sample: AsteroidScanSample): boolean;
+  doesScanCompleteGateStep(stepKey: string, sample: MissionScanSample): boolean;
   doesLaunchCompleteGateStep(stepKey: string, response: LaunchItemResponse): boolean;
   doesManufactureCompleteGateStep?(stepKey: string, manufacturedItemType: string): boolean;
   doesRepairCompleteGateStep?(stepKey: string, repairKind: string): boolean;
@@ -175,7 +187,7 @@ export function createInitialMissionGateState(params: {
 export function evaluateMissionGateOnScan(params: {
   mission: ShipExteriorMissionDefinition;
   gateState: ShipExteriorMissionGateState;
-  sample: AsteroidScanSample;
+  sample: MissionScanSample;
   completedAt?: string;
 }): ShipExteriorMissionGateScanEvaluation {
   const steps = params.mission.getGateStepDefinitions();
@@ -202,7 +214,7 @@ export function evaluateMissionGateOnScan(params: {
     stepState.completedAt = completedAt;
     stepState.evidence = {
       sourceScanId: params.sample.id,
-      celestialBodyId: params.sample.serverCelestialBodyId,
+      celestialBodyId: params.sample.serverCelestialBodyId ?? null,
       material: params.sample.revealedMaterial?.material ?? null,
       completedAt,
       characterId: params.gateState.characterId,

@@ -48,6 +48,16 @@ interface ShipExteriorMissionGateState {
   steps: ShipExteriorMissionGateStepState[];
 }
 
+/**
+ * Local mirror of the canonical `MissionScanSample` contract, declared here to avoid a
+ * circular import with the mission registry module.
+ */
+interface MissionScanSample {
+  id: string;
+  serverCelestialBodyId?: string | null;
+  revealedMaterial?: { material: string } | null;
+}
+
 function normalizeInventoryToken(value: unknown): string {
   if (typeof value !== 'string') {
     return '';
@@ -434,7 +444,7 @@ export const FIRST_TARGET_SHIP_EXTERIOR_MISSION = {
   getGateStepDefinitions() {
     return FIRST_TARGET_GATE_STEPS;
   },
-  doesScanCompleteGateStep(stepKey: string, sample: AsteroidScanSample) {
+  doesScanCompleteGateStep(stepKey: string, sample: MissionScanSample) {
     if (stepKey === 'identify_iron_asteroid') {
       return sample.revealedMaterial?.material === 'Iron';
     }

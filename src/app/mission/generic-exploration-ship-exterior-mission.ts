@@ -19,6 +19,7 @@ import { createMissionScenePlugin, registerMissionScenePlugin, type MissionScene
 import {
   createInitialMissionGateState,
   registerShipExteriorMission,
+  type MissionScanSample,
   type ShipExteriorMissionDefinition,
   type ShipExteriorMissionGateState,
   type ShipExteriorMissionGateStepDefinition,
@@ -84,7 +85,7 @@ export const GENERIC_EXPLORATION_SHIP_EXTERIOR_MISSION: ShipExteriorMissionDefin
   getGateStepDefinitions() {
     return EXPLORATION_GATE_STEPS;
   },
-  doesScanCompleteGateStep(stepKey, _sample) {
+  doesScanCompleteGateStep(stepKey: string, _sample: MissionScanSample) {
     // Completion is tracked in the plugin's `onScan` hook (it needs cumulative
     // state). The definition reports completion only when the count threshold
     // has already been reached — which the hook signals by storing the latest

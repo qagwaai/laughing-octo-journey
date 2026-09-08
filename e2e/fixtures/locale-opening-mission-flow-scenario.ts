@@ -3,6 +3,7 @@ import { openLoginAndWaitForSocket, TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { LoginPage } from '../page-objects/login.page';
 import {
+  missionUpsertCorrelationEcho,
   registerMissionCharacterList,
   registerMissionList,
   registerMissionShipListByOwner,
@@ -51,13 +52,14 @@ export async function setupLocaleOpeningMissionFlowTest(
     });
   }
 
-  mock.on('mission-upsert-request', () => ({
+  mock.on('mission-upsert-request', (request) => ({
     event: 'mission-upsert-response',
     data: {
       success: true,
       message: '',
       playerName: TEST_PLAYER,
       characterId: options.characterId,
+      ...missionUpsertCorrelationEcho(request),
     },
   }));
 

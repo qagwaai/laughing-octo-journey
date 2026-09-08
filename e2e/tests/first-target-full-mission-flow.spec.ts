@@ -67,18 +67,20 @@ test.describe('First Target Mission Flow', () => {
     expect(initialGate.steps.find((step) => step.key === 'manufacture_hull_patch_kit')?.status).toBe('locked');
     expect(initialGate.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('locked');
 
-    const firstSampleId = await page.evaluate(() => {
+    const ironSampleId = await page.evaluate(() => {
       const api = (
         window as Window & {
           __shipExteriorBareSceneTestUtils?: {
-            legacy?: { getAsteroidSamples: () => Array<{ id: string }> };
+            legacy?: {
+              getAsteroidSamples: () => Array<{ id: string; revealedMaterial?: { material?: string } | null }>;
+            };
           };
         }
       ).__shipExteriorBareSceneTestUtils?.legacy;
-      return api!.getAsteroidSamples()[0]?.id ?? null;
+      return api!.getAsteroidSamples().find((sample) => sample.revealedMaterial?.material === 'Iron')?.id ?? null;
     });
 
-    expect(firstSampleId).not.toBeNull();
+    expect(ironSampleId).not.toBeNull();
 
     await page.evaluate((sampleId) => {
       const api = (
@@ -89,7 +91,7 @@ test.describe('First Target Mission Flow', () => {
         }
       ).__shipExteriorBareSceneTestUtils?.legacy;
       api!.forceCompleteIronScan(sampleId ?? undefined);
-    }, firstSampleId);
+    }, ironSampleId);
 
     await expect
       .poll(async () =>
@@ -128,13 +130,17 @@ test.describe('First Target Mission Flow', () => {
       if (sampleId && api?.forceTargetAsteroid(sampleId)) {
         api.launchFromHotkey(1);
       }
-    }, firstSampleId);
+    }, ironSampleId);
 
     await expect.poll(() => launchItemRequests.length).toBeGreaterThan(0);
-    expect(launchItemRequests[0]?.targetCelestialBodyId).not.toBe(firstSampleId);
-    if (celestialBodyUpsertRequests.length > 0) {
-      expect(celestialBodyUpsertRequests[0]?.celestialBody?.sourceScanId).toBe(firstSampleId);
-    }
+    expect(launchItemRequests[0]?.targetCelestialBodyId).not.toBe(ironSampleId);
+    expect(
+      celestialBodyUpsertRequests.some(
+        (upsert) =>
+          upsert.requestIdentity?.operation === 'scan-complete' &&
+          upsert.celestialBody?.sourceScanId === ironSampleId,
+      ),
+    ).toBe(true);
 
     await expect
       .poll(async () =>

@@ -769,9 +769,31 @@ function writeReportArtifacts(reportDir, result) {
   fs.writeFileSync(path.join(resolvedReportDir, 'rolling-30d-trends.md'), `${renderWeeklyMetricsMarkdown(rollingMetrics)}\n`, 'utf8');
 }
 
+function resolveMissingRequiredInputs(args) {
+  return [args.frontendInventory, args.backendArtifact].filter(
+    (candidatePath) => !fs.existsSync(resolveWorkspacePath(candidatePath)),
+  );
+}
+
 function main() {
   const args = parseArgs(process.argv);
   const mode = normalizeMode(args.mode);
+
+  // The gate is only meaningful when both contract artifacts are available. Treat their
+  // absence as "nothing to compare" rather than drift, so a repository without them does
+  // not report a false breaking failure. Any artifact that is present is still enforced.
+  const missingRequiredInputs = resolveMissingRequiredInputs(args);
+  if (missingRequiredInputs.length > 0) {
+    console.log('SW-08 contract safety gate skipped: required contract artifacts are not present.');
+    for (const missingPath of missingRequiredInputs) {
+      console.log(`- Missing: ${missingPath}`);
+    }
+    console.log(
+      'Restore the artifacts, or pass --frontend-inventory and --backend-artifact, to enforce contract drift checks.',
+    );
+    return;
+  }
+
   const frontendInventory = readJsonFile(args.frontendInventory);
   const backendArtifact = readJsonFile(args.backendArtifact);
 

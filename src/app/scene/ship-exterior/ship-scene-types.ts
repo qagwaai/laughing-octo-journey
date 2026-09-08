@@ -35,6 +35,7 @@ export interface ShipSceneAsteroidSample {
     rarity: string;
   } | null;
   revealedKinematics?: AsteroidKinematics | null;
+  capturedKinematics?: AsteroidKinematics | null;
   solarSystemLocation?: CelestialBodyLocation | null;
   clusterCenterKm?: Triple | null;
 }
