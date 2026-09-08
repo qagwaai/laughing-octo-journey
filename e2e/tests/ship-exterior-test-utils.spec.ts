@@ -404,7 +404,11 @@ test.describe('Ship Exterior Test Utilities', () => {
 
     const sampleId = await page.evaluate(() => {
       const api = window.__shipExteriorBareSceneTestUtils?.legacy;
-      return api?.getAsteroidSamples?.()[0]?.id ?? null;
+      const samples = api?.getAsteroidSamples?.() ?? [];
+      const ironSample = samples.find(
+        (candidate) => (candidate as { revealedMaterial?: { material?: string } }).revealedMaterial?.material === 'Iron',
+      );
+      return ironSample?.id ?? null;
     });
 
     test.skip(sampleId === null, 'Cold-boot route may legitimately have no asteroid samples yet.');

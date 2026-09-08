@@ -48,17 +48,19 @@ test.describe('Ship Exterior scan persistence via Hangar', () => {
         window as Window & {
           __shipExteriorBareSceneTestUtils?: {
             legacy?: {
-              getAsteroidSamples: () => Array<{ id: string }>;
+              getAsteroidSamples: () => Array<{ id: string; revealedMaterial?: { material?: string } | null }>;
               forceCompleteIronScan: (sampleId?: string) => unknown;
             };
           };
         }
       ).__shipExteriorBareSceneTestUtils?.legacy;
-      const firstSampleId = api?.getAsteroidSamples()?.[0]?.id;
-      if (firstSampleId) {
-        api?.forceCompleteIronScan(firstSampleId);
+      const ironSampleId = api
+        ?.getAsteroidSamples()
+        ?.find((candidate) => candidate.revealedMaterial?.material === 'Iron')?.id;
+      if (ironSampleId) {
+        api?.forceCompleteIronScan(ironSampleId);
       }
-      return firstSampleId ?? null;
+      return ironSampleId ?? null;
     });
 
     expect(scannedSampleId).not.toBeNull();

@@ -2,11 +2,15 @@ import { Injectable } from '@angular/core';
 import {
   evaluateMissionGateOnManufacture,
   evaluateMissionGateOnRepair,
+  evaluateMissionGateOnScan,
   parseMissionGateState,
   resolveShipExteriorMission,
+  type MissionScanSample,
+  type ShipExteriorMissionDefinition,
   type ShipExteriorMissionGateStepDefinition,
   type ShipExteriorMissionGateState,
 } from '../mission/ship-exterior-mission';
+import { appLogger } from './logger';
 import { MissionProgressSyncService } from './mission-progress-sync.service';
 import {
   ShipExteriorMissionStateService,
@@ -53,6 +57,24 @@ export class MissionProgressFacade {
     return this.publishEvaluation(context, evaluation.gateState, evaluation.changed);
   }
 
+  advanceScan(
+    context: MissionProgressTransitionContext,
+    sample: MissionScanSample,
+  ): ShipExteriorMissionGateState | null {
+    const mission = resolveShipExteriorMission(context.missionId);
+    const gateState = this.loadGateState(context, mission.getGateStepDefinitions());
+    if (!gateState) {
+      return null;
+    }
+
+    const evaluation = evaluateMissionGateOnScan({
+      mission,
+      gateState,
+      sample,
+    });
+    return this.publishEvaluation(context, evaluation.gateState, evaluation.changed);
+  }
+
   advanceRepair(
     context: MissionProgressTransitionContext,
     repairKind: string,
@@ -70,11 +92,25 @@ export class MissionProgressFacade {
     });
     const nextState = this.publishEvaluation(context, evaluation.gateState, evaluation.changed);
 
-    if (repairKind === 'ship' && nextState && !evaluation.changed) {
+    if (nextState && !evaluation.changed && this.isRepairStepAlreadyCompleted(mission, nextState, repairKind)) {
       void this.sync(context, nextState);
     }
 
     return nextState;
+  }
+
+  /**
+   * Detects an already-satisfied repair so completed progress can be resynchronized idempotently,
+   * while out-of-sequence repairs perform no backend work.
+   */
+  private isRepairStepAlreadyCompleted(
+    mission: ShipExteriorMissionDefinition,
+    gateState: ShipExteriorMissionGateState,
+    repairKind: string,
+  ): boolean {
+    return gateState.steps.some(
+      (step) => step.status === 'completed' && mission.doesRepairCompleteGateStep?.(step.key, repairKind) === true,
+    );
   }
 
   syncPublishedState(
@@ -135,11 +171,17 @@ export class MissionProgressFacade {
     context: MissionProgressTransitionContext,
     gateState: ShipExteriorMissionGateState,
   ): Promise<void> {
-    await this.missionProgressSyncService.syncGateState({
-      playerName: context.playerName,
-      characterId: context.characterId,
-      sessionKey: context.sessionKey || this.sessionService.getSessionKey() || '',
-      gateState,
-    });
+    try {
+      await this.missionProgressSyncService.syncGateState({
+        playerName: context.playerName,
+        characterId: context.characterId,
+        sessionKey: context.sessionKey || this.sessionService.getSessionKey() || '',
+        gateState,
+      });
+    } catch (error) {
+      appLogger.warn(
+        `[mission-progress-facade] Mission status synchronization failed. missionId=${context.missionId} characterId=${context.characterId} error=${String(error)}`,
+      );
+    }
   }
 }

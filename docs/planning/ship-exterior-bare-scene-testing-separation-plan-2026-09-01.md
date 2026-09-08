@@ -510,6 +510,87 @@ Started: 2026-09-03
 
 Phase 3 remains in progress pending full scene publication/refresh consolidation; launch synchronization now uses the facade boundary.
 
+**Phase 3 exit gate: passed.** Scan, launch, manufacture, and repair transitions all use one publication, persistence, and synchronization path via `MissionProgressFacade`.
+
+#### Phase 3 integration follow-up (2026-09-08)
+
+- Added `src/app/services/mission-progression-facade.integration.vitest.ts`, exercising the facade against the real `ShipExteriorMissionStateService` (localStorage) and real `MissionProgressSyncService` with only `MissionService.upsertMissionStatus` stubbed.
+- Integration coverage now asserts all four required cases across publication, persistence, refresh notification, and backend synchronization:
+  - success: manufacture completes, publishes to the registered scene consumer, persists, and upserts mission status;
+  - no-op: repeated manufacture publishes nothing, leaves persisted bytes unchanged, and issues no upsert;
+  - wrong sequence: out-of-sequence manufacture and repair perform no publication, persistence, or synchronization;
+  - synchronization failure: `update-failed` results and thrown transport errors leave local publication and persistence intact.
+- Additional boundary coverage: publisher disposal, `syncPublishedState` external publication, session-key-less skip behavior, missing persisted state, and idempotent completed ship-repair resynchronization.
+- `MissionProgressFacade.advanceRepair` no longer resynchronizes on any unchanged `'ship'` repair; it resynchronizes only when the mission's canonical repair predicate matches an already-completed step, so wrong-sequence repairs no longer produce backend traffic.
+- `MissionProgressFacade` now contains synchronization rejections at the boundary and logs a warning instead of emitting an unhandled promise rejection; local publication and persistence remain authoritative.
+- Persisted mission keys and `ShipExteriorMissionGateState` shapes are unchanged; no simulator rules were reintroduced or canonized.
+- Baseline note: the referenced CI E2E failure (`character-add.spec.ts`, "continues to character list when bust create is blocked in background save", run 33885402064 on origin/main `354948c`) is classified as **unrelated** to this slice under section 9 — it exercises character creation/bust routing, not mission progression, and is excluded from this plan's focused gate.
+- Validation for this slice is owned by the user per the project validation contract; no tests, lint, or builds were run by the assistant.
+
+#### Phase 3 scan consolidation (2026-09-08)
+
+Closes the remaining Phase 3 exit-gate gap: scan was the last mission transition not using the shared boundary.
+
+- Before this slice the production hover-scan completion callback (`onScanComplete` → `forceCompleteIronScanInContext`) advanced the gate with a hand-rolled `setStepStatus` pair and a hardcoded objective string, persisted locally, and **never synchronized to the backend**, while `evaluateMissionGateOnScan` was dead in production code.
+- Added `MissionProgressFacade.advanceScan`, which evaluates through canonical `evaluateMissionGateOnScan` and reuses the existing publication/persistence/synchronization path.
+- Both scene scan-completion paths now call `advanceMissionGateOnScan`, which routes identity-bearing contexts through the facade and falls back to in-memory canonical evaluation when no persistable identity exists (preserving prior behavior for unidentified characters).
+- Deleted the now-unused `updateMissionGateState` and `setStepStatus` scene helpers; no duplicated transition logic remains for scan.
+- Narrowed the scan contract to a new `MissionScanSample` structural type so gate evaluation no longer depends on rendering- or persistence-specific sample fields. `AsteroidScanSample` and `ShipSceneAsteroidSample` both satisfy it; `first-target` mirrors the type locally to avoid a circular import.
+- Behavior improvements now covered by tests: scan completion records canonical evidence (`sourceScanId`, `celestialBodyId`, `material`), a non-qualifying material no longer completes the iron identification step, and rescanning an already-identified asteroid no longer resets `neutralize_identified_asteroid` back to `active` (a latent progress-regression defect in the previous hand-rolled path).
+- The canonical `neutralize_identified_asteroid` objective text is byte-identical to the previously hardcoded string, so overlay assertions such as `ship-exterior-hangar-resume.spec.ts` do not drift.
+- `forceCompleteIronScanInContext` now applies the transition to the context whose sample was scanned rather than the active context; previously the two could diverge.
+- Known pre-existing behavior left untouched as out of scope: the scene scan paths rewrite the scanned sample's material to `Iron` before evaluation, including on the production hover-scan path.
+- Persisted mission keys and `ShipExteriorMissionGateState` shapes remain unchanged.
+- Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
+
+#### Phase 3 socket-contract coverage (2026-09-08)
+
+- Added a `Mission progression facade over the socket transport` suite to `src/app/services/mission-flow.integration.vitest.ts`, composing the real `MissionProgressFacade`, `ShipExteriorMissionStateService`, `MissionProgressSyncService`, `MissionService`, and the mock socket transport. This closes the seam that previously split coverage: facade tests stubbed `MissionService`, while socket tests bypassed the facade, so no test asserted the emitted payload for the newly added scan traffic.
+- Socket-contract assertions now cover the canonical scan upsert (`missionId`, `status: 'active'`, and `statusDetail` carrying canonical evidence and the unlocked objective text), the completed-mission upsert on final repair, silence for a non-qualifying scan, and persisted-progress retention when the transport is disconnected.
+- Replaced the test-local `applyMissionEvent` transition simulator with the canonical evaluators. The previous helper advanced by array index instead of `prerequisiteStepKeys`, synthesized placeholder objective text, recorded no evidence, and completed the iron identification step for any scan regardless of material; it had drifted from production rules once scan became canonical.
+- `createGateState` now derives objective text from canonical step definitions so fixture state matches evaluator output.
+- Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
+
+#### Scan honesty follow-up (2026-09-08)
+
+Addresses the forced-`Iron` finding flagged during the Phase 3 scan consolidation.
+
+Problem: asteroid materials are assigned at generation time by `pickWeightedAsteroidMaterial`, and `generateMaterialAssignments` guarantees at least one `Iron` sample exists. The scene's scan completion nevertheless overwrote `revealedMaterial` to `Iron` on every hover-scan, so all asteroids reported Iron, material variety was invisible, `identify_iron_asteroid` was satisfiable by scanning any asteroid, and the guaranteed-Iron safeguard was dead weight. The same block fabricated `revealedKinematics` with `generateRandomAsteroidKinematics()` even though the sample's real `capturedKinematics` was present at runtime.
+
+Resolution:
+
+- Scanning now reveals already-generated survey data instead of inventing it. `revealScannedAsteroid` sets `scanned`/`scanProgress` and reveals `revealedKinematics` from `capturedKinematics`, retaining random generation only as a last-resort fallback. `revealedMaterial` is never rewritten.
+- Added `capturedKinematics` to `ShipSceneAsteroidSample` and its clone routine. The data already survived at runtime through object spread; only the type declaration was missing. This matches the existing `revealedKinematics ?? capturedKinematics` convention in `ship-exterior-celestial-body-controller.ts` and `createResumedAsteroidSamples`.
+- Production hover-scan (`completeAsteroidScanInContext`, renamed from `forceCompleteIronScanInContext`) reveals the hovered sample and no-ops when the requested sample id is absent. An asteroid may legitimately be destroyed or collected between hold-start and hold-completion, and an already-collected Iron asteroid simply leaves the objective incomplete; neither is a fault.
+- The gated E2E control `forceCompleteIronScan` keeps deterministic mission advancement by selecting the genuinely Iron asteroid, honoring a requested id only when that sample is actually Iron. When no Iron asteroid exists it throws a descriptive error rather than silently scanning an unrelated sample, because generation guarantees one and its absence means the fixture contract is broken. Failing at the bad state keeps the cause attributable instead of surfacing as a distant assertion timeout.
+- Updated `ship-exterior-test-utils.spec.ts` and `ship-exterior-hangar-resume.spec.ts`, which passed `samples[0].id` and then asserted that same sample became scanned; they now locate and assert the Iron asteroid. Remaining consumers assert gate progression rather than per-sample scan state and were unaffected. `first-target-cue-scenario.ts` already searched for a genuinely Iron scanned sample and now finds a truthful one.
+- Persisted mission keys, gate-state shapes, and the adapter's browser API surface are unchanged.
+- Not covered by unit tests: the scene has no component-level vitest harness, so this behavior is exercised through E2E only. A scene-level harness remains a possible follow-up. **Resolved by the scan reveal controller extraction below.**
+- Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
+
+#### Domain transition coverage (2026-09-08)
+
+Closes the final acceptance item: deterministic domain coverage of transition rules and negative paths.
+
+- Added a `transition evidence and no-op preservation` suite to `src/app/mission/ship-exterior-mission.vitest.ts`. Every added case passes an explicit `completedAt`, so none depend on wall-clock time.
+- Canonical evidence was previously asserted nowhere in domain tests, despite being the mechanism Phases 1-2 established and the scan slice depends on. Scan, manufacture, and repair now assert their recorded `evidence` and `completedAt`, including the `manufacture:<item>:<ts>` and `repair:<kind>:<ts>` source-scan identifiers.
+- Added negative paths not previously covered: a scan sample with no revealed material, and a rescan of an already-identified asteroid. The latter guards at domain level the progress-regression defect the previous hand-rolled scene path exhibited.
+- Added explicit assertions that unchanged transitions preserve both `updatedAt` and step state. The facade no-op tests rely on this to prove persisted bytes are untouched, but nothing had pinned the underlying evaluator behavior.
+- Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
+
+#### Scan reveal controller extraction (2026-09-08)
+
+Closes the coverage gap recorded in the scan honesty follow-up: that behavior was previously exercised through E2E only.
+
+- Extracted scan completion and mission-gate advancement from `ShipExteriorBareSceneComponent` into `AsteroidScanRevealController`, following the established scene-collaborator pattern used by `AsteroidScanController`, `ShipExteriorLaunchController`, and `ShipExteriorBareSceneTestAdapter`: a deps interface of callbacks plus structurally-typed sample and context contracts.
+- The controller is generic over sample and context types, so the component wires `ShipSceneAsteroidSample` and `ShipSceneContext` without casts, and unit tests supply lightweight fakes.
+- The component now retains only thin delegating wrappers for `forceCompleteIronScan` and `completeAsteroidScanInContext`; `revealScannedAsteroid` and `advanceMissionGateOnScan` moved wholesale. The now-unused `evaluateMissionGateOnScan` and `generateRandomAsteroidKinematics` imports were removed from the component.
+- Added `asteroid-scan-reveal-controller.vitest.ts` covering honest reveal (material never rewritten, captured kinematics preferred, already-revealed kinematics retained, random generation only as last resort, unrelated fields and sibling samples untouched), production no-op paths (missing sample, unknown context), the gated iron control (selects genuine Iron, ignores a non-Iron requested id, honors a genuinely Iron requested id, throws with the inspected sample count when none exists), and mission routing (facade path, identity-less fallback, facade-returns-null fallback, non-qualifying scan publishes nothing, absent gate state returns null).
+- The identity-less fallback branch of `advanceMissionGateOnScan` now has direct coverage; it previously had none at any level.
+- Deliberately out of scope: the Phase 4 leftover regarding adapter callback-dependency construction. Unmerged local-main commit `984fc0b` rewrites that same component region, so touching it here would create an avoidable conflict.
+- Behavior is unchanged; this slice is a structural extraction plus new unit coverage.
+- Validation for this slice is owned by the user; no tests, lint, or builds were run by the assistant.
+
 ### 10.9 Phase 4 implementation slice
 
 Started: 2026-09-03
@@ -573,6 +654,7 @@ Focused unit tests during canonicalization:
 
 ```bash
 npm run test:spec -- src/app/services/mission-progression-facade.vitest.ts
+npm run test:spec -- src/app/services/mission-progression-facade.integration.vitest.ts
 ```
 
 As tests move, replace the simulator path above with the canonical evaluator and facade test files.
@@ -598,12 +680,12 @@ Run the broader Playwright suite after the focused acceptance set passes and com
 - [x] All affected baseline failures are classified.
 - [x] No alternate mission transition algorithm exists for E2E tests.
 - [x] Debris progression is canonical while the temporary compatibility API remains.
-- [ ] Mission transitions use one state publication, persistence, and synchronization boundary.
+- [x] Mission transitions use one state publication, persistence, and synchronization boundary.
 - [x] The scene component contains no simulation or test API registration methods. (Callback dependency construction remains local pending a wider port extraction.)
 - [x] Browser test hooks require explicit E2E enablement.
 - [x] Production execution does not register either legacy test global.
-- [ ] Domain tests cover transition rules and negative paths deterministically.
-- [ ] Integration tests cover persistence and backend synchronization.
+- [x] Domain tests cover transition rules and negative paths deterministically.
+- [x] Integration tests cover persistence and backend synchronization.
 - [x] Scene-reaction tests are named according to their actual scope.
 - [x] At least one critical Playwright mission journey uses real fabrication and repair UI actions.
 - [x] Storage keys and persisted gate-state shapes remain compatible.

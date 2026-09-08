@@ -35,7 +35,6 @@ import type {
   LaunchItemYieldedMaterial,
 } from '../../model/launch-item';
 import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
-import { generateRandomAsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import type { ShipItem } from '../../model/ship-item';
 import { ShipSummary } from '../../model/ship-list';
@@ -52,6 +51,7 @@ import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { AsteroidPersistenceService } from './asteroid-persistence.service';
 import { AsteroidScanController } from './asteroid-scan-controller';
+import { AsteroidScanRevealController } from './asteroid-scan-reveal-controller';
 import { FloatingDebrisController } from './floating-debris-controller';
 import { InventoryRewardService } from './inventory-reward.service';
 import { NavigationStateReader } from './navigation-state-reader';
@@ -350,7 +350,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         getScannableSamples: () => context.getAsteroidSamples(),
       };
     },
-    onScanComplete: (contextKey, sampleId) => this.forceCompleteIronScanInContext(contextKey, sampleId),
+    onScanComplete: (contextKey, sampleId) => this.completeAsteroidScanInContext(contextKey, sampleId),
     resolveHoldMs: () => this.resolveHoverScanHoldMs(),
   });
   private readonly shipScanController = new AsteroidScanController({
@@ -1392,44 +1392,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   // CHANGE ANCHOR: mission gate state updates
-  private updateMissionGateState(
-    updater: (state: ShipExteriorMissionGateState) => ShipExteriorMissionGateState,
-  ): ShipExteriorMissionGateState {
-    const active = this.registry.getActiveContext();
-    if (!active) {
-      return this.createInitialMissionGateStateForTestApi();
-    }
-
-    this.ensureMissionGateStateForContext(active);
-    const currentState = active.getMissionGateState() ?? this.createInitialMissionGateStateForTestApi();
-    const nextState = updater(currentState);
-    active.setMissionGateState(nextState);
-    this.persistMissionGateState(active, nextState);
-    this.bumpMissionRevision();
-    return nextState;
-  }
-
-  private setStepStatus(
-    state: ShipExteriorMissionGateState,
-    key: string,
-    status: 'locked' | 'active' | 'completed' | 'pending-retry',
-  ): ShipExteriorMissionGateState {
-    const updatedAt = new Date().toISOString();
-    return {
-      ...state,
-      updatedAt,
-      steps: state.steps.map((step) =>
-        step.key === key
-          ? {
-              ...step,
-              status,
-              completedAt: status === 'completed' ? (step.completedAt ?? updatedAt) : step.completedAt,
-            }
-          : step,
-      ),
-    };
-  }
-
   private bumpFlightRevision(): void {
     this.flightRevision.update((value) => value + 1);
   }
@@ -1486,112 +1448,35 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   // CHANGE ANCHOR: mission gate scan completion side-effects
-  private forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null {
-    const active = this.registry.getActiveContext();
-    if (!active) {
-      return null;
-    }
-
-    const samples = this.ensureContextAsteroidSamplesForMissionProgress(active);
-    const requestedSample = sampleId ? (samples.find((sample) => sample.id === sampleId) ?? null) : null;
-    const targetSample =
-      requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
-    if (!targetSample) {
-      return null;
-    }
-
-    const targetId = targetSample.id;
-    let updatedSample: ShipSceneAsteroidSample | null = null;
-
-    const nextSamples: ShipSceneAsteroidSample[] = samples.map((sample) => {
-      if (sample.id !== targetId) {
-        return sample;
-      }
-
-      const scannedSample: ShipSceneAsteroidSample = {
-        ...sample,
-        scanned: true,
-        scanProgress: 100,
-        revealedMaterial: {
-          material: 'Iron',
-          rarity: sample.revealedMaterial?.rarity ?? 'Common',
-        },
-        revealedKinematics: sample.revealedKinematics ?? generateRandomAsteroidKinematics(),
-      };
-      updatedSample = scannedSample;
-      return scannedSample;
-    });
-    active.setAsteroidSamples(nextSamples);
-    this.bumpRuntimeRevision();
-
-    if (!updatedSample) {
-      return null;
-    }
-
-    const completedSample: ShipSceneAsteroidSample = updatedSample;
-    this.asteroidPersistenceService.persistScanComplete(completedSample, {
-      playerName: this.navigationPlayerName(),
-      characterId: this.navigationCharacterId(),
-      sessionKey: this.sessionService.getSessionKey() ?? undefined,
-    });
-    return this.updateMissionGateState((state) => {
-      const identifyCompleted = this.setStepStatus(state, 'identify_iron_asteroid', 'completed');
-      const neutralizeActive = this.setStepStatus(identifyCompleted, 'neutralize_identified_asteroid', 'active');
-      return {
-        ...neutralizeActive,
-        activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
-      };
-    });
-  }
-
-  private forceCompleteIronScanInContext(contextKey: string, sampleId: string): ShipExteriorMissionGateState | null {
-    const context = this.registry.getContext(contextKey);
-    if (!context) {
-      return null;
-    }
-
-    const samples = this.ensureContextAsteroidSamplesForMissionProgress(context);
-    const requestedSample = samples.find((sample) => sample.id === sampleId) ?? null;
-    const targetSample =
-      requestedSample ?? samples.find((sample) => sample.revealedMaterial?.material === 'Iron') ?? samples[0] ?? null;
-    if (!targetSample) {
-      return null;
-    }
-
-    context.setTargetHoldCandidateId(null);
-    const nextSamples: ShipSceneAsteroidSample[] = samples.map((sample) =>
-      sample.id === targetSample.id
-        ? {
-            ...sample,
-            scanned: true,
-            scanProgress: 100,
-            revealedMaterial: {
-              material: 'Iron',
-              rarity: sample.revealedMaterial?.rarity ?? 'Common',
-            },
-            revealedKinematics: sample.revealedKinematics ?? generateRandomAsteroidKinematics(),
-          }
-        : sample,
-    );
-    context.setAsteroidSamples(nextSamples);
-    this.bumpRuntimeRevision();
-    const scannedSample = nextSamples.find((s) => s.id === targetSample.id);
-    if (scannedSample) {
-      this.asteroidPersistenceService.persistScanComplete(scannedSample, {
+  private readonly asteroidScanRevealController = new AsteroidScanRevealController<
+    ShipSceneAsteroidSample,
+    ShipSceneContext
+  >({
+    getActiveContext: () => this.registry.getActiveContext(),
+    getContext: (contextKey) => this.registry.getContext(contextKey),
+    ensureAsteroidSamples: (context) => this.ensureContextAsteroidSamplesForMissionProgress(context),
+    ensureMissionGateState: (context) => {
+      this.ensureMissionGateStateForContext(context);
+    },
+    buildMissionStateContext: (state) => this.buildMissionStateContext(state),
+    getSessionKey: () => this.sessionService.getSessionKey() ?? '',
+    advanceScanThroughFacade: (context, sample) => this.missionProgressFacade.advanceScan(context, sample),
+    persistScanComplete: (sample) =>
+      this.asteroidPersistenceService.persistScanComplete(sample, {
         playerName: this.navigationPlayerName(),
         characterId: this.navigationCharacterId(),
         sessionKey: this.sessionService.getSessionKey() ?? undefined,
-      });
-    }
+      }),
+    onRuntimeChanged: () => this.bumpRuntimeRevision(),
+    onMissionChanged: () => this.bumpMissionRevision(),
+  });
 
-    return this.updateMissionGateState((state) => {
-      const identifyCompleted = this.setStepStatus(state, 'identify_iron_asteroid', 'completed');
-      const neutralizeActive = this.setStepStatus(identifyCompleted, 'neutralize_identified_asteroid', 'active');
-      return {
-        ...neutralizeActive,
-        activeObjectiveText: 'Objective unlocked: Neutralize the identified asteroid using a launchable payload.',
-      };
-    });
+  private forceCompleteIronScan(sampleId?: string): ShipExteriorMissionGateState | null {
+    return this.asteroidScanRevealController.forceCompleteIronScan(sampleId);
+  }
+
+  private completeAsteroidScanInContext(contextKey: string, sampleId: string): ShipExteriorMissionGateState | null {
+    return this.asteroidScanRevealController.completeScanInContext(contextKey, sampleId);
   }
 
   private forceCompleteShipScan(sampleId?: string): boolean {

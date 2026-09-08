@@ -83,6 +83,13 @@ function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroid
           angularVelocityRadPerSec: { ...sample.revealedKinematics.angularVelocityRadPerSec },
         }
       : null,
+    capturedKinematics: sample.capturedKinematics
+      ? {
+          ...sample.capturedKinematics,
+          velocityKmPerSec: { ...sample.capturedKinematics.velocityKmPerSec },
+          angularVelocityRadPerSec: { ...sample.capturedKinematics.angularVelocityRadPerSec },
+        }
+      : null,
     solarSystemLocation: sample.solarSystemLocation
       ? {
           ...sample.solarSystemLocation,
