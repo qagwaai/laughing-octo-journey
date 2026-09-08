@@ -63,10 +63,6 @@ export default class RepairRetrofitPage {
   protected canOpenRepairItems = computed(() => !!this.activeShip());
 
   constructor() {
-    if (this.activeShip()) {
-      return;
-    }
-
     this.socketLifecycleService.runWhenConnected(() => this.loadActiveShip());
   }
 

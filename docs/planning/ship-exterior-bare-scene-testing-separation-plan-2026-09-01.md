@@ -1,7 +1,7 @@
 # Ship Exterior Bare Scene Testing Separation Plan
 
 Date: 2026-09-01  
-Status: Phase 6 In Progress  
+Status: Phase 6 Complete; Phase 3 Integration Follow-up Remaining
 Owner: Frontend gameplay reliability  
 Scope: Ship exterior mission simulation seams and their Playwright consumers
 
@@ -317,7 +317,16 @@ Current progress:
 - Adapter global registration and teardown now live behind `ShipExteriorBareSceneTestAdapter`; the scene only supplies callbacks and delegates lifecycle operations.
 - Adapter enablement now uses the explicit `environment.e2eTestApiEnabled` flag in addition to the production guard; development/E2E behavior remains enabled and production remains disabled.
 - Formal/legacy API composition now also lives behind `ShipExteriorBareSceneTestAdapter`; the scene supplies only the callback dependencies.
-- The scene lifecycle now delegates directly to `ShipExteriorBareSceneTestAdapter`; callback dependency construction is isolated in `createTestAdapterDependencies`, and the remaining structural task is moving those providers out of the component where practical.
+- The scene lifecycle now delegates directly to `ShipExteriorBareSceneTestAdapter.registerFromSources`; the scene only provides a typed source object, and final formal/legacy API assembly is owned by the adapter service.
+- Removed pass-through callback-grouping helpers from the adapter; the scene now supplies typed callback groups directly while meaningful context and mission callback factories remain adapter-owned.
+- Made the adapter's context and mission callback factories private implementation details; only source-based registration remains part of the orchestration surface.
+- Made raw dependency registration private; adapter lifecycle callers now use only the typed `registerFromSources` boundary.
+- Made dependency assembly private as well; the adapter exposes only source-based registration and teardown to the scene lifecycle.
+- Narrowed the adapter module's exported contract to the source provider and service lifecycle; callback-group types are now internal implementation details.
+
+**Exit gate: passed.** Repository search finds no obsolete simulation methods or standalone legacy-global consumers. The production build contains no `__shipExteriorBareSceneTestUtils` or `e2eTestApiEnabled` references, and remaining `*ForTest` methods are documented scene-reaction controls required by the rendered test seam.
+
+Validation record: 2026-09-04. `npm test -- --run` passed with 159 files and 2,016 tests; focused adapter Vitest passed with 7 tests; focused Playwright acceptance passed with 15 tests and 1 skip; lint, typecheck, Angular build, and whitespace checks passed. The build emitted only the existing `cold-boot-scan.css` 10 kB budget warning.
 
 ## 9. Playwright Failure Policy for This Refactor
 
@@ -639,8 +648,21 @@ Started: 2026-09-03
 - Centralized the shared mission-state getter used by formal and legacy adapter surfaces, preserving the existing active-state fallback behavior.
 - Centralized the shared mission-state reset callback used by formal and legacy adapter surfaces, preserving the existing persistence and revision updates.
 - Centralized active-context lookup within adapter dependency construction so formal snapshot and legacy inspection callbacks use one scene-context access path.
+- Extracted shared formal/legacy mission-state callback wiring into `ShipExteriorBareSceneTestAdapter`; the component now supplies mission getter/reset functions without duplicating their API mapping.
+- Extracted shared active-context snapshot and inspection callback wiring into `ShipExteriorBareSceneTestAdapter`; null behavior remains unchanged when no context is active.
+- Extracted asteroid, debris, and ship sample inspection callback grouping into `ShipExteriorBareSceneTestAdapter`; the scene now supplies only typed sample providers.
+- Extracted scan and targeting control callback grouping into `ShipExteriorBareSceneTestAdapter`; callback signatures and scene behavior remain unchanged.
+- Extracted launch, active-inventory, and launch-toast callback grouping into `ShipExteriorBareSceneTestAdapter`; the scene now supplies this control group as a typed dependency.
+- Extracted formal context, flight-control, and route-feed callback grouping into `ShipExteriorBareSceneTestAdapter`; the scene now supplies these controls as a typed formal dependency group.
+- Moved final formal/legacy dependency assembly into `ShipExteriorBareSceneTestAdapter.createDependencies`; the scene now supplies grouped callback providers without constructing browser API surfaces.
 - Removed the scene-level registration wrapper; lifecycle code now delegates directly to the extracted adapter service.
 - Made adapter registration replace any prior browser hook before publishing the new API, preventing stale hooks during scene reinitialization; added characterization coverage for replacement behavior.
+- Added adapter composition characterization coverage proving grouped formal and legacy callback providers retain identity across dependency assembly.
+- Repair/retrofit now refreshes authoritative ship context on every page entry instead of trusting stale navigation state, preserving the hard-fail path when no usable spatial data is returned.
+- Moved grouped callback dependency assembly into `ShipExteriorBareSceneTestAdapter.createDependenciesFromSources`; the scene now supplies bound production callbacks and source accessors rather than assembling adapter groups.
+- Removed the duplicate direct callback-composition path; source-based composition is now the adapter's single dependency assembly boundary.
+- Flattened the scene-to-adapter binding contract; the scene now only binds production methods and state accessors, while the adapter owns callback grouping and formal/legacy projection.
+- Moved dependency creation and registration orchestration behind `ShipExteriorBareSceneTestAdapter.registerFromSources`; the scene no longer owns a test-dependency factory method.
 
 ## 11. Validation Commands
 
