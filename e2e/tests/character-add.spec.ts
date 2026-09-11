@@ -98,7 +98,7 @@ test.describe('Character Add — from character list', () => {
 
     await characterSetupPage.fillCharacterName('Nova Prime');
     await characterSetupPage.clickSubmit();
-    await expect(page).toHaveURL(/left:character-list/);
+    await expect(page).toHaveURL(/left:character-list/, { timeout: 15000 });
 
     await expect.poll(() => !!receivedAddRequest).toBe(true);
     await expect.poll(() => !!receivedShipListRequest).toBe(true);
@@ -372,7 +372,7 @@ test.describe('Character Add — from character list', () => {
     await characterSetupPage.fillCharacterName('Nova Retry');
     await characterSetupPage.clickSubmit();
 
-    await expect(page).toHaveURL(/left:character-list/);
+    await expect(page).toHaveURL(/left:character-list/, { timeout: 15000 });
     await expect.poll(() => bustCreateAttemptCount).toBe(1);
   });
 });

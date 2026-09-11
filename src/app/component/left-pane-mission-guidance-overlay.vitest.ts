@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
@@ -17,6 +18,8 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
   let contextService: LeftPanelNavigationContextService;
   let sessionService: SessionService;
   let navigateSpy: ReturnType<typeof vi.fn>;
+  let routerEvents$: Subject<any>;
+  let routerMock: { events: any; url: string; navigate: ReturnType<typeof vi.fn> };
 
   function missionStateServiceSpy() {
     return {
@@ -28,6 +31,12 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
   beforeEach(async () => {
     localStorage.clear();
     navigateSpy = vi.fn().mockResolvedValue(true);
+    routerEvents$ = new Subject<any>();
+    routerMock = {
+      events: routerEvents$.asObservable(),
+      url: '/(left:stellar-initiation)',
+      navigate: navigateSpy,
+    };
     missionStateService = missionStateServiceSpy();
     missionStateService.loadState.mockReturnValue(null);
 
@@ -37,7 +46,7 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
         LeftPanelNavigationContextService,
         SessionService,
         { provide: ShipExteriorMissionStateService, useValue: missionStateService },
-        { provide: Router, useValue: { navigate: navigateSpy } },
+        { provide: Router, useValue: routerMock },
       ],
     }).compileComponents();
 
@@ -120,5 +129,26 @@ describe('LeftPaneMissionGuidanceOverlay', () => {
         joinCharacter: character,
       },
     });
+  });
+
+  it('should hide overlay when the active route is already the guided left route', () => {
+    missionStateService.loadState.mockReturnValue({
+      missionId: FIRST_TARGET_MISSION_ID,
+      characterId: 'c-1',
+      activeObjectiveText: 'Objective unlocked: Manufacture a Hull Patch Kit at the Fabrication Lab.',
+      updatedAt: new Date().toISOString(),
+      steps: [{ key: 'manufacture_hull_patch_kit', status: 'active' }],
+    } as any);
+
+    sessionService.setActiveShip({ id: 'ship-1', shipName: 'Test Ship' } as any);
+    contextService.updateContext('Pioneer', { id: 'c-1', characterName: 'Nova' } as any);
+    fixture.detectChanges();
+
+    expect((component as any).visible()).toBe(true);
+
+    routerEvents$.next(new NavigationEnd(1, '/(left:fabrication-lab)', '/(left:fabrication-lab)'));
+    fixture.detectChanges();
+
+    expect((component as any).visible()).toBe(false);
   });
 });

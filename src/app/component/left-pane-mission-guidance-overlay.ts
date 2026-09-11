@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { locale } from '../i18n/locale';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
@@ -19,6 +21,15 @@ export class LeftPaneMissionGuidanceOverlay {
   private readonly missionStateService = inject(ShipExteriorMissionStateService);
   private readonly navContext = inject(LeftPanelNavigationContextService);
   private readonly sessionService = inject(SessionService);
+
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map((ev) => ev.urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
 
   protected readonly activeCue = signal<ReturnType<typeof resolveActiveFirstTargetCue>>(null);
   protected readonly visible = signal(false);
@@ -59,6 +70,7 @@ export class LeftPaneMissionGuidanceOverlay {
       this.navContext.playerName();
       this.navContext.joinCharacter();
       this.sessionService.activeShip();
+      this.currentUrl();
       this.refreshCue();
     });
   }
@@ -114,6 +126,14 @@ export class LeftPaneMissionGuidanceOverlay {
     this.activeCue.set(cue);
 
     if (!cue) {
+      this.visible.set(false);
+      return;
+    }
+
+    // Hide the guidance overlay if the user is already on the guided left-pane route.
+    const url = this.currentUrl();
+    const isAlreadyOnGuidedRoute = new RegExp(`[/(,]left:${cue.route}[/(),;?#]|left:${cue.route}$`).test(url);
+    if (isAlreadyOnGuidedRoute) {
       this.visible.set(false);
       return;
     }
