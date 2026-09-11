@@ -85,16 +85,36 @@ describe('Asteroid', () => {
 
   it('should rotate asteroid mesh in beforeRender callback', () => {
     const mockMesh = new THREE.Mesh();
-    mockMesh.rotation.x = 0;
-    mockMesh.rotation.y = 0;
+    mockMesh.rotation.set(0, 0, 0);
     (component as any).pulsePhase.set(0);
 
     (component as any).meshRef = vi.fn().mockReturnValue({ nativeElement: mockMesh });
+
+    const [spinX, spinY, spinZ] = (component as any).idleSpinRadPerSec() as [number, number, number];
+    const [tiltX, tiltY, tiltZ] = (component as any).idleInitialOrientation() as [number, number, number];
+
     (component as any).beforeRenderCallback({ delta: 2 });
 
-    expect(mockMesh.rotation.y).toBeCloseTo(0.9);
-    expect(mockMesh.rotation.x).toBeCloseTo(0.2);
+    const wrap = (radians: number) => Math.atan2(Math.sin(radians), Math.cos(radians));
+    expect(wrap(mockMesh.rotation.x)).toBeCloseTo(wrap(tiltX + spinX * 2));
+    expect(wrap(mockMesh.rotation.y)).toBeCloseTo(wrap(tiltY + spinY * 2));
+    expect(wrap(mockMesh.rotation.z)).toBeCloseTo(wrap(tiltZ + spinZ * 2));
     expect((component as any).pulsePhase()).toBeGreaterThan(0);
+  });
+
+  it('should give each asteroid a distinct 3-axis idle spin', () => {
+    const otherFixture = TestBed.createComponent(Asteroid);
+    otherFixture.componentRef.setInput('asteroidId', 'sample-2');
+    otherFixture.detectChanges();
+
+    const spinA = (component as any).idleSpinRadPerSec() as [number, number, number];
+    const spinB = (otherFixture.componentInstance as any).idleSpinRadPerSec() as [number, number, number];
+
+    expect(spinA).not.toEqual(spinB);
+    for (const axis of [...spinA, ...spinB]) {
+      expect(Math.abs(axis)).toBeGreaterThanOrEqual(0.05);
+      expect(Math.abs(axis)).toBeLessThanOrEqual(0.5);
+    }
   });
 
   it('should enable sweep line opacity only when hovered', () => {

@@ -449,4 +449,149 @@ describe('ShipSceneContext', () => {
     expect(first.getAsteroidLayoutSignature()).toBe(first.getAsteroidLayoutSignature());
     expect(first.getAsteroidLayoutSignature()).not.toBe(second.getAsteroidLayoutSignature());
   });
+
+  describe('asteroid spin', () => {
+    const createContext = () =>
+      new ShipSceneContext('player::char::ship', {
+        playerName: 'player',
+        characterId: 'char',
+        shipId: 'ship',
+      });
+
+    const createdMeshFor = (context: ShipSceneContext, id: string): THREE.Mesh =>
+      (context as any).createAsteroidMesh({
+        id,
+        position: [0, 0, 0],
+        radius: 1,
+        detail: 0,
+        scale: 1,
+        color: 0x888888,
+        emissive: 0x000000,
+        emissiveIntensity: 0,
+        isTargeted: false,
+        isHovered: false,
+      });
+
+    it('gives each created asteroid mesh a deterministic 3-axis spin profile', () => {
+      const context = createContext();
+
+      const alpha = createdMeshFor(context, 'sample-alpha');
+      const alphaAgain = createdMeshFor(context, 'sample-alpha');
+      const beta = createdMeshFor(context, 'sample-beta');
+
+      const spinOf = (mesh: THREE.Mesh) => (mesh.userData as any).spinProfile.spin as [number, number, number];
+
+      expect(spinOf(alpha)).toEqual(spinOf(alphaAgain));
+      expect(spinOf(alpha)).not.toEqual(spinOf(beta));
+
+      for (const axis of spinOf(alpha)) {
+        expect(Math.abs(axis)).toBeGreaterThanOrEqual(0.05);
+        expect(Math.abs(axis)).toBeLessThanOrEqual(0.5);
+      }
+    });
+
+    it('starts asteroids at a deterministic random orientation instead of aligned at zero', () => {
+      const context = createContext();
+
+      const alpha = createdMeshFor(context, 'sample-alpha');
+      const beta = createdMeshFor(context, 'sample-beta');
+
+      const orientationOf = (mesh: THREE.Mesh) => [mesh.rotation.x, mesh.rotation.y, mesh.rotation.z];
+
+      expect(orientationOf(alpha)).not.toEqual([0, 0, 0]);
+      expect(orientationOf(alpha)).not.toEqual(orientationOf(beta));
+    });
+
+    it('advances idle asteroid rotation on all three axes during rendering', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      mesh.rotation.set(0, 0, 0);
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      const [spinX, spinY, spinZ] = (mesh.userData as any).spinProfile.spin as [number, number, number];
+
+      (context as any).advanceAsteroidSpin();
+
+      const frame = 1 / 60;
+      expect(mesh.rotation.x).toBeCloseTo(spinX * frame);
+      expect(mesh.rotation.y).toBeCloseTo(spinY * frame);
+      expect(mesh.rotation.z).toBeCloseTo(spinZ * frame);
+    });
+
+    it('uses revealed kinematics instead of the idle spin once an asteroid is scanned', () => {
+      const context = createContext();
+      context.setAsteroidSamples([
+        {
+          id: 'sample-alpha',
+          scanned: true,
+          scanProgress: 100,
+          revealedMaterial: { material: 'iron', rarity: 'common' },
+          revealedKinematics: {
+            velocityKmPerSec: { x: 0, y: 0, z: 0 },
+            angularVelocityRadPerSec: { x: 0.01, y: 0.02, z: 0.03 },
+          } as never,
+        },
+      ]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      mesh.rotation.set(0, 0, 0);
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidSpin();
+
+      const scale = (1 / 60) * 20;
+      expect(mesh.rotation.x).toBeCloseTo(0.01 * scale);
+      expect(mesh.rotation.y).toBeCloseTo(0.02 * scale);
+      expect(mesh.rotation.z).toBeCloseTo(0.03 * scale);
+    });
+
+    it('rotates asteroids as part of renderFrame', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      mesh.rotation.set(0, 0, 0);
+
+      (context as any).renderingState = {
+        isPausedLocal: false,
+        cube: new THREE.Object3D(),
+        asteroidGroup: { children: [mesh] },
+        orbitControls: { update: vi.fn(), setEnabled: vi.fn(), setTarget: vi.fn() },
+        renderer: { render: vi.fn() },
+        scene: {},
+        camera: {},
+      };
+      (context as any).syncDebrisVisuals = vi.fn();
+      (context as any).syncScannableDebrisHoverScanShell = vi.fn();
+      (context as any).syncRouteFeedVisuals = vi.fn();
+      (context as any).syncAsteroidVisuals = vi.fn();
+      (context as any).syncScannableShipHoverScanShell = vi.fn();
+      (context as any).paused = false;
+
+      context.renderFrame();
+
+      expect(context.getRenderedFrameCount()).toBe(1);
+      expect(mesh.rotation.x).not.toBe(0);
+      expect(mesh.rotation.y).not.toBe(0);
+      expect(mesh.rotation.z).not.toBe(0);
+    });
+
+    it('counter-rotates hover scan overlays so rings stay world aligned', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      const overlay = new THREE.Group();
+      mesh.add(overlay);
+      (mesh.userData as any).hoverScanGroup = overlay;
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidSpin();
+
+      const composed = mesh.quaternion.clone().multiply(overlay.quaternion);
+      expect(composed.angleTo(new THREE.Quaternion())).toBeCloseTo(0);
+    });
+  });
 });

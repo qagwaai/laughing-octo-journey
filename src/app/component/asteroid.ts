@@ -340,6 +340,26 @@ function seededUnit(seed: number, salt: number): number {
   return mixed / 0xffffffff;
 }
 
+const IDLE_SPIN_MIN_RAD_PER_SEC = 0.05;
+const IDLE_SPIN_MAX_RAD_PER_SEC = 0.5;
+
+/** Deterministic per-asteroid idle tumble: a signed rate on each of the 3 axes. */
+function createIdleSpinFromSeed(seed: number, salt: number): [number, number, number] {
+  const axis = (offset: number): number => {
+    const magnitude =
+      IDLE_SPIN_MIN_RAD_PER_SEC +
+      seededUnit(seed, salt + offset) * (IDLE_SPIN_MAX_RAD_PER_SEC - IDLE_SPIN_MIN_RAD_PER_SEC);
+    const sign = seededUnit(seed, salt + offset + 32) < 0.5 ? -1 : 1;
+    return magnitude * sign;
+  };
+  return [axis(0), axis(1), axis(2)];
+}
+
+function createOrientationFromSeed(seed: number, salt: number): [number, number, number] {
+  const tau = Math.PI * 2;
+  return [seededUnit(seed, salt) * tau, seededUnit(seed, salt + 1) * tau, seededUnit(seed, salt + 2) * tau];
+}
+
 function createUnitVectorFromSeed(seed: number, salt: number): [number, number, number] {
   const x = seededUnit(seed, salt) * 2 - 1;
   const y = seededUnit(seed, salt + 1) * 2 - 1;
@@ -535,6 +555,7 @@ export class Asteroid {
   private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('mesh');
   private revealProfile = signal<AsteroidRevealProfile>(generateRandomAsteroidRevealProfile());
   private completionEdgePrimed = false;
+  private idleOrientationApplied = false;
   private morphPulseElapsedSeconds = signal(MORPH_PULSE_DURATION_SECONDS);
   protected hovered = signal(false);
   protected pulsePhase = signal(0);
@@ -610,6 +631,10 @@ export class Asteroid {
   });
   protected morphShellScale = computed(() => 1 + this.morphPulse() * 0.4);
   protected morphShellOpacity = computed(() => this.morphPulse() * 0.55);
+  protected idleSpinRadPerSec = computed(() => createIdleSpinFromSeed(createDeterministicSeed(this.asteroidId()), 911));
+  protected idleInitialOrientation = computed(() =>
+    createOrientationFromSeed(createDeterministicSeed(this.asteroidId()), 977),
+  );
   protected morphTiltX = computed(() => Math.sin(this.pulsePhase() * 2.3) * this.morphPulse() * 0.16);
   protected morphTiltZ = computed(() => Math.cos(this.pulsePhase() * 1.9) * this.morphPulse() * 0.12);
   protected revealedMaterialColor = computed(() => this.revealedMaterial()?.textureColor ?? '#8df7b2');
@@ -727,8 +752,7 @@ export class Asteroid {
   });
 
   constructor() {
-    const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);
-    const injectStoreFn = inject(ASTEROID_INJECT_STORE_FN);
+    const beforeRender = inject(ASTEROID_BEFORE_RENDER_FN);    const injectStoreFn = inject(ASTEROID_INJECT_STORE_FN);
     const store = injectStoreFn();
     const _pos = new THREE.Vector3();
 
@@ -751,8 +775,17 @@ export class Asteroid {
         mesh.rotation.y += delta * k.angularVelocityRadPerSec.y * SPIN_SCALE;
         mesh.rotation.z += delta * k.angularVelocityRadPerSec.z * SPIN_SCALE;
       } else {
-        mesh.rotation.y += delta * 0.45;
-        mesh.rotation.x += delta * 0.1;
+        const [spinX, spinY, spinZ] = this.idleSpinRadPerSec();
+        if (!this.idleOrientationApplied) {
+          const [tiltX, tiltY, tiltZ] = this.idleInitialOrientation();
+          mesh.rotation.x += tiltX;
+          mesh.rotation.y += tiltY;
+          mesh.rotation.z += tiltZ;
+          this.idleOrientationApplied = true;
+        }
+        mesh.rotation.x += delta * spinX;
+        mesh.rotation.y += delta * spinY;
+        mesh.rotation.z += delta * spinZ;
       }
       this.morphPulseElapsedSeconds.update((elapsed) => Math.min(MORPH_PULSE_DURATION_SECONDS, elapsed + delta));
       this.pulsePhase.update((phase) => (phase + delta * 2.1) % (Math.PI * 2));

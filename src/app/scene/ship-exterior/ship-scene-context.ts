@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
+import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import { resolveDescriptorRenderProfile } from '../viewer/viewer-descriptor-selectors';
 import { OrbitCameraControls } from './orbit-camera-controls';
 import type { ShipExteriorAsteroidVisual } from './ship-exterior-asteroid-visuals';
@@ -210,6 +211,31 @@ function createSeededRng(seed: number): () => number {
     state = (Math.imul(1664525, state) + 1013904223) >>> 0;
     return state / 4294967296;
   };
+}
+
+const ASTEROID_IDLE_SPIN_MIN_RAD_PER_SEC = 0.05;
+const ASTEROID_IDLE_SPIN_MAX_RAD_PER_SEC = 0.5;
+const ASTEROID_SPIN_FRAME_SECONDS = 1 / 60;
+const ASTEROID_REVEALED_SPIN_SCALE = 20;
+
+interface AsteroidSpinProfile {
+  spin: [number, number, number];
+  orientation: [number, number, number];
+}
+
+/** Deterministic per-asteroid tumble so each rock spins on all 3 axes from a stable starting pose. */
+function createAsteroidSpinProfile(id: string): AsteroidSpinProfile {
+  const random = createSeededRng(hashStringToSeed(`${id}::spin`));
+  const axis = (): number => {
+    const magnitude =
+      ASTEROID_IDLE_SPIN_MIN_RAD_PER_SEC +
+      random() * (ASTEROID_IDLE_SPIN_MAX_RAD_PER_SEC - ASTEROID_IDLE_SPIN_MIN_RAD_PER_SEC);
+    return random() < 0.5 ? -magnitude : magnitude;
+  };
+  const spin: [number, number, number] = [axis(), axis(), axis()];
+  const tau = Math.PI * 2;
+  const orientation: [number, number, number] = [random() * tau, random() * tau, random() * tau];
+  return { spin, orientation };
 }
 
 function createStarfieldPoints(seed: number): { points: THREE.Points; signature: string } {
@@ -872,6 +898,7 @@ export class ShipSceneContext {
     this.syncScannableDebrisHoverScanShell();
     this.syncRouteFeedVisuals();
     this.syncAsteroidVisuals();
+    this.advanceAsteroidSpin();
     this.syncScannableShipHoverScanShell();
     this.renderingState.renderer.render(this.renderingState.scene, this.renderingState.camera);
     this.renderedFrameCount += 1;
@@ -1473,6 +1500,71 @@ export class ShipSceneContext {
     });
   }
 
+  private advanceAsteroidSpin(): void {
+    if (!this.renderingState) {
+      return;
+    }
+
+    const scannedKinematicsById = new Map<string, AsteroidKinematics>();
+    for (const sample of this.state.asteroid?.samples ?? DEFAULT_ASTEROID_SAMPLES) {
+      if (sample.scanned && sample.revealedKinematics) {
+        scannedKinematicsById.set(sample.id, sample.revealedKinematics);
+      }
+    }
+
+    for (const child of this.renderingState.asteroidGroup.children) {
+      if (!(child instanceof THREE.Mesh)) {
+        continue;
+      }
+
+      const revealed = scannedKinematicsById.get(child.name);
+      if (revealed) {
+        const scale = ASTEROID_SPIN_FRAME_SECONDS * ASTEROID_REVEALED_SPIN_SCALE;
+        child.rotation.x += revealed.angularVelocityRadPerSec.x * scale;
+        child.rotation.y += revealed.angularVelocityRadPerSec.y * scale;
+        child.rotation.z += revealed.angularVelocityRadPerSec.z * scale;
+        continue;
+      }
+
+      const userData = child.userData as { spinProfile?: AsteroidSpinProfile };
+      if (!userData.spinProfile) {
+        userData.spinProfile = createAsteroidSpinProfile(child.name);
+      }
+
+      const [spinX, spinY, spinZ] = userData.spinProfile.spin;
+      child.rotation.x += spinX * ASTEROID_SPIN_FRAME_SECONDS;
+      child.rotation.y += spinY * ASTEROID_SPIN_FRAME_SECONDS;
+      child.rotation.z += spinZ * ASTEROID_SPIN_FRAME_SECONDS;
+    }
+
+    this.counterRotateAsteroidOverlays();
+  }
+
+  /** Scan/target rings are mesh children, so undo the parent tumble to keep them world-aligned. */
+  private counterRotateAsteroidOverlays(): void {
+    if (!this.renderingState) {
+      return;
+    }
+
+    for (const child of this.renderingState.asteroidGroup.children) {
+      if (!(child instanceof THREE.Mesh)) {
+        continue;
+      }
+
+      const overlays = child.userData as {
+        hoverScanGroup?: THREE.Group;
+        targetHoldGroup?: THREE.Group;
+      };
+      if (!overlays.hoverScanGroup && !overlays.targetHoldGroup) {
+        continue;
+      }
+
+      const inverse = child.quaternion.clone().invert();
+      overlays.hoverScanGroup?.quaternion.copy(inverse);
+      overlays.targetHoldGroup?.quaternion.copy(inverse);
+    }
+  }
+
   private createAsteroidMesh(visual: ShipExteriorAsteroidVisual): THREE.Mesh {
     const geometry = new THREE.IcosahedronGeometry(visual.radius, visual.detail);
     const material = new THREE.MeshStandardMaterial({
@@ -1484,6 +1576,9 @@ export class ShipSceneContext {
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = visual.id;
+    const spinProfile = createAsteroidSpinProfile(visual.id);
+    (mesh.userData as { spinProfile?: AsteroidSpinProfile }).spinProfile = spinProfile;
+    mesh.rotation.set(spinProfile.orientation[0], spinProfile.orientation[1], spinProfile.orientation[2]);
     this.applyAsteroidVisualToMesh(mesh, visual);
     return mesh;
   }
