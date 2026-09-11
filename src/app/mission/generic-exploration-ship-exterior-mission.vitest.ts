@@ -28,10 +28,6 @@ function makeSample(id: string): AsteroidScanSample {
       estimatedMassKg: 1,
       estimatedDiameterM: 1,
     },
-    motionPhase: 0,
-    motionRate: 0,
-    motionRadius: 0,
-    bobAmplitude: 0,
   } as unknown as AsteroidScanSample;
 }
 

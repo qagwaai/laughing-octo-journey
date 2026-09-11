@@ -27,8 +27,4 @@ export interface AsteroidScanSample {
   capturedKinematics: AsteroidKinematics;
   solarSystemLocation: CelestialBodyLocation;
   clusterCenterKm: Triple;
-  motionPhase: number;
-  motionRate: number;
-  motionRadius: number;
-  bobAmplitude: number;
 }

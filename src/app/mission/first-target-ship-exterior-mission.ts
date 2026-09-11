@@ -233,9 +233,6 @@ function generateAsteroidSamples(
     const y = (random() - 0.5) * 8;
     const basePosition: [number, number, number] = [+x.toFixed(2), +y.toFixed(2), +z.toFixed(2)];
     const capturedKinematics = generateRandomAsteroidKinematics(random);
-    const velocity = capturedKinematics.velocityKmPerSec;
-    const speedKmPerSec = Math.hypot(velocity.x, velocity.y, velocity.z);
-    const speedFactor = Math.min(1, speedKmPerSec / 32);
 
     samples.push({
       id: `sample-a${i + 1}`,
@@ -260,10 +257,6 @@ function generateAsteroidSamples(
       solarSystemLocation,
       clusterCenterKm: resolvedClusterCenterKm,
       capturedKinematics,
-      motionPhase: random() * Math.PI * 2,
-      motionRate: 0.2 + speedFactor * 0.55,
-      motionRadius: 0.2 + speedFactor * 0.95,
-      bobAmplitude: 0.06 + random() * 0.4,
     });
   }
 

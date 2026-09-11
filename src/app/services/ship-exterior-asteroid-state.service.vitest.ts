@@ -38,10 +38,6 @@ describe('ShipExteriorAsteroidStateService', () => {
           estimatedMassKg: 1_000_000,
           estimatedDiameterM: 120,
         },
-        motionPhase: 0.5,
-        motionRate: 0.3,
-        motionRadius: 0.8,
-        bobAmplitude: 0.1,
       },
     ];
 
@@ -94,10 +90,6 @@ describe('ShipExteriorAsteroidStateService', () => {
           estimatedMassKg: 1_000,
           estimatedDiameterM: 10,
         },
-        motionPhase: 0,
-        motionRate: 0.1,
-        motionRadius: 0.2,
-        bobAmplitude: 0.03,
       },
     ];
 

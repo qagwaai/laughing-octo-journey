@@ -26,10 +26,6 @@ function makeSample(id: string, position: [number, number, number], scanned = tr
     },
     solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
     clusterCenterKm: { x: 0, y: 0, z: 0 },
-    motionPhase: 0,
-    motionRate: 0,
-    motionRadius: 0,
-    bobAmplitude: 0,
   };
 }
 

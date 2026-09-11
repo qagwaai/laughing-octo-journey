@@ -350,10 +350,6 @@ function makeIronScanSample() {
     capturedKinematics: { position: [0, 0, 0], velocity: [0, 0, 0] } as never,
     solarSystemLocation: null as never,
     clusterCenterKm: [0, 0, 0] as never,
-    motionPhase: 0,
-    motionRate: 0,
-    motionRadius: 0,
-    bobAmplitude: 0,
   };
 }
 

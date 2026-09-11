@@ -155,10 +155,6 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           },
           solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
           clusterCenterKm: { x: 0, y: 0, z: 0 },
-          motionPhase: 0,
-          motionRate: 0,
-          motionRadius: 0,
-          bobAmplitude: 0,
         },
         {
           id: 'sample-a2',
@@ -177,10 +173,6 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           },
           solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
           clusterCenterKm: { x: 0, y: 0, z: 0 },
-          motionPhase: 0,
-          motionRate: 0,
-          motionRadius: 0,
-          bobAmplitude: 0,
         },
       ],
     });
@@ -375,10 +367,6 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           },
           solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
           clusterCenterKm: { x: 0, y: 0, z: 0 },
-          motionPhase: 0,
-          motionRate: 0,
-          motionRadius: 0,
-          bobAmplitude: 0,
         },
       ],
     });
@@ -426,10 +414,6 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           },
           solarSystemLocation: { positionKm: { x: 0, y: 0, z: 0 } },
           clusterCenterKm: { x: 0, y: 0, z: 0 },
-          motionPhase: 0,
-          motionRate: 0,
-          motionRadius: 0,
-          bobAmplitude: 0,
         },
       ],
     });

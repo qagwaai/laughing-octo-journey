@@ -238,6 +238,52 @@ function createAsteroidSpinProfile(id: string): AsteroidSpinProfile {
   return { spin, orientation };
 }
 
+const ASTEROID_ORBIT_MIN_AMPLITUDE = 0.3;
+const ASTEROID_ORBIT_MAX_AMPLITUDE = 0.8;
+const ASTEROID_ORBIT_MIN_RATE_RAD_PER_SEC = 0.05;
+const ASTEROID_ORBIT_MAX_RATE_RAD_PER_SEC = 0.18;
+const ASTEROID_ORBIT_FRAME_SECONDS = 1 / 60;
+const ASTEROID_ORBIT_PHASE_WRAP_SECONDS = 100000;
+
+export interface AsteroidOrbitProfile {
+  amplitude: [number, number, number];
+  rate: [number, number, number];
+  phase: [number, number, number];
+}
+
+/**
+ * Deterministic per-asteroid Lissajous wander: three independent axis frequencies produce a slow,
+ * non-repeating drift around the asteroid's laid-out base position.
+ */
+function createAsteroidOrbitProfile(id: string): AsteroidOrbitProfile {
+  const random = createSeededRng(hashStringToSeed(`${id}::orbit`));
+  const span = (min: number, max: number): number => min + random() * (max - min);
+  const tau = Math.PI * 2;
+  const amplitude: [number, number, number] = [
+    span(ASTEROID_ORBIT_MIN_AMPLITUDE, ASTEROID_ORBIT_MAX_AMPLITUDE),
+    span(ASTEROID_ORBIT_MIN_AMPLITUDE, ASTEROID_ORBIT_MAX_AMPLITUDE) * 0.45,
+    span(ASTEROID_ORBIT_MIN_AMPLITUDE, ASTEROID_ORBIT_MAX_AMPLITUDE),
+  ];
+  const rate: [number, number, number] = [
+    span(ASTEROID_ORBIT_MIN_RATE_RAD_PER_SEC, ASTEROID_ORBIT_MAX_RATE_RAD_PER_SEC),
+    span(ASTEROID_ORBIT_MIN_RATE_RAD_PER_SEC, ASTEROID_ORBIT_MAX_RATE_RAD_PER_SEC),
+    span(ASTEROID_ORBIT_MIN_RATE_RAD_PER_SEC, ASTEROID_ORBIT_MAX_RATE_RAD_PER_SEC),
+  ];
+  const phase: [number, number, number] = [random() * tau, random() * tau, random() * tau];
+  return { amplitude, rate, phase };
+}
+
+export function resolveAsteroidOrbitOffset(
+  profile: AsteroidOrbitProfile,
+  elapsedSeconds: number,
+): [number, number, number] {
+  return [
+    Math.sin(elapsedSeconds * profile.rate[0] + profile.phase[0]) * profile.amplitude[0],
+    Math.sin(elapsedSeconds * profile.rate[1] + profile.phase[1]) * profile.amplitude[1],
+    Math.cos(elapsedSeconds * profile.rate[2] + profile.phase[2]) * profile.amplitude[2],
+  ];
+}
+
 function createStarfieldPoints(seed: number): { points: THREE.Points; signature: string } {
   const random = createSeededRng(seed);
   const positions = new Float32Array(STARFIELD_POINT_COUNT * 3);
@@ -394,6 +440,7 @@ export class ShipSceneContext {
   private asteroidHoverScanPhase = 0;
   private asteroidTargetHoldPhase = 0;
   private debrisPulsePhase = 0;
+  private asteroidOrbitElapsedSeconds = 0;
   private stationPulsePhase = 0;
   private gatePulsePhase = 0;
   private shipLoadGeneration = 0;
@@ -898,6 +945,7 @@ export class ShipSceneContext {
     this.syncScannableDebrisHoverScanShell();
     this.syncRouteFeedVisuals();
     this.syncAsteroidVisuals();
+    this.advanceAsteroidOrbit();
     this.advanceAsteroidSpin();
     this.syncScannableShipHoverScanShell();
     this.renderingState.renderer.render(this.renderingState.scene, this.renderingState.camera);
@@ -1500,6 +1548,36 @@ export class ShipSceneContext {
     });
   }
 
+  private advanceAsteroidOrbit(): void {
+    if (!this.renderingState) {
+      return;
+    }
+
+    this.asteroidOrbitElapsedSeconds =
+      (this.asteroidOrbitElapsedSeconds + ASTEROID_ORBIT_FRAME_SECONDS) % ASTEROID_ORBIT_PHASE_WRAP_SECONDS;
+
+    for (const child of this.renderingState.asteroidGroup.children) {
+      if (!(child instanceof THREE.Mesh)) {
+        continue;
+      }
+
+      const userData = child.userData as {
+        orbitProfile?: AsteroidOrbitProfile;
+        orbitBasePosition?: [number, number, number];
+      };
+      if (!userData.orbitProfile) {
+        userData.orbitProfile = createAsteroidOrbitProfile(child.name);
+      }
+      const base = userData.orbitBasePosition;
+      if (!base) {
+        continue;
+      }
+
+      const offset = resolveAsteroidOrbitOffset(userData.orbitProfile, this.asteroidOrbitElapsedSeconds);
+      child.position.set(base[0] + offset[0], base[1] + offset[1], base[2] + offset[2]);
+    }
+  }
+
   private advanceAsteroidSpin(): void {
     if (!this.renderingState) {
       return;
@@ -1578,12 +1656,18 @@ export class ShipSceneContext {
     mesh.name = visual.id;
     const spinProfile = createAsteroidSpinProfile(visual.id);
     (mesh.userData as { spinProfile?: AsteroidSpinProfile }).spinProfile = spinProfile;
+    (mesh.userData as { orbitProfile?: AsteroidOrbitProfile }).orbitProfile = createAsteroidOrbitProfile(visual.id);
     mesh.rotation.set(spinProfile.orientation[0], spinProfile.orientation[1], spinProfile.orientation[2]);
     this.applyAsteroidVisualToMesh(mesh, visual);
     return mesh;
   }
 
   private applyAsteroidVisualToMesh(mesh: THREE.Mesh, visual: ShipExteriorAsteroidVisual): void {
+    (mesh.userData as { orbitBasePosition?: [number, number, number] }).orbitBasePosition = [
+      visual.position[0],
+      visual.position[1],
+      visual.position[2],
+    ];
     mesh.position.set(visual.position[0], visual.position[1], visual.position[2]);
     mesh.scale.setScalar(visual.scale);
 

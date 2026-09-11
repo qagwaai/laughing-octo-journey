@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { ShipSceneContext } from './ship-scene-context';
+import { type AsteroidOrbitProfile, resolveAsteroidOrbitOffset, ShipSceneContext } from './ship-scene-context';
 
 describe('ShipSceneContext', () => {
   it('tracks pause and resume state before rendering is initialized', () => {
@@ -592,6 +592,193 @@ describe('ShipSceneContext', () => {
 
       const composed = mesh.quaternion.clone().multiply(overlay.quaternion);
       expect(composed.angleTo(new THREE.Quaternion())).toBeCloseTo(0);
+    });
+  });
+
+  describe('asteroid orbit', () => {
+    const createContext = () =>
+      new ShipSceneContext('player::char::ship', {
+        playerName: 'player',
+        characterId: 'char',
+        shipId: 'ship',
+      });
+
+    const createdMeshFor = (
+      context: ShipSceneContext,
+      id: string,
+      position: [number, number, number] = [0, 0, 0],
+      overrides: Partial<{ isTargeted: boolean; isHovered: boolean }> = {},
+    ): THREE.Mesh =>
+      (context as any).createAsteroidMesh({
+        id,
+        position,
+        radius: 1,
+        detail: 0,
+        scale: 1,
+        color: 0x888888,
+        emissive: 0x000000,
+        emissiveIntensity: 0,
+        isTargeted: false,
+        isHovered: false,
+        ...overrides,
+      });
+
+    const orbitProfileOf = (mesh: THREE.Mesh) => (mesh.userData as any).orbitProfile as AsteroidOrbitProfile;
+
+    it('gives each created asteroid mesh a deterministic orbit profile', () => {
+      const context = createContext();
+
+      const alpha = createdMeshFor(context, 'sample-alpha');
+      const alphaAgain = createdMeshFor(context, 'sample-alpha');
+      const beta = createdMeshFor(context, 'sample-beta');
+
+      expect(orbitProfileOf(alpha)).toEqual(orbitProfileOf(alphaAgain));
+      expect(orbitProfileOf(alpha)).not.toEqual(orbitProfileOf(beta));
+    });
+
+    it('keeps orbit amplitudes within the configured drift band', () => {
+      const context = createContext();
+
+      for (const id of ['sample-alpha', 'sample-beta', 'sample-gamma', 'sample-delta']) {
+        const { amplitude, rate } = orbitProfileOf(createdMeshFor(context, id));
+
+        // X and Z drift across the full band; Y is deliberately flattened to read as orbital.
+        expect(amplitude[0]).toBeGreaterThanOrEqual(0.3);
+        expect(amplitude[0]).toBeLessThanOrEqual(0.8);
+        expect(amplitude[2]).toBeGreaterThanOrEqual(0.3);
+        expect(amplitude[2]).toBeLessThanOrEqual(0.8);
+        expect(amplitude[1]).toBeGreaterThanOrEqual(0.3 * 0.45);
+        expect(amplitude[1]).toBeLessThanOrEqual(0.8 * 0.45);
+
+        for (const axisRate of rate) {
+          expect(axisRate).toBeGreaterThanOrEqual(0.05);
+          expect(axisRate).toBeLessThanOrEqual(0.18);
+        }
+      }
+    });
+
+    it('uses independent axis frequencies so the drift does not repeat on a single period', () => {
+      const context = createContext();
+      const { rate } = orbitProfileOf(createdMeshFor(context, 'sample-alpha'));
+
+      expect(rate[0]).not.toBe(rate[1]);
+      expect(rate[1]).not.toBe(rate[2]);
+      expect(rate[0]).not.toBe(rate[2]);
+    });
+
+    it('records the laid-out position as the orbit base when applying visuals', () => {
+      const context = createContext();
+
+      const mesh = createdMeshFor(context, 'sample-alpha', [1.5, -2.5, 3.5]);
+
+      expect((mesh.userData as any).orbitBasePosition).toEqual([1.5, -2.5, 3.5]);
+    });
+
+    it('offsets asteroids from their base position during rendering', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha', [4, 0, 2]);
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidOrbit();
+
+      const expected = resolveAsteroidOrbitOffset(orbitProfileOf(mesh), 1 / 60);
+      expect(mesh.position.x).toBeCloseTo(4 + expected[0]);
+      expect(mesh.position.y).toBeCloseTo(0 + expected[1]);
+      expect(mesh.position.z).toBeCloseTo(2 + expected[2]);
+    });
+
+    it('re-derives position from the base each frame instead of accumulating drift', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha', [4, 0, 2]);
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidOrbit();
+      (context as any).advanceAsteroidOrbit();
+      (context as any).advanceAsteroidOrbit();
+
+      // Absolute sample at t=3 frames, not the sum of three per-frame offsets.
+      const expected = resolveAsteroidOrbitOffset(orbitProfileOf(mesh), 3 / 60);
+      expect(mesh.position.x).toBeCloseTo(4 + expected[0]);
+      expect(mesh.position.y).toBeCloseTo(0 + expected[1]);
+      expect(mesh.position.z).toBeCloseTo(2 + expected[2]);
+    });
+
+    it('stays within the drift band no matter how long the scene has been running', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha', [4, 0, 2]);
+      const { amplitude } = orbitProfileOf(mesh);
+
+      for (const elapsedSeconds of [0, 12.5, 400, 9_999]) {
+        const [x, y, z] = resolveAsteroidOrbitOffset(orbitProfileOf(mesh), elapsedSeconds);
+        expect(Math.abs(x)).toBeLessThanOrEqual(amplitude[0] + 1e-9);
+        expect(Math.abs(y)).toBeLessThanOrEqual(amplitude[1] + 1e-9);
+        expect(Math.abs(z)).toBeLessThanOrEqual(amplitude[2] + 1e-9);
+      }
+    });
+
+    it('keeps targeted and scanned asteroids orbiting so the player must track them', () => {
+      const context = createContext();
+      context.setAsteroidSamples([
+        {
+          id: 'sample-alpha',
+          scanned: true,
+          scanProgress: 100,
+          revealedMaterial: { material: 'iron', rarity: 'common' },
+        },
+      ]);
+      context.setTargetedAsteroidId('sample-alpha');
+
+      const mesh = createdMeshFor(context, 'sample-alpha', [4, 0, 2], { isTargeted: true });
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidOrbit();
+
+      expect([mesh.position.x, mesh.position.y, mesh.position.z]).not.toEqual([4, 0, 2]);
+    });
+
+    it('moves asteroid position as part of renderFrame', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha', [4, 0, 2]);
+
+      (context as any).renderingState = {
+        isPausedLocal: false,
+        cube: new THREE.Object3D(),
+        asteroidGroup: { children: [mesh] },
+        orbitControls: { update: vi.fn(), setEnabled: vi.fn(), setTarget: vi.fn() },
+        renderer: { render: vi.fn() },
+        scene: {},
+        camera: {},
+      };
+      (context as any).syncDebrisVisuals = vi.fn();
+      (context as any).syncScannableDebrisHoverScanShell = vi.fn();
+      (context as any).syncRouteFeedVisuals = vi.fn();
+      (context as any).syncAsteroidVisuals = vi.fn();
+      (context as any).syncScannableShipHoverScanShell = vi.fn();
+      (context as any).paused = false;
+
+      context.renderFrame();
+
+      expect(context.getRenderedFrameCount()).toBe(1);
+      expect([mesh.position.x, mesh.position.y, mesh.position.z]).not.toEqual([4, 0, 2]);
+    });
+
+    it('leaves meshes untouched when no orbit base has been recorded', () => {
+      const context = createContext();
+
+      const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshStandardMaterial());
+      mesh.name = 'sample-orphan';
+      mesh.position.set(1, 2, 3);
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] } };
+
+      (context as any).advanceAsteroidOrbit();
+
+      expect([mesh.position.x, mesh.position.y, mesh.position.z]).toEqual([1, 2, 3]);
     });
   });
 });
