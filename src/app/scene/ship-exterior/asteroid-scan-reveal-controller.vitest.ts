@@ -15,6 +15,7 @@ const CONTEXT_KEY = 'context-1';
 const CAPTURED_KINEMATICS: AsteroidKinematics = {
   velocityKmPerSec: { x: 1, y: 2, z: 3 },
   angularVelocityRadPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+  estimatedDiameterM: 5240,
 } as unknown as AsteroidKinematics;
 
 interface TestSample extends AsteroidScanRevealSample {
@@ -150,6 +151,14 @@ describe('AsteroidScanRevealController', () => {
       harness.controller.completeScanInContext(CONTEXT_KEY, 'sample-1');
 
       expect(harness.context.samples[0].revealedKinematics).toEqual(CAPTURED_KINEMATICS);
+    });
+
+    it('refreshes the top-level estimated diameter from the revealed kinematics on scan completion', () => {
+      const harness = createHarness({ samples: [makeSample()] });
+
+      harness.controller.completeScanInContext(CONTEXT_KEY, 'sample-1');
+
+      expect(harness.context.samples[0].estimatedDiameterM).toBe(5240);
     });
 
     it('keeps already-revealed kinematics when present', () => {

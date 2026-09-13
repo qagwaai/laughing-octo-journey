@@ -115,6 +115,50 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     expect(destroyed).toBeUndefined();
   });
 
+  it('should surface the persisted estimated diameter at the top level of resumed asteroid samples', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createResumedAsteroidSamples({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 10_000, y: 0, z: -10_000 },
+      existingBodies: [
+        {
+          id: 'cb-1',
+          catalogId: 'cat-1',
+          sourceScanId: 'sample-a1',
+          createdByCharacterId: 'char-1',
+          createdAt: '2026-04-28T00:00:00.000Z',
+          updatedAt: '2026-04-28T00:00:00.000Z',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: { x: 1, y: 2, z: 3 },
+            epochMs: 1,
+          },
+          motion: {
+            velocityKmPerSec: { x: 1, y: 2, z: 3 },
+            angularVelocityRadPerSec: { x: 0.1, y: 0.2, z: 0.3 },
+          },
+          physical: {
+            estimatedMassKg: 10,
+            estimatedDiameterM: 5240,
+          },
+          observability: {
+            visibility: 'visible',
+            scanState: 'scanned',
+          },
+          composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
+          distanceKm: 12,
+          state: 'active',
+        },
+      ],
+      launchSeedHint: 99,
+    });
+
+    const restored = samples.find((sample) => sample.id === 'sample-a1');
+
+    expect(restored?.estimatedDiameterM).toBe(5240);
+  });
+
   it('should remove the matching asteroid samples when the target is destroyed', () => {
     const resolution = FIRST_TARGET_SHIP_EXTERIOR_MISSION.resolveLaunchItemResponse({
       response: {
@@ -265,6 +309,21 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
     });
 
     expect(samples.every((sample) => !!sample.meshProfileKey)).toBe(true);
+  });
+
+  it('should surface a top-level estimated diameter matching the captured kinematics for newly generated asteroid samples', () => {
+    const samples = FIRST_TARGET_SHIP_EXTERIOR_MISSION.createNewAsteroidSamplesAroundShip({
+      playerName: 'Pioneer',
+      characterId: 'char-1',
+      center: { x: 1_000, y: 2_000, z: 3_000 },
+      launchSeedHint: 42,
+    });
+
+    expect(samples.length).toBeGreaterThan(0);
+    expect(
+      samples.every((sample) => sample.estimatedDiameterM === sample.capturedKinematics.estimatedDiameterM),
+    ).toBe(true);
+    expect(samples.every((sample) => typeof sample.estimatedDiameterM === 'number')).toBe(true);
   });
 
   it('should attach SW-13B registry metadata to newly generated asteroid samples', () => {

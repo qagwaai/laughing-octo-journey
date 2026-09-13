@@ -145,6 +145,8 @@ describe('ShipSceneContext', () => {
       {
         id: 'sample-alpha',
         serverCelestialBodyId: 'cb-sample-alpha',
+        meshProfileKey: 'v1|pv=dodecahedron:0|rv=rock:2|s=1.00,1.00,1.00',
+        estimatedDiameterM: 24,
         scanned: false,
         scanProgress: 0,
         revealedMaterial: { material: 'Iron', rarity: 'Common' },
@@ -167,6 +169,10 @@ describe('ShipSceneContext', () => {
     expect(context.getAsteroidSamples().find((sample) => sample.id === 'sample-alpha')?.serverCelestialBodyId).toBe(
       'cb-sample-alpha',
     );
+    expect(context.getAsteroidSamples().find((sample) => sample.id === 'sample-alpha')?.meshProfileKey).toBe(
+      'v1|pv=dodecahedron:0|rv=rock:2|s=1.00,1.00,1.00',
+    );
+    expect(context.getAsteroidSamples().find((sample) => sample.id === 'sample-alpha')?.estimatedDiameterM).toBe(24);
 
     context.setTargetHoldCandidateId('sample-alpha');
     expect(context.getTargetHoldCandidateId()).toBe('sample-alpha');

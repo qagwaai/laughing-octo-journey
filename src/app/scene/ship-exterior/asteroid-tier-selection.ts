@@ -1,4 +1,8 @@
-import type { AsteroidScanSample } from '../../model/ship-exterior-asteroid-sample';
+export interface AsteroidTierSample {
+  id: string;
+  position: [number, number, number];
+  scanned: boolean;
+}
 
 export type AsteroidRenderTier = 'hero' | 'near' | 'background';
 
@@ -41,7 +45,7 @@ function distanceTo(camera: [number, number, number], position: [number, number,
 }
 
 export function assignAsteroidRenderTiers(
-  samples: readonly AsteroidScanSample[],
+  samples: readonly AsteroidTierSample[],
   context: AsteroidTierContext,
   caps: AsteroidTierCaps = DEFAULT_ASTEROID_TIER_CAPS,
   distances: AsteroidTierDistances = DEFAULT_ASTEROID_TIER_DISTANCES,
