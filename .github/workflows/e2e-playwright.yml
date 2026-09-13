@@ -27,13 +27,13 @@ jobs:
     steps:
       # ── Checkout this repo (Angular front end) ──────────────────────────────
       - name: Checkout frontend
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: frontend
 
       # ── Checkout Forge (Node server) ────────────────────────────────────────
       - name: Checkout Forge server
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: qagwaai/solid-train
           ref: main
