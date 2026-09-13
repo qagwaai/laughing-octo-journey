@@ -39,6 +39,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
         run: |
+          git fetch --no-tags origin "$BASE_SHA"
           changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           if echo "$changed_files" | grep -q "^docs/planning/sw-08/frontend-consumer-contract-inventory.json$"; then
             if ! echo "$PR_BODY" | grep -qi "SW-08 Assumption Change Note:"; then
