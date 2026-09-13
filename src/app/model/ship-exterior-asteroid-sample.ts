@@ -11,6 +11,7 @@ export interface AsteroidScanSample {
   id: string;
   serverCelestialBodyId: string | null;
   meshProfileKey?: string | null;
+  estimatedDiameterM?: number | null;
   sw13bSeedId?: string | null;
   sw13bGeneratorVersion?: string | null;
   sw13bParameterBundleHash?: string | null;

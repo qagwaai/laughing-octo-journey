@@ -5,6 +5,13 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import { resolveDescriptorRenderProfile } from '../viewer/viewer-descriptor-selectors';
 import { OrbitCameraControls } from './orbit-camera-controls';
+import { buildDeterministicRockGeometry, resolveAsteroidGeometryDescriptor } from './asteroid-rock-geometry';
+import {
+  assignAsteroidRenderTiers,
+  resolveAsteroidTierDetailOverride,
+  type AsteroidRenderTier,
+} from './asteroid-tier-selection';
+import { FramePressureSampler } from './frame-pressure-sampler';
 import type { ShipExteriorAsteroidVisual } from './ship-exterior-asteroid-visuals';
 import { buildAsteroidLayoutSignature, deriveAsteroidVisuals } from './ship-exterior-asteroid-visuals';
 import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
@@ -76,6 +83,8 @@ function cloneAsteroidSample(sample: ShipSceneAsteroidSample): ShipSceneAsteroid
   return {
     ...sample,
     serverCelestialBodyId: sample.serverCelestialBodyId ?? null,
+    meshProfileKey: sample.meshProfileKey ?? null,
+    estimatedDiameterM: sample.estimatedDiameterM ?? null,
     revealedMaterial: sample.revealedMaterial ? { ...sample.revealedMaterial } : null,
     revealedKinematics: sample.revealedKinematics
       ? {
@@ -324,6 +333,28 @@ function createStarfieldPoints(seed: number): { points: THREE.Points; signature:
   };
 }
 
+function createAsteroidEnvironmentTexture(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 4;
+  canvas.height = 2;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return null;
+  }
+  const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, '#284765');
+  gradient.addColorStop(0.5, '#0b1728');
+  gradient.addColorStop(1, '#020611');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.mapping = THREE.EquirectangularReflectionMapping;
+  return texture;
+}
+
 function hashShipIdToColor(shipId: string): number {
   let hash = 0;
   for (let i = 0; i < shipId.length; i += 1) {
@@ -444,6 +475,11 @@ export class ShipSceneContext {
   private stationPulsePhase = 0;
   private gatePulsePhase = 0;
   private shipLoadGeneration = 0;
+  private readonly framePressureSampler = new FramePressureSampler();
+  private lastFrameTimestamp = 0;
+  private asteroidTierFrameCounter = 0;
+  private lastAsteroidTiers = new Map<string, AsteroidRenderTier>();
+  private static readonly ASTEROID_TIER_RECOMPUTE_INTERVAL_FRAMES = 6;
 
   constructor(
     readonly contextKey: string,
@@ -800,6 +836,13 @@ export class ShipSceneContext {
     directional.position.set(3, 5, 4);
 
     const { points: starfieldPoints, signature: starfieldSignatureLocal } = createStarfieldPoints(this.starfieldSeed);
+    // Applied via scene.environment so all current and future PBR-capable scene materials
+    // (ship, stations, gates, asteroids) receive reflections automatically from three.js's
+    // standard material pipeline, without per-object envMap wiring as new object types are added.
+    const environmentTexture = createAsteroidEnvironmentTexture();
+    if (environmentTexture) {
+      scene.environment = environmentTexture;
+    }
     const asteroidGroup = new THREE.Group();
     asteroidGroup.name = 'ship-scene-asteroid-group';
     const debrisGroup = new THREE.Group();
@@ -843,6 +886,7 @@ export class ShipSceneContext {
       debrisGroup,
       asteroidGroup,
       starfieldPoints,
+      environmentTexture,
       starfieldSignatureLocal,
       asteroidLayoutSignatureLocal: this.getAsteroidLayoutSignature(),
       orbitControls,
@@ -913,6 +957,11 @@ export class ShipSceneContext {
       return;
     }
 
+    const now = typeof performance === 'undefined' ? 0 : performance.now();
+    if (this.lastFrameTimestamp > 0) {
+      this.framePressureSampler.addSample(now - this.lastFrameTimestamp);
+    }
+    this.lastFrameTimestamp = now;
     this.renderingState.cube.rotation.x += 0.0035;
     this.renderingState.cube.rotation.y += 0.006;
     const flight = this.state.flight;
@@ -1054,6 +1103,7 @@ export class ShipSceneContext {
     if (this.renderingState.starfieldPoints.geometry) {
       this.renderingState.starfieldPoints.geometry.dispose();
     }
+    this.renderingState.environmentTexture?.dispose();
     if (Array.isArray(this.renderingState.starfieldPoints.material)) {
       this.renderingState.starfieldPoints.material.forEach((material) => material.dispose());
     } else {
@@ -1063,6 +1113,10 @@ export class ShipSceneContext {
     this.renderingState.renderer.dispose();
     this.renderingState.canvas.remove();
     this.renderingState = null;
+    this.lastAsteroidTiers = new Map();
+    this.asteroidTierFrameCounter = 0;
+    this.framePressureSampler.reset();
+    this.lastFrameTimestamp = 0;
     this.paused = true;
     this.renderedFrameCount = 0;
   }
@@ -1518,10 +1572,52 @@ export class ShipSceneContext {
       this.state.asteroid?.hoveredAsteroidId ?? null,
     );
 
-    if (
+    const layoutChanged =
       this.asteroidLayoutSignature !== nextSignature ||
-      this.renderingState.asteroidGroup.children.length !== visuals.length
-    ) {
+      this.renderingState.asteroidGroup.children.length !== visuals.length;
+
+    // Recompute tiers only on layout change or at a bounded cadence to avoid adding
+    // per-frame allocation/sort overhead on top of the existing per-frame visual derivation.
+    this.asteroidTierFrameCounter += 1;
+    const shouldRecomputeTiers =
+      layoutChanged ||
+      this.lastAsteroidTiers.size !== visuals.length ||
+      this.asteroidTierFrameCounter >= ShipSceneContext.ASTEROID_TIER_RECOMPUTE_INTERVAL_FRAMES;
+
+    if (shouldRecomputeTiers) {
+      this.asteroidTierFrameCounter = 0;
+      const tierSamples = visuals.map((visual) => ({
+        id: visual.id,
+        position: visual.position,
+        scanned: visual.isScanned,
+      }));
+      this.lastAsteroidTiers = assignAsteroidRenderTiers(
+        tierSamples,
+        {
+          cameraPosition: [
+            this.renderingState.camera.position.x,
+            this.renderingState.camera.position.y,
+            this.renderingState.camera.position.z,
+          ],
+          targetedAsteroidId: this.state.asteroid?.targetedAsteroidId ?? null,
+          activeScanAsteroidId: this.state.asteroid?.hoveredAsteroidId ?? null,
+          scannedOnlyHero: true,
+        },
+        undefined,
+        undefined,
+        { capMultiplier: this.framePressureSampler.getAverage() > 24 ? 0.5 : 1 },
+      );
+    }
+
+    visuals.forEach((visual) => {
+      visual.renderTier = this.lastAsteroidTiers.get(visual.id) ?? 'background';
+      const detailOverride = resolveAsteroidTierDetailOverride(visual.renderTier, visual.isScanned);
+      if (detailOverride !== null) {
+        visual.detail = detailOverride;
+      }
+    });
+
+    if (layoutChanged) {
       this.asteroidLayoutSignature = nextSignature;
       this.renderingState.asteroidLayoutSignatureLocal = nextSignature;
       disposeAsteroidGroup(this.renderingState.asteroidGroup);
@@ -1644,16 +1740,26 @@ export class ShipSceneContext {
   }
 
   private createAsteroidMesh(visual: ShipExteriorAsteroidVisual): THREE.Mesh {
-    const geometry = new THREE.IcosahedronGeometry(visual.radius, visual.detail);
+    const descriptor = resolveAsteroidGeometryDescriptor(
+      visual.meshProfileKey,
+      visual.isScanned,
+      visual.detail,
+    );
+    const geometry =
+      descriptor.geometry === 'rock'
+        ? buildDeterministicRockGeometry(visual.radius, descriptor.detail, visual.meshProfileKey ?? visual.id)
+        : new THREE.IcosahedronGeometry(visual.radius, descriptor.detail);
     const material = new THREE.MeshStandardMaterial({
       color: visual.color,
       emissive: visual.emissive,
       emissiveIntensity: visual.emissiveIntensity,
-      roughness: visual.isTargeted ? 0.38 : visual.isHovered ? 0.52 : 0.72,
-      metalness: visual.isTargeted ? 0.22 : visual.isHovered ? 0.12 : 0.08,
+      roughness: this.resolveAsteroidRoughness(visual),
+      metalness: this.resolveAsteroidMetalness(visual),
+      envMapIntensity: 0.6,
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = visual.id;
+    mesh.scale.set(descriptor.scale[0], descriptor.scale[1], descriptor.scale[2]);
     const spinProfile = createAsteroidSpinProfile(visual.id);
     (mesh.userData as { spinProfile?: AsteroidSpinProfile }).spinProfile = spinProfile;
     (mesh.userData as { orbitProfile?: AsteroidOrbitProfile }).orbitProfile = createAsteroidOrbitProfile(visual.id);
@@ -1669,18 +1775,47 @@ export class ShipSceneContext {
       visual.position[2],
     ];
     mesh.position.set(visual.position[0], visual.position[1], visual.position[2]);
-    mesh.scale.setScalar(visual.scale);
+    const descriptor = resolveAsteroidGeometryDescriptor(
+      visual.meshProfileKey,
+      visual.isScanned,
+      visual.detail,
+    );
+    mesh.scale.set(
+      descriptor.scale[0] * visual.scale,
+      descriptor.scale[1] * visual.scale,
+      descriptor.scale[2] * visual.scale,
+    );
 
     const material = mesh.material;
     if (!Array.isArray(material) && material instanceof THREE.MeshStandardMaterial) {
       material.color.setHex(visual.color);
       material.emissive.setHex(visual.emissive);
       material.emissiveIntensity = visual.emissiveIntensity;
-      material.roughness = visual.isTargeted ? 0.38 : visual.isHovered ? 0.52 : 0.72;
-      material.metalness = visual.isTargeted ? 0.22 : visual.isHovered ? 0.12 : 0.08;
+      material.roughness = this.resolveAsteroidRoughness(visual);
+      material.metalness = this.resolveAsteroidMetalness(visual);
     }
 
     this.syncAsteroidHoverScanShell(mesh, visual);
+  }
+
+  private resolveAsteroidRoughness(visual: ShipExteriorAsteroidVisual): number {
+    if (visual.isTargeted) {
+      return 0.38;
+    }
+    if (visual.isHovered) {
+      return 0.52;
+    }
+    return visual.materialProfile?.roughness ?? (visual.isScanned ? 0.6 : 0.92);
+  }
+
+  private resolveAsteroidMetalness(visual: ShipExteriorAsteroidVisual): number {
+    if (visual.isTargeted) {
+      return 0.22;
+    }
+    if (visual.isHovered) {
+      return 0.12;
+    }
+    return visual.materialProfile?.metalness ?? (visual.isScanned ? 0.25 : 0.03);
   }
 
   private syncAsteroidHoverScanShell(mesh: THREE.Mesh, visual: ShipExteriorAsteroidVisual): void {

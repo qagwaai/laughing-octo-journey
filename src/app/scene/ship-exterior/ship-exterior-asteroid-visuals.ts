@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { ASTEROID_MATERIALS, type AsteroidMaterialProfile } from '../../model/catalog/asteroid-materials';
+import type { AsteroidRenderTier } from './asteroid-tier-selection';
 import type { ShipSceneAsteroidSample } from './ship-scene-types';
 
 export interface ShipExteriorAsteroidVisual {
@@ -10,11 +12,41 @@ export interface ShipExteriorAsteroidVisual {
   emissive: number;
   emissiveIntensity: number;
   detail: number;
+  meshProfileKey: string | null;
+  isScanned: boolean;
+  materialProfile: AsteroidMaterialProfile | null;
+  renderTier: AsteroidRenderTier;
   isHovered: boolean;
   isTargeted: boolean;
 }
 
 type AsteroidRarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary' | string;
+
+// Matches the generated range in generateRandomAsteroidKinematics (asteroid-kinematics.ts).
+const ASTEROID_DIAMETER_MIN_M = 40;
+const ASTEROID_DIAMETER_MAX_M = 9400;
+const ASTEROID_DIAMETER_RADIUS_MIN = 0.16;
+const ASTEROID_DIAMETER_RADIUS_MAX = 0.62;
+// Small secondary variation layered on top of the diameter-driven radius so asteroids keep some
+// organic per-instance variety without ever overriding the primary diameter size signal.
+const ASTEROID_RADIUS_SECONDARY_JITTER_SPAN = 0.2;
+
+/**
+ * Maps an estimated diameter (metres) to a clamped, logarithmic base radius in scene units.
+ * This is the primary driver of a scanned asteroid's rendered size. Returns null for
+ * missing/invalid diameters so callers can fall back to the pre-scan/legacy radius, keeping
+ * pre-scan visuals free of hidden physical data.
+ */
+export function resolveAsteroidDiameterRadius(diameterM: number | null | undefined): number | null {
+  if (diameterM == null || !Number.isFinite(diameterM) || diameterM <= 0) {
+    return null;
+  }
+  const clamped = Math.min(ASTEROID_DIAMETER_MAX_M, Math.max(ASTEROID_DIAMETER_MIN_M, diameterM));
+  const logMin = Math.log(ASTEROID_DIAMETER_MIN_M);
+  const logMax = Math.log(ASTEROID_DIAMETER_MAX_M);
+  const t = (Math.log(clamped) - logMin) / (logMax - logMin);
+  return ASTEROID_DIAMETER_RADIUS_MIN + t * (ASTEROID_DIAMETER_RADIUS_MAX - ASTEROID_DIAMETER_RADIUS_MIN);
+}
 
 function hashStringToSeed(input: string): number {
   let hash = 2166136261;
@@ -35,6 +67,10 @@ function createSeededRng(seed: number): () => number {
 
 function normalizeRarity(rarity: AsteroidRarity | null | undefined): string {
   return rarity?.trim().toLowerCase() ?? 'common';
+}
+
+function resolveCatalogMaterial(materialName: string | null): AsteroidMaterialProfile | null {
+  return ASTEROID_MATERIALS.find((item) => item.material === materialName) ?? null;
 }
 
 function getAsteroidVisualProfile(rarity: AsteroidRarity | null | undefined): {
@@ -83,6 +119,16 @@ function createAsteroidPalette(
   }
 
   if (scanned) {
+    const catalogMaterial = resolveCatalogMaterial(materialName);
+    if (catalogMaterial) {
+      const rarityProfile = getAsteroidVisualProfile(rarity);
+      return {
+        color: new THREE.Color(catalogMaterial.textureColor).getHex(),
+        emissive: new THREE.Color(catalogMaterial.textureColor).multiplyScalar(0.28).getHex(),
+        emissiveIntensity: 0.8 + rarityProfile.emissiveIntensity + (catalogMaterial.emissiveBoost ?? 0),
+      };
+    }
+
     const hue = (seed % 36) * 10 + (materialName ? materialName.length * 2 : 0);
     const profile = getAsteroidVisualProfile(rarity);
     return {
@@ -107,9 +153,16 @@ export function buildAsteroidLayoutSignature(
 ): string {
   const parts = samples.map(
     (sample, index) =>
-      `${index}:${sample.id}:${sample.scanned ? 1 : 0}:${sample.scanProgress}:${sample.revealedMaterial?.material ?? 'unknown'}:${
-        sample.revealedMaterial?.rarity ?? 'common'
-      }`,
+      [
+        index,
+        sample.id,
+        sample.scanned ? 1 : 0,
+        sample.scanProgress,
+        sample.revealedMaterial?.material ?? 'unknown',
+        sample.revealedMaterial?.rarity ?? 'common',
+        sample.meshProfileKey ?? 'no-profile',
+        sample.estimatedDiameterM ?? 'no-diameter',
+      ].join(':'),
   );
   return `${hashStringToSeed(`${shipId}:${targetedAsteroidId ?? 'none'}`).toString(16)}:${parts.join('|')}`;
 }
@@ -135,7 +188,15 @@ export function deriveAsteroidVisuals(
     const z = Math.sin(theta) * distance;
     const targeted = targetedAsteroidId === sample.id;
     const hovered = !targeted && hoveredAsteroidId === sample.id;
-    const radius = (0.18 + random() * 0.2) * profile.radiusScale * (targeted ? 1.08 : 1);
+    const radiusJitterRoll = random();
+    const legacyRadius = (0.18 + radiusJitterRoll * 0.2) * profile.radiusScale * (targeted ? 1.08 : 1);
+    // Diameter drives radius directly once scanned, since it is the authoritative physical-size
+    // signal; the historical rarity/random jitter becomes a small secondary variation on top of it
+    // instead of competing with (and potentially inverting) the diameter-based size ordering.
+    const diameterRadius = sample.scanned ? resolveAsteroidDiameterRadius(sample.estimatedDiameterM) : null;
+    const secondaryJitter = 1 - ASTEROID_RADIUS_SECONDARY_JITTER_SPAN / 2 + radiusJitterRoll * ASTEROID_RADIUS_SECONDARY_JITTER_SPAN;
+    const radius =
+      diameterRadius != null ? diameterRadius * secondaryJitter * (targeted ? 1.08 : 1) : legacyRadius;
     const palette = createAsteroidPalette(
       sampleSeed ^ shipSeed,
       sample.scanned,
@@ -144,6 +205,7 @@ export function deriveAsteroidVisuals(
       sample.revealedMaterial?.material ?? null,
       sample.revealedMaterial?.rarity ?? null,
     );
+    const materialProfile = sample.scanned ? resolveCatalogMaterial(sample.revealedMaterial?.material ?? null) : null;
 
     visuals.push({
       id: sample.id,
@@ -154,6 +216,10 @@ export function deriveAsteroidVisuals(
       emissive: palette.emissive,
       emissiveIntensity: palette.emissiveIntensity,
       detail: targeted ? Math.max(2, profile.detail) : sample.scanned ? profile.detail : 0,
+      meshProfileKey: sample.meshProfileKey ?? null,
+      isScanned: sample.scanned,
+      materialProfile,
+      renderTier: 'hero',
       isHovered: hovered,
       isTargeted: targeted,
     });

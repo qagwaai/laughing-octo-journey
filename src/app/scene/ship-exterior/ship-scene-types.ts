@@ -28,6 +28,8 @@ export interface ShipSceneFlightState {
 export interface ShipSceneAsteroidSample {
   id: string;
   serverCelestialBodyId?: string | null;
+  meshProfileKey?: string | null;
+  estimatedDiameterM?: number | null;
   scanned: boolean;
   scanProgress: number;
   revealedMaterial: {
@@ -104,6 +106,7 @@ export interface ShipSceneRenderingState {
   asteroidGroup: THREE.Group;
   debrisGroup: THREE.Group;
   starfieldPoints: THREE.Points;
+  environmentTexture: THREE.CanvasTexture | null;
   starfieldSignatureLocal: string;
   asteroidLayoutSignatureLocal: string;
   orbitControls: OrbitCameraControls;

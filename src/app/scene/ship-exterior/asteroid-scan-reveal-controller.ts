@@ -19,6 +19,7 @@ const IRON_MATERIAL_NAME = 'Iron';
 export interface AsteroidScanRevealSample extends MissionScanSample {
   scanned: boolean;
   scanProgress: number;
+  estimatedDiameterM?: number | null;
   revealedKinematics?: AsteroidKinematics | null;
   capturedKinematics?: AsteroidKinematics | null;
 }
@@ -124,12 +125,17 @@ export class AsteroidScanRevealController<
   }
 
   private revealScannedAsteroid(context: TContext, sample: TSample): ShipExteriorMissionGateState | null {
+    const revealedKinematics =
+      sample.revealedKinematics ?? sample.capturedKinematics ?? generateRandomAsteroidKinematics();
     const revealedSample: TSample = {
       ...sample,
       scanned: true,
       scanProgress: 100,
-      revealedKinematics:
-        sample.revealedKinematics ?? sample.capturedKinematics ?? generateRandomAsteroidKinematics(),
+      // Refresh the top-level diameter alongside the kinematics reveal so the active renderer's
+      // diameter-driven sizing always reflects the authoritative revealed value, even when it
+      // differs from the pre-scan estimate (e.g. a resumed sample with a persisted override).
+      estimatedDiameterM: revealedKinematics.estimatedDiameterM,
+      revealedKinematics,
     };
 
     context.setAsteroidSamples(
