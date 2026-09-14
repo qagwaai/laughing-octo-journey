@@ -6,6 +6,7 @@ import {
   registerRepairMockDefault,
 } from '../fixtures/repair-retrofit-scenario';
 import { GameShellPage } from '../page-objects/game-shell.page';
+import { dispatchClickUntilUrl } from '../helpers/dispatch-click';
 
 const test = createJoinedGameTest({
   registerSessionHandlers: registerRepairMockDefault,
@@ -27,7 +28,7 @@ test.describe('Repair & Retrofit', () => {
     await expect(viewDetailsButton).toBeVisible();
     await expect(viewDetailsButton).toBeEnabled();
 
-    await viewDetailsButton.click();
+    await dispatchClickUntilUrl(sharedPage, viewDetailsButton, /right:repair-retrofit-items/);
     await expect(sharedPage).toHaveURL(/right:repair-retrofit-items/, { timeout: 10_000 });
     await expect(sharedPage.getByRole('heading', { name: 'Repair Items' })).toBeVisible();
   });

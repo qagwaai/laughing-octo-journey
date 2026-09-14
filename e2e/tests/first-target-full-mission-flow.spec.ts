@@ -5,6 +5,7 @@ import {
   TEST_CHARACTER_ID,
 } from '../fixtures/first-target-full-mission-flow-scenario';
 import { TEST_PLAYER } from '../helpers/auth-helper';
+import { dispatchClick, dispatchClickUntilUrl } from '../helpers/dispatch-click';
 
 test.describe('First Target Mission Flow', () => {
   test('validates all first-target mission gate steps in order', async ({ page }) => {
@@ -182,20 +183,20 @@ test.describe('First Target Mission Flow', () => {
       )
       .toContain('iron');
 
-    await gameShell.openNav('Fabrication Lab');
+    await gameShell.openNav('Fabrication Lab', /left:fabrication-lab/);
     await expect(page).toHaveURL(/left:fabrication-lab/);
-    await page.getByRole('button', { name: 'View Print Queue' }).click();
+    await dispatchClickUntilUrl(page, page.getByRole('button', { name: 'View Print Queue' }), /right:print-queue/);
     await expect(page).toHaveURL(/right:print-queue/);
 
     const printHullPatchKitButton = page.getByRole('button', { name: 'Print Hull Patch Kit' });
     await expect(printHullPatchKitButton).toBeVisible();
     await expect(printHullPatchKitButton).toBeEnabled();
-    await printHullPatchKitButton.click();
+    await dispatchClick(printHullPatchKitButton);
     await expect(page.locator('.status-line--success')).toContainText('queued for printing');
 
     const finishPrintButton = page.getByRole('button', { name: 'Finish (dev)' });
     await expect(finishPrintButton).toBeVisible();
-    await finishPrintButton.click();
+    await dispatchClick(finishPrintButton);
     await expect(page.getByText('Hull Patch Kit print complete', { exact: false })).toBeVisible({ timeout: 10000 });
 
     await expect
@@ -221,19 +222,19 @@ test.describe('First Target Mission Flow', () => {
       )
       .toEqual({ manufacture: 'completed', repair: 'active' });
 
-    await gameShell.openNav('Repair & Retrofit');
+    await gameShell.openNav('Repair & Retrofit', /left:repair-retrofit/);
     await expect(page).toHaveURL(/left:repair-retrofit/);
     const guidanceOverlay = page.locator('.left-pane-mission-guidance-overlay');
     if (await guidanceOverlay.isVisible().catch(() => false)) {
-      await guidanceOverlay.locator('button.overlay-dismiss').click();
+      await dispatchClick(guidanceOverlay.locator('button.overlay-dismiss'));
     }
-    await page.getByRole('button', { name: 'View details' }).click();
+    await dispatchClickUntilUrl(page, page.getByRole('button', { name: 'View details' }), /right:repair-retrofit-items/);
     await expect(page).toHaveURL(/right:repair-retrofit-items/);
 
     const repairShipButton = page.getByRole('button', { name: 'Fully Repair Ship' });
     await expect(repairShipButton).toBeVisible();
     await expect(repairShipButton).toBeEnabled();
-    await repairShipButton.click();
+    await dispatchClick(repairShipButton);
 
     await expect
       .poll(
@@ -335,10 +336,10 @@ test.describe('First Target Mission Flow', () => {
     await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
     await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 15_000 });
 
-    await page.locator('button[aria-label="Fabrication Lab"]').click();
+    await dispatchClickUntilUrl(page, page.locator('button[aria-label="Fabrication Lab"]'), /left:fabrication-lab/);
     await expect(page).toHaveURL(/left:fabrication-lab/);
 
-    await page.getByRole('button', { name: 'View Print Queue' }).click();
+    await dispatchClickUntilUrl(page, page.getByRole('button', { name: 'View Print Queue' }), /right:print-queue/);
     await expect(page).toHaveURL(/right:print-queue/);
 
     const printHullPatchKitButton = page.getByRole('button', { name: /Print Hull Patch Kit/i });
