@@ -5,14 +5,13 @@ import {
   waitForShipExteriorTestApi,
 } from '../fixtures/first-target-cue-scenario';
 import { createJoinedGameTest } from '../fixtures/joined-game-fixture';
+import { dispatchClick, dispatchClickUntilUrl } from '../helpers/dispatch-click';
 
 const test = createJoinedGameTest({
   registerSessionHandlers: registerFirstTargetCueMock,
   joinButtonText: 'Join Game in Progress',
 });
 
-// Mission-cue progression drives print-queue and WebGL scene steps; 30s is not enough under CI load.
-test.describe.configure({ timeout: 60_000 });
 
 test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ sharedPage }) => {
   await waitForShipExteriorTestApi(sharedPage);
@@ -26,7 +25,7 @@ test('shows fabrication lab menu cue after dart launch unlocks manufacture step'
   await expect(overlay.getByText('Continue first-target by opening Fabrication Lab.')).toBeVisible();
   await expect(overlay.locator('.overlay-target strong')).toHaveText('Fabrication Lab');
 
-  await overlay.locator('button.overlay-open').click();
+  await dispatchClickUntilUrl(sharedPage, overlay.locator('button.overlay-open'), /left:fabrication-lab/);
   await expect(sharedPage).toHaveURL(/left:fabrication-lab/);
 });
 
@@ -39,20 +38,28 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
   await waitForShipExteriorTestApi(sharedPage, prepareJoinedPage);
   await advanceMissionToManufactureStep(sharedPage);
 
-  await sharedPage.locator('button[aria-label="Fabrication Lab"]').click();
+  await dispatchClickUntilUrl(
+    sharedPage,
+    sharedPage.locator('button[aria-label="Fabrication Lab"]'),
+    /left:fabrication-lab/,
+  );
   await expect(sharedPage).toHaveURL(/left:fabrication-lab/);
-  await sharedPage.getByRole('button', { name: 'View Print Queue' }).click();
+  await dispatchClickUntilUrl(
+    sharedPage,
+    sharedPage.getByRole('button', { name: 'View Print Queue' }),
+    /right:print-queue/,
+  );
   await expect(sharedPage).toHaveURL(/right:print-queue/);
 
   const printHullPatchKitButton = sharedPage.getByRole('button', { name: 'Print Hull Patch Kit' });
   await expect(printHullPatchKitButton).toBeVisible();
   await expect(printHullPatchKitButton).toBeEnabled();
-  await printHullPatchKitButton.click();
+  await dispatchClick(printHullPatchKitButton);
   await expect(sharedPage.locator('.status-line--success')).toContainText('queued for printing');
 
   const finishPrintButton = sharedPage.getByRole('button', { name: 'Finish (dev)' });
   await expect(finishPrintButton).toBeVisible();
-  await finishPrintButton.click();
+  await dispatchClick(finishPrintButton);
   await expect(sharedPage.getByText('Hull Patch Kit print complete', { exact: false })).toBeVisible({ timeout: 10000 });
 
   const repairRetrofitButton = sharedPage.locator('button[aria-label="Repair & Retrofit"]');
@@ -108,6 +115,6 @@ test('shows repair & retrofit menu cue after manufacture unlocks repair step', a
       }),
     );
 
-  await repairRetrofitButton.click();
+  await dispatchClickUntilUrl(sharedPage, repairRetrofitButton, /left:repair-retrofit/);
   await expect(sharedPage).toHaveURL(/left:repair-retrofit/);
 });

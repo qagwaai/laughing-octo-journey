@@ -8,7 +8,10 @@ async function waitForFrameChange(options: {
   baselineFrame: string;
   timeoutMs?: number;
 }) {
-  const timeout = options.timeoutMs ?? 8_000;
+  // This polls for a *rendered* frame to change. Under CI's software renderer
+  // (SwiftShader, no GPU) each frame plus canvas readback is far slower than on
+  // a GPU dev machine, so this budget is environment-bound rather than arbitrary.
+  const timeout = options.timeoutMs ?? 20_000;
   await expect
     .poll(
       async () => {
@@ -51,7 +54,7 @@ test.describe('Viewer controls after target completion', () => {
       },
       readFrame: async () => getCanvasFrameSignature(canvas),
       baselineFrame: preTargetFrame,
-      timeoutMs: 12_000,
+      timeoutMs: 24_000,
     });
 
     const initialFrame = await getCanvasFrameSignature(canvas);

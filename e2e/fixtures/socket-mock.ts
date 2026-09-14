@@ -168,17 +168,31 @@ export class SocketIOMock {
     if (this.responseQueue.length > 0) {
       return Promise.resolve(this.responseQueue.splice(0).join('\x1e'));
     }
+
+    // A previous long-poll can still be outstanding if the client aborted and
+    // re-issued a GET. Settle it with a ping so its resolver is cleared rather
+    // than overwritten below and leaked, which would hang that request forever.
+    this.pendingGetResolve?.('2');
+
     return new Promise<string>((resolve) => {
-      const timer = setTimeout(() => {
-        if (this.pendingGetResolve === resolve) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
+      // `settle` must clear itself from `pendingGetResolve`. Comparing against the
+      // raw `resolve` never matched, so the keepalive left a stale resolver behind
+      // and the next push()/enqueue() resolved an already-settled promise — silently
+      // dropping that packet instead of queueing it for the next poll.
+      const settle = (packet: string) => {
+        clearTimeout(timer);
+        if (this.pendingGetResolve === settle) {
           this.pendingGetResolve = null;
         }
-        resolve('2'); // server ping as keepalive — client will pong via POST
-      }, 25_000);
-      this.pendingGetResolve = (packet: string) => {
-        clearTimeout(timer);
         resolve(packet);
       };
+
+      timer = setTimeout(() => {
+        settle('2'); // server ping as keepalive — client will pong via POST
+      }, 25_000);
+      this.pendingGetResolve = settle;
     });
   }
 

@@ -1,4 +1,5 @@
 import { expect, Page } from '@playwright/test';
+import { dispatchClick, dispatchClickUntilUrl } from '../helpers/dispatch-click';
 
 type ShipHangarReadinessState = 'idle' | 'loading' | 'loaded' | 'empty' | 'error';
 
@@ -37,11 +38,11 @@ export class ShipHangarPage {
   constructor(private readonly page: Page) {}
 
   async openAndWaitForLoadedReadiness(options: ShipHangarOpenLoadedReadinessOptions) {
-    const shipHangarButton = this.page
-      .locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible')
-      .first();
-    await shipHangarButton.scrollIntoViewIfNeeded();
-    await shipHangarButton.click();
+    await dispatchClickUntilUrl(
+      this.page,
+      this.page.locator('app-guarded-left-menu button[aria-label="Ship Hangar"]:visible').first(),
+      /left:ship-hangar/,
+    );
     await expect(this.page).toHaveURL(/left:ship-hangar/);
     await this.waitForLoadedReadiness(options);
   }
@@ -81,21 +82,21 @@ export class ShipHangarPage {
   async openSpecsForShip(index: number, options: { rowTimeout?: number } = {}) {
     const rowTimeout = options.rowTimeout ?? 10_000;
     await this.waitForShipRowVisible(index, rowTimeout);
-    await this.viewSpecsButton(index).click({ force: true, timeout: rowTimeout });
+    await dispatchClickUntilUrl(this.page, this.viewSpecsButton(index), /right:item-view-specs/);
   }
 
   async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
     const rowTimeout = options.rowTimeout ?? 10_000;
     await this.waitForShipRowVisible(index, rowTimeout);
 
-    // `force` is required because the button can be overlapped by scene chrome.
-    // Keep the actionability wait on the live locator, but avoid a separate
-    // scrollIntoViewIfNeeded call, which resolves a handle that goes stale when
-    // the ship list re-renders underneath it.
     const exteriorButton = this.exteriorViewButton(index);
     await expect(exteriorButton).toBeVisible({ timeout: rowTimeout });
     await expect(exteriorButton).toBeEnabled({ timeout: rowTimeout });
-    await exteriorButton.click({ force: true, timeout: rowTimeout });
+    await dispatchClickUntilUrl(
+      this.page,
+      exteriorButton,
+      /(?:right:ship-exterior-view|\/ship-exterior-view(?:\(|$))/,
+    );
   }
 
   activeShipControlButtonByName(name: string) {

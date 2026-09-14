@@ -1,4 +1,5 @@
 import { expect, Page } from '@playwright/test';
+import { dispatchClick, dispatchClickUntilUrl } from '../helpers/dispatch-click';
 
 export class GameShellPage {
   constructor(private readonly page: Page) {}
@@ -21,24 +22,26 @@ export class GameShellPage {
     return this.page.locator(`app-guarded-left-menu button[aria-label="${label}"]:visible`).first();
   }
 
-  async openNav(label: string) {
-    const button = this.navButton(label);
-    await button.scrollIntoViewIfNeeded();
-    await button.click();
+  async openNav(label: string, expectedUrl?: RegExp) {
+    if (expectedUrl) {
+      await dispatchClickUntilUrl(this.page, this.navButton(label), expectedUrl);
+      return;
+    }
+    await dispatchClick(this.navButton(label));
   }
 
   async openViewer() {
-    await this.openNav('Viewer');
+    await this.openNav('Viewer', /left:viewer/);
     await expect(this.page).toHaveURL(/left:viewer/);
   }
 
   async openMarketHub() {
-    await this.openNav('Market Hub');
+    await this.openNav('Market Hub', /left:market-hub/);
     await expect(this.page).toHaveURL(/left:market-hub/);
   }
 
   async openMissionBoard() {
-    await this.openNav('Mission Board');
+    await this.openNav('Mission Board', /right:mission-board/);
     await expect(this.page).toHaveURL(/right:mission-board/);
   }
 }

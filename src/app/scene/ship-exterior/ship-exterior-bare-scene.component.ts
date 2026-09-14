@@ -89,6 +89,8 @@ import {
 } from './ship-scene-types';
 const ROUTE_FEED_DISCOVERY_DISTANCE_AU = 200;
 const ROUTE_FEED_DISCOVERY_LIMIT = 250;
+/** Minimum gap between HUD revision bumps driven by the animation loop (~10Hz). */
+const RUNTIME_REVISION_BUMP_INTERVAL_MS = 100;
 type ShipExteriorScanDetail =
   | { kind: 'asteroid'; sample: ShipSceneAsteroidSample }
   | { kind: 'debris'; sample: ShipSceneScannableDebrisSample }
@@ -330,6 +332,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly flightRevision = signal(0);
   private readonly asteroidRevision = signal(0);
   private readonly missionRevision = signal(0);
+  private lastRuntimeRevisionBumpAtMs = 0;
   // CHANGE ANCHOR: mission gate simulator
   private readonly asteroidScanController = new AsteroidScanController({
     getActiveContext: () => {
@@ -1032,7 +1035,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       const active = this.registry.getActiveContext();
       active?.renderFrame();
       if (active) {
-        this.bumpRuntimeRevision();
+        this.bumpRuntimeRevisionThrottled();
       }
       this.animationFrameId = requestAnimationFrame(loop);
     };
@@ -1396,6 +1399,29 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.bumpFlightRevision();
     this.bumpAsteroidRevision();
     this.bumpMissionRevision();
+  }
+
+  /**
+   * Per-frame variant of {@link bumpRuntimeRevision} for the animation loop.
+   *
+   * These revisions are cache-busting signals for the HUD computeds, so bumping
+   * them on every frame invalidated three signals ~60x/second and forced a full
+   * change-detection pass per frame on top of rendering. Where there is no GPU
+   * (CI falls back to SwiftShader) that starved the renderer main thread badly
+   * enough to stall input handling and scroll-into-view.
+   *
+   * The HUD only displays human-readable telemetry, so a ~10Hz refresh is
+   * indistinguishable on screen while cutting the change-detection work
+   * dramatically. Discrete events still call bumpRuntimeRevision() directly so
+   * state transitions remain immediate.
+   */
+  private bumpRuntimeRevisionThrottled(): void {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - this.lastRuntimeRevisionBumpAtMs < RUNTIME_REVISION_BUMP_INTERVAL_MS) {
+      return;
+    }
+    this.lastRuntimeRevisionBumpAtMs = now;
+    this.bumpRuntimeRevision();
   }
 
   private getActiveAsteroidSamples(): ShipExteriorLegacyAsteroidSample[] {
