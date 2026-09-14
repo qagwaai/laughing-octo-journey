@@ -7,6 +7,9 @@ import {
 import { TEST_PLAYER } from '../helpers/auth-helper';
 
 test.describe('First Target Mission Flow', () => {
+  // Full mission gate walkthrough drives many WebGL scene steps; 30s is not enough under CI load.
+  test.describe.configure({ timeout: 60_000 });
+
   test('validates all first-target mission gate steps in order', async ({ page }) => {
     const { celestialBodyUpsertRequests, launchItemRequests, gameShell } = await setupFirstTargetFlowTest(page, {
       includeIronInShipInventory: true,

@@ -116,6 +116,9 @@ async function moveForwardInFlightMode(
 }
 
 test.describe('Ship Exterior - flight position persistence on re-entry', () => {
+  // Multi-page WebGL round-trips regularly need >30s, especially under CI load.
+  test.describe.configure({ timeout: 60_000 });
+
   test('keeps flight coordinates after mission board, market hub, and hangar navigation', async ({ page }) => {
     const persistedPosition = { x: 1_000_000, y: 0, z: 0 };
     const mock = new SocketIOMock(page);

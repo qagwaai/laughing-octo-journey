@@ -79,17 +79,23 @@ export class ShipHangarPage {
   }
 
   async openSpecsForShip(index: number, options: { rowTimeout?: number } = {}) {
-    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
-    await this.viewSpecsButton(index).click();
+    const rowTimeout = options.rowTimeout ?? 10_000;
+    await this.waitForShipRowVisible(index, rowTimeout);
+    await this.viewSpecsButton(index).click({ force: true, timeout: rowTimeout });
   }
 
   async openExteriorForShip(index: number, options: { rowTimeout?: number } = {}) {
-    await this.waitForShipRowVisible(index, options.rowTimeout ?? 10_000);
+    const rowTimeout = options.rowTimeout ?? 10_000;
+    await this.waitForShipRowVisible(index, rowTimeout);
+
+    // `force` is required because the button can be overlapped by scene chrome.
+    // Keep the actionability wait on the live locator, but avoid a separate
+    // scrollIntoViewIfNeeded call, which resolves a handle that goes stale when
+    // the ship list re-renders underneath it.
     const exteriorButton = this.exteriorViewButton(index);
-    await expect(exteriorButton).toBeVisible({ timeout: options.rowTimeout ?? 10_000 });
-    await expect(exteriorButton).toBeEnabled({ timeout: options.rowTimeout ?? 10_000 });
-    await exteriorButton.scrollIntoViewIfNeeded();
-    await exteriorButton.click({ force: true });
+    await expect(exteriorButton).toBeVisible({ timeout: rowTimeout });
+    await expect(exteriorButton).toBeEnabled({ timeout: rowTimeout });
+    await exteriorButton.click({ force: true, timeout: rowTimeout });
   }
 
   activeShipControlButtonByName(name: string) {

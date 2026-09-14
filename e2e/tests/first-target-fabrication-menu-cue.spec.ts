@@ -11,6 +11,9 @@ const test = createJoinedGameTest({
   joinButtonText: 'Join Game in Progress',
 });
 
+// Mission-cue progression drives print-queue and WebGL scene steps; 30s is not enough under CI load.
+test.describe.configure({ timeout: 60_000 });
+
 test('shows fabrication lab menu cue after dart launch unlocks manufacture step', async ({ sharedPage }) => {
   await waitForShipExteriorTestApi(sharedPage);
   await advanceMissionToManufactureStep(sharedPage);

@@ -12,6 +12,9 @@ import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 const SHIP_EXTERIOR_VIEW_URL_PATTERN = /(?:right:ship-exterior-view|\/ship-exterior-view(?:\(|$))/;
 
 test.describe('Ship Exterior scan persistence via Hangar', () => {
+  // Hangar -> specs -> exterior round-trips reload WebGL scenes repeatedly; 30s is not enough under CI load.
+  test.describe.configure({ timeout: 60_000 });
+
   test('keeps scanned asteroid state after ship specs and View Exterior round-trip', async ({ page }) => {
     const mock = new SocketIOMock(page);
     const gameShell = new GameShellPage(page);
