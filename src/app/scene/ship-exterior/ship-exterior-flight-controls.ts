@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 
 export interface FlightOrientation {
   yawRad: number;
@@ -33,6 +33,11 @@ export interface FlightStepResult {
   speedSceneUnitsPerSec: number;
 }
 
+export interface WorldRelativeTransform {
+  worldOffset: { x: number; y: number; z: number };
+  worldRotation: { x: number; y: number; z: number };
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -42,13 +47,12 @@ export function resolveMovementInput(keys: ReadonlySet<string>): FlightMovementI
   const right = (keys.has('KeyD') ? 1 : 0) + (keys.has('KeyA') ? -1 : 0);
   const up =
     (keys.has('Space') ? 1 : 0) + (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyC') ? -1 : 0);
-  const roll = (keys.has('KeyE') ? 1 : 0) + (keys.has('KeyQ') ? -1 : 0);
-
   return {
     forward,
     right,
     up,
-    roll,
+    // Roll is deliberately disabled for the initial pilot-camera migration.
+    roll: 0,
     boosting: keys.has('ShiftLeft') || keys.has('ShiftRight'),
   };
 }
@@ -80,14 +84,14 @@ export function integrateFlightStep(
   config: FlightStepConfig,
 ): FlightStepResult {
   const deltaSeconds = Math.max(0, config.deltaSeconds);
-  // Roll is disabled: OrbitControls cannot maintain roll after flight mode exits,
-  // so we keep it at 0 to prevent a jarring snap on flight-mode toggle.
   const nextOrientation: FlightOrientation = {
     ...orientation,
     rollRad: 0,
   };
 
-  const localVector = new Vector3(input.right, input.up, input.forward);
+  // Three.js cameras look along local -Z. The pilot's forward input therefore
+  // maps to -Z before it is rotated into authoritative world coordinates.
+  const localVector = new Vector3(input.right, input.up, -input.forward);
   if (localVector.lengthSq() > 1) {
     localVector.normalize();
   }
@@ -95,10 +99,10 @@ export function integrateFlightStep(
   const speed =
     localVector.lengthSq() > 0 ? config.baseSpeedSceneUnitsPerSec * (input.boosting ? config.boostMultiplier : 1) : 0;
 
-  // The camera is locked to world -Z while the scene rotates around the player.
-  // So the displacement applied to the scene group is in the *camera* (world) frame,
-  // not rotated by the flight orientation. W shifts -Z scene offset, etc.
-  const worldDelta = localVector.multiplyScalar(speed * deltaSeconds);
+  const shipOrientation = new Quaternion().setFromEuler(
+    new Euler(nextOrientation.pitchRad, nextOrientation.yawRad, nextOrientation.rollRad, 'YXZ'),
+  );
+  const worldDelta = localVector.applyQuaternion(shipOrientation).multiplyScalar(speed * deltaSeconds);
 
   return {
     orientation: nextOrientation,
@@ -108,6 +112,36 @@ export function integrateFlightStep(
       z: worldDelta.z,
     },
     speedSceneUnitsPerSec: speed,
+  };
+}
+
+export function resolveWorldRelativeTransform(
+  shipDisplacementScene: { x: number; y: number; z: number },
+  orientation: FlightOrientation,
+): WorldRelativeTransform {
+  const inverseShipOrientation = new Quaternion()
+    .setFromEuler(new Euler(orientation.pitchRad, orientation.yawRad, orientation.rollRad, 'YXZ'))
+    .invert();
+  const worldOffset = new Vector3(
+    shipDisplacementScene.x,
+    shipDisplacementScene.y,
+    shipDisplacementScene.z,
+  )
+    .applyQuaternion(inverseShipOrientation)
+    .negate();
+  const worldEuler = new Euler().setFromQuaternion(inverseShipOrientation, 'XYZ');
+
+  return {
+    worldOffset: {
+      x: +worldOffset.x.toFixed(3),
+      y: +worldOffset.y.toFixed(3),
+      z: +worldOffset.z.toFixed(3),
+    },
+    worldRotation: {
+      x: +worldEuler.x.toFixed(4),
+      y: +worldEuler.y.toFixed(4),
+      z: +worldEuler.z.toFixed(4),
+    },
   };
 }
 

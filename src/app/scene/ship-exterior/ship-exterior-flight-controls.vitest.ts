@@ -3,6 +3,7 @@ import {
   applyMouseLook,
   integrateFlightStep,
   quantizeCoordinate,
+  resolveWorldRelativeTransform,
   resolveMovementInput,
   type FlightOrientation,
 } from './ship-exterior-flight-controls';
@@ -15,7 +16,7 @@ describe('ship-exterior-flight-controls', () => {
       forward: 1,
       right: 1,
       up: 1,
-      roll: 1,
+      roll: 0,
       boosting: true,
     });
   });
@@ -60,7 +61,36 @@ describe('ship-exterior-flight-controls', () => {
 
     expect(result.speedSceneUnitsPerSec).toBe(4);
     expect(result.worldDelta.x).toBeCloseTo(Math.SQRT1_2 * 2, 4);
-    expect(result.worldDelta.z).toBeCloseTo(Math.SQRT1_2 * 2, 4);
+    expect(result.worldDelta.z).toBeCloseTo(-Math.SQRT1_2 * 2, 4);
+  });
+
+  it('moves forward along the steered ship heading', () => {
+    const result = integrateFlightStep(
+      { yawRad: Math.PI / 2, pitchRad: 0, rollRad: 0 },
+      { forward: 1, right: 0, up: 0, roll: 0, boosting: false },
+      {
+        deltaSeconds: 1,
+        baseSpeedSceneUnitsPerSec: 3,
+        boostMultiplier: 1,
+        rollSpeedRadPerSec: 1,
+      },
+    );
+
+    expect(result.worldDelta.x).toBeCloseTo(-3, 4);
+    expect(result.worldDelta.y).toBeCloseTo(0, 4);
+    expect(result.worldDelta.z).toBeCloseTo(0, 4);
+  });
+
+  it('maps the authoritative ship transform to the inverse rendered-world transform', () => {
+    const transform = resolveWorldRelativeTransform(
+      { x: -3, y: 0, z: 0 },
+      { yawRad: Math.PI / 2, pitchRad: 0, rollRad: 0 },
+    );
+
+    expect(transform.worldOffset.x).toBeCloseTo(0, 3);
+    expect(transform.worldOffset.y).toBeCloseTo(0, 3);
+    expect(transform.worldOffset.z).toBeCloseTo(3, 3);
+    expect(transform.worldRotation.y).toBeCloseTo(-Math.PI / 2, 4);
   });
 
   it('quantizes coordinates to a fixed precision step', () => {

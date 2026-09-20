@@ -4,7 +4,6 @@ import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-m
 import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import { resolveDescriptorRenderProfile } from '../viewer/viewer-descriptor-selectors';
-import { OrbitCameraControls } from './orbit-camera-controls';
 import { buildDeterministicRockGeometry, resolveAsteroidGeometryDescriptor } from './asteroid-rock-geometry';
 import {
   assignAsteroidRenderTiers,
@@ -44,7 +43,7 @@ const JAXS_SHIP_SCALE = 0.18;
 const DEBRIS_KM_TO_SCENE_UNITS = 0.4;
 const ROUTE_FEED_KM_TO_SCENE_UNITS = 0.32;
 const DEFAULT_FLIGHT_STATE: ShipSceneFlightState = {
-  enabled: false,
+  enabled: true,
   invertY: false,
   mouseSensitivity: 0.0023,
   currentLocationKm: { ...ZERO_VECTOR },
@@ -484,6 +483,7 @@ export class ShipSceneContext {
       flight: {
         ...DEFAULT_FLIGHT_STATE,
         ...initialState.flight,
+        enabled: true,
         currentLocationKm: {
           ...DEFAULT_FLIGHT_STATE.currentLocationKm,
           ...(initialState.flight?.currentLocationKm ?? initialState.world?.shipPosition ?? ZERO_VECTOR),
@@ -804,8 +804,7 @@ export class ShipSceneContext {
     scene.background = new THREE.Color('#03111b');
 
     const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
-    const initialCamera = this.state.camera?.position;
-    camera.position.set(initialCamera?.x ?? 2.5, initialCamera?.y ?? 1.8, initialCamera?.z ?? 4.2);
+    camera.position.set(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     const pixelRatio = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
@@ -833,31 +832,29 @@ export class ShipSceneContext {
     gateGroup.name = 'ship-scene-gate-group';
     const shipGroup = new THREE.Group();
     shipGroup.name = 'ship-scene-jaxs-ship-group';
+    const worldRelativeGroup = new THREE.Group();
+    worldRelativeGroup.name = 'ship-scene-world-relative-group';
+    const pilotRig = new THREE.Group();
+    pilotRig.name = 'ship-scene-pilot-rig';
+    const pilotLookRig = new THREE.Group();
+    pilotLookRig.name = 'ship-scene-pilot-look-rig';
 
     scene.add(ambient);
     scene.add(directional);
-    scene.add(starfieldPoints);
-    scene.add(shipGroup);
-    scene.add(stationGroup);
-    scene.add(gateGroup);
-    scene.add(debrisGroup);
-    scene.add(asteroidGroup);
-
-    const orbitControls = new OrbitCameraControls(camera, canvas, {
-      target: new THREE.Vector3(),
-      autoRotateSpeed: 0,
-      enableRotate: true,
-      enableZoom: true,
-      enablePan: true,
-      minDistance: 1.8,
-      maxDistance: 24,
-    });
+    scene.add(worldRelativeGroup);
+    worldRelativeGroup.add(starfieldPoints, shipGroup, stationGroup, gateGroup, debrisGroup, asteroidGroup);
+    scene.add(pilotRig);
+    pilotRig.add(pilotLookRig);
+    pilotLookRig.add(camera);
 
     this.renderingState = {
       scene,
       camera,
       renderer,
       canvas,
+      worldRelativeGroup,
+      pilotRig,
+      pilotLookRig,
       shipGroup,
       stationGroup,
       gateGroup,
@@ -867,7 +864,6 @@ export class ShipSceneContext {
       environmentTexture,
       starfieldSignatureLocal,
       asteroidLayoutSignatureLocal: this.getAsteroidLayoutSignature(),
-      orbitControls,
       isPausedLocal: true,
       animationFrameId: null,
     };
@@ -908,7 +904,6 @@ export class ShipSceneContext {
       return;
     }
     this.renderingState.isPausedLocal = true;
-    this.renderingState.orbitControls.setEnabled(false);
   }
 
   resume(): void {
@@ -921,7 +916,6 @@ export class ShipSceneContext {
       return;
     }
     this.renderingState.isPausedLocal = false;
-    this.renderingState.orbitControls.setEnabled(true);
     this.syncFlightControllerToState();
   }
 
@@ -958,7 +952,6 @@ export class ShipSceneContext {
     if ((this.routeFeeds?.gates.length ?? 0) > 0) {
       this.gatePulsePhase = (this.gatePulsePhase + 0.06) % (Math.PI * 2);
     }
-    this.renderingState.orbitControls.update();
     this.syncDebrisVisuals();
     this.syncScannableDebrisHoverScanShell();
     this.syncRouteFeedVisuals();
@@ -971,20 +964,16 @@ export class ShipSceneContext {
   }
 
   toggleFlightMode(): void {
-    const nextEnabled = !this.flightModeEnabled();
-    this.updateFlightState({ enabled: nextEnabled });
+    this.updateFlightState({ enabled: true });
     const controller = this.ensureFlightController();
     if (!controller) {
       return;
     }
 
-    controller.setFlightModeEnabled(nextEnabled);
-    if (nextEnabled) {
+    controller.setFlightModeEnabled(true);
+    if (!this.paused) {
       controller.start();
-      return;
     }
-
-    controller.stop();
     this.syncFlightStateFromController();
   }
 
@@ -1003,6 +992,11 @@ export class ShipSceneContext {
 
   captureFlightMovementKey(code: string): boolean {
     return this.ensureFlightController()?.captureFlightMovementKey(code) ?? false;
+  }
+
+  clearFlightMovementInput(): void {
+    this.flightController?.clearMovementInput();
+    this.syncFlightStateFromController();
   }
 
   releaseFlightMovementKey(code: string): boolean {
@@ -1058,7 +1052,6 @@ export class ShipSceneContext {
 
     this.syncFlightStateFromController();
     this.flightController?.stop();
-    this.renderingState.orbitControls.dispose();
     disposeShipGroup(this.renderingState.shipGroup);
     disposeStationGroup(this.renderingState.stationGroup);
     disposeGateGroup(this.renderingState.gateGroup);
@@ -1978,6 +1971,14 @@ export class ShipSceneContext {
     const controller = new ShipExteriorFlightController({
       config: FLIGHT_CONFIG,
       getCamera: () => this.renderingState?.camera ?? null,
+      applyWorldRelativeTransform: ({ worldOffset, worldRotation }) => {
+        const worldRelativeGroup = this.renderingState?.worldRelativeGroup;
+        if (!worldRelativeGroup) {
+          return;
+        }
+        worldRelativeGroup.position.set(...worldOffset);
+        worldRelativeGroup.rotation.set(...worldRotation);
+      },
       setActiveShipLocationKm: (location) => {
         this.updateFlightState({ currentLocationKm: location });
         this.setState({
@@ -2007,7 +2008,7 @@ export class ShipSceneContext {
     }
 
     const flight = this.state.flight ?? DEFAULT_FLIGHT_STATE;
-    controller.setFlightModeEnabled(flight.enabled);
+    controller.setFlightModeEnabled(true);
     controller.setFlightInvertY(flight.invertY);
     controller.setFlightMouseSensitivity(flight.mouseSensitivity);
     controller.initializeCurrentLocationFromReference(
@@ -2016,7 +2017,7 @@ export class ShipSceneContext {
     );
     controller.restoreOrientation(flight.orientation);
 
-    if (flight.enabled && !this.paused) {
+    if (!this.paused) {
       controller.start();
       return;
     }

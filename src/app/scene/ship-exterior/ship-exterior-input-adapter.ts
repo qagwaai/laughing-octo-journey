@@ -7,6 +7,8 @@ export interface ShipExteriorInputAdapterHandlers {
   onWindowMouseMove: (event: MouseEvent) => void;
   onSocketCorrelationWarning: (event: Event) => void;
   onPointerLockChange: () => void;
+  onWindowBlur: () => void;
+  onVisibilityChange: () => void;
 }
 
 /**
@@ -37,6 +39,8 @@ export class ShipExteriorInputAdapter {
     this.doc.addEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
     this.win.addEventListener('socket-correlation-warning', this.handlers.onSocketCorrelationWarning as EventListener);
     this.doc.addEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
+    this.win.addEventListener('blur', this.handlers.onWindowBlur);
+    this.doc.addEventListener('visibilitychange', this.handlers.onVisibilityChange);
     this.attached = true;
   }
 
@@ -59,6 +63,8 @@ export class ShipExteriorInputAdapter {
       this.handlers.onSocketCorrelationWarning as EventListener,
     );
     this.doc.removeEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
+    this.win.removeEventListener('blur', this.handlers.onWindowBlur);
+    this.doc.removeEventListener('visibilitychange', this.handlers.onVisibilityChange);
     this.attached = false;
   }
 }

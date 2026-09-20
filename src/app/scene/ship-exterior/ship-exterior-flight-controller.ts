@@ -1,10 +1,11 @@
 import { signal } from '@angular/core';
-import { Euler, Quaternion, type Camera } from 'three';
+import { Euler, type Camera } from 'three';
 import { Triple } from '../../model/shared/triple';
 import {
   applyMouseLook,
   integrateFlightStep,
   quantizeCoordinate,
+  resolveWorldRelativeTransform,
   resolveMovementInput,
   type FlightOrientation,
 } from './ship-exterior-flight-controls';
@@ -26,6 +27,10 @@ interface ShipExteriorFlightControllerConfig {
 interface ShipExteriorFlightControllerArgs {
   config: ShipExteriorFlightControllerConfig;
   getCamera: () => Camera | null;
+  applyWorldRelativeTransform: (transform: {
+    worldOffset: [number, number, number];
+    worldRotation: [number, number, number];
+  }) => void;
   setActiveShipLocationKm: (location: Triple) => void;
   commitTrackedLocation: (location: Triple) => void;
 }
@@ -58,6 +63,7 @@ export class ShipExteriorFlightController {
   }
 
   stop(): void {
+    this.clearMovementInput();
     if (this.flightTickIntervalId !== null) {
       window.clearInterval(this.flightTickIntervalId);
       this.flightTickIntervalId = null;
@@ -66,6 +72,11 @@ export class ShipExteriorFlightController {
 
   dispose(): void {
     this.stop();
+  }
+
+  clearMovementInput(): void {
+    this.flightPressedKeys.clear();
+    this.flightSpeedKmPerSec.set(0);
   }
 
   initializeCurrentLocation(location: Triple): void {
@@ -103,9 +114,8 @@ export class ShipExteriorFlightController {
     }
 
     this.flightModeEnabled.set(enabled);
-    this.flightPressedKeys.clear();
+    this.clearMovementInput();
     this.flightTrackingAccumulatorMs = 0;
-    this.flightSpeedKmPerSec.set(0);
   }
 
   setFlightInvertY(enabled: boolean): void {
@@ -140,7 +150,7 @@ export class ShipExteriorFlightController {
     const restored: FlightOrientation = {
       yawRad: Number.isFinite(orientation.yawRad) ? orientation.yawRad : 0,
       pitchRad: Number.isFinite(orientation.pitchRad) ? orientation.pitchRad : 0,
-      rollRad: Number.isFinite(orientation.rollRad) ? orientation.rollRad : 0,
+      rollRad: 0,
     };
     this.flightOrientation.set(restored);
     this.cameraOrientation.set(restored);
@@ -301,16 +311,19 @@ export class ShipExteriorFlightController {
 
   private syncFlightWorldTransform(): void {
     const orientation = this.flightOrientation();
-    this.flightWorldOffset.set([
-      +(-this.flightDisplacementScene.x).toFixed(3),
-      +(-this.flightDisplacementScene.y).toFixed(3),
-      +(-this.flightDisplacementScene.z).toFixed(3),
-    ]);
-
-    const orientationQuaternion = new Quaternion().setFromEuler(
-      new Euler(orientation.pitchRad, orientation.yawRad, orientation.rollRad, 'YXZ'),
-    );
-    const sceneEuler = new Euler().setFromQuaternion(orientationQuaternion.invert(), 'XYZ');
-    this.flightWorldRotation.set([+sceneEuler.x.toFixed(4), +sceneEuler.y.toFixed(4), +sceneEuler.z.toFixed(4)]);
+    const transform = resolveWorldRelativeTransform(this.flightDisplacementScene, orientation);
+    const worldOffset: [number, number, number] = [
+      transform.worldOffset.x,
+      transform.worldOffset.y,
+      transform.worldOffset.z,
+    ];
+    const worldRotation: [number, number, number] = [
+      transform.worldRotation.x,
+      transform.worldRotation.y,
+      transform.worldRotation.z,
+    ];
+    this.flightWorldOffset.set(worldOffset);
+    this.flightWorldRotation.set(worldRotation);
+    this.args.applyWorldRelativeTransform({ worldOffset, worldRotation });
   }
 }

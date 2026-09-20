@@ -24,8 +24,8 @@ describe('ShipExteriorViewFacade', () => {
 
     expect(facade.flightPanel()).toEqual(
       expect.objectContaining({
-        enabled: false,
-        statusLine: 'FLIGHT // OFF',
+        enabled: true,
+        statusLine: 'PILOT // INITIALIZING',
       }),
     );
 

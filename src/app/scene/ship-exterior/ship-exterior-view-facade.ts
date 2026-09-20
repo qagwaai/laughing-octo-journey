@@ -212,11 +212,11 @@ const DEFAULT_PROPERTIES_PANEL: ShipExteriorPropertiesPanelViewModel = {
 };
 
 const DEFAULT_FLIGHT_PANEL: ShipExteriorFlightPanelViewModel = {
-  enabled: false,
+  enabled: true,
   pointerLocked: false,
   invertY: false,
   sensitivitySlider: 23,
-  statusLine: 'FLIGHT // OFF',
+  statusLine: 'PILOT // INITIALIZING',
   coordsLine: 'COORD KM // ---',
   speedLine: 'SPD // 0 km/s',
   controlLine: 'W/S FWD-BACK | A/D STRAFE | SPACE/CTRL VERT | SHIFT BOOST',

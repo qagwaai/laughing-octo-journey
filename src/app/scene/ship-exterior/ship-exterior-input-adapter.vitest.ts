@@ -7,8 +7,10 @@ describe('ShipExteriorInputAdapter', () => {
 
     fixture.adapter.attach();
 
-    expect(fixture.win.addEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
+    expect(fixture.win.addEventListener).toHaveBeenCalledTimes(8);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.win.addEventListener).toHaveBeenCalledWith('blur', fixture.handlers.onWindowBlur);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledWith('visibilitychange', fixture.handlers.onVisibilityChange);
 
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
@@ -41,8 +43,13 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
     fixture.adapter.detach();
 
-    expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
+    expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(8);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.win.removeEventListener).toHaveBeenCalledWith('blur', fixture.handlers.onWindowBlur);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
+      'visibilitychange',
+      fixture.handlers.onVisibilityChange,
+    );
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
@@ -78,8 +85,8 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
     fixture.adapter.attach();
 
-    expect(fixture.win.addEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
+    expect(fixture.win.addEventListener).toHaveBeenCalledTimes(8);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(5);
   });
 
   it('treats detach as no-op before attach and after first detach', () => {
@@ -90,8 +97,8 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.detach();
     fixture.adapter.detach();
 
-    expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(7);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
+    expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(8);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(5);
   });
 });
 
@@ -105,6 +112,8 @@ function createFixture() {
     onWindowMouseMove: vi.fn(),
     onSocketCorrelationWarning: vi.fn(),
     onPointerLockChange: vi.fn(),
+    onWindowBlur: vi.fn(),
+    onVisibilityChange: vi.fn(),
   };
 
   const win = {

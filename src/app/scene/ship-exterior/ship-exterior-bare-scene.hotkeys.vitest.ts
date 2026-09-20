@@ -7,8 +7,8 @@ describe('ShipExteriorBareScene hotkey policy', () => {
     expect(shouldToggleFlightModeFromKey('KeyF', true)).toBe(true);
   });
 
-  it('toggles on Escape only when flight mode is enabled', () => {
-    expect(shouldToggleFlightModeFromKey('Escape', true)).toBe(true);
+  it('does not disable the always-active pilot controls on Escape', () => {
+    expect(shouldToggleFlightModeFromKey('Escape', true)).toBe(false);
     expect(shouldToggleFlightModeFromKey('Escape', false)).toBe(false);
   });
 

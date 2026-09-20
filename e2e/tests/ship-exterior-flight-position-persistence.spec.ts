@@ -12,7 +12,7 @@ import { ShipHangarPage } from '../page-objects/ship-hangar.page';
 const SHIP_EXTERIOR_VIEW_URL_PATTERN = /(?:right:ship-exterior-view|\/ship-exterior-view(?:\(|$))/;
 
 const shipExteriorScene = (page: Page) => page.locator('.ship-exterior-bare-scene');
-const flightToggle = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
+const pilotStatus = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
 const COORDS_PATTERN = /COORD KM\s*\/\/\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/;
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
@@ -30,21 +30,24 @@ async function readCoords(page: Page): Promise<{ x: number; y: number; z: number
 }
 
 function toTelemetryCoords(coords: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  // Adding zero canonicalizes Math.round's -0 without masking non-finite values.
   return {
-    x: Math.round(coords.x),
-    y: Math.round(coords.y),
-    z: Math.round(coords.z),
+    x: Math.round(coords.x) + 0,
+    y: Math.round(coords.y) + 0,
+    z: Math.round(coords.z) + 0,
   };
 }
 
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
+  await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
   await expect.poll(() => readCoords(page), { timeout: 10_000 }).not.toBeNull();
 }
 
-async function moveForwardInFlightMode(
+async function moveForwardWithPilotControls(
   page: Page,
   coordsBeforeMove: { x: number; y: number; z: number },
 ): Promise<{ x: number; y: number; z: number }> {
+  await pilotStatus(page).focus();
   await page.keyboard.down('KeyW');
   let movedCoords: { x: number; y: number; z: number } | null = null;
   try {
@@ -129,24 +132,14 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
-    const toggle = flightToggle(page);
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
-    const coordsBeforeEnable = await readCoords(page);
-    expect(coordsBeforeEnable).not.toBeNull();
+    const coordsBeforeMove = await readCoords(page);
+    expect(coordsBeforeMove).not.toBeNull();
 
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
-
-    await moveForwardInFlightMode(page, coordsBeforeEnable!);
-
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
-    const movedCoords = await readCoords(page);
-    expect(movedCoords).not.toBeNull();
+    const movedCoords = await moveForwardWithPilotControls(page, coordsBeforeMove!);
+    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
 
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
@@ -182,22 +175,14 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await gameShell.joinGame('Join Game in Progress');
     await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
 
-    const toggle = flightToggle(page);
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
     const initialCoords = await readCoords(page);
     expect(initialCoords).not.toBeNull();
 
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
-    await moveForwardInFlightMode(page, initialCoords!);
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
-    const firstMovedCoords = await readCoords(page);
-    expect(firstMovedCoords).not.toBeNull();
+    const firstMovedCoords = await moveForwardWithPilotControls(page, initialCoords!);
+    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
 
     // First cycle: mission board -> market hub -> hangar -> exterior.
     await gameShell.openMissionBoard();
@@ -218,15 +203,8 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     expect(coordsAfterFirstReturn).toEqual(firstMovedCoords);
     expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(firstMovedCoords));
 
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ ON/);
-    await moveForwardInFlightMode(page, coordsAfterFirstReturn!);
-    await toggle.focus();
-    await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/FLIGHT \/\/ OFF/);
-    const secondMovedCoords = await readCoords(page);
-    expect(secondMovedCoords).not.toBeNull();
+    const secondMovedCoords = await moveForwardWithPilotControls(page, coordsAfterFirstReturn!);
+    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
 
     // Second cycle: market hub -> mission board -> hangar -> exterior.
     await gameShell.openMarketHub();

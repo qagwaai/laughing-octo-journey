@@ -97,7 +97,8 @@ type ShipExteriorScanDetail =
   | { kind: 'ship'; sample: ShipSceneScannableShipSample };
 
 export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: boolean): boolean {
-  return code === 'KeyF' || (code === 'Escape' && flightModeEnabled);
+  void flightModeEnabled;
+  return code === 'KeyF';
 }
 
 @Component({
@@ -146,7 +147,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return this.registry.getActiveContext()?.snapshotRuntime() ?? null;
   });
   readonly activeFlightStatusLine = computed(
-    () => `FLIGHT // ${this.activeFlightSnapshot()?.flightModeEnabled ? 'ON' : 'OFF'}`,
+    () => `PILOT // ${this.activeFlightSnapshot()?.flightModeEnabled ? 'ACTIVE' : 'INITIALIZING'}`,
   );
   readonly activeFlightCoordsLine = computed(() => {
     const snapshot = this.activeFlightSnapshot();
@@ -302,6 +303,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     },
     getSolarSystemId: () => DEFAULT_SOLAR_SYSTEM_ID,
   });
+  private pointerLockRequested = false;
   private readonly inputAdapter = new ShipExteriorInputAdapter(
     {
       onWindowPointerDown: (event) => this.onWindowPointerDown(event),
@@ -312,6 +314,12 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       onWindowMouseMove: (event) => this.onWindowMouseMove(event),
       onSocketCorrelationWarning: (event) => this.onSocketCorrelationWarning(event),
       onPointerLockChange: () => this.onPointerLockChange(),
+      onWindowBlur: () => this.releasePilotInput(),
+      onVisibilityChange: () => {
+        if (document.hidden) {
+          this.releasePilotInput();
+        }
+      },
     },
     window,
     document,
@@ -464,6 +472,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   ngOnDestroy(): void {
+    this.releasePilotInput();
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -482,6 +491,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   activateContext(contextKey: string): boolean {
+    if (contextKey !== this.activeContextKey()) {
+      this.releasePilotInput();
+    }
     const activated = this.registry.activate(contextKey);
     if (!activated) {
       return false;
@@ -711,7 +723,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private onWindowPointerDown(event: PointerEvent): void {
     const active = this.registry.getActiveContext();
-    if (active && !active.flightModeEnabled() && event.button === 2) {
+    if (
+      !active ||
+      active.isPaused() ||
+      document.hidden ||
+      !document.hasFocus() ||
+      event.target !== active.getRenderingState()?.canvas
+    ) {
+      return;
+    }
+    if (active && !active.flightPointerLocked() && event.button === 2) {
       const hoveredId = active.getHoveredAsteroidId();
 
       if (hoveredId) {
@@ -721,7 +742,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     }
 
-    this.syncPointerLockForActiveContext(true);
+    if (event.button === 0) {
+      this.syncPointerLockForActiveContext(true);
+    }
   }
 
   private onWindowPointerUp(event: PointerEvent): void {
@@ -737,6 +760,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowKeyDown(event: KeyboardEvent): void {
+    if (event.code === 'Escape') {
+      this.releasePilotInput();
+      return;
+    }
+
+    if (document.hidden || !document.hasFocus()) {
+      return;
+    }
     const active = this.registry.getActiveContext();
     if (!active) {
       return;
@@ -765,8 +796,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowMouseMove(event: MouseEvent): void {
+    if (document.hidden || !document.hasFocus()) {
+      return;
+    }
     const active = this.registry.getActiveContext();
-    if (!active?.flightModeEnabled()) {
+    if (!active?.flightPointerLocked()) {
       const prevHoveredAsteroidId = active?.getHoveredAsteroidId() ?? null;
       const prevHoveredDebrisId = active?.getHoveredScannableDebrisId() ?? null;
       const prevHoveredShipId = active?.getHoveredScannableShipId() ?? null;
@@ -813,7 +847,34 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onPointerLockChange(): void {
+    const active = this.registry.getActiveContext();
+    if (this.registry.getAllContexts().some((context) => context !== active && context.flightPointerLocked())) {
+      this.releasePilotInput();
+      return;
+    }
+    if (active?.flightPointerLocked()) {
+      // A lock request can finish after blur or a context switch.
+      if (!this.pointerLockRequested || document.hidden || !document.hasFocus() || active.isPaused()) {
+        this.releasePilotInput();
+        return;
+      }
+    } else {
+      this.pointerLockRequested = false;
+      active?.clearFlightMovementInput();
+    }
     this.syncPointerLockForActiveContext(false);
+    this.bumpFlightRevision();
+  }
+
+  private releasePilotInput(): void {
+    this.pointerLockRequested = false;
+    for (const context of this.registry.getAllContexts()) {
+      context.clearFlightMovementInput();
+      if (context.flightPointerLocked()) {
+        document.exitPointerLock();
+      }
+    }
+    this.clearTestTargetHoldTimer();
     this.bumpFlightRevision();
   }
 
@@ -829,7 +890,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
 
     if (active.flightModeEnabled()) {
-      if (!allowRequest) {
+      if (!allowRequest || active.isPaused() || document.hidden || !document.hasFocus()) {
         return;
       }
 
@@ -837,6 +898,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         typeof rendering.canvas.requestPointerLock === 'function' &&
         document.pointerLockElement !== rendering.canvas
       ) {
+        this.pointerLockRequested = true;
         rendering.canvas.requestPointerLock();
       }
       return;

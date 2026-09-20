@@ -4,7 +4,6 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
 import type { Triple } from '../../model/shared/triple';
-import { OrbitCameraControls } from './orbit-camera-controls';
 
 export interface ShipSceneCameraState {
   position: { x: number; y: number; z: number };
@@ -99,6 +98,9 @@ export interface ShipSceneRenderingState {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
+  worldRelativeGroup: THREE.Group;
+  pilotRig: THREE.Group;
+  pilotLookRig: THREE.Group;
   shipGroup: THREE.Group;
   stationGroup: THREE.Group;
   gateGroup: THREE.Group;
@@ -108,7 +110,6 @@ export interface ShipSceneRenderingState {
   environmentTexture: THREE.CanvasTexture | null;
   starfieldSignatureLocal: string;
   asteroidLayoutSignatureLocal: string;
-  orbitControls: OrbitCameraControls;
   isPausedLocal: boolean;
   animationFrameId: number | null;
 }
