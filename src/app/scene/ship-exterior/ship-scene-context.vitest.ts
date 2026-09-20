@@ -562,7 +562,6 @@ describe('ShipSceneContext', () => {
 
       (context as any).renderingState = {
         isPausedLocal: false,
-        cube: new THREE.Object3D(),
         asteroidGroup: { children: [mesh] },
         orbitControls: { update: vi.fn(), setEnabled: vi.fn(), setTarget: vi.fn() },
         renderer: { render: vi.fn() },
@@ -754,7 +753,6 @@ describe('ShipSceneContext', () => {
 
       (context as any).renderingState = {
         isPausedLocal: false,
-        cube: new THREE.Object3D(),
         asteroidGroup: { children: [mesh] },
         orbitControls: { update: vi.fn(), setEnabled: vi.fn(), setTarget: vi.fn() },
         renderer: { render: vi.fn() },

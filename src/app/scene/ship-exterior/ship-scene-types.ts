@@ -99,7 +99,6 @@ export interface ShipSceneRenderingState {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   canvas: HTMLCanvasElement;
-  cube: THREE.Mesh;
   shipGroup: THREE.Group;
   stationGroup: THREE.Group;
   gateGroup: THREE.Group;
@@ -111,13 +110,11 @@ export interface ShipSceneRenderingState {
   asteroidLayoutSignatureLocal: string;
   orbitControls: OrbitCameraControls;
   isPausedLocal: boolean;
-  cubeColorLocal: number;
   animationFrameId: number | null;
 }
 
 export interface ShipSceneRuntimeSnapshot {
   cameraPosition: { x: number; y: number; z: number };
-  cubeRotation: { x: number; y: number; z: number };
   starfieldSignature: string;
   isPaused: boolean;
   renderedFrameCount: number;

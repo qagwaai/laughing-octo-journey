@@ -355,16 +355,6 @@ function createAsteroidEnvironmentTexture(): THREE.CanvasTexture | null {
   return texture;
 }
 
-function hashShipIdToColor(shipId: string): number {
-  let hash = 0;
-  for (let i = 0; i < shipId.length; i += 1) {
-    hash = (hash << 5) - hash + shipId.charCodeAt(i);
-    hash |= 0;
-  }
-  const hue = Math.abs(hash) % 360;
-  return new THREE.Color(`hsl(${hue}, 72%, 54%)`).getHex();
-}
-
 function disposeMesh(mesh: THREE.Mesh): void {
   if (mesh.geometry) {
     mesh.geometry.dispose();
@@ -821,16 +811,6 @@ export class ShipSceneContext {
     const pixelRatio = typeof window === 'undefined' ? 1 : Math.min(window.devicePixelRatio || 1, 2);
     renderer.setPixelRatio(pixelRatio);
 
-    const cubeColor = hashShipIdToColor(this.state.shipId);
-    const cube = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshStandardMaterial({ color: cubeColor, metalness: 0.25, roughness: 0.5 }),
-    );
-
-    // Render in a local anchor frame for this slice. World position stays in context state
-    // for future hydration/transforms, while visuals remain centered and numerically stable.
-    cube.position.set(0, 0, 0);
-
     const ambient = new THREE.AmbientLight('#cfe3ff', 0.65);
     const directional = new THREE.DirectionalLight('#ffffff', 0.85);
     directional.position.set(3, 5, 4);
@@ -857,7 +837,6 @@ export class ShipSceneContext {
     scene.add(ambient);
     scene.add(directional);
     scene.add(starfieldPoints);
-    scene.add(cube);
     scene.add(shipGroup);
     scene.add(stationGroup);
     scene.add(gateGroup);
@@ -865,7 +844,7 @@ export class ShipSceneContext {
     scene.add(asteroidGroup);
 
     const orbitControls = new OrbitCameraControls(camera, canvas, {
-      target: cube.position.clone(),
+      target: new THREE.Vector3(),
       autoRotateSpeed: 0,
       enableRotate: true,
       enableZoom: true,
@@ -879,7 +858,6 @@ export class ShipSceneContext {
       camera,
       renderer,
       canvas,
-      cube,
       shipGroup,
       stationGroup,
       gateGroup,
@@ -891,7 +869,6 @@ export class ShipSceneContext {
       asteroidLayoutSignatureLocal: this.getAsteroidLayoutSignature(),
       orbitControls,
       isPausedLocal: true,
-      cubeColorLocal: cubeColor,
       animationFrameId: null,
     };
 
@@ -962,14 +939,6 @@ export class ShipSceneContext {
       this.framePressureSampler.addSample(now - this.lastFrameTimestamp);
     }
     this.lastFrameTimestamp = now;
-    this.renderingState.cube.rotation.x += 0.0035;
-    this.renderingState.cube.rotation.y += 0.006;
-    const flight = this.state.flight;
-    if (flight?.enabled && this.flightController) {
-      const [offsetX, offsetY, offsetZ] = this.flightController.flightWorldOffset();
-      this.renderingState.cube.position.set(offsetX, offsetY, offsetZ);
-      this.renderingState.orbitControls.setTarget(this.renderingState.cube.position);
-    }
     if (
       this.state.asteroid?.hoveredAsteroidId ||
       this.state.scannableShips?.hoveredShipId ||
@@ -1071,11 +1040,6 @@ export class ShipSceneContext {
         y: this.renderingState.camera.position.y,
         z: this.renderingState.camera.position.z,
       },
-      cubeRotation: {
-        x: this.renderingState.cube.rotation.x,
-        y: this.renderingState.cube.rotation.y,
-        z: this.renderingState.cube.rotation.z,
-      },
       starfieldSignature: this.renderingState.starfieldSignatureLocal,
       isPaused: this.isPaused(),
       renderedFrameCount: this.renderedFrameCount,
@@ -1109,7 +1073,6 @@ export class ShipSceneContext {
     } else {
       this.renderingState.starfieldPoints.material.dispose();
     }
-    disposeMesh(this.renderingState.cube);
     this.renderingState.renderer.dispose();
     this.renderingState.canvas.remove();
     this.renderingState = null;
