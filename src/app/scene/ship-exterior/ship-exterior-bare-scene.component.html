@@ -18,24 +18,6 @@
       >
         TARGET IRON
       </button>
-      <label class="ship-exterior-bare-scene__launch-form-label">
-        HOTKEY
-        <select
-          #launchHotkeySelect
-          class="ship-exterior-bare-scene__launch-select"
-          [value]="selectedLaunchHotkey()"
-          (change)="setSelectedLaunchHotkey(launchHotkeySelect.value)"
-        >
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-        </select>
-      </label>
-      <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="submitLaunchFromControls()">
-        LAUNCH
-      </button>
     </div>
   </section>
 
@@ -53,6 +35,20 @@
   <div class="ship-exterior-bare-scene__viewport" #canvasHost>
     <app-asteroid-scan-detail-panel [sample]="activeScanDetailSample()" />
   </div>
+
+  <section class="ship-exterior-bare-scene__hotkeys" aria-label="Ship controls">
+    @for (binding of hotkeyBindings(); track binding.key) {
+      <div
+        class="ship-exterior-bare-scene__hotkey"
+        [class.ship-exterior-bare-scene__hotkey--disabled]="binding.state === 'disabled'"
+        [class.ship-exterior-bare-scene__hotkey--available]="binding.state === 'available'"
+        [class.ship-exterior-bare-scene__hotkey--pressed]="binding.state === 'pressed'"
+      >
+        <span class="ship-exterior-bare-scene__hotkey-key">{{ binding.key }}</span>
+        <span class="ship-exterior-bare-scene__hotkey-action">{{ binding.action }}</span>
+      </div>
+    }
+  </section>
 
   <footer class="ship-exterior-bare-scene__debug" aria-live="polite">
     <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>

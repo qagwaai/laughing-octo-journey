@@ -70,6 +70,12 @@ import {
   type ShipExteriorColdBootAsteroidSeedIntent,
 } from './ship-exterior-cold-boot-asteroid-seed';
 import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { HotkeyFlashController } from './hotkey-flash-controller';
+import {
+  buildShipExteriorHotkeyBindings,
+  type ShipExteriorHotkeyBinding,
+  type ShipExteriorHotkeyFlashKey,
+} from './ship-exterior-hotkey-bindings';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 import { collectShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
 import {
@@ -95,11 +101,6 @@ type ShipExteriorScanDetail =
   | { kind: 'asteroid'; sample: ShipSceneAsteroidSample }
   | { kind: 'debris'; sample: ShipSceneScannableDebrisSample }
   | { kind: 'ship'; sample: ShipSceneScannableShipSample };
-
-export function shouldToggleFlightModeFromKey(code: string, flightModeEnabled: boolean): boolean {
-  void flightModeEnabled;
-  return code === 'KeyF';
-}
 
 @Component({
   selector: 'app-ship-exterior-bare-scene',
@@ -261,8 +262,25 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       this.getActiveMissionGateState()?.activeObjectiveText ?? 'Mission objectives complete. Await further directives.'
     );
   });
-  readonly selectedLaunchHotkey = signal<1 | 2 | 3 | 4 | 5>(1);
   readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error'; seed: number | null } | null>(null);
+  readonly hotkeyBindings = computed<readonly ShipExteriorHotkeyBinding[]>(() => {
+    this.activeContextKey();
+    this.flightRevision();
+    this.asteroidRevision();
+    const active = this.registry.getActiveContext();
+    const activeShip = this.sessionService.activeShip();
+    return buildShipExteriorHotkeyBindings({
+      hasActiveContext: active !== undefined,
+      flightModeEnabled: active?.flightModeEnabled() ?? false,
+      pointerLocked: active?.flightPointerLocked() ?? false,
+      rightMouseHeld: this.rightMouseHeld(),
+      heldMovementCodes: this.heldHotkeyCodes(),
+      flashedHotkeys: this.hotkeyFlashController.active(),
+      hasActiveShip: !!activeShip,
+      launchableItems: activeShip?.inventory?.filter((item) => item.launchable === true) ?? [],
+      hasValidLaunchTarget: this.hasValidLaunchTarget(active),
+    });
+  });
 
   // CHANGE ANCHOR: scene registry and bootstrap controllers
   private readonly registry = new ShipSceneRegistry();
@@ -313,6 +331,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     getSolarSystemId: () => DEFAULT_SOLAR_SYSTEM_ID,
   });
   private pointerLockRequested = false;
+  private readonly rightMouseHeld = signal(false);
+  private readonly heldHotkeyCodes = signal<ReadonlySet<string>>(new Set());
+  private readonly hotkeyFlashController = new HotkeyFlashController<ShipExteriorHotkeyFlashKey>();
+  private readonly handledKeyboardEvents = new WeakSet<KeyboardEvent>();
   private readonly inputAdapter = new ShipExteriorInputAdapter(
     {
       onWindowPointerDown: (event) => this.onWindowPointerDown(event),
@@ -481,6 +503,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   ngOnDestroy(): void {
+    this.hotkeyFlashController.dispose();
     this.releasePilotInput();
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
@@ -742,6 +765,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
     if (active && !active.flightPointerLocked() && event.button === 2) {
+      this.rightMouseHeld.set(true);
       const hoveredId = active.getHoveredAsteroidId();
 
       if (hoveredId) {
@@ -761,6 +785,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
+    this.rightMouseHeld.set(false);
     this.clearTestTargetHoldTimer();
   }
 
@@ -769,7 +794,15 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowKeyDown(event: KeyboardEvent): void {
+    if (this.handledKeyboardEvents.has(event)) {
+      return;
+    }
+    this.handledKeyboardEvents.add(event);
+
     if (event.code === 'Escape') {
+      if (!event.repeat && this.registry.getActiveContext()?.flightPointerLocked()) {
+        this.hotkeyFlashController.trigger('ESC');
+      }
       this.releasePilotInput();
       return;
     }
@@ -782,25 +815,43 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    if (shouldToggleFlightModeFromKey(event.code, active.flightModeEnabled())) {
-      this.toggleFlightMode();
-      event.preventDefault();
-      return;
-    }
-
     if (active.captureFlightMovementKey(event.code)) {
+      this.heldHotkeyCodes.update((held) => {
+        if (held.has(event.code)) {
+          return held;
+        }
+        const next = new Set(held);
+        next.add(event.code);
+        return next;
+      });
       event.preventDefault();
       return;
     }
 
     const hotkey = this.resolveLaunchHotkeyFromCode(event.code);
-    if (hotkey !== null) {
+    if (hotkey !== null && !event.repeat) {
+      if (this.isLaunchHotkeyAvailable(hotkey)) {
+        this.hotkeyFlashController.trigger(hotkey);
+      }
       this.launchFromHotkey(hotkey);
       event.preventDefault();
     }
   }
 
   private onWindowKeyUp(event: KeyboardEvent): void {
+    if (this.handledKeyboardEvents.has(event)) {
+      return;
+    }
+    this.handledKeyboardEvents.add(event);
+
+    this.heldHotkeyCodes.update((held) => {
+      if (!held.has(event.code)) {
+        return held;
+      }
+      const next = new Set(held);
+      next.delete(event.code);
+      return next;
+    });
     this.registry.getActiveContext()?.releaseFlightMovementKey(event.code);
   }
 
@@ -830,17 +881,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private onSocketCorrelationWarning(_event: Event): void {}
 
-  setSelectedLaunchHotkey(rawValue: string): void {
-    const parsed = Number.parseInt(rawValue, 10);
-    if (parsed >= 1 && parsed <= 5) {
-      this.selectedLaunchHotkey.set(parsed as 1 | 2 | 3 | 4 | 5);
-    }
-  }
-
-  submitLaunchFromControls(): void {
-    this.launchFromHotkey(this.selectedLaunchHotkey());
-  }
-
   private onPointerLockChange(): void {
     const active = this.registry.getActiveContext();
     if (this.registry.getAllContexts().some((context) => context !== active && context.flightPointerLocked())) {
@@ -856,6 +896,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     } else {
       this.pointerLockRequested = false;
       active?.clearFlightMovementInput();
+      this.rightMouseHeld.set(false);
+      this.heldHotkeyCodes.set(new Set());
     }
     this.syncPointerLockForActiveContext(false);
     this.bumpFlightRevision();
@@ -870,6 +912,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     }
     this.clearTestTargetHoldTimer();
+    this.rightMouseHeld.set(false);
+    this.heldHotkeyCodes.set(new Set());
     this.bumpFlightRevision();
   }
 
@@ -1665,16 +1709,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     const resolvedActiveShip: ShipSummary = activeShip;
     const launchableItems = resolvedActiveShip.inventory?.filter((item) => item.launchable === true) ?? [];
-    if (launchableItems.length === 0) {
+    const selectedItem = launchableItems[hotkey - 1];
+    if (!selectedItem) {
       this.activeLaunchToast.set({
-        message: 'Cannot launch: no launchable item available in active ship inventory.',
+        message: `Cannot launch: hotkey ${hotkey} has no launchable item assigned.`,
         tone: 'error',
         seed: null,
       });
       return;
     }
 
-    const selectedItem = launchableItems[hotkey - 1] ?? launchableItems[0];
     const active = this.registry.getActiveContext();
     const activeState = active?.getState();
     const resolvedPlayerName = activeState?.playerName?.trim() || this.navigationPlayerName();
@@ -1684,7 +1728,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       this.navigationCharacterId();
 
     const samples = active ? this.ensureContextAsteroidSamplesForMissionProgress(active) : [];
-    const targetId = active?.getTargetedAsteroidId() ?? samples[0]?.id ?? null;
+    const targetId = active?.getTargetedAsteroidId() ?? null;
     if (!targetId) {
       this.activeLaunchToast.set({
         message: 'Cannot launch: no target selected.',
@@ -1756,6 +1800,23 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         });
       },
     });
+  }
+
+  private hasValidLaunchTarget(active: ShipSceneContext | null | undefined): boolean {
+    if (!active) {
+      return false;
+    }
+    const targetId = active.getTargetedAsteroidId();
+    if (!targetId) {
+      return false;
+    }
+    return active.getAsteroidSamples().some((sample) => sample.id === targetId);
+  }
+
+  private isLaunchHotkeyAvailable(hotkey: 1 | 2 | 3 | 4 | 5): boolean {
+    const active = this.registry.getActiveContext();
+    const items = this.sessionService.activeShip()?.inventory?.filter((item) => item.launchable === true) ?? [];
+    return !!this.sessionService.activeShip() && !!items[hotkey - 1] && this.hasValidLaunchTarget(active);
   }
 
   // CHANGE ANCHOR: inventory-reward delegation

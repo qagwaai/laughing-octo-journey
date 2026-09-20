@@ -43,6 +43,17 @@ describe('HotkeyFlashController', () => {
     expect(controller.active().has(4)).toBe(false);
   });
 
+  it('tracks label hotkeys alongside numeric launch slots', () => {
+    const controller = new HotkeyFlashController<'ESC' | 1 | 2 | 3 | 4 | 5>(100);
+    controller.trigger('ESC');
+    controller.trigger(2);
+    expect(controller.active().has('ESC')).toBe(true);
+    expect(controller.active().has(2)).toBe(true);
+    vi.advanceTimersByTime(150);
+    expect(controller.active().has('ESC')).toBe(false);
+    expect(controller.active().has(2)).toBe(false);
+  });
+
   it('dispose() cancels every pending timer', () => {
     const controller = new HotkeyFlashController(100);
     controller.trigger(1);

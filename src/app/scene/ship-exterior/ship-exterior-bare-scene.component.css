@@ -1,7 +1,7 @@
 .ship-exterior-bare-scene {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto auto minmax(320px, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(320px, 1fr) auto auto;
   /* minmax(0, 1fr) prevents the implicit column from growing to fit the
      imperatively-injected Three.js canvas's intrinsic pixel size (that
      canvas sits outside Angular's template so the scoped CSS meant to make
@@ -64,24 +64,6 @@
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
-}
-
-.ship-exterior-bare-scene__launch-form-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.62rem;
-  letter-spacing: 0.08em;
-  color: rgba(201, 227, 255, 0.9);
-}
-
-.ship-exterior-bare-scene__launch-select {
-  border: 1px solid rgba(128, 188, 245, 0.4);
-  background: rgba(5, 17, 30, 0.88);
-  color: #d9ecff;
-  border-radius: 4px;
-  font-size: 0.64rem;
-  padding: 3px 7px;
 }
 
 .ship-exterior-bare-scene__target-btn {
@@ -150,7 +132,7 @@
 }
 
 .ship-exterior-bare-scene__debug {
-  grid-row: 5;
+  grid-row: 6;
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -160,4 +142,53 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   background: rgba(2, 8, 16, 0.72);
+}
+
+.ship-exterior-bare-scene__hotkeys {
+  grid-row: 5;
+  display: flex;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  gap: 6px;
+  height: 40px;
+  min-width: 0;
+  padding: 7px 12px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  border-top: 1px solid rgba(255, 213, 61, 0.68);
+  border-bottom: 1px solid rgba(255, 213, 61, 0.38);
+  background: rgba(30, 25, 4, 0.8);
+}
+
+.ship-exterior-bare-scene__hotkey {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid #ffd53d;
+  border-radius: 3px;
+  color: #ffd53d;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.ship-exterior-bare-scene__hotkey--disabled {
+  border-color: rgba(145, 145, 145, 0.34);
+  color: rgba(145, 145, 145, 0.56);
+}
+
+.ship-exterior-bare-scene__hotkey--pressed {
+  background: #ffd53d;
+  color: #181300;
+}
+
+.ship-exterior-bare-scene__hotkey-key {
+  font-weight: 700;
+}
+
+.ship-exterior-bare-scene__hotkey-action {
+  opacity: 0.86;
 }

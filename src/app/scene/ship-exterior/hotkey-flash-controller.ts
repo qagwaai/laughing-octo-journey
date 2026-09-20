@@ -8,19 +8,19 @@ export type HotkeySlot = 1 | 2 | 3 | 4 | 5;
  * indicate a successful keypress for a short visual window. Each hotkey has
  * an independent timer; re-triggering a hotkey resets its own timer.
  */
-export class HotkeyFlashController {
+export class HotkeyFlashController<T extends string | number = HotkeySlot> {
   private static readonly DEFAULT_FLASH_MS = 220;
 
-  private readonly launching = signal<ReadonlySet<HotkeySlot>>(new Set());
-  private readonly timeouts = new Map<HotkeySlot, number>();
+  private readonly launching = signal<ReadonlySet<T>>(new Set());
+  private readonly timeouts = new Map<T, number>();
 
   /** Read-only set of hotkeys currently flashing. */
-  readonly active: Signal<ReadonlySet<HotkeySlot>> = this.launching.asReadonly();
+  readonly active: Signal<ReadonlySet<T>> = this.launching.asReadonly();
 
   constructor(private readonly flashMs: number = HotkeyFlashController.DEFAULT_FLASH_MS) {}
 
   /** Begins a flash window for the given hotkey, resetting any prior window. */
-  trigger(hotkey: HotkeySlot): void {
+  trigger(hotkey: T): void {
     this.launching.update((current) => {
       const next = new Set(current);
       next.add(hotkey);
