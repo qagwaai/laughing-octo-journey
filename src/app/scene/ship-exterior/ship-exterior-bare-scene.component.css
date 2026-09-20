@@ -1,7 +1,7 @@
 .ship-exterior-bare-scene {
   position: relative;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto minmax(320px, 1fr) auto;
   /* minmax(0, 1fr) prevents the implicit column from growing to fit the
      imperatively-injected Three.js canvas's intrinsic pixel size (that
      canvas sits outside Angular's template so the scoped CSS meant to make
@@ -18,6 +18,7 @@
 }
 
 .ship-exterior-bare-scene__toolbar {
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -36,21 +37,33 @@
 }
 
 .ship-exterior-bare-scene__objective {
+  grid-row: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
+  height: 44px;
   gap: 10px;
   padding: 8px 12px;
   border-bottom: 1px solid rgba(115, 168, 220, 0.28);
   font-size: 0.72rem;
   background: rgba(3, 10, 19, 0.75);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}
+
+.ship-exterior-bare-scene__objective p {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 .ship-exterior-bare-scene__objective-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .ship-exterior-bare-scene__launch-form-label {
@@ -62,18 +75,13 @@
   color: rgba(201, 227, 255, 0.9);
 }
 
-.ship-exterior-bare-scene__launch-select,
-.ship-exterior-bare-scene__launch-input {
+.ship-exterior-bare-scene__launch-select {
   border: 1px solid rgba(128, 188, 245, 0.4);
   background: rgba(5, 17, 30, 0.88);
   color: #d9ecff;
   border-radius: 4px;
   font-size: 0.64rem;
   padding: 3px 7px;
-}
-
-.ship-exterior-bare-scene__launch-input {
-  min-width: 160px;
 }
 
 .ship-exterior-bare-scene__target-btn {
@@ -87,6 +95,7 @@
 }
 
 .ship-exterior-bare-scene__toast {
+  grid-row: 3;
   padding: 7px 12px;
   font-size: 0.66rem;
   border-bottom: 1px solid rgba(115, 168, 220, 0.24);
@@ -125,6 +134,7 @@
 
 
 .ship-exterior-bare-scene__viewport {
+  grid-row: 4;
   position: relative;
   width: 100%;
   height: 100%;
@@ -140,6 +150,7 @@
 }
 
 .ship-exterior-bare-scene__debug {
+  grid-row: 5;
   display: flex;
   justify-content: space-between;
   gap: 10px;

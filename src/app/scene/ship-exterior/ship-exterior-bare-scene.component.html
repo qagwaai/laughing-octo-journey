@@ -33,17 +33,6 @@
           <option value="5">5</option>
         </select>
       </label>
-      <label class="ship-exterior-bare-scene__launch-form-label">
-        QUESTION
-        <input
-          #launchQuestionInput
-          type="text"
-          class="ship-exterior-bare-scene__launch-input"
-          [value]="launchQuestionAnswer()"
-          (input)="setLaunchQuestionAnswer(launchQuestionInput.value)"
-          placeholder="Why launch now?"
-        />
-      </label>
       <button type="button" class="ship-exterior-bare-scene__target-btn" (click)="submitLaunchFromControls()">
         LAUNCH
       </button>

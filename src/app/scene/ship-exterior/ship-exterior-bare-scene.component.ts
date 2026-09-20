@@ -262,7 +262,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     );
   });
   readonly selectedLaunchHotkey = signal<1 | 2 | 3 | 4 | 5>(1);
-  readonly launchQuestionAnswer = signal('');
   readonly activeLaunchToast = signal<{ message: string; tone: 'success' | 'error'; seed: number | null } | null>(null);
 
   // CHANGE ANCHOR: scene registry and bootstrap controllers
@@ -838,21 +837,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
   }
 
-  setLaunchQuestionAnswer(rawValue: string): void {
-    this.launchQuestionAnswer.set(rawValue);
-  }
-
   submitLaunchFromControls(): void {
-    const answer = this.launchQuestionAnswer().trim();
-    if (!answer) {
-      this.activeLaunchToast.set({
-        message: 'Launch hold: answer the launch question before proceeding.',
-        tone: 'error',
-        seed: null,
-      });
-      return;
-    }
-
     this.launchFromHotkey(this.selectedLaunchHotkey());
   }
 
