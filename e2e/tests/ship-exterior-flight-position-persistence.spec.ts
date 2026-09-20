@@ -39,7 +39,7 @@ function toTelemetryCoords(coords: { x: number; y: number; z: number }): { x: nu
 }
 
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
-  await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+  await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
   await expect.poll(() => readCoords(page), { timeout: 10_000 }).not.toBeNull();
 }
 
@@ -139,7 +139,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     expect(coordsBeforeMove).not.toBeNull();
 
     const movedCoords = await moveForwardWithPilotControls(page, coordsBeforeMove!);
-    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
 
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
@@ -182,7 +182,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     expect(initialCoords).not.toBeNull();
 
     const firstMovedCoords = await moveForwardWithPilotControls(page, initialCoords!);
-    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
 
     // First cycle: mission board -> market hub -> hangar -> exterior.
     await gameShell.openMissionBoard();
@@ -204,7 +204,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(firstMovedCoords));
 
     const secondMovedCoords = await moveForwardWithPilotControls(page, coordsAfterFirstReturn!);
-    await expect(pilotStatus(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
 
     // Second cycle: market hub -> mission board -> hangar -> exterior.
     await gameShell.openMarketHub();

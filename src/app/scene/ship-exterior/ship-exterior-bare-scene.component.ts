@@ -133,6 +133,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   readonly contexts = signal<ShipSceneContext[]>([]);
   readonly activeContextKey = signal<string | null>(null);
   readonly contextKeys = computed(() => this.contexts().map((context) => context.contextKey));
+  readonly activeShipTitleLine = computed(() => {
+    const activeShip = this.sessionService.activeShip();
+    const name = activeShip?.name?.trim();
+    return name ? name.toUpperCase() : 'UNKNOWN SHIP';
+  });
   readonly activeStarfieldSignature = computed(() => {
     const key = this.activeContextKey();
     if (!key) {
@@ -146,9 +151,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.activeContextKey();
     return this.registry.getActiveContext()?.snapshotRuntime() ?? null;
   });
-  readonly activeFlightStatusLine = computed(
-    () => `PILOT // ${this.activeFlightSnapshot()?.flightModeEnabled ? 'ACTIVE' : 'INITIALIZING'}`,
-  );
+  readonly activeFlightStatusLine = computed(() => {
+    this.flightRevision();
+    this.activeContextKey();
+    const flightModeEnabled = this.activeFlightSnapshot()?.flightModeEnabled ?? false;
+    const modeLabel = flightModeEnabled ? 'FLIGHT' : 'INITIALIZING';
+    const captureLabel = this.registry.getActiveContext()?.flightPointerLocked() ? 'LOCKED' : 'FREE';
+    return `${modeLabel}: CAPTURE // ${captureLabel}`;
+  });
   readonly activeFlightCoordsLine = computed(() => {
     const snapshot = this.activeFlightSnapshot();
     if (!snapshot) {

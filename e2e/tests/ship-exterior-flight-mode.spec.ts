@@ -53,7 +53,7 @@ async function openPilotSceneWithClock(page: Page): Promise<void> {
   await new GameShellPage(page).joinGame('Join Game in Progress');
   await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
   await expect(pilotCanvas(page)).toBeVisible();
-  await expect(flightToggle(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+  await expect(flightToggle(page)).toHaveText(/FLIGHT: CAPTURE/);
   await expect
     .poll(() => page.evaluate(() => Boolean(window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext())))
     .toBe(true);
@@ -245,7 +245,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     const toggle = flightToggle(page);
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
-    await expect(toggle).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(toggle).toHaveText(/FLIGHT: CAPTURE/);
     const coordsBeforeEnable = await readCoords(page);
     expect(coordsBeforeEnable).not.toBeNull();
 
@@ -303,7 +303,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     // The status control must not restore the retired orbit camera.
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(toggle).toHaveText(/FLIGHT: CAPTURE/);
 
     // Keyboard activation does not acquire pointer lock.
     await expect
@@ -332,7 +332,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       await page.keyboard.up('KeyW');
       await page.keyboard.up('Shift');
     }
-    await expect(flightToggle(page)).toHaveText(/PILOT \/\/ ACTIVE/);
+    await expect(flightToggle(page)).toHaveText(/FLIGHT: CAPTURE/);
     await steerByMouseDelta(page, 80, 60);
     await page.clock.fastForward(1000);
     const afterEscape = await readPilotSnapshot(page);
