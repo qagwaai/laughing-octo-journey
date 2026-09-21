@@ -736,6 +736,20 @@ export const en = {
   },
 
   shipExterior: {
+    debugDrawer: {
+      openButton: 'Debug',
+      closeButton: 'Close',
+      drawerLabel: 'Ship scene diagnostics',
+      drawerTitle: 'Debug diagnostics',
+      contextGroup: 'Context',
+      flightGroup: 'Flight',
+      performanceGroup: 'Performance',
+      worldGroup: 'World',
+      performanceHealth: 'Performance health',
+      healthGreen: 'Healthy',
+      healthAmber: 'Frame pressure high',
+      healthNeutral: 'No current sample',
+    },
     tractorBeam: {
       rangeIndicator: 'Tractor Beam Range',
       itemDetected: 'Debris detected',

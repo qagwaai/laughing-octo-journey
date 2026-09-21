@@ -4,6 +4,7 @@ import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import type { AsteroidKinematics } from '../../model/math/asteroid-kinematics';
 import type { CelestialBodyLocation } from '../../model/math/celestial-body-location';
 import type { Triple } from '../../model/shared/triple';
+import type { AsteroidDetailCapMultiplier } from './frame-pressure-sampler';
 
 export interface ShipSceneCameraState {
   position: { x: number; y: number; z: number };
@@ -124,6 +125,15 @@ export interface ShipSceneRuntimeSnapshot {
   flightWorldOffset: { x: number; y: number; z: number };
   flightWorldRotation: { x: number; y: number; z: number };
   flightSpeedKmPerSec: number;
+  performance: ShipScenePerformanceTelemetry;
+}
+
+export interface ShipScenePerformanceTelemetry {
+  status: 'paused' | 'sampling' | 'current';
+  averageFrameTimeMs: number | null;
+  sampleCount: number;
+  asteroidDetailCapMultiplier: AsteroidDetailCapMultiplier;
+  detailCapThresholdMs: number;
 }
 
 export interface ShipSceneKeyParts {

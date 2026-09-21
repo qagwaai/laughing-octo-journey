@@ -13,6 +13,7 @@ import {
   effect,
   ElementRef,
   inject,
+  isDevMode,
   OnDestroy,
   OnInit,
   signal,
@@ -20,6 +21,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
+import { locale } from '../../i18n/locale';
 import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
 import {
   createInitialMissionGateState,
@@ -53,8 +55,14 @@ import { AsteroidPersistenceService } from './asteroid-persistence.service';
 import { AsteroidScanController } from './asteroid-scan-controller';
 import { AsteroidScanRevealController } from './asteroid-scan-reveal-controller';
 import { FloatingDebrisController } from './floating-debris-controller';
+import { resolveFramePressureHealth } from './frame-pressure-sampler';
+import { HotkeyFlashController } from './hotkey-flash-controller';
 import { InventoryRewardService } from './inventory-reward.service';
 import { NavigationStateReader } from './navigation-state-reader';
+import {
+  ShipExteriorBareSceneTestAdapter,
+  type ShipExteriorBareSceneTestAdapterSources,
+} from './ship-exterior-bare-scene-test-adapter.service';
 import {
   type ShipExteriorLegacyAsteroidSample,
   type ShipExteriorLegacyScannableDebrisSample,
@@ -62,20 +70,15 @@ import {
 } from './ship-exterior-bare-scene-test-api';
 import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
 import {
-  ShipExteriorBareSceneTestAdapter,
-  type ShipExteriorBareSceneTestAdapterSources,
-} from './ship-exterior-bare-scene-test-adapter.service';
-import {
   seedColdBootAsteroids as resolveColdBootAsteroidSamples,
   type ShipExteriorColdBootAsteroidSeedIntent,
 } from './ship-exterior-cold-boot-asteroid-seed';
-import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
-import { HotkeyFlashController } from './hotkey-flash-controller';
 import {
   buildShipExteriorHotkeyBindings,
   type ShipExteriorHotkeyBinding,
   type ShipExteriorHotkeyFlashKey,
 } from './ship-exterior-hotkey-bindings';
+import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 import { collectShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
 import {
@@ -111,6 +114,8 @@ type ShipExteriorScanDetail =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
+  protected readonly showDebugButton = isDevMode();
+  protected readonly t = locale.shipExterior.debugDrawer;
   private readonly router = inject(Router);
   private readonly navigationStateReader = inject(NavigationStateReader);
   private readonly sessionService = inject(SessionService);
@@ -130,6 +135,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly missionPublicationDisposers = new Map<string, () => void>();
 
   readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
+  readonly debugButton = viewChild<ElementRef<HTMLButtonElement>>('debugButton');
+  readonly debugDrawer = viewChild<ElementRef<HTMLElement>>('debugDrawer');
   // CHANGE ANCHOR: reactive scene state
   readonly contexts = signal<ShipSceneContext[]>([]);
   readonly activeContextKey = signal<string | null>(null);
@@ -198,12 +205,31 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return `MOVE // OFFSET(${offset.x.toFixed(2)},${offset.y.toFixed(2)},${offset.z.toFixed(2)})`;
   });
   readonly activeFlightFramePressureLine = computed(() => {
-    const snapshot = this.activeFlightSnapshot();
-    return `FRAME PRESSURE // ${(snapshot?.renderedFrameCount ?? 0).toFixed(0)} FRAMES`;
+    const telemetry = this.activeFlightSnapshot()?.performance;
+    if (!telemetry || telemetry.status === 'sampling') {
+      return 'FRAME TIME // SAMPLING';
+    }
+    if (telemetry.status === 'paused') {
+      return 'FRAME TIME // PAUSED';
+    }
+    return `FRAME TIME // ${telemetry.averageFrameTimeMs?.toFixed(2)} ms ROLLING AVG`;
   });
   readonly activeFlightQualityScalerLine = computed(() => {
-    const snapshot = this.activeFlightSnapshot();
-    return `QUALITY SCALER // ${snapshot?.isPaused ? 'PAUSED' : 'ACTIVE'}`;
+    const telemetry = this.activeFlightSnapshot()?.performance;
+    const appliedPercent = (telemetry?.asteroidDetailCapMultiplier ?? 1) * 100;
+    const threshold = telemetry?.detailCapThresholdMs ?? 24;
+    return `ASTEROID DETAIL CAP // ${appliedPercent.toFixed(0)}% // REDUCED ABOVE ${threshold.toFixed(0)} ms`;
+  });
+  readonly debugDrawerOpen = signal(false);
+  readonly performanceHealth = computed(() => {
+    const telemetry = this.activeFlightSnapshot()?.performance;
+    return resolveFramePressureHealth(telemetry?.status ?? 'sampling', telemetry?.averageFrameTimeMs ?? null);
+  });
+  readonly performanceHealthLabel = computed(() => {
+    const health = this.performanceHealth();
+    const label =
+      health === 'green' ? this.t.healthGreen : health === 'amber' ? this.t.healthAmber : this.t.healthNeutral;
+    return `${this.t.performanceHealth}: ${label}`;
   });
   readonly activeRouteFeedLine = computed(() => {
     this.flightRevision();
@@ -571,6 +597,29 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.bumpRuntimeRevision();
   }
 
+  toggleDebugDrawer(): void {
+    if (this.debugDrawerOpen()) {
+      this.closeDebugDrawer();
+      return;
+    }
+
+    this.releasePilotInput();
+    this.debugDrawerOpen.set(true);
+    setTimeout(() => this.debugDrawer()?.nativeElement.focus());
+  }
+
+  closeDebugDrawer(restoreFocus = true): void {
+    if (!this.debugDrawerOpen()) {
+      return;
+    }
+
+    this.releasePilotInput();
+    this.debugDrawerOpen.set(false);
+    if (restoreFocus) {
+      setTimeout(() => this.debugButton()?.nativeElement.focus());
+    }
+  }
+
   setFlightInvertY(enabled: boolean): void {
     const active = this.registry.getActiveContext();
     active?.setFlightInvertY(enabled);
@@ -800,7 +849,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowContextMenu(event: MouseEvent): void {
-    event.preventDefault();
+    if (event.target === this.registry.getActiveContext()?.getRenderingState()?.canvas) {
+      event.preventDefault();
+    }
   }
 
   private onWindowKeyDown(event: KeyboardEvent): void {
@@ -810,10 +861,20 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.handledKeyboardEvents.add(event);
 
     if (event.code === 'Escape') {
+      if (this.debugDrawerOpen()) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeDebugDrawer();
+        return;
+      }
       if (!event.repeat && this.registry.getActiveContext()?.flightPointerLocked()) {
         this.hotkeyFlashController.trigger('ESC');
       }
       this.releasePilotInput();
+      return;
+    }
+
+    if (this.isDebugDrawerEvent(event)) {
       return;
     }
 
@@ -854,6 +915,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
     this.handledKeyboardEvents.add(event);
 
+    if (this.isDebugDrawerEvent(event)) {
+      return;
+    }
+
     this.heldHotkeyCodes.update((held) => {
       if (!held.has(event.code)) {
         return held;
@@ -863,6 +928,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return next;
     });
     this.registry.getActiveContext()?.releaseFlightMovementKey(event.code);
+  }
+
+  private isDebugDrawerEvent(event: KeyboardEvent): boolean {
+    const target = event.target;
+    return target instanceof Node && (this.debugDrawer()?.nativeElement.contains(target) ?? false);
   }
 
   private onWindowMouseMove(event: MouseEvent): void {
@@ -1241,8 +1311,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       launchFromHotkey: (hotkey: 1 | 2 | 3 | 4 | 5) => this.launchFromHotkey(hotkey),
       getActiveShipInventoryItemTypes: () => this.getActiveShipInventoryItemTypes(),
       getActiveLaunchToast: () => this.activeLaunchToast(),
-      getMissionGateState: () =>
-        this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
+      getMissionGateState: () => this.getActiveMissionGateState() ?? this.createInitialMissionGateStateForTestApi(),
       resetMissionGateState: () => this.resetMissionGateStateForTest(),
     };
   }

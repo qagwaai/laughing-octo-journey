@@ -10,7 +10,12 @@ import {
   resolveAsteroidTierDetailOverride,
   type AsteroidRenderTier,
 } from './asteroid-tier-selection';
-import { FramePressureSampler } from './frame-pressure-sampler';
+import {
+  FRAME_PRESSURE_DETAIL_CAP_THRESHOLD_MS,
+  FramePressureSampler,
+  resolveAsteroidDetailCapMultiplier,
+  type AsteroidDetailCapMultiplier,
+} from './frame-pressure-sampler';
 import type { ShipExteriorAsteroidVisual } from './ship-exterior-asteroid-visuals';
 import { buildAsteroidLayoutSignature, deriveAsteroidVisuals } from './ship-exterior-asteroid-visuals';
 import { ShipExteriorFlightController } from './ship-exterior-flight-controller';
@@ -22,6 +27,7 @@ import {
   ShipSceneContextState,
   ShipSceneFlightState,
   ShipSceneHoverScanTarget,
+  ShipScenePerformanceTelemetry,
   ShipSceneRenderingState,
   ShipSceneRuntimeSnapshot,
   ShipSceneScannableDebrisSample,
@@ -170,7 +176,9 @@ function normalizeScannableShipState(state?: ShipSceneScannableShipState): ShipS
 }
 
 function normalizeScannableDebrisState(state?: ShipSceneScannableDebrisState): ShipSceneScannableDebrisState {
-  const samples = (state?.samples ?? DEFAULT_SCANNABLE_DEBRIS_SAMPLES).map((sample) => cloneScannableDebrisSample(sample));
+  const samples = (state?.samples ?? DEFAULT_SCANNABLE_DEBRIS_SAMPLES).map((sample) =>
+    cloneScannableDebrisSample(sample),
+  );
   const hoveredDebrisId = state?.hoveredDebrisId ?? null;
   const hoverStillExists = hoveredDebrisId ? samples.some((sample) => sample.id === hoveredDebrisId) : false;
   return {
@@ -466,6 +474,7 @@ export class ShipSceneContext {
   private shipLoadGeneration = 0;
   private readonly framePressureSampler = new FramePressureSampler();
   private lastFrameTimestamp = 0;
+  private appliedAsteroidDetailCapMultiplier: AsteroidDetailCapMultiplier = 1;
   private asteroidTierFrameCounter = 0;
   private lastAsteroidTiers = new Map<string, AsteroidRenderTier>();
   private static readonly ASTEROID_TIER_RECOMPUTE_INTERVAL_FRAMES = 6;
@@ -883,6 +892,18 @@ export class ShipSceneContext {
     return this.renderedFrameCount;
   }
 
+  getPerformanceTelemetry(): ShipScenePerformanceTelemetry {
+    const sampleCount = this.framePressureSampler.getSampleCount();
+    const paused = this.isPaused();
+    return {
+      status: paused ? 'paused' : sampleCount === 0 ? 'sampling' : 'current',
+      averageFrameTimeMs: paused || sampleCount === 0 ? null : this.framePressureSampler.getAverage(),
+      sampleCount,
+      asteroidDetailCapMultiplier: this.appliedAsteroidDetailCapMultiplier,
+      detailCapThresholdMs: FRAME_PRESSURE_DETAIL_CAP_THRESHOLD_MS,
+    };
+  }
+
   setViewport(width: number, height: number): void {
     if (!this.renderingState) {
       return;
@@ -897,9 +918,13 @@ export class ShipSceneContext {
   }
 
   pause(): void {
+    const wasPaused = this.isPaused();
     this.paused = true;
     this.syncFlightStateFromController();
     this.flightController?.stop();
+    if (!wasPaused) {
+      this.resetFramePressureSampling();
+    }
     if (!this.renderingState) {
       return;
     }
@@ -911,6 +936,7 @@ export class ShipSceneContext {
       return;
     }
 
+    this.resetFramePressureSampling();
     this.paused = false;
     if (!this.renderingState) {
       return;
@@ -1042,6 +1068,7 @@ export class ShipSceneContext {
       flightWorldOffset: { ...flight.worldOffset },
       flightWorldRotation: { ...flight.worldRotation },
       flightSpeedKmPerSec: flight.speedKmPerSec,
+      performance: this.getPerformanceTelemetry(),
     };
   }
 
@@ -1073,6 +1100,7 @@ export class ShipSceneContext {
     this.asteroidTierFrameCounter = 0;
     this.framePressureSampler.reset();
     this.lastFrameTimestamp = 0;
+    this.appliedAsteroidDetailCapMultiplier = 1;
     this.paused = true;
     this.renderedFrameCount = 0;
   }
@@ -1547,6 +1575,9 @@ export class ShipSceneContext {
         position: visual.position,
         scanned: visual.isScanned,
       }));
+      const averageFrameTimeMs =
+        this.framePressureSampler.getSampleCount() > 0 ? this.framePressureSampler.getAverage() : null;
+      this.appliedAsteroidDetailCapMultiplier = resolveAsteroidDetailCapMultiplier(averageFrameTimeMs);
       this.lastAsteroidTiers = assignAsteroidRenderTiers(
         tierSamples,
         {
@@ -1561,7 +1592,7 @@ export class ShipSceneContext {
         },
         undefined,
         undefined,
-        { capMultiplier: this.framePressureSampler.getAverage() > 24 ? 0.5 : 1 },
+        { capMultiplier: this.appliedAsteroidDetailCapMultiplier },
       );
     }
 
@@ -1598,6 +1629,11 @@ export class ShipSceneContext {
 
       this.applyAsteroidVisualToMesh(child, visual);
     });
+  }
+
+  private resetFramePressureSampling(): void {
+    this.framePressureSampler.reset();
+    this.lastFrameTimestamp = 0;
   }
 
   private advanceAsteroidOrbit(): void {
@@ -1696,11 +1732,7 @@ export class ShipSceneContext {
   }
 
   private createAsteroidMesh(visual: ShipExteriorAsteroidVisual): THREE.Mesh {
-    const descriptor = resolveAsteroidGeometryDescriptor(
-      visual.meshProfileKey,
-      visual.isScanned,
-      visual.detail,
-    );
+    const descriptor = resolveAsteroidGeometryDescriptor(visual.meshProfileKey, visual.isScanned, visual.detail);
     const geometry =
       descriptor.geometry === 'rock'
         ? buildDeterministicRockGeometry(visual.radius, descriptor.detail, visual.meshProfileKey ?? visual.id)
@@ -1731,11 +1763,7 @@ export class ShipSceneContext {
       visual.position[2],
     ];
     mesh.position.set(visual.position[0], visual.position[1], visual.position[2]);
-    const descriptor = resolveAsteroidGeometryDescriptor(
-      visual.meshProfileKey,
-      visual.isScanned,
-      visual.detail,
-    );
+    const descriptor = resolveAsteroidGeometryDescriptor(visual.meshProfileKey, visual.isScanned, visual.detail);
     mesh.scale.set(
       descriptor.scale[0] * visual.scale,
       descriptor.scale[1] * visual.scale,
@@ -1902,7 +1930,10 @@ export class ShipSceneContext {
     );
     this.hoverRaycaster.setFromCamera(this.hoverPointer, this.renderingState.camera);
 
-    const asteroidIntersections = this.hoverRaycaster.intersectObjects(this.renderingState.asteroidGroup.children, false);
+    const asteroidIntersections = this.hoverRaycaster.intersectObjects(
+      this.renderingState.asteroidGroup.children,
+      false,
+    );
     const hoveredAsteroidId = asteroidIntersections[0]?.object?.name ?? null;
     if (hoveredAsteroidId) {
       this.setHoveredAsteroidId(hoveredAsteroidId);

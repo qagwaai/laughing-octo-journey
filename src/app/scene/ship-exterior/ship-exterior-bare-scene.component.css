@@ -1,7 +1,7 @@
 .ship-exterior-bare-scene {
   position: relative;
   display: grid;
-  grid-template-rows: auto auto auto minmax(320px, 1fr) auto auto;
+  grid-template-rows: auto auto auto minmax(320px, 1fr) auto;
   /* minmax(0, 1fr) prevents the implicit column from growing to fit the
      imperatively-injected Three.js canvas's intrinsic pixel size (that
      canvas sits outside Angular's template so the scoped CSS meant to make
@@ -10,8 +10,10 @@
      and pushing the scan-result panel's right-aligned position off-screen. */
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
+  min-width: 0;
   height: 100%;
   min-height: 100%;
+  overflow: hidden;
   background: radial-gradient(circle at 10% 10%, #102130, #040a11 72%);
   color: #d9ecff;
   font-family: 'Space Mono', Consolas, Monaco, monospace;
@@ -93,7 +95,9 @@
   background: rgba(11, 54, 44, 0.68);
 }
 
-.ship-exterior-bare-scene__flight-btn {
+.ship-exterior-bare-scene__flight-btn,
+.ship-exterior-bare-scene__debug-btn,
+.ship-exterior-bare-scene__debug-close {
   border: 1px solid rgba(102, 231, 181, 0.55);
   background: linear-gradient(135deg, rgba(11, 54, 44, 0.94), rgba(5, 24, 19, 0.94));
   color: #c7ffe9;
@@ -102,6 +106,35 @@
   font-size: 0.66rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.ship-exterior-bare-scene__debug-btn,
+.ship-exterior-bare-scene__debug-close {
+  border-color: rgba(132, 233, 255, 0.55);
+  background: rgba(9, 36, 52, 0.9);
+  color: #d9f7ff;
+}
+
+.ship-exterior-bare-scene__health {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(193, 207, 220, 0.72);
+  border-radius: 50%;
+  background: #71808d;
+  box-shadow: 0 0 6px rgba(113, 128, 141, 0.45);
+}
+
+.ship-exterior-bare-scene__health--green {
+  border-color: #8effca;
+  background: #29c978;
+  box-shadow: 0 0 7px rgba(41, 201, 120, 0.72);
+}
+
+.ship-exterior-bare-scene__health--amber {
+  border-color: #ffe19a;
+  background: #e9a72e;
+  box-shadow: 0 0 7px rgba(233, 167, 46, 0.72);
 }
 
 .ship-exterior-bare-scene__flight-btn:hover {
@@ -113,7 +146,6 @@
   font-size: 0.74rem;
   letter-spacing: 0.14em;
 }
-
 
 .ship-exterior-bare-scene__viewport {
   grid-row: 4;
@@ -131,17 +163,81 @@
   height: 100%;
 }
 
-.ship-exterior-bare-scene__debug {
-  grid-row: 6;
+.ship-exterior-bare-scene__debug-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(400px, calc(100% - 16px));
+  min-width: 0;
+  max-width: 400px;
+  padding: 14px;
+  overflow-y: auto;
+  contain: inline-size layout paint;
+  border-left: 1px solid rgba(115, 168, 220, 0.55);
+  background: rgba(2, 8, 16, 0.96);
+  box-shadow: -12px 0 24px rgba(0, 0, 0, 0.42);
+  transform: translateX(100%);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 180ms ease,
+    visibility 0s linear 180ms;
+}
+
+.ship-exterior-bare-scene__debug-drawer--open {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.ship-exterior-bare-scene__debug-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 12px;
-  border-top: 1px solid rgba(115, 168, 220, 0.35);
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(115, 168, 220, 0.35);
+}
+
+.ship-exterior-bare-scene__debug-header h2,
+.ship-exterior-bare-scene__debug-group h3 {
+  margin: 0;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ship-exterior-bare-scene__debug-header h2 {
+  font-size: 0.8rem;
+}
+
+.ship-exterior-bare-scene__debug-group {
+  display: grid;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(115, 168, 220, 0.22);
   font-size: 0.66rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: rgba(2, 8, 16, 0.72);
+}
+
+.ship-exterior-bare-scene__debug-group span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ship-exterior-bare-scene__debug-group h3 {
+  color: #84e9ff;
+  font-size: 0.68rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ship-exterior-bare-scene__debug-drawer {
+    transition: none;
+  }
 }
 
 .ship-exterior-bare-scene__hotkeys {

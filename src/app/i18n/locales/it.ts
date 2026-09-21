@@ -640,6 +640,20 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   shipExterior: {
+    debugDrawer: {
+      openButton: 'Debug',
+      closeButton: 'Chiudi',
+      drawerLabel: 'Diagnostica della scena della nave',
+      drawerTitle: 'Diagnostica debug',
+      contextGroup: 'Contesto',
+      flightGroup: 'Volo',
+      performanceGroup: 'Prestazioni',
+      worldGroup: 'Mondo',
+      performanceHealth: 'Stato delle prestazioni',
+      healthGreen: 'Regolare',
+      healthAmber: 'Pressione fotogrammi elevata',
+      healthNeutral: 'Nessun campione corrente',
+    },
     tractorBeam: {
       rangeIndicator: 'Portata Raggio Traente',
       itemDetected: 'Detrito rilevato',

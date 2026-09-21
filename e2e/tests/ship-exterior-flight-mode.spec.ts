@@ -9,6 +9,8 @@ import { GameShellPage } from '../page-objects/game-shell.page';
 const shipExteriorScene = (page: Page) => page.locator('.ship-exterior-bare-scene');
 const flightToggle = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
 const pilotCanvas = (page: Page) => shipExteriorScene(page).locator('canvas.ship-scene-canvas');
+const debugButton = (page: Page) => page.getByRole('button', { name: 'Debug' });
+const debugDrawer = (page: Page) => page.getByRole('dialog', { name: 'Ship scene diagnostics' });
 
 declare global {
   interface Window {
@@ -17,9 +19,36 @@ declare global {
 }
 
 const COORDS_PATTERN = /COORD KM\s*\/\/\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/;
+const layoutBandSelectors = [
+  '.ship-exterior-bare-scene__toolbar',
+  '.ship-exterior-bare-scene__objective',
+  '.ship-exterior-bare-scene__viewport',
+  '.ship-exterior-bare-scene__hotkeys',
+] as const;
+
+type LayoutBox = { x: number; y: number; width: number; height: number };
+
+async function readLayoutBandBoxes(page: Page): Promise<LayoutBox[]> {
+  const boxes = await Promise.all(layoutBandSelectors.map((selector) => page.locator(selector).boundingBox()));
+  if (boxes.some((box) => box === null)) {
+    throw new Error('Expected every ship-exterior layout band to have a bounding box.');
+  }
+  return boxes as LayoutBox[];
+}
+
+function expectFullWidthAlignedBands(boxes: readonly LayoutBox[]): void {
+  const [toolbar, ...rest] = boxes;
+  expect(toolbar).toBeDefined();
+  for (const box of rest) {
+    expect(box.x).toBeCloseTo(toolbar.x, 1);
+    expect(box.width).toBeCloseTo(toolbar.width, 1);
+  }
+  expect(toolbar.width).toBeGreaterThan(toolbar.height * 4);
+  expect(boxes[1].width).toBeGreaterThan(boxes[1].height * 4);
+}
 
 async function readCoordZ(page: Page): Promise<number | null> {
-  const text = (await shipExteriorScene(page).innerText()).trim();
+  const text = (await debugDrawer(page).innerText()).trim();
   const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
@@ -28,7 +57,7 @@ async function readCoordZ(page: Page): Promise<number | null> {
 }
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
-  const text = (await shipExteriorScene(page).innerText()).trim();
+  const text = (await debugDrawer(page).innerText()).trim();
   const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
@@ -41,6 +70,11 @@ async function readCoords(page: Page): Promise<{ x: number; y: number; z: number
 }
 
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
+  if ((await debugButton(page).getAttribute('aria-expanded')) !== 'true') {
+    await debugButton(page).click();
+    await expect(debugDrawer(page)).toBeFocused();
+  }
+  await flightToggle(page).focus();
   await expect.poll(() => readCoordZ(page), { timeout: 10_000 }).not.toBeNull();
 }
 
@@ -54,6 +88,8 @@ async function openPilotSceneWithClock(page: Page): Promise<void> {
   await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
   await expect(pilotCanvas(page)).toBeVisible();
   await expect(flightToggle(page)).toHaveText(/FLIGHT: CAPTURE/);
+  await debugButton(page).click();
+  await expect(debugDrawer(page)).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => Boolean(window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext())))
     .toBe(true);
@@ -85,10 +121,7 @@ async function capturePilotPointer(page: Page): Promise<void> {
 async function steerByMouseDelta(page: Page, movementX: number, movementY: number): Promise<void> {
   // Real pointer lock gates steering; synthetic deltas avoid OS pointer acceleration
   // and dispatch once at the window input boundary rather than mutating ship state.
-  await page.evaluate(
-    (delta) => window.dispatchEvent(new MouseEvent('mousemove', delta)),
-    { movementX, movementY },
-  );
+  await page.evaluate((delta) => window.dispatchEvent(new MouseEvent('mousemove', delta)), { movementX, movementY });
 }
 
 async function setKnownSteeringSettings(page: Page): Promise<void> {
@@ -103,7 +136,58 @@ async function setKnownSteeringSettings(page: Page): Promise<void> {
 }
 
 test.describe('Ship Exterior — flight mode smoke', () => {
-  test('steers yaw and pitch without orbiting or translating, and ignores unlocked mouse steering', async ({ page }) => {
+  test('opens an overlay debug drawer without resizing the canvas and isolates flight input', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+    configureFlightModeMock(mock);
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
+    await expect(pilotCanvas(page)).toBeVisible();
+
+    await expect(debugButton(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(debugDrawer(page)).toBeHidden();
+    await expect(page.locator('.ship-exterior-bare-scene__debug')).toHaveCount(0);
+
+    await expect.poll(async () => (await readLayoutBandBoxes(page))[2].width).toBeGreaterThan(800);
+    await page.waitForTimeout(250);
+    const layoutBefore = await readLayoutBandBoxes(page);
+    expectFullWidthAlignedBands(layoutBefore);
+    await debugButton(page).click();
+    await expect(debugDrawer(page)).toBeVisible();
+    await expect(debugButton(page)).toHaveAttribute('aria-expanded', 'true');
+    await expect(debugDrawer(page)).toBeFocused();
+    await expect(debugDrawer(page)).toContainText('FRAME TIME //');
+    await expect(debugDrawer(page)).toContainText('ASTEROID DETAIL CAP //');
+    await page.waitForTimeout(250);
+    const layoutAfter = await readLayoutBandBoxes(page);
+    expectFullWidthAlignedBands(layoutAfter);
+    layoutAfter.forEach((box, index) => {
+      expect(box.x).toBeCloseTo(layoutBefore[index].x, 1);
+      expect(box.y).toBeCloseTo(layoutBefore[index].y, 1);
+      expect(box.width).toBeCloseTo(layoutBefore[index].width, 1);
+      expect(box.height).toBeCloseTo(layoutBefore[index].height, 1);
+    });
+
+    const beforeInput = await readPilotSnapshot(page);
+    await page.keyboard.down('KeyW');
+    await page.keyboard.press('Digit1');
+    await page.waitForTimeout(100);
+    await page.keyboard.up('KeyW');
+    const afterInput = await readPilotSnapshot(page);
+    expect(afterInput.flightCurrentLocationKm).toEqual(beforeInput.flightCurrentLocationKm);
+    expect(afterInput.flightSpeedKmPerSec).toBe(0);
+    expect(await page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(debugDrawer(page)).toBeHidden();
+    await expect(debugButton(page)).toBeFocused();
+    expect(await page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+  });
+
+  test('steers yaw and pitch without orbiting or translating, and ignores unlocked mouse steering', async ({
+    page,
+  }) => {
     await openPilotSceneWithClock(page);
     await setKnownSteeringSettings(page);
     await capturePilotPointer(page);
@@ -223,6 +307,8 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       await page.keyboard.up('Shift');
     }
 
+    await page.keyboard.press('Escape');
+    await expect(debugDrawer(page)).toBeHidden();
     await flightToggle(page).click();
     await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
     await canvas.click({ position: { x: 20, y: 20 } });
@@ -306,12 +392,12 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(toggle).toHaveText(/FLIGHT: CAPTURE/);
 
     // Keyboard activation does not acquire pointer lock.
-    await expect
-      .poll(() => page.evaluate(() => document.pointerLockElement === null), { timeout: 5_000 })
-      .toBe(true);
+    await expect.poll(() => page.evaluate(() => document.pointerLockElement === null), { timeout: 5_000 }).toBe(true);
   });
 
-  test('Escape releases an actually captured canvas without losing heading or automatically recapturing', async ({ page }) => {
+  test('Escape releases an actually captured canvas without losing heading or automatically recapturing', async ({
+    page,
+  }) => {
     await openPilotSceneWithClock(page);
     await setKnownSteeringSettings(page);
     await capturePilotPointer(page);

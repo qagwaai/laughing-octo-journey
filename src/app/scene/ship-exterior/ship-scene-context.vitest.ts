@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import { FramePressureSampler } from './frame-pressure-sampler';
 import { type AsteroidOrbitProfile, resolveAsteroidOrbitOffset, ShipSceneContext } from './ship-scene-context';
 
 describe('ShipSceneContext', () => {
@@ -17,6 +18,46 @@ describe('ShipSceneContext', () => {
 
     context.pause();
     expect(context.isPaused()).toBe(true);
+  });
+
+  it('exposes fresh typed telemetry and resets samples across pause and resume', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+    });
+    const sampler = (context as unknown as { framePressureSampler: FramePressureSampler }).framePressureSampler;
+
+    expect(context.getPerformanceTelemetry()).toMatchObject({
+      status: 'paused',
+      averageFrameTimeMs: null,
+      sampleCount: 0,
+      asteroidDetailCapMultiplier: 1,
+      detailCapThresholdMs: 24,
+    });
+
+    context.resume();
+    expect(context.getPerformanceTelemetry().status).toBe('sampling');
+    sampler.addSample(24);
+    expect(context.getPerformanceTelemetry()).toMatchObject({
+      status: 'current',
+      averageFrameTimeMs: 24,
+      sampleCount: 1,
+    });
+
+    context.pause();
+    expect(context.getPerformanceTelemetry()).toMatchObject({
+      status: 'paused',
+      averageFrameTimeMs: null,
+      sampleCount: 0,
+    });
+
+    context.resume();
+    expect(context.getPerformanceTelemetry()).toMatchObject({
+      status: 'sampling',
+      averageFrameTimeMs: null,
+      sampleCount: 0,
+    });
   });
 
   it('merges partial state updates', () => {

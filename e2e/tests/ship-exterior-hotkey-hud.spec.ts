@@ -20,8 +20,9 @@ const scene = (page: Page) => page.locator('.ship-exterior-bare-scene');
 const flightToggle = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
 const pilotCanvas = (page: Page) => scene(page).locator('canvas.ship-scene-canvas');
 const hotkeyRow = (page: Page) => page.locator('.ship-exterior-bare-scene__hotkeys');
-const targetIronButton = (page: Page) => page.locator('.ship-exterior-bare-scene__target-btn');
 const launchToast = (page: Page) => page.locator('.ship-exterior-bare-scene__toast');
+const debugButton = (page: Page) => page.getByRole('button', { name: 'Debug' });
+const debugDrawer = (page: Page) => page.getByRole('dialog', { name: 'Ship scene diagnostics' });
 
 const EXPECTED_HOTKEY_ORDER = [
   'MOUSE HOVER',
@@ -223,9 +224,24 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     await expectHotkeyStates(page, { '1': 'disabled', '2': 'disabled', '5': 'disabled' });
 
     // --- With a valid target, only the slot holding a payload becomes usable. ---
-    await targetIronButton(page).click();
+    await page.evaluate(() => {
+      const api = window.__shipExteriorBareSceneTestUtils;
+      const sample = api?.legacy.getAsteroidSamples()[0];
+      if (!api || !sample || !api.legacy.forceTargetAsteroid(sample.id)) {
+        throw new Error('Expected the ship-exterior test API to target an asteroid.');
+      }
+    });
     await page.clock.fastForward(16);
-    await expect(scene(page)).toContainText(/TARGET: (?!none)\S+/);
+    await debugButton(page).evaluate((button: HTMLButtonElement) => button.click());
+    await page.clock.fastForward(1);
+    await expect(debugButton(page)).toHaveAttribute('aria-expanded', 'true');
+    await expect(debugDrawer(page)).toBeFocused();
+    await expect(debugDrawer(page)).toContainText(/TARGET: (?!none)\S+/);
+    await debugDrawer(page)
+      .getByRole('button', { name: 'Close' })
+      .evaluate((button: HTMLButtonElement) => button.click());
+    await page.clock.fastForward(1);
+    await expect(debugDrawer(page)).toBeHidden();
     await expectHotkeyStates(page, {
       '1': 'available',
       '2': 'disabled',
@@ -254,9 +270,7 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     // --- Escape flashes pressed while it releases capture, then settles back. ---
     await pressEscapeAtInputBoundary(page);
     await expectHotkeyStates(page, { ESC: 'pressed' });
-    await expect
-      .poll(() => page.evaluate(() => document.pointerLockElement === null), { timeout: 5_000 })
-      .toBe(true);
+    await expect.poll(() => page.evaluate(() => document.pointerLockElement === null), { timeout: 5_000 }).toBe(true);
     await page.clock.fastForward(500);
     await page.clock.fastForward(16);
     await expectHotkeyStates(page, {

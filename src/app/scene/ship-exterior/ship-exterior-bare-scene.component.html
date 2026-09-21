@@ -2,6 +2,26 @@
   <header class="ship-exterior-bare-scene__toolbar">
     <span class="ship-exterior-bare-scene__title">{{ activeShipTitleLine() }}</span>
     <div class="ship-exterior-bare-scene__toolbar-actions">
+      <span
+        class="ship-exterior-bare-scene__health"
+        [class.ship-exterior-bare-scene__health--green]="performanceHealth() === 'green'"
+        [class.ship-exterior-bare-scene__health--amber]="performanceHealth() === 'amber'"
+        role="status"
+        [attr.aria-label]="performanceHealthLabel()"
+        [attr.title]="performanceHealthLabel()"
+      ></span>
+      @if (showDebugButton) {
+        <button
+          #debugButton
+          type="button"
+          class="ship-exterior-bare-scene__debug-btn"
+          [attr.aria-expanded]="debugDrawerOpen()"
+          aria-controls="ship-exterior-debug-drawer"
+          (click)="toggleDebugDrawer()"
+        >
+          {{ t.openButton }}
+        </button>
+      }
       <button type="button" class="ship-exterior-bare-scene__flight-btn" (click)="toggleFlightMode()">
         {{ activeFlightStatusLine() }}
       </button>
@@ -50,18 +70,50 @@
     }
   </section>
 
-  <footer class="ship-exterior-bare-scene__debug" aria-live="polite">
-    <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>
-    <span>STARFIELD: {{ activeStarfieldSignature() ?? 'none' }}</span>
-    <span>CONTEXTS: {{ contexts().length }}</span>
-    <span>TARGET: {{ targetedAsteroidId() ?? 'none' }}</span>
-    <span>{{ activeFlightDirectionLine() }}</span>
-    <span>{{ activeFlightCoordsLine() }}</span>
-    <span>{{ activeFlightSpeedLine() }}</span>
-    <span>{{ activeFlightMovementLine() }}</span>
-    <span>{{ activeFlightFramePressureLine() }}</span>
-    <span>{{ activeFlightQualityScalerLine() }}</span>
-    <span>{{ activeRouteFeedLine() }}</span>
-    <span>{{ activeAsteroidLine() }}</span>
-  </footer>
+  <aside
+    #debugDrawer
+    id="ship-exterior-debug-drawer"
+    class="ship-exterior-bare-scene__debug-drawer"
+    [class.ship-exterior-bare-scene__debug-drawer--open]="debugDrawerOpen()"
+    [attr.aria-hidden]="!debugDrawerOpen()"
+    [attr.inert]="debugDrawerOpen() ? null : ''"
+    [attr.aria-label]="t.drawerLabel"
+    role="dialog"
+    tabindex="-1"
+  >
+    <header class="ship-exterior-bare-scene__debug-header">
+      <h2>{{ t.drawerTitle }}</h2>
+      <button type="button" class="ship-exterior-bare-scene__debug-close" (click)="closeDebugDrawer()">
+        {{ t.closeButton }}
+      </button>
+    </header>
+
+    <section class="ship-exterior-bare-scene__debug-group">
+      <h3>{{ t.contextGroup }}</h3>
+      <span>ACTIVE: {{ activeContextKey() ?? 'none' }}</span>
+      <span>STARFIELD: {{ activeStarfieldSignature() ?? 'none' }}</span>
+      <span>CONTEXTS: {{ contexts().length }}</span>
+      <span>TARGET: {{ targetedAsteroidId() ?? 'none' }}</span>
+    </section>
+
+    <section class="ship-exterior-bare-scene__debug-group">
+      <h3>{{ t.flightGroup }}</h3>
+      <span>{{ activeFlightDirectionLine() }}</span>
+      <span>{{ activeFlightCoordsLine() }}</span>
+      <span>{{ activeFlightSpeedLine() }}</span>
+      <span>{{ activeFlightMovementLine() }}</span>
+    </section>
+
+    <section class="ship-exterior-bare-scene__debug-group">
+      <h3>{{ t.performanceGroup }}</h3>
+      <span>{{ activeFlightFramePressureLine() }}</span>
+      <span>{{ activeFlightQualityScalerLine() }}</span>
+    </section>
+
+    <section class="ship-exterior-bare-scene__debug-group">
+      <h3>{{ t.worldGroup }}</h3>
+      <span>{{ activeRouteFeedLine() }}</span>
+      <span>{{ activeAsteroidLine() }}</span>
+    </section>
+  </aside>
 </section>

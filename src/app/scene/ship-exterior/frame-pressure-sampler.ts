@@ -1,5 +1,20 @@
-// FramePressureSampler.ts
-// Lightweight rolling average frame-pressure sampler for ShipExteriorViewScene (Phase 3)
+export const FRAME_PRESSURE_DETAIL_CAP_THRESHOLD_MS = 24;
+export type AsteroidDetailCapMultiplier = 0.5 | 1;
+export type FramePressureHealth = 'neutral' | 'green' | 'amber';
+
+export function resolveAsteroidDetailCapMultiplier(averageFrameTimeMs: number | null): AsteroidDetailCapMultiplier {
+  return averageFrameTimeMs !== null && averageFrameTimeMs > FRAME_PRESSURE_DETAIL_CAP_THRESHOLD_MS ? 0.5 : 1;
+}
+
+export function resolveFramePressureHealth(
+  status: 'paused' | 'sampling' | 'current',
+  averageFrameTimeMs: number | null,
+): FramePressureHealth {
+  if (status !== 'current' || averageFrameTimeMs === null) {
+    return 'neutral';
+  }
+  return resolveAsteroidDetailCapMultiplier(averageFrameTimeMs) === 1 ? 'green' : 'amber';
+}
 
 export class FramePressureSampler {
   private readonly windowSize: number;
@@ -21,6 +36,10 @@ export class FramePressureSampler {
   getAverage(): number {
     if (this.samples.length === 0) return 0;
     return this.sum / this.samples.length;
+  }
+
+  getSampleCount(): number {
+    return this.samples.length;
   }
 
   reset(): void {

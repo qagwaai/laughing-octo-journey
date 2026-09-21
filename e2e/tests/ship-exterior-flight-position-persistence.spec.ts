@@ -13,10 +13,12 @@ const SHIP_EXTERIOR_VIEW_URL_PATTERN = /(?:right:ship-exterior-view|\/ship-exter
 
 const shipExteriorScene = (page: Page) => page.locator('.ship-exterior-bare-scene');
 const pilotStatus = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
+const debugButton = (page: Page) => page.getByRole('button', { name: 'Debug' });
+const debugDrawer = (page: Page) => page.getByRole('dialog', { name: 'Ship scene diagnostics' });
 const COORDS_PATTERN = /COORD KM\s*\/\/\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/;
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
-  const text = (await shipExteriorScene(page).innerText()).trim();
+  const text = (await debugDrawer(page).innerText()).trim();
   const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
@@ -40,6 +42,11 @@ function toTelemetryCoords(coords: { x: number; y: number; z: number }): { x: nu
 
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
   await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
+  if ((await debugButton(page).getAttribute('aria-expanded')) !== 'true') {
+    await debugButton(page).click();
+    await expect(debugDrawer(page)).toBeFocused();
+  }
+  await pilotStatus(page).focus();
   await expect.poll(() => readCoords(page), { timeout: 10_000 }).not.toBeNull();
 }
 

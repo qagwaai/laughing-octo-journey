@@ -32,7 +32,7 @@ const shipInventory = [
 test.describe('Cold boot asteroid parity', () => {
   test.slow();
 
-  test('new player creates a character, cold boots, starts scanning, and validates asteroid samples in debug output', async ({
+  test('new player creates a character, cold boots, starts scanning, and validates asteroid samples in scene state', async ({
     page,
   }) => {
     const mock = new SocketIOMock(page);

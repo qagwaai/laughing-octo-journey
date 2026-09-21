@@ -45,7 +45,17 @@ Rather than putting all logic in the component class directly, the scene delegat
 1. Asteroids are seeded based on `ShipExteriorViewSeedPolicy` from mission context
 2. Each asteroid has an `AsteroidScanSample` with material profile, PBR params, and SW13B metadata
 3. Render tiers assigned dynamically: `hero`, `standard`, `background` based on distance and scan state
-4. Quality scaler adjusts tier caps based on frame pressure
+4. Quality scaler halves non-hero asteroid tier caps when the renderer's rolling
+   average frame time exceeds 24 ms. Pausing or resuming resets the sampling
+   window so inactive time is not treated as frame pressure.
+
+The bare ship-exterior scene exposes renderer diagnostics from the toolbar's
+click-only Debug drawer. The Debug button is shown only in Angular development
+mode; the performance-health indicator remains visible in production.
+The drawer overlays the right scene pane without
+resizing the canvas; its health indicator is green at or below the same 24 ms
+policy threshold, amber above it, and neutral while paused or collecting fresh
+samples.
 
 ### ShipViewerScene (`src/app/scene/ship-viewer.ts`)
 
