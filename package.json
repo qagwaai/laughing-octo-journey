@@ -72,7 +72,7 @@
     "@angular/common": "21.2.22",
     "@angular/compiler": "21.2.22",
     "@angular/core": "21.2.22",
-    "@angular/forms": "21.2.22",
+    "@angular/forms": "21.2.23",
     "@angular/material": "21.2.14",
     "@angular/platform-browser": "21.2.22",
     "@angular/platform-browser-dynamic": "21.2.22",
