@@ -33,10 +33,12 @@ export class ShipExteriorInputAdapter {
     this.win.addEventListener('contextmenu', this.handlers.onWindowContextMenu);
     this.win.addEventListener('keydown', this.handlers.onWindowKeyDown);
     this.win.addEventListener('keyup', this.handlers.onWindowKeyUp);
+    // mousemove is registered on window only: window and document both see the
+    // same bubbled event, so listening on both fired onWindowMouseMove twice per
+    // real mouse move (double-applying pointer-lock deltas).
     this.win.addEventListener('mousemove', this.handlers.onWindowMouseMove);
     this.doc.addEventListener('keydown', this.handlers.onWindowKeyDown as EventListener);
     this.doc.addEventListener('keyup', this.handlers.onWindowKeyUp as EventListener);
-    this.doc.addEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
     this.win.addEventListener('socket-correlation-warning', this.handlers.onSocketCorrelationWarning as EventListener);
     this.doc.addEventListener('pointerlockchange', this.handlers.onPointerLockChange as EventListener);
     this.win.addEventListener('blur', this.handlers.onWindowBlur);
@@ -57,7 +59,6 @@ export class ShipExteriorInputAdapter {
     this.win.removeEventListener('mousemove', this.handlers.onWindowMouseMove);
     this.doc.removeEventListener('keydown', this.handlers.onWindowKeyDown as EventListener);
     this.doc.removeEventListener('keyup', this.handlers.onWindowKeyUp as EventListener);
-    this.doc.removeEventListener('mousemove', this.handlers.onWindowMouseMove as EventListener);
     this.win.removeEventListener(
       'socket-correlation-warning',
       this.handlers.onSocketCorrelationWarning as EventListener,

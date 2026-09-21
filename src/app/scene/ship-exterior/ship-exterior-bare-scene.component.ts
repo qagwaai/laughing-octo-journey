@@ -331,6 +331,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     getSolarSystemId: () => DEFAULT_SOLAR_SYSTEM_ID,
   });
   private pointerLockRequested = false;
+  // Chromium fires a trailing 'mousemove' immediately after pointer lock engages,
+  // reporting the OS cursor's real (and platform/display-server dependent) jump to
+  // the locked reference frame. That event is indistinguishable from genuine
+  // flight-stick input by movement magnitude alone, so discard exactly one locked,
+  // isTrusted mousemove per lock acquisition (synthetic/test-dispatched events are
+  // never the warp and always apply, sidestepping any race in event ordering).
+  // Arm this flag synchronously at the requestPointerLock() call site (not in the
+  // 'pointerlockchange' listener) because the trailing mousemove can race
+  // document.pointerLockElement's update and fire before that listener runs.
+  private discardNextLockedMouseMove = false;
   private readonly rightMouseHeld = signal(false);
   private readonly heldHotkeyCodes = signal<ReadonlySet<string>>(new Set());
   private readonly hotkeyFlashController = new HotkeyFlashController<ShipExteriorHotkeyFlashKey>();
@@ -860,7 +870,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
     const active = this.registry.getActiveContext();
-    if (!active?.flightPointerLocked()) {
+    const locked = active?.flightPointerLocked() ?? false;
+    if (!locked) {
       const prevHoveredAsteroidId = active?.getHoveredAsteroidId() ?? null;
       const prevHoveredDebrisId = active?.getHoveredScannableDebrisId() ?? null;
       const prevHoveredShipId = active?.getHoveredScannableShipId() ?? null;
@@ -876,7 +887,16 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    active.applyFlightMouseMove(event.movementX, event.movementY);
+    // Only a real (browser-generated, isTrusted) event can be the pointer-lock
+    // warp; synthetic events (e.g. tests dispatching MouseEvent directly) can
+    // never be it and must always apply, regardless of dispatch ordering races
+    // against the real trailing warp event.
+    if (this.discardNextLockedMouseMove && event.isTrusted) {
+      this.discardNextLockedMouseMove = false;
+      return;
+    }
+
+    active!.applyFlightMouseMove(event.movementX, event.movementY);
   }
 
   private onSocketCorrelationWarning(_event: Event): void {}
@@ -895,6 +915,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       }
     } else {
       this.pointerLockRequested = false;
+      this.discardNextLockedMouseMove = false;
       active?.clearFlightMovementInput();
       this.rightMouseHeld.set(false);
       this.heldHotkeyCodes.set(new Set());
@@ -905,6 +926,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   private releasePilotInput(): void {
     this.pointerLockRequested = false;
+    this.discardNextLockedMouseMove = false;
     for (const context of this.registry.getAllContexts()) {
       context.clearFlightMovementInput();
       if (context.flightPointerLocked()) {
@@ -938,6 +960,12 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
         document.pointerLockElement !== rendering.canvas
       ) {
         this.pointerLockRequested = true;
+        // Arm the discard flag before the lock request resolves: the browser's
+        // trailing warp mousemove can race document.pointerLockElement's update
+        // (observed as fired before OR after the property flips depending on the
+        // engine), so this must be set ahead of that race rather than reacting to
+        // 'pointerlockchange', which can run too late to catch the same event.
+        this.discardNextLockedMouseMove = true;
         rendering.canvas.requestPointerLock();
       }
       return;

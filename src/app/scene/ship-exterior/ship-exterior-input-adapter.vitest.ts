@@ -8,7 +8,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
 
     expect(fixture.win.addEventListener).toHaveBeenCalledTimes(8);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('blur', fixture.handlers.onWindowBlur);
     expect(fixture.doc.addEventListener).toHaveBeenCalledWith('visibilitychange', fixture.handlers.onVisibilityChange);
 
@@ -23,10 +23,6 @@ describe('ShipExteriorInputAdapter', () => {
       fixture.handlers.onWindowKeyDown as EventListener,
     );
     expect(fixture.doc.addEventListener).toHaveBeenCalledWith('keyup', fixture.handlers.onWindowKeyUp as EventListener);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledWith(
-      'mousemove',
-      fixture.handlers.onWindowMouseMove as EventListener,
-    );
     expect(fixture.win.addEventListener).toHaveBeenCalledWith(
       'socket-correlation-warning',
       fixture.handlers.onSocketCorrelationWarning as EventListener,
@@ -44,7 +40,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.detach();
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(8);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('blur', fixture.handlers.onWindowBlur);
     expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
       'visibilitychange',
@@ -65,10 +61,6 @@ describe('ShipExteriorInputAdapter', () => {
       'keyup',
       fixture.handlers.onWindowKeyUp as EventListener,
     );
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledWith(
-      'mousemove',
-      fixture.handlers.onWindowMouseMove as EventListener,
-    );
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith(
       'socket-correlation-warning',
       fixture.handlers.onSocketCorrelationWarning as EventListener,
@@ -86,7 +78,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.attach();
 
     expect(fixture.win.addEventListener).toHaveBeenCalledTimes(8);
-    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.doc.addEventListener).toHaveBeenCalledTimes(4);
   });
 
   it('treats detach as no-op before attach and after first detach', () => {
@@ -98,7 +90,7 @@ describe('ShipExteriorInputAdapter', () => {
     fixture.adapter.detach();
 
     expect(fixture.win.removeEventListener).toHaveBeenCalledTimes(8);
-    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(5);
+    expect(fixture.doc.removeEventListener).toHaveBeenCalledTimes(4);
   });
 });
 
