@@ -243,17 +243,39 @@
 .ship-exterior-bare-scene__hotkeys {
   grid-row: 5;
   display: flex;
-  flex-wrap: nowrap;
+  flex-direction: column;
   box-sizing: border-box;
-  gap: 6px;
-  height: 40px;
+  gap: 4px;
+  height: 80px;
   min-width: 0;
-  padding: 7px 12px;
-  overflow-x: hidden;
-  overflow-y: hidden;
+  padding: 6px 12px;
+  overflow: hidden;
   border-top: 1px solid rgba(255, 213, 61, 0.68);
   border-bottom: 1px solid rgba(255, 213, 61, 0.38);
   background: rgba(30, 25, 4, 0.8);
+}
+
+.ship-exterior-bare-scene__hotkey-row {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  box-sizing: border-box;
+  gap: 6px;
+  min-height: 0;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+/* The action row (launch slots + ESC/Q/E) renders above the controls row
+   while staying after it in the DOM, so key order for tests/assistive tech
+   still reads mouse/movement first. A bottom divider separates the two rows
+   since the action row sits visually on top. */
+.ship-exterior-bare-scene__hotkey-row--actions {
+  order: -1;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 213, 61, 0.28);
 }
 
 .ship-exterior-bare-scene__hotkey {

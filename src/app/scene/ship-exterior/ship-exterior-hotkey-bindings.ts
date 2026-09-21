@@ -61,6 +61,23 @@ export interface ShipExteriorHotkeyBindingsInput {
 /** Launch slots rendered by the HUD, in display order. */
 export const SHIP_EXTERIOR_LAUNCH_HOTKEY_SLOTS: readonly HotkeySlot[] = [1, 2, 3, 4, 5];
 
+/**
+ * Keys rendered in the HUD's second (launch/action) row: the numeric launch
+ * slots plus ESC/Q/E. Everything else (mouse + movement) renders in the first
+ * (controls) row. Used to split `buildShipExteriorHotkeyBindings`' flat list
+ * for the two-row HUD layout without changing its overall DOM order.
+ */
+export const SHIP_EXTERIOR_HOTKEY_ACTION_ROW_KEYS: ReadonlySet<ShipExteriorHotkeyDisplayKey> = new Set([
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  'ESC',
+  'Q',
+  'E',
+]);
+
 const MOVEMENT_ENTRIES: readonly {
   key: ShipExteriorHotkeyDisplayKey;
   codes: readonly string[];

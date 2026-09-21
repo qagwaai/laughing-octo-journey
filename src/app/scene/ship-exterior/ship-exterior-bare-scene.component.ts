@@ -75,6 +75,7 @@ import {
 } from './ship-exterior-cold-boot-asteroid-seed';
 import {
   buildShipExteriorHotkeyBindings,
+  SHIP_EXTERIOR_HOTKEY_ACTION_ROW_KEYS,
   type ShipExteriorHotkeyBinding,
   type ShipExteriorHotkeyFlashKey,
 } from './ship-exterior-hotkey-bindings';
@@ -307,6 +308,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       hasValidLaunchTarget: this.hasValidLaunchTarget(active),
     });
   });
+  /** Controls row (mouse + movement) of the two-row hotkey HUD. */
+  readonly hotkeyControlsRow = computed<readonly ShipExteriorHotkeyBinding[]>(() =>
+    this.hotkeyBindings().filter((binding) => !SHIP_EXTERIOR_HOTKEY_ACTION_ROW_KEYS.has(binding.key)),
+  );
+  /** Action row (launch slots + ESC/Q/E) of the two-row hotkey HUD, rendered above the controls row. */
+  readonly hotkeyActionRow = computed<readonly ShipExteriorHotkeyBinding[]>(() =>
+    this.hotkeyBindings().filter((binding) => SHIP_EXTERIOR_HOTKEY_ACTION_ROW_KEYS.has(binding.key)),
+  );
 
   // CHANGE ANCHOR: scene registry and bootstrap controllers
   private readonly registry = new ShipSceneRegistry();

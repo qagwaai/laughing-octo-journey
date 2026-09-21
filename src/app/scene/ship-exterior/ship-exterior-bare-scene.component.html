@@ -57,17 +57,32 @@
   </div>
 
   <section class="ship-exterior-bare-scene__hotkeys" aria-label="Ship controls">
-    @for (binding of hotkeyBindings(); track binding.key) {
-      <div
-        class="ship-exterior-bare-scene__hotkey"
-        [class.ship-exterior-bare-scene__hotkey--disabled]="binding.state === 'disabled'"
-        [class.ship-exterior-bare-scene__hotkey--available]="binding.state === 'available'"
-        [class.ship-exterior-bare-scene__hotkey--pressed]="binding.state === 'pressed'"
-      >
-        <span class="ship-exterior-bare-scene__hotkey-key">{{ binding.key }}</span>
-        <span class="ship-exterior-bare-scene__hotkey-action">{{ binding.action }}</span>
-      </div>
-    }
+    <div class="ship-exterior-bare-scene__hotkey-row">
+      @for (binding of hotkeyControlsRow(); track binding.key) {
+        <div
+          class="ship-exterior-bare-scene__hotkey"
+          [class.ship-exterior-bare-scene__hotkey--disabled]="binding.state === 'disabled'"
+          [class.ship-exterior-bare-scene__hotkey--available]="binding.state === 'available'"
+          [class.ship-exterior-bare-scene__hotkey--pressed]="binding.state === 'pressed'"
+        >
+          <span class="ship-exterior-bare-scene__hotkey-key">{{ binding.key }}</span>
+          <span class="ship-exterior-bare-scene__hotkey-action">{{ binding.action }}</span>
+        </div>
+      }
+    </div>
+    <div class="ship-exterior-bare-scene__hotkey-row ship-exterior-bare-scene__hotkey-row--actions">
+      @for (binding of hotkeyActionRow(); track binding.key) {
+        <div
+          class="ship-exterior-bare-scene__hotkey"
+          [class.ship-exterior-bare-scene__hotkey--disabled]="binding.state === 'disabled'"
+          [class.ship-exterior-bare-scene__hotkey--available]="binding.state === 'available'"
+          [class.ship-exterior-bare-scene__hotkey--pressed]="binding.state === 'pressed'"
+        >
+          <span class="ship-exterior-bare-scene__hotkey-key">{{ binding.key }}</span>
+          <span class="ship-exterior-bare-scene__hotkey-action">{{ binding.action }}</span>
+        </div>
+      }
+    </div>
   </section>
 
   <aside

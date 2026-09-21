@@ -149,7 +149,7 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     launchRequests.length = 0;
   });
 
-  test('reflects FREE/CAPTURE availability, press feedback, and launch slot payloads in one clipped row', async ({
+  test('reflects FREE/CAPTURE availability, press feedback, and launch slot payloads across two rows', async ({
     page,
   }) => {
     const mock = new SocketIOMock(page);
@@ -279,7 +279,7 @@ test.describe('Ship Exterior — hotkey HUD', () => {
       'RMB HOLD': 'available',
     });
 
-    // --- Layout: a single fixed-height clipped row that cannot scroll sideways. ---
+    // --- Layout: a fixed two-row HUD that does not clip or scroll. ---
     const layout = await page.evaluate(() => {
       const row = document.querySelector('.ship-exterior-bare-scene__hotkeys') as HTMLElement | null;
       if (!row) {
@@ -290,7 +290,6 @@ test.describe('Ship Exterior — hotkey HUD', () => {
       return {
         overflowX: style.overflowX,
         overflowY: style.overflowY,
-        flexWrap: style.flexWrap,
         heightPx: Math.round(row.getBoundingClientRect().height),
         // Entries must keep their intrinsic width so overflow is clipped rather
         // than squeezed into an unreadable second-guessable layout.
@@ -302,12 +301,12 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     });
 
     expect(layout.entryCount).toBe(EXPECTED_HOTKEY_ORDER.length);
-    // overflow-x: hidden is what makes the row non-scrollable for the user.
+    // overflow: hidden is what makes the HUD non-scrollable for the user.
     expect(layout.overflowX).toBe('hidden');
     expect(layout.overflowY).toBe('hidden');
-    expect(layout.flexWrap).toBe('nowrap');
-    expect(layout.heightPx).toBe(40);
-    expect(layout.distinctEntryTops).toBe(1);
+    expect(layout.heightPx).toBe(80);
+    // Two rows: the launch/action row renders above the mouse/movement row.
+    expect(layout.distinctEntryTops).toBe(2);
     expect(layout.verticalOverflowPx).toBeLessThanOrEqual(1);
     expect(new Set(layout.entryFlexShrink)).toEqual(new Set(['0']));
   });
