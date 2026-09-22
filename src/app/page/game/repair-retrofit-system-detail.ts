@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
@@ -26,6 +27,7 @@ import {
   templateUrl: './repair-retrofit-system-detail.html',
   styleUrls: ['./repair-retrofit-system-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayCloseButton],
 })
 /**
  * Subsystem repair detail page for clearing a single damaged ship subsystem.

@@ -15,6 +15,10 @@ export const it: DeepPartial<EnLocale> = {
     levelPrefix: 'Livello',
     loggedInAsPrefix: 'Accesso come:',
     loading: 'Caricamento...',
+    overlayClose: {
+      label: 'Chiudi',
+      ariaLabel: 'Chiudi pannello',
+    },
     characterShipBadge: {
       noShipSelected: 'Nessuna nave selezionata',
       navigateToShipHangar: "Vai all'Hangar",

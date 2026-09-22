@@ -17,6 +17,10 @@ export const en = {
     levelPrefix: 'Level',
     loggedInAsPrefix: 'Logged in as:',
     loading: 'Loading...',
+    overlayClose: {
+      label: 'Close',
+      ariaLabel: 'Close panel',
+    },
     characterShipBadge: {
       noShipSelected: 'No ship selected',
       navigateToShipHangar: 'Go to Ship Hangar',

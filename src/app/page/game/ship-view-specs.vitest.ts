@@ -69,3 +69,26 @@ describe('ShipViewSpecsPage', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: Overlay close button
+// ---------------------------------------------------------------------------
+
+describe('ShipViewSpecsPage - overlay close button', () => {
+  it('should render the overlay close button', () => {
+    const { fixture } = setup();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]')).toBeTruthy();
+  });
+
+  it('should close back to the ship exterior scene when the close button is clicked', () => {
+    const { fixture, mockRouter } = setup();
+
+    fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
+      preserveFragment: true,
+      replaceUrl: true,
+    });
+  });
+});

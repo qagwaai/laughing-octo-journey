@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -32,6 +33,7 @@ import {
   templateUrl: './repair-retrofit-ship-detail.html',
   styleUrls: ['./repair-retrofit-ship-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayCloseButton],
 })
 /**
  * Ship-level repair detail page that applies full hull restoration and consumes patch kit.

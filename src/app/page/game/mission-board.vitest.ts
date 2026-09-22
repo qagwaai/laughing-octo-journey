@@ -877,3 +877,32 @@ describe('MissionBoardPage', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests: Overlay close button
+// ---------------------------------------------------------------------------
+
+describe('MissionBoardPage - overlay close button', () => {
+  it('should render the overlay close button', () => {
+    const { fixture } = setup({
+      socketService: createMockSocketService(),
+      sessionService: createMockSessionService('test-session-key'),
+    });
+
+    expect(fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]')).toBeTruthy();
+  });
+
+  it('should close back to the ship exterior scene when the close button is clicked', () => {
+    const { fixture, mockRouter } = setup({
+      socketService: createMockSocketService(),
+      sessionService: createMockSessionService('test-session-key'),
+    });
+
+    fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
+      preserveFragment: true,
+      replaceUrl: true,
+    });
+  });
+});

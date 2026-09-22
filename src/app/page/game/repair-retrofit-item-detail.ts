@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { type ShipItem } from '../../model/ship-item';
 import { type ShipSummary } from '../../model/ship-list';
@@ -17,6 +18,7 @@ import {
   templateUrl: './repair-retrofit-item-detail.html',
   styleUrls: ['./repair-retrofit-item-detail.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayCloseButton],
 })
 /**
  * Inventory-item repair detail page for restoring a damaged item to intact state.

@@ -182,7 +182,20 @@ const leftOutletRoutes: Routes = [
 ];
 
 const rightOutletRoutes: Routes = [
-  // Right panel – Angular page routes (replaces ngt-canvas when active)
+  // Right panel – Angular page routes (replaces ngt-canvas when active).
+  //
+  // Dismissible overlay pages must render <app-overlay-close-button /> inside their root
+  // element so the user can close the pane. The button absolutely positions itself against the
+  // nearest positioned ancestor, so the page's root element must set `position: relative`.
+  //
+  // Only *card* overlays are dismissible: panes with a margin/border-radius that float over the
+  // still-visible primary scene. These panes are deliberate exceptions:
+  //   - `opening-cold-boot-scan`   – scripted, pointer-events-none
+  //   - `character-bust-preview`   – a structural half of the character-setup form, not an overlay
+  //   - `viewer-scene`,`planet-view` – full-pane scenes (`position: absolute; inset: 0` with an
+  //     opaque background) that fully occlude the primary scene. There is no card to "close", and
+  //     they form a drill-down chain (viewer -> viewer-scene -> planet-view) with its own "up"
+  //     navigation, which a close button would bypass.
   {
     path: 'ship-view-specs',
     outlet: 'right',

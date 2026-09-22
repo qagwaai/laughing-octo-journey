@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import {
   createInitialMissionGateState,
@@ -54,7 +55,7 @@ interface MissionBoardNavigationState {
   templateUrl: './mission-board.html',
   styleUrls: ['./mission-board.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GuardedLeftMenu, CharacterShipBadge],
+  imports: [GuardedLeftMenu, CharacterShipBadge, OverlayCloseButton],
 })
 export default class MissionBoardPage {
   private static readonly CONTRACT_VIOLATION_STATUS = 'contract-violation';

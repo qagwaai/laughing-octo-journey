@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { type ItemUpsertResponse } from '../../model/item-upsert';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
@@ -50,6 +51,7 @@ interface RepairAssetGroup {
   templateUrl: './repair-retrofit-items.html',
   styleUrls: ['./repair-retrofit-items.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayCloseButton],
 })
 /**
  * Repair asset listing page with filtering/grouping, repair actions, and printable kit queueing.

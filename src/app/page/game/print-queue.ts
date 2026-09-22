@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -32,6 +33,7 @@ import { type PrintQueueNavigationState } from './repair-retrofit-state';
   templateUrl: './print-queue.html',
   styleUrls: ['./print-queue.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [OverlayCloseButton],
 })
 /**
  * Print queue controller for enqueue/cancel/collect fabrication jobs and mission sync hooks.

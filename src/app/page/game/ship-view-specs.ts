@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { summarizeShipMotion } from '../../model/math/kinematics';
@@ -18,7 +19,7 @@ interface ShipViewSpecsNavigationState {
   templateUrl: './ship-view-specs.html',
   styleUrls: ['./ship-view-specs.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CharacterShipBadge],
+  imports: [CharacterShipBadge, OverlayCloseButton],
 })
 /**
  * Ship-specs detail page showing model/tier and summarized motion characteristics.

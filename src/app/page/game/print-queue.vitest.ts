@@ -13,8 +13,8 @@ import {
   type MockSocketService,
 } from '../../../testing';
 import { HULL_PATCH_KIT_PRINTABLE_ITEM } from '../../model/printable-item';
-import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -768,6 +768,37 @@ describe('PrintQueuePage', () => {
 
       expect(removeSpy).toHaveBeenCalledWith('tester', 'char-1', 'job-complete-gate-state');
       expect(mockMissionState.loadState).toHaveBeenCalled();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: Overlay close button
+// ---------------------------------------------------------------------------
+
+describe('PrintQueuePage - overlay close button', () => {
+  it('should render the overlay close button', () => {
+    const { fixture } = setup({
+      socketService: createMockSocketService(),
+      sessionService: createMockSessionService('test-session-key'),
+      printerService: createMockPrinterStateService(),
+    });
+
+    expect(fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]')).toBeTruthy();
+  });
+
+  it('should close back to the ship exterior scene when the close button is clicked', () => {
+    const { fixture, mockRouter } = setup({
+      socketService: createMockSocketService(),
+      sessionService: createMockSessionService('test-session-key'),
+      printerService: createMockPrinterStateService(),
+    });
+
+    fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
+      preserveFragment: true,
+      replaceUrl: true,
     });
   });
 });

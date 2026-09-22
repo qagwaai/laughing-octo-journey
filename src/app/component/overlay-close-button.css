@@ -1,0 +1,51 @@
+/*
+ * The host is `display: contents` and the button is absolutely positioned so the control
+ * never participates in the page's own flex/grid layout.
+ *
+ * Each overlay page's root element must be positioned (`relative` or `absolute`) so the button
+ * anchors to the page card and tucks inside its rounded corner. Without that, the button falls
+ * back to the overlay pane and floats outside the card's margin.
+ */
+:host {
+  display: contents;
+}
+
+.overlay-close-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(148, 197, 255, 0.45);
+  background: rgba(10, 18, 32, 0.78);
+  color: rgba(214, 233, 255, 0.85);
+  line-height: 0;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.overlay-close-button:hover {
+  border-color: rgba(125, 211, 252, 0.9);
+  color: #e6f5ff;
+  background: rgba(16, 32, 54, 0.92);
+}
+
+.overlay-close-button:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.9);
+  outline-offset: 2px;
+}
+
+.overlay-close-button__icon {
+  width: 1rem;
+  height: 1rem;
+}

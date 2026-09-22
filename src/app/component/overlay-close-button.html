@@ -1,0 +1,18 @@
+<button
+  type="button"
+  class="overlay-close-button"
+  data-testid="overlay-close-button"
+  [attr.aria-label]="t.common.overlayClose.ariaLabel"
+  [attr.title]="t.common.overlayClose.label"
+  (click)="close()"
+>
+  <svg viewBox="0 0 24 24" class="overlay-close-button__icon" aria-hidden="true" focusable="false">
+    <path
+      d="M6 6 L18 18 M18 6 L6 18"
+      stroke="currentColor"
+      stroke-width="2.2"
+      stroke-linecap="round"
+      fill="none"
+    ></path>
+  </svg>
+</button>

@@ -7,8 +7,8 @@ import { createMockSessionService, createMockSocketService, type MockSocketServi
 import { ITEM_UPSERT_REQUEST_EVENT, ITEM_UPSERT_RESPONSE_EVENT } from '../../model/item-upsert';
 import { SHIP_UPSERT_REQUEST_EVENT, SHIP_UPSERT_RESPONSE_EVENT } from '../../model/ship-upsert';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
-import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { ShipService } from '../../services/ship.service';
@@ -877,5 +877,28 @@ describe('RepairRetrofitShipDetailPage - fullyRepairShip optimistic updates', ()
     const itemUpsertEmit = mockSocket.emittedEvents.find((e) => e.event === ITEM_UPSERT_REQUEST_EVENT);
     expect(itemUpsertEmit).toBeUndefined();
     expect(component['persistError']()).toBe(component['t'].game.repairRetrofitShipDetail.hullPatchKitRequiredLabel);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: Overlay close button
+// ---------------------------------------------------------------------------
+
+describe('RepairRetrofitShipDetailPage - overlay close button', () => {
+  it('should render the overlay close button', () => {
+    const { fixture } = setup();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]')).toBeTruthy();
+  });
+
+  it('should close back to the ship exterior scene when the close button is clicked', () => {
+    const { fixture, mockRouter } = setup();
+
+    fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
+      preserveFragment: true,
+      replaceUrl: true,
+    });
   });
 });

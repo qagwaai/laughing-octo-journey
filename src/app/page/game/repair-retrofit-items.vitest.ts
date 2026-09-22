@@ -7,8 +7,8 @@ import { createMockPrinterStateService, createMockSessionService, createMockSock
 import { DEFAULT_SHIP_MODEL } from '../../model/ship-list';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { ConsumedItemShadowService } from '../../services/consumed-item-shadow.service';
-import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { MissionProgressSyncService } from '../../services/mission-progress-sync.service';
+import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { PrinterStateService } from '../../services/printer-state.service';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -1290,5 +1290,28 @@ describe('DOM smoke tests', () => {
       joinCharacter: { id: 'c-1', characterName: 'Nova' },
     });
     expect(fixture.nativeElement).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: Overlay close button
+// ---------------------------------------------------------------------------
+
+describe('RepairRetrofitItemsPage - overlay close button', () => {
+  it('should render the overlay close button', () => {
+    const { fixture } = setup();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]')).toBeTruthy();
+  });
+
+  it('should close back to the ship exterior scene when the close button is clicked', () => {
+    const { fixture, mockRouter } = setup();
+
+    fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
+      preserveFragment: true,
+      replaceUrl: true,
+    });
   });
 });

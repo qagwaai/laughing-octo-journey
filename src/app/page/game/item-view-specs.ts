@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
+import { OverlayCloseButton } from '../../component/overlay-close-button';
 import { locale } from '../../i18n/locale';
 import { ITEM_VIEW_SPECS_CONFIGS } from '../../model/catalog/item-view-specs-configs';
 import { PlayerCharacterSummary } from '../../model/character-list';
@@ -27,7 +28,7 @@ interface ItemViewSpecsNavigationState {
   templateUrl: './item-view-specs.html',
   styleUrls: ['./item-view-specs.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CharacterShipBadge],
+  imports: [CharacterShipBadge, OverlayCloseButton],
 })
 /**
  * Item specs page that maps item payloads into grouped blueprint/spec display data.
