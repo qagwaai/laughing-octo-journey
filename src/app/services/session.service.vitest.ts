@@ -1,3 +1,5 @@
+import type { ShipSummary } from '../model/ship-list';
+import { appLogger } from './logger';
 import { SessionService } from './session.service';
 
 describe('SessionService', () => {
@@ -5,14 +7,21 @@ describe('SessionService', () => {
   const sessionStorageKey = 'stellar.sessionKey';
   const playerNameStorageKey = 'stellar.playerName';
   const activeCharacterStorageKey = 'stellar.activeCharacter';
+  const activeShipStorageKey = 'stellar.activeShip';
   const missionEntryContextStorageKey = 'stellar.missionEntryContext';
 
   beforeEach(() => {
     window.sessionStorage.removeItem(sessionStorageKey);
     window.sessionStorage.removeItem(playerNameStorageKey);
     window.sessionStorage.removeItem(activeCharacterStorageKey);
+    window.sessionStorage.removeItem(activeShipStorageKey);
     window.sessionStorage.removeItem(missionEntryContextStorageKey);
     service = new SessionService();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.sessionStorage.removeItem(activeShipStorageKey);
   });
 
   it('should be created', () => {
@@ -96,7 +105,7 @@ describe('SessionService', () => {
   });
 
   describe('active ship', () => {
-    const ship = {
+    const ship: ShipSummary = {
       id: 'd-1',
       name: 'Surveyor',
       model: 'Scavenger Pod',
@@ -118,6 +127,52 @@ describe('SessionService', () => {
       service.setActiveShip(ship as never);
       expect(service.activeShip()?.id).toBe('d-1');
       expect(service.activeShip()?.name).toBe('Surveyor');
+      expect(JSON.parse(window.sessionStorage.getItem(activeShipStorageKey)!)).toEqual(ship);
+    });
+
+    it('should restore the selected ship after service recreation on refresh', () => {
+      service.setActiveShip(ship);
+
+      const restored = new SessionService();
+
+      expect(restored.activeShip()).toEqual(ship);
+      expect(restored.activeShip()).not.toBe(ship);
+    });
+
+    it.each(['{broken-json', 'null', '[]', '{}', '{"id":"d-1"}'])(
+      'should log and discard invalid stored ship data: %s',
+      (raw) => {
+        const warn = vi.spyOn(appLogger, 'warn').mockImplementation(() => {});
+        window.sessionStorage.setItem(activeShipStorageKey, raw);
+
+        expect(new SessionService().activeShip()).toBeNull();
+        expect(window.sessionStorage.getItem(activeShipStorageKey)).toBeNull();
+        expect(warn).toHaveBeenCalled();
+      },
+    );
+
+    it('should keep in-memory selection and log when storage writes fail', () => {
+      const error = new DOMException('Storage full', 'QuotaExceededError');
+      const warn = vi.spyOn(appLogger, 'warn').mockImplementation(() => {});
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw error;
+      });
+
+      service.setActiveShip(ship);
+
+      expect(service.activeShip()).toEqual(ship);
+      expect(warn).toHaveBeenCalledWith('SessionService.persistActiveShip failed', error);
+    });
+
+    it('should log storage read failures without preventing service creation', () => {
+      const error = new DOMException('Storage blocked', 'SecurityError');
+      const warn = vi.spyOn(appLogger, 'warn').mockImplementation(() => {});
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw error;
+      });
+
+      expect(new SessionService().activeShip()).toBeNull();
+      expect(warn).toHaveBeenCalledWith('SessionService.readPersistedActiveShip failed', error);
     });
 
     it('should overwrite active ship when set again', () => {
@@ -136,6 +191,7 @@ describe('SessionService', () => {
       service.setActiveShip(other as never);
       expect(service.activeShip()?.id).toBe('d-2');
       expect(service.activeShip()?.name).toBe('Guardian');
+      expect(new SessionService().activeShip()).toEqual(other);
     });
 
     it('should preserve existing spatial when same-ship update has older epoch', () => {
@@ -154,6 +210,7 @@ describe('SessionService', () => {
       expect(service.activeShip()?.status).toBe('DAMAGED');
       expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
       expect(service.activeShip()?.spatial.epochMs).toBe(100);
+      expect(new SessionService().activeShip()).toEqual(service.activeShip());
     });
 
     it('should preserve existing usable spatial when same-ship update has origin placeholder', () => {
@@ -248,6 +305,7 @@ describe('SessionService', () => {
 
       expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 340090400, y: -135100, z: -214153344 });
       expect(service.activeShip()?.spatial.epochMs).toBe(999);
+      expect(new SessionService().activeShip()).toEqual(service.activeShip());
     });
 
     it('should ignore forceUpdateActiveShipSpatial for different ship id', () => {
@@ -260,12 +318,15 @@ describe('SessionService', () => {
       });
 
       expect(service.activeShip()?.spatial.positionKm).toEqual({ x: 1000, y: 0, z: 0 });
+      expect(new SessionService().activeShip()).toEqual(ship);
     });
 
     it('should clear active ship independently', () => {
       service.setActiveShip(ship as never);
       service.clearActiveShip();
       expect(service.activeShip()).toBeNull();
+      expect(window.sessionStorage.getItem(activeShipStorageKey)).toBeNull();
+      expect(new SessionService().activeShip()).toBeNull();
     });
 
     it('should clear active character independently', () => {
@@ -287,6 +348,8 @@ describe('SessionService', () => {
       expect(service.activeCharacter()).toBeNull();
       expect(service.getPlayerName()).toBeNull();
       expect(service.getMissionEntryContext()).toBeNull();
+      expect(window.sessionStorage.getItem(activeShipStorageKey)).toBeNull();
+      expect(new SessionService().activeShip()).toBeNull();
     });
   });
 });

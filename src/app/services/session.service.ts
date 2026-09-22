@@ -7,6 +7,7 @@ import { appLogger } from './logger';
 const SESSION_KEY_STORAGE_KEY = 'stellar.sessionKey';
 const PLAYER_NAME_STORAGE_KEY = 'stellar.playerName';
 const ACTIVE_CHARACTER_STORAGE_KEY = 'stellar.activeCharacter';
+const ACTIVE_SHIP_STORAGE_KEY = 'stellar.activeShip';
 const MISSION_ENTRY_CONTEXT_STORAGE_KEY = 'stellar.missionEntryContext';
 
 export interface MissionEntryContext {
@@ -22,7 +23,7 @@ export interface MissionEntryContext {
  */
 export class SessionService {
   private sessionKey = signal<string | null>(this.readPersistedSessionKey());
-  private activeShipSignal = signal<ShipSummary | null>(null);
+  private activeShipSignal = signal<ShipSummary | null>(this.readPersistedActiveShip());
   private activeCharacterSignal = signal<PlayerCharacterSummary | null>(this.readPersistedActiveCharacter());
   private playerNameSignal = signal<string | null>(this.readPersistedPlayerName());
   private missionEntryContextSignal = signal<MissionEntryContext | null>(this.readPersistedMissionEntryContext());
@@ -52,7 +53,7 @@ export class SessionService {
    */
   clearSession(): void {
     this.sessionKey.set(null);
-    this.activeShipSignal.set(null);
+    this.clearActiveShip();
     this.activeCharacterSignal.set(null);
     this.playerNameSignal.set(null);
     this.missionEntryContextSignal.set(null);
@@ -80,7 +81,9 @@ export class SessionService {
    */
   setActiveShip(ship: ShipSummary): void {
     const current = this.activeShipSignal();
-    this.activeShipSignal.set(this.resolveActiveShipUpdate(current, ship));
+    const resolved = this.resolveActiveShipUpdate(current, ship);
+    this.activeShipSignal.set(resolved);
+    this.persistActiveShip(resolved);
   }
 
   /**
@@ -92,7 +95,9 @@ export class SessionService {
     if (!current || this.normalizeShipId(current.id) !== this.normalizeShipId(shipId)) {
       return;
     }
-    this.activeShipSignal.set({ ...current, spatial });
+    const updated = { ...current, spatial };
+    this.activeShipSignal.set(updated);
+    this.persistActiveShip(updated);
   }
 
   private resolveActiveShipUpdate(current: ShipSummary | null, next: ShipSummary): ShipSummary {
@@ -131,6 +136,7 @@ export class SessionService {
    */
   clearActiveShip(): void {
     this.activeShipSignal.set(null);
+    this.clearPersistedActiveShip();
   }
 
   /**
@@ -267,6 +273,70 @@ export class SessionService {
       window.sessionStorage.removeItem(PLAYER_NAME_STORAGE_KEY);
     } catch (error) {
       appLogger.warn('SessionService.clearPersistedPlayerName failed', error);
+    }
+  }
+
+  private readPersistedActiveShip(): ShipSummary | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    try {
+      const raw = window.sessionStorage.getItem(ACTIVE_SHIP_STORAGE_KEY);
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as ShipSummary | null;
+      if (
+        !parsed ||
+        typeof parsed.id !== 'string' ||
+        !parsed.id.trim() ||
+        typeof parsed.name !== 'string' ||
+        typeof parsed.model !== 'string' ||
+        !Number.isFinite(parsed.tier) ||
+        typeof parsed.spatial?.solarSystemId !== 'string' ||
+        parsed.spatial.frame !== 'barycentric' ||
+        !Number.isFinite(parsed.spatial.epochMs) ||
+        !Number.isFinite(parsed.spatial.positionKm?.x) ||
+        !Number.isFinite(parsed.spatial.positionKm?.y) ||
+        !Number.isFinite(parsed.spatial.positionKm?.z) ||
+        (parsed.inventory !== undefined && !Array.isArray(parsed.inventory))
+      ) {
+        appLogger.warn('SessionService.readPersistedActiveShip: invalid stored ship');
+        this.clearPersistedActiveShip();
+        return null;
+      }
+
+      return parsed;
+    } catch (error) {
+      appLogger.warn('SessionService.readPersistedActiveShip failed', error);
+      this.clearPersistedActiveShip();
+      return null;
+    }
+  }
+
+  private persistActiveShip(ship: ShipSummary): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(ACTIVE_SHIP_STORAGE_KEY, JSON.stringify(ship));
+    } catch (error) {
+      appLogger.warn('SessionService.persistActiveShip failed', error);
+    }
+  }
+
+  private clearPersistedActiveShip(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      window.sessionStorage.removeItem(ACTIVE_SHIP_STORAGE_KEY);
+    } catch (error) {
+      appLogger.warn('SessionService.clearPersistedActiveShip failed', error);
     }
   }
 

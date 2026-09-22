@@ -3,6 +3,30 @@ import { OPENING_STAGE_TIMINGS_MS } from '../../src/app/model/opening-sequence';
 import { setupLocaleOpeningMissionFlowTest } from '../fixtures/locale-opening-mission-flow-scenario';
 
 test.describe('Cold boot refresh context', () => {
+  test('keeps the selected ship after refreshing the in-progress mission scene', async ({ page }) => {
+    const { gameShell, mock } = await setupLocaleOpeningMissionFlowTest(page, {
+      characterId: 'char-refresh-ship',
+      characterName: 'Nova',
+      missionStatus: 'active',
+      includeMissionAndShipHandlers: true,
+    });
+
+    await gameShell.joinGame();
+    await expect(page).toHaveURL(/ship-exterior-view/);
+    const shipBadge = page.locator('app-character-ship-badge .ship-badge');
+    await expect(shipBadge).toContainText('Astra Pod');
+    await expect(shipBadge).not.toHaveClass(/no-ship/);
+
+    const reconnectAfterReload = mock.waitForNextConnect();
+    mock.reset();
+    await page.reload();
+    await reconnectAfterReload;
+
+    await expect(page).toHaveURL(/ship-exterior-view/);
+    await expect(shipBadge).toContainText('Astra Pod');
+    await expect(shipBadge).not.toHaveClass(/no-ship/);
+  });
+
   test('keeps the cold-boot scan flow usable after page refresh', async ({ page }) => {
     await page.clock.install();
 

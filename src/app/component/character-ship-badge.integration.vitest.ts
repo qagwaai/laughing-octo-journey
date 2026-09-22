@@ -27,7 +27,13 @@ describe('CharacterShipBadge + SessionService integration', () => {
     model: 'Scavenger Pod',
     tier: 1,
     status: 'ACTIVE',
-  } as ShipSummary;
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 1000, y: 0, z: 0 },
+      epochMs: 100,
+    },
+  };
   const guardian: ShipSummary = {
     id: 'd-2',
     name: 'Guardian',
@@ -37,6 +43,7 @@ describe('CharacterShipBadge + SessionService integration', () => {
   } as ShipSummary;
 
   beforeEach(() => {
+    window.sessionStorage.removeItem('stellar.activeShip');
     sessionService = new SessionService();
     TestBed.configureTestingModule({
       providers: [
@@ -44,6 +51,20 @@ describe('CharacterShipBadge + SessionService integration', () => {
         { provide: Router, useValue: { navigate: vi.fn() } },
       ],
     });
+  });
+
+  afterEach(() => {
+    window.sessionStorage.removeItem('stellar.activeShip');
+  });
+
+  it('badge restores the selected ship after a refresh recreates the service', () => {
+    sessionService.setActiveShip(surveyor);
+    TestBed.overrideProvider(SessionService, { useValue: new SessionService() });
+
+    const badge = createBadgeWithService();
+
+    expect(badge.activeShip()).toEqual(surveyor);
+    expect(badge.activeShipDisplayName()).toBe('Surveyor');
   });
 
   it('badge shows no ship before any ship is set', () => {
