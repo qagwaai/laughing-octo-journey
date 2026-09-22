@@ -141,6 +141,22 @@ describe('ship-exterior asteroid visuals', () => {
     expect(visual.color).toBe(0x8f99a7);
   });
 
+  it('keeps the revealed catalog material color when a scanned asteroid is targeted', () => {
+    const sample = {
+      id: 'iron',
+      scanned: true,
+      scanProgress: 100,
+      revealedMaterial: { material: 'Iron', rarity: 'Common' as const },
+    };
+
+    const [untargeted] = deriveAsteroidVisuals('ship-a', [sample], null);
+    const [targeted] = deriveAsteroidVisuals('ship-a', [sample], 'iron');
+
+    expect(targeted.isTargeted).toBe(true);
+    expect(targeted.color).toBe(untargeted.color);
+    expect(targeted.emissive).toBe(untargeted.emissive);
+  });
+
   it('does not expose catalog material data before scan completion', () => {
     const [visual] = deriveAsteroidVisuals(
       'ship-a',

@@ -23,6 +23,7 @@ interface ShipExteriorBareSceneMissionStateCallbacks {
 interface ShipExteriorBareSceneContextCallbacks {
   snapshotActiveContext: ShipExteriorBareSceneTestApiFactoryDeps['formal']['snapshotActiveContext'];
   getTargetedAsteroidId: ShipExteriorLegacyTestApi['getTargetedAsteroidId'];
+  getAsteroidTargetBracket: ShipExteriorLegacyTestApi['getAsteroidTargetBracket'];
   getHoveredAsteroidId: ShipExteriorLegacyTestApi['getHoveredAsteroidId'];
   getHoveredScannableDebrisId: ShipExteriorLegacyTestApi['getHoveredScannableDebrisId'];
   getHoveredScannableShipId: ShipExteriorLegacyTestApi['getHoveredScannableShipId'];
@@ -110,6 +111,7 @@ export class ShipExteriorBareSceneTestAdapter {
         forceCompleteShipScan: sources.forceCompleteShipScan,
         ...mission.legacy,
         getTargetedAsteroidId: context.getTargetedAsteroidId,
+        getAsteroidTargetBracket: context.getAsteroidTargetBracket,
         getHoveredAsteroidId: context.getHoveredAsteroidId,
         getHoveredScannableDebrisId: context.getHoveredScannableDebrisId,
         getHoveredScannableShipId: context.getHoveredScannableShipId,
@@ -126,6 +128,8 @@ export class ShipExteriorBareSceneTestAdapter {
     return {
       snapshotActiveContext: () => getActiveContext()?.snapshotRuntime() ?? null,
       getTargetedAsteroidId: () => getActiveContext()?.getTargetedAsteroidId() ?? null,
+      getAsteroidTargetBracket: (sampleId: string) =>
+        getActiveContext()?.snapshotAsteroidTargetBracket(sampleId) ?? null,
       getHoveredAsteroidId: () => getActiveContext()?.getHoveredAsteroidId() ?? null,
       getHoveredScannableDebrisId: () => getActiveContext()?.getHoveredScannableDebrisId() ?? null,
       getHoveredScannableShipId: () => getActiveContext()?.getHoveredScannableShipId() ?? null,

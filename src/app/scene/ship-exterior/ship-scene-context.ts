@@ -30,6 +30,7 @@ import {
   ShipScenePerformanceTelemetry,
   ShipSceneRenderingState,
   ShipSceneRuntimeSnapshot,
+  ShipSceneAsteroidTargetBracketSnapshot,
   ShipSceneScannableDebrisSample,
   ShipSceneScannableDebrisState,
   ShipSceneScannableShipSample,
@@ -450,6 +451,45 @@ function disposeHoverScanGroup(group: THREE.Group): void {
     }
   });
   group.clear();
+}
+
+export interface AsteroidTargetBracketSegment {
+  position: [number, number, number];
+  size: [number, number, number];
+}
+
+/**
+ * Builds the eight thin box segments (two per corner) that make up a static,
+ * camera-facing HUD-style bracket frame around a targeted asteroid. Segments
+ * are laid out in the group's local XY plane; the group itself is billboarded
+ * toward the camera each frame in `counterRotateAsteroidOverlays`, so the
+ * frame reads as a fixed lock-on indicator rather than a spinning ring.
+ */
+export function buildAsteroidTargetBracketSegments(radius: number): AsteroidTargetBracketSegment[] {
+  const halfExtent = radius * 1.3;
+  const armLength = radius * 0.55;
+  const thickness = Math.max(0.02, radius * 0.05);
+  const corners: Array<[number, number]> = [
+    [-halfExtent, halfExtent],
+    [halfExtent, halfExtent],
+    [-halfExtent, -halfExtent],
+    [halfExtent, -halfExtent],
+  ];
+
+  return corners.flatMap(([cx, cy]) => {
+    const signX = Math.sign(cx);
+    const signY = Math.sign(cy);
+    return [
+      {
+        position: [cx - (signX * armLength) / 2, cy, 0] as [number, number, number],
+        size: [armLength, thickness, thickness] as [number, number, number],
+      },
+      {
+        position: [cx, cy - (signY * armLength) / 2, 0] as [number, number, number],
+        size: [thickness, armLength, thickness] as [number, number, number],
+      },
+    ];
+  });
 }
 
 export class ShipSceneContext {
@@ -1069,6 +1109,82 @@ export class ShipSceneContext {
       flightWorldRotation: { ...flight.worldRotation },
       flightSpeedKmPerSec: flight.speedKmPerSec,
       performance: this.getPerformanceTelemetry(),
+    };
+  }
+
+  /**
+   * Reports the live scene-graph state of a targeted asteroid's lock-on bracket.
+   * Used by end-to-end tests to confirm the bracket is genuinely wired into the
+   * rendered scene and remains static across frames.
+   */
+  snapshotAsteroidTargetBracket(sampleId: string): ShipSceneAsteroidTargetBracketSnapshot | null {
+    if (!this.renderingState) {
+      return null;
+    }
+
+    const mesh = this.renderingState.asteroidGroup.children.find(
+      (child): child is THREE.Mesh => child instanceof THREE.Mesh && child.name === sampleId,
+    );
+    if (!mesh) {
+      return null;
+    }
+
+    const camera = this.renderingState.camera;
+    const cameraWorldQuaternion = new THREE.Quaternion();
+    if (camera instanceof THREE.Object3D) {
+      camera.getWorldQuaternion(cameraWorldQuaternion);
+    }
+
+    const group = (mesh.userData as { targetedGroup?: THREE.Group }).targetedGroup;
+    if (!group) {
+      return {
+        sampleId,
+        present: false,
+        segmentCount: 0,
+        worldScale: { x: 1, y: 1, z: 1 },
+        armPositions: [],
+        armOpacity: null,
+        worldQuaternion: { x: 0, y: 0, z: 0, w: 1 },
+        cameraWorldQuaternion: {
+          x: cameraWorldQuaternion.x,
+          y: cameraWorldQuaternion.y,
+          z: cameraWorldQuaternion.z,
+          w: cameraWorldQuaternion.w,
+        },
+      };
+    }
+
+    const worldQuaternion = new THREE.Quaternion();
+    group.getWorldQuaternion(worldQuaternion);
+    const worldScale = new THREE.Vector3();
+    group.getWorldScale(worldScale);
+
+    const firstArm = group.children[0];
+    const firstArmMaterial = firstArm instanceof THREE.Mesh ? firstArm.material : null;
+    const armOpacity =
+      !Array.isArray(firstArmMaterial) && firstArmMaterial instanceof THREE.MeshBasicMaterial
+        ? firstArmMaterial.opacity
+        : null;
+
+    return {
+      sampleId,
+      present: true,
+      segmentCount: group.children.length,
+      worldScale: { x: worldScale.x, y: worldScale.y, z: worldScale.z },
+      armPositions: group.children.map((arm) => ({ x: arm.position.x, y: arm.position.y, z: arm.position.z })),
+      armOpacity,
+      worldQuaternion: {
+        x: worldQuaternion.x,
+        y: worldQuaternion.y,
+        z: worldQuaternion.z,
+        w: worldQuaternion.w,
+      },
+      cameraWorldQuaternion: {
+        x: cameraWorldQuaternion.x,
+        y: cameraWorldQuaternion.y,
+        z: cameraWorldQuaternion.z,
+        w: cameraWorldQuaternion.w,
+      },
     };
   }
 
@@ -1712,6 +1828,17 @@ export class ShipSceneContext {
       return;
     }
 
+    const camera = this.renderingState.camera;
+    const cameraWorldQuaternion = new THREE.Quaternion();
+    const hasWorldCamera = camera instanceof THREE.Object3D;
+    if (hasWorldCamera) {
+      // getWorldQuaternion refreshes this object's ancestor matrices itself, so this reads
+      // the camera's current-frame orientation even though the renderer has not traversed
+      // the scene graph yet at this point in the frame.
+      camera.getWorldQuaternion(cameraWorldQuaternion);
+    }
+    const meshWorldQuaternion = new THREE.Quaternion();
+
     for (const child of this.renderingState.asteroidGroup.children) {
       if (!(child instanceof THREE.Mesh)) {
         continue;
@@ -1720,14 +1847,53 @@ export class ShipSceneContext {
       const overlays = child.userData as {
         hoverScanGroup?: THREE.Group;
         targetHoldGroup?: THREE.Group;
+        targetedGroup?: THREE.Group;
       };
-      if (!overlays.hoverScanGroup && !overlays.targetHoldGroup) {
+      if (!overlays.hoverScanGroup && !overlays.targetHoldGroup && !overlays.targetedGroup) {
         continue;
       }
 
       const inverse = child.quaternion.clone().invert();
       overlays.hoverScanGroup?.quaternion.copy(inverse);
       overlays.targetHoldGroup?.quaternion.copy(inverse);
+
+      if (overlays.targetedGroup) {
+        const targetedGroup = overlays.targetedGroup;
+        let localQuaternion: THREE.Quaternion;
+        if (hasWorldCamera) {
+          // Resolve true world-space orientation for both the mesh and the camera
+          // (the camera sits under the pilot look rig, so its local quaternion alone
+          // is not the world-facing direction) so the bracket reliably faces the
+          // camera instead of the pilot rig's local axes or the scene origin.
+          child.getWorldQuaternion(meshWorldQuaternion);
+          localQuaternion = meshWorldQuaternion.clone().invert().multiply(cameraWorldQuaternion);
+        } else {
+          localQuaternion = inverse;
+        }
+
+        // Undo only the mesh's fixed per-axis shape ratio (not its overall visual.scale
+        // growth) so the bracket arms keep their true square shape while still tracking
+        // legitimate size changes such as the targeted/hero-tier scale bump.
+        //
+        // This has to be composed as an explicit matrix rather than a plain child scale:
+        // the parent's non-uniform scale is applied *outside* the child's rotation, and
+        // scale and rotation do not commute, so a scale-only correction leaves the frame
+        // visibly sheared and tilted off camera-facing. Building S(-1) * R by hand makes
+        // the bracket's world transform exactly the camera rotation at uniform scale.
+        const shapeScale = (child.userData as { geometryShapeScale?: [number, number, number] }).geometryShapeScale ?? [
+          1, 1, 1,
+        ];
+        targetedGroup.matrixAutoUpdate = false;
+        targetedGroup.matrix.makeRotationFromQuaternion(localQuaternion);
+        targetedGroup.matrix.premultiply(
+          new THREE.Matrix4().makeScale(
+            shapeScale[0] !== 0 ? 1 / shapeScale[0] : 1,
+            shapeScale[1] !== 0 ? 1 / shapeScale[1] : 1,
+            shapeScale[2] !== 0 ? 1 / shapeScale[2] : 1,
+          ),
+        );
+        targetedGroup.matrixWorldNeedsUpdate = true;
+      }
     }
   }
 
@@ -1769,6 +1935,10 @@ export class ShipSceneContext {
       descriptor.scale[1] * visual.scale,
       descriptor.scale[2] * visual.scale,
     );
+    // Track only the fixed per-axis shape ratio (not the overall visual.scale growth) so the
+    // target bracket can cancel out non-uniform shearing without also freezing out legitimate
+    // size changes (e.g. the targeted/hero-tier scale bump) that should still grow the bracket.
+    (mesh.userData as { geometryShapeScale?: [number, number, number] }).geometryShapeScale = descriptor.scale;
 
     const material = mesh.material;
     if (!Array.isArray(material) && material instanceof THREE.MeshStandardMaterial) {
@@ -1852,6 +2022,7 @@ export class ShipSceneContext {
     }
 
     this.syncAsteroidTargetHoldGroup(mesh, visual);
+    this.syncAsteroidTargetedGroup(mesh, visual);
   }
 
   private syncAsteroidTargetHoldGroup(mesh: THREE.Mesh, visual: ShipExteriorAsteroidVisual): void {
@@ -1901,6 +2072,52 @@ export class ShipSceneContext {
         material.opacity = 0.8 + Math.max(0, Math.sin(holdPhase)) * 0.1;
       }
     }
+  }
+
+  /**
+   * Confirmed-lock indicator for a targeted asteroid: a static, camera-facing
+   * corner-bracket frame (HUD lock-on style) rather than a spinning ring, so it
+   * stays visually distinct from the hero-tier scale/material treatment and
+   * from the transient scan/target-hold rings.
+   */
+  private syncAsteroidTargetedGroup(mesh: THREE.Mesh, visual: ShipExteriorAsteroidVisual): void {
+    const userData = mesh.userData as {
+      targetedGroup?: THREE.Group;
+    };
+
+    if (!visual.isTargeted) {
+      if (userData.targetedGroup) {
+        mesh.remove(userData.targetedGroup);
+        disposeHoverScanGroup(userData.targetedGroup);
+        delete userData.targetedGroup;
+      }
+      return;
+    }
+
+    if (userData.targetedGroup) {
+      return;
+    }
+
+    const group = new THREE.Group();
+    group.name = `${mesh.name}-target-bracket-group`;
+
+    buildAsteroidTargetBracketSegments(visual.radius).forEach((segment, index) => {
+      const bracketArm = new THREE.Mesh(
+        new THREE.BoxGeometry(segment.size[0], segment.size[1], segment.size[2]),
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color('#ff4d2e'),
+          transparent: true,
+          opacity: 0.92,
+          depthWrite: false,
+        }),
+      );
+      bracketArm.name = `${mesh.name}-target-bracket-${index}`;
+      bracketArm.position.set(segment.position[0], segment.position[1], segment.position[2]);
+      group.add(bracketArm);
+    });
+
+    mesh.add(group);
+    userData.targetedGroup = group;
   }
 
   updateHoveredScanTargetFromPointer(clientX: number, clientY: number): ShipSceneHoverScanTarget | null {

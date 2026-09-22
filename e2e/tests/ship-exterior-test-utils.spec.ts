@@ -1008,4 +1008,105 @@ test.describe('Ship Exterior Test Utilities', () => {
     expect(gateAfterBackendRefresh.steps.find((step) => step.key === 'repair_scavenger_pod')?.status).toBe('completed');
     expect(gateAfterBackendRefresh.activeObjectiveText).toContain('Mission objectives complete');
   });
+
+  test('targeting an asteroid renders a static camera-facing lock-on bracket in the live scene', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await mock.setup();
+    registerShipExteriorSessionHandlers(mock, {
+      missionStatus: 'active',
+      includeSensorArray: true,
+    });
+
+    await loginViaUI(page, mock);
+    await new GameShellPage(page).joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15000 });
+
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.legacy.getAsteroidSamples().length ?? 0),
+        { timeout: 15_000 },
+      )
+      .toBeGreaterThan(0);
+
+    const sampleIds = await page.evaluate(() =>
+      (window.__shipExteriorBareSceneTestUtils?.legacy.getAsteroidSamples() ?? []).map((sample) => sample.id),
+    );
+    const sampleId = sampleIds[0];
+    expect(sampleId).toBeTruthy();
+
+    const readBracket = async (id: string) =>
+      page.evaluate(
+        (asteroidId) => window.__shipExteriorBareSceneTestUtils?.legacy.getAsteroidTargetBracket(asteroidId) ?? null,
+        id,
+      );
+
+    const renderedFrameCount = async () =>
+      page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext()?.renderedFrameCount ?? 0);
+
+    // Wait in rendered frames rather than wall-clock time: CI has no GPU, so Chromium
+    // falls back to SwiftShader software rendering and a fixed timeout can cover far
+    // fewer frames there than locally.
+    const advanceFrames = async (frames: number) => {
+      const start = await renderedFrameCount();
+      await expect.poll(renderedFrameCount, { timeout: 30_000 }).toBeGreaterThan(start + frames);
+    };
+
+    // An untargeted asteroid must carry no bracket, so the bracket alone signals target lock.
+    await expect.poll(async () => (await readBracket(sampleId))?.present ?? null, { timeout: 15_000 }).toBe(false);
+
+    const targeted = await page.evaluate(
+      (asteroidId) => window.__shipExteriorBareSceneTestUtils?.legacy.forceTargetAsteroid(asteroidId) ?? false,
+      sampleId,
+    );
+    expect(targeted).toBe(true);
+
+    await expect.poll(async () => (await readBracket(sampleId))?.segmentCount ?? 0, { timeout: 15_000 }).toBe(8);
+
+    const first = await readBracket(sampleId);
+    // Let many frames render while the asteroid keeps spinning and orbiting.
+    await advanceFrames(30);
+    const second = await readBracket(sampleId);
+
+    expect(first?.present).toBe(true);
+    expect(second?.present).toBe(true);
+
+    // The bracket is a static lock-on frame: arms never move, resize, or pulse between frames.
+    expect(second?.armPositions).toEqual(first?.armPositions);
+    expect(second?.armOpacity).toBe(first?.armOpacity);
+
+    // Its world scale stays uniform (no shear from the asteroid's stretched silhouette)
+    // and constant while the asteroid holds its size.
+    for (const snapshot of [first, second]) {
+      expect(snapshot!.worldScale.x).toBeCloseTo(snapshot!.worldScale.y, 5);
+      expect(snapshot!.worldScale.y).toBeCloseTo(snapshot!.worldScale.z, 5);
+    }
+
+    // ...and it stays squarely facing the camera despite the asteroid's own spin.
+    const angleToCamera = (snapshot: NonNullable<Awaited<ReturnType<typeof readBracket>>>) => {
+      const dot =
+        snapshot.worldQuaternion.x * snapshot.cameraWorldQuaternion.x +
+        snapshot.worldQuaternion.y * snapshot.cameraWorldQuaternion.y +
+        snapshot.worldQuaternion.z * snapshot.cameraWorldQuaternion.z +
+        snapshot.worldQuaternion.w * snapshot.cameraWorldQuaternion.w;
+      return 2 * Math.acos(Math.min(1, Math.abs(dot)));
+    };
+    expect(angleToCamera(first!)).toBeLessThan(0.01);
+    expect(angleToCamera(second!)).toBeLessThan(0.01);
+
+    // Moving the lock to another asteroid tears the bracket down on the previous one.
+    const otherSampleId = sampleIds.find((id) => id !== sampleId);
+    test.skip(!otherSampleId, 'Scene needs a second asteroid to verify lock hand-off.');
+
+    const retargeted = await page.evaluate(
+      (asteroidId) => window.__shipExteriorBareSceneTestUtils?.legacy.forceTargetAsteroid(asteroidId) ?? false,
+      otherSampleId!,
+    );
+    expect(retargeted).toBe(true);
+
+    await expect.poll(async () => (await readBracket(sampleId))?.present ?? null, { timeout: 15_000 }).toBe(false);
+    await expect
+      .poll(async () => (await readBracket(otherSampleId!))?.segmentCount ?? 0, { timeout: 15_000 })
+      .toBe(8);
+  });
 });

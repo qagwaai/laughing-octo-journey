@@ -52,6 +52,7 @@ describe('ship exterior bare scene test api', () => {
         forceCompleteIronScan: vi.fn(),
         forceTargetAsteroid: vi.fn(),
         getTargetedAsteroidId: vi.fn(),
+        getAsteroidTargetBracket: vi.fn(),
         getHoveredAsteroidId: vi.fn(),
         forceCompleteDebrisScan: vi.fn(),
         getHoveredScannableDebrisId: vi.fn(),

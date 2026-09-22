@@ -128,6 +128,27 @@ export interface ShipSceneRuntimeSnapshot {
   performance: ShipScenePerformanceTelemetry;
 }
 
+/**
+ * Inspectable state of a targeted asteroid's static lock-on bracket. Exposed so
+ * end-to-end tests can assert the bracket is actually wired into the live scene
+ * graph and stays static (no spin/pulse/drift) across rendered frames.
+ */
+export interface ShipSceneAsteroidTargetBracketSnapshot {
+  sampleId: string;
+  present: boolean;
+  segmentCount: number;
+  /** Bracket world scale, which must stay uniform (no shear) and follow the asteroid's growth. */
+  worldScale: { x: number; y: number; z: number };
+  /** Local offsets of each bracket arm, which must never change once built. */
+  armPositions: { x: number; y: number; z: number }[];
+  /** Arm opacity, which must never pulse. */
+  armOpacity: number | null;
+  /** World-space orientation of the bracket frame. */
+  worldQuaternion: { x: number; y: number; z: number; w: number };
+  /** World-space orientation of the camera the bracket should be facing. */
+  cameraWorldQuaternion: { x: number; y: number; z: number; w: number };
+}
+
 export interface ShipScenePerformanceTelemetry {
   status: 'paused' | 'sampling' | 'current';
   averageFrameTimeMs: number | null;

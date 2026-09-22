@@ -102,22 +102,9 @@ function createAsteroidPalette(
   materialName: string | null,
   rarity: AsteroidRarity | null | undefined,
 ): { color: number; emissive: number; emissiveIntensity: number } {
-  if (targeted) {
-    return {
-      color: new THREE.Color('#f59e0b').getHex(),
-      emissive: new THREE.Color('#7c2d12').getHex(),
-      emissiveIntensity: 0.65,
-    };
-  }
-
-  if (hovered) {
-    return {
-      color: new THREE.Color('#b9f4ff').getHex(),
-      emissive: new THREE.Color('#215d6f').getHex(),
-      emissiveIntensity: 0.68,
-    };
-  }
-
+  // Once an asteroid has been scanned, its revealed material color is the authoritative
+  // "hero tier" appearance. Targeting/hover only add a static bracket/ring overlay and must
+  // not override this true material color, so the scanned catalog lookup takes priority here.
   if (scanned) {
     const catalogMaterial = resolveCatalogMaterial(materialName);
     if (catalogMaterial) {
@@ -135,6 +122,22 @@ function createAsteroidPalette(
       color: new THREE.Color(`hsl(${hue % 360}, ${profile.saturation}%, ${profile.lightness}%)`).getHex(),
       emissive: new THREE.Color('#3f2d13').getHex(),
       emissiveIntensity: profile.emissiveIntensity,
+    };
+  }
+
+  if (targeted) {
+    return {
+      color: new THREE.Color('#f59e0b').getHex(),
+      emissive: new THREE.Color('#7c2d12').getHex(),
+      emissiveIntensity: 0.65,
+    };
+  }
+
+  if (hovered) {
+    return {
+      color: new THREE.Color('#b9f4ff').getHex(),
+      emissive: new THREE.Color('#215d6f').getHex(),
+      emissiveIntensity: 0.68,
     };
   }
 

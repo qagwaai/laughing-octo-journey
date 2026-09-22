@@ -1,6 +1,6 @@
 import { Signal } from '@angular/core';
 import type { ShipExteriorMissionGateState } from '../../mission/ship-exterior-mission';
-import type { ShipSceneRuntimeSnapshot } from './ship-scene-types';
+import type { ShipSceneAsteroidTargetBracketSnapshot, ShipSceneRuntimeSnapshot } from './ship-scene-types';
 
 declare global {
   interface Window {
@@ -46,6 +46,7 @@ export interface ShipExteriorLegacyTestApi {
   forceCompleteIronScan: (sampleId?: string) => ShipExteriorMissionGateState | null;
   forceTargetAsteroid: (sampleId: string) => boolean;
   getTargetedAsteroidId: () => string | null;
+  getAsteroidTargetBracket: (sampleId: string) => ShipSceneAsteroidTargetBracketSnapshot | null;
   getHoveredAsteroidId: () => string | null;
   forceCompleteDebrisScan: (sampleId?: string) => boolean;
   getHoveredScannableDebrisId: () => string | null;

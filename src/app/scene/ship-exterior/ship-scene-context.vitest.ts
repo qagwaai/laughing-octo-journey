@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { FramePressureSampler } from './frame-pressure-sampler';
-import { type AsteroidOrbitProfile, resolveAsteroidOrbitOffset, ShipSceneContext } from './ship-scene-context';
+import { type AsteroidOrbitProfile, buildAsteroidTargetBracketSegments, resolveAsteroidOrbitOffset, ShipSceneContext } from './ship-scene-context';
 
 describe('ShipSceneContext', () => {
   it('tracks pause and resume state before rendering is initialized', () => {
@@ -637,6 +637,369 @@ describe('ShipSceneContext', () => {
 
       const composed = mesh.quaternion.clone().multiply(overlay.quaternion);
       expect(composed.angleTo(new THREE.Quaternion())).toBeCloseTo(0);
+    });
+
+    it('builds an 8-segment corner-bracket frame sized off the asteroid radius', () => {
+      const segments = buildAsteroidTargetBracketSegments(2);
+
+      expect(segments).toHaveLength(8);
+      for (const segment of segments) {
+        expect(Math.max(...segment.position.map(Math.abs))).toBeLessThanOrEqual(2 * 1.3 + 1e-9);
+      }
+    });
+
+    it('creates a static target bracket group only while the asteroid is targeted', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      expect((mesh.userData as any).targetedGroup).toBeUndefined();
+
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: true });
+      const group = (mesh.userData as any).targetedGroup as THREE.Group;
+      expect(group).toBeInstanceOf(THREE.Group);
+      expect(group.children).toHaveLength(8);
+
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: false });
+      expect((mesh.userData as any).targetedGroup).toBeUndefined();
+      expect(mesh.children).toHaveLength(0);
+    });
+
+    it('billboards the target bracket group toward the camera instead of spinning it', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: true });
+      mesh.rotation.set(0.4, 0.9, 0.2);
+
+      // Nest both the mesh and the camera under their real rig hierarchies (asteroidGroup ->
+      // worldRelativeGroup, camera -> pilotLookRig -> pilotRig) so this test catches the case
+      // where only the local quaternion is used instead of the true world-space orientation.
+      const worldRelativeGroup = new THREE.Group();
+      worldRelativeGroup.rotation.set(0.2, -0.6, 0.4);
+      const asteroidGroup = new THREE.Group();
+      worldRelativeGroup.add(asteroidGroup);
+      asteroidGroup.add(mesh);
+
+      const pilotRig = new THREE.Group();
+      pilotRig.rotation.set(-0.3, 0.7, -0.2);
+      const pilotLookRig = new THREE.Group();
+      pilotRig.add(pilotLookRig);
+      const camera = new THREE.PerspectiveCamera();
+      camera.quaternion.setFromEuler(new THREE.Euler(0.3, -0.5, 0.1));
+      pilotLookRig.add(camera);
+
+      (context as any).renderingState = { asteroidGroup, camera };
+
+      (context as any).counterRotateAsteroidOverlays();
+
+      const group = (mesh.userData as any).targetedGroup as THREE.Group;
+      const groupWorldQuaternion = new THREE.Quaternion();
+      group.getWorldQuaternion(groupWorldQuaternion);
+      const cameraWorldQuaternion = new THREE.Quaternion();
+      camera.getWorldQuaternion(cameraWorldQuaternion);
+      expect(groupWorldQuaternion.angleTo(cameraWorldQuaternion)).toBeCloseTo(0);
+    });
+
+    it('compensates for the mesh non-uniform shape scale so bracket arms stay unshared', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: true });
+      (mesh.userData as any).geometryShapeScale = [1.4, 0.7, 1.1];
+      mesh.scale.set(1.4, 0.7, 1.1);
+
+      const camera = new THREE.PerspectiveCamera();
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] }, camera };
+
+      (context as any).counterRotateAsteroidOverlays();
+
+      // What matters is the transform actually drawn: the bracket's world scale must be
+      // uniform (no shear from the asteroid's stretched silhouette).
+      const group = (mesh.userData as any).targetedGroup as THREE.Group;
+      const worldScale = new THREE.Vector3();
+      group.getWorldScale(worldScale);
+      expect(worldScale.x).toBeCloseTo(1);
+      expect(worldScale.y).toBeCloseTo(1);
+      expect(worldScale.z).toBeCloseTo(1);
+    });
+
+    it('keeps a non-uniformly scaled asteroid from tilting the bracket off camera-facing', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: true });
+      (mesh.userData as any).geometryShapeScale = [1.4, 0.7, 1.1];
+      mesh.scale.set(1.4 * 1.28, 0.7 * 1.28, 1.1 * 1.28);
+      mesh.rotation.set(0.6, -1.1, 0.4);
+
+      const asteroidGroup = new THREE.Group();
+      asteroidGroup.add(mesh);
+      const camera = new THREE.PerspectiveCamera();
+      camera.rotation.set(0.2, 0.9, -0.3);
+      (context as any).renderingState = { asteroidGroup, camera };
+
+      (context as any).counterRotateAsteroidOverlays();
+
+      const group = (mesh.userData as any).targetedGroup as THREE.Group;
+      asteroidGroup.updateMatrixWorld(true);
+
+      const groupWorld = new THREE.Quaternion();
+      group.getWorldQuaternion(groupWorld);
+      const cameraWorld = new THREE.Quaternion();
+      camera.getWorldQuaternion(cameraWorld);
+      expect(groupWorld.angleTo(cameraWorld)).toBeCloseTo(0);
+
+      // ...and the uniform hero-tier growth still comes through untouched.
+      const worldScale = new THREE.Vector3();
+      group.getWorldScale(worldScale);
+      expect(worldScale.x).toBeCloseTo(1.28);
+      expect(worldScale.y).toBeCloseTo(1.28);
+      expect(worldScale.z).toBeCloseTo(1.28);
+    });
+
+    it('does not cancel out uniform visual.scale growth, only the fixed shape ratio', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: false, scanProgress: 0, revealedMaterial: null }]);
+
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, { id: 'sample-alpha', radius: 1, isTargeted: true });
+      // Shape ratio is fixed (from the geometry descriptor), but the mesh's overall
+      // scale has grown uniformly (e.g. the targeted hero-tier size bump), which the
+      // bracket should track rather than cancel out.
+      (mesh.userData as any).geometryShapeScale = [1, 1, 1];
+      mesh.scale.set(1.28, 1.28, 1.28);
+
+      const camera = new THREE.PerspectiveCamera();
+      (context as any).renderingState = { asteroidGroup: { children: [mesh] }, camera };
+
+      (context as any).counterRotateAsteroidOverlays();
+
+      const group = (mesh.userData as any).targetedGroup as THREE.Group;
+      const worldScale = new THREE.Vector3();
+      group.getWorldScale(worldScale);
+      expect(worldScale.x).toBeCloseTo(1.28);
+      expect(worldScale.y).toBeCloseTo(1.28);
+      expect(worldScale.z).toBeCloseTo(1.28);
+    });
+  });
+
+  describe('asteroid target bracket', () => {
+    const createContext = () =>
+      new ShipSceneContext('player::char::ship', {
+        playerName: 'player',
+        characterId: 'char',
+        shipId: 'ship',
+      });
+
+    const visualFor = (id: string, overrides: Record<string, unknown> = {}) => ({
+      id,
+      position: [0, 0, 0] as [number, number, number],
+      radius: 1,
+      detail: 0,
+      scale: 1,
+      color: 0x888888,
+      emissive: 0x000000,
+      emissiveIntensity: 0,
+      isTargeted: false,
+      isHovered: false,
+      ...overrides,
+    });
+
+    const createdMeshFor = (context: ShipSceneContext, id: string, overrides: Record<string, unknown> = {}) =>
+      (context as any).createAsteroidMesh(visualFor(id, overrides)) as THREE.Mesh;
+
+    const bracketOf = (mesh: THREE.Mesh) => (mesh.userData as any).targetedGroup as THREE.Group | undefined;
+
+    it('scales the bracket frame proportionally with the asteroid radius', () => {
+      const small = buildAsteroidTargetBracketSegments(1);
+      const large = buildAsteroidTargetBracketSegments(3);
+
+      expect(large).toHaveLength(small.length);
+      small.forEach((segment, index) => {
+        segment.position.forEach((axis, axisIndex) => {
+          expect(large[index].position[axisIndex]).toBeCloseTo(axis * 3);
+        });
+        segment.size.forEach((axis, axisIndex) => {
+          expect(large[index].size[axisIndex]).toBeCloseTo(axis * 3);
+        });
+      });
+    });
+
+    it('records the fixed geometry shape ratio separately from the uniform visual scale', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+
+      (context as any).applyAsteroidVisualToMesh(mesh, visualFor('sample-alpha', { scale: 1.28 }));
+
+      const shapeScale = (mesh.userData as any).geometryShapeScale as [number, number, number];
+      expect(shapeScale).toHaveLength(3);
+      // mesh.scale is the shape ratio multiplied by the uniform growth, and the recorded
+      // shape ratio must exclude that growth so the bracket can track size changes.
+      expect(mesh.scale.x).toBeCloseTo(shapeScale[0] * 1.28);
+      expect(mesh.scale.y).toBeCloseTo(shapeScale[1] * 1.28);
+      expect(mesh.scale.z).toBeCloseTo(shapeScale[2] * 1.28);
+    });
+
+    it('creates and removes the bracket through the real visual-apply path', () => {
+      const context = createContext();
+      context.setAsteroidSamples([{ id: 'sample-alpha', scanned: true, scanProgress: 100, revealedMaterial: null }]);
+      const mesh = createdMeshFor(context, 'sample-alpha');
+
+      (context as any).applyAsteroidVisualToMesh(mesh, visualFor('sample-alpha', { isTargeted: true }));
+      expect(bracketOf(mesh)?.children).toHaveLength(8);
+
+      (context as any).applyAsteroidVisualToMesh(mesh, visualFor('sample-alpha', { isTargeted: false }));
+      expect(bracketOf(mesh)).toBeUndefined();
+    });
+
+    it('reuses the same bracket group across repeated syncs instead of rebuilding it', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+      const first = bracketOf(mesh);
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+
+      expect(bracketOf(mesh)).toBe(first);
+      expect(mesh.children.filter((child) => child === first)).toHaveLength(1);
+    });
+
+    it('stays completely static across frames while the camera and asteroid hold still', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+
+      const asteroidGroup = new THREE.Group();
+      asteroidGroup.add(mesh);
+      const camera = new THREE.PerspectiveCamera();
+      camera.position.set(0, 0, 8);
+      (context as any).renderingState = { asteroidGroup, camera };
+
+      const sample = () => {
+        (context as any).counterRotateAsteroidOverlays();
+        const group = bracketOf(mesh)!;
+        const firstArm = group.children[0] as THREE.Mesh;
+        return JSON.stringify({
+          matrix: group.matrix.toArray().map((value) => Number(value.toFixed(10))),
+          armPositions: group.children.map((arm) => arm.position.toArray()),
+          armScales: group.children.map((arm) => arm.scale.toArray()),
+          armRotations: group.children.map((arm) => arm.rotation.toArray().slice(0, 3)),
+          opacity: (firstArm.material as THREE.MeshBasicMaterial).opacity,
+        });
+      };
+
+      const baseline = sample();
+      for (let frame = 0; frame < 30; frame += 1) {
+        // Advance the shared overlay animation phases the scan/hold rings ride on: the
+        // static lock-on bracket must not pick up any of that motion.
+        (context as any).asteroidHoverScanPhase += 0.21;
+        (context as any).asteroidTargetHoldPhase += 0.17;
+        (context as any).asteroidOrbitElapsedSeconds += 1 / 60;
+        expect(sample()).toBe(baseline);
+      }
+    });
+
+    it('tracks rig and asteroid motion applied during the current frame', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+
+      const worldRelativeGroup = new THREE.Group();
+      const asteroidGroup = new THREE.Group();
+      worldRelativeGroup.add(asteroidGroup);
+      asteroidGroup.add(mesh);
+
+      const pilotRig = new THREE.Group();
+      const pilotLookRig = new THREE.Group();
+      pilotRig.add(pilotLookRig);
+      const camera = new THREE.PerspectiveCamera();
+      pilotLookRig.add(camera);
+
+      (context as any).renderingState = { asteroidGroup, camera };
+      (context as any).counterRotateAsteroidOverlays();
+
+      // Simulate the ship turning and the asteroid orbiting/spinning during this frame,
+      // which is the order the real frame loop uses (transforms are mutated before the
+      // overlay sync runs and long before the renderer traverses the graph).
+      pilotRig.rotation.set(0.35, -0.8, 0.15);
+      pilotLookRig.rotation.set(-0.2, 0.45, 0);
+      worldRelativeGroup.rotation.set(0.1, 0.6, -0.25);
+      mesh.rotation.set(0.9, 0.4, -0.7);
+
+      (context as any).counterRotateAsteroidOverlays();
+
+      const group = bracketOf(mesh)!;
+      // Read the result through a fully refreshed graph so the assertion reflects what the
+      // renderer will actually draw this frame, proving there is no one-frame tracking lag.
+      worldRelativeGroup.updateMatrixWorld(true);
+      pilotRig.updateMatrixWorld(true);
+      const groupWorld = new THREE.Quaternion();
+      group.getWorldQuaternion(groupWorld);
+      const cameraWorld = new THREE.Quaternion();
+      camera.getWorldQuaternion(cameraWorld);
+
+      expect(groupWorld.angleTo(cameraWorld)).toBeCloseTo(0);
+    });
+
+    it('renders bracket arms as a depth-independent HUD overlay', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+
+      for (const arm of bracketOf(mesh)!.children) {
+        const material = (arm as THREE.Mesh).material as THREE.MeshBasicMaterial;
+        expect(material).toBeInstanceOf(THREE.MeshBasicMaterial);
+        expect(material.depthWrite).toBe(false);
+        expect(material.transparent).toBe(true);
+      }
+    });
+
+    it('disposes bracket geometry and materials when the asteroid is untargeted', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+
+      const arms = bracketOf(mesh)!.children.map((arm) => arm as THREE.Mesh);
+      const geometrySpies = arms.map((arm) => vi.spyOn(arm.geometry, 'dispose'));
+      const materialSpies = arms.map((arm) => vi.spyOn(arm.material as THREE.MeshBasicMaterial, 'dispose'));
+
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: false }));
+
+      expect(geometrySpies).toHaveLength(8);
+      geometrySpies.forEach((spy) => expect(spy).toHaveBeenCalled());
+      materialSpies.forEach((spy) => expect(spy).toHaveBeenCalled());
+    });
+
+    it('reports live bracket state for targeted asteroids and absence for untargeted ones', () => {
+      const context = createContext();
+      const mesh = createdMeshFor(context, 'sample-alpha');
+      const asteroidGroup = new THREE.Group();
+      asteroidGroup.add(mesh);
+      const camera = new THREE.PerspectiveCamera();
+      (context as any).renderingState = { asteroidGroup, camera };
+
+      expect(context.snapshotAsteroidTargetBracket('sample-alpha')).toMatchObject({
+        present: false,
+        segmentCount: 0,
+      });
+      expect(context.snapshotAsteroidTargetBracket('missing-sample')).toBeNull();
+
+      (context as any).syncAsteroidTargetedGroup(mesh, visualFor('sample-alpha', { isTargeted: true }));
+      (context as any).counterRotateAsteroidOverlays();
+
+      const snapshot = context.snapshotAsteroidTargetBracket('sample-alpha');
+      expect(snapshot).toMatchObject({ sampleId: 'sample-alpha', present: true, segmentCount: 8 });
+      expect(snapshot?.armPositions).toHaveLength(8);
+      expect(snapshot?.armOpacity).toBeGreaterThan(0);
+    });
+
+    it('returns no bracket snapshot before rendering is initialized', () => {
+      expect(createContext().snapshotAsteroidTargetBracket('sample-alpha')).toBeNull();
     });
   });
 
