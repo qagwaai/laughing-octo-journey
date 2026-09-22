@@ -481,6 +481,46 @@ describe('ShipSceneContext', () => {
     ]);
   });
 
+  it('keeps debris orientation continuous when item order changes', () => {
+    const context = new ShipSceneContext('player::char::ship', {
+      playerName: 'player',
+      characterId: 'char',
+      shipId: 'ship',
+      world: { shipPosition: { x: 0, y: 0, z: 0 } },
+    });
+    const debrisGroup = new THREE.Group();
+    (context as any).renderingState = { debrisGroup };
+    const alpha: FloatingDebrisItem = {
+      id: 'debris-alpha',
+      itemType: 'field-shard',
+      displayName: 'Field Shard',
+      positionKm: { x: 1, y: 0, z: 0 },
+    };
+    const beta: FloatingDebrisItem = {
+      id: 'debris-beta',
+      itemType: 'cargo-canister',
+      displayName: 'Cargo Canister',
+      positionKm: { x: 2, y: 0, z: 0 },
+    };
+
+    context.setDebrisItems([alpha, beta]);
+    (context as any).syncDebrisVisuals();
+    const betaGroup = debrisGroup.children.find((child) => child.name === 'debris-beta') as THREE.Group;
+
+    (context as any).advanceDebrisAnimation();
+    const rotationAfterSpin = betaGroup.rotation.clone();
+
+    context.setDebrisItems([beta, alpha]);
+    (context as any).syncDebrisVisuals();
+
+    expect(betaGroup.rotation.x).toBeCloseTo(rotationAfterSpin.x);
+    expect(betaGroup.rotation.y).toBeCloseTo(rotationAfterSpin.y);
+    expect(betaGroup.rotation.z).toBeCloseTo(rotationAfterSpin.z);
+    expect(betaGroup.scale.x).toBe(1);
+    expect(betaGroup.scale.y).toBe(1);
+    expect(betaGroup.scale.z).toBe(1);
+  });
+
   it('keeps asteroid layout signatures ship-local and deterministic', () => {
     const first = new ShipSceneContext('player::char::ship-a', {
       playerName: 'player',

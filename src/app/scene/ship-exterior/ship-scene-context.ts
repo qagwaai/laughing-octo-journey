@@ -234,8 +234,16 @@ const ASTEROID_IDLE_SPIN_MIN_RAD_PER_SEC = 0.05;
 const ASTEROID_IDLE_SPIN_MAX_RAD_PER_SEC = 0.5;
 const ASTEROID_SPIN_FRAME_SECONDS = 1 / 60;
 const ASTEROID_REVEALED_SPIN_SCALE = 20;
+const DEBRIS_IDLE_SPIN_MIN_RAD_PER_SEC = 0.08;
+const DEBRIS_IDLE_SPIN_MAX_RAD_PER_SEC = 0.58;
+const DEBRIS_SPIN_FRAME_SECONDS = 1 / 60;
 
 interface AsteroidSpinProfile {
+  spin: [number, number, number];
+  orientation: [number, number, number];
+}
+
+interface DebrisSpinProfile {
   spin: [number, number, number];
   orientation: [number, number, number];
 }
@@ -253,6 +261,21 @@ function createAsteroidSpinProfile(id: string): AsteroidSpinProfile {
   const tau = Math.PI * 2;
   const orientation: [number, number, number] = [random() * tau, random() * tau, random() * tau];
   return { spin, orientation };
+}
+
+function createDebrisSpinProfile(id: string): DebrisSpinProfile {
+  const random = createSeededRng(hashStringToSeed(`${id}::debris-spin`));
+  const axis = (): number => {
+    const magnitude =
+      DEBRIS_IDLE_SPIN_MIN_RAD_PER_SEC +
+      random() * (DEBRIS_IDLE_SPIN_MAX_RAD_PER_SEC - DEBRIS_IDLE_SPIN_MIN_RAD_PER_SEC);
+    return random() < 0.5 ? -magnitude : magnitude;
+  };
+  const tau = Math.PI * 2;
+  return {
+    spin: [axis(), axis(), axis()],
+    orientation: [random() * tau, random() * tau, random() * tau],
+  };
 }
 
 const ASTEROID_ORBIT_MIN_AMPLITUDE = 0.3;
@@ -507,7 +530,6 @@ export class ShipSceneContext {
   private readonly hoverPointer = new THREE.Vector2();
   private asteroidHoverScanPhase = 0;
   private asteroidTargetHoldPhase = 0;
-  private debrisPulsePhase = 0;
   private asteroidOrbitElapsedSeconds = 0;
   private stationPulsePhase = 0;
   private gatePulsePhase = 0;
@@ -1009,9 +1031,6 @@ export class ShipSceneContext {
     if (this.state.asteroid?.targetHoldCandidateId) {
       this.asteroidTargetHoldPhase = (this.asteroidTargetHoldPhase + 0.16) % SCAN_RING_PHASE_WRAP_PERIOD;
     }
-    if ((this.state.debris?.length ?? 0) > 0) {
-      this.debrisPulsePhase = (this.debrisPulsePhase + 0.1) % (Math.PI * 2);
-    }
     if ((this.routeFeeds?.stations.length ?? 0) > 0) {
       this.stationPulsePhase = (this.stationPulsePhase + 0.08) % (Math.PI * 2);
     }
@@ -1019,6 +1038,7 @@ export class ShipSceneContext {
       this.gatePulsePhase = (this.gatePulsePhase + 0.06) % (Math.PI * 2);
     }
     this.syncDebrisVisuals();
+    this.advanceDebrisAnimation();
     this.syncScannableDebrisHoverScanShell();
     this.syncRouteFeedVisuals();
     this.syncAsteroidVisuals();
@@ -1399,14 +1419,14 @@ export class ShipSceneContext {
       }
     });
 
-    debris.forEach((item, index) => {
+    debris.forEach((item) => {
       const existing = existingById.get(item.id);
       if (existing) {
-        this.applyDebrisVisual(existing, item, index);
+        this.applyDebrisVisual(existing, item);
         return;
       }
 
-      renderingState.debrisGroup.add(this.createDebrisVisual(item, index));
+      renderingState.debrisGroup.add(this.createDebrisVisual(item));
     });
   }
 
@@ -1597,14 +1617,17 @@ export class ShipSceneContext {
     group.scale.setScalar(1 + Math.max(0, Math.sin(this.gatePulsePhase + index * 0.35)) * 0.03);
   }
 
-  private createDebrisVisual(item: FloatingDebrisItem, index: number): THREE.Group {
+  private createDebrisVisual(item: FloatingDebrisItem): THREE.Group {
     const group = new THREE.Group();
     group.name = item.id;
-    this.applyDebrisVisual(group, item, index);
+    const spinProfile = createDebrisSpinProfile(item.id);
+    (group.userData as { debrisSpinProfile?: DebrisSpinProfile }).debrisSpinProfile = spinProfile;
+    group.rotation.set(spinProfile.orientation[0], spinProfile.orientation[1], spinProfile.orientation[2]);
+    this.applyDebrisVisual(group, item);
     return group;
   }
 
-  private applyDebrisVisual(group: THREE.Group, item: FloatingDebrisItem, index: number): void {
+  private applyDebrisVisual(group: THREE.Group, item: FloatingDebrisItem): void {
     group.userData['scannableDebrisId'] = item.id;
     const profile = resolveDescriptorRenderProfile(item.externalObjectDescriptor ?? undefined);
     const family = item.externalObjectDescriptor?.objectFamily ?? 'field-shard';
@@ -1636,11 +1659,11 @@ export class ShipSceneContext {
       (item.positionKm.y - ship.y) * DEBRIS_KM_TO_SCENE_UNITS,
       (item.positionKm.z - ship.z) * DEBRIS_KM_TO_SCENE_UNITS,
     );
-    const pulse = this.debrisPulsePhase + index * 0.65;
-    group.rotation.x = Math.sin(pulse) * 0.25;
-    group.rotation.y = pulse * 0.45;
-    group.rotation.z = Math.cos(pulse) * 0.12;
-    group.scale.setScalar(1 + Math.max(0, Math.sin(pulse * 1.2)) * 0.06);
+    const userData = group.userData as { debrisSpinProfile?: DebrisSpinProfile };
+    if (!userData.debrisSpinProfile) {
+      userData.debrisSpinProfile = createDebrisSpinProfile(item.id);
+    }
+    group.scale.setScalar(1);
     group.traverse((node) => {
       node.userData['scannableDebrisId'] = item.id;
     });
@@ -1779,6 +1802,28 @@ export class ShipSceneContext {
 
       const offset = resolveAsteroidOrbitOffset(userData.orbitProfile, this.asteroidOrbitElapsedSeconds);
       child.position.set(base[0] + offset[0], base[1] + offset[1], base[2] + offset[2]);
+    }
+  }
+
+  private advanceDebrisAnimation(): void {
+    if (!this.renderingState || (this.state.debris?.length ?? 0) === 0) {
+      return;
+    }
+
+    for (const child of this.renderingState.debrisGroup.children) {
+      if (!(child instanceof THREE.Group)) {
+        continue;
+      }
+
+      const userData = child.userData as { debrisSpinProfile?: DebrisSpinProfile };
+      if (!userData.debrisSpinProfile) {
+        userData.debrisSpinProfile = createDebrisSpinProfile(child.name);
+      }
+
+      const [spinX, spinY, spinZ] = userData.debrisSpinProfile.spin;
+      child.rotation.x += spinX * DEBRIS_SPIN_FRAME_SECONDS;
+      child.rotation.y += spinY * DEBRIS_SPIN_FRAME_SECONDS;
+      child.rotation.z += spinZ * DEBRIS_SPIN_FRAME_SECONDS;
     }
   }
 
