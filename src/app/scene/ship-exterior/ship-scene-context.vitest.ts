@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
+import type { FloatingDebrisItem } from '../../model/floating-debris-item';
 import { FramePressureSampler } from './frame-pressure-sampler';
 import { type AsteroidOrbitProfile, buildAsteroidTargetBracketSegments, resolveAsteroidOrbitOffset, ShipSceneContext } from './ship-scene-context';
 

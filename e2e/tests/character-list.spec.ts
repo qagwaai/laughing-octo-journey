@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
+  characterBustReadResponse,
   characterListResponse,
   emptyCharacterListResponse,
+  SAMPLE_BUST_DESCRIPTOR,
   setupCharacterListTest,
 } from '../fixtures/character-list-scenario';
 import { TEST_PLAYER } from '../helpers/auth-helper';
@@ -347,5 +349,85 @@ test.describe('Character List — navigation', () => {
 
     await expect(page).toHaveURL(/left:game-main/);
     await expect(page).toHaveURL(/right:mission-board/);
+  });
+});
+
+// ── Tests: bust thumbnails ──────────────────────────────────────────────────────
+
+test.describe('Character List — bust thumbnails', () => {
+  test('renders character rows immediately, before any bust lookups resolve', async ({ page }) => {
+    // Hold every bust-read response so the second pass never completes. Registered
+    // up front (via setupCharacterListTest) so it is in place before the automatic
+    // post-load bust fetch fires — registering it afterwards is racy.
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: twoCharacters,
+      onBustReadRequest: () => null,
+    });
+
+    await characterListPage.expectCharacterCount(2);
+    await expect(characterListPage.characterName(0)).toHaveText('Zara Voss');
+    await expect(characterListPage.characterName(1)).toHaveText('Commander Rex');
+    await expect(characterListPage.bustThumbnailSpinner(0)).toBeVisible();
+    await expect(characterListPage.bustThumbnailSpinner(1)).toBeVisible();
+  });
+
+  test('shows a loading spinner then the portrait image once the bust descriptor resolves', async ({ page }) => {
+    // Capture each request's correlation fields (via the up-front handler) so a later
+    // manual push() can be matched against it by the adapter's correlation check.
+    const pendingRequestsByCharacterId: Record<string, { correlationId?: unknown; requestIdentity?: unknown }> = {};
+    const { mock, characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: twoCharacters,
+      onBustReadRequest: (data) => {
+        const request = data as { characterId: string; correlationId?: unknown; requestIdentity?: unknown };
+        pendingRequestsByCharacterId[request.characterId] = request;
+        return null;
+      },
+    });
+
+    await expect(characterListPage.bustThumbnailSpinner(0)).toBeVisible();
+
+    await expect.poll(() => pendingRequestsByCharacterId['char-1']).toBeTruthy();
+    const char1Request = pendingRequestsByCharacterId['char-1'];
+    mock.push('character-bust-read-response', {
+      ...characterBustReadResponse('char-1'),
+      correlationId: char1Request.correlationId,
+      requestIdentity: char1Request.requestIdentity,
+    });
+
+    await expect(characterListPage.bustThumbnailImage(0)).toBeVisible();
+    await expect(characterListPage.bustThumbnailImage(0)).toHaveAttribute(
+      'src',
+      `/images/portraits/${SAMPLE_BUST_DESCRIPTOR.faceShape}__${SAMPLE_BUST_DESCRIPTOR.skinTone}__${SAMPLE_BUST_DESCRIPTOR.hairStyle}__${SAMPLE_BUST_DESCRIPTOR.hairColor}__${SAMPLE_BUST_DESCRIPTOR.eyeStyle}__${SAMPLE_BUST_DESCRIPTOR.eyeColor}__${SAMPLE_BUST_DESCRIPTOR.expressionPreset}__${SAMPLE_BUST_DESCRIPTOR.apparelAccent}__${SAMPLE_BUST_DESCRIPTOR.facialHair}__${SAMPLE_BUST_DESCRIPTOR.scar}__${SAMPLE_BUST_DESCRIPTOR.tattoo}.jpeg`,
+    );
+  });
+
+  test('falls back to a silhouette icon when the bust lookup fails', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: twoCharacters,
+      onBustReadRequest: (data) => ({
+        event: 'character-bust-read-response',
+        data: characterBustReadResponse((data as { characterId: string }).characterId, null),
+      }),
+    });
+
+    await expect(characterListPage.bustThumbnailSilhouette(0)).toBeVisible();
+    await expect(characterListPage.bustThumbnailImage(0)).toHaveCount(0);
+  });
+
+  test('resolves each row bust independently by character id', async ({ page }) => {
+    const { characterListPage } = await setupCharacterListTest(page, {
+      autoLoadResponse: twoCharacters,
+      onBustReadRequest: (data) => {
+        const characterId = (data as { characterId: string }).characterId;
+        // char-1 resolves successfully; char-2 has no saved bust yet.
+        return {
+          event: 'character-bust-read-response',
+          data: characterBustReadResponse(characterId, characterId === 'char-1' ? SAMPLE_BUST_DESCRIPTOR : null),
+        };
+      },
+    });
+
+    await expect(characterListPage.bustThumbnailImage(0)).toBeVisible();
+    await expect(characterListPage.bustThumbnailSilhouette(1)).toBeVisible();
   });
 });

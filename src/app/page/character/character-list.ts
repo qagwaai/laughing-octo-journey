@@ -1,28 +1,36 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { firstValueFrom, timeout } from 'rxjs';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import type { CharacterBustReadResponse } from '../../model/bust-descriptor';
 import { CharacterDeleteRequest, CharacterDeleteResponse } from '../../model/character-delete';
 import { CharacterListRequest, CharacterListResponse, PlayerCharacterSummary } from '../../model/character-list';
 import { GameJoinRequest } from '../../model/game-join';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
+import { appLogger } from '../../services/logger';
 import { MissionNavigationService } from '../../services/mission-navigation';
 import { MissionService } from '../../services/mission.service';
 import { SessionService } from '../../services/session.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import { resolveNavigationState } from '../navigation-state';
+import CharacterBustThumbnail, {
+  type CharacterBustThumbnailState,
+} from './components/character-bust-thumbnail/character-bust-thumbnail';
 
 const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
+const CHARACTER_LIST_BUST_READ_TIMEOUT_MS = 5000;
 
 @Component({
   selector: 'app-character-list-page',
   templateUrl: './character-list.html',
   styleUrls: ['./character-list.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GuardedLeftMenu],
+  imports: [GuardedLeftMenu, CharacterBustThumbnail],
 })
 /**
  * Character hub page for listing, deleting, and launching into gameplay flows.
@@ -30,6 +38,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 export default class CharacterListPage implements OnDestroy {
   protected readonly t = locale;
   private characterService = inject(CharacterService);
+  private bustAdapter = inject(BustDescriptorAdapterService);
   private gameSessionService = inject(GameSessionService);
   private socketLifecycleService = inject(SocketLifecycleService);
   private sessionService = inject(SessionService);
@@ -45,6 +54,7 @@ export default class CharacterListPage implements OnDestroy {
   protected errorMessage = signal<string | null>(null);
   protected pendingDeleteCharacter = signal<PlayerCharacterSummary | null>(null);
   protected isDeleting = signal(false);
+  protected bustThumbnails = signal<Record<string, CharacterBustThumbnailState>>({});
 
   private buildExistingCharacterState(): { id: string; characterName: string }[] {
     return this.characters().map((character) => ({
@@ -87,7 +97,11 @@ export default class CharacterListPage implements OnDestroy {
     this.characterService.listCharacters(request, (response: CharacterListResponse) => {
       this.isLoading.set(false);
       if (response.success) {
-        this.characters.set(this.normalizeCharacters(response.characters));
+        const normalizedCharacters = this.normalizeCharacters(response.characters);
+        this.characters.set(normalizedCharacters);
+        // Bust thumbnails are fetched as a second pass so the character list itself
+        // renders immediately, without waiting on per-character portrait lookups.
+        this.loadCharacterBusts(normalizedCharacters);
         this.unsubscribeInvalidSession?.();
         this.unsubscribeInvalidSession = this.gameSessionService.subscribeInvalidSession(() => {
           this.sessionService.clearSession();
@@ -95,9 +109,71 @@ export default class CharacterListPage implements OnDestroy {
         });
       } else {
         this.characters.set([]);
+        this.bustThumbnails.set({});
         this.errorMessage.set(response.message);
       }
     });
+  }
+
+  /**
+   * Fetches each character's bust descriptor via BustDescriptorAdapterService after
+   * the character list has already rendered, so bust thumbnails never block the list.
+   */
+  private loadCharacterBusts(characters: PlayerCharacterSummary[]): void {
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+
+    const initialThumbnails: Record<string, CharacterBustThumbnailState> = {};
+    for (const character of characters) {
+      initialThumbnails[character.id] = { status: 'loading' };
+    }
+    this.bustThumbnails.set(initialThumbnails);
+
+    if (!playerName || !sessionKey) {
+      this.markAllBustsFailed(characters);
+      return;
+    }
+
+    for (const character of characters) {
+      const characterId = character.id?.trim();
+      if (!characterId) {
+        continue;
+      }
+
+      void firstValueFrom(
+        this.bustAdapter
+          .readCharacterBust({ playerName, sessionKey, characterId })
+          .pipe(timeout(CHARACTER_LIST_BUST_READ_TIMEOUT_MS)),
+      )
+        .then((response: CharacterBustReadResponse) => {
+          if (!response.success || !response.descriptor) {
+            this.setBustThumbnailState(characterId, { status: 'error' });
+            return;
+          }
+          this.setBustThumbnailState(characterId, { status: 'loaded', descriptor: response.descriptor });
+        })
+        .catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : String(error);
+          appLogger.warn(`[character-list] Failed to load bust for character ${characterId}: ${message}`);
+          this.setBustThumbnailState(characterId, { status: 'error' });
+        });
+    }
+  }
+
+  private setBustThumbnailState(characterId: string, state: CharacterBustThumbnailState): void {
+    this.bustThumbnails.update((current) => ({ ...current, [characterId]: state }));
+  }
+
+  private markAllBustsFailed(characters: PlayerCharacterSummary[]): void {
+    const failedThumbnails: Record<string, CharacterBustThumbnailState> = {};
+    for (const character of characters) {
+      failedThumbnails[character.id] = { status: 'error' };
+    }
+    this.bustThumbnails.set(failedThumbnails);
+  }
+
+  protected getBustThumbnailState(characterId: string): CharacterBustThumbnailState {
+    return this.bustThumbnails()[characterId] ?? { status: 'loading' };
   }
 
   /**

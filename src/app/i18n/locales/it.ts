@@ -69,6 +69,7 @@ export const it: DeepPartial<EnLocale> = {
       joinInProgressLabel: 'Continua partita',
       editLabel: 'Modifica',
       deleteLabel: 'Elimina',
+      bustThumbnailAlt: 'Ritratto del personaggio',
       dialog: {
         title: 'Elimina personaggio',
         confirmQuestion: 'Sei sicuro di voler eliminare',

@@ -1,0 +1,39 @@
+.bust-thumbnail {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.bust-thumbnail__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bust-thumbnail__silhouette {
+  width: 60%;
+  height: 60%;
+  fill: rgba(255, 255, 255, 0.35);
+}
+
+.bust-thumbnail__spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  animation: bust-thumbnail-spin 0.8s linear infinite;
+}
+
+@keyframes bust-thumbnail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,13 @@
+<div class="bust-thumbnail" [class.bust-thumbnail--loading]="isLoading()">
+  @if (isLoading()) {
+  <span class="bust-thumbnail__spinner" aria-hidden="true"></span>
+  } @else if (showSilhouette()) {
+  <svg class="bust-thumbnail__silhouette" viewBox="0 0 24 24" role="img" [attr.aria-label]="alt()">
+    <path
+      d="M12 12c2.76 0 5-2.46 5-5.5S14.76 1 12 1 7 3.46 7 6.5 9.24 12 12 12zm0 2c-3.87 0-8 1.94-8 4.5V21h16v-2.5c0-2.56-4.13-4.5-8-4.5z"
+    />
+  </svg>
+  } @else {
+  <img class="bust-thumbnail__image" [src]="portraitSrc()" [alt]="alt()" (error)="handleImageError()" />
+  }
+</div>

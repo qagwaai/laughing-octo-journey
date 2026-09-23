@@ -36,6 +36,10 @@
             <button class="delete-link" type="button" (click)="requestDeleteCharacter(character)">
               {{ t.character.list.deleteLabel }}
             </button>
+            <app-character-bust-thumbnail
+              [state]="getBustThumbnailState(character.id)"
+              [alt]="t.character.list.bustThumbnailAlt"
+            ></app-character-bust-thumbnail>
           </div>
         </div>
         @if (character.level !== undefined) {

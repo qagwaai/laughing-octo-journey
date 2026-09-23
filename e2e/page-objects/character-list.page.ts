@@ -57,6 +57,22 @@ export class CharacterListPage {
     return this.characterItems.nth(index).locator('.delete-link');
   }
 
+  bustThumbnail(index: number) {
+    return this.characterItems.nth(index).locator('app-character-bust-thumbnail .bust-thumbnail');
+  }
+
+  bustThumbnailSpinner(index: number) {
+    return this.bustThumbnail(index).locator('.bust-thumbnail__spinner');
+  }
+
+  bustThumbnailImage(index: number) {
+    return this.bustThumbnail(index).locator('.bust-thumbnail__image');
+  }
+
+  bustThumbnailSilhouette(index: number) {
+    return this.bustThumbnail(index).locator('.bust-thumbnail__silhouette');
+  }
+
   characterMeta(index: number) {
     return this.characterItems.nth(index).locator('.character-meta');
   }

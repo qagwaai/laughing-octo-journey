@@ -147,6 +147,7 @@ export const en = {
       joinInProgressLabel: 'Join Game in Progress',
       editLabel: 'Edit',
       deleteLabel: 'Delete',
+      bustThumbnailAlt: 'Character portrait',
       dialog: {
         title: 'Delete Character',
         confirmQuestion: 'Are you sure you want to delete',
