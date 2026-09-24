@@ -281,10 +281,15 @@ export class SocketService {
   /**
    * Emit a ship upsert request and optionally handle a one-time response.
    */
-  upsertShip(request: ShipUpsertRequest, onResponse?: (response: ShipUpsertResponse) => void): void {
+  upsertShip(
+    request: ShipUpsertRequest,
+    onResponse?: (response: ShipUpsertResponse) => void,
+    onTimeout?: () => void,
+  ): void {
     const socket = this.socket;
     if (!socket) {
       appLogger.warn('Socket not initialized. Use connect() first');
+      onTimeout?.();
       return;
     }
 
@@ -336,6 +341,7 @@ export class SocketService {
         appLogger.error(
           `No ship-upsert response received. correlationId=${correlationId} operation=${requestIdentity.operation} entityType=${requestIdentity.entityType} containerId=${requestIdentity.containerId} requestShipId=${shipUpsertWithCorrelation.ship?.id ?? 'unknown'} playerName=${shipUpsertWithCorrelation.playerName ?? 'unknown'} source=${shipUpsertWithCorrelation.correlationSource ?? 'unknown'}`,
         );
+        onTimeout?.();
       },
     });
   }

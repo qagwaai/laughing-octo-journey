@@ -48,6 +48,15 @@
   cursor: pointer;
 }
 
+.logout-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.logout-error {
+  color: #ffb4b4;
+}
+
 .character-list-link {
   margin-top: 0.5rem;
   padding: 0.5rem 0.8rem;

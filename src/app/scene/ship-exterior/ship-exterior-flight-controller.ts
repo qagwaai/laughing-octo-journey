@@ -52,6 +52,7 @@ export class ShipExteriorFlightController {
   private readonly flightPressedKeys = new Set<string>();
   private flightDisplacementScene: Triple = { x: 0, y: 0, z: 0 };
   private flightCurrentLocationKm: Triple = { x: 0, y: 0, z: 0 };
+  private hasUncommittedMovement = false;
 
   constructor(private readonly args: ShipExteriorFlightControllerArgs) {
     this.flightMouseSensitivity.set(this.args.config.defaultMouseSensitivity);
@@ -75,16 +76,22 @@ export class ShipExteriorFlightController {
   }
 
   clearMovementInput(): void {
+    const shouldCommit = this.hasUncommittedMovement;
     this.flightPressedKeys.clear();
     this.flightSpeedKmPerSec.set(0);
+    if (shouldCommit) {
+      this.commitFlightTrackingCheckpoint();
+    }
   }
 
   initializeCurrentLocation(location: Triple): void {
     this.flightCurrentLocationKm = location;
+    this.hasUncommittedMovement = false;
   }
 
   initializeCurrentLocationFromReference(currentLocation: Triple, referenceLocation: Triple): void {
     this.flightCurrentLocationKm = currentLocation;
+    this.hasUncommittedMovement = false;
     const kmScale = this.args.config.sceneUnitToKm;
     if (!Number.isFinite(kmScale) || kmScale <= 0) {
       this.flightDisplacementScene = { x: 0, y: 0, z: 0 };
@@ -206,7 +213,13 @@ export class ShipExteriorFlightController {
       return false;
     }
 
-    return this.flightPressedKeys.delete(code);
+    const released = this.flightPressedKeys.delete(code);
+    const movement = resolveMovementInput(this.flightPressedKeys);
+    if (released && movement.forward === 0 && movement.right === 0 && movement.up === 0 && this.hasUncommittedMovement) {
+      this.commitFlightTrackingCheckpoint();
+      this.flightTrackingAccumulatorMs = 0;
+    }
+    return released;
   }
 
   applyMouseMove(movementX: number, movementY: number): void {
@@ -288,6 +301,7 @@ export class ShipExteriorFlightController {
       y: this.flightCurrentLocationKm.y + step.worldDelta.y * kmScale,
       z: this.flightCurrentLocationKm.z + step.worldDelta.z * kmScale,
     };
+    this.hasUncommittedMovement = true;
 
     this.flightTrackingAccumulatorMs += this.args.config.tickMs;
     if (this.flightTrackingAccumulatorMs >= this.args.config.trackingCheckpointMs) {
@@ -307,6 +321,7 @@ export class ShipExteriorFlightController {
 
     this.args.setActiveShipLocationKm(nextLocation);
     this.args.commitTrackedLocation(nextLocation);
+    this.hasUncommittedMovement = false;
   }
 
   private syncFlightWorldTransform(): void {

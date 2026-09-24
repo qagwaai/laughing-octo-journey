@@ -46,12 +46,14 @@ import type { ShipItem } from '../../model/ship-item';
 import { ShipSummary } from '../../model/ship-list';
 import { ShipListByOwnerRequest } from '../../model/ship-list-by-owner';
 import { FloatingDebrisStateService } from '../../services/floating-debris-state.service';
+import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
 import { SessionService } from '../../services/session.service';
 import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
 import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
+import { ShipFlightPositionPersistenceService } from '../../services/ship-flight-position-persistence.service';
 import { ShipExteriorViewStateService } from '../../services/ship-exterior-view-state.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
@@ -168,6 +170,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly asteroidPersistenceService = inject(AsteroidPersistenceService);
   private readonly inventoryRewardService = inject(InventoryRewardService);
   private readonly shipExteriorSocketService = inject(ShipExteriorSocketService);
+  private readonly shipFlightPositionPersistence = inject(ShipFlightPositionPersistenceService);
   private readonly missionProgressFacade = inject(MissionProgressFacade);
   private readonly shipExteriorViewStateService = inject(ShipExteriorViewStateService);
   private readonly floatingDebrisStateService = inject(FloatingDebrisStateService);
@@ -610,6 +613,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   ngOnDestroy(): void {
+    void this.shipFlightPositionPersistence.flushPending().catch((error: unknown) => {
+      appLogger.error('Failed to flush ship position while leaving the exterior scene.', error);
+    });
     this.hotkeyFlashController.dispose();
     this.releasePilotInput();
     if (this.animationFrameId !== null) {
@@ -1162,6 +1168,14 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const contextKey = buildShipSceneContextKey({ playerName, characterId, shipId });
     const context = this.registry.getOrCreateContext(contextKey, initialState);
     context.setState(initialState);
+    context.setFlightLocationCommitHandler((positionKm) => {
+      this.shipFlightPositionPersistence.queuePosition({
+        playerName,
+        characterId,
+        shipId,
+        positionKm,
+      });
+    });
     this.ensureMissionGateStateForContext(context);
     this.ensureRouteFeedsForContext(contextKey, ship, playerName, characterId);
     this.syncContextsSignal();

@@ -283,6 +283,8 @@ export const en = {
       sectionTitle: 'Sign Out',
       sectionDescription: 'Use this sample page action to clear the session and return to login.',
       confirmLabel: 'Confirm Logout',
+      savingLocationLabel: 'Saving ship location...',
+      locationSaveError: 'Your ship location could not be saved. You are still logged in; please try again.',
       characterListLink: 'Leave this game session and return to character list',
     },
 

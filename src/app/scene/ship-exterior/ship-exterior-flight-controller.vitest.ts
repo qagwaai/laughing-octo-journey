@@ -5,7 +5,7 @@ describe('ShipExteriorFlightController input lifecycle', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  function createController(): ShipExteriorFlightController {
+  function createController(commitTrackedLocation = vi.fn()): ShipExteriorFlightController {
     return new ShipExteriorFlightController({
       config: {
         tickMs: 16,
@@ -23,7 +23,7 @@ describe('ShipExteriorFlightController input lifecycle', () => {
       getCamera: () => null,
       applyWorldRelativeTransform: vi.fn(),
       setActiveShipLocationKm: vi.fn(),
-      commitTrackedLocation: vi.fn(),
+      commitTrackedLocation,
     });
   }
 
@@ -35,14 +35,15 @@ describe('ShipExteriorFlightController input lifecycle', () => {
     controller.start();
     controller.captureFlightMovementKey('KeyW');
     controller.captureFlightMovementKey('ShiftLeft');
-    vi.advanceTimersByTime(32);
+    vi.advanceTimersByTime(64);
     expect(controller.flightSpeedKmPerSec()).toBeCloseTo(0.64);
-    const location = controller.getCurrentLocationKm();
 
     controller.clearMovementInput();
+    const committedLocation = controller.getCurrentLocationKm();
     expect(controller.flightSpeedKmPerSec()).toBe(0);
     vi.advanceTimersByTime(1000);
-    expect(controller.getCurrentLocationKm()).toEqual(location);
+    expect(controller.getCurrentLocationKm()).toEqual(committedLocation);
+    expect(committedLocation).not.toEqual({ x: 0, y: 0, z: 0 });
     expect(controller.getPersistableViewOrientation()).toEqual(orientation);
     expect(controller.flightModeEnabled()).toBe(true);
 
@@ -67,5 +68,44 @@ describe('ShipExteriorFlightController input lifecycle', () => {
     expect(controller.getCurrentLocationKm()).toEqual(location);
     controller.dispose();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('commits a short movement when the final movement key is released before a tracking checkpoint', () => {
+    const commitTrackedLocation = vi.fn();
+    const controller = createController(commitTrackedLocation);
+    controller.initializeCurrentLocation({ x: 100, y: 0, z: 0 });
+    controller.setFlightModeEnabled(true);
+    controller.start();
+
+    controller.captureFlightMovementKey('KeyW');
+    vi.advanceTimersByTime(32);
+    expect(commitTrackedLocation).not.toHaveBeenCalled();
+    const liveLocation = controller.getCurrentLocationKm();
+    expect(liveLocation.z).toBeLessThan(0);
+
+    controller.releaseFlightMovementKey('KeyW');
+
+    expect(commitTrackedLocation).toHaveBeenCalledTimes(1);
+    expect(commitTrackedLocation).toHaveBeenCalledWith({ x: 100, y: 0, z: -0 });
+    expect(controller.getCurrentLocationKm()).toEqual(liveLocation);
+    controller.dispose();
+  });
+
+  it('does not lose cumulative sub-grid movement across repeated stop commits', () => {
+    const commitTrackedLocation = vi.fn();
+    const controller = createController(commitTrackedLocation);
+    controller.initializeCurrentLocation({ x: 100, y: 0, z: 0 });
+    controller.setFlightModeEnabled(true);
+    controller.start();
+
+    for (let cycle = 0; cycle < 6; cycle += 1) {
+      controller.captureFlightMovementKey('KeyW');
+      vi.advanceTimersByTime(32);
+      controller.releaseFlightMovementKey('KeyW');
+    }
+
+    expect(controller.getCurrentLocationKm().z).toBeLessThan(-0.025);
+    expect(commitTrackedLocation).toHaveBeenLastCalledWith({ x: 100, y: 0, z: -0.05 });
+    controller.dispose();
   });
 });

@@ -539,6 +539,7 @@ export class ShipSceneContext {
   private appliedAsteroidDetailCapMultiplier: AsteroidDetailCapMultiplier = 1;
   private asteroidTierFrameCounter = 0;
   private lastAsteroidTiers = new Map<string, AsteroidRenderTier>();
+  private flightLocationCommitHandler: ((location: { x: number; y: number; z: number }) => void) | null = null;
   private static readonly ASTEROID_TIER_RECOMPUTE_INTERVAL_FRAMES = 6;
 
   constructor(
@@ -572,6 +573,12 @@ export class ShipSceneContext {
 
   getState(): ShipSceneContextState {
     return this.state;
+  }
+
+  setFlightLocationCommitHandler(
+    handler: ((location: { x: number; y: number; z: number }) => void) | null,
+  ): void {
+    this.flightLocationCommitHandler = handler;
   }
 
   setState(update: Partial<ShipSceneContextState>): void {
@@ -2287,6 +2294,7 @@ export class ShipSceneContext {
             shipPosition: { ...location },
           },
         });
+        this.flightLocationCommitHandler?.(location);
       },
     });
 

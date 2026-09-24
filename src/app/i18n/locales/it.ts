@@ -228,6 +228,8 @@ export const it: DeepPartial<EnLocale> = {
       sectionTitle: 'Esci',
       sectionDescription: 'Usa questa azione per cancellare la sessione e tornare al login.',
       confirmLabel: 'Conferma uscita',
+      savingLocationLabel: 'Salvataggio posizione nave...',
+      locationSaveError: 'Impossibile salvare la posizione della nave. Sei ancora connesso; riprova.',
       characterListLink: 'Lascia questa sessione di gioco e torna alla lista personaggi',
     },
     stellarInitiation: {

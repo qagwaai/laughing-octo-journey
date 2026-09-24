@@ -14,11 +14,16 @@
     <section class="ops-card">
       <h2>{{ t.game.logout.sectionTitle }}</h2>
       <p>{{ t.game.logout.sectionDescription }}</p>
-      <button type="button" class="logout-btn" (click)="confirmLogout()">{{ t.game.logout.confirmLabel }}</button>
+      @if (logoutError()) {
+      <p class="logout-error" role="alert">{{ logoutError() }}</p>
+      }
+      <button type="button" class="logout-btn" [disabled]="isLoggingOut()" (click)="confirmLogout()">
+        {{ isLoggingOut() ? t.game.logout.savingLocationLabel : t.game.logout.confirmLabel }}
+      </button>
     </section>
 
     <section class="ops-card">
-      <button type="button" class="character-list-link" (click)="navigateToCharacterList()">
+      <button type="button" class="character-list-link" [disabled]="isLoggingOut()" (click)="navigateToCharacterList()">
         {{ t.game.logout.characterListLink }}
       </button>
 

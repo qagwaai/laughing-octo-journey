@@ -65,7 +65,7 @@ async function moveForwardWithPilotControls(
           if (!coords) {
             return false;
           }
-          if (coords.z === coordsBeforeMove.z) {
+          if (Math.abs(coords.z - coordsBeforeMove.z) < 0.05) {
             return false;
           }
           movedCoords = coords;
@@ -133,7 +133,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const shipHangarPage = new ShipHangarPage(page);
 
     await mock.setup();
-    configureNavigateAwayPersistenceMock(mock, persistedPosition);
+    const persistence = configureNavigateAwayPersistenceMock(mock, persistedPosition);
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
@@ -147,6 +147,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     const movedCoords = await moveForwardWithPilotControls(page, coordsBeforeMove!);
     await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
+    await expect.poll(() => persistence.shipUpsertCount).toBeGreaterThan(0);
 
     await gameShell.openMissionBoard();
     await gameShell.openMarketHub();
@@ -176,7 +177,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const shipHangarPage = new ShipHangarPage(page);
 
     await mock.setup();
-    configureNavigateAwayPersistenceMock(mock, persistedPosition);
+    const persistence = configureNavigateAwayPersistenceMock(mock, persistedPosition);
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
@@ -190,6 +191,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     const firstMovedCoords = await moveForwardWithPilotControls(page, initialCoords!);
     await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
+    await expect.poll(() => persistence.shipUpsertCount).toBeGreaterThan(0);
 
     // First cycle: mission board -> market hub -> hangar -> exterior.
     await gameShell.openMissionBoard();
@@ -212,6 +214,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
 
     const secondMovedCoords = await moveForwardWithPilotControls(page, coordsAfterFirstReturn!);
     await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
+    await expect.poll(() => persistence.shipUpsertCount).toBeGreaterThan(1);
 
     // Second cycle: market hub -> mission board -> hangar -> exterior.
     await gameShell.openMarketHub();
@@ -231,5 +234,38 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     const coordsAfterSecondReturn = await readCoords(page);
     expect(coordsAfterSecondReturn).toEqual(secondMovedCoords);
     expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(secondMovedCoords));
+  });
+
+  test('restores the backend-persisted flight coordinates after logout and login', async ({ page }) => {
+    const persistedPosition = { x: 1_100_000, y: 0, z: 0 };
+    const mock = new SocketIOMock(page);
+    const gameShell = new GameShellPage(page);
+
+    await mock.setup();
+    const persistence = configureNavigateAwayPersistenceMock(mock, persistedPosition);
+
+    await loginViaUI(page, mock);
+    await gameShell.joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
+    await waitForFlightTelemetryReady(page);
+
+    const coordsBeforeMove = await readCoords(page);
+    expect(coordsBeforeMove).not.toBeNull();
+    const movedCoords = await moveForwardWithPilotControls(page, coordsBeforeMove!);
+    await expect.poll(() => persistence.shipUpsertCount).toBeGreaterThan(0);
+
+    await gameShell.openNav('Logout', /left:logout/);
+    await page.getByRole('button', { name: 'Confirm Logout' }).click();
+    await expect(page).toHaveURL(/left:login/, { timeout: 10_000 });
+
+    await loginViaUI(page, mock);
+    await gameShell.joinGame('Join Game in Progress');
+    await expect(page).toHaveURL(/right:opening-cold-boot-scan/, { timeout: 15_000 });
+    await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
+    await waitForFlightTelemetryReady(page);
+
+    expect(await readCoords(page)).toEqual(movedCoords);
+    expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(movedCoords));
   });
 });

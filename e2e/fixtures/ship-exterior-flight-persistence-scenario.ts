@@ -7,6 +7,10 @@ const FIRST_TARGET_MISSION_ID = 'first-target';
 export const SHIP_EXTERIOR_FLIGHT_PERSISTENCE_CHARACTER_ID = 'char-flight-position-persistence';
 export const SHIP_EXTERIOR_FLIGHT_PERSISTENCE_SHIP_ID = 'ship-flight-position-persistence';
 
+export interface ShipExteriorFlightPersistenceTracker {
+  readonly shipUpsertCount: number;
+}
+
 function shipSummary(positionKm: { x: number; y: number; z: number }) {
   return {
     id: SHIP_EXTERIOR_FLIGHT_PERSISTENCE_SHIP_ID,
@@ -28,7 +32,8 @@ function shipSummary(positionKm: { x: number; y: number; z: number }) {
 export function configureNavigateAwayPersistenceMock(
   mock: SocketIOMock,
   persistedPosition: { x: number; y: number; z: number },
-): void {
+): ShipExteriorFlightPersistenceTracker {
+  let shipUpsertCount = 0;
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: {
@@ -71,6 +76,7 @@ export function configureNavigateAwayPersistenceMock(
   }));
 
   mock.on('ship-upsert-request', (request) => {
+    shipUpsertCount += 1;
     const payload = request as {
       ship?: {
         spatial?: {
@@ -150,4 +156,10 @@ export function configureNavigateAwayPersistenceMock(
       ...missionUpsertCorrelationEcho(request),
     },
   }));
+
+  return {
+    get shipUpsertCount() {
+      return shipUpsertCount;
+    },
+  };
 }
