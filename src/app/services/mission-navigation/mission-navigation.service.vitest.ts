@@ -3,6 +3,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
+import { appLogger } from '../logger';
 import { SessionService } from '../session.service';
 import { ShipService } from '../ship.service';
 import {
@@ -213,5 +214,43 @@ describe('MissionNavigationService', () => {
 
     expect(shipService.listShipsByOwner).not.toHaveBeenCalled();
     expect(result.joinShip).toBeUndefined();
+  });
+
+  it('should continue without an active ship when the owner ship list never responds', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi.spyOn(appLogger, 'warn').mockImplementation(() => undefined);
+    const testCharacter = {
+      id: 'char-123',
+      characterName: 'Test Character',
+    };
+    const context: MissionNavigationContext = {
+      missionId: 'test-mission',
+      playerName: 'test-player',
+      joinCharacter: testCharacter,
+      sessionKey: 'session-key',
+    };
+
+    try {
+      const navigationPromise = service.prepareNavigation(context);
+
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        'MissionNavigationService.fetchActiveShip: timed out waiting for ship list response',
+      );
+
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await navigationPromise;
+
+      expect(shipService.listShipsByOwner).toHaveBeenCalledOnce();
+      expect(result.joinShip).toBeUndefined();
+      expect(result.playerName).toBe('test-player');
+      expect(result.joinCharacter).toBe(testCharacter);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'MissionNavigationService.fetchActiveShip: timed out waiting for ship list response',
+      );
+    } finally {
+      warnSpy.mockRestore();
+      vi.useRealTimers();
+    }
   });
 });

@@ -667,6 +667,16 @@ export const it: DeepPartial<EnLocale> = {
       collected: 'Raccolto: {{name}}',
       allCollected: 'Tutti i detriti raccolti.',
     },
+    emptyState: {
+      noShipTitle: 'Nessuna nave attiva',
+      noShipDetail: "Seleziona una nave dall'hangar per riprendere le operazioni esterne.",
+      noContactsTitle: 'Nessun contatto nel raggio',
+      noContactsDetail:
+        'La scansione dei sensori non ha rilevato corpi celesti. Viaggia più lontano o potenzia il tuo array di sensori.',
+      sensorsUnavailableTitle: 'Scansione sensori non disponibile',
+      sensorsUnavailableDetail:
+        'Impossibile raggiungere la rete di navigazione. I contatti locali non possono essere risolti.',
+    },
   },
   opening: {
     coldBoot: {

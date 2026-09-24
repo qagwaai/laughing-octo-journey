@@ -43,6 +43,27 @@ export function characterBustReadResponse(characterId: string, descriptor: objec
 
 export { characterListResponse, emptyCharacterListResponse };
 
+/**
+ * Ship returned to join paths that hydrate an active ship before routing. Without this,
+ * `MissionNavigationService.prepareNavigation` would wait on an unanswered request.
+ */
+export const CHARACTER_LIST_DEFAULT_SHIP = {
+  id: 'ship-character-list-1',
+  name: 'Jax',
+  model: 'Scavenger Pod',
+  tier: 1,
+  status: 'Operational',
+  inventory: [],
+  spatial: {
+    solarSystemId: 'sol',
+    frame: 'barycentric',
+    positionKm: { x: 1_000_000, y: 0, z: 0 },
+    epochMs: 1700000000000,
+  },
+  motion: { velocityKmPerSec: { x: 0, y: 0, z: 0 } },
+  observability: { visibility: 'visible', scanState: 'scanned' },
+};
+
 export async function setupCharacterListTest(
   page: Parameters<typeof loginViaUI>[0],
   options: {
@@ -68,6 +89,16 @@ export async function setupCharacterListTest(
   mock.on('character-list-request', () => ({
     event: 'character-list-response',
     data: responseData,
+  }));
+
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
+    data: {
+      success: true,
+      message: '',
+      playerName: TEST_PLAYER,
+      ships: [CHARACTER_LIST_DEFAULT_SHIP],
+    },
   }));
 
   if (options.onBustReadRequest) {

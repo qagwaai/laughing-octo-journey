@@ -17,6 +17,7 @@ export interface ItemTierCapabilities {
   scanTickMs: number;
   scanDetailBand: ScannerDetailBand;
   qualityConfidence: number;
+  detectionRangeKm: number;
 }
 
 export interface TractorBeamTierCapabilities {
@@ -31,6 +32,37 @@ export const SENSOR_ARRAY_MAX_TIER = 20;
 const SENSOR_ARRAY_BASE_SCAN_DURATION_MS = 10_000;
 const SENSOR_ARRAY_SCAN_DURATION_STEP_MS = 400;
 const SENSOR_ARRAY_SCAN_TICK_MS = 100;
+
+/**
+ * Maximum detection range, in km, for each sensor array tier.
+ *
+ * Sourced verbatim from `docs/Sensor Array Master Progression Table.md`, which is the
+ * design authority for the tier 1-20 progression. The scene renders at a 1:1
+ * scene-unit-to-km scale, so these values are directly comparable to in-scene distances.
+ */
+const SENSOR_ARRAY_DETECTION_RANGE_KM_BY_TIER: readonly number[] = Object.freeze([
+  100, // T1  Surface Optical Scanner
+  250, // T2  Photonic Pulse Array
+  750, // T3  Coherent Silver Aperture
+  2_500, // T4  Thermal Beam Scanner
+  7_500, // T5  Cobalt Magnetic Doppler
+  25_000, // T6  Cryo-Cooled Infrared Array
+  75_000, // T7  Solid-State Photonic Sensor
+  250_000, // T8  Phase-Shifted Ion Scanner
+  750_000, // T9  Lithographic Radar Array
+  2_000_000, // T10 Terahertz Superconducting Array
+  5_000_000, // T11 AI-Enhanced Deep Array
+  12_000_000, // T12 Resonance Ion Scanner
+  25_000_000, // T13 Cryo-Superconducting Matrix
+  45_000_000, // T14 Atomic Layered Interferometer
+  70_000_000, // T15 Gravimetric Flux Sensor
+  95_000_000, // T16 Entangled Quantum Relay Array
+  115_000_000, // T17 Molecular Synthesis Array
+  130_000_000, // T18 Dark Matter Flux Scanner
+  142_000_000, // T19 Quantum Matrix Array
+  150_000_000, // T20 Hive-Mind Sensor Network
+]);
+
 const TRACTOR_BEAM_BASE_RANGE_KM = 10;
 const TRACTOR_BEAM_MAX_RANGE_KM = 25;
 const TRACTOR_BEAM_BASE_PULL_DURATION_MS = 10_000;
@@ -54,7 +86,18 @@ export function resolveSensorArrayCapabilities(tier: number): ItemTierCapabiliti
     scanTickMs: SENSOR_ARRAY_SCAN_TICK_MS,
     scanDetailBand: resolveScanDetailBand(clampedTier),
     qualityConfidence: resolveQualityConfidence(clampedTier),
+    detectionRangeKm: resolveSensorArrayDetectionRangeKm(clampedTier),
   };
+}
+
+/**
+ * Maximum distance, in km, at which a sensor array of the given tier can detect
+ * celestial bodies. Drives the proximity radius used to hydrate the ship exterior
+ * scene with nearby bodies from the backend.
+ */
+export function resolveSensorArrayDetectionRangeKm(tier: number): number {
+  const clampedTier = clampSensorArrayTier(tier);
+  return SENSOR_ARRAY_DETECTION_RANGE_KM_BY_TIER[clampedTier - 1] ?? SENSOR_ARRAY_DETECTION_RANGE_KM_BY_TIER[0];
 }
 
 export function resolveSensorArrayTargetLockHoldMs(tier: number): number {

@@ -18,10 +18,15 @@ const ASTEROID_BELT_INNER_KM = 3.29e8;
 const ASTEROID_BELT_OUTER_KM = 4.79e8;
 /**
  * Default spread (radius) in km for a cluster of asteroids that should be
- * visually navigable together. A few thousand km keeps them "close" at solar
- * system scale while still allowing meaningful relative positions.
+ * visually navigable together.
+ *
+ * The ship exterior scene renders at a 1:1 scene-unit-to-km scale
+ * (`sceneUnitToKm: 1`), and asteroid samples are laid out 6-20 scene units from
+ * the cluster center. This spread is therefore expressed on the same scale so
+ * that a body's persisted `positionKm` agrees with where it is actually drawn,
+ * and so that it falls inside a tier 1 sensor array's 100 km detection range.
  */
-export const DEFAULT_CLUSTER_SPREAD_KM = 5_000;
+export const DEFAULT_CLUSTER_SPREAD_KM = 20;
 
 function rnd(min: number, max: number, random: () => number = Math.random): number {
   return min + random() * (max - min);

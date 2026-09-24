@@ -10,7 +10,7 @@ import { generateRandomAsteroidKinematics } from '../model/math/asteroid-kinemat
 import {
   DEFAULT_CLUSTER_SPREAD_KM,
   generateRandomAsteroidBeltClusterCenterKm,
-  generateRandomCelestialBodyLocationNear,
+  type CelestialBodyLocation,
 } from '../model/math/celestial-body-location';
 import type { MissionStatus } from '../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
@@ -229,9 +229,20 @@ function generateAsteroidSamples(
     const distance = 6 + random() * 14;
     const x = Math.cos(angle) * distance;
     const z = Math.sin(angle) * distance;
-    const solarSystemLocation = generateRandomCelestialBodyLocationNear(resolvedClusterCenterKm, undefined, random);
     const y = (random() - 0.5) * 8;
     const basePosition: [number, number, number] = [+x.toFixed(2), +y.toFixed(2), +z.toFixed(2)];
+    // The scene renders at a 1:1 scene-unit-to-km scale, so a sample's solar-system
+    // location is its cluster center offset by the same vector it is drawn at. Deriving
+    // it here (instead of drawing an independent random position) keeps the persisted
+    // `positionKm` consistent with where the asteroid actually appears, so proximity
+    // queries centered on the ship return the bodies the pilot can see.
+    const solarSystemLocation: CelestialBodyLocation = {
+      positionKm: {
+        x: +(resolvedClusterCenterKm.x + basePosition[0]).toFixed(3),
+        y: +(resolvedClusterCenterKm.y + basePosition[1]).toFixed(3),
+        z: +(resolvedClusterCenterKm.z + basePosition[2]).toFixed(3),
+      },
+    };
     const capturedKinematics = generateRandomAsteroidKinematics(random);
 
     samples.push({

@@ -22,14 +22,18 @@ import {
 import { Router } from '@angular/router';
 import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
 import { locale } from '../../i18n/locale';
-import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';
-import {
+import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
+import { resolveMissionScenePlugin } from '../../mission/mission-scene-plugin';import {
   createInitialMissionGateState,
   resolveShipExteriorMission,
   type ShipExteriorMissionGateState,
 } from '../../mission/ship-exterior-mission';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
-import { resolveSensorArrayTargetLockHoldMs } from '../../model/item-tier-capabilities';
+import {
+  resolveSensorArrayDetectionRangeKm,
+  resolveSensorArrayTargetLockHoldMs,
+} from '../../model/item-tier-capabilities';
+import type { ShipExteriorViewMissionContext } from '../../model/ship-exterior-view-context';
 import type {
   LaunchItemRequest,
   LaunchItemResponse,
@@ -68,7 +72,11 @@ import {
   type ShipExteriorLegacyScannableDebrisSample,
   type ShipExteriorLegacyScannableShipSample,
 } from './ship-exterior-bare-scene-test-api';
-import { ShipExteriorBootstrapController } from './ship-exterior-bootstrap-controller';
+import {
+  ShipExteriorBootstrapController,
+  type ShipExteriorLocalBodiesResult,
+} from './ship-exterior-bootstrap-controller';
+import { mapLocalCelestialBodiesToSamples } from './ship-exterior-local-body-samples';
 import {
   seedColdBootAsteroids as resolveColdBootAsteroidSamples,
   type ShipExteriorColdBootAsteroidSeedIntent,
@@ -117,6 +125,40 @@ type ShipExteriorScanDetail =
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
   protected readonly showDebugButton = isDevMode();
   protected readonly t = locale.shipExterior.debugDrawer;
+  protected readonly emptyStateText = locale.shipExterior.emptyState;
+  /**
+   * Overlay shown when the viewport would otherwise render an empty starfield, so the
+   * player gets an explanation instead of a blank scene.
+   */
+  protected readonly sceneEmptyState = computed<{ title: string; detail: string } | null>(() => {
+    this.asteroidRevision();
+    this.activeContextKey();
+
+    if (!this.sessionService.activeShip()?.id?.trim()) {
+      return { title: this.emptyStateText.noShipTitle, detail: this.emptyStateText.noShipDetail };
+    }
+
+    if (this.usesScriptedSeeding()) {
+      return null;
+    }
+
+    const localBodies = this.localBodiesState();
+    if (localBodies?.status === 'unavailable') {
+      return {
+        title: this.emptyStateText.sensorsUnavailableTitle,
+        detail: this.emptyStateText.sensorsUnavailableDetail,
+      };
+    }
+
+    if (!localBodies) {
+      return null;
+    }
+
+    const hasContacts = (this.registry.getActiveContext()?.getAsteroidSamples().length ?? 0) > 0;
+    return hasContacts
+      ? null
+      : { title: this.emptyStateText.noContactsTitle, detail: this.emptyStateText.noContactsDetail };
+  });
   private readonly router = inject(Router);
   private readonly navigationStateReader = inject(NavigationStateReader);
   private readonly sessionService = inject(SessionService);
@@ -319,7 +361,22 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
   // CHANGE ANCHOR: scene registry and bootstrap controllers
   private readonly registry = new ShipSceneRegistry();
-  private readonly missionScenePlugin = resolveMissionScenePlugin(FIRST_TARGET_MISSION_ID);
+  private readonly navigationMissionContext = signal<ShipExteriorViewMissionContext | null>(null);
+  /**
+   * Mission that owns this scene instance. Resolved from the navigation state supplied
+   * by the entry point, falling back to generic exploration when the scene is entered
+   * without a mission (for example, after dismissing an overlay).
+   */
+  private readonly activeMissionId = computed(
+    () => this.navigationMissionContext()?.missionId?.trim() || GENERIC_EXPLORATION_MISSION_ID,
+  );
+  private readonly missionScenePlugin = computed(() => resolveMissionScenePlugin(this.activeMissionId()));
+  /**
+   * Scripted cold-boot onboarding is the only flow permitted to fabricate asteroids
+   * client-side. Every other mission hydrates from backend local-body sweeps.
+   */
+  private readonly usesScriptedSeeding = computed(() => this.activeMissionId() === FIRST_TARGET_MISSION_ID);
+  private readonly localBodiesState = signal<ShipExteriorLocalBodiesResult | null>(null);
   private readonly pendingColdBootAsteroidSeedIntent = signal<ShipExteriorColdBootAsteroidSeedIntent | null>(null);
   private readonly bootstrapController = new ShipExteriorBootstrapController({
     missionId: FIRST_TARGET_MISSION_ID,
@@ -333,6 +390,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     updateTargetingCapabilityFromShipList: () => undefined,
     emitColdBootAsteroidSeedIntent: (intent) => {
       this.pendingColdBootAsteroidSeedIntent.set(intent);
+    },
+    getDetectionRangeKm: () => this.resolveDetectionRangeKm(),
+    emitLocalCelestialBodies: (result) => {
+      this.localBodiesState.set(result);
+      this.applyLocalCelestialBodies(result);
     },
   });
   private readonly coldBootAsteroidSeedEffect = effect(() => {
@@ -764,7 +826,12 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private seedColdBootAsteroids(): void {
-    this.bootstrapController.seedAsteroidsForInProgressMission();
+    if (this.usesScriptedSeeding()) {
+      this.bootstrapController.seedAsteroidsForInProgressMission();
+      return;
+    }
+
+    this.bootstrapController.loadLocalCelestialBodies();
   }
 
   private resolveSeedTargetContext(): ShipSceneContext | null {
@@ -796,7 +863,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    const samples = resolveColdBootAsteroidSamples(intent, this.missionScenePlugin.seedPolicy);
+    const samples = resolveColdBootAsteroidSamples(intent, this.missionScenePlugin().seedPolicy);
     targetContext.setAsteroidSamples(samples);
     this.activateContext(targetContext.contextKey);
     if (intent.kind !== 'fallback') {
@@ -807,12 +874,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private resolveNavigationIdentity(): void {
-    const { playerName, characterId } = this.navigationStateReader.resolve(this.router);
+    const { playerName, characterId, missionContext } = this.navigationStateReader.resolve(this.router);
 
     this.navigationPlayerName.set(playerName || 'unknown-player');
     this.navigationCharacterId.set(
       characterId || this.sessionService.activeCharacter()?.id?.trim() || 'unknown-character',
     );
+    this.navigationMissionContext.set(missionContext);
 
     this.shipExteriorViewStateService.saveCurrentContext({
       playerName: this.navigationPlayerName(),
@@ -1504,6 +1572,39 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     return resolvedTier;
   }
 
+  /**
+   * Sensor-array tier drives how far the local celestial body sweep reaches.
+   * Ships without a sensor array fall back to the tier 1 range.
+   */
+  private resolveDetectionRangeKm(): number {
+    const inventory = this.sessionService.activeShip()?.inventory ?? [];
+    return resolveSensorArrayDetectionRangeKm(this.resolveActiveSensorArrayTier(inventory));
+  }
+
+  /**
+   * Renders the backend local-body sweep into the active scene context. Contacts are
+   * rendered verbatim: an empty or unavailable sweep clears the field rather than
+   * substituting fabricated asteroids.
+   */
+  private applyLocalCelestialBodies(result: ShipExteriorLocalBodiesResult): void {
+    if (this.usesScriptedSeeding()) {
+      return;
+    }
+
+    const targetContext = this.resolveSeedTargetContext();
+    if (!targetContext) {
+      return;
+    }
+
+    const center = result.center;
+    const samples =
+      result.status === 'loaded' && center ? mapLocalCelestialBodiesToSamples(result.bodies, center) : [];
+
+    targetContext.setAsteroidSamples(samples);
+    this.activateContext(targetContext.contextKey);
+    this.bumpAsteroidRevision();
+  }
+
   private resolveHoverScanHoldMs(): number {
     return 10_000;
   }
@@ -1662,7 +1763,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return existing;
     }
 
-    const fallbackSamples = resolveColdBootAsteroidSamples({ kind: 'fallback' }, this.missionScenePlugin.seedPolicy);
+    // Only scripted onboarding may invent contacts; every other mission renders
+    // exactly what the backend reported, so an empty sweep stays empty.
+    if (!this.usesScriptedSeeding()) {
+      return existing;
+    }
+
+    const fallbackSamples = resolveColdBootAsteroidSamples({ kind: 'fallback' }, this.missionScenePlugin().seedPolicy);
     context.setAsteroidSamples(fallbackSamples);
     this.bumpRuntimeRevision();
     return context.getAsteroidSamples();

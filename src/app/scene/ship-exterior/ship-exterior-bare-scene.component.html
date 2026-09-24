@@ -54,6 +54,12 @@
 
   <div class="ship-exterior-bare-scene__viewport" #canvasHost>
     <app-asteroid-scan-detail-panel [sample]="activeScanDetailSample()" />
+    @if (sceneEmptyState(); as emptyState) {
+      <div class="ship-exterior-bare-scene__empty-state" role="status" aria-live="polite">
+        <p class="ship-exterior-bare-scene__empty-state-title">{{ emptyState.title }}</p>
+        <p class="ship-exterior-bare-scene__empty-state-detail">{{ emptyState.detail }}</p>
+      </div>
+    }
   </div>
 
   <section class="ship-exterior-bare-scene__hotkeys" aria-label="Ship controls">

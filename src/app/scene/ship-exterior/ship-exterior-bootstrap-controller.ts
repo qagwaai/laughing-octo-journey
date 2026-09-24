@@ -1,6 +1,7 @@
-import { type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
+import { type CelestialBodyListItem, type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
+import type { Triple } from '../../model/shared/triple';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
@@ -17,6 +18,22 @@ interface ShipExteriorBootstrapControllerDeps {
   getLaunchSeedHint: () => number | null;
   updateTargetingCapabilityFromShipList: (ships: ShipListByOwnerResponse['ships']) => void;
   emitColdBootAsteroidSeedIntent: (intent: ShipExteriorColdBootAsteroidSeedIntent) => void;
+  /** Sensor-array detection range, in km, for the currently active ship. */
+  getDetectionRangeKm: () => number;
+  /** Receives mission-agnostic local bodies resolved around the active ship. */
+  emitLocalCelestialBodies: (result: ShipExteriorLocalBodiesResult) => void;
+}
+
+/**
+ * Outcome of a mission-agnostic proximity sweep for celestial bodies near the
+ * active ship. `bodies` is exactly what the backend returned - the scene never
+ * fabricates contacts to pad an empty result.
+ */
+export interface ShipExteriorLocalBodiesResult {
+  status: 'loaded' | 'empty' | 'unavailable';
+  bodies: CelestialBodyListItem[];
+  center: Triple | null;
+  detectionRangeKm: number;
 }
 
 /**
@@ -27,8 +44,111 @@ interface ShipExteriorBootstrapControllerDeps {
 export class ShipExteriorBootstrapController {
   private unsubscribeShipListResponse?: () => void;
   private unsubscribeCelestialBodyListResponse?: () => void;
+  private unsubscribeLocalCelestialBodyListResponse?: () => void;
+  /**
+   * Signature of the local-bodies sweep currently awaiting a response.
+   *
+   * The scene triggers a sweep from both bootstrap and the active-ship effect, which can
+   * fire in the same tick. Two concurrent requests would each attach their own correlated
+   * listener, and every listener drops the other's response as unmatched - surfacing a
+   * contract variance warning. Identical in-flight sweeps are therefore coalesced.
+   */
+  private pendingLocalSweepSignature: string | null = null;
 
   constructor(private readonly deps: ShipExteriorBootstrapControllerDeps) {}
+
+  /**
+   * Hydrates the scene with whatever celestial bodies the backend reports near the
+   * active ship.
+   *
+   * Unlike {@link seedAsteroidsForInProgressMission}, this sweep is deliberately
+   * mission-agnostic and owner-agnostic: it omits `missionId` and
+   * `createdByCharacterId` so the pilot sees the real neighborhood rather than the
+   * leftovers of one mission. The search radius is driven by the active ship's
+   * sensor array tier.
+   */
+  loadLocalCelestialBodies(centerOverrideKm?: Triple | null): void {
+    const playerName = this.deps.getPlayerName().trim();
+    const sessionKey = this.deps.sessionService.getSessionKey()?.trim() ?? '';
+    const detectionRangeKm = this.deps.getDetectionRangeKm();
+
+    const resolveCenter = (): Triple | null => {
+      if (centerOverrideKm) {
+        return centerOverrideKm;
+      }
+      return this.deps.sessionService.activeShip()?.spatial?.positionKm ?? null;
+    };
+
+    const center = resolveCenter();
+    if (!playerName || !sessionKey || !center) {
+      this.deps.emitLocalCelestialBodies({
+        status: 'unavailable',
+        bodies: [],
+        center: center ?? null,
+        detectionRangeKm,
+      });
+      appLogger.warn('ShipExterior local bodies sweep skipped: missing identity or ship position.', {
+        hasPlayerName: !!playerName,
+        hasSessionKey: !!sessionKey,
+        hasCenter: !!center,
+      });
+      return;
+    }
+
+    const solarSystemId =
+      this.deps.sessionService.activeShip()?.spatial?.solarSystemId?.trim() || DEFAULT_SOLAR_SYSTEM_ID;
+
+    const sweepSignature = `${solarSystemId}|${center.x},${center.y},${center.z}|${detectionRangeKm}`;
+    if (this.pendingLocalSweepSignature === sweepSignature) {
+      appLogger.info('ShipExterior local bodies sweep already in flight; coalescing duplicate request.', {
+        sweepSignature,
+      });
+      return;
+    }
+
+    this.unsubscribeLocalCelestialBodyListResponse?.();
+    this.pendingLocalSweepSignature = sweepSignature;
+
+    const request: CelestialBodyListRequest = {
+      playerName,
+      sessionKey,
+      solarSystemId,
+      positionKm: center,
+      distanceKm: detectionRangeKm,
+      states: ['unscanned', 'active'],
+    };
+
+    this.unsubscribeLocalCelestialBodyListResponse = this.deps.socketService.listCelestialBodies(
+      request,
+      (response: CelestialBodyListResponse) => {
+        this.pendingLocalSweepSignature = null;
+
+        if (!response.success) {
+          this.deps.emitLocalCelestialBodies({
+            status: 'unavailable',
+            bodies: [],
+            center,
+            detectionRangeKm,
+          });
+          appLogger.warn('ShipExterior local bodies sweep failed.', response.message);
+          return;
+        }
+
+        const bodies = (response.celestialBodies ?? []).filter((body) => body.state !== 'destroyed');
+        this.deps.emitLocalCelestialBodies({
+          status: bodies.length > 0 ? 'loaded' : 'empty',
+          bodies,
+          center,
+          detectionRangeKm,
+        });
+        appLogger.info('ShipExterior local bodies sweep complete.', {
+          contacts: bodies.length,
+          detectionRangeKm,
+          centerKm: center,
+        });
+      },
+    );
+  }
 
   private normalizeShipId(value: string | undefined | null): string {
     return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -195,7 +315,10 @@ export class ShipExteriorBootstrapController {
   dispose(): void {
     this.unsubscribeShipListResponse?.();
     this.unsubscribeCelestialBodyListResponse?.();
+    this.unsubscribeLocalCelestialBodyListResponse?.();
     this.unsubscribeShipListResponse = undefined;
     this.unsubscribeCelestialBodyListResponse = undefined;
+    this.unsubscribeLocalCelestialBodyListResponse = undefined;
+    this.pendingLocalSweepSignature = null;
   }
 }

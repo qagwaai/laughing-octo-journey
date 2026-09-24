@@ -763,6 +763,14 @@ export const en = {
       collected: 'Collected: {{name}}',
       allCollected: 'All debris collected.',
     },
+    emptyState: {
+      noShipTitle: 'No active ship',
+      noShipDetail: 'Select a ship from the hangar to resume external operations.',
+      noContactsTitle: 'No contacts in range',
+      noContactsDetail: 'Sensor sweep returned no celestial bodies. Travel further or upgrade your sensor array.',
+      sensorsUnavailableTitle: 'Sensor sweep unavailable',
+      sensorsUnavailableDetail: 'Unable to reach the navigation network. Local contacts cannot be resolved.',
+    },
   },
 
   opening: {

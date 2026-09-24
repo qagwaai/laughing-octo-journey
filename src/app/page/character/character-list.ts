@@ -9,6 +9,7 @@ import { CharacterListRequest, CharacterListResponse, PlayerCharacterSummary } f
 import { GameJoinRequest } from '../../model/game-join';
 import type { CharacterMissionProgress, MissionStatus } from '../../model/mission';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
 import { BustDescriptorAdapterService } from '../../services/bust-descriptor-adapter.service';
 import { CharacterService } from '../../services/character.service';
 import { GameSessionService } from '../../services/game-session.service';
@@ -350,10 +351,15 @@ export default class CharacterListPage implements OnDestroy {
     const outlets = isFirstTargetInProgress
       ? { primary: ['ship-exterior-view'], right: ['opening-cold-boot-scan'], left: ['game-main'] }
       : isFirstTargetCompleted
-        ? { right: ['mission-board'], left: ['game-main'] }
+        ? { primary: ['ship-exterior-view'], right: ['mission-board'], left: ['game-main'] }
         : { primary: ['opening-cold-boot'], left: ['opening-cold-boot'] };
 
-    if (!isFirstTargetInProgress) {
+    // Both the in-progress and completed paths enter the ship exterior scene, so both
+    // must hydrate a real active ship before navigating. Without this the scene mounts
+    // with no selected ship and renders an empty field.
+    const needsShipHydration = isFirstTargetInProgress || isFirstTargetCompleted;
+
+    if (!needsShipHydration) {
       this.router.navigate([{ outlets }], {
         preserveFragment: true,
         state: { playerName, joinCharacter: character },
@@ -361,19 +367,21 @@ export default class CharacterListPage implements OnDestroy {
       return;
     }
 
-    // First-target in progress: delegate to MissionNavigationService to fetch
-    // the real ship and build the mission context. This ensures the ship is
-    // placed at its real spatial location (not a synthetic (0,0,0) placeholder).
+    // Delegate to MissionNavigationService to fetch the real ship and build the mission
+    // context. This ensures the ship is placed at its real spatial location (not a
+    // synthetic (0,0,0) placeholder).
     this.missionNavigationService
       .prepareNavigation({
-        missionId: FIRST_TARGET_MISSION_ID,
+        missionId: isFirstTargetInProgress ? FIRST_TARGET_MISSION_ID : GENERIC_EXPLORATION_MISSION_ID,
         playerName,
         joinCharacter: character,
         sessionKey: this.sessionService.getSessionKey()!,
         missionStatus: firstTargetStatus ?? undefined,
       })
       .then((prepared) => {
-        window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+        if (isFirstTargetInProgress) {
+          window.dispatchEvent(new CustomEvent(START_SCANNING_UI_EVENT));
+        }
         this.router.navigate([{ outlets }], {
           preserveFragment: true,
           state: {

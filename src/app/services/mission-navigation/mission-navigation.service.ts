@@ -24,6 +24,9 @@ import { SessionService } from '../session.service';
 import { ShipService } from '../ship.service';
 import { resolveMissionInitializationStrategy } from './mission-initialization-strategy';
 
+/** Upper bound on waiting for the owner ship list before navigating without an active ship. */
+const SHIP_FETCH_TIMEOUT_MS = 5000;
+
 /**
  * Input context for preparing mission navigation.
  */
@@ -146,6 +149,23 @@ export class MissionNavigationService {
         },
       };
 
+      // Navigation awaits this fetch, so an unanswered request would strand the player on
+      // the entry screen with no feedback. Time out and continue without an active ship.
+      let settled = false;
+      const settle = (result: ShipFetchResult): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutHandle);
+        resolve(result);
+      };
+
+      const timeoutHandle = setTimeout(() => {
+        appLogger.warn('MissionNavigationService.fetchActiveShip: timed out waiting for ship list response');
+        settle({ ship: null, success: false, message: 'ship-list-timeout' });
+      }, SHIP_FETCH_TIMEOUT_MS);
+
       this.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
         if (response.success) {
           const selectedShip = resolveActiveShipSelection({
@@ -156,7 +176,7 @@ export class MissionNavigationService {
           if (selectedShip.ship) {
             const ship = selectedShip.ship;
             this.sessionService.setActiveShip(ship);
-            resolve({ ship, success: true });
+            settle({ ship, success: true });
             return;
           }
 
@@ -165,7 +185,7 @@ export class MissionNavigationService {
             playerName,
             characterId,
           });
-          resolve({
+          settle({
             ship: null,
             success: false,
             message: selectedShip.reason,
@@ -173,7 +193,7 @@ export class MissionNavigationService {
           return;
         }
 
-        resolve({
+        settle({
           ship: null,
           success: false,
           message: response.message || 'ship-list-failed',

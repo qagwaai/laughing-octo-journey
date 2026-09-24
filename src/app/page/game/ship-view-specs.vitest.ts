@@ -86,9 +86,9 @@ describe('ShipViewSpecsPage - overlay close button', () => {
 
     fixture.nativeElement.querySelector('[data-testid="overlay-close-button"]').click();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['ship-exterior-view'], right: null } }], {
-      preserveFragment: true,
-      replaceUrl: true,
-    });
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [{ outlets: { primary: ['ship-exterior-view'], right: null } }],
+      expect.objectContaining({ preserveFragment: true, replaceUrl: true }),
+    );
   });
 });

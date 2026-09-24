@@ -22,6 +22,7 @@ import {
 } from '../../model/character-list';
 import { GAME_JOIN_REQUEST_EVENT } from '../../model/game-join';
 import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
+import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
@@ -531,6 +532,37 @@ describe('CharacterListPage', () => {
       await Promise.resolve();
       dispatchSpy.mockClear();
 
+      const completedShip: ShipSummary = {
+        id: 'ship-completed',
+        name: 'Jax',
+        model: 'Scavenger Pod',
+        tier: 1,
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 1.2e8, y: 0, z: 4e6 },
+          epochMs: 1700000000000,
+        },
+      };
+      shipServiceStub.listShipsByOwner.mockImplementation(
+        (_req: ShipListByOwnerRequest, cb: (resp: ShipListByOwnerResponse) => void) => {
+          cb({
+            success: true,
+            message: 'ok',
+            correlationId: TEST_CORRELATION_ID,
+            requestIdentity: TEST_REQUEST_IDENTITY,
+            owner: {
+              ownerType: 'player-character',
+              playerId: 'player-1',
+              characterId: '1',
+              npcId: null,
+              factionId: null,
+            },
+            ships: [completedShip],
+          });
+        },
+      );
+
       const fixture = TestBed.createComponent(CharacterListPage);
       const component = fixture.componentInstance;
       const character = {
@@ -542,6 +574,7 @@ describe('CharacterListPage', () => {
       component.navigateToGameJoin(character);
 
       await Promise.resolve();
+      await Promise.resolve();
 
       expect(dispatchSpy).not.toHaveBeenCalled();
 
@@ -549,13 +582,18 @@ describe('CharacterListPage', () => {
         event: GAME_JOIN_REQUEST_EVENT,
         data: { playerName: 'Pioneer', characterId: '1', sessionKey: 'test-session-key' },
       });
-      expect(router.navigate).toHaveBeenCalledWith([{ outlets: { right: ['mission-board'], left: ['game-main'] } }], {
-        preserveFragment: true,
-        state: {
-          playerName: 'Pioneer',
-          joinCharacter: character,
+      expect(router.navigate).toHaveBeenCalledWith(
+        [{ outlets: { primary: ['ship-exterior-view'], right: ['mission-board'], left: ['game-main'] } }],
+        {
+          preserveFragment: true,
+          state: expect.objectContaining({
+            playerName: 'Pioneer',
+            joinCharacter: character,
+            joinShip: completedShip,
+            missionContext: expect.objectContaining({ missionId: GENERIC_EXPLORATION_MISSION_ID }),
+          }),
         },
-      });
+      );
     });
 
     it('should set error and not navigate when playerName is empty for game join', () => {

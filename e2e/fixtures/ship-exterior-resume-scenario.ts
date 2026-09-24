@@ -97,6 +97,35 @@ export function configureShipExteriorResumeMock(mock: SocketIOMock, options: Shi
     },
   }));
 
+  // After the first mission completes the scene hydrates purely from backend local bodies,
+  // so the completed variant must report the surviving contacts near the ship.
+  const localCelestialBodies =
+    missionStatus === 'completed'
+      ? [
+          { id: 'resume-body-1', offsetKm: { x: 14, y: 3, z: -8 } },
+          { id: 'resume-body-2', offsetKm: { x: -11, y: -6, z: 12 } },
+        ].map((body) => ({
+          id: body.id,
+          state: 'unscanned',
+          spatial: {
+            solarSystemId: 'sol',
+            frame: 'barycentric',
+            positionKm: {
+              x: 1_000_000 + body.offsetKm.x,
+              y: body.offsetKm.y,
+              z: body.offsetKm.z,
+            },
+            epochMs: Date.now(),
+          },
+          motion: {
+            velocityKmPerSec: { x: 0, y: 0, z: 0 },
+            angularVelocityRadPerSec: { x: 0, y: 0, z: 0 },
+          },
+          physical: { estimatedMassKg: 1.2e9, estimatedDiameterM: 140 },
+          observability: { visibility: 'visible', scanState: 'unscanned' },
+        }))
+      : [];
+
   mock.on('celestial-body-list-request', () => ({
     event: 'celestial-body-list-response',
     data: {
@@ -106,7 +135,7 @@ export function configureShipExteriorResumeMock(mock: SocketIOMock, options: Shi
       solarSystemId: 'sol',
       positionKm: { x: 1_000_000, y: 0, z: 0 },
       distanceKm: 900_000,
-      celestialBodies: [],
+      celestialBodies: localCelestialBodies,
     },
   }));
 

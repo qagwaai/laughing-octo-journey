@@ -20,8 +20,22 @@ test.describe('Login Resume — first-target completed', () => {
 
     await expect(sharedPage).toHaveURL(/left:game-main/, { timeout: 10000 });
     await expect(sharedPage).toHaveURL(/right:mission-board/, { timeout: 10000 });
+    await expect(sharedPage).toHaveURL(/ship-exterior-view/, { timeout: 10000 });
     await expect(sharedPage).not.toHaveURL(/opening-cold-boot/);
     await expect(missionBoardPage.heading).toBeVisible({ timeout: 10000 });
+  });
+
+  test('hydrates an active ship so the exterior scene is not left without a selection', async ({
+    sharedPage,
+    prepareJoinedPage,
+  }) => {
+    await prepareJoinedPage();
+
+    await expect(sharedPage).toHaveURL(/ship-exterior-view/, { timeout: 10000 });
+    await expect(sharedPage.locator('.ship-exterior-bare-scene__title')).not.toContainText('No ship selected', {
+      timeout: 10000,
+    });
+    await expect(sharedPage.locator('.ship-exterior-bare-scene__empty-state')).toHaveCount(0);
   });
 
   // This join path navigates with `{ right, left }` and no `primary`, so the primary outlet is
@@ -49,6 +63,10 @@ test.describe('Login Resume — first-target completed', () => {
     await expect(sharedPage).not.toHaveURL(/knot/);
     await expect(sharedPage).toHaveURL(/left:game-main/);
     await expect(overlayClose.closeButton).toHaveCount(0);
+
+    // Backend-supplied local celestial bodies must survive the overlay round trip, so the
+    // scene is never reduced to a lone ship in an empty field.
+    await expect(sharedPage.locator('.ship-exterior-bare-scene__empty-state')).toHaveCount(0);
 
     // Restore the overlay so the worker-scoped shared page stays in its joined state.
     await sharedGameShell.openMissionBoard();

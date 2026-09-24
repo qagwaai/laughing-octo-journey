@@ -9,9 +9,12 @@ function makeControllerHarness(overrides?: {
   sessionKey?: string | null;
   launchSeedHint?: number | null;
   preferredShipId?: string | null;
+  activeShip?: unknown;
+  detectionRangeKm?: number;
 }) {
   const emitColdBootAsteroidSeedIntent = vi.fn();
   const updateTargetingCapabilityFromShipList = vi.fn();
+  const emitLocalCelestialBodies = vi.fn();
 
   const unsubscribeShipListResponse = vi.fn();
   const unsubscribeCelestialBodyListResponse = vi.fn();
@@ -21,10 +24,16 @@ function makeControllerHarness(overrides?: {
     listCelestialBodies: vi.fn().mockReturnValue(unsubscribeCelestialBodyListResponse),
   } as any;
 
+  const activeShip =
+    overrides?.activeShip === undefined
+      ? { id: 'ship-1', spatial: { solarSystemId: 'sol', positionKm: { x: 100, y: 0, z: 0 } } }
+      : overrides.activeShip;
+
   const deps = {
     missionId: 'first-target',
     sessionService: {
       getSessionKey: () => (overrides?.sessionKey === undefined ? 'session-key' : overrides.sessionKey),
+      activeShip: () => activeShip,
     } as any,
     socketService,
     getPlayerName: () => (overrides?.playerName === undefined ? 'Pioneer' : overrides.playerName),
@@ -33,6 +42,8 @@ function makeControllerHarness(overrides?: {
     getLaunchSeedHint: () => (overrides?.launchSeedHint === undefined ? 17 : overrides.launchSeedHint),
     updateTargetingCapabilityFromShipList,
     emitColdBootAsteroidSeedIntent,
+    getDetectionRangeKm: () => overrides?.detectionRangeKm ?? 100,
+    emitLocalCelestialBodies,
   } as any;
 
   const controller = new ShipExteriorBootstrapController(deps);
@@ -43,6 +54,7 @@ function makeControllerHarness(overrides?: {
     socketService,
     emitColdBootAsteroidSeedIntent,
     updateTargetingCapabilityFromShipList,
+    emitLocalCelestialBodies,
     unsubscribeShipListResponse,
     unsubscribeCelestialBodyListResponse,
   };
@@ -176,5 +188,143 @@ describe('ShipExteriorBootstrapController', () => {
 
     expect(harness.unsubscribeShipListResponse).toHaveBeenCalled();
     expect(harness.unsubscribeCelestialBodyListResponse).toHaveBeenCalled();
+  });
+
+  describe('loadLocalCelestialBodies', () => {
+    it('queries without mission or owner filters using the sensor detection range', () => {
+      const harness = makeControllerHarness({ detectionRangeKm: 750 });
+
+      harness.controller.loadLocalCelestialBodies();
+
+      const request = harness.socketService.listCelestialBodies.mock.calls[0][0];
+      expect(request.distanceKm).toBe(750);
+      expect(request.positionKm).toEqual({ x: 100, y: 0, z: 0 });
+      expect(request).not.toHaveProperty('missionId');
+      expect(request).not.toHaveProperty('createdByCharacterId');
+    });
+
+    // Two sweeps in flight each attach their own correlated listener, and every listener
+    // drops the other's response as unmatched - which surfaced a contract variance warning
+    // when bootstrap and the active-ship effect both fired during a join.
+    it('coalesces an identical sweep that is still in flight', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        () => harness.unsubscribeCelestialBodyListResponse,
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.socketService.listCelestialBodies).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the in-flight listener subscribed when a duplicate sweep is coalesced', () => {
+      const harness = makeControllerHarness();
+      let deliverResponse: ((response: any) => void) | undefined;
+      harness.socketService.listCelestialBodies.mockImplementation(
+        (_request: unknown, callback: (response: any) => void) => {
+          deliverResponse = callback;
+          return harness.unsubscribeCelestialBodyListResponse;
+        },
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.unsubscribeCelestialBodyListResponse).not.toHaveBeenCalled();
+
+      deliverResponse?.({ success: true, celestialBodies: [{ id: 'a', state: 'unscanned' }] });
+
+      expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(expect.objectContaining({ status: 'loaded' }));
+    });
+
+    it('allows a new sweep once the in-flight request has resolved', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        (_request: unknown, callback: (response: any) => void) => {
+          callback({ success: true, celestialBodies: [] });
+          return harness.unsubscribeCelestialBodyListResponse;
+        },
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.socketService.listCelestialBodies).toHaveBeenCalledTimes(2);
+    });
+
+    it('issues a fresh sweep when the ship position changes', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        () => harness.unsubscribeCelestialBodyListResponse,
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+      harness.controller.loadLocalCelestialBodies({ x: 900, y: 0, z: 0 });
+
+      expect(harness.socketService.listCelestialBodies).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports loaded contacts and filters destroyed bodies', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        (_request: unknown, callback: (response: any) => void) => {
+          callback({
+            success: true,
+            celestialBodies: [{ id: 'a', state: 'unscanned' }, { id: 'b', state: 'destroyed' }],
+          });
+          return harness.unsubscribeCelestialBodyListResponse;
+        },
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+
+      const result = harness.emitLocalCelestialBodies.mock.calls[0][0];
+      expect(result.status).toBe('loaded');
+      expect(result.bodies.map((body: any) => body.id)).toEqual(['a']);
+    });
+
+    it('reports an empty sweep without fabricating contacts', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        (_request: unknown, callback: (response: any) => void) => {
+          callback({ success: true, celestialBodies: [] });
+          return harness.unsubscribeCelestialBodyListResponse;
+        },
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'empty', bodies: [] }),
+      );
+    });
+
+    it('reports unavailable when the ship has no known position', () => {
+      const harness = makeControllerHarness({ activeShip: null });
+
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.socketService.listCelestialBodies).not.toHaveBeenCalled();
+      expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unavailable', bodies: [] }),
+      );
+    });
+
+    it('reports unavailable when the backend sweep fails', () => {
+      const harness = makeControllerHarness();
+      harness.socketService.listCelestialBodies.mockImplementation(
+        (_request: unknown, callback: (response: any) => void) => {
+          callback({ success: false, message: 'boom' });
+          return harness.unsubscribeCelestialBodyListResponse;
+        },
+      );
+
+      harness.controller.loadLocalCelestialBodies();
+
+      expect(harness.emitLocalCelestialBodies).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'unavailable', bodies: [] }),
+      );
+    });
   });
 });
