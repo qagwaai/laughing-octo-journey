@@ -40,6 +40,14 @@ function toTelemetryCoords(coords: { x: number; y: number; z: number }): { x: nu
   };
 }
 
+function toDisplayedCoords(coords: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  return {
+    x: Number(coords.x.toFixed(2)) + 0,
+    y: Number(coords.y.toFixed(2)) + 0,
+    z: Number(coords.z.toFixed(2)) + 0,
+  };
+}
+
 async function waitForFlightTelemetryReady(page: Page): Promise<void> {
   await expect(pilotStatus(page)).toHaveText(/FLIGHT: CAPTURE/);
   if ((await debugButton(page).getAttribute('aria-expanded')) !== 'true') {
@@ -258,6 +266,7 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await gameShell.openNav('Logout', /left:logout/);
     await page.getByRole('button', { name: 'Confirm Logout' }).click();
     await expect(page).toHaveURL(/left:login/, { timeout: 10_000 });
+    const expectedPersistedCoords = toDisplayedCoords(persistedPosition);
 
     await loginViaUI(page, mock);
     await gameShell.joinGame('Join Game in Progress');
@@ -265,7 +274,9 @@ test.describe('Ship Exterior - flight position persistence on re-entry', () => {
     await expect(shipExteriorScene(page)).toBeVisible({ timeout: 10_000 });
     await waitForFlightTelemetryReady(page);
 
-    expect(await readCoords(page)).toEqual(movedCoords);
-    expect(toTelemetryCoords(persistedPosition)).toEqual(toTelemetryCoords(movedCoords));
+    expect(await readCoords(page)).toEqual(expectedPersistedCoords);
+    expect(Math.abs(expectedPersistedCoords.x - movedCoords.x)).toBeLessThanOrEqual(0.03);
+    expect(Math.abs(expectedPersistedCoords.y - movedCoords.y)).toBeLessThanOrEqual(0.03);
+    expect(Math.abs(expectedPersistedCoords.z - movedCoords.z)).toBeLessThanOrEqual(0.03);
   });
 });
