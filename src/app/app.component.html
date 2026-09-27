@@ -36,19 +36,26 @@
       <div class="absolute inset-0 z-0">
         <router-outlet />
       </div>
+    } @else if (miningSplashActive() && !miningSplash.supported()) {
+      <router-outlet />
     } @else {
       <ngt-canvas
         #canvas
         class="relative z-0"
         [stats]="persistentStatsOptions"
         [frameloop]="canvasFrameloop()"
-        shadows
+        [shadows]="!miningSplashActive()"
+        [dpr]="canvasDpr()"
         [camera]="canvasCameraOptions"
         [lookAt]="canvasLookAt"
         (click)="onCanvasClick()"
       >
         <app-routed-scene *canvasContent />
       </ngt-canvas>
+    }
+
+    @if (miningSplashActive()) {
+      <app-mining-splash-overlay />
     }
 
     <div

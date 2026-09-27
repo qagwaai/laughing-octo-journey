@@ -12,6 +12,7 @@ import { beforeRender as _beforeRender, NgtArgs } from 'angular-three';
 import { textureResource as _textureResource } from 'angular-three-soba/loaders';
 import * as THREE from 'three';
 import { Cursor } from './cursor';
+import { EARTH_ALBEDO_URL, EARTH_BUMP_URL } from './earth-textures';
 
 export const BEFORE_RENDER_FN = new InjectionToken('BEFORE_RENDER_FN', {
   providedIn: 'root',
@@ -42,8 +43,8 @@ export class Earth {
   positionX = input(0);
   private meshRef = viewChild.required<ElementRef<THREE.Mesh>>('earth');
   protected textures = inject(TEXTURE_RESOURCE_FN)(() => ({
-    map: 'https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Albedo.jpg',
-    bumpMap: 'https://raw.githubusercontent.com/nartc/threejs-earth/refs/heads/main/src/assets/Bump.jpg',
+    map: EARTH_ALBEDO_URL,
+    bumpMap: EARTH_BUMP_URL,
   }));
 
   protected hovered = signal(false);

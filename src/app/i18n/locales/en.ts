@@ -33,6 +33,21 @@ export const en = {
   },
 
   public: {
+    mining: {
+      title: 'Asteroid mining outpost',
+      orbitHint: 'Drag or swipe to orbit · Scroll or pinch to zoom',
+      standardTier: 'Standard GLB (154k triangles)',
+      lowTier: 'Low GLB (50k triangles)',
+      loadTime: '3D ready in',
+      loadingTier: '3D loading',
+      staticTier: 'Still image',
+      loading: 'Preparing the mining outpost...',
+      progressHint: 'Asset progress includes models and textures. Preparing the first frame may take a moment.',
+      error: 'The 3D scene is unavailable. You can continue using the controls on the left.',
+      static: 'Static view. Your journey can continue using the controls on the left.',
+      staticAction: 'Use still image',
+      retry: 'Load 3D scene',
+    },
     intro: {
       title: 'Stellar',
       welcome: 'Welcome to Project Stellar',

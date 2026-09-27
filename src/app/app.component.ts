@@ -19,6 +19,8 @@ import { filter, map, startWith, Subscription } from 'rxjs';
 import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { RoutedScene } from './routed-scene';
+import { MiningSplashOverlay } from './scene/mining-splash-overlay';
+import { MiningSplashState } from './scene/mining-splash-state';
 import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
@@ -75,6 +77,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
     LeftPaneMissionGuidanceOverlay,
     ShipExteriorHudOverlayComponent,
     RouterOutlet,
+    MiningSplashOverlay,
   ],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
@@ -122,7 +125,18 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected lookHintOpacity = signal(0);
   protected readonly canvasCameraOptions = { position: [5, 5, 5] as [number, number, number] };
   protected readonly canvasLookAt = [0, 0, 0] as [number, number, number];
-  protected readonly canvasFrameloop = this.sceneVisibility.sceneFrameloop;
+  protected readonly miningSplash = inject(MiningSplashState);
+  protected readonly miningSplashActive = computed(() => /(?:^|\/)(?:intro|knot)(?:\(|$)/.test(this.currentUrl()));
+  protected readonly canvasFrameloop = computed(() =>
+    this.miningSplashActive()
+      ? this.miningSplash.moving() && !this.sceneVisibility.isSceneHidden()
+        ? 'always'
+        : 'demand'
+      : this.sceneVisibility.sceneFrameloop(),
+  );
+  protected readonly canvasDpr = computed<[number, number]>(() =>
+    this.miningSplashActive() ? [1, this.miningSplash.quality() === 'low' ? 1 : 1.5] : [1, 2],
+  );
 
   protected currentUrl = toSignal(
     this.router.events.pipe(

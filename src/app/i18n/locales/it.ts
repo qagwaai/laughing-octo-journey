@@ -30,6 +30,21 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   public: {
+    mining: {
+      title: 'Avamposto minerario su asteroide',
+      orbitHint: 'Trascina o scorri per ruotare · Rotella o pizzica per ingrandire',
+      standardTier: 'GLB standard (154k triangoli)',
+      lowTier: 'GLB leggero (50k triangoli)',
+      loadTime: '3D pronto in',
+      loadingTier: 'Caricamento 3D',
+      staticTier: 'Immagine fissa',
+      loading: "Preparazione dell'avamposto minerario...",
+      progressHint: 'Il progresso include modelli e texture. Il primo fotogramma potrebbe richiedere un momento.',
+      error: 'La scena 3D non e disponibile. Puoi continuare usando i controlli a sinistra.',
+      static: 'Vista statica. Puoi continuare il viaggio usando i controlli a sinistra.',
+      staticAction: 'Usa immagine fissa',
+      retry: 'Carica scena 3D',
+    },
     login: {
       title: 'Accesso',
       subtitle: 'Bentornato, Pioneer. Inserisci le credenziali per continuare.',

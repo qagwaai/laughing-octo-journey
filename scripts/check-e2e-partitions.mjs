@@ -22,7 +22,12 @@ const PARTITIONS = [
   },
   {
     name: 'viewer-3d',
-    patterns: [/^viewer.*\.spec\.ts$/, /^planet-view-zoom\.spec\.ts$/, /^ship-exterior-.*\.spec\.ts$/],
+    patterns: [
+      /^viewer.*\.spec\.ts$/,
+      /^planet-view-zoom\.spec\.ts$/,
+      /^ship-exterior-.*\.spec\.ts$/,
+      /^mining-splash\.spec\.ts$/,
+    ],
   },
   {
     name: 'stateful-gameplay',

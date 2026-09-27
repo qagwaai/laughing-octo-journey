@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { afterNextRender, ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
+import { appLogger } from '../../services/logger';
 
 @Component({
   selector: 'app-intro-page',
@@ -11,40 +12,28 @@ import { locale } from '../../i18n/locale';
 /**
  * Public intro landing page that routes users to registration or login.
  */
-export default class IntroPage implements OnInit, OnDestroy {
-  private static readonly KNOT_NAVIGATION_DELAY_MS = 5000;
+export default class IntroPage {
   protected readonly t = locale;
   private router = inject(Router);
   private activatedRoute = inject(ActivatedRoute);
-  private knotNavigationTimerId: number | null = null;
-
-  private clearKnotNavigationTimer(): void {
-    if (this.knotNavigationTimerId === null) {
-      return;
-    }
-
-    clearTimeout(this.knotNavigationTimerId);
-    this.knotNavigationTimerId = null;
-  }
-
-  ngOnInit(): void {
+  private readonly transition = afterNextRender(() => {
     if (this.activatedRoute.outlet !== 'primary') {
       return;
     }
-
-    this.knotNavigationTimerId = window.setTimeout(() => {
-      this.router.navigate([{ outlets: { primary: ['knot'], right: null } }], {
+    // Allow the shared canvas to remount after leaving the bare ship scene.
+    void this.router
+      .navigate([{ outlets: { primary: ['knot'] } }], {
         preserveFragment: true,
-      });
-      this.knotNavigationTimerId = null;
-    }, IntroPage.KNOT_NAVIGATION_DELAY_MS);
-  }
+        replaceUrl: true,
+      })
+      .catch((error: unknown) => appLogger.error('Could not open the mining splash scene.', error));
+  });
 
   /**
    * Routes to the registration outlet.
    */
   navigateToRegistration(): void {
-    this.clearKnotNavigationTimer();
+    this.transition.destroy();
     this.router.navigate([{ outlets: { left: ['registration'] } }], { preserveFragment: true });
   }
 
@@ -52,11 +41,7 @@ export default class IntroPage implements OnInit, OnDestroy {
    * Routes to the login outlet.
    */
   navigateToLogin(): void {
-    this.clearKnotNavigationTimer();
+    this.transition.destroy();
     this.router.navigate([{ outlets: { left: ['login'] } }], { preserveFragment: true });
-  }
-
-  ngOnDestroy(): void {
-    this.clearKnotNavigationTimer();
   }
 }
