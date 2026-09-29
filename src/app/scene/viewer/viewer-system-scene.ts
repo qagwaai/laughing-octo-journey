@@ -5,6 +5,7 @@ import {
   CUSTOM_ELEMENTS_SCHEMA,
   effect,
   EventEmitter,
+  inject,
   input,
   Output,
   signal,
@@ -12,11 +13,12 @@ import {
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { BufferGeometry, Color, Euler, IcosahedronGeometry, Quaternion, Vector3 } from 'three';
+import { BufferGeometry, Color, Euler, IcosahedronGeometry, Quaternion, type Texture, Vector3 } from 'three';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
@@ -36,6 +38,14 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
 } from './viewer-formatters';
+import {
+  resolveStarFillColor,
+  resolveStarLights,
+  STAR_LIGHT_DECAY,
+  STAR_LIGHT_DISTANCE,
+  type StarLightInput,
+  VIEWER_SCENE_STAR_LIGHT_INTENSITY,
+} from './star-lighting';
 import { ViewerShipMesh } from './viewer-ship-mesh';
 
 type BodyGeometryKind =
@@ -952,6 +962,7 @@ export function resolveTargetScenePosition(
  */
 export class ViewerSystemScene {
   private store = injectStore();
+  private readonly planetTextures = inject(PlanetTextureCache);
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   private cameraTween: CameraTween | null = null;
@@ -1000,6 +1011,47 @@ export class ViewerSystemScene {
   protected readonly stars = computed(() =>
     this.focusedPlanetId() ? [] : this.rendered().filter((b: RenderedBody) => b.isStar),
   );
+
+  /**
+   * Star bodies for lighting, which deliberately ignores `focusedPlanetId`.
+   *
+   * `stars()` empties while a planet is focused so the star meshes stop drawing,
+   * but the system is still lit by those stars, so reusing it here would black
+   * the scene out the moment a planet was focused.
+   */
+  private readonly starLightInputs = computed<StarLightInput[]>(() =>
+    this.rendered()
+      .filter((body: RenderedBody) => body.isStar)
+      .map((body: RenderedBody) => ({ id: body.id, position: body.position, body: body.source })),
+  );
+
+  protected readonly starLights = computed(() =>
+    resolveStarLights(this.starLightInputs(), VIEWER_SCENE_STAR_LIGHT_INTENSITY),
+  );
+
+  protected readonly starFillColor = computed(() => resolveStarFillColor(this.starLightInputs()));
+
+  protected readonly starLightDistance = STAR_LIGHT_DISTANCE;
+  protected readonly starLightDecay = STAR_LIGHT_DECAY;
+
+  /**
+   * Albedo per body id, republished as L0 bakes land. Bodies absent from this
+   * map keep their flat material colour, which is what every body shows until
+   * its texture finishes baking.
+   */
+  protected readonly bodySurfaces = computed<ReadonlyMap<string, Texture>>(() => {
+    // Depend on the cache's published map so this recomputes per completion.
+    this.planetTextures.ready();
+
+    const surfaces = new Map<string, Texture>();
+    for (const body of this.rendered()) {
+      const baked = this.planetTextures.get(body.source, 'l0');
+      if (baked) {
+        surfaces.set(body.id, baked.albedo);
+      }
+    }
+    return surfaces;
+  });
   protected readonly nonStars = computed(() => {
     const focusIds = this.focusedBodyIds();
     const allNonStars = this.rendered().filter((b: RenderedBody) => !b.isStar);
@@ -1009,8 +1061,18 @@ export class ViewerSystemScene {
     return allNonStars.filter((body) => focusIds.has(body.id));
   });
 
-  protected resolveRockGeometry(body: RenderedBody): BufferGeometry {
-    const seed = body.rockSeed ?? body.id;
+  /**
+   * Hover and target highlights win; otherwise a textured body renders white
+   * because three multiplies `map` by `color`, and the baked albedo already
+   * carries the body's colour. Untextured bodies keep their flat tint.
+   */
+  protected resolveSurfaceColor(body: RenderedBody): string {
+    if (this.hoveredBodyId() === body.id) return '#ff3b30';
+    if (this.targetedBodyId() === body.id) return '#f59e0b';
+    return this.bodySurfaces().has(body.id) ? '#ffffff' : body.materialColor;
+  }
+
+  protected resolveRockGeometry(body: RenderedBody): BufferGeometry {    const seed = body.rockSeed ?? body.id;
     const key = [
       seed,
       body.radius.toFixed(4),
@@ -1133,6 +1195,12 @@ export class ViewerSystemScene {
   protected hoveredBodyId = signal<string | null>(null);
 
   constructor() {
+    // Queue L0 surfaces for the system's bodies. The cache ignores repeats and
+    // untexturable bodies, so re-running this on input changes is cheap.
+    effect(() => {
+      this.planetTextures.requestMany(this.bodies(), 'l0', this.store.snapshot.gl ?? null);
+    });
+
     effect(() => {
       const id = this.targetBodyId();
 

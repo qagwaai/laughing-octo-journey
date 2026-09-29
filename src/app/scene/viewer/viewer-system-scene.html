@@ -1,8 +1,16 @@
 <ngt-color *args="['#02060f']" attach="background" />
-<ngt-ambient-light [intensity]="0.15" />
-<ngt-point-light [position]="[0, 0, 0]" [intensity]="2.05" [distance]="120" [decay]="2" />
-<ngt-directional-light [position]="[26, 18, 14]" [intensity]="0.46" [color]="'#d6dff0'" />
-<ngt-directional-light [position]="[-22, 10, -20]" [intensity]="0.42" [color]="'#6f87ad'" />
+<ngt-ambient-light [intensity]="0.15" [color]="starFillColor()" />
+@for (light of starLights(); track light.id) {
+<ngt-point-light
+  [position]="light.position"
+  [color]="light.color"
+  [intensity]="light.intensity"
+  [distance]="starLightDistance"
+  [decay]="starLightDecay"
+/>
+}
+<ngt-directional-light [position]="[26, 18, 14]" [intensity]="0.3" [color]="starFillColor()" />
+<ngt-directional-light [position]="[-22, 10, -20]" [intensity]="0.35" [color]="'#6f87ad'" />
 <ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08, enableZoom: false }" />
 
 <ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
@@ -90,13 +98,8 @@
   <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
   }
   <ngt-mesh-standard-material
-    [color]="
-      hoveredBodyId() === body.id
-        ? '#ff3b30'
-        : targetedBodyId() === body.id
-          ? '#f59e0b'
-          : body.materialColor
-    "
+    [map]="bodySurfaces().get(body.id) ?? null"
+    [color]="resolveSurfaceColor(body)"
     [roughness]="body.materialRoughness"
     [metalness]="body.materialMetalness"
     [emissive]="

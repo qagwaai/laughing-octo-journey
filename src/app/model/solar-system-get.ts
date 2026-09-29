@@ -16,6 +16,8 @@ export type ViewerStationKind = 'market' | string;
 
 export interface ViewerBodyVisualization {
   colorHex?: string;
+  /** Spectral class for star bodies, per the solar-system-get contract. */
+  spectralClass?: string;
   textureKey?: string | null;
 }
 

@@ -43,7 +43,12 @@ export function disposeMiningObject(root: Object3D): void {
   geometries.forEach((geometry) => geometry.dispose());
 }
 
-export function createMiningBackdrop(quality: MiningQuality, earthMap: Texture): Group {
+export function createMiningBackdrop(
+  quality: MiningQuality,
+  albedo: Texture,
+  normalMap?: Texture | null,
+  materialMap?: Texture | null,
+): Group {
   const group = new Group();
   const fill = new HemisphereLight('#9cbbe7', '#211208', 2.5);
   group.add(fill);
@@ -101,7 +106,16 @@ export function createMiningBackdrop(quality: MiningQuality, earthMap: Texture):
   group.add(rocks);
   const planet = new Mesh(
     new SphereGeometry(4, 48, 32),
-    new MeshStandardMaterial({ map: earthMap, roughness: 1, metalness: 0 }),
+    // Roughness and metalness multiply their maps, so both scalars go to 1 when
+    // a material map is present and let the texture drive water versus land.
+    new MeshStandardMaterial({
+      map: albedo,
+      normalMap: normalMap ?? null,
+      roughnessMap: materialMap ?? null,
+      metalnessMap: materialMap ?? null,
+      roughness: 1,
+      metalness: materialMap ? 1 : 0,
+    }),
   );
   planet.position.set(-2.8, -0.8, -6);
   planet.rotation.z = -0.3;

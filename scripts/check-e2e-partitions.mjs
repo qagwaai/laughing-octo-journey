@@ -25,6 +25,7 @@ const PARTITIONS = [
     patterns: [
       /^viewer.*\.spec\.ts$/,
       /^planet-view-zoom\.spec\.ts$/,
+      /^planet-bake-parity\.spec\.ts$/,
       /^ship-exterior-.*\.spec\.ts$/,
       /^mining-splash\.spec\.ts$/,
     ],

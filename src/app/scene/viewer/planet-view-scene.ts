@@ -5,7 +5,9 @@ import {
   CUSTOM_ELEMENTS_SCHEMA,
   effect,
   EventEmitter,
+  inject,
   input,
+  OnDestroy,
   Output,
   signal,
   viewChild,
@@ -13,7 +15,16 @@ import {
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { CanvasTexture, Vector3 } from 'three';
+import type { PlanetBakeResult } from '../planet/planet-bake';
+import {
+  PLANET_VIEW_STAR_LIGHT_INTENSITY,
+  resolveStarFillColor,
+  resolveStarLights,
+  STAR_LIGHT_DECAY,
+  STAR_LIGHT_DISTANCE,
+} from './star-lighting';
 import type { ViewerBody } from '../../model/solar-system-get';
+import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { resolveBodyColor } from './viewer-formatters';
 
 interface OrbitControlsLike {
@@ -42,6 +53,7 @@ interface StarMarker {
   position: [number, number, number];
   radius: number;
   glowSize: number;
+  body: ViewerBody;
 }
 
 const PLANET_FOCUS_RADIUS_UNIT = 2.2;
@@ -183,31 +195,57 @@ export function resolveOrbitAngleRad(body: ViewerBody): number {
   return (hash % 360) * (Math.PI / 180);
 }
 
+/**
+ * Places every star in the system around the focused planet.
+ *
+ * A system can be a binary, and previously only the first star was found, so a
+ * companion neither appeared nor contributed light. Stars sharing a position
+ * are fanned apart so they do not stack into a single sprite.
+ */
+export function resolveStarMarkers(
+  selected: ViewerBody,
+  allBodies: ViewerBody[],
+  maxOrbitRadius: number,
+): StarMarker[] {
+  const stars = allBodies.filter((body) => body.bodyType === 'star');
+  if (stars.length === 0) {
+    return [];
+  }
+
+  const markerDistance = Math.max(maxOrbitRadius * 2.2, 28);
+
+  return stars.map((star, index) => {
+    const dx = star.spatial.positionKm.x - selected.spatial.positionKm.x;
+    const dz = star.spatial.positionKm.z - selected.spatial.positionKm.z;
+    const planarLength = Math.hypot(dx, dz);
+    // Companions are often catalogued at the same point as the primary, so a
+    // degenerate direction is fanned by index rather than collapsed.
+    const fallbackAngle = -2.29 + index * 0.9;
+    const nx = planarLength > 0 ? dx / planarLength : Math.cos(fallbackAngle);
+    const nz = planarLength > 0 ? dz / planarLength : Math.sin(fallbackAngle);
+
+    return {
+      id: star.id,
+      displayName: star.displayName || star.id,
+      color: resolveBodyColor(star),
+      position: [nx * markerDistance, Math.max(2.2, maxOrbitRadius * 0.14), nz * markerDistance] as [
+        number,
+        number,
+        number,
+      ],
+      radius: 0.66,
+      glowSize: Math.max(maxOrbitRadius * 0.9, 7),
+      body: star,
+    };
+  });
+}
+
 export function resolveStarMarker(
   selected: ViewerBody,
   allBodies: ViewerBody[],
   maxOrbitRadius: number,
 ): StarMarker | null {
-  const nearestStar = allBodies.find((body) => body.bodyType === 'star');
-  if (!nearestStar) {
-    return null;
-  }
-
-  const markerDistance = Math.max(maxOrbitRadius * 2.2, 28);
-  const dx = nearestStar.spatial.positionKm.x - selected.spatial.positionKm.x;
-  const dz = nearestStar.spatial.positionKm.z - selected.spatial.positionKm.z;
-  const planarLength = Math.hypot(dx, dz);
-  const nx = planarLength > 0 ? dx / planarLength : -0.66;
-  const nz = planarLength > 0 ? dz / planarLength : -0.75;
-
-  return {
-    id: nearestStar.id,
-    displayName: nearestStar.displayName || nearestStar.id,
-    color: resolveBodyColor(nearestStar),
-    position: [nx * markerDistance, Math.max(2.2, maxOrbitRadius * 0.14), nz * markerDistance],
-    radius: 0.66,
-    glowSize: Math.max(maxOrbitRadius * 0.9, 7),
-  };
+  return resolveStarMarkers(selected, allBodies, maxOrbitRadius)[0] ?? null;
 }
 
 export function hexToRgb(hex: string): [number, number, number] {
@@ -216,62 +254,6 @@ export function hexToRgb(hex: string): [number, number, number] {
   const g = parseInt(c.substring(2, 4), 16);
   const b = parseInt(c.substring(4, 6), 16);
   return [Number.isNaN(r) ? 128 : r, Number.isNaN(g) ? 128 : g, Number.isNaN(b) ? 128 : b];
-}
-
-export function lerpColor(a: [number, number, number], b: [number, number, number], t: number): string {
-  const r = Math.round(a[0] + (b[0] - a[0]) * t);
-  const g = Math.round(a[1] + (b[1] - a[1]) * t);
-  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-  return `rgb(${r},${g},${bl})`;
-}
-
-export function createProceduralTexture(baseHex: string, seed: number, type: 'planet' | 'moon'): CanvasTexture {
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-
-  const baseRgb = hexToRgb(baseHex);
-  const darkFactor = type === 'moon' ? 0.55 : 0.45;
-  const darkRgb: [number, number, number] = [
-    Math.round(baseRgb[0] * darkFactor),
-    Math.round(baseRgb[1] * darkFactor),
-    Math.round(baseRgb[2] * darkFactor),
-  ];
-
-  // Base gradient
-  const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, lerpColor(baseRgb, darkRgb, 0.2));
-  grad.addColorStop(0.5, lerpColor(baseRgb, darkRgb, 0.0));
-  grad.addColorStop(1, lerpColor(baseRgb, darkRgb, 0.35));
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
-
-  // Horizontal bands (atmospheric / surface bands)
-  const bandCount = type === 'planet' ? 14 : 8;
-  for (let i = 0; i < bandCount; i++) {
-    const s = (seed * 31 + i * 53) % 1000;
-    const y = (s / 1000) * size;
-    const h = 6 + ((seed + i * 19) % (type === 'planet' ? 38 : 22));
-    const t = 0.12 + ((seed * 7 + i * 11) % 100) / 280;
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = lerpColor(baseRgb, [255, 255, 255], t);
-    ctx.fillRect(0, y, size, h);
-  }
-  ctx.globalAlpha = 1.0;
-
-  // Polar cap
-  if (type === 'planet') {
-    const capGrad = ctx.createLinearGradient(0, 0, 0, size * 0.18);
-    capGrad.addColorStop(0, 'rgba(240,248,255,0.55)');
-    capGrad.addColorStop(1, 'rgba(240,248,255,0)');
-    ctx.fillStyle = capGrad;
-    ctx.fillRect(0, 0, size, size * 0.18);
-  }
-
-  const texture = new CanvasTexture(canvas);
-  return texture;
 }
 
 export function createStarGlowTexture(hex: string): CanvasTexture {
@@ -313,8 +295,32 @@ export function createStarGlowTexture(hex: string): CanvasTexture {
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PlanetViewScene {
+export class PlanetViewScene implements OnDestroy {
   private store = injectStore();
+  private readonly planetTextures = inject(PlanetTextureCache);
+
+  /**
+   * The star glow is a canvas sprite rather than a baked surface. It is cached
+   * by colour so a recompute does not orphan the previous texture; the earlier
+   * implementation allocated a fresh CanvasTexture on every recompute and never
+   * released any of them. A binary system needs one entry per distinct colour.
+   */
+  private starGlowCache = new Map<string, CanvasTexture>();
+
+  private starGlowFor(color: string): CanvasTexture {
+    const cached = this.starGlowCache.get(color);
+    if (cached) {
+      return cached;
+    }
+    const texture = createStarGlowTexture(color);
+    this.starGlowCache.set(color, texture);
+    return texture;
+  }
+
+  ngOnDestroy(): void {
+    for (const texture of this.starGlowCache.values()) texture.dispose();
+    this.starGlowCache.clear();
+  }
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   bodies = input<ViewerBody[]>([]);
@@ -329,22 +335,35 @@ export class PlanetViewScene {
   protected hoveredBodyId = signal<string | null>(null);
   private needsCameraSnap = signal(true);
 
-  protected textures = computed(() => {
-    const selected = this.bodies().find((b) => b.id === this.selectedBodyId());
-    const planetColor = selected ? resolveBodyColor(selected) : '#5577aa';
-    const seed = selected ? selected.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) : 42;
-    const moons = this.bodies().filter(
-      (b) => b.orbitalElements?.anchorBodyId === selected?.id && b.bodyType !== 'star',
-    );
-    const moonColor = moons[0] ? resolveBodyColor(moons[0]) : '#aabbcc';
-    const starBody = this.bodies().find((b) => b.bodyType === 'star');
-    const starColor = starBody ? resolveBodyColor(starBody) : '#ffedbc';
-    return {
-      planet: createProceduralTexture(planetColor, seed, 'planet'),
-      moon: createProceduralTexture(moonColor, seed + 7, 'moon'),
-      starGlow: createStarGlowTexture(starColor),
-    };
+  /**
+   * Baked surfaces for the focused body and its moons.
+   *
+   * The focused body asks for L1 and falls back to its L0 surface while that
+   * bake is queued, so the planet is never untextured once anything is warm.
+   * Moons stay at L0: they render far smaller here, and L1 for every moon would
+   * cost roughly 21 MiB each.
+   */
+  protected readonly surfaces = computed<ReadonlyMap<string, PlanetBakeResult>>(() => {
+    this.planetTextures.ready();
+
+    const map = new Map<string, PlanetBakeResult>();
+    const selected = this.selectedBody();
+    if (selected) {
+      const focused = this.planetTextures.get(selected, 'l1');
+      if (focused) map.set(selected.id, focused);
+    }
+    for (const moon of this.moons()) {
+      const baked = this.planetTextures.get(moon.body, 'l0');
+      if (baked) map.set(moon.id, baked);
+    }
+    return map;
   });
+
+  /** Textured bodies render white; three multiplies `map` by `color`. */
+  protected resolveSurfaceTint(bodyId: string, hoverColor: string, baseColor: string): string {
+    if (this.hoveredBodyId() === bodyId) return hoverColor;
+    return this.surfaces().has(bodyId) ? '#ffffff' : baseColor;
+  }
 
   protected selectedBody = computed<ViewerBody | null>(() => {
     const id = this.selectedBodyId();
@@ -398,14 +417,43 @@ export class PlanetViewScene {
     return Math.max(moonOrbitRadius, PLANET_BASE_MOON_ORBIT);
   });
 
-  protected starMarker = computed<StarMarker | null>(() => {
+  /**
+   * Every star in the system, each with its own glow sprite and cast light.
+   *
+   * The light colour is tempered toward neutral while the sprite keeps the
+   * star's true colour, so the star stays identifiable without its tint making
+   * the focused planet's surface unreadable.
+   */
+  protected starMarkers = computed(() => {
     const selected = this.selectedBody();
     if (!selected) {
-      return null;
+      return [];
     }
 
-    return resolveStarMarker(selected, this.bodies(), this.maxOrbitRadius());
+    const markers = resolveStarMarkers(selected, this.bodies(), this.maxOrbitRadius());
+    const lights = resolveStarLights(
+      markers.map((marker) => ({ id: marker.id, position: marker.position, body: marker.body })),
+      PLANET_VIEW_STAR_LIGHT_INTENSITY,
+    );
+
+    return markers.map((marker, index) => ({
+      ...marker,
+      glow: this.starGlowFor(marker.color),
+      lightColor: lights[index].color,
+      lightIntensity: lights[index].intensity,
+    }));
   });
+
+  protected readonly starLightDistance = STAR_LIGHT_DISTANCE;
+  protected readonly starLightDecay = STAR_LIGHT_DECAY;
+
+  protected starFillColor = computed(() =>
+    resolveStarFillColor(
+      this.bodies()
+        .filter((body) => body.bodyType === 'star')
+        .map((body) => ({ id: body.id, position: [0, 0, 0] as [number, number, number], body })),
+    ),
+  );
 
   protected minCameraDistance = computed<number>(() => {
     return resolvePlanetViewCameraDistanceRange(this.selectedBody()).min;
@@ -414,6 +462,20 @@ export class PlanetViewScene {
   protected maxCameraDistance = computed<number>(() => resolvePlanetViewCameraDistanceRange(this.selectedBody()).max);
 
   constructor() {
+    // Focused body at L1, its moons at L0. Repeats are ignored by the cache.
+    effect(() => {
+      const renderer = this.store.snapshot.gl ?? null;
+      const selected = this.selectedBody();
+      if (selected) {
+        this.planetTextures.request(selected, 'l1', renderer);
+      }
+      this.planetTextures.requestMany(
+        this.moons().map((moon) => moon.body),
+        'l0',
+        renderer,
+      );
+    });
+
     effect(() => {
       this.selectedBodyId();
       this.needsCameraSnap.set(true);
