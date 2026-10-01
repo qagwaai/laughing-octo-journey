@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Mesh, MeshStandardMaterial, Scene } from 'three';
 import {
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_QUERY_PARAM,
@@ -85,6 +86,156 @@ test('bakes the planet shader through three.js without GPU compile errors', asyn
   expect(
     consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
   ).toEqual([]);
+});
+
+test('renders repeatable terran clouds and updates them with the splash controls', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/knot(left:intro)'));
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  const canvas = page.locator('ngt-canvas canvas').first();
+  const withClouds = await canvas.screenshot();
+  await page.getByRole('checkbox', { name: 'Terran clouds' }).uncheck();
+  await expect(page.getByRole('slider', { name: /Cloud coverage/ })).toBeDisabled();
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(withClouds);
+  const withoutClouds = await canvas.screenshot();
+  await page.getByRole('checkbox', { name: 'Terran clouds' }).check();
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(withoutClouds);
+  const defaultCoverage = await canvas.screenshot();
+  await page.getByRole('slider', { name: /Cloud coverage/ }).fill('0');
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(defaultCoverage);
+  const noCoverage = await canvas.screenshot();
+  await page.getByRole('slider', { name: /Cloud coverage/ }).fill('70');
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(noCoverage);
+  const thinCoverage = await canvas.screenshot();
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thick');
+  await expect(page.getByRole('slider', { name: /Cloud coverage/ })).toHaveValue('98');
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(thinCoverage);
+  const thickCoverage = await canvas.screenshot();
+  await page.getByRole('slider', { name: /Cloud coverage/ }).fill('0');
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(thickCoverage);
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thin');
+  await expect(page.getByRole('slider', { name: /Cloud coverage/ })).toHaveValue('70');
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thick');
+  await expect(page.getByRole('slider', { name: /Cloud coverage/ })).toHaveValue('0');
+});
+
+test('adjusts storm activity independently of cloud coverage', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/knot(left:intro)'));
+  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  const canvas = page.locator('ngt-canvas canvas').first();
+  const coverage = page.getByRole('slider', { name: /Cloud coverage/ });
+  const activity = page.getByRole('slider', { name: /Storm activity/ });
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thick');
+  await expect(activity).toHaveValue('60');
+  await expect(page.getByText('Storm activity: 60%')).toBeVisible();
+  const defaultActivity = await canvas.screenshot();
+  await activity.fill('0');
+  await expect(page.getByText('Storm activity: 0%')).toBeVisible();
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(defaultActivity);
+  const calm = await canvas.screenshot();
+  await activity.fill('100');
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(calm);
+  await expect(coverage).toHaveValue('98');
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thin');
+  await expect(activity).toHaveValue('100');
+  await page.getByRole('checkbox', { name: 'Terran clouds' }).uncheck();
+  await expect(activity).toBeDisabled();
+});
+
+for (const style of ['thin', 'thick'] as const) {
+  test(`keeps ${style} clouds moving while orbit controls pause camera drift`, async ({ page }) => {
+    await page.goto(pinnedSplash('/knot(left:intro)'));
+    const overlay = page.locator('app-mining-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready');
+    await page.getByRole('combobox', { name: 'Cloud style' }).selectOption(style);
+    const cloudAngle = () =>
+      page.evaluate(
+        (expectedOpacity) => {
+          const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+          const canvas = document.querySelector('ngt-canvas');
+          if (!ngApi?.getComponent || !canvas) throw new Error('Splash canvas is unavailable');
+          const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+          let angle: number | undefined;
+          component.store.snapshot.scene.traverse((node) => {
+            if (node.type !== 'Mesh') return;
+            const mesh = node as Mesh;
+            const material = mesh.material as MeshStandardMaterial;
+            if (material.transparent && material.opacity === expectedOpacity && material.map?.image?.width >= 256) {
+              angle = mesh.rotation.y;
+            }
+          });
+          if (angle === undefined) throw new Error('Cloud mesh is unavailable');
+          return angle;
+        },
+        style === 'thick' ? 1 : 0.7,
+      );
+    const start = await cloudAngle();
+    await expect.poll(cloudAngle).toBeGreaterThan(start + 0.003);
+    const bounds = await page.locator('ngt-canvas canvas').first().boundingBox();
+    expect(bounds).not.toBeNull();
+    const x = bounds!.x + bounds!.width / 2;
+    const y = bounds!.y + bounds!.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 100, y - 40, { steps: 8 });
+    await expect(overlay).toHaveAttribute('data-motion', 'orbit');
+    const pausedAngle = await cloudAngle();
+    await expect.poll(cloudAngle, { timeout: 5_000 }).toBeGreaterThan(pausedAngle + 0.003);
+    await expect(overlay).toHaveAttribute('data-motion', 'orbit');
+    await page.mouse.up();
+  });
+}
+
+test('rotates storm texture locally even when the cloud shell is still', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/knot(left:intro)'));
+  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thick');
+  await page.evaluate(() => {
+    const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+    const canvas = document.querySelector('ngt-canvas');
+    if (!ngApi?.getComponent || !canvas) throw new Error('Splash canvas is unavailable');
+    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene; invalidate: () => void } } };
+    let found = false;
+    component.store.snapshot.scene.traverse((node) => {
+      if (node.type !== 'Mesh') return;
+      const material = (node as Mesh).material as MeshStandardMaterial;
+      if (material.customProgramCacheKey() !== 'planet-cloud-storms-v1') return;
+      found = true;
+      const compile = material.onBeforeCompile;
+      material.onBeforeCompile = (shader, renderer) => {
+        compile(shader, renderer);
+        (window as Window & { cloudStormTime?: { value: number } }).cloudStormTime = shader.uniforms[
+          'cloudStormTime'
+        ] as { value: number };
+      };
+      material.customProgramCacheKey = () => 'planet-cloud-storms-v1-test';
+      material.needsUpdate = true;
+    });
+    if (!found) throw new Error('No cloud storm material in the splash scene');
+    component.store.snapshot.invalidate();
+  });
+  await page.waitForFunction(() => (window as Window & { cloudStormTime?: { value: number } }).cloudStormTime);
+  const renderAt = (angle: number) =>
+    page.evaluate(async (value) => {
+      const clock = (window as Window & { cloudStormTime?: { value: number } }).cloudStormTime;
+      const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+      const canvas = document.querySelector('ngt-canvas');
+      if (!clock || !canvas || !ngApi?.getComponent) throw new Error('Storm shader is unavailable');
+      const component = ngApi.getComponent(canvas) as { store: { snapshot: { invalidate: () => void } } };
+      clock.value = value;
+      component.store.snapshot.invalidate();
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    }, angle);
+  const canvas = page.locator('ngt-canvas canvas').first();
+  await renderAt(0);
+  const still = await canvas.screenshot();
+  await renderAt(0);
+  expect(await canvas.screenshot()).toEqual(still);
+  await renderAt(Math.PI / 2);
+  expect(await canvas.screenshot()).not.toEqual(still);
 });
 
 test('uses low quality on mobile with reduced motion', async ({ page }) => {

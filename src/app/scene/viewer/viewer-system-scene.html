@@ -116,5 +116,8 @@
     "
     [flatShading]="body.geometryKind === 'rock-deformed'"
   />
+  @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id)) {
+  <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
+  }
 </ngt-mesh>
 }

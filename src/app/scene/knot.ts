@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, untracked } from '@angular/core';
 import { beforeRender, injectStore } from 'angular-three';
-import { Box3, Color, Group, PerspectiveCamera, Vector3 } from 'three';
+import { Box3, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, SphereGeometry, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -9,6 +9,14 @@ import { SceneVisibilityService } from '../services/scene-visibility.service';
 import { createMiningBackdrop, disposeMiningObject } from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
 import type { PlanetBakeResult } from './planet/planet-bake';
+import {
+  CLOUD_DRIFT_RADIANS_PER_SECOND,
+  createPlanetCloudTexture,
+  PlanetCloudSettings,
+  type PlanetCloudStyle,
+  type PlanetCloudTexture,
+} from './planet/planet-clouds';
+import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import { bakeSplashPlanet } from './planet/splash-planet';
 
 @Component({
@@ -21,6 +29,7 @@ export default class Knot {
   private readonly store = injectStore({ optional: true });
   private readonly state = inject(MiningSplashState);
   private readonly visibility = inject(SceneVisibilityService);
+  private readonly cloudSettings = inject(PlanetCloudSettings);
 
   constructor() {
     const store = this.store;
@@ -43,6 +52,10 @@ export default class Knot {
     let framing = 1;
     let previousFraming: number | null = null;
     let orbitResumeTimer: ReturnType<typeof setTimeout> | null = null;
+    let clouds: PlanetCloudTexture | undefined;
+    let cloudStormLayer: PlanetCloudStormMaterial | undefined;
+    let cloudMesh: Mesh<SphereGeometry, MeshStandardMaterial> | undefined;
+    let cloudStyle: PlanetCloudStyle | undefined;
     const cameraDirection = new Vector3(2.7, 2, 3.8).normalize();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
@@ -102,6 +115,31 @@ export default class Knot {
     effect(() => {
       controls.enabled = this.state.status() === 'ready' && !this.visibility.isSceneHidden();
     });
+    effect(() => {
+      const enabled = this.cloudSettings.enabled();
+      const style = this.cloudSettings.style();
+      const coverage = this.cloudSettings.coverage();
+      const stormActivity = this.cloudSettings.stormActivity();
+      if (clouds && cloudMesh && cloudStyle !== style) {
+        const previous = clouds;
+        const previousMaterial = cloudStormLayer?.material;
+        clouds = createPlanetCloudTexture(
+          this.state.planetBodyId,
+          previous.texture.image.width,
+          previous.texture.image.height,
+          style,
+        );
+        cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, style, clouds.texture);
+        cloudMesh.material = cloudStormLayer.material;
+        cloudStyle = style;
+        previousMaterial?.dispose();
+        previous.texture.dispose();
+      }
+      clouds?.setCoverage(coverage);
+      cloudStormLayer?.setActivity(stormActivity);
+      if (cloudMesh) cloudMesh.visible = enabled;
+      invalidate();
+    });
     const isStatic = computed(() => this.state.status() === 'static');
     effect((onCleanup) => {
       this.state.attempt();
@@ -127,7 +165,22 @@ export default class Knot {
           }
           model = gltf.scene;
           planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
-          backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material);
+          clouds = createPlanetCloudTexture(
+            this.state.planetBodyId,
+            quality === 'standard' ? 512 : 256,
+            quality === 'standard' ? 256 : 128,
+            this.cloudSettings.style(),
+          );
+          cloudStyle = this.cloudSettings.style();
+          clouds.setCoverage(this.cloudSettings.coverage());
+          cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, cloudStyle, clouds.texture);
+          cloudStormLayer.setActivity(this.cloudSettings.stormActivity());
+          cloudMesh = new Mesh(
+            new SphereGeometry(4 * 1.012, 64, 48),
+            cloudStormLayer.material,
+          );
+          cloudMesh.visible = this.cloudSettings.enabled();
+          backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material, cloudMesh);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -150,7 +203,15 @@ export default class Knot {
             backdrop.removeFromParent();
             disposeMiningObject(backdrop);
             backdrop = undefined;
+          } else {
+            cloudMesh?.geometry.dispose();
+            cloudMesh?.material.dispose();
+            clouds?.texture.dispose();
           }
+          clouds = undefined;
+          cloudMesh = undefined;
+          cloudStormLayer = undefined;
+          cloudStyle = undefined;
           // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
           planet?.dispose();
           planet = undefined;
@@ -166,10 +227,29 @@ export default class Knot {
         }
         backdrop?.removeFromParent();
         if (backdrop) disposeMiningObject(backdrop);
+        else {
+          cloudMesh?.geometry.dispose();
+          cloudMesh?.material.dispose();
+          clouds?.texture.dispose();
+        }
+        clouds = undefined;
+        cloudMesh = undefined;
+        cloudStormLayer = undefined;
+        cloudStyle = undefined;
         planet?.dispose();
       });
     });
     beforeRender(({ delta }) => {
+      if (
+        cloudMesh &&
+        this.state.status() === 'ready' &&
+        !this.state.reducedMotion() &&
+        !this.state.documentHidden() &&
+        this.cloudSettings.enabled()
+      ) {
+        cloudMesh.rotation.y += Math.min(delta, 0.05) * CLOUD_DRIFT_RADIANS_PER_SECOND;
+        cloudStormLayer?.advance(delta);
+      }
       if (pendingFrames > 0) {
         pendingFrames--;
         if (pendingFrames === 0) {

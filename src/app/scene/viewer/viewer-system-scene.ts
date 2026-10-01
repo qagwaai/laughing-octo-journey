@@ -19,6 +19,7 @@ import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
+import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
@@ -948,7 +949,7 @@ export function resolveTargetScenePosition(
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh],
+  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

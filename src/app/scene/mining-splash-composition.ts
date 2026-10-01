@@ -48,6 +48,7 @@ export function createMiningBackdrop(
   albedo: Texture,
   normalMap?: Texture | null,
   materialMap?: Texture | null,
+  cloudLayer?: Mesh,
 ): Group {
   const group = new Group();
   const fill = new HemisphereLight('#9cbbe7', '#211208', 2.5);
@@ -119,6 +120,7 @@ export function createMiningBackdrop(
   );
   planet.position.set(-2.8, -0.8, -6);
   planet.rotation.z = -0.3;
+  if (cloudLayer) planet.add(cloudLayer);
   group.add(planet);
   return group;
 }

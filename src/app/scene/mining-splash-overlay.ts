@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { locale } from '../i18n/locale';
 import { type MiningQuality, MiningSplashState } from './mining-splash-state';
+import { PlanetCloudSettings } from './planet/planet-clouds';
 
 @Component({
   selector: 'app-mining-splash-overlay',
@@ -49,6 +50,46 @@ import { type MiningQuality, MiningSplashState } from './mining-splash-state';
           }
         </div>
       } @else {
+        <div class="cloud-controls" (pointerdown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()">
+          <label class="cloud-toggle">
+            <input type="checkbox" [checked]="clouds.enabled()" (change)="onCloudToggle($event)" />
+            {{ t.public.mining.cloudsLabel }}
+          </label>
+          <label for="splash-cloud-style">{{ t.public.mining.cloudStyleLabel }}</label>
+          <select
+            id="splash-cloud-style"
+            [value]="clouds.style()"
+            [disabled]="!clouds.enabled()"
+            (change)="onCloudStyle($event)"
+          >
+            <option value="thin">{{ t.public.mining.thinCloudsLabel }}</option>
+            <option value="thick">{{ t.public.mining.thickCloudsLabel }}</option>
+          </select>
+          <label for="splash-cloud-coverage">{{ t.public.mining.cloudCoverageLabel }}: {{ clouds.coverage() }}%</label>
+          <input
+            id="splash-cloud-coverage"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            [value]="clouds.coverage()"
+            [disabled]="!clouds.enabled()"
+            (input)="onCloudCoverage($event)"
+          />
+          <label for="splash-storm-activity">
+            {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
+          </label>
+          <input
+            id="splash-storm-activity"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            [value]="clouds.stormActivity()"
+            [disabled]="!clouds.enabled()"
+            (input)="onStormActivity($event)"
+          />
+        </div>
         <div class="caption">
           <span>
             {{ t.public.mining.title }}
@@ -145,6 +186,41 @@ import { type MiningQuality, MiningSplashState } from './mining-splash-state';
       gap: 0.5rem;
       text-shadow: 0 1px 4px #000;
     }
+    .cloud-controls {
+      position: absolute;
+      right: 1rem;
+      bottom: 4.5rem;
+      display: grid;
+      gap: 0.35rem;
+      min-width: 11rem;
+      border: 1px solid #879bb7;
+      border-radius: 0.4rem;
+      background: #061020e8;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.75rem;
+      pointer-events: auto;
+    }
+    .cloud-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .cloud-controls input[type='range'] {
+      width: 100%;
+      accent-color: #f59e42;
+    }
+    .cloud-controls select {
+      border: 1px solid #879bb7;
+      border-radius: 0.25rem;
+      background: #0d1b2c;
+      color: #edf4ff;
+      padding: 0.3rem;
+    }
+    .cloud-controls select:focus-visible,
+    .cloud-controls input:focus-visible {
+      outline: 2px solid #f59e42;
+      outline-offset: 2px;
+    }
     .caption span {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -174,7 +250,29 @@ import { type MiningQuality, MiningSplashState } from './mining-splash-state';
 })
 export class MiningSplashOverlay {
   protected readonly state = inject(MiningSplashState);
+  protected readonly clouds = inject(PlanetCloudSettings);
   protected readonly t = locale;
+  protected onCloudToggle(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.clouds.enabled.set(target.checked);
+  }
+
+  protected onCloudCoverage(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.clouds.setCoverage(Number(target.value));
+  }
+
+  protected onStormActivity(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.clouds.stormActivity.set(Number(target.value));
+  }
+
+  protected onCloudStyle(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (target.value !== 'thin' && target.value !== 'thick') throw new Error(`Unknown cloud style: ${target.value}`);
+    this.clouds.style.set(target.value);
+  }
   protected readonly otherQuality = computed<MiningQuality>(() =>
     this.state.quality() === 'standard' ? 'low' : 'standard',
   );

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Mesh, MeshStandardMaterial, Scene } from 'three';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import {
@@ -121,6 +122,24 @@ async function waitForSurfacesBaked(page: import('@playwright/test').Page, minim
   await expect(page.getByTestId('viewer-surface-progress')).toBeHidden();
 }
 
+async function cloudTextureWidths(page: import('@playwright/test').Page): Promise<number[]> {
+  return page.evaluate(() => {
+    const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+    const canvas = document.querySelector('ngt-canvas');
+    if (!ngApi?.getComponent || !canvas) throw new Error('Planet canvas is unavailable');
+    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+    const widths: number[] = [];
+    component.store.snapshot.scene.traverse((node) => {
+      if (node.type !== 'Mesh') return;
+      const material = (node as Mesh).material as MeshStandardMaterial;
+      if (material.transparent && material.opacity === 0.7 && material.map?.image?.width) {
+        widths.push(material.map.image.width);
+      }
+    });
+    return widths;
+  });
+}
+
 test.describe('viewer procedural planet surfaces', () => {
   test('bakes system-view surfaces through three.js without shader errors', async ({ page }) => {
     const problems = collectRenderProblems(page);
@@ -132,6 +151,7 @@ test.describe('viewer procedural planet surfaces', () => {
     // texturable, so three surfaces is the full expected set.
     await waitForSurfacesBaked(page, 3);
 
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([128, 128, 128]);
     expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
   });
 
@@ -186,6 +206,7 @@ test.describe('viewer procedural planet surfaces', () => {
     await expect(new PlanetViewPage(page).header).toBeVisible({ timeout: 10_000 });
     await waitForSurfacesBaked(page);
 
+    await expect.poll(() => cloudTextureWidths(page)).toContain(256);
     expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
   });
 });

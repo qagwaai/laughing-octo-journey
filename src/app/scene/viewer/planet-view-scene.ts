@@ -25,6 +25,7 @@ import {
 } from './star-lighting';
 import type { ViewerBody } from '../../model/solar-system-get';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
+import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolveBodyColor } from './viewer-formatters';
 
 interface OrbitControlsLike {
@@ -291,7 +292,7 @@ export function createStarGlowTexture(hex: string): CanvasTexture {
 @Component({
   selector: 'app-planet-view-scene',
   templateUrl: './planet-view-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls],
+  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

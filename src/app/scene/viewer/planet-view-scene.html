@@ -50,6 +50,9 @@
     [roughness]="_selectedSurface?.material ? 1 : 0.72"
     [metalness]="_selectedSurface?.material ? 1 : 0"
   />
+  @if (_selectedSurface) {
+  <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
+  }
 </ngt-mesh>
 
 @for (moon of moons(); track moon.id) {
@@ -75,6 +78,9 @@
     [roughness]="0.78"
     [metalness]="0"
   />
+  @if (surfaces().has(moon.id)) {
+  <app-planet-cloud-layer [bodyId]="moon.id" [radius]="moon.radius" />
+  }
 </ngt-mesh>
 } @for (star of starMarkers(); track star.id) {
 <ngt-sprite [position]="star.position" [name]="star.displayName" [scale]="[star.glowSize, star.glowSize, 1]">
