@@ -174,6 +174,7 @@ The splash now renders a fully generated world and reaches no third-party host.
 - [knot.ts](../src/app/scene/knot.ts) no longer constructs a `TextureLoader` or downsizes through a canvas; it awaits the GLB and calls `bakeSplashPlanet(quality, gl)`. `planet?.dispose()` appears in both the failure and cleanup paths because `disposeMiningObject` releases the texture but not the render target.
 - [createMiningBackdrop](../src/app/scene/mining-splash-composition.ts) now also accepts an optional `normalMap`, which the standard quality tier supplies.
 - [mining-splash.spec.ts](../e2e/tests/mining-splash.spec.ts) dropped its `**/Albedo.jpg` route and now asserts the splash issues zero cross-origin requests, plus a test that loads the scene with every third-party host aborted.
+- The splash planet now rotates. [splash-planet-rotation.ts](../src/app/scene/planet/splash-planet-rotation.ts) holds `SPLASH_PLANET_ROTATION`, a plain list of 25 body ids (not curated for looks; edit freely). `MiningSplashState.planetBodyId` picks one per page load, so retries keep the same world, and the overlay exposes it as `data-planet`. `?splashPlanet=<id>` pins any id, listed or not; the splash e2e specs pin `nova-splash-homeworld` for repeatability. Future archetypes can extend the entries into `{ bodyId, archetype }` pairs.
 
 This stage removed a roughly 4.4 MB network transfer, the transient CPU decode of an 8192 x 4096 JPEG, an entire network failure mode that previously forced the poster-and-retry path, and the unresolved third-party attribution question.
 

@@ -10,8 +10,7 @@ import type { PlanetLodPreset } from '../../model/planet/planet-texture';
 import type { MiningQuality } from '../mining-splash-state';
 import { bakePlanetTextures, type PlanetBakeResult, supportsGpuBake } from './planet-bake';
 
-/** Stable seed, so the splash planet looks the same on every visit and in screenshot diffs. */
-export const SPLASH_PLANET_BODY_ID = 'nova-splash-homeworld';
+import { SPLASH_PLANET_BODY_ID } from './splash-planet-rotation';
 
 /** Mirrors the sizes the splash already chose for the downsized photograph. */
 export const SPLASH_PLANET_PRESETS: Readonly<Record<MiningQuality, PlanetLodPreset>> = {
@@ -35,9 +34,13 @@ export function selectSplashPlanetPreset(quality: MiningQuality, renderer?: WebG
   return supportsGpuBake(renderer) ? SPLASH_PLANET_PRESETS[quality] : SPLASH_PLANET_CPU_PRESET;
 }
 
-export function bakeSplashPlanet(quality: MiningQuality, renderer?: WebGLRenderer | null): PlanetBakeResult {
+export function bakeSplashPlanet(
+  quality: MiningQuality,
+  renderer?: WebGLRenderer | null,
+  bodyId: string = SPLASH_PLANET_BODY_ID,
+): PlanetBakeResult {
   return bakePlanetTextures({
-    bodyId: SPLASH_PLANET_BODY_ID,
+    bodyId,
     preset: selectSplashPlanetPreset(quality, renderer),
     renderer,
   });

@@ -1,6 +1,7 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { progress } from 'angular-three-soba/loaders';
 import { appLogger } from '../services/logger';
+import { selectSplashPlanetBodyId } from './planet/splash-planet-rotation';
 
 export type MiningQuality = 'standard' | 'low';
 
@@ -20,6 +21,8 @@ export class MiningSplashState {
   readonly quality = signal<MiningQuality>('low');
   readonly supported = signal(true);
   readonly contextLost = signal(false);
+  /** Chosen once per page load, so retries and still-image toggles keep the same planet. */
+  readonly planetBodyId = selectSplashPlanetBodyId(window.location.search);
   readonly moving = computed(
     () => this.status() === 'ready' && !this.reducedMotion() && !this.documentHidden() && !this.orbitPaused(),
   );
@@ -61,6 +64,13 @@ export class MiningSplashState {
     this.loadDurationMs.set(null);
     this.status.set('loading');
     this.attempt.update((attempt) => attempt + 1);
+  }
+
+  /** Loads the given triangle tier; the Knot load effect tracks `quality` and swaps the model. */
+  switchQuality(quality: MiningQuality): void {
+    if (!this.supported() || this.contextLost() || quality === this.quality()) return;
+    this.quality.set(quality);
+    if (this.status() !== 'ready') this.retry();
   }
 
   useStatic(): void {

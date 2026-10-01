@@ -126,7 +126,7 @@ export default class Knot {
             return;
           }
           model = gltf.scene;
-          planet = bakeSplashPlanet(quality, gl);
+          planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
           backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);

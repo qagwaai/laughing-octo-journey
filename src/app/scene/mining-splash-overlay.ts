@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { locale } from '../i18n/locale';
-import { MiningSplashState } from './mining-splash-state';
+import { type MiningQuality, MiningSplashState } from './mining-splash-state';
 
 @Component({
   selector: 'app-mining-splash-overlay',
@@ -10,6 +10,7 @@ import { MiningSplashState } from './mining-splash-state';
       class="splash"
       [attr.data-state]="state.status()"
       [attr.data-quality]="state.quality()"
+      [attr.data-planet]="state.planetBodyId"
       [attr.data-motion]="state.orbitPaused() ? 'orbit' : state.moving() ? 'drift' : 'still'"
       [attr.aria-label]="t.public.mining.title"
     >
@@ -23,6 +24,7 @@ import { MiningSplashState } from './mining-splash-state';
         } @else {
           {{ t.public.mining.staticTier }}
         }
+        · {{ t.public.mining.planetLabel }} {{ state.planetBodyId }}
       </div>
       @if (state.status() !== 'ready') {
         <img class="poster" src="models/mining-splash-poster.webp?v=32a3639e" alt="" fetchpriority="high" />
@@ -40,6 +42,9 @@ import { MiningSplashState } from './mining-splash-state';
             <p>{{ state.status() === 'error' ? t.public.mining.error : t.public.mining.static }}</p>
             @if (state.supported() && !state.contextLost()) {
               <button type="button" (click)="state.retry()">{{ t.public.mining.retry }}</button>
+              <button type="button" class="tier-switch" (click)="state.switchQuality(otherQuality())">
+                {{ switchLabel() }}
+              </button>
             }
           }
         </div>
@@ -49,7 +54,12 @@ import { MiningSplashState } from './mining-splash-state';
             {{ t.public.mining.title }}
             <small>{{ t.public.mining.orbitHint }}</small>
           </span>
-          <button type="button" (click)="state.useStatic()">{{ t.public.mining.staticAction }}</button>
+          <span class="actions">
+            <button type="button" class="tier-switch" (click)="state.switchQuality(otherQuality())">
+              {{ switchLabel() }}
+            </button>
+            <button type="button" (click)="state.useStatic()">{{ t.public.mining.staticAction }}</button>
+          </span>
         </div>
       }
     </section>
@@ -140,6 +150,18 @@ import { MiningSplashState } from './mining-splash-state';
       text-transform: uppercase;
       letter-spacing: 0.15em;
     }
+    .caption .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      font-size: inherit;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .status button + button {
+      margin-left: 0.5rem;
+    }
     .caption small {
       display: block;
       margin-top: 0.25rem;
@@ -153,4 +175,10 @@ import { MiningSplashState } from './mining-splash-state';
 export class MiningSplashOverlay {
   protected readonly state = inject(MiningSplashState);
   protected readonly t = locale;
+  protected readonly otherQuality = computed<MiningQuality>(() =>
+    this.state.quality() === 'standard' ? 'low' : 'standard',
+  );
+  protected readonly switchLabel = computed(() =>
+    this.otherQuality() === 'standard' ? this.t.public.mining.switchToStandard : this.t.public.mining.switchToLow,
+  );
 }
