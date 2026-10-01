@@ -538,6 +538,7 @@ export const it: DeepPartial<EnLocale> = {
       marketCountLabel: 'Mercati:',
       sceneLoadingStatus: 'Caricamento sistema...',
       sceneEmptyStatus: 'Seleziona un sistema dalla lista per iniziare.',
+      surfaceBakeStatus: 'Generazione delle superfici planetarie...',
       sceneErrorPrefix: 'Caricamento sistema fallito:',
       planetViewZoomLabel: 'Scala',
       planetViewExitHint: 'Click destro nello spazio vuoto per tornare al visualizzatore stellare.',

@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
 import {
-  createProceduralTexture,
   createStarGlowTexture,
   hexToRgb,
-  lerpColor,
   resolveOrbitAngleRad,
   resolveOrbitRadiusUnits,
   resolvePlanetViewBodyRadiusKm,
   resolvePlanetViewCameraDistanceRange,
   resolveStarMarker,
+  resolveStarMarkers,
 } from './planet-view-scene';
 
 function makeBody(id: string, bodyType: string, estimatedDiameterM?: number): ViewerBody {
@@ -180,22 +179,48 @@ describe('planet-view helper utilities', () => {
     expect(marker?.glowSize).toBeGreaterThanOrEqual(7);
   });
 
-  it('hexToRgb and lerpColor handle valid and invalid channels', () => {
-    expect(hexToRgb('#112233')).toEqual([17, 34, 51]);
-    expect(hexToRgb('zzzzzz')).toEqual([128, 128, 128]);
-    expect(lerpColor([0, 0, 0], [255, 255, 255], 0.5)).toBe('rgb(128,128,128)');
+  it('resolveStarMarkers places every star in a binary system', () => {
+    // A system can be a binary, and the previous single-star lookup meant the
+    // companion neither appeared nor contributed any light.
+    const selected = makeBody('planet-1', 'planet', 12_742_000);
+    selected.spatial.positionKm.x = 1000;
+    selected.spatial.positionKm.z = 250;
+
+    const primary = makeBody('star-1', 'star', 100_000_000);
+    primary.spatial.positionKm.x = -2000;
+    primary.spatial.positionKm.z = -500;
+
+    const companion = makeBody('star-2', 'star', 50_000_000);
+    companion.spatial.positionKm.x = 4000;
+    companion.spatial.positionKm.z = 900;
+
+    const markers = resolveStarMarkers(selected, [selected, primary, companion], 9);
+
+    expect(markers.map((marker) => marker.id)).toEqual(['star-1', 'star-2']);
+    expect(markers[0].position).not.toEqual(markers[1].position);
+    expect(markers[0].body).toBe(primary);
   });
 
-  it('creates planet/moon procedural textures and star glow texture', () => {
-    const planetTexture = createProceduralTexture('#66aaff', 42, 'planet');
-    const moonTexture = createProceduralTexture('#aabbee', 7, 'moon');
+  it('resolveStarMarkers fans apart stars catalogued at the same point', () => {
+    const selected = makeBody('planet-1', 'planet', 12_742_000);
+    const first = makeBody('star-1', 'star', 100_000_000);
+    const second = makeBody('star-2', 'star', 100_000_000);
+
+    const markers = resolveStarMarkers(selected, [selected, first, second], 9);
+
+    expect(markers).toHaveLength(2);
+    expect(markers[0].position).not.toEqual(markers[1].position);
+  });
+
+  it('hexToRgb handles valid and invalid channels', () => {
+    expect(hexToRgb('#112233')).toEqual([17, 34, 51]);
+    expect(hexToRgb('zzzzzz')).toEqual([128, 128, 128]);
+  });
+
+  it('creates the star glow texture', () => {
     const glowTexture = createStarGlowTexture('#ffcc66');
 
-    expect(planetTexture).toBeDefined();
-    expect(moonTexture).toBeDefined();
     expect(glowTexture).toBeDefined();
-    expect((planetTexture.image as HTMLCanvasElement).width).toBe(512);
-    expect((moonTexture.image as HTMLCanvasElement).height).toBe(512);
     expect((glowTexture.image as HTMLCanvasElement).width).toBe(256);
   });
 });

@@ -14,6 +14,7 @@ import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
 import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
 import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
@@ -31,7 +32,7 @@ interface PlanetViewNavigationState {
   templateUrl: './planet-view.html',
   styleUrls: ['./planet-view.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, NgtsStats, PlanetViewScene],
+  imports: [NgtCanvas, NgtsStats, PlanetViewScene, PlanetSurfaceProgress],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export default class PlanetViewPage {

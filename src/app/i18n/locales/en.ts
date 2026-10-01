@@ -711,6 +711,7 @@ export const en = {
       marketCountLabel: 'Markets:',
       sceneLoadingStatus: 'Loading system...',
       sceneEmptyStatus: 'Select a system from the list to begin.',
+      surfaceBakeStatus: 'Generating planetary surfaces...',
       sceneErrorPrefix: 'Failed to load system:',
       planetViewZoomLabel: 'Scale',
       planetViewExitHint: 'Right-click empty space to return to the stellar viewer.',

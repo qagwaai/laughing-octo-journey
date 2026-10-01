@@ -1,14 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, untracked } from '@angular/core';
 import { beforeRender, injectStore } from 'angular-three';
-import { Box3, Color, Group, PerspectiveCamera, SRGBColorSpace, Texture, TextureLoader, Vector3 } from 'three';
+import { Box3, Color, Group, PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
-import { EARTH_ALBEDO_URL } from '../component/earth-textures';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
 import { createMiningBackdrop, disposeMiningObject } from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
+import type { PlanetBakeResult } from './planet/planet-bake';
+import { bakeSplashPlanet } from './planet/splash-planet';
 
 @Component({
   selector: 'app-knot',
@@ -114,52 +115,19 @@ export default class Knot {
       let cancelled = false;
       let model: Group | undefined;
       let backdrop: Group | undefined;
-      let earthMap: Texture | undefined;
+      let planet: PlanetBakeResult | undefined;
       const quality = this.state.quality();
       const version = quality === 'standard' ? 'b4eaa6b9' : '9b277b11';
-      void Promise.allSettled([
-        loader.loadAsync(`models/asteroid-mining-rig.${quality}.glb?v=${version}`),
-        new TextureLoader().loadAsync(EARTH_ALBEDO_URL),
-      ])
-        .then(([modelResult, textureResult]) => {
-          if (modelResult.status === 'fulfilled') model = modelResult.value.scene;
-          if (textureResult.status === 'fulfilled') earthMap = textureResult.value;
-          if (cancelled || modelResult.status === 'rejected' || textureResult.status === 'rejected') {
-            if (model) disposeMiningObject(model);
-            earthMap?.dispose();
-            model = undefined;
-            earthMap = undefined;
-            if (!cancelled) {
-              this.state.fail(
-                modelResult.status === 'rejected'
-                  ? modelResult.reason
-                  : textureResult.status === 'rejected'
-                    ? textureResult.reason
-                    : new Error('Mining splash resources unavailable.'),
-              );
-            }
+      void loader
+        .loadAsync(`models/asteroid-mining-rig.${quality}.glb?v=${version}`)
+        .then((gltf) => {
+          if (cancelled) {
+            disposeMiningObject(gltf.scene);
             return;
           }
-          if (!model || !earthMap) {
-            throw new Error('Mining splash assets were not available after loading.');
-          }
-          const image: unknown = earthMap.image;
-          if (!(image instanceof HTMLImageElement)) {
-            throw new Error('The Earth texture did not load as an image.');
-          }
-          const maxWidth = quality === 'standard' ? 2048 : 1024;
-          if (image.width > maxWidth) {
-            const canvas = document.createElement('canvas');
-            canvas.width = maxWidth;
-            canvas.height = Math.round((image.height / image.width) * maxWidth);
-            const context = canvas.getContext('2d');
-            if (!context) throw new Error('Could not prepare the Earth texture for the mining splash.');
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            earthMap.image = canvas;
-            earthMap.needsUpdate = true;
-          }
-          earthMap.colorSpace = SRGBColorSpace;
-          backdrop = createMiningBackdrop(quality, earthMap);
+          model = gltf.scene;
+          planet = bakeSplashPlanet(quality, gl);
+          backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -182,10 +150,10 @@ export default class Knot {
             backdrop.removeFromParent();
             disposeMiningObject(backdrop);
             backdrop = undefined;
-          } else {
-            earthMap?.dispose();
           }
-          earthMap = undefined;
+          // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
+          planet?.dispose();
+          planet = undefined;
           if (!cancelled) this.state.fail(error);
         });
       onCleanup(() => {
@@ -198,6 +166,7 @@ export default class Knot {
         }
         backdrop?.removeFromParent();
         if (backdrop) disposeMiningObject(backdrop);
+        planet?.dispose();
       });
     });
     beforeRender(({ delta }) => {

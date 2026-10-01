@@ -22,6 +22,7 @@ import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
 import {
   resolveDescriptorRenderProfile,
   resolveGateApproachMetadata,
@@ -175,7 +176,7 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
   templateUrl: './viewer-scene.html',
   styleUrls: ['./viewer-scene.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, NgtsStats, ViewerSystemScene],
+  imports: [NgtCanvas, NgtsStats, ViewerSystemScene, PlanetSurfaceProgress],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 /**

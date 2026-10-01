@@ -5,17 +5,16 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test.beforeEach(async ({ page }) => {
   await new SocketIOMock(page).setup();
-  await page.route('**/Albedo.jpg', (route) =>
-    route.fulfill({ path: 'public/images/sol_colorshift.png', contentType: 'image/png' }),
-  );
 });
 
 test('shows the scene immediately, loads one real tier, and retains intro controls', async ({ page }) => {
   const assets: string[] = [];
+  const requests: string[] = [];
   const errors: string[] = [];
   page.on('request', (request) => {
-    if (new URL(request.url()).pathname.endsWith('.glb')) assets.push(request.url());
-    if (request.url().endsWith('/Albedo.jpg')) assets.push(request.url());
+    const url = new URL(request.url());
+    if (url.pathname.endsWith('.glb')) assets.push(request.url());
+    if (url.protocol.startsWith('http')) requests.push(request.url());
   });
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
@@ -29,8 +28,10 @@ test('shows the scene immediately, loads one real tier, and retains intro contro
   );
   await expect(diagnostics).toContainText(/3D ready in \d+\.\d{2} s/);
   expect(assets.filter((url) => /asteroid-mining-rig\.(standard|low)\.glb/.test(url))).toHaveLength(1);
-  expect(assets.filter((url) => url.endsWith('/Albedo.jpg'))).toHaveLength(1);
   expect(assets.some((url) => /Asteroid_Mining_Rig_/.test(url))).toBe(false);
+  // The planet surface is generated at runtime, so the splash must reach no third-party host.
+  const origin = new URL(page.url()).origin;
+  expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
   expect(errors).toEqual([]);
   await page.getByRole('button', { name: 'Use still image' }).click();
   await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'static');
@@ -51,17 +52,29 @@ test('reports asset errors and allows retry without blocking login', async ({ pa
   await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
 });
 
-test('shows a retryable error when the Earth texture cannot be loaded', async ({ page }) => {
-  await page.route('**/Albedo.jpg', (route) => route.abort());
+test('renders the splash planet with every third-party host blocked', async ({ page }) => {
+  await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (route) => route.abort());
+  const failures: string[] = [];
+  page.on('requestfailed', (request) => failures.push(request.url()));
   await page.goto('/knot(left:login)');
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'error');
-  await expect(page.locator('app-login-page')).toBeVisible();
-  await page.unroute('**/Albedo.jpg');
-  await page.route('**/Albedo.jpg', (route) =>
-    route.fulfill({ path: 'public/images/sol_colorshift.png', contentType: 'image/png' }),
-  );
-  await page.getByRole('button', { name: 'Load 3D scene' }).click();
   await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await expect(page.locator('app-login-page')).toBeVisible();
+  expect(failures).toEqual([]);
+});
+
+test('bakes the planet shader through three.js without GPU compile errors', async ({ page }) => {
+  // The raw-WebGL2 parity spec compiles the shader sources directly, so it cannot
+  // catch three.js-specific breakage (for example its RawShaderMaterial preamble
+  // displacing the `#version` directive). This drives the real bake path instead.
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+  });
+  await page.goto('/knot(left:intro)');
+  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  expect(consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text))).toEqual(
+    [],
+  );
 });
 
 test('uses low quality on mobile with reduced motion', async ({ page }) => {
