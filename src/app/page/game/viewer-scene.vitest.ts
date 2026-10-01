@@ -13,6 +13,7 @@ import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
 import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
+import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
@@ -24,7 +25,7 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 
   const mockRouter = {
     getCurrentNavigation: () => (navigationState ? { extras: { state: navigationState } } : null),
-    navigate: vi.fn(),
+    navigate: vi.fn().mockResolvedValue(true),
   };
 
   const solarSystemIdParam = navigationState?.['solarSystemId'] as string | undefined;
@@ -279,6 +280,42 @@ describe('ViewerScenePage', () => {
       }),
     );
     vi.useRealTimers();
+  });
+
+  it.each([
+    { outcome: 'cancelled', result: false, log: 'warn' },
+    { outcome: 'rejected', result: new Error('navigation failed'), log: 'error' },
+  ] as const)('reports $outcome planet navigation and permits another attempt', async ({ result, log }) => {
+    vi.useFakeTimers();
+    try {
+      const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+      const router = TestBed.inject(Router);
+      const navigate = router.navigate as ReturnType<typeof vi.fn>;
+      const logger = vi.spyOn(appLogger, log).mockImplementation(() => {});
+      if (result instanceof Error) {
+        navigate.mockRejectedValueOnce(result);
+      } else {
+        navigate.mockResolvedValueOnce(result);
+      }
+      const earth = {
+        id: 'earth',
+        bodyType: 'planet',
+        displayName: 'Earth',
+        spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      };
+
+      component['onPlanetViewRequest'](earth);
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(component['isPlanetTransitioning']()).toBe(false);
+      expect(logger).toHaveBeenCalledWith(expect.stringContaining('Planet view navigation'), expect.any(Object));
+      component['onPlanetViewRequest'](earth);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(navigate).toHaveBeenCalledTimes(2);
+      logger.mockRestore();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('clamps stellar viewer zoom input into the expected range', () => {

@@ -4,6 +4,9 @@ import { PlanetViewPage } from '../page-objects/planet-view.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
 async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
+  const viewerPage = new ViewerPage(page);
+  await viewerPage.expectSceneLoaded();
+
   await page.waitForFunction(() => {
     const ngApi = (
       window as Window & {
@@ -18,13 +21,24 @@ async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
     const component = ngApi.getComponent(host) as {
       bodies?: () => Array<{ id: string }>;
       onPlanetViewRequest?: (body: unknown) => void;
+      solarSystemId?: () => string | null;
+      isPlanetTransitioning?: () => boolean;
     };
 
-    if (typeof component?.bodies !== 'function' || typeof component?.onPlanetViewRequest !== 'function') {
+    if (
+      typeof component?.bodies !== 'function' ||
+      typeof component?.onPlanetViewRequest !== 'function' ||
+      typeof component?.solarSystemId !== 'function' ||
+      typeof component?.isPlanetTransitioning !== 'function'
+    ) {
       return false;
     }
 
-    return component.bodies().some((body) => body.id === 'earth');
+    return (
+      component.solarSystemId() === 'sol' &&
+      !component.isPlanetTransitioning() &&
+      component.bodies().some((body) => body.id === 'earth')
+    );
   });
 
   await page.evaluate(() => {
@@ -41,6 +55,7 @@ async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
     const component = ngApi.getComponent(host) as {
       bodies: () => Array<{ id: string }>;
       onPlanetViewRequest: (body: unknown) => void;
+      isPlanetTransitioning: () => boolean;
     };
 
     const earth = component.bodies().find((body) => body.id === 'earth');
@@ -49,6 +64,9 @@ async function enterPlanetViewViaSceneComponent(page: Page): Promise<void> {
     }
 
     component.onPlanetViewRequest(earth);
+    if (!component.isPlanetTransitioning()) {
+      throw new Error('planet transition was not started');
+    }
   });
 
   await expect(page).toHaveURL(/right:planet-view\/sol\/earth/);

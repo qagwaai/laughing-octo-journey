@@ -30,6 +30,7 @@ import {
 } from '../../scene/viewer/viewer-descriptor-selectors';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
+import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
@@ -336,15 +337,23 @@ export default class ViewerScenePage implements OnDestroy {
 
     this.isPlanetTransitioning.set(true);
     this.planetTransitionTimer = setTimeout(() => {
-      this.router.navigate([{ outlets: { right: ['planet-view', solarSystemId, body.id] } }], {
+      this.planetTransitionTimer = null;
+      void this.router.navigate([{ outlets: { right: ['planet-view', solarSystemId, body.id] } }], {
         preserveFragment: true,
         state: {
           playerName: this.playerName(),
           solarSystem: this.solarSystem(),
           bodies: this.bodies(),
         },
+      }).then((navigated) => {
+        if (!navigated) {
+          this.isPlanetTransitioning.set(false);
+          appLogger.warn('Planet view navigation was cancelled', { solarSystemId, bodyId: body.id });
+        }
+      }).catch((error: unknown) => {
+        this.isPlanetTransitioning.set(false);
+        appLogger.error('Planet view navigation failed', { solarSystemId, bodyId: body.id, error });
       });
-      this.planetTransitionTimer = null;
     }, 140);
   }
 
