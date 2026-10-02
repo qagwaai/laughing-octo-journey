@@ -6,9 +6,13 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
-import { createMiningBackdrop, disposeMiningObject } from './mining-splash-composition';
+import type { GasGiantHandle } from './gas-giant/gas-giant';
+import { GasGiantSettings } from './gas-giant/gas-giant-settings';
+import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
+import { createMiningBackdrop, createMiningBackdropAround, disposeMiningObject } from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
 import type { PlanetBakeResult } from './planet/planet-bake';
+import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import {
   CLOUD_DRIFT_RADIANS_PER_SECOND,
   createPlanetCloudTexture,
@@ -16,7 +20,6 @@ import {
   type PlanetCloudStyle,
   type PlanetCloudTexture,
 } from './planet/planet-clouds';
-import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import { bakeSplashPlanet } from './planet/splash-planet';
 
 @Component({
@@ -30,6 +33,7 @@ export default class Knot {
   private readonly state = inject(MiningSplashState);
   private readonly visibility = inject(SceneVisibilityService);
   private readonly cloudSettings = inject(PlanetCloudSettings);
+  private readonly gasGiantSettings = inject(GasGiantSettings);
 
   constructor() {
     const store = this.store;
@@ -56,6 +60,8 @@ export default class Knot {
     let cloudStormLayer: PlanetCloudStormMaterial | undefined;
     let cloudMesh: Mesh<SphereGeometry, MeshStandardMaterial> | undefined;
     let cloudStyle: PlanetCloudStyle | undefined;
+    let giant: GasGiantHandle | undefined;
+    let giantLook: string | undefined;
     const cameraDirection = new Vector3(2.7, 2, 3.8).normalize();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
@@ -140,6 +146,19 @@ export default class Knot {
       if (cloudMesh) cloudMesh.visible = enabled;
       invalidate();
     });
+    effect(() => {
+      const palette = this.gasGiantSettings.palette();
+      const rings = this.gasGiantSettings.rings();
+      const stormActivity = this.cloudSettings.stormActivity();
+      if (giant && giantLook !== `${palette}|${rings}`) {
+        const quality = untracked(() => this.state.quality());
+        const next = createSplashGasGiant({ bodyId: this.state.planetBodyId, quality, palette, rings, stormActivity });
+        giant = replaceSplashGasGiant(giant, next);
+        giantLook = `${palette}|${rings}`;
+      }
+      giant?.setStormActivity(stormActivity);
+      invalidate();
+    });
     const isStatic = computed(() => this.state.status() === 'static');
     effect((onCleanup) => {
       this.state.attempt();
@@ -164,23 +183,34 @@ export default class Knot {
             return;
           }
           model = gltf.scene;
-          planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
-          clouds = createPlanetCloudTexture(
-            this.state.planetBodyId,
-            quality === 'standard' ? 512 : 256,
-            quality === 'standard' ? 256 : 128,
-            this.cloudSettings.style(),
-          );
-          cloudStyle = this.cloudSettings.style();
-          clouds.setCoverage(this.cloudSettings.coverage());
-          cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, cloudStyle, clouds.texture);
-          cloudStormLayer.setActivity(this.cloudSettings.stormActivity());
-          cloudMesh = new Mesh(
-            new SphereGeometry(4 * 1.012, 64, 48),
-            cloudStormLayer.material,
-          );
-          cloudMesh.visible = this.cloudSettings.enabled();
-          backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material, cloudMesh);
+          if (this.state.planetKind === 'gas-giant') {
+            const palette = this.gasGiantSettings.palette();
+            const rings = this.gasGiantSettings.rings();
+            giant = createSplashGasGiant({
+              bodyId: this.state.planetBodyId,
+              quality,
+              palette,
+              rings,
+              stormActivity: this.cloudSettings.stormActivity(),
+            });
+            giantLook = `${palette}|${rings}`;
+            backdrop = createMiningBackdropAround(quality, giant.group);
+          } else {
+            planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
+            clouds = createPlanetCloudTexture(
+              this.state.planetBodyId,
+              quality === 'standard' ? 512 : 256,
+              quality === 'standard' ? 256 : 128,
+              this.cloudSettings.style(),
+            );
+            cloudStyle = this.cloudSettings.style();
+            clouds.setCoverage(this.cloudSettings.coverage());
+            cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, cloudStyle, clouds.texture);
+            cloudStormLayer.setActivity(this.cloudSettings.stormActivity());
+            cloudMesh = new Mesh(new SphereGeometry(4 * 1.012, 64, 48), cloudStormLayer.material);
+            cloudMesh.visible = this.cloudSettings.enabled();
+            backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material, cloudMesh);
+          }
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -212,6 +242,8 @@ export default class Knot {
           cloudMesh = undefined;
           cloudStormLayer = undefined;
           cloudStyle = undefined;
+          giant?.dispose();
+          giant = undefined;
           // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
           planet?.dispose();
           planet = undefined;
@@ -236,6 +268,8 @@ export default class Knot {
         cloudMesh = undefined;
         cloudStormLayer = undefined;
         cloudStyle = undefined;
+        giant?.dispose();
+        giant = undefined;
         planet?.dispose();
       });
     });
@@ -249,6 +283,9 @@ export default class Knot {
       ) {
         cloudMesh.rotation.y += Math.min(delta, 0.05) * CLOUD_DRIFT_RADIANS_PER_SECOND;
         cloudStormLayer?.advance(delta);
+      }
+      if (giant && this.state.status() === 'ready' && !this.state.reducedMotion() && !this.state.documentHidden()) {
+        giant.advance(delta);
       }
       if (pendingFrames > 0) {
         pendingFrames--;

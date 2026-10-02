@@ -1,6 +1,7 @@
 import { MeshStandardMaterial, Vector4, type Texture } from 'three';
 import { createSeededRng, fnv1a32 } from '../../model/planet/planet-seed';
 import { DEFAULT_STORM_ACTIVITY, type PlanetCloudStyle } from './planet-clouds';
+import { SWIRL_STORM_GLSL } from './swirl-storm-glsl';
 
 export interface CloudStorm {
   /** Equirectangular UV center, UV radius, and direction (+1 or -1). */
@@ -73,24 +74,9 @@ export function createPlanetCloudStormMaterial(
         uniform vec4 cloudStormA;
         uniform vec4 cloudStormB;
         #ifdef USE_MAP
+        ${SWIRL_STORM_GLSL}
         vec4 cloudStormSample(vec2 uv, vec4 storm, vec4 baseColor) {
-          storm.z *= cloudStormActivity;
-          if (storm.z <= 0.0) return baseColor;
-          vec2 offset = vec2(fract(uv.x - storm.x + 0.5) - 0.5, uv.y - storm.y);
-          float latitudeScale = cos((storm.y - 0.5) * 3.14159265);
-          offset.x *= latitudeScale;
-          float distanceToStorm = length(offset);
-          if (distanceToStorm >= storm.z) return baseColor;
-          float angle = (cloudStormTime + 2.2 * (1.0 - distanceToStorm / storm.z)) * storm.w;
-          float c = cos(angle);
-          float s = sin(angle);
-          vec2 spun = mat2(c, s, -s, c) * offset;
-          vec2 sampleUv = vec2(fract(storm.x + spun.x / latitudeScale), clamp(storm.y + spun.y, 0.0, 1.0));
-          float influence = 1.0 - smoothstep(storm.z * 0.75, storm.z, distanceToStorm);
-          vec4 color = mix(baseColor, texture2D(map, sampleUv), influence);
-          float arm = 0.5 + 0.5 * sin(3.0 * atan(spun.y, spun.x) + 14.0 * distanceToStorm / storm.z);
-          color.rgb *= 1.0 - cloudStormContrast * arm * influence;
-          return color;
+          return swirlStormSample(map, uv, storm, baseColor, cloudStormTime, cloudStormActivity, cloudStormContrast);
         }
         #endif`,
       );

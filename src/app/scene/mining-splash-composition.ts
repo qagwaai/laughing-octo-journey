@@ -43,6 +43,10 @@ export function disposeMiningObject(root: Object3D): void {
   geometries.forEach((geometry) => geometry.dispose());
 }
 
+/** Splash placement for the hero planet, shared by terran and gas giant renders. */
+export const MINING_PLANET_POSITION = new Vector3(-2.8, -0.8, -6);
+export const MINING_PLANET_ROLL = -0.3;
+
 export function createMiningBackdrop(
   quality: MiningQuality,
   albedo: Texture,
@@ -50,6 +54,25 @@ export function createMiningBackdrop(
   materialMap?: Texture | null,
   cloudLayer?: Mesh,
 ): Group {
+  const planet = new Mesh(
+    new SphereGeometry(4, 48, 32),
+    // Roughness and metalness multiply their maps, so both scalars go to 1 when
+    // a material map is present and let the texture drive water versus land.
+    new MeshStandardMaterial({
+      map: albedo,
+      normalMap: normalMap ?? null,
+      roughnessMap: materialMap ?? null,
+      metalnessMap: materialMap ?? null,
+      roughness: 1,
+      metalness: materialMap ? 1 : 0,
+    }),
+  );
+  if (cloudLayer) planet.add(cloudLayer);
+  return createMiningBackdropAround(quality, planet);
+}
+
+/** Builds lights, stars and debris, then places `planet` at the splash focus. */
+export function createMiningBackdropAround(quality: MiningQuality, planet: Object3D): Group {
   const group = new Group();
   const fill = new HemisphereLight('#9cbbe7', '#211208', 2.5);
   group.add(fill);
@@ -105,22 +128,8 @@ export function createMiningBackdrop(
     rocks.setMatrixAt(i, matrix);
   }
   group.add(rocks);
-  const planet = new Mesh(
-    new SphereGeometry(4, 48, 32),
-    // Roughness and metalness multiply their maps, so both scalars go to 1 when
-    // a material map is present and let the texture drive water versus land.
-    new MeshStandardMaterial({
-      map: albedo,
-      normalMap: normalMap ?? null,
-      roughnessMap: materialMap ?? null,
-      metalnessMap: materialMap ?? null,
-      roughness: 1,
-      metalness: materialMap ? 1 : 0,
-    }),
-  );
-  planet.position.set(-2.8, -0.8, -6);
-  planet.rotation.z = -0.3;
-  if (cloudLayer) planet.add(cloudLayer);
+  planet.position.copy(MINING_PLANET_POSITION);
+  planet.rotation.z = MINING_PLANET_ROLL;
   group.add(planet);
   return group;
 }

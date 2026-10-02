@@ -309,6 +309,38 @@ Two wiring notes worth keeping:
 - **`[args]` on an angular-three light is constructor-only and not reactive.** `ngt-hemisphere-light [args]="[starFillColor(), ...]"` silently applied nothing — the scene graph showed the three.js defaults (white, intensity 1) rather than the authored values. Reactive colour must use property bindings (`[color]`, `[groundColor]`, `[intensity]`).
 - **Dumping the three.js scene graph is the only reliable check here.** Unit tests cannot see three.js, and screenshots of Sol versus an M-dwarf were pixel-identical while the bug was live. Walking `ng.getComponent(document.querySelector('ngt-canvas'))` to the scene and traversing for `isLight` gave the colour, intensity and position of every light, which is what located findings 1 and 4. `STAR_LIGHT_DECAY`/`STAR_LIGHT_DISTANCE` are pinned by a unit test carrying that rationale.
 
+### Gas giants (implemented)
+
+Gas giants are a separate render path, not another terran archetype. There is no planet class in `openapi.yaml`, so classification is client-side: `isGasGiantBody` treats a catalogue radius of at least 15,000 km as a giant. `?gasGiants=all|none` overrides this so any fixture can be previewed either way.
+
+Module layout (`src/app/scene/gas-giant/`), each piece unit-tested on its own:
+
+- `model/planet/gas-giant-profile.ts`: a seeded, pure look for each body, chosen with `deriveGasGiantProfile(bodyId, overrides)`. It covers:
+  - palette (jovian, saturnian, ice);
+  - band layout;
+  - anticyclones, such as a Great Red Spot-style vortex and white ovals;
+  - rings;
+  - axial tilt.
+- `gas-giant-bands.ts`: a CPU bake of the latitude band texture. It adds warp, streaks and belt filaments, then is sampled in sRGB.
+- `gas-giant-material.ts`: the live shader. It differentially rotates the bands and draws vortices using `planet/swirl-storm-glsl.ts`, the same swirl code the terran storm layer uses. Two colour-space notes:
+  - uniform tints are authored in sRGB and **must be linearised** (`vortexTint`), or the red spot renders pale;
+  - albedo is scaled by `GAS_GIANT_ALBEDO_SCALE` so the giant does not blow out under star light.
+- `gas-giant-rings.ts` and `gas-giant-shadow-glsl.ts`: an annulus shader that takes the planet's shadow, and analytic moon and ring shadows on the planet. There are at most four moon shadow casters.
+- `gas-giant.ts`: the `createGasGiant` factory, which owns the group and the uniforms. Call `dispose()` explicitly; `disposeMiningObject` does not free uniform textures.
+- `gas-giant-body.ts`: the `<app-gas-giant>` angular-three wrapper. It rebuilds the giant only when the profile, radius or texture size change. Light, moons, storms and highlight are uniform updates. Animation pauses under reduced motion and on hidden tabs.
+
+Scale (`viewer/planet-view-scale.ts`): the terran planet view sizes moons with a cube-root rule. That would make Io look half Jupiter's size, so giants use their own rules:
+
+- **Moons:** radius is `2.2·ratio^0.75` with a visibility floor of `0.12`.
+- **Orbits:** a log of `a/R`, kept clear of the ring's outer edge.
+- **Camera:** the range frames the rings and the outermost moon instead of scaling with the giant's diameter.
+
+The selected giant skips the L1 terrain bake. It keeps an invisible pick sphere so hover and click behave as before.
+
+Splash: 10 seeded giants join the splash rotation and have their own overlay controls (palette and rings). The existing storm activity control also drives a giant's vortices. `?splashPlanet=<id>&splashKind=gas-giant` previews any ID as a giant.
+
+Follow-ups: the system view still draws giants as plain spheres. Moons' own orbital motion does not yet move their shadows.
+
 ### Stage 4 — Contract
 
 Only after the visuals are proven: propose the Forge parameter contract, driven by which scalars demonstrably changed the result, and update `openapi.yaml` and the models together.

@@ -38,6 +38,19 @@
   input
 >
   <ngt-sphere-geometry *args="[selectedBodyRadiusUnits(), 72, 72]" />
+  @let _giant = selectedGiantProfile();
+  @if (_giant) {
+  <!-- Invisible pick shell; the giant itself draws below. -->
+  <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
+  <app-gas-giant
+    [profile]="_giant"
+    [radius]="selectedBodyRadiusUnits()"
+    [lightPosition]="primaryStar()?.position ?? null"
+    [lightColor]="primaryStar()?.lightColor ?? null"
+    [moons]="giantMoonShadows()"
+    [highlighted]="hoveredBodyId() === selected.id"
+  />
+  } @else {
   @let _selectedSurface = surfaces().get(selected.id);
   <ngt-mesh-standard-material
     [map]="_selectedSurface?.albedo ?? null"
@@ -52,6 +65,7 @@
   />
   @if (_selectedSurface) {
   <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
+  }
   }
 </ngt-mesh>
 

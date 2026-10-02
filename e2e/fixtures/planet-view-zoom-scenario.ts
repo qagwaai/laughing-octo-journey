@@ -150,6 +150,64 @@ const SOL_SYSTEM_BODIES = [
       epoch: '2026-05-08T00:00:00.000Z',
     },
   },
+  {
+    id: 'jupiter',
+    bodyType: 'planet',
+    displayName: 'Jupiter',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 778_500_000, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    visualization: {
+      colorHex: '#d8b48a',
+    },
+    physicalCatalog: {
+      estimatedDiameterM: 139_822_000,
+      radiusKm: 69_911,
+    },
+    orbitalElements: {
+      anchorBodyId: 'sun',
+      semiMajorAxisKm: 778_500_000,
+      eccentricity: 0.0489,
+      inclinationDeg: 1.3,
+      longitudeOfAscendingNodeDeg: 100.5,
+      argumentOfPeriapsisDeg: 273.9,
+      meanAnomalyAtEpochDeg: 20.0,
+      orbitalPeriodSec: 374_335_776,
+      epoch: '2026-05-08T00:00:00.000Z',
+    },
+  },
+  {
+    id: 'io',
+    bodyType: 'moon',
+    displayName: 'Io',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 778_500_000 + 421_700, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    visualization: {
+      colorHex: '#e8d27a',
+    },
+    physicalCatalog: {
+      estimatedDiameterM: 3_643_200,
+      radiusKm: 1821,
+    },
+    orbitalElements: {
+      anchorBodyId: 'jupiter',
+      semiMajorAxisKm: 421_700,
+      eccentricity: 0.0041,
+      inclinationDeg: 0.05,
+      longitudeOfAscendingNodeDeg: 43.9,
+      argumentOfPeriapsisDeg: 84.1,
+      meanAnomalyAtEpochDeg: 171.0,
+      orbitalPeriodSec: 152_854,
+      epoch: '2026-05-08T00:00:00.000Z',
+    },
+  },
 ];
 
 export async function setupPlanetViewZoomViewer(page: Page): Promise<void> {
