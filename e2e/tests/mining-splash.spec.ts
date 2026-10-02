@@ -355,10 +355,66 @@ test('pins the splash planet from the query string', async ({ page }) => {
   await expect(overlay).toHaveAttribute('data-state', 'ready');
 });
 
+/** Reads the splash gas giant's identity from the live three.js scene. */
+async function readSplashGasGiant(page: import('@playwright/test').Page): Promise<unknown> {
+  return page.evaluate(() => {
+    const ng = (window as unknown as { ng: { getComponent: (el: Element | null) => unknown } }).ng;
+    const canvas = ng.getComponent(document.querySelector('ngt-canvas')) as {
+      store: { snapshot: { scene: Scene } };
+    };
+    let found: unknown = null;
+    canvas.store.snapshot.scene.traverse((object) => {
+      if (object.name === 'gas-giant') found = object.userData['gasGiant'];
+    });
+    return found;
+  });
+}
+
+test('renders a pinned gas giant with its own controls and no shader errors', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/knot(left:intro)', 'nova-splash-giant-05'));
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'gas-giant');
+  await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+  await expect(page.getByRole('slider', { name: /Storm activity/ })).toBeVisible();
+  await expect.poll(() => readSplashGasGiant(page)).toEqual({
+    bodyId: 'nova-splash-giant-05',
+    palette: 'jovian',
+    rings: true,
+  });
+
+  const canvas = page.locator('ngt-canvas canvas').first();
+  const seeded = await canvas.screenshot();
+  await page.getByRole('combobox', { name: 'Giant palette' }).selectOption('ice');
+  await page.getByRole('combobox', { name: 'Rings' }).selectOption('off');
+  await expect.poll(() => readSplashGasGiant(page)).toEqual({
+    bodyId: 'nova-splash-giant-05',
+    palette: 'ice',
+    rings: false,
+  });
+  await expect.poll(async () => canvas.screenshot()).not.toEqual(seeded);
+  expect(
+    consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
+  ).toEqual([]);
+});
+
+test('previews an unlisted body as a gas giant with splashKind', async ({ page }) => {
+  await page.goto(`${pinnedSplash('/knot(left:intro)', 'preview-me')}&splashKind=gas-giant`);
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'gas-giant');
+  await expect.poll(() => readSplashGasGiant(page)).toMatchObject({ bodyId: 'preview-me' });
+});
+
 test('picks the splash planet from the rotation when not pinned', async ({ page }) => {
   await page.goto('/knot(left:intro)');
   const planet = await page.locator('app-mining-splash-overlay section').getAttribute('data-planet');
-  expect(SPLASH_PLANET_ROTATION).toContain(planet);
+  expect(SPLASH_PLANET_ROTATION.map((entry) => entry.id)).toContain(planet);
 });
 
 test('switches between the 154k, 50k and still-image tiers on demand', async ({ page }) => {

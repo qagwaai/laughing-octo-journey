@@ -24,9 +24,24 @@ import {
   STAR_LIGHT_DISTANCE,
 } from './star-lighting';
 import type { ViewerBody } from '../../model/solar-system-get';
+import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import { GasGiantBody } from '../gas-giant/gas-giant-body';
+import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
+import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolveBodyColor } from './viewer-formatters';
+import {
+  PLANET_BASE_MOON_ORBIT,
+  PLANET_FOCUS_RADIUS_UNIT,
+  resolveBodyRadiusUnits,
+  resolveGasGiantCameraDistanceRange,
+  resolveGasGiantMoonRadiusUnits,
+  resolveGasGiantOrbitRadiusUnits,
+  resolveOrbitRadiusUnits,
+} from './planet-view-scale';
+
+export { resolveOrbitRadiusUnits } from './planet-view-scale';
 
 interface OrbitControlsLike {
   target: Vector3;
@@ -57,9 +72,7 @@ interface StarMarker {
   body: ViewerBody;
 }
 
-const PLANET_FOCUS_RADIUS_UNIT = 2.2;
 const PLANET_MIN_CAMERA_DISTANCE = 4.2;
-const PLANET_BASE_MOON_ORBIT = 4.5;
 const PLANET_VIEW_REFERENCE_DIAMETER_M = 12_742_000;
 const PLANET_VIEW_MAX_CAMERA_DISTANCE = 80;
 const PLANET_VIEW_MIN_DISTANCE_CLAMP_MIN = 3.2;
@@ -161,12 +174,6 @@ export function resolvePlanetViewBodyRadiusKm(body: ViewerBody, relativeDistance
   return 6200;
 }
 
-function resolveBodyRadiusUnits(bodyRadiusKm: number, referenceRadiusKm: number): number {
-  const ratio = bodyRadiusKm / Math.max(referenceRadiusKm, 1);
-  const scaled = PLANET_FOCUS_RADIUS_UNIT * Math.cbrt(Math.max(0.03, ratio));
-  return Math.max(0.35, Math.min(3.8, scaled));
-}
-
 function resolveRelativeDistanceKm(selected: ViewerBody, candidate: ViewerBody): number {
   const orbitalDistance = candidate.orbitalElements?.semiMajorAxisKm;
   if (typeof orbitalDistance === 'number' && Number.isFinite(orbitalDistance) && orbitalDistance > 0) {
@@ -178,12 +185,6 @@ function resolveRelativeDistanceKm(selected: ViewerBody, candidate: ViewerBody):
   const dz = candidate.spatial.positionKm.z - selected.spatial.positionKm.z;
   const distance = Math.hypot(dx, dy, dz);
   return Number.isFinite(distance) && distance > 0 ? distance : 1;
-}
-
-export function resolveOrbitRadiusUnits(distanceKm: number): number {
-  const logDistance = Math.log10(1 + distanceKm);
-  const unitRadius = PLANET_BASE_MOON_ORBIT + logDistance * 2.3;
-  return Math.max(PLANET_BASE_MOON_ORBIT, Math.min(42, unitRadius));
 }
 
 export function resolveOrbitAngleRad(body: ViewerBody): number {
@@ -292,13 +293,14 @@ export function createStarGlowTexture(hex: string): CanvasTexture {
 @Component({
   selector: 'app-planet-view-scene',
   templateUrl: './planet-view-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer],
+  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, GasGiantBody],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PlanetViewScene implements OnDestroy {
   private store = injectStore();
   private readonly planetTextures = inject(PlanetTextureCache);
+  private readonly gasGiants = inject(GasGiantSettings);
 
   /**
    * The star glow is a canvas sprite rather than a baked surface. It is cached
@@ -349,7 +351,7 @@ export class PlanetViewScene implements OnDestroy {
 
     const map = new Map<string, PlanetBakeResult>();
     const selected = this.selectedBody();
-    if (selected) {
+    if (selected && !this.selectedGiantProfile()) {
       const focused = this.planetTextures.get(selected, 'l1');
       if (focused) map.set(selected.id, focused);
     }
@@ -376,6 +378,20 @@ export class PlanetViewScene implements OnDestroy {
     return all.find((body) => body.id === id) ?? null;
   });
 
+  /** Seeded giant look for the focused body, or null when it renders as a terran world. */
+  protected readonly selectedGiantProfile = computed<GasGiantProfile | null>(() => {
+    const selected = this.selectedBody();
+    if (!selected || !isGasGiantBody(selected, this.gasGiants.classification())) return null;
+    return deriveGasGiantProfile(selected.id, toProfileOverrides(this.gasGiants.palette(), this.gasGiants.rings()));
+  });
+
+  /** Moon shadow casters for the giant's shader. */
+  protected readonly giantMoonShadows = computed(() =>
+    this.moons().map((moon) => ({ position: moon.position, radius: moon.radius })),
+  );
+
+  protected readonly primaryStar = computed(() => this.starMarkers().at(0) ?? null);
+
   protected selectedBodyRadiusUnits = computed<number>(() => {
     const selected = this.selectedBody();
     if (!selected) {
@@ -393,11 +409,15 @@ export class PlanetViewScene implements OnDestroy {
     }
 
     const selectedRadiusKm = resolvePlanetViewBodyRadiusKm(selected);
+    const giant = this.selectedGiantProfile();
+    const ringOuter = giant?.rings?.outerRadius ?? 0;
     return this.bodies()
       .filter((body) => body.orbitalElements?.anchorBodyId === selected.id && body.bodyType !== 'star')
       .map((body) => {
         const distanceKm = resolveRelativeDistanceKm(selected, body);
-        const orbitRadius = resolveOrbitRadiusUnits(distanceKm);
+        const orbitRadius = giant
+          ? resolveGasGiantOrbitRadiusUnits(distanceKm, selectedRadiusKm, ringOuter)
+          : resolveOrbitRadiusUnits(distanceKm);
         const angle = resolveOrbitAngleRad(body);
         const bodyRadiusKm = resolvePlanetViewBodyRadiusKm(body, distanceKm);
         return {
@@ -406,7 +426,9 @@ export class PlanetViewScene implements OnDestroy {
           displayName: body.displayName || body.id,
           bodyType: body.bodyType,
           color: resolveBodyColor(body),
-          radius: resolveBodyRadiusUnits(bodyRadiusKm, selectedRadiusKm),
+          radius: giant
+            ? resolveGasGiantMoonRadiusUnits(bodyRadiusKm, selectedRadiusKm)
+            : resolveBodyRadiusUnits(bodyRadiusKm, selectedRadiusKm),
           position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
           orbitRadius,
         };
@@ -456,18 +478,25 @@ export class PlanetViewScene implements OnDestroy {
     ),
   );
 
-  protected minCameraDistance = computed<number>(() => {
-    return resolvePlanetViewCameraDistanceRange(this.selectedBody()).min;
+  /** Giants frame their rings and moon system rather than scaling with catalogue size. */
+  private readonly cameraDistanceRange = computed(() => {
+    const giant = this.selectedGiantProfile();
+    if (!giant) return resolvePlanetViewCameraDistanceRange(this.selectedBody());
+    const maxOrbit = this.moons().reduce((max, moon) => Math.max(max, moon.orbitRadius), 0);
+    return resolveGasGiantCameraDistanceRange(giant.rings?.outerRadius ?? 0, maxOrbit);
   });
 
-  protected maxCameraDistance = computed<number>(() => resolvePlanetViewCameraDistanceRange(this.selectedBody()).max);
+  protected minCameraDistance = computed<number>(() => this.cameraDistanceRange().min);
+
+  protected maxCameraDistance = computed<number>(() => this.cameraDistanceRange().max);
 
   constructor() {
     // Focused body at L1, its moons at L0. Repeats are ignored by the cache.
     effect(() => {
       const renderer = this.store.snapshot.gl ?? null;
       const selected = this.selectedBody();
-      if (selected) {
+      // Giants are shaded procedurally, so only terran worlds need the L1 bake.
+      if (selected && !this.selectedGiantProfile()) {
         this.planetTextures.request(selected, 'l1', renderer);
       }
       this.planetTextures.requestMany(

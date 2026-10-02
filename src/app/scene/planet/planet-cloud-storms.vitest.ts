@@ -37,7 +37,8 @@ describe('local cloud storms', () => {
     expect(shader.fragmentShader).toContain('cloudStormSample(vMapUv, cloudStormB');
     expect(shader.fragmentShader).toContain('smoothstep(storm.z * 0.75, storm.z, distanceToStorm)');
     expect(shader.fragmentShader).toContain('2.2 * (1.0 - distanceToStorm / storm.z)');
-    expect(shader.fragmentShader).toContain('cloudStormContrast * arm * influence');
+    expect(shader.fragmentShader).toContain('contrast * arm * influence');
+    expect(shader.fragmentShader).toContain('cloudStormTime, cloudStormActivity, cloudStormContrast');
     expect(shader.uniforms['cloudStormContrast'].value).toBe(0.2);
     expect(shader.uniforms['cloudStormTime'].value).toBe(0);
     layer.advance(1);
@@ -61,7 +62,8 @@ describe('local cloud storms', () => {
       fragmentShader: '#include <map_pars_fragment>\nvoid main() { #include <map_fragment> }',
     };
     layer.material.onBeforeCompile(shader as Parameters<typeof layer.material.onBeforeCompile>[0], {} as never);
-    expect(shader.fragmentShader).toContain('storm.z *= cloudStormActivity');
+    expect(shader.fragmentShader).toContain('storm.z *= activity');
+    expect(shader.fragmentShader).toContain('cloudStormTime, cloudStormActivity');
     expect(shader.fragmentShader).toContain('if (storm.z <= 0.0) return baseColor');
     expect(shader.uniforms['cloudStormActivity'].value).toBeCloseTo(stormRadiusScale(DEFAULT_STORM_ACTIVITY));
     const version = layer.material.version;

@@ -1,7 +1,7 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { progress } from 'angular-three-soba/loaders';
 import { appLogger } from '../services/logger';
-import { selectSplashPlanetBodyId } from './planet/splash-planet-rotation';
+import { selectSplashPlanet, type SplashPlanetKind } from './planet/splash-planet-rotation';
 
 export type MiningQuality = 'standard' | 'low';
 
@@ -22,7 +22,9 @@ export class MiningSplashState {
   readonly supported = signal(true);
   readonly contextLost = signal(false);
   /** Chosen once per page load, so retries and still-image toggles keep the same planet. */
-  readonly planetBodyId = selectSplashPlanetBodyId(window.location.search);
+  readonly planet = selectSplashPlanet(window.location.search);
+  readonly planetBodyId = this.planet.id;
+  readonly planetKind: SplashPlanetKind = this.planet.kind;
   readonly moving = computed(
     () => this.status() === 'ready' && !this.reducedMotion() && !this.documentHidden() && !this.orbitPaused(),
   );

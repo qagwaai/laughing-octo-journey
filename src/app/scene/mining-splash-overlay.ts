@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { locale } from '../i18n/locale';
-import { type MiningQuality, MiningSplashState } from './mining-splash-state';
+import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
+import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
+import { MiningSplashState, type MiningQuality } from './mining-splash-state';
 import { PlanetCloudSettings } from './planet/planet-clouds';
 
 @Component({
@@ -12,6 +14,7 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
       [attr.data-state]="state.status()"
       [attr.data-quality]="state.quality()"
       [attr.data-planet]="state.planetBodyId"
+      [attr.data-planet-kind]="state.planetKind"
       [attr.data-motion]="state.orbitPaused() ? 'orbit' : state.moving() ? 'drift' : 'still'"
       [attr.aria-label]="t.public.mining.title"
     >
@@ -51,44 +54,74 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
         </div>
       } @else {
         <div class="cloud-controls" (pointerdown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()">
-          <label class="cloud-toggle">
-            <input type="checkbox" [checked]="clouds.enabled()" (change)="onCloudToggle($event)" />
-            {{ t.public.mining.cloudsLabel }}
-          </label>
-          <label for="splash-cloud-style">{{ t.public.mining.cloudStyleLabel }}</label>
-          <select
-            id="splash-cloud-style"
-            [value]="clouds.style()"
-            [disabled]="!clouds.enabled()"
-            (change)="onCloudStyle($event)"
-          >
-            <option value="thin">{{ t.public.mining.thinCloudsLabel }}</option>
-            <option value="thick">{{ t.public.mining.thickCloudsLabel }}</option>
-          </select>
-          <label for="splash-cloud-coverage">{{ t.public.mining.cloudCoverageLabel }}: {{ clouds.coverage() }}%</label>
-          <input
-            id="splash-cloud-coverage"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            [value]="clouds.coverage()"
-            [disabled]="!clouds.enabled()"
-            (input)="onCloudCoverage($event)"
-          />
-          <label for="splash-storm-activity">
-            {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
-          </label>
-          <input
-            id="splash-storm-activity"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            [value]="clouds.stormActivity()"
-            [disabled]="!clouds.enabled()"
-            (input)="onStormActivity($event)"
-          />
+          @if (state.planetKind === 'gas-giant') {
+            <label for="splash-giant-palette">{{ t.public.mining.gasGiantPaletteLabel }}</label>
+            <select id="splash-giant-palette" [value]="giants.palette()" (change)="onGiantPalette($event)">
+              <option value="seeded">{{ t.public.mining.gasGiantPaletteSeeded }}</option>
+              <option value="jovian">{{ t.public.mining.gasGiantPaletteJovian }}</option>
+              <option value="saturnian">{{ t.public.mining.gasGiantPaletteSaturnian }}</option>
+              <option value="ice">{{ t.public.mining.gasGiantPaletteIce }}</option>
+            </select>
+            <label for="splash-giant-rings">{{ t.public.mining.gasGiantRingsLabel }}</label>
+            <select id="splash-giant-rings" [value]="giants.rings()" (change)="onGiantRings($event)">
+              <option value="seeded">{{ t.public.mining.gasGiantRingsSeeded }}</option>
+              <option value="on">{{ t.public.mining.gasGiantRingsOn }}</option>
+              <option value="off">{{ t.public.mining.gasGiantRingsOff }}</option>
+            </select>
+            <label for="splash-storm-activity">
+              {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
+            </label>
+            <input
+              id="splash-storm-activity"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="clouds.stormActivity()"
+              (input)="onStormActivity($event)"
+            />
+          } @else {
+            <label class="cloud-toggle">
+              <input type="checkbox" [checked]="clouds.enabled()" (change)="onCloudToggle($event)" />
+              {{ t.public.mining.cloudsLabel }}
+            </label>
+            <label for="splash-cloud-style">{{ t.public.mining.cloudStyleLabel }}</label>
+            <select
+              id="splash-cloud-style"
+              [value]="clouds.style()"
+              [disabled]="!clouds.enabled()"
+              (change)="onCloudStyle($event)"
+            >
+              <option value="thin">{{ t.public.mining.thinCloudsLabel }}</option>
+              <option value="thick">{{ t.public.mining.thickCloudsLabel }}</option>
+            </select>
+            <label for="splash-cloud-coverage">
+              {{ t.public.mining.cloudCoverageLabel }}: {{ clouds.coverage() }}%
+            </label>
+            <input
+              id="splash-cloud-coverage"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="clouds.coverage()"
+              [disabled]="!clouds.enabled()"
+              (input)="onCloudCoverage($event)"
+            />
+            <label for="splash-storm-activity">
+              {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
+            </label>
+            <input
+              id="splash-storm-activity"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="clouds.stormActivity()"
+              [disabled]="!clouds.enabled()"
+              (input)="onStormActivity($event)"
+            />
+          }
         </div>
         <div class="caption">
           <span>
@@ -251,7 +284,26 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
 export class MiningSplashOverlay {
   protected readonly state = inject(MiningSplashState);
   protected readonly clouds = inject(PlanetCloudSettings);
+  protected readonly giants = inject(GasGiantSettings);
   protected readonly t = locale;
+  protected onGiantPalette(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const value = target.value;
+    if (value !== 'seeded' && !GAS_GIANT_PALETTES.includes(value as GasGiantPalette)) {
+      throw new Error(`Unknown gas giant palette: ${value}`);
+    }
+    this.giants.palette.set(value as GasGiantPaletteChoice);
+  }
+
+  protected onGiantRings(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const value = target.value;
+    if (value !== 'seeded' && value !== 'on' && value !== 'off') throw new Error(`Unknown ring choice: ${value}`);
+    this.giants.rings.set(value);
+  }
+
   protected onCloudToggle(event: Event): void {
     const target = event.target;
     if (target instanceof HTMLInputElement) this.clouds.enabled.set(target.checked);
