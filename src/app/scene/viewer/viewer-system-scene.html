@@ -97,6 +97,21 @@
   } @else {
   <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
   }
+  @let _giant = giantProfiles().get(body.id);
+  @if (_giant) {
+  <!-- Invisible pick shell; the procedural giant draws inside it at unit radius. -->
+  <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
+  <ngt-group [scale]="[body.radius, body.radius, body.radius]">
+    <app-gas-giant
+      [profile]="_giant"
+      [textureSize]="giantTextureSize"
+      [lightPosition]="primaryStarLight()?.position ?? null"
+      [lightColor]="primaryStarLight()?.color ?? null"
+      [moons]="giantMoons().get(body.id) ?? []"
+      [highlighted]="hoveredBodyId() === body.id || targetedBodyId() === body.id"
+    />
+  </ngt-group>
+  } @else {
   <ngt-mesh-standard-material
     [map]="bodySurfaces().get(body.id) ?? null"
     [color]="resolveSurfaceColor(body)"
@@ -118,6 +133,7 @@
   />
   @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id)) {
   <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
+  }
   }
 </ngt-mesh>
 }

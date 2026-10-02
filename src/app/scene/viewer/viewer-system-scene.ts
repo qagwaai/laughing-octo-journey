@@ -19,6 +19,11 @@ import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
+import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import { GasGiantBody, type GasGiantMoonInput } from '../gas-giant/gas-giant-body';
+import type { GasGiantBandSize } from '../gas-giant/gas-giant-bands';
+import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
+import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
@@ -946,10 +951,12 @@ export function resolveTargetScenePosition(
   return null;
 }
 
+const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 256 };
+
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer],
+  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer, GasGiantBody],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -964,6 +971,7 @@ export function resolveTargetScenePosition(
 export class ViewerSystemScene {
   private store = injectStore();
   private readonly planetTextures = inject(PlanetTextureCache);
+  private readonly gasGiants = inject(GasGiantSettings);
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   private cameraTween: CameraTween | null = null;
@@ -1035,6 +1043,49 @@ export class ViewerSystemScene {
   protected readonly starLightDistance = STAR_LIGHT_DISTANCE;
   protected readonly starLightDecay = STAR_LIGHT_DECAY;
 
+  /** Giants are small on screen here, so a half-size band bake is plenty. */
+  protected readonly giantTextureSize: GasGiantBandSize = SYSTEM_VIEW_GIANT_TEXTURE_SIZE;
+
+  /**
+   * Seeded giant looks for the system's sphere planets that classify as giants.
+   * Built at unit radius and scaled in the template, so zooming, which changes
+   * body radii, never re-bakes the band texture.
+   */
+  protected readonly giantProfiles = computed<ReadonlyMap<string, GasGiantProfile>>(() => {
+    const mode = this.gasGiants.classification();
+    const overrides = toProfileOverrides(this.gasGiants.palette(), this.gasGiants.rings());
+    const profiles = new Map<string, GasGiantProfile>();
+    for (const body of this.rendered()) {
+      if (body.geometryKind === 'sphere' && isGasGiantBody(body.source, mode)) {
+        profiles.set(body.id, deriveGasGiantProfile(body.id, overrides));
+      }
+    }
+    return profiles;
+  });
+
+  /** Each giant's moons as world-space shadow casters. */
+  protected readonly giantMoons = computed<ReadonlyMap<string, readonly GasGiantMoonInput[]>>(() => {
+    const giants = this.giantProfiles();
+    const moons = new Map<string, GasGiantMoonInput[]>();
+    for (const body of this.rendered()) {
+      const anchorId = body.source.orbitalElements?.anchorBodyId;
+      if (!anchorId || !giants.has(anchorId) || body.isStar) continue;
+      const list = moons.get(anchorId) ?? [];
+      list.push({ position: body.position, radius: body.radius });
+      moons.set(anchorId, list);
+    }
+    return moons;
+  });
+
+  /** The brightest star lights the giants' ring and moon shadows. */
+  protected readonly primaryStarLight = computed(
+    () =>
+      this.starLights().reduce<ReturnType<typeof resolveStarLights>[number] | null>(
+        (best, light) => (!best || light.intensity > best.intensity ? light : best),
+        null,
+      ),
+  );
+
   /**
    * Albedo per body id, republished as L0 bakes land. Bodies absent from this
    * map keep their flat material colour, which is what every body shows until
@@ -1045,7 +1096,9 @@ export class ViewerSystemScene {
     this.planetTextures.ready();
 
     const surfaces = new Map<string, Texture>();
+    const giants = this.giantProfiles();
     for (const body of this.rendered()) {
+      if (giants.has(body.id)) continue;
       const baked = this.planetTextures.get(body.source, 'l0');
       if (baked) {
         surfaces.set(body.id, baked.albedo);
@@ -1197,9 +1250,15 @@ export class ViewerSystemScene {
 
   constructor() {
     // Queue L0 surfaces for the system's bodies. The cache ignores repeats and
-    // untexturable bodies, so re-running this on input changes is cheap.
+    // untexturable bodies, so re-running this on input changes is cheap. Giants
+    // are shaded procedurally and never need a terrain bake.
     effect(() => {
-      this.planetTextures.requestMany(this.bodies(), 'l0', this.store.snapshot.gl ?? null);
+      const giants = this.giantProfiles();
+      this.planetTextures.requestMany(
+        this.bodies().filter((body) => !giants.has(body.id)),
+        'l0',
+        this.store.snapshot.gl ?? null,
+      );
     });
 
     effect(() => {
