@@ -158,4 +158,34 @@ test.describe('Planet details zoom pattern', () => {
     expect(state?.ioRadius).toBeLessThan(0.25);
     expect(shaderErrors).toEqual([]);
   });
+
+  test('draws catalogue gas giants procedurally in the system view', async ({ page }) => {
+    const shaderErrors: string[] = [];
+    page.on('console', (message) => {
+      if (/THREE\.WebGLProgram|shader error/i.test(message.text())) shaderErrors.push(message.text());
+    });
+
+    await setupPlanetViewZoomViewer(page);
+    await new ViewerPage(page).expectSceneLoaded();
+
+    const readSystemGiants = () =>
+      page.evaluate(() => {
+        const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+        const giants: string[] = [];
+        for (const canvas of Array.from(document.querySelectorAll('ngt-canvas'))) {
+          const component = ngApi?.getComponent?.(canvas) as
+            | { store?: { snapshot?: { scene?: import('three').Scene } } }
+            | undefined;
+          component?.store?.snapshot?.scene?.traverse((object) => {
+            const data = object.userData?.['gasGiant'] as { bodyId: string } | undefined;
+            if (data) giants.push(data.bodyId);
+          });
+        }
+        return giants;
+      });
+
+    // Jupiter is a giant by catalogue radius; Earth stays a terran surface.
+    await expect.poll(readSystemGiants, { timeout: 15_000 }).toEqual(['jupiter']);
+    expect(shaderErrors).toEqual([]);
+  });
 });

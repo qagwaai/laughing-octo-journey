@@ -339,7 +339,9 @@ The selected giant skips the L1 terrain bake. It keeps an invisible pick sphere 
 
 Splash: 10 seeded giants join the splash rotation and have their own overlay controls (palette and rings). The existing storm activity control also drives a giant's vortices. `?splashPlanet=<id>&splashKind=gas-giant` previews any ID as a giant.
 
-Follow-ups: the system view still draws giants as plain spheres. Moons' own orbital motion does not yet move their shadows.
+System view: sphere planets that classify as giants render through the same `<app-gas-giant>`. They use a 512×256 band bake and are built at unit radius inside a group scaled to the body's scene radius, so zooming never re-bakes. The brightest star lights them, their moons are passed as shadow casters, and they skip the L0 terrain bake.
+
+Follow-ups: moons' own orbital motion does not yet move their shadows.
 
 ### Stage 4 — Contract
 
