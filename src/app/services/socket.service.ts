@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
+import { environment } from '../../environments/environment';
 import {
   CELESTIAL_BODY_LIST_REQUEST_EVENT,
   CELESTIAL_BODY_LIST_RESPONSE_EVENT,
@@ -65,7 +66,7 @@ const DEFAULT_NO_RESPONSE_LOG_DELAY_MS = 3000;
   providedIn: 'root',
 })
 export class SocketService {
-  public serverUrl = 'http://localhost:3000'; // Default server URL, can be overridden
+  public serverUrl = environment.apiUrl; // Default server URL, can be overridden
   private socket: Socket | null = null;
   private readonly requestLifecycle = new SocketRequestLifecycle();
 
