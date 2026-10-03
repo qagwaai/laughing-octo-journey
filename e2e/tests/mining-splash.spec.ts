@@ -411,6 +411,77 @@ test('previews an unlisted body as a gas giant with splashKind', async ({ page }
   await expect.poll(() => readSplashGasGiant(page)).toMatchObject({ bodyId: 'preview-me' });
 });
 
+/** Reads the splash star's identity from the live three.js scene. */
+async function readSplashStar(page: import('@playwright/test').Page): Promise<unknown> {
+  return page.evaluate(() => {
+    const ng = (window as unknown as { ng: { getComponent: (el: Element | null) => unknown } }).ng;
+    const canvas = ng.getComponent(document.querySelector('ngt-canvas')) as {
+      store: { snapshot: { scene: Scene } };
+    };
+    let found: unknown = null;
+    canvas.store.snapshot.scene.traverse((object) => {
+      if (object.name === 'star') found = object.userData['star'];
+    });
+    return found;
+  });
+}
+
+test('renders a pinned star with its spectral class, flare control and no shader errors', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+  });
+  await page.goto(pinnedSplash('/knot(left:intro)', 'nova-splash-star-g'));
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
+  await expect(page.getByTestId('splash-star-class')).toContainText('G2V');
+  await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+  const flare = page.getByRole('slider', { name: /Flare activity/ });
+  await expect(flare).toBeVisible();
+  await expect.poll(() => readSplashStar(page)).toMatchObject({
+    bodyId: 'nova-splash-star-g',
+    letter: 'G',
+    subtype: 2,
+    luminosityClass: 'V',
+  });
+  await flare.fill('100');
+  await expect(flare).toHaveValue('100');
+
+  const starClass = page.getByRole('combobox', { name: 'Star class' });
+  await expect(starClass).toHaveValue('seeded');
+  await starClass.selectOption('M4V');
+  await expect(page.getByTestId('splash-star-class')).toContainText('M4V');
+  await expect.poll(() => readSplashStar(page)).toMatchObject({
+    bodyId: 'nova-splash-star-g',
+    letter: 'M',
+    subtype: 4,
+    luminosityClass: 'V',
+  });
+  await starClass.selectOption('seeded');
+  await expect(page.getByTestId('splash-star-class')).toContainText('G2V');
+  await expect.poll(() => readSplashStar(page)).toMatchObject({ letter: 'G', subtype: 2 });
+  expect(
+    consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
+  ).toEqual([]);
+});
+
+test('previews an unlisted body as a star with splashKind and splashSpectralClass', async ({ page }) => {
+  await page.goto(
+    `${pinnedSplash('/knot(left:intro)', 'preview-star')}&splashKind=star&splashSpectralClass=K5III`,
+  );
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
+  await expect(page.getByTestId('splash-star-class')).toContainText('K5III');
+  await expect.poll(() => readSplashStar(page)).toMatchObject({
+    bodyId: 'preview-star',
+    letter: 'K',
+    subtype: 5,
+    luminosityClass: 'III',
+  });
+});
+
 test('picks the splash planet from the rotation when not pinned', async ({ page }) => {
   await page.goto('/knot(left:intro)');
   const planet = await page.locator('app-mining-splash-overlay section').getAttribute('data-planet');

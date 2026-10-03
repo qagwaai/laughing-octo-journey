@@ -14,23 +14,9 @@
  * the same body were seen under different light.
  */
 import type { ViewerBody } from '../../model/solar-system-get';
-
-/**
- * Representative sRGB colours for the Morgan-Keenan spectral classes.
- *
- * The contract exposes a precise B-V colour index, but only on the system-level
- * `primaryStarSummary`, not per body, so the scenes fall back to the class
- * letter that every star body carries.
- */
-const SPECTRAL_CLASS_COLORS: Readonly<Record<string, string>> = {
-  O: '#9bb0ff',
-  B: '#aabfff',
-  A: '#cad8ff',
-  F: '#f8f7ff',
-  G: '#fff4e8',
-  K: '#ffd2a1',
-  M: '#ffb46b',
-};
+import { spectralClassLetter } from '../../model/star/spectral-class';
+import { STAR_CLASS_TRAITS } from '../../model/star/star-class-traits';
+import { deriveStarProfile, type StarProfile } from '../../model/star/star-profile';
 
 /** Sol is a G-class star, so this keeps an unclassified body looking sunlike. */
 export const DEFAULT_STAR_COLOR = '#fff4e8';
@@ -113,11 +99,29 @@ export function temperColor(hex: string, strength: number): string {
   ]);
 }
 
-/** Maps a spectral class such as `G2V` or `M` to its representative colour. */
+/**
+ * Maps a spectral class such as `G2V`, `sdM3` or `DA2` to its representative colour.
+ *
+ * The contract exposes a precise B-V colour index, but only on the system-level
+ * `primaryStarSummary`, not per body, so the scenes fall back to the class
+ * every star body carries.
+ */
 export function spectralClassColor(spectralClass: string | null | undefined): string | null {
-  if (typeof spectralClass !== 'string') return null;
-  const letter = spectralClass.trim().charAt(0).toUpperCase();
-  return SPECTRAL_CLASS_COLORS[letter] ?? null;
+  const letter = spectralClassLetter(spectralClass);
+  return letter ? STAR_CLASS_TRAITS[letter].representativeColor : null;
+}
+
+/** The spectral class a star body renders as: art direction first, then the catalogue class. */
+export function resolveStarSpectralClass(body: ViewerBody): string | null {
+  return body.visualization?.spectralClass?.trim() || body.spectralClass?.trim() || null;
+}
+
+/** Procedural star look for a viewer body, keeping any explicit art-directed colour. */
+export function deriveViewerStarProfile(body: ViewerBody): StarProfile {
+  const explicit = body.visualization?.colorHex?.trim();
+  return deriveStarProfile(body.id, resolveStarSpectralClass(body), {
+    colorHex: explicit && parseHex(explicit) ? explicit : null,
+  });
 }
 
 /**

@@ -54,9 +54,24 @@
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
+  @let _star = starProfiles().get(body.id);
+  @if (_star) {
+  <!-- Invisible pick shell; the procedural star draws inside it at unit radius. -->
+  <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
+  <ngt-group [scale]="[body.radius, body.radius, body.radius]">
+    <app-star
+      [profile]="_star"
+      [widthSegments]="48"
+      [heightSegments]="32"
+      [flareActivity]="starFlareActivity()"
+      [highlightColor]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : null"
+    />
+  </ngt-group>
+  } @else {
   <ngt-mesh-basic-material
     [color]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : body.color"
   />
+  }
 </ngt-mesh>
 } @for (ship of renderedShips(); track ship.id) {
 <ngt-group [position]="ship.position" [name]="ship.displayName">

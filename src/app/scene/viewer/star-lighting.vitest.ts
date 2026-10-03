@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
 import {
   DEFAULT_STAR_COLOR,
+  deriveViewerStarProfile,
   resolveStarColor,
   resolveStarFillColor,
   resolveStarLightColor,
   resolveStarLights,
+  resolveStarSpectralClass,
   spectralClassColor,
   STAR_LIGHT_DECAY,
   STAR_LIGHT_DISTANCE,
@@ -76,6 +78,36 @@ describe('star colour resolution', () => {
   it('ignores a malformed colorHex rather than rendering the star black', () => {
     const body = starBody({ visualization: { colorHex: 'not-a-colour' }, spectralClass: 'M' } as Partial<ViewerBody>);
     expect(resolveStarColor(body)).toBe(spectralClassColor('M'));
+  });
+
+  it('colours brown dwarfs, white dwarfs and exotic classes', () => {
+    for (const spectralClass of ['L3', 'T6', 'Y1', 'DA2', 'WC8', 'C-N5', 'S4/2']) {
+      expect(spectralClassColor(spectralClass)).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  it('reads a subdwarf prefix as its class rather than as an S-type', () => {
+    expect(spectralClassColor('sdM3')).toBe(spectralClassColor('M'));
+  });
+});
+
+describe('viewer star profile', () => {
+  it('uses the art-directed class and colour when present', () => {
+    const body = starBody({
+      spectralClass: 'G2V',
+      visualization: { spectralClass: 'M4V', colorHex: '#ff0000' },
+    } as Partial<ViewerBody>);
+    const profile = deriveViewerStarProfile(body);
+    expect(profile.spectralClass.letter).toBe('M');
+    expect(profile.color).toEqual([1, 0, 0]);
+  });
+
+  it('falls back to the body class and then to a Sun-like star', () => {
+    expect(deriveViewerStarProfile(starBody({ spectralClass: 'K1III' } as Partial<ViewerBody>)).spectralClass.label).toBe(
+      'K1III',
+    );
+    expect(resolveStarSpectralClass(starBody())).toBeNull();
+    expect(deriveViewerStarProfile(starBody()).spectralClass.label).toBe('G2V');
   });
 });
 

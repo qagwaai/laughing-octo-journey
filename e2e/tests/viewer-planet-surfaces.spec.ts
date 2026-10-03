@@ -127,9 +127,12 @@ async function cloudTextureWidths(page: import('@playwright/test').Page): Promis
     const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
     const canvas = document.querySelector('ngt-canvas');
     if (!ngApi?.getComponent || !canvas) throw new Error('Planet canvas is unavailable');
-    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene | null } } };
     const widths: number[] = [];
-    component.store.snapshot.scene.traverse((node) => {
+    // The canvas briefly has no scene while the system view hands over to the planet view.
+    const scene = component.store.snapshot.scene;
+    if (!scene) return widths;
+    scene.traverse((node) => {
       if (node.type !== 'Mesh') return;
       const material = (node as Mesh).material as MeshStandardMaterial;
       if (material.transparent && material.opacity === 0.7 && material.map?.image?.width) {

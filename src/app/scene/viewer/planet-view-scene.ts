@@ -7,16 +7,16 @@ import {
   EventEmitter,
   inject,
   input,
-  OnDestroy,
   Output,
   signal,
   viewChild,
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { CanvasTexture, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import type { PlanetBakeResult } from '../planet/planet-bake';
 import {
+  deriveViewerStarProfile,
   PLANET_VIEW_STAR_LIGHT_INTENSITY,
   resolveStarFillColor,
   resolveStarLights,
@@ -28,6 +28,9 @@ import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/
 import { GasGiantBody } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
+import type { StarProfile } from '../../model/star/star-profile';
+import { StarBody } from '../star/star-body';
+import { StarSettings } from '../star/star-settings';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolveBodyColor } from './viewer-formatters';
@@ -73,6 +76,8 @@ interface StarMarker {
 }
 
 const PLANET_MIN_CAMERA_DISTANCE = 4.2;
+/** Star radius as a share of its marker's old glow size; 0.12 keeps the disc near the old bright core. */
+const PLANET_VIEW_STAR_RADIUS_RATIO = 0.12;
 const PLANET_VIEW_REFERENCE_DIAMETER_M = 12_742_000;
 const PLANET_VIEW_MAX_CAMERA_DISTANCE = 80;
 const PLANET_VIEW_MIN_DISTANCE_CLAMP_MIN = 3.2;
@@ -250,80 +255,32 @@ export function resolveStarMarker(
   return resolveStarMarkers(selected, allBodies, maxOrbitRadius)[0] ?? null;
 }
 
-export function hexToRgb(hex: string): [number, number, number] {
-  const c = hex.replace('#', '');
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return [Number.isNaN(r) ? 128 : r, Number.isNaN(g) ? 128 : g, Number.isNaN(b) ? 128 : b];
-}
-
-export function createStarGlowTexture(hex: string): CanvasTexture {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  const [r, g, b] = hexToRgb(hex);
-  const cx = size / 2;
-  const cy = size / 2;
-
-  // Outer soft halo
-  const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx);
-  halo.addColorStop(0, `rgba(${r},${g},${b},1)`);
-  halo.addColorStop(0.18, `rgba(${r},${g},${b},0.92)`);
-  halo.addColorStop(0.42, `rgba(${r},${g},${b},0.38)`);
-  halo.addColorStop(0.72, `rgba(${r},${g},${b},0.08)`);
-  halo.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = halo;
-  ctx.fillRect(0, 0, size, size);
-
-  // Bright core
-  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, cx * 0.22);
-  core.addColorStop(0, `rgba(255,255,240,1)`);
-  core.addColorStop(0.6, `rgba(${r},${g},${b},0.7)`);
-  core.addColorStop(1, `rgba(${r},${g},${b},0)`);
-  ctx.fillStyle = core;
-  ctx.fillRect(0, 0, size, size);
-
-  const texture = new CanvasTexture(canvas);
-  return texture;
-}
-
 @Component({
   selector: 'app-planet-view-scene',
   templateUrl: './planet-view-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, GasGiantBody],
+  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, GasGiantBody, StarBody],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PlanetViewScene implements OnDestroy {
+export class PlanetViewScene {
   private store = injectStore();
   private readonly planetTextures = inject(PlanetTextureCache);
   private readonly gasGiants = inject(GasGiantSettings);
+  private readonly starSettings = inject(StarSettings);
+  protected readonly starFlareActivity = this.starSettings.flareActivity;
 
   /**
-   * The star glow is a canvas sprite rather than a baked surface. It is cached
-   * by colour so a recompute does not orphan the previous texture; the earlier
-   * implementation allocated a fresh CanvasTexture on every recompute and never
-   * released any of them. A binary system needs one entry per distinct colour.
+   * Procedural star looks, keyed by body and independent of the focused planet,
+   * so refocusing moves the stars without rebuilding them.
    */
-  private starGlowCache = new Map<string, CanvasTexture>();
-
-  private starGlowFor(color: string): CanvasTexture {
-    const cached = this.starGlowCache.get(color);
-    if (cached) {
-      return cached;
+  private readonly starProfiles = computed<ReadonlyMap<string, StarProfile>>(() => {
+    const profiles = new Map<string, StarProfile>();
+    for (const body of this.bodies()) {
+      if (body.bodyType === 'star') profiles.set(body.id, deriveViewerStarProfile(body));
     }
-    const texture = createStarGlowTexture(color);
-    this.starGlowCache.set(color, texture);
-    return texture;
-  }
+    return profiles;
+  });
 
-  ngOnDestroy(): void {
-    for (const texture of this.starGlowCache.values()) texture.dispose();
-    this.starGlowCache.clear();
-  }
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   bodies = input<ViewerBody[]>([]);
@@ -443,7 +400,7 @@ export class PlanetViewScene implements OnDestroy {
   /**
    * Every star in the system, each with its own glow sprite and cast light.
    *
-   * The light colour is tempered toward neutral while the sprite keeps the
+   * The light colour is tempered toward neutral while the star keeps its true
    * star's true colour, so the star stays identifiable without its tint making
    * the focused planet's surface unreadable.
    */
@@ -461,7 +418,9 @@ export class PlanetViewScene implements OnDestroy {
 
     return markers.map((marker, index) => ({
       ...marker,
-      glow: this.starGlowFor(marker.color),
+      profile: this.starProfiles().get(marker.id) ?? deriveViewerStarProfile(marker.body),
+      // The star itself is a small disc; its corona carries the old glow's reach.
+      starRadius: marker.glowSize * PLANET_VIEW_STAR_RADIUS_RATIO,
       lightColor: lights[index].color,
       lightIntensity: lights[index].intensity,
     }));

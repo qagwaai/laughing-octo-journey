@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deriveGasGiantProfile, GAS_GIANT_PALETTES } from '../../model/planet/gas-giant-profile';
+import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
+import { resolveSpectralClass } from '../../model/star/star-profile';
 import {
   selectSplashPlanet,
   selectSplashPlanetBodyId,
@@ -15,6 +17,7 @@ describe('selectSplashPlanetBodyId', () => {
     expect(SPLASH_PLANET_ROTATION[0]).toEqual({ id: SPLASH_PLANET_BODY_ID, kind: 'terran' });
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'terran')).toHaveLength(25);
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'gas-giant')).toHaveLength(10);
+    expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'star')).toHaveLength(14);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -63,5 +66,34 @@ describe('selectSplashPlanet kinds', () => {
     expect(profiles.filter((profile) => profile.rings).length).toBeGreaterThanOrEqual(3);
     expect(profiles.some((profile) => !profile.rings)).toBe(true);
     expect(profiles.some((profile) => profile.anticyclone)).toBe(true);
+  });
+});
+
+describe('selectSplashPlanet stars', () => {
+  const stars = SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'star');
+
+  it('lists exactly one star per spectral class', () => {
+    const letters = stars.map((entry) => resolveSpectralClass(entry.spectralClass).letter);
+    expect(letters).toHaveLength(STELLAR_CLASS_LETTERS.length);
+    expect(new Set(letters)).toEqual(new Set(STELLAR_CLASS_LETTERS));
+  });
+
+  it('pins a listed star with its spectral class', () => {
+    expect(selectSplashPlanet('?splashPlanet=nova-splash-star-g')).toEqual({
+      id: 'nova-splash-star-g',
+      kind: 'star',
+      spectralClass: 'G2V',
+    });
+  });
+
+  it('previews unlisted stars with a requested or seeded class', () => {
+    expect(selectSplashPlanet('?splashPlanet=preview-me&splashKind=star&splashSpectralClass=K5III')).toEqual({
+      id: 'preview-me',
+      kind: 'star',
+      spectralClass: 'K5III',
+    });
+    const seeded = selectSplashPlanet('?splashPlanet=preview-me&splashKind=star');
+    expect(STELLAR_CLASS_LETTERS).toContain(seeded.spectralClass);
+    expect(selectSplashPlanet('?splashPlanet=preview-me&splashKind=star')).toEqual(seeded);
   });
 });

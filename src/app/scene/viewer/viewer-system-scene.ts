@@ -45,6 +45,7 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
 } from './viewer-formatters';
 import {
+  deriveViewerStarProfile,
   resolveStarFillColor,
   resolveStarLights,
   STAR_LIGHT_DECAY,
@@ -52,6 +53,9 @@ import {
   type StarLightInput,
   VIEWER_SCENE_STAR_LIGHT_INTENSITY,
 } from './star-lighting';
+import type { StarProfile } from '../../model/star/star-profile';
+import { StarBody } from '../star/star-body';
+import { StarSettings } from '../star/star-settings';
 import { ViewerShipMesh } from './viewer-ship-mesh';
 
 type BodyGeometryKind =
@@ -956,7 +960,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer, GasGiantBody],
+  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer, GasGiantBody, StarBody],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -972,6 +976,7 @@ export class ViewerSystemScene {
   private store = injectStore();
   private readonly planetTextures = inject(PlanetTextureCache);
   private readonly gasGiants = inject(GasGiantSettings);
+  private readonly starSettings = inject(StarSettings);
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   private cameraTween: CameraTween | null = null;
@@ -1042,6 +1047,15 @@ export class ViewerSystemScene {
 
   protected readonly starLightDistance = STAR_LIGHT_DISTANCE;
   protected readonly starLightDecay = STAR_LIGHT_DECAY;
+
+  /** Procedural star looks, built at unit radius and scaled in the template like giants. */
+  protected readonly starProfiles = computed<ReadonlyMap<string, StarProfile>>(() => {
+    const profiles = new Map<string, StarProfile>();
+    for (const body of this.stars()) profiles.set(body.id, deriveViewerStarProfile(body.source));
+    return profiles;
+  });
+
+  protected readonly starFlareActivity = this.starSettings.flareActivity;
 
   /** Giants are small on screen here, so a half-size band bake is plenty. */
   protected readonly giantTextureSize: GasGiantBandSize = SYSTEM_VIEW_GIANT_TEXTURE_SIZE;

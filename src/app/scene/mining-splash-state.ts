@@ -25,6 +25,8 @@ export class MiningSplashState {
   readonly planet = selectSplashPlanet(window.location.search);
   readonly planetBodyId = this.planet.id;
   readonly planetKind: SplashPlanetKind = this.planet.kind;
+  /** Stars only. */
+  readonly planetSpectralClass: string | null = this.planet.spectralClass ?? null;
   readonly moving = computed(
     () => this.status() === 'ready' && !this.reducedMotion() && !this.documentHidden() && !this.orbitPaused(),
   );

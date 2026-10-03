@@ -11,6 +11,9 @@ import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
 import { createMiningBackdrop, createMiningBackdropAround, disposeMiningObject } from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
+import { createSplashStar, replaceSplashStar } from './star/splash-star';
+import type { StarHandle } from './star/star';
+import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 import type { PlanetBakeResult } from './planet/planet-bake';
 import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import {
@@ -34,6 +37,7 @@ export default class Knot {
   private readonly visibility = inject(SceneVisibilityService);
   private readonly cloudSettings = inject(PlanetCloudSettings);
   private readonly gasGiantSettings = inject(GasGiantSettings);
+  private readonly starSettings = inject(StarSettings);
 
   constructor() {
     const store = this.store;
@@ -62,6 +66,8 @@ export default class Knot {
     let cloudStyle: PlanetCloudStyle | undefined;
     let giant: GasGiantHandle | undefined;
     let giantLook: string | undefined;
+    let star: StarHandle | undefined;
+    let starClass: string | null = null;
     const cameraDirection = new Vector3(2.7, 2, 3.8).normalize();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
@@ -159,6 +165,21 @@ export default class Knot {
       giant?.setStormActivity(stormActivity);
       invalidate();
     });
+    effect(() => {
+      const flareActivity = this.starSettings.flareActivity();
+      const spectralClass = resolveStarSpectralClassChoice(
+        this.starSettings.spectralClass(),
+        this.state.planetSpectralClass,
+      );
+      if (star && starClass !== spectralClass) {
+        const quality = untracked(() => this.state.quality());
+        const next = createSplashStar({ bodyId: this.state.planetBodyId, spectralClass, quality, flareActivity });
+        star = replaceSplashStar(star, next);
+        starClass = spectralClass;
+      }
+      star?.setFlareActivity(flareActivity);
+      invalidate();
+    });
     const isStatic = computed(() => this.state.status() === 'static');
     effect((onCleanup) => {
       this.state.attempt();
@@ -195,6 +216,18 @@ export default class Knot {
             });
             giantLook = `${palette}|${rings}`;
             backdrop = createMiningBackdropAround(quality, giant.group);
+          } else if (this.state.planetKind === 'star') {
+            starClass = resolveStarSpectralClassChoice(
+              this.starSettings.spectralClass(),
+              this.state.planetSpectralClass,
+            );
+            star = createSplashStar({
+              bodyId: this.state.planetBodyId,
+              spectralClass: starClass,
+              quality,
+              flareActivity: this.starSettings.flareActivity(),
+            });
+            backdrop = createMiningBackdropAround(quality, star.group);
           } else {
             planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
             clouds = createPlanetCloudTexture(
@@ -244,6 +277,8 @@ export default class Knot {
           cloudStyle = undefined;
           giant?.dispose();
           giant = undefined;
+          star?.dispose();
+          star = undefined;
           // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
           planet?.dispose();
           planet = undefined;
@@ -270,6 +305,8 @@ export default class Knot {
         cloudStyle = undefined;
         giant?.dispose();
         giant = undefined;
+        star?.dispose();
+        star = undefined;
         planet?.dispose();
       });
     });
@@ -286,6 +323,9 @@ export default class Knot {
       }
       if (giant && this.state.status() === 'ready' && !this.state.reducedMotion() && !this.state.documentHidden()) {
         giant.advance(delta);
+      }
+      if (star && this.state.status() === 'ready' && !this.state.reducedMotion() && !this.state.documentHidden()) {
+        star.advance(delta);
       }
       if (pendingFrames > 0) {
         pendingFrames--;

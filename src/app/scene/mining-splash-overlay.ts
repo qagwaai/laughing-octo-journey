@@ -3,6 +3,9 @@ import { locale } from '../i18n/locale';
 import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
 import { MiningSplashState, type MiningQuality } from './mining-splash-state';
+import { resolveSpectralClass } from '../model/star/star-profile';
+import { SPLASH_STAR_CLASSES } from './planet/splash-planet-rotation';
+import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 import { PlanetCloudSettings } from './planet/planet-clouds';
 
 @Component({
@@ -79,6 +82,29 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
               step="1"
               [value]="clouds.stormActivity()"
               (input)="onStormActivity($event)"
+            />
+          } @else if (state.planetKind === 'star') {
+            <p class="star-class" data-testid="splash-star-class">
+              {{ t.public.mining.starSpectralClassLabel }}: {{ starClassLabel() }}
+            </p>
+            <label for="splash-star-spectral-class">{{ t.public.mining.starClassSelectLabel }}</label>
+            <select id="splash-star-spectral-class" [value]="stars.spectralClass()" (change)="onStarClass($event)">
+              <option value="seeded">{{ t.public.mining.starClassSeeded }}</option>
+              @for (spectralClass of starClasses; track spectralClass) {
+                <option [value]="spectralClass">{{ spectralClass }}</option>
+              }
+            </select>
+            <label for="splash-flare-activity">
+              {{ t.public.mining.starFlareActivityLabel }}: {{ stars.flareActivity() }}%
+            </label>
+            <input
+              id="splash-flare-activity"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              [value]="stars.flareActivity()"
+              (input)="onFlareActivity($event)"
             />
           } @else {
             <label class="cloud-toggle">
@@ -238,6 +264,9 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
       align-items: center;
       gap: 0.45rem;
     }
+    .star-class {
+      margin: 0;
+    }
     .cloud-controls input[type='range'] {
       width: 100%;
       accent-color: #f59e42;
@@ -285,7 +314,29 @@ export class MiningSplashOverlay {
   protected readonly state = inject(MiningSplashState);
   protected readonly clouds = inject(PlanetCloudSettings);
   protected readonly giants = inject(GasGiantSettings);
+  protected readonly stars = inject(StarSettings);
+  protected readonly starClasses = SPLASH_STAR_CLASSES;
+  protected readonly starClassLabel = computed(
+    () =>
+      resolveSpectralClass(
+        resolveStarSpectralClassChoice(this.stars.spectralClass(), this.state.planetSpectralClass),
+      ).label,
+  );
   protected readonly t = locale;
+
+  protected onStarClass(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const value = target.value;
+    if (!isStarSpectralClassChoice(value)) throw new Error(`Unknown star spectral class: ${value}`);
+    this.stars.spectralClass.set(value);
+  }
+
+  protected onFlareActivity(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.stars.flareActivity.set(Number(target.value));
+  }
+
   protected onGiantPalette(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;

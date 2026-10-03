@@ -343,6 +343,34 @@ System view: sphere planets that classify as giants render through the same `<ap
 
 Follow-ups: moons' own orbital motion does not yet move their shadows.
 
+### Stars (implemented)
+
+Stars are a third render path with no contract change. Everything is derived from the existing per-body `spectralClass`, `visualization.spectralClass` and `visualization.colorHex` fields.
+
+Spectral parsing (`model/star/spectral-class.ts`): reads the Morgan-Keenan letter, the subtype digit and the luminosity class (`Ia`…`VII`, `sd`, `D`), falling back to per-class defaults when a part is missing or malformed. All 14 classes are supported:
+
+- main sequence and brown dwarfs: O, B, A, F, G, K, M, L, T, Y;
+- exotic: D (white dwarf, where the subtype is the 50400/T temperature index), W (Wolf-Rayet), C (carbon) and S.
+
+Module layout, each piece unit-tested on its own:
+
+- `model/star/star-class-traits.ts`: one traits profile per class (colours, temperature range, granulation, banding, soot, spots, emission, corona, flare rate, rotation), plus luminosity-class modifiers (giants and supergiants get coarser cells, a larger corona, fewer flares and slower spin; subdwarfs the reverse).
+- `model/star/star-profile.ts`: `deriveStarProfile(bodyId, spectralClass, overrides)` resolves the class and seeds a stable look per body. A valid `colorHex` overrides the class colour.
+- `scene/star/star-photosphere-material.ts`: an unlit shader with animated multi-scale Worley granulation, supergranulation, optional bands (brown dwarfs) and soot (carbon stars), starspots, flare brightening and limb darkening. Colour comes from a heat ramp built from the class colour (deep lanes, mid-tones, white-hot cores for hot classes). The material has `toneMapped: false`, because ACES tone mapping washed every class toward white.
+- `scene/star/star-corona.ts`: a camera-facing additive billboard with radial falloff, fbm streamers and a slow pulse.
+- `scene/star/star-flares.ts` and `star-prominences.ts`: a seeded Poisson flare scheduler (at most 4 active) driving shader hot spots and additive prominence loops. The flare activity percentage scales the rate.
+- `scene/star/star.ts`: `createStar` composes the group named `star` (with `userData.star` carrying the identity) and exposes `advance`, `setFlareActivity`, `setHighlight` and `dispose`.
+- `scene/star/star-body.ts`: the `<app-star>` angular-three wrapper. Animation pauses under reduced motion and on hidden tabs. `StarSettings.flareActivity` is shared across views.
+
+Splash: one star per class joins the rotation (`nova-splash-star-<letter>`), with a spectral class readout, a "Star class" dropdown (Seeded, then each class's splash designation, which swaps the class but keeps the body's seed) and a flare activity slider. `?splashPlanet=<id>&splashKind=star` previews any ID as a star, and `&splashSpectralClass=K5III` picks its class (otherwise one is seeded from the ID).
+
+Viewer:
+
+- **System view:** stars render as `<app-star>` at unit radius in a group scaled to the body radius, behind an invisible pick sphere so hover, target highlight and click are unchanged.
+- **Planet view:** the old canvas glow sprite is replaced by a small `<app-star>`.
+
+Star lighting (`star-lighting.ts`) keeps its rules and now takes its class colours from the same traits table.
+
 ### Stage 4 — Contract
 
 Only after the visuals are proven: propose the Forge parameter contract, driven by which scalars demonstrably changed the result, and update `openapi.yaml` and the models together.

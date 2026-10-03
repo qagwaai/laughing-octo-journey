@@ -97,7 +97,7 @@
   }
 </ngt-mesh>
 } @for (star of starMarkers(); track star.id) {
-<ngt-sprite [position]="star.position" [name]="star.displayName" [scale]="[star.glowSize, star.glowSize, 1]">
-  <ngt-sprite-material [map]="star.glow" [transparent]="true" [depthWrite]="false" [sizeAttenuation]="true" />
-</ngt-sprite>
+<ngt-group [position]="star.position" [name]="star.displayName" [scale]="[star.starRadius, star.starRadius, star.starRadius]">
+  <app-star [profile]="star.profile" [widthSegments]="48" [heightSegments]="32" [flareActivity]="starFlareActivity()" />
+</ngt-group>
 } }

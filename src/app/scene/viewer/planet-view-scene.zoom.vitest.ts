@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
 import {
-  createStarGlowTexture,
-  hexToRgb,
   resolveOrbitAngleRad,
   resolveOrbitRadiusUnits,
   resolvePlanetViewBodyRadiusKm,
@@ -210,17 +208,5 @@ describe('planet-view helper utilities', () => {
 
     expect(markers).toHaveLength(2);
     expect(markers[0].position).not.toEqual(markers[1].position);
-  });
-
-  it('hexToRgb handles valid and invalid channels', () => {
-    expect(hexToRgb('#112233')).toEqual([17, 34, 51]);
-    expect(hexToRgb('zzzzzz')).toEqual([128, 128, 128]);
-  });
-
-  it('creates the star glow texture', () => {
-    const glowTexture = createStarGlowTexture('#ffcc66');
-
-    expect(glowTexture).toBeDefined();
-    expect((glowTexture.image as HTMLCanvasElement).width).toBe(256);
   });
 });
