@@ -46,6 +46,14 @@ successful (stale) bundle to new page loads. The error page auto-reloads every
 - `npm run e2e:spec -- e2e/tests/your.spec.ts` - Focused Playwright spec run
 - `npm run verify:quick` - Quick local gate (`lint + typecheck`)
 
+### Dependency Security
+
+CI installs the lockfile with `npm ci --ignore-scripts` and runs `npm audit --audit-level=high`.
+The npm override for `piscina` pins the patched `5.3.2` release for
+[GHSA-67c8-pqhq-4rmx](https://github.com/advisories/GHSA-67c8-pqhq-4rmx) without downgrading Angular.
+Remove this override once `@angular/build` requires a patched Piscina release, then regenerate the lockfile
+and verify the audit and build. Avoid `npm audit fix --force`, which can select a breaking Angular downgrade.
+
 ## E2E Testing Strategy
 
 E2E tests are organized into **four partitions** for focused iteration and faster developer feedback:
