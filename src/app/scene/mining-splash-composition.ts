@@ -46,6 +46,18 @@ export function disposeMiningObject(root: Object3D): void {
 /** Splash placement for the hero planet, shared by terran and gas giant renders. */
 export const MINING_PLANET_POSITION = new Vector3(-2.8, -0.8, -6);
 export const MINING_PLANET_ROLL = -0.3;
+/** Includes the terran cloud shell, the outermost spherical surface in the splash. */
+export const MINING_BODY_EXCLUSION_RADIUS = 4 * 1.012;
+export const MINING_DEBRIS_CLEARANCE = 0.25;
+export const MINING_CAMERA_DIRECTION = new Vector3(2.7, 2, 3.8).normalize();
+export const MINING_BODY_DISTANCE_SCALE = 4;
+
+/** Perspective-preserving depth separation, anchored to the default view rather than manual orbit. */
+export function placeMiningCelestialBody(body: Object3D, referenceCameraPosition: Vector3): void {
+  body.position.copy(MINING_PLANET_POSITION).sub(referenceCameraPosition).multiplyScalar(MINING_BODY_DISTANCE_SCALE);
+  body.position.add(referenceCameraPosition);
+  body.scale.setScalar(MINING_BODY_DISTANCE_SCALE);
+}
 
 export function createMiningBackdrop(
   quality: MiningQuality,
@@ -110,21 +122,31 @@ export function createMiningBackdropAround(quality: MiningQuality, planet: Objec
     positions.setXYZ(i, x * factor, y * factor, z * factor);
   }
   rockGeometry.computeVertexNormals();
+  rockGeometry.computeBoundingSphere();
+  const rockRadius = rockGeometry.boundingSphere!.radius;
   const rocks = new InstancedMesh(
     rockGeometry,
     new MeshStandardMaterial({ color: '#373336', roughness: 0.95, flatShading: true }),
     count,
   );
   const matrix = new Matrix4();
+  const position = new Vector3();
+  const offset = new Vector3();
+  const scale = new Vector3();
   for (let i = 0; i < count; i++) {
     const angle = random() * Math.PI * 2;
     const radius = 2.5 + random() * 7;
     const size = 0.03 + random() * 0.2;
-    matrix.compose(
-      new Vector3(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.65, -2 - random() * 6),
-      new Quaternion().setFromAxisAngle(new Vector3(1, 1, 0).normalize(), angle),
-      new Vector3(size, size * 0.75, size * 1.2),
-    );
+    position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.65, -2 - random() * 6);
+    scale.set(size, size * 0.75, size * 1.2);
+    offset.subVectors(position, MINING_PLANET_POSITION);
+    const minimumDistance =
+      MINING_BODY_EXCLUSION_RADIUS + rockRadius * Math.max(scale.x, scale.y, scale.z) + MINING_DEBRIS_CLEARANCE;
+    if (offset.length() < minimumDistance) {
+      if (offset.lengthSq() === 0) offset.set(0, 0, 1);
+      position.copy(MINING_PLANET_POSITION).add(offset.setLength(minimumDistance));
+    }
+    matrix.compose(position, new Quaternion().setFromAxisAngle(new Vector3(1, 1, 0).normalize(), angle), scale);
     rocks.setMatrixAt(i, matrix);
   }
   group.add(rocks);

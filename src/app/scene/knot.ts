@@ -1,6 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, untracked } from '@angular/core';
 import { beforeRender, injectStore } from 'angular-three';
-import { Box3, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, SphereGeometry, Vector3 } from 'three';
+import {
+  Box3,
+  Color,
+  Group,
+  Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  PerspectiveCamera,
+  SphereGeometry,
+  Vector3,
+} from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -9,11 +19,14 @@ import { SceneVisibilityService } from '../services/scene-visibility.service';
 import type { GasGiantHandle } from './gas-giant/gas-giant';
 import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
-import { createMiningBackdrop, createMiningBackdropAround, disposeMiningObject } from './mining-splash-composition';
+import {
+  createMiningBackdrop,
+  createMiningBackdropAround,
+  disposeMiningObject,
+  MINING_CAMERA_DIRECTION,
+  placeMiningCelestialBody,
+} from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
-import { createSplashStar, replaceSplashStar } from './star/splash-star';
-import type { StarHandle } from './star/star';
-import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 import type { PlanetBakeResult } from './planet/planet-bake';
 import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import {
@@ -24,6 +37,9 @@ import {
   type PlanetCloudTexture,
 } from './planet/planet-clouds';
 import { bakeSplashPlanet } from './planet/splash-planet';
+import { createSplashStar, replaceSplashStar } from './star/splash-star';
+import type { StarHandle } from './star/star';
+import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 
 @Component({
   selector: 'app-knot',
@@ -68,7 +84,9 @@ export default class Knot {
     let giantLook: string | undefined;
     let star: StarHandle | undefined;
     let starClass: string | null = null;
-    const cameraDirection = new Vector3(2.7, 2, 3.8).normalize();
+    let celestialBody: Object3D | undefined;
+    const cameraDirection = MINING_CAMERA_DIRECTION.clone();
+    const referenceCameraPosition = new Vector3();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
     controls.enablePan = false;
@@ -117,6 +135,8 @@ export default class Knot {
         camera.position.multiplyScalar(ratio);
       }
       previousFraming = framing;
+      referenceCameraPosition.copy(cameraDirection).multiplyScalar(framing);
+      if (celestialBody) placeMiningCelestialBody(celestialBody, referenceCameraPosition);
       if (this.state.reducedMotion()) {
         orbitCenter.copy(camera.position);
         elapsed = 0;
@@ -160,6 +180,7 @@ export default class Knot {
         const quality = untracked(() => this.state.quality());
         const next = createSplashGasGiant({ bodyId: this.state.planetBodyId, quality, palette, rings, stormActivity });
         giant = replaceSplashGasGiant(giant, next);
+        celestialBody = giant.group;
         giantLook = `${palette}|${rings}`;
       }
       giant?.setStormActivity(stormActivity);
@@ -175,6 +196,7 @@ export default class Knot {
         const quality = untracked(() => this.state.quality());
         const next = createSplashStar({ bodyId: this.state.planetBodyId, spectralClass, quality, flareActivity });
         star = replaceSplashStar(star, next);
+        celestialBody = star.group;
         starClass = spectralClass;
       }
       star?.setFlareActivity(flareActivity);
@@ -216,6 +238,7 @@ export default class Knot {
             });
             giantLook = `${palette}|${rings}`;
             backdrop = createMiningBackdropAround(quality, giant.group);
+            celestialBody = giant.group;
           } else if (this.state.planetKind === 'star') {
             starClass = resolveStarSpectralClassChoice(
               this.starSettings.spectralClass(),
@@ -228,6 +251,7 @@ export default class Knot {
               flareActivity: this.starSettings.flareActivity(),
             });
             backdrop = createMiningBackdropAround(quality, star.group);
+            celestialBody = star.group;
           } else {
             planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
             clouds = createPlanetCloudTexture(
@@ -243,7 +267,9 @@ export default class Knot {
             cloudMesh = new Mesh(new SphereGeometry(4 * 1.012, 64, 48), cloudStormLayer.material);
             cloudMesh.visible = this.cloudSettings.enabled();
             backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material, cloudMesh);
+            celestialBody = cloudMesh.parent!;
           }
+          placeMiningCelestialBody(celestialBody, referenceCameraPosition);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -272,6 +298,7 @@ export default class Knot {
             clouds?.texture.dispose();
           }
           clouds = undefined;
+          celestialBody = undefined;
           cloudMesh = undefined;
           cloudStormLayer = undefined;
           cloudStyle = undefined;
@@ -300,6 +327,7 @@ export default class Knot {
           clouds?.texture.dispose();
         }
         clouds = undefined;
+        celestialBody = undefined;
         cloudMesh = undefined;
         cloudStormLayer = undefined;
         cloudStyle = undefined;
