@@ -154,10 +154,33 @@
   font-size: 1rem;
 }
 
-.ledger-empty {
+.ledger-empty,
+.ledger-loading {
   opacity: 0.6;
   font-size: 0.9rem;
   margin: 0;
+}
+
+.ledger-error {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.ledger-load-more {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ledger-load-more:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .ledger-table {

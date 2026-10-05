@@ -73,12 +73,19 @@
       <h2>{{ t.game.characterProfile.credits.sectionTitle }}</h2>
       <p class="credits-balance">
         {{ t.game.characterProfile.credits.balanceLabel }}:
-        <strong>{{ joinCharacter()?.credits ?? 0 }}</strong>
+        <strong>{{ creditBalance() }}</strong>
       </p>
 
       <h3>{{ t.game.characterProfile.credits.ledgerTitle }}</h3>
-      @if ((joinCharacter()?.creditLedger ?? []).length === 0) {
+      @if (creditLedgerLoading()) {
+      <p class="ledger-loading">{{ t.game.characterProfile.credits.ledgerLoading }}</p>
+      } @else if (creditLedgerLoadFailed()) {
+      <p class="ledger-error">{{ t.game.characterProfile.credits.ledgerLoadFailed }}</p>
+      }
+      @if (creditLedgerEntries().length === 0) {
+      @if (!creditLedgerLoading()) {
       <p class="ledger-empty">{{ t.game.characterProfile.credits.ledgerEmpty }}</p>
+      }
       } @else {
       <table class="ledger-table">
         <thead>
@@ -90,7 +97,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (entry of joinCharacter()!.creditLedger ?? []; track entry.timestamp) {
+          @for (entry of creditLedgerEntries(); track entry.id) {
           <tr [class.ledger-put]="entry.type === 'put'" [class.ledger-take]="entry.type === 'take'">
             <td>
               {{ entry.type === 'put' ? t.game.characterProfile.credits.typePut :
@@ -103,6 +110,20 @@
           }
         </tbody>
       </table>
+      @if (creditLedgerLoadMoreFailed()) {
+      <p class="ledger-error">{{ t.game.characterProfile.credits.ledgerLoadMoreFailed }}</p>
+      }
+      @if (creditLedgerHasMore()) {
+      <button
+        type="button"
+        class="ledger-load-more"
+        [disabled]="creditLedgerLoadingMore()"
+        (click)="loadMoreCreditLedger()"
+      >
+        {{ creditLedgerLoadingMore() ? t.game.characterProfile.credits.ledgerLoading :
+        t.game.characterProfile.credits.loadMore }}
+      </button>
+      }
       }
     </section>
   </div>
