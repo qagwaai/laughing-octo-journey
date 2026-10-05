@@ -28,6 +28,8 @@ const BODIES_WITH_MOONS = [
   {
     id: 'sun',
     bodyType: 'star',
+    surfaceArchetype: 'star',
+    state: 'unscanned',
     displayName: 'The Sun',
     spatial: {
       solarSystemId: 'sol',
@@ -44,6 +46,8 @@ const BODIES_WITH_MOONS = [
   {
     id: 'earth',
     bodyType: 'planet',
+    surfaceArchetype: 'rocky',
+    state: 'unscanned',
     displayName: 'Earth',
     spatial: {
       solarSystemId: 'sol',
@@ -74,6 +78,8 @@ const BODIES_WITH_MOONS = [
   {
     id: 'luna',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Luna',
     spatial: {
       solarSystemId: 'sol',
@@ -103,6 +109,8 @@ const BODIES_WITH_MOONS = [
   {
     id: 'mars',
     bodyType: 'planet',
+    surfaceArchetype: 'rocky',
+    state: 'unscanned',
     displayName: 'Mars',
     spatial: {
       solarSystemId: 'sol',
@@ -133,6 +141,8 @@ const BODIES_WITH_MOONS = [
   {
     id: 'phobos',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Phobos',
     spatial: {
       solarSystemId: 'sol',

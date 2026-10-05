@@ -106,6 +106,8 @@ export function configureShipExteriorResumeMock(mock: SocketIOMock, options: Shi
           { id: 'resume-body-2', offsetKm: { x: -11, y: -6, z: 12 } },
         ].map((body) => ({
           id: body.id,
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           state: 'unscanned',
           spatial: {
             solarSystemId: 'sol',

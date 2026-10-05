@@ -165,6 +165,8 @@ test.describe('Viewer — Interaction Behaviors', () => {
       {
         id: 'sun',
         bodyType: 'star',
+        surfaceArchetype: 'star',
+        state: 'unscanned',
         displayName: 'Sun',
         spatial: {
           solarSystemId: 'sol',
@@ -179,6 +181,8 @@ test.describe('Viewer — Interaction Behaviors', () => {
       {
         id: 'test-planet',
         bodyType: 'planet',
+        surfaceArchetype: 'rocky',
+        state: 'unscanned',
         displayName: 'Test Planet',
         spatial: {
           solarSystemId: 'sol',
