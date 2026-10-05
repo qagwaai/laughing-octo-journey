@@ -12,6 +12,8 @@
  */
 import { fnv1a32 } from '../../model/planet/planet-seed';
 import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
+import { resolveCelestialAppearance } from '../../model/celestial-appearance';
+import type { SurfaceArchetype } from '../../model/celestial-classification';
 
 /** The original fixed splash planet; also the pinned default for tests. */
 export const SPLASH_PLANET_BODY_ID = 'nova-splash-homeworld';
@@ -27,6 +29,18 @@ export interface SplashPlanetEntry {
   kind: SplashPlanetKind;
   /** Stars only; the generator reads the class from here. */
   spectralClass?: string;
+}
+
+export function resolveSplashAppearance(entry: SplashPlanetEntry) {
+  const bodyType = entry.kind === 'star' ? 'star' : 'planet';
+  const surfaceArchetype: SurfaceArchetype =
+    entry.kind === 'star' ? 'star' : entry.kind === 'gas-giant' ? 'gas-giant' : 'rocky';
+  return resolveCelestialAppearance({
+    source: 'demo',
+    bodyId: entry.id,
+    bodyType,
+    surfaceArchetype,
+  });
 }
 
 const MAX_PINNED_ID_LENGTH = 64;

@@ -18,6 +18,36 @@
   font: inherit;
 }
 
+.viewer-distance-mode {
+  position: absolute;
+  top: 4.5rem;
+  left: 1rem;
+  z-index: 10010;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: min(18rem, calc(100% - 6rem));
+  padding: 0.65rem;
+  border: 1px solid rgba(162, 210, 255, 0.34);
+  border-radius: 10px;
+  background: rgba(7, 18, 33, 0.9);
+  font-size: 0.78rem;
+}
+
+.viewer-distance-mode button {
+  padding: 0.4rem 0.6rem;
+  color: #eff7ff;
+  background: #193956;
+  border: 1px solid #82b6dc;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.viewer-distance-mode button:focus-visible {
+  outline: 2px solid #eff7ff;
+  outline-offset: 2px;
+}
+
 .viewer-scene-zoom {
   position: absolute;
   top: 50%;

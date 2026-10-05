@@ -1,3 +1,5 @@
+import type { CelestialBodyListItem } from './celestial-body-list';
+
 /**
  * Socket contract for launch-item requests and responses in exterior scene flows.
  */
@@ -59,19 +61,12 @@ export interface LaunchItemYieldedItem {
   launchable: boolean;
 }
 
-export interface LaunchItemTargetCelestialBodyResolution {
-  id: string;
+export type LaunchItemTargetCelestialBodyResolution = Omit<
+  CelestialBodyListItem,
+  'state' | 'distanceKm'
+> & {
   state: 'active' | 'destroyed';
-  destroyedAt: string | null;
-  destroyedReason: string | null;
-  debrisSeed: number | null;
-  debris: Array<{
-    material: string;
-    rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
-    quantity: number;
-    itemType: string;
-  }>;
-}
+};
 
 export interface LaunchItemResolution {
   outcome: 'target-destroyed' | 'no-effect';

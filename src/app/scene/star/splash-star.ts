@@ -20,7 +20,7 @@ export interface SplashStarOptions {
  * debris is lit by the star rather than only by the neutral key light.
  */
 export function createSplashStar(options: SplashStarOptions): StarHandle {
-  const profile = deriveStarProfile(options.bodyId, options.spectralClass);
+  const profile = deriveStarProfile(options.bodyId, options.spectralClass, { surfaceArchetype: 'star' });
   const standard = options.quality === 'standard';
   const star = createStar(profile, {
     radius: SPLASH_STAR_RADIUS,

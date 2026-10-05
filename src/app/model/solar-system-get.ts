@@ -1,6 +1,9 @@
 import type { ExternalObjectDescriptor } from './external-object-descriptor';
+import type { AsteroidMaterialProfile } from './asteroid-materials';
+import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
 import { Triple } from './shared/triple';
 import { SolarSystemSummary } from './solar-system-list';
+import type { PhysicalState } from './spatial';
 
 export const SOLAR_SYSTEM_GET_REQUEST_EVENT = 'solar-system-get-request';
 export const SOLAR_SYSTEM_GET_RESPONSE_EVENT = 'solar-system-get-response';
@@ -15,20 +18,28 @@ export type ViewerBodyType = 'star' | 'planet' | 'moon' | 'asteroid' | 'debris' 
 export type ViewerStationKind = 'market' | string;
 
 export interface ViewerBodyVisualization {
-  colorHex?: string;
-  /** Spectral class for star bodies, per the solar-system-get contract. */
-  spectralClass?: string;
+  colorHex?: string | null;
+  /** Legacy art-direction hint; canonical stellar classification is top-level. */
+  spectralClass?: string | null;
   textureKey?: string | null;
 }
 
 export interface ViewerBodyPhysicalCatalog {
-  estimatedDiameterM?: number;
-  estimatedMassKg?: number;
-  radiusKm?: number;
+  massKg?: number | null;
+  meanRadiusKm?: number | null;
+  equatorialRadiusKm?: number | null;
+  radiusKm?: number | null;
+  estimatedDiameterM?: number | null;
+  estimatedMassKg?: number | null;
+  rotationPeriodSec?: number | null;
+  axialTiltDeg?: number | null;
+  surfaceGravityMps2?: number | null;
+  meanTemperatureK?: number | null;
+  compositionTags?: string[];
 }
 
 export interface ViewerBodyOrbitalElements {
-  anchorBodyId?: string;
+  anchorBodyId?: string | null;
   semiMajorAxisKm?: number;
   eccentricity?: number;
   inclinationDeg?: number;
@@ -37,6 +48,17 @@ export interface ViewerBodyOrbitalElements {
   meanAnomalyAtEpochDeg?: number;
   orbitalPeriodSec?: number;
   epoch?: string;
+}
+
+export interface CanonicalViewerBodyOrbitalElements extends ViewerBodyOrbitalElements {
+  semiMajorAxisKm: number;
+  eccentricity: number;
+  inclinationDeg: number;
+  longitudeOfAscendingNodeDeg: number;
+  argumentOfPeriapsisDeg: number;
+  meanAnomalyAtEpochDeg: number;
+  orbitalPeriodSec: number;
+  epoch: string;
 }
 
 export interface ViewerSpatial {
@@ -51,6 +73,7 @@ export interface ViewerBody {
   bodyType: ViewerBodyType;
   stationKind?: ViewerStationKind;
   displayName: string;
+  parentBodyId?: string | null;
   spatial: ViewerSpatial;
   /** Optional stable mission cluster identifier for generated asteroid fields. */
   clusterId?: string;
@@ -65,13 +88,21 @@ export interface ViewerBody {
   /** Optional body-local debris payloads; entries may carry SW-13 descriptors. */
   debris?: ViewerBodyDebrisEntry[];
   visualization?: ViewerBodyVisualization;
-  physicalCatalog?: ViewerBodyPhysicalCatalog;
-  orbitalElements?: ViewerBodyOrbitalElements;
+  physicalCatalog?: ViewerBodyPhysicalCatalog | null;
+  physical?: PhysicalState | null;
+  composition?: AsteroidMaterialProfile | null;
+  orbitalElements?: CanonicalViewerBodyOrbitalElements | null;
+  surfaceArchetype?: SurfaceArchetype | null;
+  state?: 'unscanned' | 'active' | 'destroyed';
   planetType?: string | null;
-  /** Star-specific extension fields (present for bodyType 'star'). */
-  spectralClass?: string;
-  luminositySolar?: number;
-  massSolar?: number;
+  spectralClass?: string | null;
+  luminositySolar?: number | null;
+  massSolar?: number | null;
+}
+
+export interface CanonicalViewerBody extends ViewerBody {
+  bodyType: CanonicalBodyType;
+  surfaceArchetype: SurfaceArchetype;
 }
 
 export interface ViewerDebrisEntry {
@@ -105,7 +136,7 @@ export interface SolarSystemGetResponse {
   playerName?: string;
   solarSystemId?: string;
   solarSystem?: SolarSystemSummary;
-  stars?: ViewerBody[];
-  bodies: ViewerBody[];
+  stars?: CanonicalViewerBody[];
+  bodies: CanonicalViewerBody[];
   requestId?: string;
 }

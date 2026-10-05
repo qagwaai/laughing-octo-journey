@@ -17,6 +17,13 @@ describe('deriveGasGiantProfile', () => {
     expect(deriveGasGiantProfile('jupiter').seed).not.toBe(deriveGasGiantProfile('saturn').seed);
   });
 
+  it('separates canonical gas and ice giant appearance seeds', () => {
+    const gas = deriveGasGiantProfile('same-body', { surfaceArchetype: 'gas-giant' });
+    const ice = deriveGasGiantProfile('same-body', { surfaceArchetype: 'ice-giant', palette: 'ice' });
+    expect(gas.seed).not.toBe(ice.seed);
+    expect(ice.palette).toBe('ice');
+  });
+
   it('tiles bands contiguously from pole to pole with an equatorial zone', () => {
     for (const id of IDS) {
       const { bands } = deriveGasGiantProfile(id);

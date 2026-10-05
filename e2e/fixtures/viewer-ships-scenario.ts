@@ -24,6 +24,8 @@ export const SOL_BODIES: any[] = [
   {
     id: 'sun',
     bodyType: 'star',
+    surfaceArchetype: 'star',
+    state: 'unscanned',
     displayName: 'The Sun',
     spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 1715000000000 },
     visualization: { colorHex: '#fff5b6' },
@@ -34,6 +36,8 @@ export const SOL_BODIES: any[] = [
   {
     id: 'earth',
     bodyType: 'planet',
+    surfaceArchetype: 'ocean',
+    state: 'unscanned',
     displayName: 'Earth',
     spatial: {
       solarSystemId: 'sol',
@@ -42,7 +46,6 @@ export const SOL_BODIES: any[] = [
       epochMs: 1715000000000,
     },
     orbitalElements: {
-      anchorBodyId: 'sun',
       semiMajorAxisKm: 149597870.7,
       eccentricity: 0.0167,
       inclinationDeg: 0,

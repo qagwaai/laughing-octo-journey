@@ -29,6 +29,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'sun',
     bodyType: 'star',
+    surfaceArchetype: 'star',
+    state: 'unscanned',
     displayName: 'The Sun',
     spatial: {
       solarSystemId: 'sol',
@@ -45,6 +47,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'earth',
     bodyType: 'planet',
+    surfaceArchetype: 'rocky',
+    state: 'unscanned',
     displayName: 'Earth',
     spatial: {
       solarSystemId: 'sol',
@@ -74,6 +78,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'luna',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Luna',
     spatial: {
       solarSystemId: 'sol',
@@ -103,6 +109,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'moon-alpha',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Moon Alpha',
     spatial: {
       solarSystemId: 'sol',
@@ -128,6 +136,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'moon-beta',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Moon Beta',
     spatial: {
       solarSystemId: 'sol',
@@ -153,6 +163,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'jupiter',
     bodyType: 'planet',
+    surfaceArchetype: 'gas-giant',
+    state: 'unscanned',
     displayName: 'Jupiter',
     spatial: {
       solarSystemId: 'sol',
@@ -182,6 +194,8 @@ const SOL_SYSTEM_BODIES = [
   {
     id: 'io',
     bodyType: 'moon',
+    surfaceArchetype: 'lava',
+    state: 'unscanned',
     displayName: 'Io',
     spatial: {
       solarSystemId: 'sol',

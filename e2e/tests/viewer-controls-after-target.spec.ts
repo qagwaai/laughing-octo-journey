@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { getCanvasFrameSignature, setupViewer } from '../fixtures/viewer-controls-after-target-scenario';
 import { ViewerPage } from '../page-objects/viewer.page';
+import type { Camera, Object3D } from 'three';
 
 async function waitForFrameChange(options: {
   runInteraction: () => Promise<void>;
@@ -28,6 +29,44 @@ async function waitForFrameChange(options: {
 }
 
 test.describe('Viewer controls after target completion', () => {
+  test('switches proportional and compressed distances while keeping the selected planet centered', async ({ page }) => {
+    await setupViewer(page);
+    const overlay = page.getByTestId('viewer-distance-mode');
+    await expect(overlay).toContainText('Proportional distances');
+    const target = page.locator('tr', { hasText: 'Earth' }).first().locator('button.details-target-btn');
+    await target.click();
+    const readTarget = () => page.evaluate(() => {
+      const canvas = document.querySelector('ngt-canvas');
+      if (!canvas) return null;
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const snapshot = (ng.getComponent(canvas) as {
+        store: { snapshot: { scene: Object3D | null; camera: Camera } };
+      }).store.snapshot;
+      if (!snapshot.scene) return null;
+      let earth: Object3D | undefined;
+      snapshot.scene.traverse((object) => { if (object.name === 'Earth' && object.type === 'Mesh') earth = object; });
+      if (!earth) return null;
+      const screen = earth.position.clone().project(snapshot.camera);
+      return { radius: earth.position.length(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
+    });
+    await expect.poll(async () => (await readTarget())?.centered).toBe(true);
+    const proportional = (await readTarget())!.radius;
+    expect(proportional).toBeCloseTo(5, 5);
+    await page.getByTestId('viewer-distance-toggle').click();
+    await expect(overlay).toContainText('Compressed overview');
+    await expect.poll(async () => {
+      const result = await readTarget();
+      return !!result && result.radius > 18 && result.centered;
+    }).toBe(true);
+    await expect(target).toHaveAttribute('aria-pressed', 'true');
+    await page.getByTestId('viewer-distance-toggle').click();
+    await expect.poll(async () => {
+      const result = await readTarget();
+      return !!result && Math.abs(result.radius - proportional) < 1e-8 && result.centered;
+    }).toBe(true);
+    await expect(target).toHaveAttribute('aria-pressed', 'true');
+  });
+
   test('keeps rotate, zoom, and pan usable after target-fly settles', async ({ page }) => {
     await setupViewer(page);
 

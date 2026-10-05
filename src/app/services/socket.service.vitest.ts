@@ -160,6 +160,9 @@ describe('SocketService', () => {
         createdByCharacterId: 'char-1',
         celestialBody: {
           id: 'cb-1',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
+          state: 'active',
           catalogId: 'sol-cb-1',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',
@@ -271,6 +274,9 @@ describe('SocketService', () => {
         createdByCharacterId: 'char-1',
         celestialBody: {
           id: 'cb-1',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
+          state: 'active',
           catalogId: 'sol-cb-1',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',

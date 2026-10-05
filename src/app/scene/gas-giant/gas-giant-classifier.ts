@@ -17,7 +17,8 @@ export const GAS_GIANT_QUERY_PARAM = 'gasGiants';
 export interface GasGiantClassifiableBody {
   id: string;
   bodyType?: string;
-  physicalCatalog?: { radiusKm?: number; estimatedDiameterM?: number } | null;
+  surfaceArchetype?: string | null;
+  physicalCatalog?: { radiusKm?: number | null; estimatedDiameterM?: number | null } | null;
 }
 
 function positive(value: unknown): number | null {
@@ -36,11 +37,11 @@ export function isGasGiantBody(
   body: GasGiantClassifiableBody | null | undefined,
   mode: GasGiantClassificationMode = 'auto',
 ): boolean {
-  if (!body || body.bodyType?.trim().toLowerCase() !== 'planet') return false;
-  if (mode === 'all') return true;
-  if (mode === 'none') return false;
-  const radiusKm = resolveCatalogRadiusKm(body);
-  return radiusKm !== null && radiusKm >= GAS_GIANT_MIN_RADIUS_KM;
+  void mode;
+  return (
+    body?.bodyType?.trim().toLowerCase() === 'planet' &&
+    (body.surfaceArchetype === 'gas-giant' || body.surfaceArchetype === 'ice-giant')
+  );
 }
 
 export function parseGasGiantClassificationMode(search: string): GasGiantClassificationMode {

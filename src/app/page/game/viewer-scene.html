@@ -13,6 +13,7 @@
       [summary]="sceneInputs().summary"
       [targetBodyId]="sceneInputs().targetBodyId ?? null"
       [zoomLevel]="zoomLevel()"
+      [distanceMode]="distanceMode()"
       [ships]="sceneInputs().ships ?? []"
       [activeShipId]="sceneInputs().activeShipId ?? null"
       (hoveredBodyChange)="onHoveredBodyChange($event)"
@@ -23,6 +24,24 @@
   </ngt-canvas>
 
   <app-planet-surface-progress />
+
+  <section
+    class="viewer-distance-mode"
+    data-testid="viewer-distance-mode"
+    [attr.aria-label]="t.game.viewer.distanceModeTitle"
+  >
+    <strong>
+      {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistances : t.game.viewer.compressedDistances }}
+    </strong>
+    <span>
+      {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistanceNote :
+      t.game.viewer.compressedDistanceNote }}
+    </span>
+    <button type="button" data-testid="viewer-distance-toggle" (click)="toggleDistanceMode()">
+      {{ distanceMode() === 'proportional' ? t.game.viewer.showCompressedDistances :
+      t.game.viewer.showProportionalDistances }}
+    </button>
+  </section>
 
   <div class="viewer-scene-zoom" data-testid="viewer-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
     <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">
@@ -83,6 +102,7 @@
 
   <div class="viewer-legend" data-testid="viewer-legend" aria-label="Map legend">
     <div class="viewer-legend__title">{{ t.game.viewer.legendTitle }}</div>
+    <div class="viewer-legend__item" data-testid="viewer-orbit-guide-note">{{ t.game.viewer.orbitGuideNote }}</div>
     <div class="viewer-legend__item">
       <span class="viewer-legend__swatch" style="background: #ffffff"></span>
       <span>{{ t.game.viewer.legendPlanet }}</span>

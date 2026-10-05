@@ -59,6 +59,22 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  it('defaults to proportional distances and toggles modes without changing canonical data or target', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const targets = TestBed.inject(ViewerTargetService);
+    const source = component['bodies']();
+    expect(component['distanceMode']()).toBe('proportional');
+    expect(component['zoomLevel']()).toBe(100);
+    targets.target('earth');
+    component['onZoomChange'](42);
+    component.toggleDistanceMode();
+    expect(component['distanceMode']()).toBe('compressed');
+    expect(targets.targetBodyId()).toBe('earth');
+    expect(component['zoomLevel']()).toBe(42);
+    component.toggleDistanceMode();
+    expect(component['distanceMode']()).toBe('proportional');
+    expect(component['bodies']()).toBe(source);
+  });
   it('enables viewer QA force-hero defaults in dev builds', () => {
     const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
 
@@ -120,8 +136,10 @@ describe('ViewerScenePage', () => {
         {
           id: 'sol-star',
           bodyType: 'star',
+          surfaceArchetype: 'star',
+          state: 'unscanned',
           displayName: 'Sol',
-          spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
           luminositySolar: 1,
           visualization: { colorHex: '#ffe680' },
         },
@@ -130,8 +148,10 @@ describe('ViewerScenePage', () => {
         {
           id: 'earth',
           bodyType: 'planet',
+          surfaceArchetype: 'ocean',
+          state: 'unscanned',
           displayName: 'Earth',
-          spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
           visualization: { colorHex: '#3399ff' },
           physicalCatalog: { estimatedDiameterM: 12_742_000 },
         },
@@ -163,6 +183,8 @@ describe('ViewerScenePage', () => {
         {
           id: 'sol-star',
           bodyType: 'star',
+          surfaceArchetype: 'star',
+          state: 'unscanned',
           displayName: 'Sol',
           spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
         },
@@ -171,6 +193,8 @@ describe('ViewerScenePage', () => {
         {
           id: 'earth',
           bodyType: 'planet',
+          surfaceArchetype: 'ocean',
+          state: 'unscanned',
           displayName: 'Earth',
           spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1.5e8, y: 0, z: 0 }, epochMs: 0 },
         },
@@ -338,7 +362,7 @@ describe('ViewerScenePage', () => {
     component['onZoomChange']('not-a-number');
     component['onZoomChange'](Number.POSITIVE_INFINITY);
 
-    expect(component['zoomLevel']()).toBe(78);
+    expect(component['zoomLevel']()).toBe(100);
   });
 
   it('lazy-repairs ships with invalid spatial by re-issuing the deterministic upsert', () => {
@@ -466,7 +490,7 @@ describe('ViewerScenePage', () => {
 
     component['onWheel']({ deltaY: 100, deltaMode: 0, preventDefault } as unknown as WheelEvent);
 
-    expect(component['zoomLevel']()).toBe(78);
+    expect(component['zoomLevel']()).toBe(100);
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
@@ -477,7 +501,7 @@ describe('ViewerScenePage', () => {
     component['onWheel']({ deltaY: -100, deltaMode: 0, preventDefault } as unknown as WheelEvent);
 
     expect(preventDefault).toHaveBeenCalled();
-    expect(component['zoomLevel']()).toBeLessThan(78);
+    expect(component['zoomLevel']()).toBeLessThan(100);
   });
 
   it('ignores zoom input events when target is not an input element', () => {
@@ -485,7 +509,7 @@ describe('ViewerScenePage', () => {
 
     component['onZoomInput']({ target: {} } as unknown as Event);
 
-    expect(component['zoomLevel']()).toBe(78);
+    expect(component['zoomLevel']()).toBe(100);
   });
 
   it('always suppresses zoom context menu interactions', () => {

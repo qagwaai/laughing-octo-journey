@@ -53,6 +53,23 @@ describe('ContractVarianceNotifierService', () => {
       level: 'error',
       args: ['[ship-exterior-contract]', { mismatch: true }, 'missing field'],
     });
+
+  });
+
+  it('surfaces valid archetype renderer fallbacks through the existing contract toast', () => {
+    const service = new ContractVarianceNotifierService();
+    window.dispatchEvent(
+      new CustomEvent('app-logger-entry', {
+        detail: {
+          level: 'warn',
+          args: ['[celestial-appearance-fallback]', 'body-1', 'ocean uses terran renderer'],
+        },
+      }),
+    );
+
+    expect(service.activeToast()?.level).toBe('warn');
+    expect(service.activeToast()?.message).toContain('[celestial-appearance-fallback]');
+    expect(service.activeToast()?.message).toContain('ocean uses terran renderer');
   });
 
   it('cycles queued toasts via dismiss and auto hide', () => {

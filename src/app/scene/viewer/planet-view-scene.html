@@ -38,8 +38,7 @@
   input
 >
   <ngt-sphere-geometry *args="[selectedBodyRadiusUnits(), 72, 72]" />
-  @let _giant = selectedGiantProfile();
-  @if (_giant) {
+  @let _giant = selectedGiantProfile(); @if (_giant) {
   <!-- Invisible pick shell; the giant itself draws below. -->
   <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
   <app-gas-giant
@@ -50,8 +49,7 @@
     [moons]="giantMoonShadows()"
     [highlighted]="hoveredBodyId() === selected.id"
   />
-  } @else {
-  @let _selectedSurface = surfaces().get(selected.id);
+  } @else { @let _selectedSurface = surfaces().get(selected.id);
   <ngt-mesh-standard-material
     [map]="_selectedSurface?.albedo ?? null"
     [normalMap]="_selectedSurface?.normal ?? null"
@@ -65,12 +63,11 @@
   />
   @if (_selectedSurface) {
   <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
-  }
-  }
+  } }
 </ngt-mesh>
 
 @for (moon of moons(); track moon.id) {
-<ngt-mesh [position]="[0, 0, 0]" [rotation]="[1.5708, 0, 0]" [renderOrder]="-1">
+<ngt-mesh [position]="[0, 0, 0]" [rotation]="moon.orbitRotation" [renderOrder]="-1">
   <ngt-ring-geometry *args="[moon.orbitRadius - 0.04, moon.orbitRadius + 0.04, 160]" />
   <ngt-mesh-basic-material [color]="'#b9d6ff'" [transparent]="true" [opacity]="0.24" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
@@ -97,7 +94,11 @@
   }
 </ngt-mesh>
 } @for (star of starMarkers(); track star.id) {
-<ngt-group [position]="star.position" [name]="star.displayName" [scale]="[star.starRadius, star.starRadius, star.starRadius]">
+<ngt-group
+  [position]="star.position"
+  [name]="star.displayName"
+  [scale]="[star.starRadius, star.starRadius, star.starRadius]"
+>
   <app-star [profile]="star.profile" [widthSegments]="48" [heightSegments]="32" [flareActivity]="starFlareActivity()" />
 </ngt-group>
 } }

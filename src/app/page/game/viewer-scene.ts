@@ -31,6 +31,7 @@ import {
 } from '../../scene/viewer/viewer-descriptor-selectors';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
+import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { RenderStatsService } from '../../services/render-stats.service';
@@ -210,7 +211,15 @@ export default class ViewerScenePage implements OnDestroy {
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
-  protected zoomLevel = signal<number>(78);
+  protected zoomLevel = signal<number>(100);
+  protected distanceMode = signal<ViewerDistanceMode>('proportional');
+
+  toggleDistanceMode(): void {
+    this.distanceMode.update((mode) => mode === 'proportional' ? 'compressed' : 'proportional');
+    if (!this.viewerTargetService.targetBodyId() && !this.focusedPlanet()) {
+      this.zoomLevel.set(100);
+    }
+  }
   protected viewerQaEnabled = signal(this.isDevBuild && environment.viewerQaEnabledByDefault);
   protected forceHeroMode = signal(this.isDevBuild && environment.viewerForceHeroByDefault);
   protected showEffectiveRenderProfile = signal(this.isDevBuild && environment.viewerShowEffectiveProfileByDefault);

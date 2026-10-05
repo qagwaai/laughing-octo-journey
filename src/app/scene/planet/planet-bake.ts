@@ -59,6 +59,7 @@ export interface PlanetBakeOptions {
   /** Overrides the tier preset. Lets callers pick a bespoke size and keeps tests off the expensive L1 raster. */
   preset?: PlanetLodPreset;
   archetype?: PlanetArchetype;
+  surfaceArchetype?: string;
   renderer?: WebGLRenderer | null;
 }
 
@@ -215,7 +216,11 @@ function bakeOnCpu(climate: PlanetClimate, preset: PlanetLodPreset): PlanetBakeR
 
 export function bakePlanetTextures(options: PlanetBakeOptions): PlanetBakeResult {
   const preset = options.preset ?? PLANET_LOD[options.tier ?? 'l0'];
-  const climate = derivePlanetClimate(options.bodyId, options.archetype ?? 'terran');
+  const climate = derivePlanetClimate(
+    options.bodyId,
+    options.archetype ?? 'terran',
+    options.surfaceArchetype ?? 'rocky',
+  );
 
   return supportsGpuBake(options.renderer) ? bakeOnGpu(options.renderer, climate, preset) : bakeOnCpu(climate, preset);
 }

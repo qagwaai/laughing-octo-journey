@@ -20,6 +20,7 @@ function starBody(overrides: Partial<ViewerBody> = {}): ViewerBody {
   return {
     id: 'star-1',
     bodyType: 'star',
+    surfaceArchetype: 'star',
     displayName: 'Star One',
     spatial: { positionKm: { x: 0, y: 0, z: 0 } },
     ...overrides,
@@ -67,9 +68,9 @@ describe('star colour resolution', () => {
     expect(resolveStarColor(body)).toBe('#ff0000');
   });
 
-  it('falls back through visualization, body class, then the default', () => {
+  it('uses the canonical body class and then the Nova presentation fallback', () => {
     expect(resolveStarColor(starBody({ visualization: { spectralClass: 'M' } } as Partial<ViewerBody>))).toBe(
-      spectralClassColor('M'),
+      DEFAULT_STAR_COLOR,
     );
     expect(resolveStarColor(starBody({ spectralClass: 'K' } as Partial<ViewerBody>))).toBe(spectralClassColor('K'));
     expect(resolveStarColor(starBody())).toBe(DEFAULT_STAR_COLOR);
@@ -92,13 +93,13 @@ describe('star colour resolution', () => {
 });
 
 describe('viewer star profile', () => {
-  it('uses the art-directed class and colour when present', () => {
+  it('uses the canonical class and preserves explicit art-directed colour', () => {
     const body = starBody({
       spectralClass: 'G2V',
       visualization: { spectralClass: 'M4V', colorHex: '#ff0000' },
     } as Partial<ViewerBody>);
     const profile = deriveViewerStarProfile(body);
-    expect(profile.spectralClass.letter).toBe('M');
+    expect(profile.spectralClass.letter).toBe('G');
     expect(profile.color).toEqual([1, 0, 0]);
   });
 
@@ -194,6 +195,19 @@ describe('star light placement', () => {
 
     expect(lights[0].intensity).toBeCloseTo(1, 5);
     expect(lights[1].intensity).toBeCloseTo(1, 5);
+  });
+
+  it('preserves zero luminosity as zero contribution rather than unknown', () => {
+    const lights = resolveStarLights(
+      [
+        { id: 'zero', position: [1, 0, 0], body: starBody({ luminositySolar: 0 } as Partial<ViewerBody>) },
+        { id: 'sunlike', position: [-1, 0, 0], body: starBody({ luminositySolar: 1 } as Partial<ViewerBody>) },
+      ],
+      2,
+    );
+    expect(lights[0].intensity).toBe(0);
+    expect(lights[1].intensity).toBe(2);
+    expect(resolveStarLights([{ id: 'zero', position: [0, 0, 0], body: starBody({ luminositySolar: 0 }) }], 2)[0].intensity).toBe(0);
   });
 });
 

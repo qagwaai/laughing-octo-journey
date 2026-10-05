@@ -1,7 +1,7 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { progress } from 'angular-three-soba/loaders';
 import { appLogger } from '../services/logger';
-import { selectSplashPlanet, type SplashPlanetKind } from './planet/splash-planet-rotation';
+import { resolveSplashAppearance, selectSplashPlanet, type SplashPlanetKind } from './planet/splash-planet-rotation';
 
 export type MiningQuality = 'standard' | 'low';
 
@@ -25,6 +25,9 @@ export class MiningSplashState {
   readonly planet = selectSplashPlanet(window.location.search);
   readonly planetBodyId = this.planet.id;
   readonly planetKind: SplashPlanetKind = this.planet.kind;
+  readonly appearance = resolveSplashAppearance(this.planet);
+  readonly planetSurfaceArchetype =
+    this.appearance.valid ? this.appearance.input.surfaceArchetype : null;
   /** Stars only. */
   readonly planetSpectralClass: string | null = this.planet.spectralClass ?? null;
   readonly moving = computed(

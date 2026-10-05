@@ -11,8 +11,9 @@
  * than a refactor of the viewer scenes. See docs/procedural-planets-2026-09-28.md.
  */
 import type { PlanetArchetype } from '../../model/planet/planet-seed';
-import { PLANET_GENERATOR_VERSION } from '../../model/planet/planet-seed';
 import type { PlanetLodTier } from '../../model/planet/planet-texture';
+import type { SurfaceArchetype } from '../../model/celestial-classification';
+import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 
 /**
  * Structural subset of `ViewerBody`. Declared locally so the planet generator
@@ -21,6 +22,7 @@ import type { PlanetLodTier } from '../../model/planet/planet-texture';
 export interface ResolvablePlanetBody {
   id: string;
   bodyType?: string;
+  surfaceArchetype?: SurfaceArchetype | null;
   displayName?: string;
 }
 
@@ -29,11 +31,10 @@ export interface PlanetSurfaceRequest {
   key: string;
   bodyId: string;
   archetype: PlanetArchetype;
+  surfaceArchetype: SurfaceArchetype;
+  generatorVersion: string;
   tier: PlanetLodTier;
-}
-
-function normalizeToken(value: string | undefined): string {
-  return value?.trim().toLowerCase() ?? '';
+  fallbackReason?: string;
 }
 
 /**
@@ -42,17 +43,20 @@ function normalizeToken(value: string | undefined): string {
  * gates and debris are built geometry rather than worlds.
  */
 export function isTexturableBody(body: ResolvablePlanetBody | null | undefined): boolean {
-  const bodyType = normalizeToken(body?.bodyType);
-  return bodyType === 'planet' || bodyType === 'moon';
+  if (!body?.surfaceArchetype) return false;
+  const resolution = resolveCelestialAppearance({
+    source: 'canonical',
+    bodyId: body.id,
+    bodyType: body.bodyType,
+    surfaceArchetype: body.surfaceArchetype,
+  });
+  return resolution.valid && resolution.input.renderer === 'terran';
 }
 
 /**
- * Picks the generator archetype for a body.
- *
- * Only `terran` exists today, so every world currently derives from the same
- * model and varies by seed alone. Gas giants, ice worlds and barren rock are
- * the planned next archetypes, and Sol needs them before it can look correct;
- * both land here.
+ * Picks the implemented solid-surface generator. Canonical surface
+ * classification is preserved separately on the request; unsupported solid
+ * archetypes use this terran renderer only through the explicit fallback.
  */
 export function resolvePlanetArchetype(_body: ResolvablePlanetBody): PlanetArchetype {
   return 'terran';
@@ -66,12 +70,22 @@ export function resolvePlanetSurface(
     return null;
   }
 
-  const archetype = resolvePlanetArchetype(body);
+  if (!body.surfaceArchetype) return null;
+  const resolved = resolveCelestialAppearance({
+    source: 'canonical',
+    bodyId: body.id,
+    bodyType: body.bodyType,
+    surfaceArchetype: body.surfaceArchetype,
+  });
+  if (!resolved.valid || resolved.input.renderer !== 'terran') return null;
 
   return {
-    key: `${PLANET_GENERATOR_VERSION}|${archetype}|${tier}|${body.id}`,
+    key: `${resolved.input.generatorVersion}|${resolved.input.surfaceArchetype}|${tier}|${body.id}`,
     bodyId: body.id,
-    archetype,
+    archetype: resolvePlanetArchetype(body),
+    surfaceArchetype: resolved.input.surfaceArchetype,
+    generatorVersion: resolved.input.generatorVersion,
     tier,
+    fallbackReason: resolved.input.fallbackReason,
   };
 }

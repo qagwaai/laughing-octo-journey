@@ -65,16 +65,42 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
   at the system origin; size is derived from
   `physicalCatalog.estimatedDiameterM` via cube-root scaling relative to
   Earth's diameter.
-- Positions: hybrid **log-distance** scaling. Bodies retain their direction
-  vector from `spatial.positionKm` but their magnitude is
-  `(1 + log10(km / 1e6 km)) * 4 scene units`. This keeps inner planets
-  separable while still placing distant bodies in the same scene.
-- Close-range mission readability: when zoomed in (`zoomLevel < 22`) and the
+- Positions: stored `spatial.positionKm` snapshots are projected directly, without
+  orbital reconstruction or parent translation. A display-only proper rotation
+  `(x, y, z) -> (x, -z, y)` presents Forge's mathematical XY plane in scene XZ.
+  The default proportional mode applies one linear scale: 1 AU (149,597,870.7 km)
+  equals five scene units, without minimum distances or position rounding.
+  The overlay button switches to the retained compressed overview: distance below
+  1 Mkm uses linear scaling with a 0.08 scene-unit minimum; other distances use
+  `(1 + log(km / 1e6) / log(6)) * 5`, retaining existing rounding.
+  The mode is temporary page state, not persisted to Forge or browser storage.
+  Body radii remain enlarged independently of distances in both modes; whole-system
+  moon/station separations may be smaller than rendered bodies. Detail view retains
+  its separate readability scaling. Snapshot directions and orbital phases are not
+  replaced with an evenly spaced illustrative arrangement.
+  Bodies, ships, local asteroid offsets, targets and star lights share display space.
+  Canonical state, API writes, HYG parsec positions, splash composition, and the
+  separate ship-exterior flight pipeline do not use this display transform.
+- Guides: native XY geometry uses `Qdisplay * Rz(node) * Rx(inclination) *
+Rz(periapsis)`. Detail moon guides use the same orientation and existing readable
+  circle radii. System guides in proportional mode use the same linear scale
+  without anchored compression or minimum radii. Guides remain illustrative:
+  centered ellipse styling does not guarantee snapshot coincidence. Compressed
+  mode additionally uses radial compression, anchored scale and minimum radii.
+  Only explicit `anchorBodyId` centers a guide; hierarchy is not an inferred anchor.
+  Missing orbital metadata uses a reference-plane detail guide. Forge does not
+  guarantee physically aligned producer frames or a calculated center of mass.
+- Close-range mission readability: in compressed mode, when zoomed in (`zoomLevel < 22`) and the
   current target is an asteroid or a ship, nearby asteroids are temporarily
   reprojected in a **local cluster frame** around the target anchor (derived
   from km offsets) before render. This avoids visual collapse of tightly packed
   asteroid fields at belt-scale barycentric distances while preserving the
   global projection model when zoomed out.
+- Camera distance limits, far clipping and backdrop bounds accommodate proportional
+  system extents, including ships. New scenes start at overview zoom. Switching
+  mode preserves target identity and re-centers the same target in the new display
+  space; an untargeted scene resets to overview. Camera tween constraints are
+  unlocked during target flight, then return to the zoom-slider distance.
 - Color: prefers `visualization.colorHex`; falls back to `#fff5b6` for stars
   and `#9bb1c9` for other bodies.
 - All scaling helpers are isolated in
@@ -83,6 +109,7 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
 ### Local Cluster Projection Guardrails
 
 - Activation conditions:
+  - Compressed distance mode (disabled for proportional distances)
   - `zoomLevel < 22`
   - `targetBodyId` resolves to either:
     - an asteroid body in the current viewer payload, or

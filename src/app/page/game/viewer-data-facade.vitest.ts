@@ -34,7 +34,10 @@ function starBody(id: string, solarSystemId = 'sol'): ViewerBody {
   return {
     id,
     bodyType: 'star',
+    surfaceArchetype: 'star',
     displayName: id,
+    state: 'active',
+    composition: { material: 'stellar plasma', rarity: 'Common', textureColor: '#fff5b6' },
     spatial: {
       solarSystemId,
       frame: 'icrs',
@@ -63,7 +66,10 @@ function asteroidBodyWithDescriptor(id: string): ViewerBody {
   return {
     id,
     bodyType: 'asteroid',
+    surfaceArchetype: 'asteroid',
     displayName: id,
+    state: 'active',
+    composition: { material: 'silicate', rarity: 'Common', textureColor: '#8f99a7' },
     spatial: {
       solarSystemId: 'sol',
       frame: 'icrs',

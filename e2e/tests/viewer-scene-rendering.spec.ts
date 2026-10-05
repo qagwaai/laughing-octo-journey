@@ -22,6 +22,8 @@ import {
 import { TEST_PLAYER, TEST_SESSION_KEY } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import type { Object3D } from 'three';
+import type { ViewerBody } from '../../src/app/model/solar-system-get';
 
 const M2_DESCRIPTOR_FIXTURE_PATH = join(
   process.cwd(),
@@ -480,6 +482,103 @@ test.describe('Viewer — Scene Rendering', () => {
     // Verify the canvas element exists (Angular Three renders to <ngt-canvas>)
     const canvas = viewerPage.sceneCanvas;
     await expect(canvas).toBeVisible();
+  });
+
+  test('shares display coordinates across companion stars, moons, lights and pick shells', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+    const bodies = [
+      ...SOL_SYSTEM_BODIES,
+      {
+        ...SOL_SYSTEM_BODIES[0], id: 'basis-companion', displayName: 'Basis Companion',
+        parentBodyId: 'sun',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric',
+          positionKm: { x: 0, y: 3e6, z: 4e6 }, epochMs: 1715000000000 },
+      },
+      {
+        ...SOL_SYSTEM_BODIES[2], id: 'basis-moon', displayName: 'Basis Moon',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric',
+          positionKm: { x: 2e6, y: 5e6, z: 1e6 }, epochMs: 1715000000000 },
+      },
+    ];
+    await navigateToSystemScene(page, mock, bodies);
+    await new ViewerPage(page).expectSceneLoaded();
+    await expect(page.getByTestId('viewer-distance-mode')).toContainText('Proportional distances');
+    await page.getByTestId('viewer-distance-toggle').click();
+    await expect(page.getByTestId('viewer-distance-mode')).toContainText('Compressed overview');
+    await expect.poll(() => page.evaluate(() => {
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const canvas = document.querySelector('ngt-canvas');
+      const host = document.querySelector('app-viewer-scene-page');
+      if (!canvas || !host) return false;
+      const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot.scene;
+      if (!scene) return false;
+      const source = (ng.getComponent(host) as { bodies(): ViewerBody[] }).bodies();
+      const lights: number[][] = [];
+      scene.traverse((object) => { if (object.type === 'PointLight') lights.push(object.position.toArray()); });
+      return ['basis-companion', 'basis-moon'].every((id) => {
+        const body = source.find((candidate) => candidate.id === id);
+        if (!body) return false;
+        const point = body.spatial.positionKm;
+        const distance = Math.hypot(point.x, point.y, point.z);
+        const radius = +((1 + Math.log(distance / 1e6) / Math.log(6)) * 5).toFixed(3);
+        const expected = [point.x, -point.z, point.y].map((value) => +(value / distance * radius).toFixed(3));
+        let shell: Object3D | undefined;
+        scene.traverse((object) => { if (object.name === body.displayName && object.type === 'Mesh') shell = object; });
+        const matches = (position: number[]) => position.every((value, index) => Math.abs(value - expected[index]) < 1e-6);
+        return !!shell && matches(shell.position.toArray()) && (id !== 'basis-companion' || lights.some(matches));
+      });
+    })).toBe(true);
+    await page.getByTestId('viewer-distance-toggle').click();
+    await expect.poll(() => page.evaluate(() => {
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const host = document.querySelector('app-viewer-scene-page');
+      const canvas = document.querySelector('ngt-canvas');
+      if (!host || !canvas) return false;
+      const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot.scene;
+      if (!scene) return false;
+      const bodies = (ng.getComponent(host) as { bodies(): ViewerBody[] }).bodies();
+      return bodies.filter((body) => ['earth', 'basis-companion', 'basis-moon'].includes(body.id)).every((body) => {
+        const p = body.spatial.positionKm;
+        const expected = [p.x, -p.z, p.y].map((value) => value / 149_597_870.7 * 5);
+        let mesh: Object3D | undefined;
+        scene.traverse((object) => { if (object.name === body.displayName && object.type === 'Mesh') mesh = object; });
+        return !!mesh && mesh.position.toArray().every((value, index) => Math.abs(value - expected[index]) < 1e-10);
+      });
+    })).toBe(true);
+    await page.evaluate(() => {
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const component = ng.getComponent(document.querySelector('app-viewer-scene-page')!) as {
+        bodies(): ViewerBody[]; onPlanetViewRequest(body: ViewerBody): void;
+      };
+      component.onPlanetViewRequest(component.bodies().find((body) => body.id === 'earth')!);
+    });
+    await expect(page).toHaveURL(/right:planet-view/);
+    await expect.poll(() => page.evaluate(() => {
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const canvas = document.querySelector('ngt-canvas');
+      const host = document.querySelector('app-planet-view-page');
+      if (!canvas || !host) return false;
+      const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot.scene;
+      if (!scene) return false;
+      const component = ng.getComponent(host) as { bodies(): ViewerBody[]; selectedBody(): ViewerBody };
+      const origin = component.selectedBody().spatial.positionKm;
+      const lights: number[][] = [];
+      scene.traverse((object) => { if (object.type === 'PointLight') lights.push(object.position.toArray()); });
+      return ['basis-companion', 'basis-moon'].every((id) => {
+        const body = component.bodies().find((candidate) => candidate.id === id);
+        if (!body) return false;
+        let object: Object3D | undefined;
+        scene.traverse((candidate) => { if (candidate.name === body.displayName) object = candidate; });
+        if (!object) return false;
+        const point = body.spatial.positionKm;
+        const delta = [point.x - origin.x, -(point.z - origin.z), point.y - origin.y];
+        const distance = Math.hypot(...delta);
+        const radius = object.position.length();
+        const expected = delta.map((value) => value / distance * radius);
+        const matches = (position: number[]) => position.every((value, index) => Math.abs(value - expected[index]) < 1e-6);
+        return radius > 0 && matches(object.position.toArray()) && (id !== 'basis-companion' || lights.some(matches));
+      });
+    })).toBe(true);
   });
 
   test('displays system name in the scene view', async ({ page }) => {

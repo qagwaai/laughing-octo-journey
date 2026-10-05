@@ -1,5 +1,26 @@
-import { Euler, Quaternion, Vector3 } from 'three';
 import type { ViewerBody } from '../../model/solar-system-get';
+import { resolveCatalogRadiusKm } from '../../model/physical-catalog';
+import { Euler, Quaternion, Vector3 } from 'three';
+
+/** Display-only +90 degree X rotation; never use this for API coordinates. */
+export function resolveViewerDisplayVector(
+  vector: { x: number; y: number; z: number },
+): [number, number, number] {
+  return [vector.x, vector.z === 0 ? 0 : -vector.z, vector.y];
+}
+
+export function resolveOrbitRotationEuler(orbital: ViewerBody['orbitalElements']): [number, number, number] {
+  const radians = (degrees: number | undefined) => ((degrees ?? 0) * Math.PI) / 180;
+  const xAxis = new Vector3(1, 0, 0);
+  const zAxis = new Vector3(0, 0, 1);
+  const rotation = new Quaternion().setFromAxisAngle(xAxis, Math.PI / 2);
+  rotation
+    .multiply(new Quaternion().setFromAxisAngle(zAxis, radians(orbital?.longitudeOfAscendingNodeDeg)))
+    .multiply(new Quaternion().setFromAxisAngle(xAxis, radians(orbital?.inclinationDeg)))
+    .multiply(new Quaternion().setFromAxisAngle(zAxis, radians(orbital?.argumentOfPeriapsisDeg)));
+  const euler = new Euler().setFromQuaternion(rotation, 'XYZ');
+  return [euler.x, euler.y, euler.z];
+}
 
 /** Hybrid scaling constants for the Viewer system scene. */
 export const VIEWER_SCENE_STAR_BASE_RADIUS = 0.28;
@@ -26,6 +47,9 @@ export const VIEWER_SCENE_UNKNOWN_SHIP_POSITION: [number, number, number] = [8, 
 export const VIEWER_SCENE_DISTANCE_LOG_BASE = 6;
 export const VIEWER_SCENE_DISTANCE_REFERENCE_KM = 1_000_000; // 1 Mkm reference for log scaling.
 export const VIEWER_SCENE_DISTANCE_UNIT = 5;
+export type ViewerDistanceMode = 'proportional' | 'compressed';
+export const VIEWER_SCENE_KM_PER_AU = 149_597_870.7;
+export const VIEWER_SCENE_UNITS_PER_AU = 5;
 export const VIEWER_SCENE_ANCHORED_ORBIT_SCALE = 0.24;
 export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_X = 0.12;
 export const VIEWER_SCENE_ANCHORED_ORBIT_MIN_RADIUS_Z = 0.1;
@@ -62,9 +86,12 @@ export function resolveZoomScaleFactor(zoomLevel: number | undefined): number {
 /**
  * Converts a world-space distance in kilometers into the viewer scene distance scale.
  */
-export function resolveSceneDistanceFromKm(distanceKm: number): number {
+export function resolveSceneDistanceFromKm(distanceKm: number, mode: ViewerDistanceMode = 'compressed'): number {
   if (!Number.isFinite(distanceKm) || distanceKm <= 0) {
     return 0;
+  }
+  if (mode === 'proportional') {
+    return (distanceKm / VIEWER_SCENE_KM_PER_AU) * VIEWER_SCENE_UNITS_PER_AU;
   }
   if (distanceKm < VIEWER_SCENE_DISTANCE_REFERENCE_KM) {
     const linear = (distanceKm / VIEWER_SCENE_DISTANCE_REFERENCE_KM) * VIEWER_SCENE_DISTANCE_UNIT;
@@ -165,10 +192,11 @@ export function resolveAnchoredOrbitSceneProfile(body: ViewerBody): AnchoredOrbi
 /**
  * Hybrid star radius from luminosity (clamped); falls back to base when missing.
  */
-export function resolveStarSceneRadius(luminositySolar: number | undefined): number {
-  if (typeof luminositySolar !== 'number' || !Number.isFinite(luminositySolar) || luminositySolar <= 0) {
+export function resolveStarSceneRadius(luminositySolar: number | null | undefined): number {
+  if (typeof luminositySolar !== 'number' || !Number.isFinite(luminositySolar)) {
     return VIEWER_SCENE_STAR_BASE_RADIUS;
   }
+  if (luminositySolar === 0) return VIEWER_SCENE_STAR_MIN_RADIUS;
   const scaled = VIEWER_SCENE_STAR_BASE_RADIUS * Math.sqrt(luminositySolar);
   return Math.max(VIEWER_SCENE_STAR_MIN_RADIUS, Math.min(VIEWER_SCENE_STAR_MAX_RADIUS, scaled));
 }
@@ -218,184 +246,42 @@ export function resolveBodySceneRadius(body: ViewerBody, zoomLevel?: number): nu
     return resolveStarSceneRadius(body.luminositySolar);
   }
   if (isMoonBody(body)) {
-    return resolveMoonSceneRadius(body.physicalCatalog?.estimatedDiameterM, zoomLevel);
+    const radiusKm = resolveCatalogRadiusKm(body.physicalCatalog, body.physical);
+    return resolveMoonSceneRadius(radiusKm === null ? undefined : radiusKm * 2000, zoomLevel);
   }
-  return resolvePlanetSceneRadius(body.physicalCatalog?.estimatedDiameterM, zoomLevel);
+  const radiusKm = resolveCatalogRadiusKm(body.physicalCatalog, body.physical);
+  return resolvePlanetSceneRadius(radiusKm === null ? undefined : radiusKm * 2000, zoomLevel);
 }
 
 /**
- * Maps a body's `spatial.positionKm` into a hybrid (log-distance) scene position
- * with the system barycenter at the scene origin. Stars stay at the origin.
+ * Projects a stored system-origin snapshot into display space without modifying
+ * canonical data. Compressed mode is retained as the helper's compatibility default.
  */
-export function resolveBodyScenePosition(body: ViewerBody): [number, number, number] {
-  if (isStarBody(body)) {
-    return [0, 0, 0];
-  }
+export function resolveBodyScenePosition(body: ViewerBody, mode: ViewerDistanceMode = 'compressed'): [number, number, number] {
+  return resolveScenePositionFromSpatialKm(body.spatial.positionKm, mode);
+}
 
-  // Try orbital-element-based position first (more accurate to orbital plane).
-  // Bodies with anchorBodyId are skipped here and resolved in the second pass
-  // relative to their parent's scene position.
-  const orbitalPos = resolveBodyOrbitalPosition(body, [0, 0, 0]);
-  if (orbitalPos) {
-    return orbitalPos;
-  }
-
-  // Fallback to spatial position if orbital elements unavailable
-  const { x, y, z } = body.spatial.positionKm;
+export function resolveScenePositionFromSpatialKm(
+  positionKm: { x: number; y: number; z: number },
+  mode: ViewerDistanceMode = 'compressed',
+): [number, number, number] {
+  const { x, y, z } = positionKm;
   const magnitudeKm = Math.hypot(x, y, z);
   if (magnitudeKm <= 0) {
     return [0, 0, 0];
   }
 
-  const scaled = resolveSceneDistanceFromKm(magnitudeKm);
+  if (mode === 'proportional') {
+    const scale = VIEWER_SCENE_UNITS_PER_AU / VIEWER_SCENE_KM_PER_AU;
+    const [x, y, z] = resolveViewerDisplayVector(positionKm);
+    return [x * scale, y * scale, z * scale];
+  }
+  const scaled = resolveSceneDistanceFromKm(magnitudeKm, mode);
 
-  const dx = x / magnitudeKm;
-  const dy = y / magnitudeKm;
-  const dz = z / magnitudeKm;
+  const [displayX, displayY, displayZ] = resolveViewerDisplayVector(positionKm);
+  const dx = displayX / magnitudeKm;
+  const dy = displayY / magnitudeKm;
+  const dz = displayZ / magnitudeKm;
 
   return [+(dx * scaled).toFixed(3), +(dy * scaled).toFixed(3), +(dz * scaled).toFixed(3)];
-}
-
-/**
- * Calculates a body's position on its orbital ellipse using orbital elements
- * and mean anomaly. Applies orbital plane rotation to place the body correctly.
- * Returns null if orbital elements are incomplete.
- */
-export function resolveBodyOrbitalPositionRelativeToAnchor(
-  body: ViewerBody,
-  anchorPosition: [number, number, number],
-): [number, number, number] | null {
-  const orbital = body.orbitalElements;
-  const anchorId = orbital?.anchorBodyId;
-
-  // Need valid semi-major axis
-  const semiMajorAxisKm = orbital?.semiMajorAxisKm;
-  if (typeof semiMajorAxisKm !== 'number' || !Number.isFinite(semiMajorAxisKm) || semiMajorAxisKm <= 0) {
-    return null;
-  }
-
-  // If no anchor, this body orbits the origin; otherwise it orbits another body
-  const isChildBody = typeof anchorId === 'string' && anchorId.length > 0;
-  if (!isChildBody) {
-    // Non-anchored bodies use spatial position
-    return null;
-  }
-
-  // Clamp eccentricity
-  const eRaw = orbital?.eccentricity;
-  const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
-
-  const orbitProfile = resolveAnchoredOrbitSceneProfile(body);
-  const scaledOrbitRadius = resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile.scale;
-  const radiusX = Math.max(orbitProfile.minRadiusX, +scaledOrbitRadius.toFixed(3));
-  const radiusZ = Math.max(orbitProfile.minRadiusZ, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
-
-  // Get mean anomaly (default to 0 if not available)
-  const meanAnomalyDeg = orbital?.meanAnomalyAtEpochDeg ?? 0;
-  const meanAnomaly = (meanAnomalyDeg * Math.PI) / 180;
-
-  // Position on ellipse in local XY. qBase later rotates XY -> XZ,
-  // matching the orbit ring mesh construction.
-  const posX = radiusX * Math.cos(meanAnomaly);
-  const posY = radiusZ * Math.sin(meanAnomaly);
-  const posZ = 0;
-
-  // Construct orbital rotation (same as orbit ring)
-  const ascendingNode = ((orbital?.longitudeOfAscendingNodeDeg ?? 0) * Math.PI) / 180;
-  const inclination = ((orbital?.inclinationDeg ?? 0) * Math.PI) / 180;
-  const argumentOfPeriapsis = ((orbital?.argumentOfPeriapsisDeg ?? 0) * Math.PI) / 180;
-
-  const yAxis = new Vector3(0, 1, 0);
-  const xAxis = new Vector3(1, 0, 0);
-
-  const qBase = new Quaternion().setFromEuler(new Euler(Math.PI / 2, 0, 0, 'XYZ'));
-  const qNode = new Quaternion().setFromAxisAngle(yAxis, ascendingNode);
-  const qInclination = new Quaternion().setFromAxisAngle(xAxis, inclination);
-  const qPeriapsis = new Quaternion().setFromAxisAngle(yAxis, argumentOfPeriapsis);
-
-  const orbitQ = qNode.clone().multiply(qInclination).multiply(qPeriapsis).multiply(qBase);
-
-  // Apply rotation to position
-  const posVector = new Vector3(posX, posY, posZ);
-  posVector.applyQuaternion(orbitQ);
-
-  // Translate by anchor position
-  const finalX = +(anchorPosition[0] + posVector.x).toFixed(3);
-  const finalY = +(anchorPosition[1] + posVector.y).toFixed(3);
-  const finalZ = +(anchorPosition[2] + posVector.z).toFixed(3);
-
-  return [finalX, finalY, finalZ];
-}
-
-/**
- * Calculates a body's position on its orbital ellipse using orbital elements
- * and mean anomaly. Applies orbital plane rotation to place the body correctly.
- * Returns null if orbital elements are incomplete.
- *
- * Bodies with orbital elements but no explicit anchor orbit the system origin (primary star).
- * Bodies WITH an anchorBodyId are intentionally skipped here — they are resolved in a
- * second pass via resolveBodyOrbitalPositionRelativeToAnchor with the anchor's scene position.
- */
-function resolveBodyOrbitalPosition(
-  body: ViewerBody,
-  anchorPosition: [number, number, number],
-): [number, number, number] | null {
-  const orbital = body.orbitalElements;
-
-  // Bodies with an explicit anchor are handled in the second pass relative to their parent.
-  // Only position unanchored bodies (e.g. planets orbiting the primary star) here.
-  const anchorId = orbital?.anchorBodyId;
-  if (typeof anchorId === 'string' && anchorId.length > 0) {
-    return null;
-  }
-
-  // Need valid semi-major axis (this is the key indicator of orbital data)
-  const semiMajorAxisKm = orbital?.semiMajorAxisKm;
-  if (typeof semiMajorAxisKm !== 'number' || !Number.isFinite(semiMajorAxisKm) || semiMajorAxisKm <= 0) {
-    return null;
-  }
-
-  // Clamp eccentricity
-  const eRaw = orbital?.eccentricity;
-  const e = typeof eRaw === 'number' && Number.isFinite(eRaw) ? Math.min(Math.max(eRaw, 0), 0.99) : 0;
-
-  // Calculate semi-minor axis
-  const radiusX = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X, resolveSceneDistanceFromKm(semiMajorAxisKm));
-  const radiusZ = Math.max(VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z, +(radiusX * Math.sqrt(1 - e * e)).toFixed(3));
-
-  // Get mean anomaly (default to 0 if not available)
-  const meanAnomalyDeg = orbital?.meanAnomalyAtEpochDeg ?? 0;
-  const meanAnomaly = (meanAnomalyDeg * Math.PI) / 180;
-
-  // Position on ellipse in local XY. qBase later rotates XY -> XZ,
-  // matching the orbit ring mesh construction.
-  const posX = radiusX * Math.cos(meanAnomaly);
-  const posY = radiusZ * Math.sin(meanAnomaly);
-  const posZ = 0;
-
-  // Construct orbital rotation
-  const ascendingNode = ((orbital?.longitudeOfAscendingNodeDeg ?? 0) * Math.PI) / 180;
-  const inclination = ((orbital?.inclinationDeg ?? 0) * Math.PI) / 180;
-  const argumentOfPeriapsis = ((orbital?.argumentOfPeriapsisDeg ?? 0) * Math.PI) / 180;
-
-  const yAxis = new Vector3(0, 1, 0);
-  const xAxis = new Vector3(1, 0, 0);
-
-  const qBase = new Quaternion().setFromEuler(new Euler(Math.PI / 2, 0, 0, 'XYZ'));
-  const qNode = new Quaternion().setFromAxisAngle(yAxis, ascendingNode);
-  const qInclination = new Quaternion().setFromAxisAngle(xAxis, inclination);
-  const qPeriapsis = new Quaternion().setFromAxisAngle(yAxis, argumentOfPeriapsis);
-
-  const orbitQ = qNode.clone().multiply(qInclination).multiply(qPeriapsis).multiply(qBase);
-
-  // Apply rotation to position
-  const posVector = new Vector3(posX, posY, posZ);
-  posVector.applyQuaternion(orbitQ);
-
-  // Translate by anchor position
-  const finalX = +(anchorPosition[0] + posVector.x).toFixed(3);
-  const finalY = +(anchorPosition[1] + posVector.y).toFixed(3);
-  const finalZ = +(anchorPosition[2] + posVector.z).toFixed(3);
-
-  return [finalX, finalY, finalZ];
 }

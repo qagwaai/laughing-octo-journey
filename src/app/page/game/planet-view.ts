@@ -13,6 +13,7 @@ import { NgtsStats } from 'angular-three-soba/stats';
 import { NgtCanvas } from 'angular-three/dom';
 import { locale } from '../../i18n/locale';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
+import { validateCanonicalBodyCollection } from '../../model/celestial-classification';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
 import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
@@ -20,6 +21,7 @@ import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { resolveNavigationState } from '../navigation-state';
+import { appLogger } from '../../services/logger';
 
 interface PlanetViewNavigationState {
   playerName?: string;
@@ -142,6 +144,13 @@ export default class PlanetViewPage {
         }
 
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
+        const canonicalError = validateCanonicalBodyCollection(allBodies);
+        if (canonicalError) {
+          appLogger.error('[celestial-body-contract]', canonicalError);
+          this.bodies.set([]);
+          this.sceneError.set(`${this.t.game.viewer.sceneErrorPrefix} celestial-body-contract ${canonicalError}`);
+          return;
+        }
         const deduped: ViewerBody[] = [];
         const seen = new Set<string>();
         for (const body of allBodies) {

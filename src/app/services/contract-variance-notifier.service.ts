@@ -121,6 +121,8 @@ export class ContractVarianceNotifierService {
         text.includes('[ship-exterior-contract]') ||
         text.includes('[ship-exterior-launch-contract]') ||
         text.includes('[ship-inventory-contract]') ||
+        text.includes('[celestial-body-contract]') ||
+        text.includes('[celestial-appearance-fallback]') ||
         text.includes('[socket-correlation]') ||
         text.includes('contract violation')
       ) {

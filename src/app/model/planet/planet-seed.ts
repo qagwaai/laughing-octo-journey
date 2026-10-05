@@ -1,13 +1,13 @@
 /**
  * Deterministic seeding for procedural planet surfaces.
  *
- * Nova derives planet appearance locally for now. `ViewerBody.planetType` and
- * `ViewerBodyVisualization.textureKey` stay inert until the Forge contract is
- * negotiated from proven visuals; see docs/procedural-planets-2026-09-28.md.
+ * Nova derives appearance locally from the canonical body ID and surface
+ * archetype. `planetType` and `visualization.textureKey` remain separate
+ * catalog/presentation fields; see docs/procedural-planets-2026-09-28.md.
  */
 import { calibrateContinents } from './planet-surface';
 
-export const PLANET_GENERATOR_VERSION = 'terran-v1';
+export const PLANET_GENERATOR_VERSION = 'terran-v2';
 
 /**
  * Deriving a climate now samples the continent field to calibrate sea level,
@@ -65,12 +65,16 @@ function quantize(value: number): number {
   return Number(value.toFixed(6));
 }
 
-export function derivePlanetClimate(bodyId: string, archetype: PlanetArchetype = 'terran'): PlanetClimate {
-  const cacheKey = `${archetype}|${bodyId}`;
+export function derivePlanetClimate(
+  bodyId: string,
+  archetype: PlanetArchetype = 'terran',
+  surfaceArchetype = 'rocky',
+): PlanetClimate {
+  const cacheKey = `${PLANET_GENERATOR_VERSION}|${surfaceArchetype}|${archetype}|${bodyId}`;
   const cached = climateCache.get(cacheKey);
   if (cached) return cached;
 
-  const seed = fnv1a32(`${PLANET_GENERATOR_VERSION}|${archetype}|${bodyId}`);
+  const seed = fnv1a32(`${PLANET_GENERATOR_VERSION}|${surfaceArchetype}|${archetype}|${bodyId}`);
   const random = createSeededRng(seed);
 
   const base = {

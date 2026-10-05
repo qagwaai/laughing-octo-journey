@@ -3,6 +3,7 @@ import {
   FIRST_TARGET_SHIP_EXTERIOR_MISSION,
   createFirstTargetMissionInitialGateState,
 } from './first-target-ship-exterior-mission';
+import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 
 const TEST_CORRELATION_ID = '00000000-0000-4000-8000-000000000003';
 const TEST_REQUEST_IDENTITY = {
@@ -41,9 +42,13 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       existingBodies: [
         {
           id: 'cb-1',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           catalogId: 'cat-1',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',
+          missionId: FIRST_TARGET_MISSION_ID,
+          missionInstanceId: null,
           createdAt: '2026-04-28T00:00:00.000Z',
           updatedAt: '2026-04-28T00:00:00.000Z',
           spatial: {
@@ -67,12 +72,20 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
           distanceKm: 12,
           state: 'active',
+          destroyedAt: null,
+          destroyedReason: null,
+          debrisSeed: null,
+          debris: [],
         },
         {
           id: 'cb-destroyed',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           catalogId: 'cat-2',
           sourceScanId: 'sample-a2',
           createdByCharacterId: 'char-1',
+          missionId: FIRST_TARGET_MISSION_ID,
+          missionInstanceId: null,
           createdAt: '2026-04-28T00:00:00.000Z',
           updatedAt: '2026-04-28T00:00:00.000Z',
           spatial: {
@@ -96,6 +109,10 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           composition: { material: 'Iron', rarity: 'Rare', textureColor: '#8f99a7' },
           distanceKm: 18,
           state: 'destroyed',
+          destroyedAt: '2026-04-28T00:01:00.000Z',
+          destroyedReason: 'impact',
+          debrisSeed: 42,
+          debris: [],
         },
       ],
       launchSeedHint: 99,
@@ -123,9 +140,13 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       existingBodies: [
         {
           id: 'cb-1',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           catalogId: 'cat-1',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',
+          missionId: FIRST_TARGET_MISSION_ID,
+          missionInstanceId: null,
           createdAt: '2026-04-28T00:00:00.000Z',
           updatedAt: '2026-04-28T00:00:00.000Z',
           spatial: {
@@ -149,6 +170,10 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
           distanceKm: 12,
           state: 'active',
+          destroyedAt: null,
+          destroyedReason: null,
+          debrisSeed: null,
+          debris: [],
         },
       ],
       launchSeedHint: 99,
@@ -534,9 +559,13 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       existingBodies: [
         {
           id: 'cb-no-scan-id',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           catalogId: 'cat-1',
           sourceScanId: '',
           createdByCharacterId: 'char-1',
+          missionId: FIRST_TARGET_MISSION_ID,
+          missionInstanceId: null,
           createdAt: '2026-04-28T00:00:00.000Z',
           updatedAt: '2026-04-28T00:00:00.000Z',
           spatial: {
@@ -554,6 +583,10 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           composition: { material: 'Carbon', rarity: 'Common', textureColor: '#6f7785' },
           distanceKm: 5,
           state: 'active',
+          destroyedAt: null,
+          destroyedReason: null,
+          debrisSeed: null,
+          debris: [],
         },
       ],
       launchSeedHint: 7,
@@ -571,9 +604,13 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
       existingBodies: [
         {
           id: 'cb-3',
+          bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           catalogId: 'cat-3',
           sourceScanId: 'sample-a1',
           createdByCharacterId: 'char-1',
+          missionId: FIRST_TARGET_MISSION_ID,
+          missionInstanceId: null,
           meshProfileKey: 'v1|pv=dodecahedron:1|rv=rock:2|s=1.00,1.00,1.00',
           createdAt: '2026-04-28T00:00:00.000Z',
           updatedAt: '2026-04-28T00:00:00.000Z',
@@ -598,6 +635,10 @@ describe('FIRST_TARGET_SHIP_EXTERIOR_MISSION', () => {
           composition: { material: 'Silicate', rarity: 'Common', textureColor: '#9ca8b8' },
           distanceKm: 12,
           state: 'active',
+          destroyedAt: null,
+          destroyedReason: null,
+          debrisSeed: null,
+          debris: [],
         },
       ],
       launchSeedHint: 99,

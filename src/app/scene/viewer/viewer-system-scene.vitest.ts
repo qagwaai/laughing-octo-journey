@@ -6,6 +6,7 @@ import {
   VIEWER_SCENE_INACTIVE_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
+  resolveScenePositionFromSpatialKm,
 } from './viewer-formatters';
 import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
@@ -31,6 +32,7 @@ const star: ViewerBody = {
 const planet: ViewerBody = {
   id: 'planet-1',
   bodyType: 'planet',
+  surfaceArchetype: 'rocky',
   displayName: 'Earth',
   spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 149_597_870, y: 0, z: 0 }, epochMs: 0 },
   visualization: { colorHex: '#3399ff' },
@@ -50,6 +52,8 @@ const marketStation: ViewerBody = {
     longitudeOfAscendingNodeDeg: 0,
     argumentOfPeriapsisDeg: 15,
     meanAnomalyAtEpochDeg: 45,
+    orbitalPeriodSec: 100_000,
+    epoch: '2026-01-01T00:00:00.000Z',
   },
 };
 
@@ -76,6 +80,7 @@ const gateBody: ViewerBody = {
 const distantPlanet: ViewerBody = {
   id: 'planet-2',
   bodyType: 'planet',
+  surfaceArchetype: 'rocky',
   displayName: 'Mars',
   spatial: { solarSystemId: 'sol', frame: 'icrs', positionKm: { x: 227_923_661, y: 0, z: 0 }, epochMs: 0 },
   visualization: { colorHex: '#c1440e' },
@@ -85,6 +90,7 @@ const distantPlanet: ViewerBody = {
 const asteroidA: ViewerBody = {
   id: 'asteroid-a',
   bodyType: 'asteroid',
+  surfaceArchetype: 'asteroid',
   displayName: 'Asteroid A',
   spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 350_000_000, y: 0, z: 0 }, epochMs: 0 },
   physicalCatalog: { estimatedDiameterM: 800 },
@@ -93,6 +99,7 @@ const asteroidA: ViewerBody = {
 const asteroidB: ViewerBody = {
   id: 'asteroid-b',
   bodyType: 'asteroid',
+  surfaceArchetype: 'asteroid',
   displayName: 'Asteroid B',
   spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 350_004_000, y: 500, z: -250 }, epochMs: 0 },
   physicalCatalog: { estimatedDiameterM: 1200 },
@@ -101,6 +108,7 @@ const asteroidB: ViewerBody = {
 const asteroidHero: ViewerBody = {
   id: 'asteroid-hero-1',
   bodyType: 'asteroid',
+  surfaceArchetype: 'asteroid',
   displayName: 'Hero Asteroid',
   spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 360_000_000, y: 0, z: 0 }, epochMs: 0 },
   physicalCatalog: { estimatedDiameterM: 2000 },
@@ -167,6 +175,67 @@ const localProjectionShip: ShipSummary = {
 };
 
 describe('ViewerSystemScene mapBodiesToRendered', () => {
+  it('preserves proportional separations even when an asteroid is targeted at close zoom', () => {
+    const normal = mapBodiesToRendered([asteroidA, asteroidB], 0, null, [], 'proportional');
+    const targeted = mapBodiesToRendered([asteroidA, asteroidB], 0, asteroidA.id, [], 'proportional');
+    expect(targeted.map((body) => body.position)).toEqual(normal.map((body) => body.position));
+    expect(targeted[1].position[2] - targeted[0].position[2]).toBeCloseTo(500 / 149_597_870.7 * 5, 12);
+  });
+  it('extends camera framing beyond the compressed ceiling for proportional outer systems', () => {
+    const outer = { ...planet, spatial: { ...planet.spatial, positionKm: { x: 1e10, y: 0, z: 0 } } };
+    const range = resolveViewerSceneCameraDistanceRange([outer], 'proportional');
+    expect(range.max).toBeGreaterThan(180);
+    const distance = resolveZoomDistance(63, [outer], 'proportional');
+    expect(resolveZoomPercent(distance, [outer], 'proportional')).toBeCloseTo(63, 8);
+  });
+  it('keeps ships, stations, gates, targets and canonical snapshots in consistent spaces', () => {
+    const spatial = { solarSystemId: 'sol', frame: 'barycentric' as const,
+      positionKm: Object.freeze({ x: 1e6, y: 2e6, z: 3e6 }), epochMs: 0 };
+    const ship: ShipSummary = { id: 'display-ship', name: 'Display ship', model: 'Scavenger Pod',
+      tier: 1, status: 'ACTIVE', spatial };
+    const bodies = [planet, marketStation, star, { ...marketStation, id: 'gate', bodyType: 'gate' }]
+      .map((body) => ({ ...body, spatial }));
+    const rendered = mapBodiesToRendered(bodies);
+    const ships = mapShipsToRendered([ship], ship.id);
+    const expected = resolveScenePositionFromSpatialKm(spatial.positionKm);
+    expect(ships[0].position).toEqual(expected);
+    for (const body of rendered) expect(body.position).toEqual(expected);
+    expect(resolveTargetScenePosition(ship.id, rendered, ships)).toEqual(expected);
+    expect(spatial.positionKm).toEqual({ x: 1e6, y: 2e6, z: 3e6 });
+  });
+  it('uses barycentric snapshots for anchored bodies and stellar children independent of response order', () => {
+    const anchor: ViewerBody = {
+      ...planet,
+      spatial: { ...planet.spatial, positionKm: { x: 10_000_000, y: 0, z: 0 } },
+    };
+    const moon: ViewerBody = {
+      ...marketStation,
+      id: 'snapshot-moon',
+      bodyType: 'moon',
+      surfaceArchetype: 'rocky-moon',
+      parentBodyId: anchor.id,
+      spatial: { ...planet.spatial, positionKm: { x: 0, y: 3_000_000, z: 4_000_000 } },
+      orbitalElements: { ...marketStation.orbitalElements!, anchorBodyId: anchor.id },
+    };
+    const companion: ViewerBody = {
+      ...star,
+      id: 'snapshot-companion',
+      parentBodyId: star.id,
+      spatial: { ...star.spatial, positionKm: { x: -10_000_000, y: 0, z: 0 } },
+    };
+    const ordered = mapBodiesToRendered([star, anchor, moon, companion]);
+    const reordered = mapBodiesToRendered([companion, moon, anchor, star]);
+    for (const body of ordered) {
+      expect(reordered.find((entry) => entry.id === body.id)?.position).toEqual(body.position);
+    }
+    const projectedMoon = ordered.find((body) => body.id === moon.id)!;
+    expect(projectedMoon.position[0]).toBe(0);
+    expect(projectedMoon.position[1]).toBeLessThan(0);
+    expect(projectedMoon.position[2]).toBeGreaterThan(0);
+    expect(Math.abs(projectedMoon.position[1])).toBeGreaterThan(projectedMoon.position[2]);
+    expect(ordered.find((body) => body.id === companion.id)?.position[0]).toBeLessThan(0);
+    expect(mapBodiesToRendered([moon])[0].position).toEqual(projectedMoon.position);
+  });
   it('partitions stars and non-stars and assigns colors/positions', () => {
     const rendered = mapBodiesToRendered([star, planet, marketStation]);
     expect(rendered.length).toBe(3);
@@ -267,6 +336,11 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
       localB!.position[2] - localA!.position[2],
     );
     expect(localSeparation).toBeGreaterThan(0.05);
+    expect(localB!.position[1] - localA!.position[1]).toBeGreaterThan(0);
+    expect(localB!.position[2] - localA!.position[2]).toBeGreaterThan(0);
+    expect(localB!.position[2] - localA!.position[2]).toBeCloseTo(
+      2 * (localB!.position[1] - localA!.position[1]), 3,
+    );
   });
 
   it('reprojects nearby asteroids into local space when a ship is targeted at close zoom', () => {
@@ -511,6 +585,8 @@ describe('viewer-system-scene helper math', () => {
       longitudeOfAscendingNodeDeg: 20,
       argumentOfPeriapsisDeg: 30,
       meanAnomalyAtEpochDeg: 0,
+      orbitalPeriodSec: 100_000,
+      epoch: '2026-01-01T00:00:00.000Z',
     });
     const withoutElements = resolveOrbitRotationEuler(undefined);
 

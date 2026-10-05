@@ -1,5 +1,7 @@
 import { AsteroidMaterialProfile } from './asteroid-materials';
 import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
+import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
+import type { CanonicalViewerBodyOrbitalElements } from './solar-system-get';
 
 export const CELESTIAL_BODY_UPSERT_REQUEST_EVENT = 'celestial-body-upsert-request';
 export const CELESTIAL_BODY_UPSERT_RESPONSE_EVENT = 'celestial-body-upsert-response';
@@ -14,7 +16,8 @@ export interface CelestialBodyUpsertRequestIdentity {
 export const DEFAULT_SOLAR_SYSTEM_ID = 'sol';
 
 export interface CelestialBodyUpsertVisualization {
-  colorHex?: string;
+  colorHex?: string | null;
+  spectralClass?: string | null;
   textureKey?: string | null;
 }
 
@@ -23,9 +26,17 @@ export interface CelestialBodyMeshProfile {
 }
 
 export interface CelestialBodyUpsertPhysicalCatalog {
-  estimatedDiameterM?: number;
-  estimatedMassKg?: number;
-  radiusKm?: number;
+  massKg?: number | null;
+  meanRadiusKm?: number | null;
+  equatorialRadiusKm?: number | null;
+  radiusKm?: number | null;
+  estimatedDiameterM?: number | null;
+  estimatedMassKg?: number | null;
+  rotationPeriodSec?: number | null;
+  axialTiltDeg?: number | null;
+  surfaceGravityMps2?: number | null;
+  meanTemperatureK?: number | null;
+  compositionTags?: string[];
 }
 
 export interface CelestialBodyUpsertEntity {
@@ -37,8 +48,10 @@ export interface CelestialBodyUpsertEntity {
   sourceScanId: string;
   /** Character ID that created/discovered this body. */
   createdByCharacterId: string;
-  /** Optional viewer body type hint (e.g., 'asteroid'). */
-  bodyType?: string;
+  /** Required canonical scientific body type. */
+  bodyType: CanonicalBodyType;
+  /** Required canonical appearance classification; distinct from planetType. */
+  surfaceArchetype: SurfaceArchetype;
   /** Optional viewer-facing display name. */
   displayName?: string;
   /** Optional mission scope for asteroid fields that belong to a mission. */
@@ -59,17 +72,21 @@ export interface CelestialBodyUpsertEntity {
   updatedAt: string;
   spatial: SpatialState;
   motion?: MotionState;
-  physical?: PhysicalState;
-  /** Optional viewer-native physical catalog mirror for downstream consumers. */
-  physicalCatalog?: CelestialBodyUpsertPhysicalCatalog;
+  physical?: PhysicalState | null;
+  /** Optional catalog/source values, distinct from gameplay physical estimates. */
+  physicalCatalog?: CelestialBodyUpsertPhysicalCatalog | null;
+  orbitalElements?: CanonicalViewerBodyOrbitalElements | null;
+  spectralClass?: string | null;
+  luminositySolar?: number | null;
+  parentBodyId?: string | null;
   /** Optional viewer-native visualization hint (color/texture). */
-  visualization?: CelestialBodyUpsertVisualization;
+  visualization?: CelestialBodyUpsertVisualization | null;
   /** Optional viewer-native asteroid mesh profile hint. */
   meshProfileKey?: string | null;
-  composition?: AsteroidMaterialProfile;
+  composition?: AsteroidMaterialProfile | null;
   observability: ObservabilityState;
-  /** Lifecycle state: unscanned | active | destroyed. Defaults to 'active'. */
-  state?: 'unscanned' | 'active' | 'destroyed';
+  /** Required lifecycle state: unscanned | active | destroyed. */
+  state: 'unscanned' | 'active' | 'destroyed';
   /** ISO timestamp when body was destroyed. Only present if state=destroyed. */
   destroyedAt?: string | null;
   /** Reason for destruction (e.g., 'impacted-by:expendable-dart-drone'). */

@@ -92,6 +92,14 @@ export class ShipExteriorCelestialBodyController {
           : undefined;
       const displayNamePrefix = material?.material?.trim() || 'Asteroid';
       const displayName = `${displayNamePrefix} ${sample.id}`;
+      if (item.state === 'destroyed' && !material) {
+        appLogger.error(
+          '[ship-exterior-contract] Cannot persist a destroyed celestial body without its required composition.',
+          { bodyId: requestedCelestialBodyId, sampleId: sample.id },
+        );
+        resolve();
+        return;
+      }
       const request: CelestialBodyUpsertRequest = {
         sessionKey,
         playerName,
@@ -108,6 +116,7 @@ export class ShipExteriorCelestialBodyController {
           sourceScanId: sample.id,
           createdByCharacterId,
           bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           displayName,
           missionId: this.deps.missionId,
           createdAt: nowIso,
@@ -141,7 +150,7 @@ export class ShipExteriorCelestialBodyController {
             visibility: 'visible',
             scanState: item.state === 'unscanned' ? 'unscanned' : 'scanned',
           },
-          state: item.state === 'destroyed' ? 'destroyed' : 'active',
+          state: item.state === 'destroyed' ? 'destroyed' : material ? 'active' : 'unscanned',
         },
       };
 

@@ -11,7 +11,7 @@
  */
 import { createSeededRng, fnv1a32 } from './planet-seed';
 
-export const GAS_GIANT_GENERATOR_VERSION = 'gas-giant-v1';
+export const GAS_GIANT_GENERATOR_VERSION = 'gas-giant-v2';
 
 export type GasGiantPalette = 'jovian' | 'saturnian' | 'ice';
 export const GAS_GIANT_PALETTES: readonly GasGiantPalette[] = ['jovian', 'saturnian', 'ice'];
@@ -96,6 +96,7 @@ export interface GasGiantProfile {
 export interface GasGiantProfileOverrides {
   palette?: GasGiantPalette;
   rings?: boolean;
+  surfaceArchetype?: 'gas-giant' | 'ice-giant';
 }
 
 /** Maximum vortices the shader accepts; the profile never exceeds it. */
@@ -335,11 +336,12 @@ function buildRings(palette: GasGiantPalette, spec: PaletteSpec, random: () => n
 const profileCache = new Map<string, GasGiantProfile>();
 
 export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfileOverrides = {}): GasGiantProfile {
-  const cacheKey = `${bodyId}|${overrides.palette ?? '*'}|${overrides.rings ?? '*'}`;
+  const surfaceArchetype = overrides.surfaceArchetype ?? 'gas-giant';
+  const cacheKey = `${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${bodyId}|${overrides.palette ?? '*'}|${overrides.rings ?? '*'}`;
   const cached = profileCache.get(cacheKey);
   if (cached) return cached;
 
-  const seed = fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${bodyId}`);
+  const seed = fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${bodyId}`);
   const random = createSeededRng(seed);
   const paletteRoll = random();
   const seededPalette: GasGiantPalette = paletteRoll < 0.4 ? 'jovian' : paletteRoll < 0.72 ? 'saturnian' : 'ice';
@@ -349,7 +351,8 @@ export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfile
   const hasRings = overrides.rings ?? ringRoll < spec.ringChance;
 
   // Each feature draws from its own stream so overriding one choice never reshuffles the others.
-  const stream = (name: string) => createSeededRng(fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${name}|${bodyId}`));
+  const stream = (name: string) =>
+    createSeededRng(fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${name}|${bodyId}`));
   const shape = stream('shape');
   const axialTilt = round6(lerp(0.03, palette === 'ice' ? 0.5 : 0.48, shape()));
   const turbulence = round6(lerp(spec.turbulence[0], spec.turbulence[1], shape()));

@@ -19,6 +19,7 @@ import {
   type LaunchItemRequestIdentity,
   type LaunchItemResponse,
 } from '../model/launch-item';
+import { validateCanonicalBodyClassification } from '../model/celestial-classification';
 import {
   SHIP_LIST_BY_OWNER_REQUEST_EVENT,
   SHIP_LIST_BY_OWNER_RESPONSE_EVENT,
@@ -407,6 +408,12 @@ export class ShipExteriorSocketService {
         return;
       }
 
+      const targetBody = response.resolution?.targetCelestialBody;
+      const bodyError = targetBody ? validateCanonicalBodyClassification(targetBody) : null;
+      if (bodyError) {
+        appLogger.error('[celestial-body-contract]', `invalid launch target body: ${bodyError}`);
+        return;
+      }
       onResponse(response);
     });
   }
@@ -636,6 +643,14 @@ export class ShipExteriorSocketService {
           return;
         }
 
+        const bodyError = response.celestialBodies
+          .map((body) => validateCanonicalBodyClassification(body))
+          .find((reason) => reason !== null);
+        if (bodyError) {
+          appLogger.error('[celestial-body-contract]', bodyError);
+          unsubscribe();
+          return;
+        }
         unsubscribe();
         onResponse(response);
       },

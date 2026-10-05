@@ -1,6 +1,12 @@
 import { AsteroidMaterialProfile } from './asteroid-materials';
 import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
 import { Triple } from './triple';
+import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
+import type {
+  CanonicalViewerBodyOrbitalElements,
+  ViewerBodyPhysicalCatalog,
+  ViewerBodyVisualization,
+} from './solar-system-get';
 
 export const CELESTIAL_BODY_LIST_REQUEST_EVENT = 'celestial-body-list-request';
 export const CELESTIAL_BODY_LIST_RESPONSE_EVENT = 'celestial-body-list-response';
@@ -28,31 +34,57 @@ export interface CelestialBodyListRequest {
 
 export interface CelestialBodyListItem {
   id: string;
+  bodyType: CanonicalBodyType;
+  surfaceArchetype: SurfaceArchetype;
   catalogId: string;
   sourceScanId: string;
   createdByCharacterId: string;
   meshProfileKey?: string | null;
-  missionId?: string;
-  missionInstanceId?: string | null;
+  missionId: string | null;
+  missionInstanceId: string | null;
   createdAt: string;
   updatedAt: string;
   spatial: SpatialState;
   motion?: MotionState;
-  physical?: PhysicalState;
-  composition?: AsteroidMaterialProfile;
+  physical?: PhysicalState | null;
+  physicalCatalog?: ViewerBodyPhysicalCatalog | null;
+  atmosphere?: {
+    hasAtmosphere: boolean;
+    surfacePressurePa?: number | null;
+    primaryComponents?: string[];
+  } | null;
+  discovery?: {
+    discoveredBy?: string | null;
+    discoveredYear?: number | null;
+    discoveryNotes?: string | null;
+  } | null;
+  magnitudes?: {
+    absoluteMagnitudeH?: number | null;
+    apparentMagnitudeMin?: number | null;
+    apparentMagnitudeMax?: number | null;
+  } | null;
+  hygId?: string | null;
+  isCatalogBody?: boolean;
+  orbitalElements?: CanonicalViewerBodyOrbitalElements | null;
+  visualization?: ViewerBodyVisualization | null;
+  spectralClass?: string | null;
+  luminositySolar?: number | null;
+  parentBodyId?: string | null;
+  planetType?: string | null;
+  composition?: AsteroidMaterialProfile | null;
   observability: ObservabilityState;
-  state?: 'active' | 'destroyed';
-  destroyedAt?: string | null;
-  destroyedReason?: string | null;
-  debrisSeed?: number | null;
-  debris?: Array<{
+  state: 'unscanned' | 'active' | 'destroyed';
+  destroyedAt: string | null;
+  destroyedReason: string | null;
+  debrisSeed: number | null;
+  debris: Array<{
     material: string;
     rarity: 'Common' | 'Uncommon' | 'Rare' | 'Exotic';
     quantity: number;
     itemType: string;
   }>;
   /** Computed distance from the search origin, in kilometres. */
-  distanceKm: number;
+  distanceKm?: number;
 }
 
 export interface CelestialBodyListResponse {

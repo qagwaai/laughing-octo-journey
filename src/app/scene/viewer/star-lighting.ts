@@ -14,6 +14,7 @@
  * the same body were seen under different light.
  */
 import type { ViewerBody } from '../../model/solar-system-get';
+import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { spectralClassLetter } from '../../model/star/spectral-class';
 import { STAR_CLASS_TRAITS } from '../../model/star/star-class-traits';
 import { deriveStarProfile, type StarProfile } from '../../model/star/star-profile';
@@ -113,14 +114,24 @@ export function spectralClassColor(spectralClass: string | null | undefined): st
 
 /** The spectral class a star body renders as: art direction first, then the catalogue class. */
 export function resolveStarSpectralClass(body: ViewerBody): string | null {
-  return body.visualization?.spectralClass?.trim() || body.spectralClass?.trim() || null;
+  return body.spectralClass?.trim() || null;
 }
 
 /** Procedural star look for a viewer body, keeping any explicit art-directed colour. */
 export function deriveViewerStarProfile(body: ViewerBody): StarProfile {
+  const appearance = resolveCelestialAppearance({
+    source: 'canonical',
+    bodyId: body.id,
+    bodyType: body.bodyType,
+    surfaceArchetype: body.surfaceArchetype,
+  });
+  if (!appearance.valid || appearance.input.renderer !== 'star') {
+    throw new Error(`Invalid stellar appearance contract for body ${body.id}: ${appearance.valid ? 'not a star renderer' : appearance.reason}`);
+  }
   const explicit = body.visualization?.colorHex?.trim();
   return deriveStarProfile(body.id, resolveStarSpectralClass(body), {
     colorHex: explicit && parseHex(explicit) ? explicit : null,
+    surfaceArchetype: 'star',
   });
 }
 
@@ -134,7 +145,6 @@ export function resolveStarColor(body: ViewerBody): string {
   if (explicit && parseHex(explicit)) return explicit;
 
   return (
-    spectralClassColor(body.visualization?.spectralClass) ??
     spectralClassColor(body.spectralClass) ??
     DEFAULT_STAR_COLOR
   );
@@ -155,7 +165,8 @@ export function resolveStarLightColor(body: ViewerBody, strength: number = STAR_
  */
 function luminosityWeight(body: ViewerBody): number {
   const luminosity = body.luminositySolar;
-  if (typeof luminosity !== 'number' || !Number.isFinite(luminosity) || luminosity <= 0) return 1;
+  if (typeof luminosity !== 'number' || !Number.isFinite(luminosity)) return 1;
+  if (luminosity === 0) return 0;
   return Math.sqrt(luminosity);
 }
 
@@ -176,7 +187,7 @@ export function resolveStarLights(stars: readonly StarLightInput[], totalIntensi
     id: star.id,
     color: resolveStarLightColor(star.body),
     position: star.position,
-    intensity: total > 0 ? (totalIntensity * weights[index]) / total : totalIntensity / stars.length,
+    intensity: total > 0 ? (totalIntensity * weights[index]) / total : 0,
   }));
 }
 

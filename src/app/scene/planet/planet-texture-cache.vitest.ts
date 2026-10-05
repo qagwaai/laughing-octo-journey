@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import type { PlanetBakeOptions, PlanetBakeResult } from './planet-bake';
+import type { SurfaceArchetype } from '../../model/celestial-classification';
+import type { ResolvablePlanetBody } from './planet-surface-resolver';
 import { isTexturableBody, resolvePlanetSurface } from './planet-surface-resolver';
 import {
   PLANET_CACHE_BAKE_FN,
@@ -28,8 +30,10 @@ class ManualScheduler {
   }
 }
 
-function makeBody(id: string, bodyType = 'planet') {
-  return { id, bodyType, displayName: id };
+function makeBody(id: string, bodyType = 'planet'): ResolvablePlanetBody {
+  const surfaceArchetype: SurfaceArchetype =
+    bodyType === 'star' ? 'star' : bodyType === 'moon' ? 'rocky-moon' : bodyType === 'asteroid' ? 'asteroid' : 'rocky';
+  return { id, bodyType, surfaceArchetype, displayName: id };
 }
 
 interface Harness {
@@ -82,8 +86,8 @@ describe('planet surface resolver', () => {
     expect(isTexturableBody(null)).toBe(false);
   });
 
-  it('ignores case and surrounding whitespace on body type', () => {
-    expect(isTexturableBody(makeBody('a', '  Planet '))).toBe(true);
+  it('rejects noncanonical body types instead of inferring a renderer', () => {
+    expect(isTexturableBody(makeBody('a', '  Planet '))).toBe(false);
   });
 
   it('builds keys that separate tiers and bodies', () => {
@@ -94,6 +98,20 @@ describe('planet surface resolver', () => {
     expect(a?.key).not.toEqual(b?.key);
     expect(a?.key).not.toEqual(c?.key);
     expect(a?.key).toContain('alpha');
+  });
+
+  it('builds keys that separate archetypes for the same body and tier', () => {
+    const rocky = resolvePlanetSurface(
+      { id: 'same-id', bodyType: 'planet', surfaceArchetype: 'rocky' },
+      'l0',
+    );
+    const ocean = resolvePlanetSurface(
+      { id: 'same-id', bodyType: 'planet', surfaceArchetype: 'ocean' },
+      'l0',
+    );
+
+    expect(rocky?.key).not.toBe(ocean?.key);
+    expect(ocean?.fallbackReason).toContain('ocean');
   });
 
   it('returns null for untexturable bodies and bodies without an id', () => {

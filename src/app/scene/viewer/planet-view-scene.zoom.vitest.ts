@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ViewerBody } from '../../model/solar-system-get';
 import {
-  resolveOrbitAngleRad,
+  resolvePlanetViewSnapshotPosition,
   resolveOrbitRadiusUnits,
   resolvePlanetViewBodyRadiusKm,
   resolvePlanetViewCameraDistanceRange,
@@ -133,8 +133,11 @@ describe('planet-view helper utilities', () => {
     expect(resolveOrbitRadiusUnits(1e20)).toBe(42);
   });
 
-  it('resolveOrbitAngleRad uses anomaly when present and hash fallback otherwise', () => {
+  it('uses three-dimensional snapshot offsets instead of orbital anomaly in detail view', () => {
+    const selected = makeBody('planet-1', 'planet');
+    selected.spatial.positionKm = { x: 100, y: 200, z: 300 };
     const withAnomaly = makeBody('moon-with-angle', 'moon');
+    withAnomaly.spatial.positionKm = { x: 103, y: 204, z: 300 };
     withAnomaly.orbitalElements = {
       anchorBodyId: 'planet-1',
       semiMajorAxisKm: 120_000,
@@ -147,11 +150,8 @@ describe('planet-view helper utilities', () => {
       epoch: '2026-01-01T00:00:00.000Z',
     };
 
-    expect(resolveOrbitAngleRad(withAnomaly)).toBeCloseTo(Math.PI / 2, 10);
-
-    const fallbackA = makeBody('moon-hash-a', 'moon');
-    const fallbackB = makeBody('moon-hash-b', 'moon');
-    expect(resolveOrbitAngleRad(fallbackA)).not.toBe(resolveOrbitAngleRad(fallbackB));
+    expect(resolvePlanetViewSnapshotPosition(selected, withAnomaly, 10)).toEqual([6, 0, 8]);
+    expect(resolvePlanetViewSnapshotPosition(selected, selected, 10)).toEqual([0, 0, 0]);
   });
 
   it('resolveStarMarker returns null when no star exists', () => {
@@ -199,7 +199,7 @@ describe('planet-view helper utilities', () => {
     expect(markers[0].body).toBe(primary);
   });
 
-  it('resolveStarMarkers fans apart stars catalogued at the same point', () => {
+  it('resolveStarMarkers preserves coincident snapshots without order-dependent fan offsets', () => {
     const selected = makeBody('planet-1', 'planet', 12_742_000);
     const first = makeBody('star-1', 'star', 100_000_000);
     const second = makeBody('star-2', 'star', 100_000_000);
@@ -207,6 +207,8 @@ describe('planet-view helper utilities', () => {
     const markers = resolveStarMarkers(selected, [selected, first, second], 9);
 
     expect(markers).toHaveLength(2);
-    expect(markers[0].position).not.toEqual(markers[1].position);
+    expect(markers[0].position).toEqual([0, 0, 0]);
+    expect(markers[0].position).toEqual(markers[1].position);
+    expect(resolveStarMarkers(selected, [second, first, selected], 9)[0].position).toEqual(markers[1].position);
   });
 });

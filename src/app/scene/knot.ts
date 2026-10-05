@@ -178,7 +178,14 @@ export default class Knot {
       const stormActivity = this.cloudSettings.stormActivity();
       if (giant && giantLook !== `${palette}|${rings}`) {
         const quality = untracked(() => this.state.quality());
-        const next = createSplashGasGiant({ bodyId: this.state.planetBodyId, quality, palette, rings, stormActivity });
+        const next = createSplashGasGiant({
+          bodyId: this.state.planetBodyId,
+          surfaceArchetype: this.state.planetSurfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
+          quality,
+          palette,
+          rings,
+          stormActivity,
+        });
         giant = replaceSplashGasGiant(giant, next);
         celestialBody = giant.group;
         giantLook = `${palette}|${rings}`;
@@ -231,6 +238,8 @@ export default class Knot {
             const rings = this.gasGiantSettings.rings();
             giant = createSplashGasGiant({
               bodyId: this.state.planetBodyId,
+              surfaceArchetype:
+                this.state.planetSurfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
               quality,
               palette,
               rings,
@@ -253,7 +262,10 @@ export default class Knot {
             backdrop = createMiningBackdropAround(quality, star.group);
             celestialBody = star.group;
           } else {
-            planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId);
+            if (!this.state.planetSurfaceArchetype) {
+              throw new Error('Splash demo has no valid surface archetype.');
+            }
+            planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId, this.state.planetSurfaceArchetype);
             clouds = createPlanetCloudTexture(
               this.state.planetBodyId,
               quality === 'standard' ? 512 : 256,

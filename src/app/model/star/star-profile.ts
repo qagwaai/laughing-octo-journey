@@ -21,7 +21,7 @@ import {
   type StarSurfaceStyle,
 } from './star-class-traits';
 
-export const STAR_GENERATOR_VERSION = 'star-v1';
+export const STAR_GENERATOR_VERSION = 'star-v2';
 export const STAR_MAX_SPOTS = 8;
 /** Sol's class, used when a body carries no readable spectral class. */
 export const DEFAULT_SPECTRAL_CLASS = 'G2V';
@@ -86,6 +86,7 @@ const PROMINENCE_SCALE_BY_FAMILY: Readonly<Record<StarFamily, number>> = {
 export interface StarProfileOverrides {
   /** Explicit art direction, such as `visualization.colorHex`; wins over the class colour. */
   colorHex?: string | null;
+  surfaceArchetype?: 'star';
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -189,7 +190,7 @@ export function deriveStarProfile(
   const spectralClass = resolveSpectralClass(spectralClassValue);
   const traits = STAR_CLASS_TRAITS[spectralClass.letter];
   const modifiers = LUMINOSITY_MODIFIERS[spectralClass.luminosityClass];
-  const seed = fnv1a32(`${STAR_GENERATOR_VERSION}|${bodyId}`);
+  const seed = fnv1a32(`${STAR_GENERATOR_VERSION}|${overrides.surfaceArchetype ?? 'star'}|${bodyId}`);
   const random = createSeededRng(seed);
   const noiseOffset = [
     quantize(random() * 97),

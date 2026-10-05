@@ -13,6 +13,7 @@
 import { computed, inject, Injectable, InjectionToken, signal } from '@angular/core';
 import type { WebGLRenderer } from 'three';
 import type { PlanetLodTier } from '../../model/planet/planet-texture';
+import { appLogger } from '../../services/logger';
 import { bakePlanetTextures as _bakePlanetTextures, type PlanetBakeResult, supportsGpuBake } from './planet-bake';
 import { type PlanetSurfaceRequest, type ResolvablePlanetBody, resolvePlanetSurface } from './planet-surface-resolver';
 
@@ -72,6 +73,7 @@ export class PlanetTextureCache {
   private readonly queue: QueueEntry[] = [];
   private readonly queued = new Set<string>();
   private readonly failed = new Set<string>();
+  private readonly reportedFallbacks = new Set<string>();
   private ticking = false;
 
   /**
@@ -143,6 +145,15 @@ export class PlanetTextureCache {
 
     const request = resolvePlanetSurface(body, this.effectiveTier(tier, renderer));
     if (!request) return null;
+    if (request.fallbackReason && !this.reportedFallbacks.has(request.key)) {
+      this.reportedFallbacks.add(request.key);
+      appLogger.warn('[celestial-appearance-fallback]', {
+        bodyId: request.bodyId,
+        surfaceArchetype: request.surfaceArchetype,
+        renderer: request.archetype,
+        reason: request.fallbackReason,
+      });
+    }
 
     const cached = this.peek(request.key);
     if (cached) return cached;
@@ -173,6 +184,7 @@ export class PlanetTextureCache {
     this.queue.length = 0;
     this.queued.clear();
     this.failed.clear();
+    this.reportedFallbacks.clear();
     this.readySignal.set(new Map());
     this.enqueuedCount.set(0);
     this.settledCount.set(0);
@@ -267,6 +279,7 @@ export class PlanetTextureCache {
         bodyId: request.bodyId,
         tier: request.tier,
         archetype: request.archetype,
+        surfaceArchetype: request.surfaceArchetype,
         renderer,
       });
       this.entries.set(request.key, result);

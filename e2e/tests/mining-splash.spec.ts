@@ -384,7 +384,7 @@ test('renders a pinned gas giant with its own controls and no shader errors', as
   await expect(page.getByRole('slider', { name: /Storm activity/ })).toBeVisible();
   await expect.poll(() => readSplashGasGiant(page)).toEqual({
     bodyId: 'nova-splash-giant-05',
-    palette: 'jovian',
+    palette: 'saturnian',
     rings: true,
   });
 

@@ -68,7 +68,9 @@ describe('planet seeding', () => {
   });
 
   it('changes the seed when the generator version changes', () => {
-    expect(derivePlanetClimate('body-42').seed).toBe(fnv1a32(`${PLANET_GENERATOR_VERSION}|terran|body-42`));
+    expect(derivePlanetClimate('body-42').seed).toBe(
+      fnv1a32(`${PLANET_GENERATOR_VERSION}|rocky|terran|body-42`),
+    );
   });
 });
 

@@ -103,11 +103,24 @@ The same quality tiering already present in the splash (standard 2048, low 1024)
 
 ### Seeding and the Forge contract
 
-Forge will seed the bodies in a solar system, so there is a contract question about who decides what a planet looks like. That contract is **deliberately deferred**. Nova will derive planet appearance locally, from a deterministic hash of the body `id`, producing climate scalars such as water fraction, ice latitude, surface roughness, and hue bias.
+Forge 4.0 now owns durable canonical body IDs and the required `bodyType` +
+`surfaceArchetype` classification. Nova derives appearance locally from those
+canonical inputs and its own versioned generator; Forge does not persist a Nova
+seed, generator version, or generated pixels. `planetType` remains a separate
+catalog concept, and `visualization.textureKey` is not a procedural-texture
+mechanism. A single appearance resolver routes both canonical Viewer bodies and
+explicitly marked local splash demos. Missing, unknown, or incompatible
+canonical classification is reported as invalid contract data; valid
+archetypes without a dedicated renderer use the documented, observable
+fallback below.
 
-`planetType` and `visualization.textureKey` remain untouched placeholders until the visuals are proven. The contract will then be negotiated from evidence about which parameters actually matter, rather than guessed in advance. The expected eventual split is that Forge owns the seed and coarse classification while Nova owns everything from those numbers to pixels, which keeps the OpenAPI surface small and allows the renderer to change without server changes.
+Appearance is deterministic for body ID + canonical surface archetype +
+renderer-specific Nova generator version. A generator-version change may
+intentionally change appearance; splash controls, camera state, target
+selection, and generated texture pixels remain local and are not persisted.
 
-Per repository policy, `openapi.yaml` remains the only contract authority; nothing here changes the contract yet.
+Per repository policy, Forge's OpenAPI and referenced schemas remain the
+contract authority.
 
 ### Splash screen
 
@@ -115,21 +128,27 @@ The splash becomes fully procedural and accepts an Earth-like planet rather than
 
 Self-hosting public-domain NASA imagery was considered and set aside. It would resolve the provenance concern raised in [splash1-2026-09-27.md](./splash1-2026-09-27.md) but would not generalize to seeded bodies.
 
-### Archetypes
+### Contract archetypes and current renderer support
 
-Stage 1 ships **terran only**. The generator is structured around a `PlanetArchetype` union so further archetypes can be added without reworking the seeding or bake plumbing.
+The Forge enum is a canonical classification, not a claim that Nova has a
+dedicated renderer for each value. Current routing is explicit:
 
-Planned additions, in rough priority order:
+| Forge `surfaceArchetype` | Nova renderer               | Current behavior                                         |
+| ------------------------ | --------------------------- | -------------------------------------------------------- |
+| `rocky`                  | Terran procedural surface   | Dedicated terran renderer                                |
+| `lava`                   | Terran procedural surface   | Observable fallback; classification remains `lava`       |
+| `ocean`                  | Terran procedural surface   | Observable fallback; classification remains `ocean`      |
+| `gas-giant`              | Banded gas giant            | Dedicated renderer                                       |
+| `ice-giant`              | Banded gas giant            | Ice palette, as previously approved                      |
+| `star`                   | Procedural star             | Dedicated renderer                                       |
+| `rocky-moon`             | Terran procedural surface   | Observable fallback; classification remains `rocky-moon` |
+| `icy-moon`               | Terran procedural surface   | Observable fallback; classification remains `icy-moon`   |
+| `asteroid`               | Deformed-rock asteroid mesh | Dedicated renderer                                       |
 
-| Archetype   | Approach                                                                                                   | Notes                                                         |
-| ----------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Barren rock | Reuses the terran elevation model with water disabled and a grey/brown ramp                                | Cheapest addition; also covers most moons in the viewer       |
-| Ice         | Terran model with a high-albedo ramp and fracture noise                                                    | Needs a ridged fracture layer rather than mountains           |
-| Desert      | Terran model with no ocean and wind-banded striation                                                       | Mostly a colour ramp plus anisotropic noise                   |
-| Volcanic    | Terran model plus emissive fissures keyed to the ridged layer                                              | First archetype needing an emissive output                    |
-| Gas giant   | **Separate algorithm.** Banded flow with latitude-driven advection and vortices; no elevation model at all | Not a parameter tweak; do not force it into the terran shader |
-
-Each new archetype must extend both the CPU reference and the GLSL mirror, and the parity test should be extended to cover it.
+Fallback use is reported through Nova's existing contract-variance toast. It
+does not rewrite or infer the canonical archetype. Add a dedicated appearance
+only with explicit mapping, generator versioning, and CPU/GPU parity coverage
+where the renderer uses both paths.
 
 ## Implementation plan
 
@@ -419,11 +438,12 @@ The tests now poll the cache itself and assert a specific surface count, and the
 
 ### Where this stands
 
-Stages 1, 2 and 3 are implemented and validated, along with three unplanned fixes that live inspection turned up after Stage 3: the ocean surface fix, the water material map, and star-colour lighting. Stage 4 has not started.
+At the earlier handoff, Stages 1, 2 and 3 were implemented and validated, and
+Stage 4 had not started. The uncommitted status described at that handoff is
+historical; the current Forge integration is also uncommitted and no commit is
+created by this work.
 
-**The working tree is not committed.** Everything described in this document from Stage 1 onward exists only as uncommitted local changes, including several new untracked directories (`src/app/model/planet/`, `src/app/scene/planet/`), new files (`star-lighting.ts`, `planet.ts`, the two new e2e specs) and this document itself. Committing is the first thing to do next session, before any new work.
-
-### Validation status at handoff
+### Earlier validation snapshot (before Forge 4.0 appearance integration)
 
 Full sweep run after the star-lighting work, all green:
 
@@ -437,23 +457,184 @@ npx playwright test e2e/tests/viewer-planet-surfaces.spec.ts e2e/tests/planet-vi
   e2e/tests/mining-splash.spec.ts --reporter=line   # 40 passed
 ```
 
-Two pre-existing issues are unrelated to this work and were deliberately left alone: a Prettier warning on `asteroid-scan-detail-panel.html`, and the `cold-boot-scan.css` budget warning.
+At that earlier handoff, two unrelated issues were deliberately left alone: a
+Prettier warning on `asteroid-scan-detail-panel.html` and the
+`cold-boot-scan.css` budget warning.
 
-### Remaining work, in the order it probably wants doing
+### Forge 4.0 integration and visual-validation handoff
 
-1. **Commit the working tree.** See above.
-2. **Build a dev-only preview harness.** Look tuning currently needs a throwaway render script each time. This is the main drag on the archetype work below, which is the bulk of what remains.
-3. **Decide Sol: hand-tuned archetypes versus committed NASA/JPL public-domain imagery.** The plan names this a prerequisite for Stage 4. Note the options are not symmetric: archetypes are needed either way for seeded non-Sol systems, so this decision only settles whether Sol _specifically_ gets committed imagery as a shortcut.
-4. **Add archetypes.** `resolvePlanetArchetype()` still returns `'terran'` unconditionally. Planned order: barren rock (also covers most viewer moons), ice, desert, volcanic, then gas giant — which is a separate banded-flow algorithm with no elevation model, not a parameter tweak. Each archetype must extend the CPU reference, the GLSL mirror **and** the parity spec.
-5. **Stage 4 — the Forge contract.** Blocked on item 3.
+Nova now validates canonical Forge body identity/classification before Viewer
+ingestion, uses a shared appearance resolver for the splash and Viewer, and
+includes body ID, archetype, generator version, and (for planet textures) LOD
+in deterministic generation/cache identity. Splash fixtures are local demos,
+not persisted world entities. Snapshot placement was separately approved after
+appearance validation. Viewer now uses stored positions with the display-only
+proper rotation `(x, y, z) -> (x, -z, y)` and the existing readable distance scaling.
+No parent translation or orbital reconstruction is applied to body placement.
+System and detail guides use the documented orbital rotation followed by that
+display rotation, but remain illustrative rather than physical trajectories.
+Canonical coordinates and API writes remain unchanged; splash, HYG/global space
+and ship-exterior flight rendering are separate coordinate boundaries.
+
+Automated checks pass:
+
+- Focused appearance/contract/mission Vitest selection: 19 files, 281 tests.
+- `npm run typecheck` — passed.
+- `npm run lint` — passed.
+- `npm run build` — passed, including Angular template and E2E partition
+  validation.
+- `npx playwright test e2e/tests/mining-splash.spec.ts e2e/tests/viewer-planet-surfaces.spec.ts e2e/tests/viewer-scene-rendering.spec.ts --reporter=line`
+  — 44 passed.
+
+These checks validate fixture-driven flows, not the live authenticated Forge
+Socket.IO handlers or visual equivalence. The user completed appearance visual
+validation on 2026-10-04. That approval precedes the coordinate-adoption change
+described below and does not approve its new placement.
+
+#### User visual check: explicit renderer fallbacks (2026-10-04)
+
+The user confirmed that Stellar Viewer surfaced the existing fallback
+notifications for these canonical bodies:
+
+| Body ID       | Canonical archetype | Renderer | Result                                  |
+| ------------- | ------------------- | -------- | --------------------------------------- |
+| `sol-himalia` | `rocky-moon`        | terran   | Explicit fallback notification observed |
+| `sol-earth`   | `ocean`             | terran   | Explicit fallback notification observed |
+| `sol-titania` | `icy-moon`          | terran   | Explicit fallback notification observed |
+| `sol-io`      | `lava`              | terran   | Explicit fallback notification observed |
+
+The initial report validated fallback observability for these bodies. The user
+subsequently marked appearance visual validation complete and authorized the
+separate snapshot-placement adoption, including Chrome DevTools validation.
+`sol-earth`'s `ocean` value is Forge's canonical `surfaceArchetype`, not a
+classification Nova inferred from `planetType`, `visualization.textureKey`,
+or generated water coverage. Nova preserves that value in appearance identity
+and currently routes it through the terran renderer with the notification
+above. The procedural terran appearance may include generated oceans, but
+`ocean` does not select a dedicated ocean renderer yet.
+
+Manual splash checks use a local URL and keep all current splash controls:
+
+1. Run `npm start` and open
+   `http://localhost:4200/knot(left:intro)?splashPlanet=nova-splash-homeworld`.
+   Confirm the procedural rocky world loads and the overlay reaches Ready.
+2. Open
+   `http://localhost:4200/knot(left:intro)?splashPlanet=nova-splash-giant-01`.
+   Confirm the banded gas giant and ring/storm controls appear.
+3. Open
+   `http://localhost:4200/knot(left:intro)?splashPlanet=nova-splash-star-g`.
+   Confirm the star and its G-class presentation render, without terran-cloud
+   controls.
+4. For each, reload the same URL and compare the body appearance. Test manual
+   orbit, zoom, still-image mode, and return to 3D to confirm these controls
+   still work and do not change the fixture identity.
+5. In Stellar Viewer, use an authorized account and select a system containing
+   a star, rocky body, gas giant/ice giant, and asteroid. Confirm color,
+   catalog-derived size, star class/luminosity, and existing placement remain
+   sensible. If the system contains `lava`, `ocean`, `rocky-moon`, or
+   `icy-moon`, verify the current terran fallback is visibly reported by the
+   contract-variance toast and that canonical classification is not rewritten.
+6. Capture screenshots of splash and Viewer plus any toast or console errors,
+   and report the URLs/system and body IDs used. Do not share credentials or
+   session keys. No visual equivalence or visual approval is claimed until
+   these checks are completed by the user.
+
+### Remaining work
+
+The user confirmed visual approval on 2026-10-04 for snapshot placement,
+display-basis alignment, proportional distances as the default, and the overlay
+toggle retaining compressed overview. Appearance validation was already complete.
+Additional planet-name markers remain deferred.
+
+1. Consider dedicated lava, ocean, rocky-moon, and icy-moon renderers as
+   separate visual work; until implemented, the explicit terran fallback is
+   intentional and observable.
+
+#### Snapshot/display-basis validation and user handoff (2026-10-04)
+
+- `npm run test:spec -- src\app\scene\viewer\viewer-formatters.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\viewer\star-lighting.vitest.ts src\app\scene\mining-splash.vitest.ts`
+  — 109 passed across five files.
+- `npm run test:spec -- src\app\services\ship-flight-position-persistence.service.vitest.ts src\app\scene\ship-exterior\asteroid-persistence.service.vitest.ts`
+  — nine passed; canonical write behavior preserved.
+- `npm run typecheck`, `npm run lint`, `npm run build` — passed.
+- `$env:PLAYWRIGHT_HTML_OPEN='never'; npx playwright test 'viewer-scene-rendering.spec.ts' 'viewer-planet-surfaces.spec.ts' 'viewer-ships.spec.ts' 'planet-view-zoom.spec.ts' 'viewer-controls-after-target.spec.ts' --reporter=line`
+  — 41 passed, including setup. Filename selectors avoid Windows backslashes being
+  interpreted as Playwright regular-expression escapes.
+- Chrome DevTools checked all 99 inspected live Sol celestial meshes against
+  transformed snapshot projection; none differed. Jupiter was
+  `[-15.655, -0.277, 17.702]`, approximately 0.000246 scene units from its
+  illustrative guide plane. The camera retained Y-up.
+- Jupiter detail: all 12 moon directions matched transformed snapshot differences
+  (maximum measured error 2.6e-15 scene units). Tilted guides, star lighting, and
+  moon focus were inspected; no console errors were observed during those checks.
+- Companion-star/moon checks use an isolated frontend fixture in both system and
+  detail views, including lights and pick-shell placement. No live companion
+  system or shared physical astronomical alignment is claimed.
+- A later live reload returned `missing-session`. Reauthentication is needed for
+  further live checks; successful snapshot measurements do not prove live session
+  reload/reconnect recovery. No backend process was restarted.
+
+Visual-validator steps:
+
+1. Sign in, open Viewer, select Sol, expand Planet, and target Jupiter.
+2. Compare with the earlier plane-mismatch screenshot: Jupiter should no longer
+   sit far above the system plane. Rotate, pan, and zoom after target flight settles.
+3. Right-click Jupiter to open detail. Check Io/Europa/Ganymede/Callisto and the
+   inclined outer-moon guides; use a moon's Focus button and test zoom.
+4. Right-click empty detail space to return. Target a station and ship; neither
+   receives invented parent translation. Station guide/body disagreement can be
+   a documented backend producer limitation, not a placement correction request.
+5. Reload and repeat after reauthentication if required. Report system/body IDs,
+   screenshots, and errors without credentials.
+
+Guides remain readable illustrations, not reconstructed trajectories. Canonical
+coordinate diagnostics are intentionally unchanged. Splash appearance, caches,
+global parsec data, and ship-exterior flight/write coordinates are unaffected.
 
 ### Smaller open items
 
-- **The star mesh colour still ignores `spectralClass`.** `resolveBodyColor` was left unchanged, so a B-class star casts blue light while the sphere itself may not look blue. Inconsistent, and a small fix.
+#### Proportional-distance overview (2026-10-04)
+
+Following the user's proportional-distance reference, the default system view now
+uses a uniform linear scale of five scene units per AU. An English/Italian overlay
+button switches between proportional distances and the retained compressed overview.
+This is page-local display state, not a Forge persistence change.
+
+Canonical positions/directions are preserved in both modes. Proportional mode
+disables the local asteroid readability reprojection and system-guide minimum/
+anchored compression so they do not break distance ratios. Planet sizes remain
+enlarged; moons and stations can overlap their hosts at system scale. Planetary
+Lens remains the readable local view. Camera bounds/clipping expand with system
+extent and switching re-centers an existing target without changing its identity.
+
+Validation:
+
+- `npm run test:spec -- src\app\scene\viewer\viewer-formatters.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\page\game\viewer-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\viewer\star-lighting.vitest.ts`
+  — 123 tests passed across five files.
+- `npm run typecheck`, `npm run lint`, `npm run build` — passed.
+- `$env:PLAYWRIGHT_HTML_OPEN='never'; npx playwright test 'viewer-controls-after-target.spec.ts' 'viewer-scene-rendering.spec.ts' 'viewer-ships.spec.ts' 'planet-view-zoom.spec.ts' 'viewer-planet-surfaces.spec.ts' --reporter=line`
+  — 42 passed including setup. Tests cover proportional default, round-trip
+  switching, canonical snapshots, companions/lights and selected-target centering.
+- Live Chrome DevTools verified all eight Sol planet positions against the linear
+  projection (maximum error 7.2e-15 scene units). Saturn's snapshot radius was
+  9.4385 AU / 47.1926 scene units; Neptune's was 29.8789 AU / 149.3947 units.
+  The overlay switched to compressed mode and back successfully; no console
+  errors were observed. The browser was left in proportional mode.
+- Whole-system framing includes distant dwarf objects, so planet meshes can be
+  nearly invisible at maximum overview zoom. The user deferred adding name
+  markers; no marker/label or additional readability changes were made.
+
+Visual handoff: reopen Sol, confirm the Proportional distances overlay, inspect
+inner-planet clustering and outer-planet spacing, then use the toggle in both
+directions. Target Earth or Saturn and toggle again; the same selected body should
+remain centered. Zoom/pan/rotate and open detail to inspect moons. Body sizes and
+screen-space perspective are not distance-proportional; do not infer physical
+separation from enlarged mesh edges.
+
 - **Web Worker offload for the L1 CPU fallback.** A 2048x1024 CPU bake measured roughly six seconds and currently runs on the main thread.
 - **Context-loss headroom is still only arithmetic.** The two-tier budget has never been measured on a low-end or integrated GPU.
 - **The parity spec has never run on CI or SwiftShader.** Its tolerances were set against one developer GPU, so the first CI run may need them revisited — the failure mode to expect is tolerance calibration, not algorithmic drift.
-- **The user has not yet reviewed the Stage 3 or star-lighting changes**; they asked to do that themselves.
+- **Coordinate validation is separate from appearance approval.** Both are now complete: the user confirmed placement and distance-mode visual approval on 2026-10-04 after automated and Chrome DevTools validation.
 
 ### The one lesson that keeps repeating
 

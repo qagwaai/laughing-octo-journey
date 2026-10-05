@@ -27,6 +27,8 @@ export const SOL_SYSTEM_BODIES: any[] = [
   {
     id: 'sun',
     bodyType: 'star',
+    surfaceArchetype: 'star',
+    state: 'unscanned',
     displayName: 'The Sun',
     spatial: {
       solarSystemId: 'sol',
@@ -44,6 +46,8 @@ export const SOL_SYSTEM_BODIES: any[] = [
   {
     id: 'earth',
     bodyType: 'planet',
+    surfaceArchetype: 'rocky',
+    state: 'unscanned',
     displayName: 'Earth',
     spatial: {
       solarSystemId: 'sol',
@@ -74,6 +78,8 @@ export const SOL_SYSTEM_BODIES: any[] = [
   {
     id: 'luna',
     bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
     displayName: 'Luna',
     spatial: {
       solarSystemId: 'sol',
@@ -103,6 +109,8 @@ export const SOL_SYSTEM_BODIES: any[] = [
   {
     id: 'mars',
     bodyType: 'planet',
+    surfaceArchetype: 'rocky',
+    state: 'unscanned',
     displayName: 'Mars',
     spatial: {
       solarSystemId: 'sol',

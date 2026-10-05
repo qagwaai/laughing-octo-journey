@@ -24,6 +24,8 @@ import {
   STAR_LIGHT_DISTANCE,
 } from './star-lighting';
 import type { ViewerBody } from '../../model/solar-system-get';
+import { resolveCatalogRadiusKm } from '../../model/physical-catalog';
+import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
 import { GasGiantBody } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
@@ -33,7 +35,7 @@ import { StarBody } from '../star/star-body';
 import { StarSettings } from '../star/star-settings';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { resolveBodyColor } from './viewer-formatters';
+import { resolveBodyColor, resolveViewerDisplayVector, resolveOrbitRotationEuler } from './viewer-formatters';
 import {
   PLANET_BASE_MOON_ORBIT,
   PLANET_FOCUS_RADIUS_UNIT,
@@ -63,6 +65,7 @@ interface LocalBody {
   radius: number;
   position: [number, number, number];
   orbitRadius: number;
+  orbitRotation: [number, number, number];
 }
 
 interface StarMarker {
@@ -100,11 +103,9 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function resolveEstimatedDiameterM(body: ViewerBody | null): number | null {
-  const diameterM = body?.physicalCatalog?.estimatedDiameterM;
-  if (typeof diameterM !== 'number' || !Number.isFinite(diameterM) || diameterM <= 0) {
-    return null;
-  }
-  return diameterM;
+  if (!body) return null;
+  const radiusKm = resolveCatalogRadiusKm(body.physicalCatalog, body.physical);
+  return radiusKm === null ? null : radiusKm * 2000;
 }
 
 function resolveStableHash(value: string): number {
@@ -149,15 +150,8 @@ export function resolvePlanetViewCameraDistanceRange(selectedBody: ViewerBody | 
 }
 
 export function resolvePlanetViewBodyRadiusKm(body: ViewerBody, relativeDistanceKm?: number): number {
-  const explicitRadius = body.physicalCatalog?.radiusKm;
-  if (typeof explicitRadius === 'number' && Number.isFinite(explicitRadius) && explicitRadius > 0) {
-    return explicitRadius;
-  }
-
-  const diameterM = body.physicalCatalog?.estimatedDiameterM;
-  if (typeof diameterM === 'number' && Number.isFinite(diameterM) && diameterM > 0) {
-    return diameterM / 2000;
-  }
+  const radiusKm = resolveCatalogRadiusKm(body.physicalCatalog, body.physical);
+  if (radiusKm !== null) return radiusKm;
 
   if (body.bodyType === 'moon') {
     const orbitalDistanceKm =
@@ -180,34 +174,36 @@ export function resolvePlanetViewBodyRadiusKm(body: ViewerBody, relativeDistance
 }
 
 function resolveRelativeDistanceKm(selected: ViewerBody, candidate: ViewerBody): number {
-  const orbitalDistance = candidate.orbitalElements?.semiMajorAxisKm;
-  if (typeof orbitalDistance === 'number' && Number.isFinite(orbitalDistance) && orbitalDistance > 0) {
-    return orbitalDistance;
-  }
-
   const dx = candidate.spatial.positionKm.x - selected.spatial.positionKm.x;
   const dy = candidate.spatial.positionKm.y - selected.spatial.positionKm.y;
   const dz = candidate.spatial.positionKm.z - selected.spatial.positionKm.z;
   const distance = Math.hypot(dx, dy, dz);
-  return Number.isFinite(distance) && distance > 0 ? distance : 1;
+  return distance;
 }
 
-export function resolveOrbitAngleRad(body: ViewerBody): number {
-  const anomalyDeg = body.orbitalElements?.meanAnomalyAtEpochDeg;
-  if (typeof anomalyDeg === 'number' && Number.isFinite(anomalyDeg)) {
-    return (anomalyDeg * Math.PI) / 180;
-  }
-
-  const hash = resolveStableHash(body.id);
-  return (hash % 360) * (Math.PI / 180);
+export function resolvePlanetViewSnapshotPosition(
+  selected: ViewerBody,
+  candidate: ViewerBody,
+  sceneDistance: number,
+): [number, number, number] {
+  const distanceKm = resolveRelativeDistanceKm(selected, candidate);
+  if (distanceKm === 0) return [0, 0, 0];
+  const origin = selected.spatial.positionKm;
+  const point = candidate.spatial.positionKm;
+  const [x, y, z] = resolveViewerDisplayVector({
+    x: point.x - origin.x,
+    y: point.y - origin.y,
+    z: point.z - origin.z,
+  });
+  return [(x / distanceKm) * sceneDistance, (y / distanceKm) * sceneDistance, (z / distanceKm) * sceneDistance];
 }
 
 /**
  * Places every star in the system around the focused planet.
  *
  * A system can be a binary, and previously only the first star was found, so a
- * companion neither appeared nor contributed light. Stars sharing a position
- * are fanned apart so they do not stack into a single sprite.
+ * companion neither appeared nor contributed light. Snapshot directions are
+ * preserved; the marker distance remains a presentation scale.
  */
 export function resolveStarMarkers(
   selected: ViewerBody,
@@ -221,25 +217,12 @@ export function resolveStarMarkers(
 
   const markerDistance = Math.max(maxOrbitRadius * 2.2, 28);
 
-  return stars.map((star, index) => {
-    const dx = star.spatial.positionKm.x - selected.spatial.positionKm.x;
-    const dz = star.spatial.positionKm.z - selected.spatial.positionKm.z;
-    const planarLength = Math.hypot(dx, dz);
-    // Companions are often catalogued at the same point as the primary, so a
-    // degenerate direction is fanned by index rather than collapsed.
-    const fallbackAngle = -2.29 + index * 0.9;
-    const nx = planarLength > 0 ? dx / planarLength : Math.cos(fallbackAngle);
-    const nz = planarLength > 0 ? dz / planarLength : Math.sin(fallbackAngle);
-
+  return stars.map((star) => {
     return {
       id: star.id,
       displayName: star.displayName || star.id,
       color: resolveBodyColor(star),
-      position: [nx * markerDistance, Math.max(2.2, maxOrbitRadius * 0.14), nz * markerDistance] as [
-        number,
-        number,
-        number,
-      ],
+      position: resolvePlanetViewSnapshotPosition(selected, star, markerDistance),
       radius: 0.66,
       glowSize: Math.max(maxOrbitRadius * 0.9, 7),
       body: star,
@@ -339,7 +322,20 @@ export class PlanetViewScene {
   protected readonly selectedGiantProfile = computed<GasGiantProfile | null>(() => {
     const selected = this.selectedBody();
     if (!selected || !isGasGiantBody(selected, this.gasGiants.classification())) return null;
-    return deriveGasGiantProfile(selected.id, toProfileOverrides(this.gasGiants.palette(), this.gasGiants.rings()));
+    const appearance = resolveCelestialAppearance({
+      source: 'canonical',
+      bodyId: selected.id,
+      bodyType: selected.bodyType,
+      surfaceArchetype: selected.surfaceArchetype,
+    });
+    if (!appearance.valid || appearance.input.renderer !== 'gas-giant') return null;
+    const surfaceArchetype = appearance.input.surfaceArchetype as 'gas-giant' | 'ice-giant';
+    const overrides = toProfileOverrides(this.gasGiants.palette(), this.gasGiants.rings());
+    return deriveGasGiantProfile(selected.id, {
+      ...overrides,
+      surfaceArchetype,
+      ...(surfaceArchetype === 'ice-giant' ? { palette: 'ice' } : {}),
+    });
   });
 
   /** Moon shadow casters for the giant's shader. */
@@ -375,7 +371,6 @@ export class PlanetViewScene {
         const orbitRadius = giant
           ? resolveGasGiantOrbitRadiusUnits(distanceKm, selectedRadiusKm, ringOuter)
           : resolveOrbitRadiusUnits(distanceKm);
-        const angle = resolveOrbitAngleRad(body);
         const bodyRadiusKm = resolvePlanetViewBodyRadiusKm(body, distanceKm);
         return {
           body,
@@ -386,8 +381,9 @@ export class PlanetViewScene {
           radius: giant
             ? resolveGasGiantMoonRadiusUnits(bodyRadiusKm, selectedRadiusKm)
             : resolveBodyRadiusUnits(bodyRadiusKm, selectedRadiusKm),
-          position: [Math.cos(angle) * orbitRadius, 0, Math.sin(angle) * orbitRadius],
+          position: resolvePlanetViewSnapshotPosition(selected, body, orbitRadius),
           orbitRadius,
+          orbitRotation: resolveOrbitRotationEuler(body.orbitalElements),
         };
       });
   });

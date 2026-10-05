@@ -6,6 +6,7 @@ import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
 import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
+import { validateCanonicalBodyCollection } from '../../model/celestial-classification';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
 import { appLogger } from '../../services/logger';
@@ -89,6 +90,14 @@ export class ViewerDataFacade {
 
         this.deps.setSolarSystem(response.solarSystem ?? null);
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
+        const canonicalError = validateCanonicalBodyCollection(allBodies);
+        if (canonicalError) {
+          appLogger.error('[celestial-body-contract]', canonicalError);
+          this.deps.setBodies([]);
+          this.deps.setShips([]);
+          this.deps.setSceneError(`viewer-scene-error celestial-body-contract ${canonicalError}`);
+          return;
+        }
         const dedupedBodies = this.mergeUniqueBodies(allBodies);
         const descriptorSanitization = this.sanitizeBodiesForDescriptorContract(dedupedBodies);
         if (!descriptorSanitization.success) {

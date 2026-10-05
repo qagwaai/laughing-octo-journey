@@ -1,4 +1,5 @@
 import { FIRST_TARGET_SHIP_EXTERIOR_MISSION } from '../../mission/first-target-ship-exterior-mission';
+import { FIRST_TARGET_MISSION_ID } from '../mission.locale';
 import type { CelestialBodyListItem } from '../celestial-body-list';
 import type { ExternalObjectFallbackTier } from '../external-object-descriptor';
 import type { AsteroidScanSample } from '../ship-exterior-asteroid-sample';
@@ -179,9 +180,13 @@ function buildFallbackNotes(): Sw13bM1bFallbackNotes {
   const resumedBodies: CelestialBodyListItem[] = [
     {
       id: 'sv-probe-cb-1',
+      bodyType: 'asteroid',
+      surfaceArchetype: 'asteroid',
       catalogId: 'sv-probe-cat-1',
       sourceScanId: 'sample-a1',
       createdByCharacterId: 'm1b-probe-char',
+      missionId: FIRST_TARGET_MISSION_ID,
+      missionInstanceId: null,
       createdAt: '2026-06-02T00:00:00.000Z',
       updatedAt: '2026-06-02T00:00:00.000Z',
       spatial: {
@@ -194,14 +199,23 @@ function buildFallbackNotes(): Sw13bM1bFallbackNotes {
         visibility: 'visible',
         scanState: 'scanned',
       },
+      composition: { material: 'iron', rarity: 'Common', textureColor: '#777777' },
       distanceKm: 12,
       state: 'active',
+      destroyedAt: null,
+      destroyedReason: null,
+      debrisSeed: null,
+      debris: [],
     },
     {
       id: 'sv-probe-cb-2',
+      bodyType: 'asteroid',
+      surfaceArchetype: 'asteroid',
       catalogId: 'sv-probe-cat-2',
       sourceScanId: 'sample-a2',
       createdByCharacterId: 'm1b-probe-char',
+      missionId: FIRST_TARGET_MISSION_ID,
+      missionInstanceId: null,
       createdAt: '2026-06-02T00:00:00.000Z',
       updatedAt: '2026-06-02T00:00:00.000Z',
       spatial: {
@@ -215,7 +229,11 @@ function buildFallbackNotes(): Sw13bM1bFallbackNotes {
         scanState: 'unscanned',
       },
       distanceKm: 18,
-      state: 'active',
+      state: 'unscanned',
+      destroyedAt: null,
+      destroyedReason: null,
+      debrisSeed: null,
+      debris: [],
     },
   ];
 

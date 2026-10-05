@@ -49,6 +49,7 @@ export class AsteroidPersistenceService {
           sourceScanId: sample.id,
           createdByCharacterId: characterId,
           bodyType: 'asteroid',
+          surfaceArchetype: 'asteroid',
           displayName: `Asteroid ${sample.id}`,
           missionId: FIRST_TARGET_MISSION_ID,
           createdAt: new Date().toISOString(),
@@ -82,7 +83,7 @@ export class AsteroidPersistenceService {
             visibility: 'visible',
             scanState: sample.scanned ? 'scanned' : 'unscanned',
           },
-          state: sample.scanned ? 'active' : 'unscanned',
+          state: sample.scanned && sample.revealedMaterial ? 'active' : 'unscanned',
         },
       };
 
@@ -132,6 +133,7 @@ export class AsteroidPersistenceService {
         sourceScanId: sample.id,
         createdByCharacterId: characterId,
         bodyType: 'asteroid',
+        surfaceArchetype: 'asteroid',
         displayName: `Asteroid ${sample.id}`,
         missionId: FIRST_TARGET_MISSION_ID,
         createdAt: nowIso,
@@ -164,7 +166,7 @@ export class AsteroidPersistenceService {
           visibility: 'visible',
           scanState: 'scanned',
         },
-        state: 'active',
+        state: composition ? 'active' : 'unscanned',
       },
     };
 
@@ -220,6 +222,7 @@ export class AsteroidPersistenceService {
         sourceScanId: params.sample.id,
         createdByCharacterId: resolvedCharacterId,
         bodyType: 'asteroid',
+        surfaceArchetype: 'asteroid',
         displayName: `Asteroid ${params.sample.id}`,
         missionId: FIRST_TARGET_MISSION_ID,
         createdAt: new Date().toISOString(),
@@ -258,7 +261,7 @@ export class AsteroidPersistenceService {
           visibility: 'visible',
           scanState: params.sample.scanned ? 'scanned' : 'unscanned',
         },
-        state: params.sample.scanned ? 'active' : 'unscanned',
+        state: params.sample.scanned && params.sample.revealedMaterial ? 'active' : 'unscanned',
       },
     };
 

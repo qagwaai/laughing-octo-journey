@@ -9,6 +9,7 @@ import type { WebGLRenderer } from 'three';
 import type { PlanetLodPreset } from '../../model/planet/planet-texture';
 import type { MiningQuality } from '../mining-splash-state';
 import { bakePlanetTextures, type PlanetBakeResult, supportsGpuBake } from './planet-bake';
+import type { SurfaceArchetype } from '../../model/celestial-classification';
 
 import { SPLASH_PLANET_BODY_ID } from './splash-planet-rotation';
 
@@ -38,9 +39,11 @@ export function bakeSplashPlanet(
   quality: MiningQuality,
   renderer?: WebGLRenderer | null,
   bodyId: string = SPLASH_PLANET_BODY_ID,
+  surfaceArchetype: SurfaceArchetype = 'rocky',
 ): PlanetBakeResult {
   return bakePlanetTextures({
     bodyId,
+    surfaceArchetype,
     preset: selectSplashPlanetPreset(quality, renderer),
     renderer,
   });

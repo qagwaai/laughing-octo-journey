@@ -14,17 +14,17 @@
 <ngts-orbit-controls #orbitControls [options]="{ enableDamping: true, dampingFactor: 0.08, enableZoom: false }" />
 
 <ngt-mesh [position]="[0, 0, 0]" (pointerdown)="onScenePointerDown($event)" input>
-  <ngt-sphere-geometry *args="[280, 16, 16]" />
+  <ngt-sphere-geometry *args="[distanceMode() === 'compressed' ? 280 : sceneFar() * 0.5, 16, 16]" />
   <ngt-mesh-basic-material [transparent]="true" [opacity]="0" [side]="1" [depthWrite]="false" />
 </ngt-mesh>
 
 <ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-2">
-  <ngt-circle-geometry *args="[28, 128]" />
+  <ngt-circle-geometry *args="[sceneExtent(), 128]" />
   <ngt-mesh-basic-material [color]="'#7ea2c9'" [transparent]="true" [opacity]="0.05" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 
 <ngt-mesh [rotation]="[1.5708, 0, 0]" [position]="[0, 0, 0]" [renderOrder]="-1">
-  <ngt-ring-geometry *args="[27.92, 28.08, 192]" />
+  <ngt-ring-geometry *args="[sceneExtent() * 0.997, sceneExtent() * 1.003, 192]" />
   <ngt-mesh-basic-material [color]="'#ffffff'" [transparent]="true" [opacity]="0.3" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 
@@ -54,8 +54,7 @@
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
-  @let _star = starProfiles().get(body.id);
-  @if (_star) {
+  @let _star = starProfiles().get(body.id); @if (_star) {
   <!-- Invisible pick shell; the procedural star draws inside it at unit radius. -->
   <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
   <ngt-group [scale]="[body.radius, body.radius, body.radius]">
@@ -111,9 +110,7 @@
   />
   } @else {
   <ngt-sphere-geometry *args="[body.radius, body.geometrySegments, body.geometrySegments]" />
-  }
-  @let _giant = giantProfiles().get(body.id);
-  @if (_giant) {
+  } @let _giant = giantProfiles().get(body.id); @if (_giant) {
   <!-- Invisible pick shell; the procedural giant draws inside it at unit radius. -->
   <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
   <ngt-group [scale]="[body.radius, body.radius, body.radius]">
@@ -148,7 +145,6 @@
   />
   @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id)) {
   <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
-  }
-  }
+  } }
 </ngt-mesh>
 }
