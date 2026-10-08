@@ -7,7 +7,10 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
   resolveScenePositionFromSpatialKm,
+  resolveBodySceneRadius,
+  isStationBody,
 } from './viewer-formatters';
+import { resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
   degToRad,
@@ -18,6 +21,7 @@ import {
   resolveViewerSceneCameraDistanceRange,
   resolveZoomDistance,
   resolveZoomPercent,
+  VIEWER_STATION_MESH_SCALE,
 } from './viewer-system-scene';
 
 const star: ViewerBody = {
@@ -175,6 +179,79 @@ const localProjectionShip: ShipSummary = {
 };
 
 describe('ViewerSystemScene mapBodiesToRendered', () => {
+  const stationVariants: {
+    name: string;
+    family?: string;
+    kind: string;
+    scale: [number, number, number];
+    rotation: [number, number, number];
+  }[] = [
+    { name: 'legacy market', kind: 'box', scale: [1.5, 0.85, 1.5], rotation: [0, 0.2, 0] },
+    { name: 'legacy non-market', family: '', kind: 'sphere', scale: [1, 1, 1], rotation: [0, 0, 0] },
+    { name: 'trade hub', family: 'trade-hub', kind: 'box', scale: [1.65, 0.82, 1.65], rotation: [0, 0.14, 0] },
+    { name: 'refinery', family: 'refinery', kind: 'cylinder', scale: [0.92, 1.5, 0.92], rotation: [0, 0.2, 0] },
+    { name: 'naval outpost', family: 'naval-outpost', kind: 'octahedron', scale: [1.12, 1.48, 1.12], rotation: [0.1, 0.28, 0] },
+    { name: 'research platform', family: 'research-platform', kind: 'torus', scale: [1.36, 1.36, 1.36], rotation: [Math.PI / 2, 0.3, 0] },
+  ];
+
+  it.each(stationVariants)('scales $name mesh dimensions to 5% without changing scene data', (variant) => {
+    const body: ViewerBody = {
+      ...marketStation,
+      stationKind: variant.family === undefined ? 'market' : undefined,
+      physicalCatalog: { meanRadiusKm: 2 },
+      ...(variant.family ? {
+        externalObjectDescriptor: {
+          ...gateBody.externalObjectDescriptor!,
+          domain: 'stations',
+          objectFamily: variant.family,
+        },
+      } : {}),
+    };
+    const original = structuredClone(body);
+    const profile = resolveDescriptorRenderProfile(body.externalObjectDescriptor);
+    expect(VIEWER_STATION_MESH_SCALE).toBe(0.05);
+    for (const mode of ['compressed', 'proportional'] as const) {
+      for (const zoom of [0, 50, 100]) {
+        const rendered = mapBodiesToRendered([body], zoom, body.id, [], mode)[0];
+        const baselineRadius = +(resolveBodySceneRadius(body, zoom) * (profile?.radiusScale ?? 1)).toFixed(4);
+        expect(rendered.radius).toBe(baselineRadius);
+        expect(rendered.geometryKind).toBe(variant.kind);
+        expect(rendered.geometryRotation).toEqual(variant.rotation);
+        for (let axis = 0; axis < 3; axis++) {
+          expect(rendered.geometryScale[axis] / variant.scale[axis]).toBeCloseTo(0.05, 12);
+        }
+        expect(rendered.geometryTorusTubeRadius).toBe(Math.max(baselineRadius * 0.2, 0.03));
+        expect(rendered.position).toEqual(resolveScenePositionFromSpatialKm(body.spatial.positionKm, mode));
+        expect(resolveTargetScenePosition(body.id, [rendered], [])).toEqual(rendered.position);
+        expect(rendered.source).toBe(body);
+      }
+    }
+    expect(body).toEqual(original);
+  });
+
+  it('recognizes descriptor and normalized legacy stations without shrinking gates or other meshes', () => {
+    expect(isStationBody({ ...marketStation, bodyType: ' Station ' })).toBe(true);
+    const descriptorStation: ViewerBody = {
+      ...planet,
+      externalObjectDescriptor: { ...gateBody.externalObjectDescriptor!, domain: 'stations', objectFamily: 'refinery' },
+    };
+    expect(isStationBody(descriptorStation)).toBe(true);
+    expect(mapBodiesToRendered([descriptorStation])[0].geometryScale).toEqual([0.92 * 0.05, 1.5 * 0.05, 0.92 * 0.05]);
+    expect(isStationBody(gateBody)).toBe(false);
+    const bodies = [star, planet, asteroidA, debrisCanister, gateBody];
+    const expectedScales = [[1, 1, 1], [1, 1, 1], null, [0.9, 1.25, 0.9], [1.8, 1.8, 1.8]];
+    const baselineAsteroid = mapBodiesToRendered([asteroidA])[0].geometryScale;
+    for (const mode of ['compressed', 'proportional'] as const) {
+      for (const zoom of [0, 50, 100]) {
+        const rendered = mapBodiesToRendered(bodies, zoom, null, [], mode);
+        rendered.forEach((body, index) => {
+          expect(isStationBody(body.source)).toBe(false);
+          expect(body.geometryScale).toEqual(expectedScales[index] ?? baselineAsteroid);
+        });
+      }
+    }
+  });
+
   it('preserves proportional separations even when an asteroid is targeted at close zoom', () => {
     const normal = mapBodiesToRendered([asteroidA, asteroidB], 0, null, [], 'proportional');
     const targeted = mapBodiesToRendered([asteroidA, asteroidB], 0, asteroidA.id, [], 'proportional');

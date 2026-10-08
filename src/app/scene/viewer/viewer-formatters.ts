@@ -139,6 +139,11 @@ export function isGateBody(body: ViewerBody): boolean {
   return bodyType === 'gate' || bodyType === 'jump-gate' || bodyType === 'jumpgate';
 }
 
+export function isStationBody(body: ViewerBody): boolean {
+  if (isGateBody(body)) return false;
+  return body.externalObjectDescriptor?.domain === 'stations' || normalizeToken(body.bodyType) === 'station';
+}
+
 /**
  * Resolves a hex color for a body, falling back to defaults by body type.
  */

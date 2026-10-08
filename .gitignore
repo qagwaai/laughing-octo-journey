@@ -12,6 +12,13 @@
 npm-debug.log
 yarn-error.log
 
+# Python generated files and local virtual environments
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
 # IDEs and editors
 .idea/
 .project
@@ -62,3 +69,4 @@ Thumbs.db
 test-results
 playwright-report
 /e2e/.auth
+Nova-Forge-Contract-Validation.code-workspace

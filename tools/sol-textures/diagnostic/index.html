@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <title>Sol texture diagnostics - not Viewer acceptance</title>
+  <style>
+    body {
+      margin: 16px;
+      background: #111;
+      color: #eee;
+      font: 14px system-ui;
+    }
+    button,
+    select {
+      margin: 4px;
+      padding: 8px;
+    }
+    canvas {
+      max-width: 100%;
+      display: block;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+    .row img {
+      width: 32%;
+      height: auto;
+    }
+    section {
+      margin: 24px 0;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+    .warning {
+      color: #ffce74;
+    }
+  </style>
+  <h1>Isolated Sol texture diagnostic</h1>
+  <p class="warning">
+    No catalog/Viewer integration. Controlled neutral light, no clouds. Final acceptance remains on hold.
+  </p>
+  <select id="body" aria-label="Body">
+    <option>earth</option>
+    <option>luna</option>
+    <option>mars</option>
+  </select>
+  <select id="tier" aria-label="Tier">
+    <option>standard</option>
+    <option>low</option>
+    <option>preview</option>
+  </select>
+  <select id="view" aria-label="View">
+    <option>front</option>
+    <option>seam</option>
+    <option>north</option>
+    <option>south</option>
+  </select>
+  <select id="mode" aria-label="Material">
+    <option>albedo</option>
+    <option>relief</option>
+    <option>gray-relief</option>
+    <option>gray</option>
+    <option>flat-normal</option>
+    <option>viewer-tint</option>
+  </select>
+  <button id="render">Render</button>
+  <button id="run">Run GPU checks</button>
+  <canvas id="canvas"></canvas>
+  <pre id="status">Loading modules...</pre>
+  <h2>Source landmark crops</h2>
+  <p>
+    Color | display-only 8x hillshade | color + cyan height contours (Earth coastline yellow). Identical geographic
+    grid. Not a shift recommendation.
+  </p>
+  <div id="landmarks"></div>
+  <script type="module" src="/diagnostic.js"></script>
+</html>

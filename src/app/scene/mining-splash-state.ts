@@ -2,12 +2,11 @@ import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core'
 import { progress } from 'angular-three-soba/loaders';
 import { appLogger } from '../services/logger';
 import { resolveSplashAppearance, selectSplashPlanet, type SplashPlanetKind } from './planet/splash-planet-rotation';
+import { selectRenderQuality as selectMiningQuality, type RenderQuality } from './render-quality';
 
-export type MiningQuality = 'standard' | 'low';
+export type MiningQuality = RenderQuality;
 
-export function selectMiningQuality(width: number, cores: number, saveData: boolean): MiningQuality {
-  return width < 768 || cores <= 4 || saveData ? 'low' : 'standard';
-}
+export { selectMiningQuality };
 
 @Injectable({ providedIn: 'root' })
 export class MiningSplashState {

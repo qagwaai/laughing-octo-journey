@@ -1,0 +1,67 @@
+{
+  "retrievedAt": "2026-10-08T18:32:31.366490+00:00",
+  "files": [
+    {
+      "file": "Mars_Viking_ClrMosaic_global_925m.tif",
+      "url": "https://planetarymaps.usgs.gov/mosaic/Mars_Viking_ClrMosaic_global_925m.tif",
+      "bytes": 797888177,
+      "sha256": "5b3c6bea36cec0ec65b9ce5927db6b1c555c5fae60a227c774f9fcaecdf5bb33"
+    },
+    {
+      "file": "viking-metadata.xml",
+      "url": "https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m.xml",
+      "bytes": 16759,
+      "sha256": "3adbd11527d4a8cbabebbfc5d135a1796a693fb083d7e84df8d90d1796247696"
+    },
+    {
+      "file": "mola-readme.txt",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/readme.txt",
+      "bytes": 2246,
+      "sha256": "33d5670e311bccbfcdea6fef67f4438a06128f8237510de2698b5d2132f9f189"
+    },
+    {
+      "file": "mola-catalog.cat",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/catalog/megdrds.cat",
+      "bytes": 12459,
+      "sha256": "31db8d521ecf2e48b659b510b26f7568932b50e939361598814ecb7345b497be",
+      "finalUrl": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/catalog/megdrds.cat",
+      "lastModified": "Wed, 17 Aug 2005 15:05:22 GMT"
+    },
+    {
+      "file": "usgs-rights.html",
+      "url": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+      "bytes": 88963,
+      "sha256": "7a7f88f88d6eb4cff792974452e262f8d29579f910a1b6ee4634f14b79486872"
+    },
+    {
+      "file": "nasa-media.html",
+      "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "bytes": 317533,
+      "sha256": "c3d40cd7297fdcf62e326c788ed3f017c35b154f1eb3faa5c5d03859ad366dcc"
+    },
+    {
+      "file": "megt90n000eb.img",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/meg016/megt90n000eb.img",
+      "bytes": 33177600,
+      "sha256": "d18d9b9ab8c5516d02e157dd2cde0f1d0d160c21940e953ba22391269a545e7b"
+    },
+    {
+      "file": "megt90n000eb.lbl",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/meg016/megt90n000eb.lbl",
+      "bytes": 4813,
+      "sha256": "0f2bd919dddb86d83489a008d3007bd915507c892a0f22ce49ad5dd5d2fc7d8a"
+    },
+    {
+      "file": "megt90n000eb.xml",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/meg016/megt90n000eb.xml",
+      "bytes": 15528,
+      "sha256": "c393221db2de31916b30113ce28841dd967456dadb9bf2735eb30496eb37afa2"
+    },
+    {
+      "file": "megt90n000eb.hdr",
+      "url": "https://pds-geosciences.wustl.edu/mgs/urn-nasa-pds-mgs_mola_topography_derived/meg016/megt90n000eb.hdr",
+      "bytes": 1060,
+      "sha256": "1d3d3bab68cf7f709db3f3c8dfb64cd1611392b7b6d170c5f55406aee2c783e7"
+    }
+  ]
+}

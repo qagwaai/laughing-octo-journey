@@ -32,6 +32,7 @@ import {
   isGateBody,
   isMarketStationBody,
   isStarBody,
+  isStationBody,
   resolveAnchoredOrbitSceneProfile,
   resolveBodyColor,
   resolveBodyScenePosition,
@@ -156,6 +157,7 @@ export interface ViewerSceneCameraDistanceRange {
 }
 
 const VIEWER_DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 3.5, 28];
+export const VIEWER_STATION_MESH_SCALE = 0.05;
 const VIEWER_CAMERA_TWEEN_DURATION_SEC = 0.45;
 const VIEWER_TARGET_FLY_DURATION_SEC = 3.5;
 const VIEWER_TARGET_FLY_COMPLETION_T = 0.985;
@@ -732,6 +734,12 @@ export function mapBodiesToRendered(
     const resolvedRadius = +(resolveBodySceneRadius(body, zoomLevel) * (descriptorProfile?.radiusScale ?? 1)).toFixed(
       4,
     );
+    const meshScale = isStationBody(body) ? VIEWER_STATION_MESH_SCALE : 1;
+    const geometryScale: [number, number, number] = [
+      geometryVariant.scale[0] * meshScale,
+      geometryVariant.scale[1] * meshScale,
+      geometryVariant.scale[2] * meshScale,
+    ];
 
     return {
       source: body,
@@ -745,7 +753,7 @@ export function mapBodiesToRendered(
       isMarketStation,
       isGate,
       geometryKind: geometryVariant.kind,
-      geometryScale: geometryVariant.scale,
+      geometryScale,
       geometryRotation: geometryVariant.rotation,
       geometryDetail: geometryVariant.detail,
       geometryTorusTubeRadius: Math.max(resolvedRadius * 0.2, 0.03),

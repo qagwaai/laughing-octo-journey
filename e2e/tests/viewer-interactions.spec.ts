@@ -3,6 +3,12 @@ import { setupViewerInteractionTest, SOL_SUMMARY } from '../fixtures/viewer-inte
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
+import type { Camera, Object3D } from 'three';
+import {
+  setupViewerSceneTest,
+  solarSystemGetResponse,
+  SOL_SYSTEM_BODIES,
+} from '../fixtures/viewer-scene-rendering-scenario';
 
 async function navigateToScene(page: Page) {
   const gameShell = new GameShellPage(page);
@@ -26,6 +32,41 @@ async function navigateToScene(page: Page) {
 
 test.describe('Viewer — Interaction Behaviors', () => {
   test.describe.configure({ timeout: 60_000 });
+
+  test('keeps the 5% station mesh selectable from the body list and targetable', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+    mock.on('solar-system-get-request', () => ({
+      event: 'solar-system-get-response',
+      data: solarSystemGetResponse(SOL_SYSTEM_BODIES),
+    }));
+    await navigateToScene(page);
+    const viewerPage = new ViewerPage(page);
+    await viewerPage.expectSceneLoaded();
+    await viewerPage.switchToDistanceView();
+    const target = page.locator('tr', { hasText: 'Sol Market Alpha' }).locator('button.details-target-btn');
+    await expect(target).toBeVisible();
+
+    const readStation = () => page.evaluate(() => {
+      const canvas = document.querySelector('ngt-canvas');
+      if (!canvas) return null;
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const snapshot = (ng.getComponent(canvas) as {
+        store: { snapshot: { scene: Object3D | null; camera: Camera } };
+      }).store.snapshot;
+      let station: Object3D | undefined;
+      snapshot.scene?.traverse((object) => {
+        if (object.name === 'Sol Market Alpha' && object.type === 'Mesh') station = object;
+      });
+      if (!station) return null;
+      const screen = station.position.clone().project(snapshot.camera);
+      return { scale: station.scale.toArray(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
+    });
+    await expect.poll(async () => (await readStation())?.scale).toEqual([1.65 * 0.05, 0.82 * 0.05, 1.65 * 0.05]);
+    await target.click();
+    await expect(target).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(async () => (await readStation())?.centered).toBe(true);
+    await viewerPage.expectSceneLoaded();
+  });
 
   test('applies hover styling when mouse enters scene canvas', async ({ page }) => {
     await setupViewerInteractionTest(page);

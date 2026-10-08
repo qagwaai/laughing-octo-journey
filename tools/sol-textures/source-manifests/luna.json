@@ -1,0 +1,59 @@
+{
+  "retrievedAt": "2026-10-08T18:25:23.868448+00:00",
+  "files": [
+    {
+      "file": "lroc_color_16bit_srgb_4k.tif",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_16bit_srgb_4k.tif",
+      "bytes": 61891324,
+      "sha256": "9731fa8af425b6c2f88f277ecca82bf8c603f3743894f64ed7b25c5bfefa22ff",
+      "finalUrl": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/lroc_color_16bit_srgb_4k.tif",
+      "lastModified": "Wed, 03 Dec 2025 19:55:34 GMT",
+      "contentType": "image/tiff"
+    },
+    {
+      "file": "ldem_16_uint.tif",
+      "url": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_16_uint.tif",
+      "bytes": 33201026,
+      "sha256": "45a2b32d56e81ed30db07fead8abc842b249b6511219d9ca2c53f81bc2dc5d62",
+      "finalUrl": "https://svs.gsfc.nasa.gov/vis/a000000/a004700/a004720/ldem_16_uint.tif",
+      "lastModified": "Wed, 05 Jun 2019 20:21:01 GMT",
+      "contentType": "image/tiff"
+    },
+    {
+      "file": "moon-kit.html",
+      "url": "https://svs.gsfc.nasa.gov/4720/",
+      "bytes": 54938,
+      "sha256": "57e6354c0d32c8d2aa2fff07ebb0eeb76edeaa415c968740f2fe978fa7eb7391",
+      "finalUrl": "https://svs.gsfc.nasa.gov/4720/",
+      "lastModified": null,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "file": "nasa-media.html",
+      "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "bytes": 317533,
+      "sha256": "c3d40cd7297fdcf62e326c788ed3f017c35b154f1eb3faa5c5d03859ad366dcc",
+      "finalUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "lastModified": null,
+      "contentType": "text/html; charset=UTF-8"
+    },
+    {
+      "file": "wac-readme.txt",
+      "url": "https://pds.lroc.asu.edu/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/MDR/WAC_HAPKE/WAC_HAPKE_README.TXT",
+      "bytes": 3991,
+      "sha256": "498452139c78d43f1149e286cb6916703a1e300d91dffcbd4f9957cce5c52b0c",
+      "finalUrl": "https://pds.mcp.nasa.gov/data/store/img/lunar_reconnaissance_orbiter/pds4/lroc/lro-l-lroc-5-rdr/LROLRC_2001/DATA/MDR/WAC_HAPKE/WAC_HAPKE_README.TXT",
+      "lastModified": "Fri, 14 Aug 2026 18:26:52 GMT",
+      "contentType": "binary/octet-stream"
+    },
+    {
+      "file": "lola-label.txt",
+      "url": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+      "bytes": 5121,
+      "sha256": "9aef29463ccc6ed3a3fbe0df3ecd830a99c69e16b564f455507dee2697096579",
+      "finalUrl": "https://pds-geosciences.wustl.edu/lro/lro-l-lola-3-rdr-v1/lrolol_1xxx/data/lola_gdr/cylindrical/img/ldem_16.lbl",
+      "lastModified": "Mon, 04 Mar 2019 20:54:44 GMT",
+      "contentType": "text/plain"
+    }
+  ]
+}

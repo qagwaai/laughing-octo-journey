@@ -1,0 +1,263 @@
+{
+  "retrievedAt": "2026-10-08T18:17:04.519974+00:00",
+  "files": [
+    {
+      "file": "world.200407.3x5400x2700_geo.tif",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/july/world.200407.3x5400x2700_geo.tif",
+      "bytes": 12175080,
+      "sha256": "a6d0df740db7eea2d8e274ecffcc1181df60c5329a7c16e637db6046b77b94c2"
+    },
+    {
+      "file": "bmng.pdf",
+      "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/bmng.pdf",
+      "bytes": 895032,
+      "sha256": "487f3e3c84f862f6053eda3e0213b17ebb923133adbdb75d574a28b678b56949"
+    },
+    {
+      "file": "a10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/a10g.gz",
+      "bytes": 20396907,
+      "sha256": "bc8e2e0d612999c9f8fbd54b22b5b201a102df1e661e7198eb1e648af32f6a78"
+    },
+    {
+      "file": "a10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/a10g.hdr",
+      "bytes": 339,
+      "sha256": "739e4a1238e1ac686a2807efaa2c427bb772794797f110b4cb59609194878410"
+    },
+    {
+      "file": "b10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/b10g.gz",
+      "bytes": 18015073,
+      "sha256": "d01ed81c59423ee30f7bc7550601707848c673210e0ba41db7a7a8b1ad8128d2"
+    },
+    {
+      "file": "b10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/b10g.hdr",
+      "bytes": 338,
+      "sha256": "f7d0ec221f8e0a4c6eb186ba00183fe057e4e84cb681f1292d79615234a0e988"
+    },
+    {
+      "file": "c10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/c10g.gz",
+      "bytes": 24828988,
+      "sha256": "294096d7e1c35cd126d412072c3d95a47313e024f8888d54facb3b88ad6ec1e9"
+    },
+    {
+      "file": "c10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/c10g.hdr",
+      "bytes": 336,
+      "sha256": "fefb8b8b683d17f397aec61be954c4a95ff8fa7873a1d39387e51e7290d0185d"
+    },
+    {
+      "file": "d10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/d10g.gz",
+      "bytes": 32135119,
+      "sha256": "5ce64b45a8cd54b296f232767583f6f39f3698ca54992590b469816336122365"
+    },
+    {
+      "file": "d10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/d10g.hdr",
+      "bytes": 337,
+      "sha256": "3eb9c0106cdf65078b2ced011e47f585582fb38044f27167c61a280c017f5177"
+    },
+    {
+      "file": "e10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/e10g.gz",
+      "bytes": 17228609,
+      "sha256": "09422b1d5d1ca69b6e98eeb758f3c83b02d7871348a1f1850fd77ad3d7be86e6"
+    },
+    {
+      "file": "e10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/e10g.hdr",
+      "bytes": 340,
+      "sha256": "8b7ab629b90f5a672721fb5838c972d38f2901cf3a92880769647140705194ea"
+    },
+    {
+      "file": "f10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/f10g.gz",
+      "bytes": 19023189,
+      "sha256": "222b13cfd079da87d4ae851284c181ceea84945d5d121cb91039c2dfbbf8fd09"
+    },
+    {
+      "file": "f10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/f10g.hdr",
+      "bytes": 339,
+      "sha256": "eb73ad371aa5978e01d45f231b7b632ef12c310587502aabbc99eb0abd73e90b"
+    },
+    {
+      "file": "g10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/g10g.gz",
+      "bytes": 59501587,
+      "sha256": "36296e0fe9e7ee9ffe41c9e4b7b74a4bf8d2254b25ca7c9bdade2b6cede0f5c3"
+    },
+    {
+      "file": "g10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/g10g.hdr",
+      "bytes": 336,
+      "sha256": "a7e0071f389ef0f908e68a1fc88487f528f199cc92d8024ec158d48b15fc6601"
+    },
+    {
+      "file": "h10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/h10g.gz",
+      "bytes": 27900726,
+      "sha256": "6ba2d4acc0a6debf5e6d2be76b9e21501a5e1f90f18486f27f099bfdc9c23738"
+    },
+    {
+      "file": "h10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/h10g.hdr",
+      "bytes": 338,
+      "sha256": "4aeeb8f6510dab63f9030d4ac7c6c0d9e202fa273184bee470adbe2dd7c51e71"
+    },
+    {
+      "file": "i10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/i10g.gz",
+      "bytes": 165338,
+      "sha256": "766b40c4ee25566fb6e370a0eb2d4fd5f843da4475d007f2852857d1082d3259"
+    },
+    {
+      "file": "i10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/i10g.hdr",
+      "bytes": 340,
+      "sha256": "b6bf15fe1709cded4b3c9309dae2015aace98684f29a59779b5501f75be315df"
+    },
+    {
+      "file": "j10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/j10g.gz",
+      "bytes": 21249443,
+      "sha256": "655a84859f6d73d147f5650a0593c48c178279445afa68e9c71cfde67be3d620"
+    },
+    {
+      "file": "j10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/j10g.hdr",
+      "bytes": 338,
+      "sha256": "3989d0154399d7c727e7107c7c50deb421b1bb02eae2f1f79e0e678536620e75"
+    },
+    {
+      "file": "k10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/k10g.gz",
+      "bytes": 16203482,
+      "sha256": "1df600a166503afc328dcdebca759751478a80adca14d3347e6cfcc9d942c8bc"
+    },
+    {
+      "file": "k10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/k10g.hdr",
+      "bytes": 337,
+      "sha256": "73003c6f95bbf557a921bc5aed9c8c990f66b62dc0788ee59d0518d93de57532"
+    },
+    {
+      "file": "l10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/l10g.gz",
+      "bytes": 11620467,
+      "sha256": "f448ccafe7a891bb65bdb6641c645d4f2a3895d593ac83705b9c3c3f7d15cd10"
+    },
+    {
+      "file": "l10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/l10g.hdr",
+      "bytes": 338,
+      "sha256": "ed6d5a9675d7958de3373cc83faad85c74c0ef087e19edc972181b4c953871a1"
+    },
+    {
+      "file": "m10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/m10g.gz",
+      "bytes": 6145507,
+      "sha256": "04407e4f3b37acd66db72f765452690a5852118c04ce838076f8186b82838739"
+    },
+    {
+      "file": "m10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/m10g.hdr",
+      "bytes": 341,
+      "sha256": "0dd90fb9aff7ca57e792dc42941cb61603a5416a5b78b211f4617b5360ed04ab"
+    },
+    {
+      "file": "n10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/n10g.gz",
+      "bytes": 8521834,
+      "sha256": "6be2f38f7ac076d0e36ad2199ad2647ecaa9701866fbe84d271b53b699f845ec"
+    },
+    {
+      "file": "n10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/n10g.hdr",
+      "bytes": 339,
+      "sha256": "ede4c17f531b35aa9674dcfe002c9f16bc1a7947b98ea5e1f6dbddad4c8a306f"
+    },
+    {
+      "file": "o10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/o10g.gz",
+      "bytes": 9071477,
+      "sha256": "fb12cd9963703f7234f52437a36e491d58ac434e0bc0ea6290c3156550f91819"
+    },
+    {
+      "file": "o10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/o10g.hdr",
+      "bytes": 338,
+      "sha256": "ae6dfeefdedc981c5149cbcd2bb13af47278568c234928153e78f7d5426c7d5c"
+    },
+    {
+      "file": "p10g.gz",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/p10g.gz",
+      "bytes": 9247141,
+      "sha256": "87a07cce4270cdd5d4cefeb5d53a00b76eae5c8ea277e1dbabe9fd08aa1a88ff"
+    },
+    {
+      "file": "p10g.hdr",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/esri/hdr/p10g.hdr",
+      "bytes": 339,
+      "sha256": "16bdd2e752706a58ac82b0c29af4776d420340e5fc66263bcf55b60f364752f0"
+    },
+    {
+      "file": "noaa-rights.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s3/s3B.html",
+      "bytes": 9552,
+      "sha256": "b7e4889a150b03da5a7942eb57a8010398bc370d44e1437a449cd540486b0c69"
+    },
+    {
+      "file": "noaa-citation.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s3/s3A.html",
+      "bytes": 10473,
+      "sha256": "7d155322862c92c6ea7fa422615f7b0bc1cf87480d5a256c3919238f8a462e30"
+    },
+    {
+      "file": "noaa-disclaimers.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s12/s12.html",
+      "bytes": 15392,
+      "sha256": "65d56b12759b293169b497b0b10ae1f41679de689e53c972502e2218276f2e26"
+    },
+    {
+      "file": "noaa-extents.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s11/s11C.html",
+      "bytes": 10994,
+      "sha256": "b572625972f7d18e210395b229ef1bbbe948adc0950f4e4550e7af8f9a96a004"
+    },
+    {
+      "file": "noaa-encoding.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s11/s11D.html",
+      "bytes": 8853,
+      "sha256": "6e938ee4af52845906b8bb67fc9f2f3ae42134791d2613d7c80bff7e50c7b704"
+    },
+    {
+      "file": "noaa-projection.html",
+      "url": "https://www.ngdc.noaa.gov/mgg/topo/report/s11/s11H.html",
+      "bytes": 8040,
+      "sha256": "fea6da0fcdbf9e959c701112eb2a4777af30cc92c2bd9b6e10c6a5ebb64db30b"
+    },
+    {
+      "file": "nasa-media.html",
+      "url": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+      "bytes": 317533,
+      "sha256": "c3d40cd7297fdcf62e326c788ed3f017c35b154f1eb3faa5c5d03859ad366dcc"
+    },
+    {
+      "file": "nasa-product.html",
+      "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/",
+      "bytes": 377502,
+      "sha256": "438c79db34f19567d07d27359f98ba60d5418419fc894caa4135a07cd5d98556"
+    },
+    {
+      "file": "nasa-article.html",
+      "url": "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/",
+      "bytes": 359402,
+      "sha256": "15aad023e1f65094bd7ba2ce194e7a79818aace2d0825407bf0d5a75c5dba7d0"
+    }
+  ]
+}

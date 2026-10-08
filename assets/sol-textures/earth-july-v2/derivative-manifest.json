@@ -1,0 +1,136 @@
+{
+  "tools": {
+    "rasterio": "1.5.2",
+    "gdal": "3.12.2",
+    "numpy": "2.5.3"
+  },
+  "products": {
+    "earth-july-preview-albedo.jpg": {
+      "dimensions": [512, 256],
+      "bytes": 48719,
+      "sha256": "2ddab02867d835dc8553225fa28f6a0e3b7800b0677b63873c0262a33cb7ddfd",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "jpegQuality": 98,
+      "psnrDbVersusResampledRgb": 42.66521168336919
+    },
+    "earth-july-low-albedo.jpg": {
+      "dimensions": [2048, 1024],
+      "bytes": 517397,
+      "sha256": "bfc18f14cc21c784893cf7cb4f8136bdc7db8682c959c6a0d1b4320ea9cabe7b",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "jpegQuality": 98,
+      "psnrDbVersusResampledRgb": 45.613814283151235
+    },
+    "earth-july-standard-albedo.jpg": {
+      "dimensions": [4096, 2048],
+      "bytes": 1720257,
+      "sha256": "90e6aa8d2bf9c981b0be9a9872ae556fad10519e8d47b5a5189f3d96ed4b46ca",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "jpegQuality": 98,
+      "psnrDbVersusResampledRgb": 47.04787386491144
+    },
+    "earth-july-low-normal.png": {
+      "dimensions": [1024, 512],
+      "bytes": 66205,
+      "sha256": "6be1e8f3d7314b2697cbd677ae5554287d503edf2c4fd7551c11a072a0749b71",
+      "colorSpace": "NoColorSpace (linear data)",
+      "pngChunks": ["IHDR", "IDAT", "IDAT", "IDAT", "IDAT", "IDAT", "IDAT", "IDAT", "IDAT", "IDAT", "IEND"],
+      "oceanAndMixedCells": 365386,
+      "neutralCells": 375510,
+      "maxNormalLengthError": 0.004128348802530546,
+      "reliefExaggeration": 1,
+      "poleRowsNeutral": true,
+      "longitudeGradient": "periodic"
+    },
+    "earth-july-standard-normal.png": {
+      "dimensions": [2048, 1024],
+      "bytes": 271787,
+      "sha256": "b11f177c4d08bbb9a51803f4bcebe0db9f12581d75294bfb930294d48e1ac893",
+      "colorSpace": "NoColorSpace (linear data)",
+      "pngChunks": [
+        "IHDR",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IEND"
+      ],
+      "oceanAndMixedCells": 1446298,
+      "neutralCells": 1471043,
+      "maxNormalLengthError": 0.004128348802530546,
+      "reliefExaggeration": 1,
+      "poleRowsNeutral": true,
+      "longitudeGradient": "periodic"
+    }
+  },
+  "budgets": {
+    "low": {
+      "files": ["earth-july-preview-albedo.jpg", "earth-july-low-albedo.jpg", "earth-july-low-normal.png"],
+      "transferBytesIncludingPreview": 632321,
+      "transferCapMiB": 2,
+      "estimatedRgba8MipmappedBytes": 14680065,
+      "residentCapMiB": 32
+    },
+    "standard": {
+      "files": ["earth-july-preview-albedo.jpg", "earth-july-standard-albedo.jpg", "earth-july-standard-normal.png"],
+      "transferBytesIncludingPreview": 2040763,
+      "transferCapMiB": 4,
+      "estimatedRgba8MipmappedBytes": 56623105,
+      "residentCapMiB": 96
+    }
+  },
+  "provenance": {
+    "sourceAudit": "../../../docs/sol-textures-2026-10-08.md",
+    "originals": "External artifact store sources/earth; configured via --artifact-root or SOL_TEXTURE_ARTIFACT_ROOT; not included in the repository",
+    "repositoryStorage": "Non-deployed candidate assets; no Viewer integration or visual acceptance",
+    "sourceRetrievedAt": "2026-10-08",
+    "albedoSourceUrl": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/july/world.200407.3x5400x2700_geo.tif",
+    "albedoSourceSha256": "a6d0df740db7eea2d8e274ecffcc1181df60c5329a7c16e637db6046b77b94c2",
+    "albedoCredit": "Reto St\u00f6ckli, NASA Earth Observatory (NASA Goddard Space Flight Center)",
+    "albedoCitation": "R. St\u00f6ckli, E. Vermote, N. Saleous, R. Simmon and D. Herring (2005), Blue Marble Next Generation",
+    "albedoReportUrl": "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/bmng.pdf",
+    "albedoRightsUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "elevationSources": "NOAA GLOBE v1.0 unrestricted a10g.gz through p10g.gz; individual source hashes recorded in source audit",
+    "elevationSourceUrlPattern": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/{a..p}10g.gz",
+    "elevationCitationUrl": "https://www.ngdc.noaa.gov/mgg/topo/globe.html",
+    "rightsNotes": "Source-clearance gate approved; retain NASA acknowledgment and third-party caveats, GLOBE citation, DTED Level 0/NIMA credit, no-endorsement and accuracy/as-is notices recorded in source audit",
+    "processingScriptSha256": "e65d8a2fd7bc672059e8f1335382f57f0fef42dc7085a091182d7b9efd17bf0f",
+    "color": "July BMNG; linear-light area averaging under approved sRGB assumption; JPEG98",
+    "height": "Unrestricted GLOBE; streaming 20x20 area reduction, weighted land-only averaging",
+    "dTileCorrection": "Use documented bounds and 30-arc-second cells; original header unchanged",
+    "normals": "Physical slopes, radius 6371000 m, no exaggeration; red=-eastSlope, green=+southSlope",
+    "coasts": "Mixed-ocean cells and their gradient-neighbours neutral; no seafloor or coastline cliffs",
+    "orientation": "North-up -180..180; intended TextureLoader flipY=true, RepeatWrapping S, ClampToEdge T",
+    "runtime": "No integration; visual acceptance on hold; no material/cloud maps included"
+  }
+}
