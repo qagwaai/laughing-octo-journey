@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sol registration review</title>
+    <style>
+      body {
+        background: #111927;
+        color: #e0e8f0;
+        font: 16px system-ui;
+        margin: 24px;
+      }
+      label {
+        display: inline-flex;
+        flex-direction: column;
+        margin: 8px;
+        gap: 4px;
+      }
+      select,
+      input,
+      button {
+        font: inherit;
+        padding: 6px;
+      }
+      .pair {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      canvas {
+        max-width: 100%;
+        width: 512px;
+        height: auto;
+        cursor: crosshair;
+        border: 1px solid #8293aa;
+      }
+      figure {
+        margin: 0;
+      }
+      canvas.loupe {
+        width: 192px;
+        height: 192px;
+        cursor: default;
+        margin-top: 8px;
+      }
+      textarea {
+        width: min(100%, 1000px);
+        min-height: 70px;
+        display: block;
+      }
+      #result,
+      #error {
+        padding: 12px;
+        border: 1px solid #8293aa;
+        margin: 12px 0;
+      }
+      #error {
+        color: #ffbc9b;
+      }
+      table {
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 8px;
+        border: 1px solid #8293aa;
+      }
+      a {
+        color: #9dcfff;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fine albedo / relief registration</h1>
+    <p>
+      Click the
+      <strong>same terrain feature</strong>
+      in both images (crater center/rim, caldera or canyon junction). Do not pair lunar rays, haze, vegetation or
+      shadows with unrelated elevation boundaries. The green ruler is one delivered normal texel. Hillshade is
+      display-only 8x exaggerated source elevation.
+    </p>
+    <p>
+      Check several identifiable points across each region. An exclusion requires a reason and does not count as a pass.
+      Final visual acceptance and polar review stay on hold. No selected images are changed.
+    </p>
+    <label>
+      Landmark
+      <select id="region"></select>
+    </label>
+    <label>
+      Delivered tier
+      <select id="tier">
+        <option value="standard">Standard</option>
+        <option value="low">Low</option>
+      </select>
+    </label>
+    <label>
+      Feature label
+      <input id="feature" placeholder="e.g. northern caldera center" />
+    </label>
+    <label>
+      Synchronized zoom
+      <select id="zoom">
+        <option value="1">1x overview</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+        <option value="8">8x</option>
+      </select>
+    </label>
+    <button id="reset-view" type="button">Reset view</button>
+    <p>
+      Both images share the same geographic window. Shift-drag either image to pan both. Hover for a magnified view;
+      click to mark. Magnification enlarges existing pixels, not source detail. Set uncertainty from how clearly you can
+      identify the feature, not from zoom alone.
+    </p>
+    <div class="pair">
+      <figure>
+        <figcaption>Actual delivered albedo</figcaption>
+        <canvas id="albedo" width="512" height="512"></canvas>
+        <p>Albedo magnifier (4x relative to current view)</p>
+        <canvas class="loupe" id="albedo-loupe" width="192" height="192" aria-label="Albedo magnifier"></canvas>
+      </figure>
+      <figure>
+        <figcaption>Source elevation hillshade (normal recipe verified)</figcaption>
+        <canvas id="relief" width="512" height="512"></canvas>
+        <p>Relief magnifier (4x relative to current view)</p>
+        <canvas class="loupe" id="relief-loupe" width="192" height="192" aria-label="Relief magnifier"></canvas>
+      </figure>
+    </div>
+    <p><a id="overlay" target="_blank" rel="noopener">Open source contour/coastline overlay</a></p>
+    <div id="result" role="status">Choose a feature and mark both images.</div>
+    <label>
+      Review disposition
+      <select id="disposition">
+        <option value="measured">Measured shared feature</option>
+        <option value="excluded">Exclude: no reliable homologous feature</option>
+        <option value="open">Leave region open</option>
+      </select>
+    </label>
+    <label>
+      Uncertainty radius per click (normal texels)
+      <input id="uncertainty" type="number" min="0" max="5" step="0.05" value="0.15" />
+    </label>
+    <p>
+      The conservative bound is measured distance + twice the click uncertainty. A bound above one texel stays open,
+      even if the center estimate is below one.
+    </p>
+    <label>
+      Notes / exclusion reason
+      <textarea id="notes" placeholder="Identify the shared feature, uncertainty, or reason for exclusion."></textarea>
+    </label>
+    <button id="save" type="button">Save annotation</button>
+    <button id="clear" type="button">Clear current marks</button>
+    <button id="export" type="button">Download review JSON</button>
+    <p id="error" role="alert" hidden></p>
+    <h2>Saved annotations</h2>
+    <p>Stored in this browser for this evidence set. Download the JSON to retain it with the external evidence.</p>
+    <label>
+      Import prior review JSON
+      <input id="import" type="file" accept=".json,application/json" />
+    </label>
+    <p id="import-status" role="status"></p>
+    <p>
+      Reopen a saved point to inspect it at 4x. Save a recheck as a new annotation with clear notes; the earlier
+      measurement stays preserved unless you explicitly remove it.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Region / tier</th>
+          <th>Feature</th>
+          <th>Distance / bound (texels)</th>
+          <th>Result</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <script src="review-data.js"></script>
+    <script>
+      const byId = (id) => document.getElementById(id);
+      const storageKey = `sol-registration:${evidence.evidenceId}`;
+      let records = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      let priorEvidence = JSON.parse(localStorage.getItem(`${storageKey}:prior-evidence`) || '{}');
+      let marks = {};
+      let images = {};
+      let generation = 0;
+      let view = { zoom: 1, x: 0.5, y: 0.5 };
+      let hover = null;
+      let dragging = null;
+      let suppressClick = false;
+      const region = () => evidence.regions[Number(byId('region').value)];
+      const tier = () => byId('tier').value;
+      evidence.regions.forEach((r, i) => {
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = `${r.body}: ${r.name}`;
+        byId('region').append(option);
+      });
+      function measurement() {
+        if (!marks.albedo || !marks.relief) return null;
+        const r = region(),
+          size = r.tiers[tier()].normalDimensions;
+        return calculateMeasurement(
+          marks.albedo,
+          marks.relief,
+          r.boundsDegrees,
+          size,
+          Number(byId('uncertainty').value),
+        );
+      }
+      function calculateMeasurement(albedo, relief, bounds, size, uncertainty) {
+        const [west, south, east, north] = bounds;
+        const eastDegrees = (relief[0] - albedo[0]) * (east - west);
+        const northDegrees = (albedo[1] - relief[1]) * (north - south);
+        const eastNormalTexels = (eastDegrees * size[0]) / 360;
+        const northNormalTexels = (northDegrees * size[1]) / 180;
+        const distanceNormalTexels = Math.hypot(eastNormalTexels, northNormalTexels);
+        const boundNormalTexels = distanceNormalTexels + 2 * uncertainty;
+        return {
+          eastDegrees,
+          northDegrees,
+          eastNormalTexels,
+          northNormalTexels,
+          distanceNormalTexels,
+          uncertaintyPerClickNormalTexels: uncertainty,
+          boundNormalTexels,
+          passes: boundNormalTexels <= evidence.normalTexelTolerance,
+        };
+      }
+      function draw(id) {
+        const canvas = byId(id),
+          ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 512, 512);
+        ctx.imageSmoothingEnabled = false;
+        const span = 1 / view.zoom;
+        const left = view.x - span / 2,
+          top = view.y - span / 2;
+        if (images[id]) ctx.drawImage(images[id], left * 512, top * 512, span * 512, span * 512, 0, 0, 512, 512);
+        const r = region(),
+          degrees = r.tiers[tier()].normalTexelDegrees;
+        const width = (degrees / (r.boundsDegrees[2] - r.boundsDegrees[0])) * 512 * view.zoom;
+        ctx.strokeStyle = '#00ff80';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(20, 480);
+        ctx.lineTo(20 + width, 480);
+        ctx.stroke();
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#00ff80';
+        ctx.fillText('1 normal texel', 20, 465);
+        if (marks[id]) {
+          const x = (marks[id][0] - left) * view.zoom * 512;
+          const y = (marks[id][1] - top) * view.zoom * 512;
+          ctx.strokeStyle = '#ff3040';
+          ctx.beginPath();
+          ctx.moveTo(x - 10, y);
+          ctx.lineTo(x + 10, y);
+          ctx.moveTo(x, y - 10);
+          ctx.lineTo(x, y + 10);
+          ctx.stroke();
+        }
+      }
+      function update() {
+        ['albedo', 'relief'].forEach(draw);
+        drawMagnifiers();
+        const m = measurement();
+        byId('result').textContent = m
+          ? `Measured ${m.distanceNormalTexels.toFixed(3)} texels; conservative bound ${m.boundNormalTexels.toFixed(3)}: ${m.passes ? 'within tolerance' : 'OPEN / outside tolerance'}. East ${m.eastDegrees.toFixed(4)} deg, north ${m.northDegrees.toFixed(4)} deg.`
+          : 'Choose a feature and mark both images.';
+      }
+      async function load(restore = null) {
+        marks = restore ? { albedo: restore.albedoPoint, relief: restore.reliefPoint } : {};
+        if (!restore) resetView();
+        images = {};
+        update();
+        const current = ++generation,
+          r = region();
+        byId('overlay').href = r.sourceOverlay;
+        try {
+          for (const [id, url] of [
+            ['albedo', r.tiers[tier()].albedo],
+            ['relief', r.sourceRelief],
+          ]) {
+            const image = new Image();
+            image.src = url;
+            await image.decode();
+            if (generation !== current) return;
+            images[id] = image;
+          }
+          byId('error').hidden = true;
+          update();
+        } catch (error) {
+          showError(`Image loading failed: ${error.message}`);
+        }
+      }
+      function showError(message) {
+        byId('error').textContent = message;
+        byId('error').hidden = false;
+      }
+      function resetView() {
+        view = { zoom: 1, x: 0.5, y: 0.5 };
+        hover = null;
+        byId('zoom').value = '1';
+      }
+      function clampView() {
+        const half = 0.5 / view.zoom;
+        view.x = Math.max(half, Math.min(1 - half, view.x));
+        view.y = Math.max(half, Math.min(1 - half, view.y));
+      }
+      function normalizedPointer(canvas, event) {
+        const bounds = canvas.getBoundingClientRect();
+        return [
+          (event.clientX - bounds.left - canvas.clientLeft) / canvas.clientWidth,
+          (event.clientY - bounds.top - canvas.clientTop) / canvas.clientHeight,
+        ];
+      }
+      function imagePoint(point) {
+        return [view.x + (point[0] - 0.5) / view.zoom, view.y + (point[1] - 0.5) / view.zoom];
+      }
+      function drawMagnifiers() {
+        for (const id of ['albedo', 'relief']) {
+          const ctx = byId(`${id}-loupe`).getContext('2d');
+          ctx.clearRect(0, 0, 192, 192);
+          if (!hover || !images[id]) continue;
+          const size = 48 / view.zoom;
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(images[id], hover[0] * 512 - size / 2, hover[1] * 512 - size / 2, size, size, 0, 0, 192, 192);
+          ctx.strokeStyle = '#ff3040';
+          ctx.beginPath();
+          ctx.moveTo(86, 96);
+          ctx.lineTo(106, 96);
+          ctx.moveTo(96, 86);
+          ctx.lineTo(96, 106);
+          ctx.stroke();
+        }
+      }
+      function validateRecord(record) {
+        if (!record || typeof record !== 'object') throw new Error('Invalid review entry.');
+        const r = evidence.regions.find((entry) => entry.body === record.body && entry.name === record.region);
+        if (
+          !r ||
+          record.assetVersion !== r.assetVersion ||
+          !r.tiers[record.tier] ||
+          JSON.stringify(record.boundsDegrees) !== JSON.stringify(r.boundsDegrees) ||
+          JSON.stringify(record.normalDimensions) !== JSON.stringify(r.tiers[record.tier].normalDimensions) ||
+          !['measured', 'excluded', 'open'].includes(record.disposition) ||
+          typeof record.feature !== 'string' ||
+          typeof record.notes !== 'string'
+        ) {
+          throw new Error('Review entry does not match the selected assets and geographic grid.');
+        }
+        for (const point of [record.albedoPoint, record.reliefPoint]) {
+          if (point != null || record.disposition === 'measured') {
+            if (
+              !Array.isArray(point) ||
+              point.length !== 2 ||
+              !point.every((v) => Number.isFinite(v) && v >= 0 && v <= 1)
+            ) {
+              throw new Error('Review contains an invalid marked point.');
+            }
+          }
+        }
+        if (record.disposition === 'measured') {
+          const u = record.measurement?.uncertaintyPerClickNormalTexels;
+          if (!Number.isFinite(u) || u < 0 || u > 5) throw new Error('Invalid recorded uncertainty.');
+        }
+      }
+      function renderRecords() {
+        byId('rows').replaceChildren();
+        records.forEach((record, index) => {
+          const row = document.createElement('tr');
+          const m =
+            record.disposition === 'measured'
+              ? calculateMeasurement(
+                  record.albedoPoint,
+                  record.reliefPoint,
+                  record.boundsDegrees,
+                  record.normalDimensions,
+                  record.measurement.uncertaintyPerClickNormalTexels,
+                )
+              : null;
+          for (const text of [
+            `${record.body} ${record.region} / ${record.tier}`,
+            record.feature,
+            m ? `${m.distanceNormalTexels.toFixed(3)} / ${m.boundNormalTexels.toFixed(3)}` : '-',
+            record.disposition === 'measured' ? (m.passes ? 'PASS' : 'OPEN') : record.disposition,
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = text;
+            row.append(cell);
+          }
+          const cell = document.createElement('td'),
+            button = document.createElement('button');
+          const reopen = document.createElement('button');
+          reopen.textContent = 'Reopen';
+          reopen.onclick = async () => {
+            byId('region').value = String(
+              evidence.regions.findIndex((r) => r.body === record.body && r.name === record.region),
+            );
+            byId('tier').value = record.tier;
+            byId('feature').value = record.feature;
+            byId('notes').value = record.notes;
+            byId('disposition').value = record.disposition;
+            byId('uncertainty').value = String(record.measurement?.uncertaintyPerClickNormalTexels ?? 0.15);
+            const points = [record.albedoPoint, record.reliefPoint].filter(Boolean);
+            view = {
+              zoom: 4,
+              x: points.length ? points.reduce((sum, p) => sum + p[0], 0) / points.length : 0.5,
+              y: points.length ? points.reduce((sum, p) => sum + p[1], 0) / points.length : 0.5,
+            };
+            clampView();
+            byId('zoom').value = '4';
+            await load(record);
+            byId('zoom').scrollIntoView({ block: 'center' });
+          };
+          button.textContent = 'Remove';
+          button.onclick = () => {
+            records.splice(index, 1);
+            persist();
+          };
+          cell.append(reopen, button);
+          row.append(cell);
+          byId('rows').append(row);
+        });
+      }
+      function persist() {
+        localStorage.setItem(storageKey, JSON.stringify(records));
+        localStorage.setItem(`${storageKey}:prior-evidence`, JSON.stringify(priorEvidence));
+        renderRecords();
+      }
+      ['albedo', 'relief'].forEach((id) =>
+        byId(id).addEventListener('click', (event) => {
+          if (suppressClick || event.shiftKey) {
+            suppressClick = false;
+            return;
+          }
+          if (!images[id]) {
+            showError('Wait for both images to load.');
+            return;
+          }
+          const canvas = byId(id);
+          const [x, y] = normalizedPointer(canvas, event);
+          if (x < 0 || x > 1 || y < 0 || y > 1) {
+            showError('Choose a point inside the image, not its border.');
+            return;
+          }
+          marks[id] = imagePoint([x, y]);
+          update();
+        }),
+      );
+      for (const id of ['albedo', 'relief']) {
+        const canvas = byId(id);
+        canvas.addEventListener('pointerdown', (event) => {
+          suppressClick = false;
+          if (!event.shiftKey) return;
+          dragging = { id, point: normalizedPointer(canvas, event), x: view.x, y: view.y };
+          suppressClick = true;
+          canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+        canvas.addEventListener('pointermove', (event) => {
+          const point = normalizedPointer(canvas, event);
+          if (dragging?.id === id) {
+            view.x = dragging.x - (point[0] - dragging.point[0]) / view.zoom;
+            view.y = dragging.y - (point[1] - dragging.point[1]) / view.zoom;
+            clampView();
+          }
+          hover = imagePoint(point);
+          update();
+        });
+        canvas.addEventListener('pointerup', () => {
+          dragging = null;
+        });
+        canvas.addEventListener('pointercancel', () => {
+          dragging = null;
+        });
+        canvas.addEventListener('pointerleave', () => {
+          if (!dragging) {
+            hover = null;
+            drawMagnifiers();
+          }
+        });
+      }
+      byId('zoom').onchange = () => {
+        if (hover) {
+          view.x = hover[0];
+          view.y = hover[1];
+        }
+        view.zoom = Number(byId('zoom').value);
+        clampView();
+        update();
+      };
+      byId('reset-view').onclick = () => {
+        resetView();
+        update();
+      };
+      byId('region').onchange = () => load();
+      byId('tier').onchange = () => load();
+      byId('import').onchange = async () => {
+        try {
+          const file = byId('import').files[0];
+          if (!file) return;
+          const report = JSON.parse(await file.text());
+          if (
+            !Array.isArray(report.records) ||
+            report.evidence?.schemaVersion !== evidence.schemaVersion ||
+            typeof report.evidence?.evidenceId !== 'string' ||
+            JSON.stringify(report.evidence.sources) !== JSON.stringify(evidence.sources) ||
+            report.evidence?.normalTexelTolerance !== evidence.normalTexelTolerance
+          ) {
+            throw new Error('Invalid review JSON or different acceptance tolerance.');
+          }
+          report.records.forEach(validateRecord);
+          const keys = new Set(records.map((record) => JSON.stringify(record)));
+          const incoming = report.records.filter((record) => !keys.has(JSON.stringify(record)));
+          if (report.priorEvidence) {
+            for (const [id, previous] of Object.entries(report.priorEvidence)) {
+              if (
+                previous?.evidenceId !== id ||
+                JSON.stringify(previous.sources) !== JSON.stringify(evidence.sources)
+              ) {
+                throw new Error('Imported provenance has different source evidence.');
+              }
+            }
+          }
+          priorEvidence = { ...priorEvidence, ...report.priorEvidence, [report.evidence.evidenceId]: report.evidence };
+          records.push(...incoming);
+          persist();
+          byId('import-status').textContent =
+            `Imported ${incoming.length} prior annotations without replacing existing records.`;
+          byId('error').hidden = true;
+        } catch (error) {
+          showError(`Import failed: ${error.message}`);
+        } finally {
+          byId('import').value = '';
+        }
+      };
+      byId('uncertainty').oninput = update;
+      byId('clear').onclick = () => {
+        marks = {};
+        update();
+      };
+      byId('save').onclick = () => {
+        const disposition = byId('disposition').value,
+          feature = byId('feature').value.trim();
+        const notes = byId('notes').value.trim(),
+          m = measurement();
+        const uncertainty = Number(byId('uncertainty').value);
+        if (!Number.isFinite(uncertainty) || uncertainty < 0 || uncertainty > 5 || byId('uncertainty').value === '') {
+          showError('Enter an uncertainty from 0 to 5 normal texels.');
+          return;
+        }
+        if (disposition === 'measured' && (!m || !feature || !notes)) {
+          showError('Mark both images and enter the shared feature label and review notes.');
+          return;
+        }
+        if (disposition !== 'measured' && !notes) {
+          showError('An exclusion/open entry requires a reason.');
+          return;
+        }
+        const r = region();
+        records.push({
+          body: r.body,
+          region: r.name,
+          assetVersion: r.assetVersion,
+          tier: tier(),
+          feature,
+          disposition,
+          notes,
+          albedoPoint: marks.albedo || null,
+          reliefPoint: marks.relief || null,
+          boundsDegrees: r.boundsDegrees,
+          normalDimensions: r.tiers[tier()].normalDimensions,
+          measurement: disposition === 'measured' ? m : null,
+          reviewedAt: new Date().toISOString(),
+        });
+        persist();
+        byId('error').hidden = true;
+      };
+      byId('export').onclick = () => {
+        const blob = new Blob(
+          [
+            JSON.stringify(
+              {
+                evidence,
+                priorEvidence,
+                records,
+                exportedAt: new Date().toISOString(),
+                gateStatus: 'Requires explicit review; unmeasured regions are not passes',
+              },
+              null,
+              2,
+            ),
+          ],
+          { type: 'application/json' },
+        );
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'registration-review.json';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      };
+      renderRecords();
+      load();
+    </script>
+  </body>
+</html>

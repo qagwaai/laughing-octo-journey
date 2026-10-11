@@ -1,7 +1,8 @@
 import { AsteroidMaterialProfile } from './asteroid-materials';
-import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
+import type { CatalogIdentity } from './catalog-identity';
 import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
 import type { CanonicalViewerBodyOrbitalElements } from './solar-system-get';
+import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
 
 export const CELESTIAL_BODY_UPSERT_REQUEST_EVENT = 'celestial-body-upsert-request';
 export const CELESTIAL_BODY_UPSERT_RESPONSE_EVENT = 'celestial-body-upsert-response';
@@ -52,6 +53,8 @@ export interface CelestialBodyUpsertEntity {
   bodyType: CanonicalBodyType;
   /** Required canonical appearance classification; distinct from planetType. */
   surfaceArchetype: SurfaceArchetype;
+  /** Optional astronomical identity; distinct from game and source-record IDs. */
+  catalogIdentity?: CatalogIdentity | null;
   /** Optional viewer-facing display name. */
   displayName?: string;
   /** Optional mission scope for asteroid fields that belong to a mission. */

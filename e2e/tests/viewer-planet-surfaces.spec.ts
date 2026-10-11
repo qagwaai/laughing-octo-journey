@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Mesh, MeshStandardMaterial, Scene } from 'three';
+import type { ViewerBody } from '../../src/app/model/solar-system-get';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import {
@@ -33,14 +34,18 @@ function collectRenderProblems(page: import('@playwright/test').Page): string[] 
   return problems;
 }
 
-async function navigateToSystemScene(page: import('@playwright/test').Page, mock: SocketIOMock) {
+async function navigateToSystemScene(
+  page: import('@playwright/test').Page,
+  mock: SocketIOMock,
+  bodies: ViewerBody[] = SOL_SYSTEM_BODIES,
+) {
   const gameShell = new GameShellPage(page);
   const viewerPage = new ViewerPage(page);
 
   await gameShell.openViewer();
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',
-    data: solarSystemGetResponse(SOL_SYSTEM_BODIES),
+    data: solarSystemGetResponse(bodies),
   }));
   await viewerPage.selectSystem('Sol');
   await viewerPage.expectSceneLoaded();
@@ -50,8 +55,8 @@ async function navigateToSystemScene(page: import('@playwright/test').Page, mock
  * Enters the planet detail view through the component's own request handler,
  * matching how planet-view-zoom.spec.ts reaches the same screen.
  */
-async function enterPlanetViewViaSceneComponent(page: import('@playwright/test').Page) {
-  await page.waitForFunction(() => {
+async function enterPlanetViewViaSceneComponent(page: import('@playwright/test').Page, bodyId = 'earth') {
+  await page.waitForFunction((bodyId) => {
     const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
     const host = document.querySelector('app-viewer-scene-page');
     if (!ngApi?.getComponent || !host) return false;
@@ -63,10 +68,10 @@ async function enterPlanetViewViaSceneComponent(page: import('@playwright/test')
     if (typeof component?.bodies !== 'function' || typeof component?.onPlanetViewRequest !== 'function') {
       return false;
     }
-    return component.bodies().some((body) => body.id === 'earth');
-  });
+    return component.bodies().some((body) => body.id === bodyId);
+  }, bodyId);
 
-  await page.evaluate(() => {
+  await page.evaluate((bodyId) => {
     const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
     const host = document.querySelector('app-viewer-scene-page');
     if (!ngApi?.getComponent || !host) {
@@ -78,16 +83,197 @@ async function enterPlanetViewViaSceneComponent(page: import('@playwright/test')
       onPlanetViewRequest: (body: unknown) => void;
     };
 
-    const earth = component.bodies().find((body) => body.id === 'earth');
-    if (!earth) {
-      throw new Error('earth body not found');
+    const body = component.bodies().find((body) => body.id === bodyId);
+    if (!body) {
+      throw new Error(`${bodyId} body not found`);
     }
 
-    component.onPlanetViewRequest(earth);
+    component.onPlanetViewRequest(body);
+  }, bodyId);
+
+  await expect(page).toHaveURL(new RegExp(`right:planet-view/sol/${bodyId}`));
+}
+
+function catalogBodies(): ViewerBody[] {
+  return SOL_SYSTEM_BODIES.map((body: ViewerBody) => {
+    if (!['earth', 'luna', 'mars'].includes(body.id)) return body;
+    return {
+      ...body,
+      surfaceArchetype: body.id === 'earth' ? 'ocean' : body.surfaceArchetype,
+      catalogIdentity: { namespace: 'sol', key: body.id },
+    };
+  });
+}
+
+async function renderedSurface(page: import('@playwright/test').Page, name: string) {
+  return page.evaluate((name) => {
+    const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+    const canvas = document.querySelector('.viewer-scene-host ngt-canvas, .planet-view-host ngt-canvas');
+    if (!ngApi?.getComponent || !canvas) return null;
+    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene | null } } };
+    const node = component.store.snapshot.scene?.getObjectByName(name);
+    if (!node || node.type !== 'Mesh') return null;
+    const material = (node as Mesh).material as MeshStandardMaterial;
+    const imageWidth = (image: unknown): number | null =>
+      typeof image === 'object' && image !== null && 'width' in image && typeof image.width === 'number'
+        ? image.width
+        : null;
+    const albedoImage: unknown = material.map?.image;
+    return {
+      albedoWidth: imageWidth(albedoImage),
+      normalWidth: imageWidth(material.normalMap?.image),
+      roughnessMap: !!material.roughnessMap,
+      color: material.color.getHexString(),
+      emissive: material.emissive.getHexString(),
+      source:
+        typeof albedoImage === 'object' &&
+        albedoImage !== null &&
+        'src' in albedoImage &&
+        typeof albedoImage.src === 'string'
+          ? albedoImage.src
+          : null,
+    };
+  }, name);
+}
+
+test.describe('viewer catalog planet surfaces', () => {
+  test('provides software WebGL2 with capacity for the standard catalog tier', async ({ page }) => {
+    await page.goto('/');
+    const capabilities = await page.evaluate(() => {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2');
+      if (!gl) throw new Error('WebGL2 is unavailable; catalog rendering tests require software WebGL2');
+      const debug = gl.getExtension('WEBGL_debug_renderer_info');
+      const result = {
+        renderer: debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : null,
+        maxTextureSize: Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)),
+      };
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      return result;
+    });
+    expect(capabilities.renderer).toMatch(/SwiftShader/i);
+    expect(capabilities.maxTextureSize).toBeGreaterThanOrEqual(4096);
   });
 
-  await expect(page).toHaveURL(/right:planet-view\/sol\/earth/);
-}
+  test('loads only the exact approved previews, applies white terrain tint and Earth-only clouds', async ({ page }) => {
+    const problems = collectRenderProblems(page);
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/textures/sol/')) requests.push(request.url());
+    });
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
+    await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(512);
+    await expect.poll(async () => (await renderedSurface(page, 'Mars'))?.albedoWidth).toBe(512);
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([128]);
+    expect(requests.map((url) => new URL(url).pathname).sort()).toEqual([
+      '/textures/sol/earth-july-v2/earth-july-preview-albedo.jpg',
+      '/textures/sol/luna-v3/luna-preview-albedo.jpg',
+      '/textures/sol/mars-v2/mars-preview-albedo.jpg',
+    ]);
+    expect(requests.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({ color: 'ffffff', emissive: '000000' });
+    await page.getByTestId('viewer-surface-sources').locator('summary').click();
+    await expect(page.getByTestId('viewer-surface-sources')).toContainText('NOAA GLOBE');
+    await expect(page.getByTestId('viewer-surface-sources')).toContainText('on hold');
+    expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
+  });
+
+  test('loads only low detail on constrained policy, preserves Luna preview, and upgrades normal maps', async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 4 }),
+    );
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/textures/sol/')) requests.push(new URL(request.url()).pathname);
+    });
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
+    await enterPlanetViewViaSceneComponent(page);
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(2048);
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({
+      normalWidth: 1024,
+      roughnessMap: false,
+      color: 'ffffff',
+    });
+    await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(512);
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([256]);
+    expect(requests).toContain('/textures/sol/earth-july-v2/earth-july-low-normal.png');
+    expect(requests.some((path) => path.includes('standard'))).toBe(false);
+    expect(requests.some((path) => path.includes('luna-low') || path.includes('mars-low'))).toBe(false);
+    await page.getByRole('button', { name: 'Focus Luna' }).click();
+    await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(2048);
+    expect(await renderedSurface(page, 'Luna')).toMatchObject({ normalWidth: 1024 });
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([]);
+    await page.goBack();
+    await expect(page).toHaveURL(/right:viewer-scene\/sol/);
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
+    await enterPlanetViewViaSceneComponent(page);
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(2048);
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([256]);
+  });
+
+  test('loads Mars standard detail without clouds and switches to low on full-window resize', async ({ page }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 8 }),
+    );
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+    await expect.poll(async () => (await renderedSurface(page, 'Mars'))?.albedoWidth).toBe(512);
+    await enterPlanetViewViaSceneComponent(page, 'mars');
+    await expect.poll(async () => (await renderedSurface(page, 'Mars'))?.albedoWidth).toBe(4096);
+    expect(await renderedSurface(page, 'Mars')).toMatchObject({
+      normalWidth: 2048,
+      color: 'ffffff',
+      emissive: '000000',
+    });
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([]);
+    await page.setViewportSize({ width: 767, height: 900 });
+    await expect.poll(async () => (await renderedSurface(page, 'Mars'))?.albedoWidth).toBe(2048);
+    expect(await renderedSurface(page, 'Mars')).toMatchObject({ normalWidth: 1024 });
+  });
+
+  test('retains recognizable preview on detail failure and retries into standard detail', async ({ page }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 8 }),
+    );
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
+    let failures = 0;
+    await page.route('**/textures/sol/earth-july-v2/earth-july-standard-normal.png', (route) => {
+      failures += 1;
+      return failures === 1 ? route.fulfill({ status: 503, body: 'temporary failure' }) : route.continue();
+    });
+    await enterPlanetViewViaSceneComponent(page);
+    await expect(page.getByTestId('viewer-surface-error')).toBeVisible();
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({ albedoWidth: 512, normalWidth: null });
+    await page.getByTestId('viewer-surface-retry').click();
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(4096);
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({ normalWidth: 2048, roughnessMap: false });
+    await expect(page.getByTestId('viewer-surface-error')).toBeHidden();
+    expect(failures).toBe(2);
+  });
+
+  test('shows a neutral placeholder and explicit retry when initial catalog imagery fails', async ({ page }) => {
+    let fail = true;
+    await page.route('**/textures/sol/luna-v3/luna-preview-albedo.jpg', (route) =>
+      fail ? route.fulfill({ status: 404, body: 'missing fixture' }) : route.continue(),
+    );
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+    await expect(page.getByTestId('viewer-surface-error')).toBeVisible();
+    expect(await renderedSurface(page, 'Luna')).toMatchObject({ albedoWidth: null, color: '555b65' });
+    fail = false;
+    await page.getByTestId('viewer-surface-retry').click();
+    await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(512);
+    await expect(page.getByTestId('viewer-surface-error')).toBeHidden();
+  });
+});
 
 /**
  * Waits until the bake queue has actually drained with surfaces resident.
@@ -135,8 +321,17 @@ async function cloudTextureWidths(page: import('@playwright/test').Page): Promis
     scene.traverse((node) => {
       if (node.type !== 'Mesh') return;
       const material = (node as Mesh).material as MeshStandardMaterial;
-      if (material.transparent && material.opacity === 0.7 && material.map?.image?.width) {
-        widths.push(material.map.image.width);
+      const image: unknown = material.map?.image;
+      if (
+        material.transparent &&
+        material.opacity === 0.7 &&
+        typeof image === 'object' &&
+        image !== null &&
+        'width' in image &&
+        typeof image.width === 'number' &&
+        image.width > 0
+      ) {
+        widths.push(image.width);
       }
     });
     return widths;

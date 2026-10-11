@@ -1,7 +1,7 @@
 # Sol planetary textures: implementation and validation plan
 
 Date: 2026-10-08  
-Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 0 includes user visual validation on 2026-10-08; Stage 1 includes the approved Forge catalog identity contract and source-clearance gates. Stage 2 is in progress: Earth, Luna and Mars candidates have passed offline preparation checks and are stored in the repository; originals/notices and selected evidence are now archived outside Git in the configured external artifact store. Fine color/relief alignment and renderer checks remain pending. Mercury observed imagery is explicitly deferred and remains procedural. No catalog assets are wired into the Viewer. Final Stellar Viewer visual acceptance remains on hold at the user's request.
+Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 remains in progress: limited sampled fine registration was explicitly accepted on 2026-10-11 with exclusions and uncertainty limitations; polar boundary/detail-loss review remains unfinished. With explicit user approval, Stage 3 catalog loading/cache ownership and initial Stage 4 Viewer integration are implemented for earth-july-v2, luna-v3 and mars-v2. Selected runtime images are now served same-origin; originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural. Hardware/network performance and final Stellar Viewer visual acceptance remain pending; visual acceptance is still on hold.
 
 ## Goal and approved decisions
 
@@ -46,10 +46,11 @@ Keep procedural generation as the default for arbitrary solar systems.
 ## Current implementation and integration seams
 
 - [Surface resolver](../src/app/scene/planet/planet-surface-resolver.ts):
-  central selection seam; currently routes eligible solid bodies to the terran
-  generator and explicitly anticipates Sol-specific surfaces.
+  central selection seam; exact supported identities select approved catalog
+  assets; other eligible solid bodies retain the terran generator.
 - [Texture cache](../src/app/scene/planet/planet-texture-cache.ts):
-  shared overview/detail scheduling, LRU eviction, and GPU renderer ownership.
+  shared overview/detail facade for procedural scheduling and
+  [catalog texture ownership](../src/app/scene/planet/catalog-surface-cache.ts).
 - [LOD presets](../src/app/model/planet/planet-texture.ts):
   current procedural overview is 256 x 128; detail is 2048 x 1024.
 - [Bake result](../src/app/scene/planet/planet-bake.ts):
@@ -65,9 +66,9 @@ Keep procedural generation as the default for arbitrary solar systems.
 - [External anchors](../src/app/component/external-anchors.ts):
   supports custom links and accessible labels, with safe external-link defaults.
 
-Both viewer templates currently attach procedural clouds when a surface is
-available. Catalog integration needs explicit atmosphere eligibility so airless
-bodies do not inherit terrestrial clouds.
+Both Viewer templates now apply explicit catalog cloud eligibility: Earth
+retains its cloud layer; Luna and Mars do not acquire terrestrial clouds.
+Procedural cloud behavior and splash paths remain unchanged.
 
 ### Contract authority
 
@@ -101,17 +102,17 @@ Use `Not started`, `In progress`, `Blocked`, `Awaiting visual review`, or `Done`
 Mark a stage done only when its acceptance evidence is recorded. A source found
 in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 
-| Stage | Work                                                           | Prerequisites                          | Status      | Evidence / blocker                                                                                                                                                  |
-| ----- | -------------------------------------------------------------- | -------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0     | Minimize station meshes to 5% linear size                      | None                                   | Done        | Automated verification passed; user confirmed Stellar Viewer visual validation complete on 2026-10-08                                                               |
-| 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred            |
-| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | In progress | Earth v2, Luna v2 and Mars v1 candidates prepared and measured offline; fine co-registration and renderer checks pending; Mercury excluded until separately cleared |
-| 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2                             | Not started | Shared surface interface pending                                                                                                                                    |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | Not started | Both viewer surfaces must agree                                                                                                                                     |
-| 5     | Automated pilot verification                                   | Stages 0 and 4                         | Not started | Commands and outcomes to be recorded                                                                                                                                |
-| 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                            |
-| 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                        |
-| 8     | Release verification and documentation                         | Stages 5-7                             | Not started | Production assets and regression evidence pending                                                                                                                   |
+| Stage | Work                                                           | Prerequisites                          | Status      | Evidence / blocker                                                                                                                                                                                                            |
+| ----- | -------------------------------------------------------------- | -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Minimize station meshes to 5% linear size                      | None                                   | Done        | Automated verification passed; user confirmed Stellar Viewer visual validation complete on 2026-10-08                                                                                                                         |
+| 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                                      |
+| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | In progress | Selected earth-july-v2, luna-v3 and mars-v2 prepared; limited sampled fine registration accepted with exclusions; polar boundary/detail-loss and remaining renderer checks pending; Mercury excluded until separately cleared |
+| 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                                 |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; visual lighting review still pending                                                             |
+| 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                                     |
+| 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                                      |
+| 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                                  |
+| 8     | Release verification and documentation                         | Stages 5-7                             | Not started | Production assets and regression evidence pending                                                                                                                                                                             |
 
 ### Stage 0: unblock visual validation
 
@@ -1444,48 +1445,324 @@ including alternate-root restoration, corruption/overwrite/path guards and
 the existing raster regressions. Formatting and `git diff --check` passed.
 No network downloads or environment relocation were needed for this validation.
 
+#### Fine registration audit started (2026-10-09; Stage 2 gate)
+
+The user approved a read-only audit of Earth/Luna/Mars and a local paired
+homologous-feature review. The selected images remain unchanged. Acceptance
+tolerance is **one delivered normal texel at each tier**, with ambiguous regions
+explicitly excluded rather than fitted to unrelated color patterns. The review
+uses a conservative bound including both per-click uncertainty radii; this
+threshold is an approved criterion, not an achieved registration result.
+
+All original hashes and selected output hashes/dimensions/budgets were checked.
+Each of the six delivered normal maps was reconstructed in memory from its
+source-grid recipe and every decoded sample matched. This proves recipe/grid
+correspondence, **not source albedo/elevation co-registration**. The existing
+qualitative panels do not supply measured homologous points.
+
+Fresh nine-region paired evidence and a selectable annotation form are generated
+by [registration_review.py](../tools/sol-textures/diagnostic/registration_review.py);
+see the [local review guide](../tools/sol-textures/README.md). Each pair compares
+actual low/standard albedo with fresh common-grid source-elevation hillshade.
+Display-only 8x relief exaggeration does not alter runtime normal strength.
+East/north angular offsets are converted to delivered normal texels:
+
+| Body  | Low normal texel  | Standard normal texel |
+| ----- | ----------------- | --------------------- |
+| Earth | 0.3515625 degrees | 0.17578125 degrees    |
+| Luna  | 0.3515625 degrees | 0.3515625 degrees     |
+| Mars  | 0.3515625 degrees | 0.17578125 degrees    |
+
+Mars's archived Viking metadata reports MDIM/MOLA local RMS differences of
+3.15 km easting / 4.33 km northing, and warns against interpreting the historical
+0.11-degree comparison as a universal MDIM 1 correction. Those source-level
+figures cannot certify the selected landmarks; hazy Hellas remains a candidate
+for explicit exclusion. Earth coastline masking and lunar color rays likewise
+must not be confused with height displacements.
+
+**Registration remains open pending saved feature annotations, coverage review
+and explicit acceptance.** No residual numbers are inferred from brightness
+correlation or from the fact that grids match. Polar boundary/detail-loss review
+and final Stellar Viewer visual acceptance remain separate open/on-hold gates.
+
+Local preparation on 2026-10-09 used Python 3.14.5 with the pinned
+NumPy 2.5.3 / rasterio 1.5.2 / GDAL 3.12.2 dependencies, restored into an external
+environment after the available Python lacked NumPy. No original downloads,
+source replacement or application changes were required.
+
+The 2026-10-11 reviewer submission contains 19 records: 18 paired points and a
+Hellas Standard exclusion. Sixteen recorded bounds are within tolerance; the
+Copernicus Low and Valles Marineris Standard points are outside it. These are
+**preliminary annotations, not validated source defects or scientific passes**:
+the reviewer reported difficulty identifying precise features at the original
+display size, labels are sometimes broad, and click uncertainty was left at the
+default. Tycho Low and Hellas Low have no records.
+
+The approved follow-up adds synchronized zoom/pan, paired hover magnifiers and
+non-destructive import/reopen to the annotation form. Imported source/grid
+identity is checked, original records and prior evidence metadata are retained,
+and displayed residuals are recomputed. A recheck appends a new annotation.
+Magnification adds no source detail or independent uncertainty evidence.
+Target Copernicus Low, Valles Marineris Standard, near-threshold Olympus Low,
+missing Tycho Low and a Hellas Low measurement/exclusion. All selected textures,
+the original submission and earlier hash-pinned evidence remain unchanged.
+Registration stays open; polar review and final Viewer acceptance are unaffected.
+
+Fresh magnified evidence is retained externally under
+`work/registration-review-2026-10-11-v4`; earlier evidence is preserved.
+Validation passed: all 30 local raster/registration unit tests, all six
+source-recipe normal reconstructions, and
+`node tools\sol-textures\diagnostic\test-registration-review.mjs http://127.0.0.1:43190/ D:\at-template\registration-review.json`.
+The isolated headless browser checked immutable imports/provenance, rechecks,
+zoom/pan invariance, magnifiers, responsive click coordinates, export,
+persistence and all 18 image pairs. Synthetic annotations were discarded.
+Prettier checks and `git diff --check` passed. These validate the review tool,
+not the correctness of the reviewer's homologous-feature identifications.
+
+The second-pass export, `registration-review-v2.json` (evidence ID
+`registration-review-2026-10-11-v4`), contains 17 measured points and two
+exclusions. All 17 distances and uncertainty bounds were independently
+recomputed from the saved coordinates and match the export; all recorded bounds
+are within one normal texel. The new Valles Marineris Standard "south peak"
+point has a bound of 0.961 texels; Olympus Low remains near the threshold at
+0.967 texels. These bounds still use the unverified default 0.15-texel
+per-click uncertainty.
+
+Copernicus Low is now excluded. The reviewer clarified that they could not
+confidently identify the same terrain feature in both images; the exported
+note "left" alone did not describe that limitation. Hellas Standard remains
+excluded. Tycho Low and Hellas Low still lack records. Seventeen original
+records are unchanged in the second export; the two original outlier records
+are absent from that export but remain in the untouched first submission.
+Prior evidence metadata is retained. Neither submission was edited.
+Registration remains open pending coverage and uncertainty/feature review;
+exclusions are not passes and no corrective texture shift is justified by
+these annotations.
+
+Following the second-pass review, the user explicitly excluded **Hellas Low**
+from fine registration measurement. This is an approved review exclusion, not
+a passing measurement or evidence of a texture defect. It is recorded here
+without modifying the submitted JSON. Tycho Low coverage and the near-threshold
+Valles Standard/Olympus Low feature and uncertainty review remain open.
+
+The user subsequently confirmed the second-pass **Valles Marineris Standard**
+and **Olympus Mons Low** measurements, accepting their recorded feature
+placements and 0.15-normal-texel per-click uncertainties for this review.
+Their conservative bounds are respectively 0.961 and 0.967 normal texels,
+within the approved one-texel tolerance. This is reviewer confirmation, not
+an independent scientific calibration of uncertainty. No submitted JSON or
+selected texture was changed. **Tycho Low is the remaining coverage item**
+before the fine-registration gate can be considered for explicit acceptance;
+polar review and final Viewer visual acceptance remain separate.
+
+The third-pass export, `registration-review-v3.json`, adds Tycho Low's
+"north east rim" point: measured distance 0.189 normal texels, conservative
+bound 0.489 with the recorded 0.15-texel per-click uncertainty. All 19
+second-pass records remain unchanged. All 18 measured residuals and bounds
+were independently recomputed and match the export; none exceeds tolerance.
+Together with the documented Hellas Low exclusion, all nine sampled regions
+have a measurement or explicit exclusion for both tiers. This completes
+sampled coverage, not global registration proof. The submitted files remain
+unchanged; explicit acceptance of the limited fine-registration review is
+still pending.
+
+**Accepted limited fine-registration review (2026-10-11):** the user explicitly
+accepted completion for the sampled landmarks and tiers, retaining Copernicus
+Low and both Hellas tiers as exclusions and the recorded uncertainty
+limitations. The 18 measured points meet the one-normal-texel conservative
+bound; nine sampled regions have measurements or approved exclusions at both
+tiers. This closes only this limited Stage 2 fine-registration gate, not global
+source co-registration or scientific uncertainty calibration. No corrective
+shift, texture change or submitted-file edit was made. Polar boundary/detail-loss
+review remains open and final Stellar Viewer visual acceptance remains on hold.
+Earlier pending statements in this audit are chronological checkpoints,
+superseded by this explicit acceptance.
+
+```powershell
+& $python -m unittest discover -s tools\sol-textures -p 'test_*.py' -v
+# Passed: 30 local raster/registration tests.
+& $python tools\sol-textures\diagnostic\registration_review.py `
+  --artifact-root $artifactRoot `
+  --output (Join-Path $artifactRoot 'work\registration-review-2026-10-09-v2')
+# Passed: all source/output hash checks; all six decoded normals matched;
+# nine fresh regions, each with low and standard albedo; no annotations yet.
+```
+
+An isolated headless Chromium form check passed all 18 region/tier image loads,
+coordinate/texel math, validation, browser persistence, exclusion handling and
+JSON export. Its synthetic clicks were discarded with the isolated context and
+are **not scientific registration evidence**. Local source crops, selected-albedo
+crops, source/hash metadata, template/script hashes and an evidence inventory
+are retained under the external `work\registration-review-2026-10-09-v2` folder.
+The form is served on loopback only; downloaded reviewer annotations still need
+to be retained and assessed before any closure statement.
+
+The user also reported a green full E2E execution on 2026-10-09. This is
+user-reported regression evidence (command/environment/count not supplied),
+not registration or visual acceptance.
+
 ### Stage 3: catalog and shared surface loading
 
-- [ ] Introduce explicit catalog/procedural request variants and a shared
-      surface result with source-specific metadata.
-- [ ] Include catalog version, asset variant, and tier in cache keys.
-- [ ] Preserve deterministic procedural output for uncataloged bodies,
+- [x] Introduce typed catalog/procedural request variants with source-specific
+      identity and asset metadata.
+- [x] Include catalog version and requested tier in source selection keys.
+- [x] Include catalog version, selected texture variant, and tier in shared
+      cache keys.
+- [x] Introduce a shared loaded-surface result and connect source selection to
+      the cache and both Viewer scenes.
+- [x] Preserve deterministic procedural output for uncataloged bodies,
       including non-Sol bodies with familiar display names.
-- [ ] Keep stars and giant renderers outside the catalog surface path.
-- [ ] Load only the selected detail tier and applicable overview previews,
+- [x] Keep stars and giant renderers outside the catalog surface path.
+- [x] Load only the selected detail tier and applicable overview previews,
       rather than every quality variant or the entire Sol catalog.
-- [ ] Add byte-aware residency budgeting. An RGBA8 4096 x 2048 albedo with a
+- [x] Add byte-aware residency budgeting. An RGBA8 4096 x 2048 albedo with a
       full mip chain is approximately 42.7 MiB before other maps; compressed
       downloads do not generally imply compressed GPU allocation.
-- [ ] Define shared texture ownership, renderer-context behavior, eviction,
+- [x] Define shared texture ownership, renderer-context behavior, eviction,
       late-load cancellation/disposal, and safe route re-entry.
-- [ ] Retain a valid lower-resolution catalog texture on detail-load failure
+- [x] Retain a valid lower-resolution catalog texture on detail-load failure
       and expose a logged, localized warning and retry.
-- [ ] For initial catalog-load failure, show an explicit failure state; do not
+- [x] For initial catalog-load failure, show an explicit failure state; do not
       silently replace recognizable terrain with random procedural geography.
-- [ ] Make loading progress cover both downloads and procedural work honestly,
+- [x] Make loading progress cover both downloads and procedural work honestly,
       without representing asset-count progress as byte progress.
+
+#### Stage 3 initial identity and selection slice (2026-10-08)
+
+The authoritative contract was refreshed using cache-busting timestamp query
+parameters and `Cache-Control: no-cache, no-store` / `Pragma: no-cache` on every
+successful request. The root
+`http://localhost:3000/openapi.yaml?t=1791491270729` returned HTTP 200 (29,149
+bytes). The relevant solar-system and celestial OpenAPI documents returned
+HTTP 200 at
+`/openapi/solarsystem/openapi.yaml?t=1791491380514` (17,616 bytes) and
+`/openapi/celestial/openapi.yaml?t=1791491380514` (19,856 bytes). The refreshed
+catalog identity schema and body response/upsert schemas also returned HTTP 200. The schema specifies an optional nullable object with exactly the required
+string fields `namespace` and `key`, no additional properties, and lowercase
+token syntax. The root rules confirm that unknown valid pairs are allowed and
+must remain procedural.
+
+`CatalogIdentity` is now typed and propagated on solar-system viewer bodies,
+celestial-body list items, and upsert entities, preserving both omitted and
+explicit-null states. The Viewer surface resolver exposes a discriminated
+catalog/procedural selection request. Catalog selection uses only exact
+namespace/key equality for `sol/earth`, `sol/luna`, and `sol/mars`, mapped to
+`earth-july-v2`, `luna-v3`, and `mars-v2`; versions and requested LOD are part
+of the selection key. It does not infer identity from display names, entity
+IDs, system IDs, classification, aliases, or `visualization.textureKey`.
+Unsupported or absent identities keep the existing procedural request;
+ineligible star and giant bodies do not enter this path.
+
+At that initial checkpoint this was selection/type groundwork only. The
+following approved implementation connects the cache and both Viewer scenes.
+Preparation-time manifest statements describing non-deployed candidates are
+historical provenance; their image bytes/hashes have not changed.
+Limited sampled fine registration was subsequently accepted on 2026-10-11
+with exclusions and uncertainty limitations, as recorded above. Polar
+boundary/detail-loss review remains unfinished; final Stellar Viewer visual
+acceptance remains on hold.
+
+#### Stage 3 loading and initial Stage 4 integration (2026-10-08)
+
+Before implementation, the user selected Earth-only catalog clouds now and
+approved a shared catalog-cache cap of **96 MiB standard / 32 MiB low**.
+These are conservative RGBA8/full-mipmap allocation estimates, not measured GPU
+bytes, and are separate from the unchanged procedural cache limits.
+
+- [Angular assets](../angular.json) allowlist exactly the five runtime image
+  files in each selected version, mapped to `textures/sol/<asset-version>/`.
+  Production inspection found exactly 15 images. Manifests, older versions,
+  originals, Python tooling and diagnostic evidence are not deployed.
+- [Catalog loader](../src/app/scene/planet/catalog-surface-loader.ts) uses the
+  existing Three `TextureLoader`: sRGB albedo, linear normals, north-up
+  `flipY=true`, periodic longitude and clamped latitude. File dimensions are
+  validated before publication. Partial failures dispose owned textures.
+  No new dependencies, KTX2 codecs or invented material channels were added.
+- System bodies and companion moons request 512 x 256 previews only. Focused
+  catalog bodies request a preview plus one low/standard set. The shared
+  width/core/save-data policy uses full-window width and the core fallback of 4. Resize re-evaluates it; renderer texture limits can lower 4K to 2K, and
+  an insufficient 2K limit is reported explicitly while retaining a valid
+  preview. Luna's accepted standard normal stays 1024 x 512, not 2048 x 1024.
+- [Catalog cache](../src/app/scene/planet/catalog-surface-cache.ts) keys contain
+  exact namespace/key, asset version, variant and requested LOD. Entities with
+  the same astronomical identity may share immutable imagery without sharing
+  entity IDs, navigation or selection. Incoming loads reserve estimated bytes;
+  LRU eviction only disposes unleased entries. Admission failure preserves
+  pinned textures and reports an error rather than exceeding the budget.
+- Both scenes retain their requested catalog textures with effect-lifetime
+  leases, including preview/lower-tier fallbacks. Leaving the final consumer
+  logically cancels pending work; stale completions are disposed and cannot
+  repopulate the cache or supersede a fresh route-entry request. Three's image
+  transport may finish after navigation: it is not a network-abort promise.
+  Regular image textures can upload into a new renderer; unlike procedural GPU
+  render targets, they do not contain dead cross-context render-target handles.
+  Repeated renderer uploads can have driver-specific allocations; the estimates
+  are not measured aggregate GPU memory across simultaneously live contexts.
+- Detail failure retains a valid preview/low surface, logs the failure and
+  exposes localized retry. Initial imagery failure shows a neutral gray
+  placeholder and an explicit warning, never random procedural geography.
+  Unsupported identities and excluded body classes retain existing behavior.
+- Catalog loading reports pending **texture sets**, not byte percentages.
+  The existing determinate progress bar remains specific to procedural work.
+- Base terrain tint is white and non-hover catalog emissive is neutral; existing
+  transient emissive highlights remain. Earth retains procedural clouds;
+  Luna/Mars have none. Source/team credits, citations, safe external links,
+  coverage/color interpretation and the outstanding review limitations appear
+  in a collapsible localized sources panel in both views.
+
+Focused browser checks exercise actual material maps, low/standard selection,
+same-origin requests, clouds, detail failures/retry, neutral placeholders,
+full-window resize and route re-entry. They establish integration correctness,
+not landmark registration, final appearance or representative hardware
+performance. All Stage 2 limitations and the Stage 6 acceptance hold remain.
+
+#### Portable headless correctness baseline
+
+The user approved explicit SwiftShader software WebGL for local and Actions
+Playwright runs, with one default worker and existing environment overrides
+retained. The shared Playwright configuration applies this renderer even to
+headed/debug runs, so reproducing a test does not silently switch GPU paths.
+The application runtime renderer and splash behavior are unchanged.
+
+A catalog browser test fails explicitly if WebGL2, SwiftShader or 4096-pixel
+texture capacity is unavailable. Scene assertions wait for actual albedo/normal
+dimensions and control device core count where tier selection matters; they do
+not rely on fixed frame delays or the initial absence of a loading indicator.
+The existing Actions workflow installs lockfile-selected Chromium and consumes
+this configuration; no new browser engine or CI-only configuration is needed.
+See [testing policy](testing-policy.md) for flags, worker overrides and scope.
+
+This is a portable correctness baseline, not proof of Linux runner success,
+real-GPU appearance, cold-network behavior or achieved frame-rate/memory budgets.
+GitHub Actions execution and real-device measurements must be recorded separately.
+
+An additional local run, `npm run e2e:spec -- viewer-planet-surfaces.spec.ts
+--workers=1 --repeat-each=2 --retries=0`, passed **21 tests**: setup once and
+all 10 surface scenarios twice, with no retries. This confirms the one-worker
+baseline in the current Windows environment; it does not establish a long-term
+flake rate or replace the pending Actions/Linux execution.
 
 ### Stage 4: viewer presentation and attribution
 
-- [ ] Integrate catalog surfaces consistently in system view and body detail,
+- [x] Integrate catalog surfaces consistently in system view and body detail,
       including selected moons and companion-moon previews.
-- [ ] Keep normal/material maps optional; do not fabricate unsupported channels.
-- [ ] Add explicit per-body atmosphere policy: Earth cloud layer, no terrestrial
-      clouds on airless worlds, and dedicated Venus/Titan treatment.
+- [x] Keep normal/material maps optional; do not fabricate unsupported channels.
+- [x] Add active-pilot atmosphere policy: Earth cloud layer, no terrestrial
+      clouds on Luna/Mars. Unsupported bodies retain their existing behavior.
+- [ ] Dedicated Venus/Titan treatment requires a separately approved expansion.
 - [ ] Treat Venus/Titan radar or infrared terrain as a separately labeled
       surface-reveal mode, not ordinary visible-light appearance. Such a mode
       needs separate approval before implementation.
 - [ ] Verify material tint/emissive/highlight behavior does not permanently
       recolor the familiar terrain.
-- [ ] Generate selected-body source links through
+- [x] Generate selected-body source links through
       [ExternalAnchorsComponent](../src/app/component/external-anchors.ts).
-- [ ] Add fuller provenance, color interpretation, and coverage notes in a
+- [x] Add fuller provenance, color interpretation, and coverage notes in a
       "Surface sources" section. Preserve exact team credits.
-- [ ] Localize new labels, loading/errors, and coverage notes in both
+- [x] Localize new labels, loading/errors, and coverage notes in both
       [English](../src/app/i18n/locales/en.ts) and
       [Italian](../src/app/i18n/locales/it.ts).
-- [ ] Leave splash code, splash asset selection, and splash behavior unchanged.
+- [x] Leave splash code, splash asset selection, and splash behavior unchanged.
 
 ## Candidate source register
 
@@ -1525,17 +1802,17 @@ or use agency logos as product branding.
 
 ### Automated checks
 
-- [ ] Station dimensions are exactly 0.05 times baseline dimensions, with
+- [x] Station dimensions are exactly 0.05 times baseline dimensions, with
       unchanged non-station sizing, orbits, positions, and navigation.
-- [ ] Resolver tests cover approved Sol identities, familiar names outside Sol,
+- [x] Resolver tests cover approved Sol identities, familiar names outside Sol,
       unknown keys, and excluded body classes.
-- [ ] Loader/cache tests cover tier selection, deduplication, eviction, failures,
+- [x] Loader/cache tests cover tier selection, deduplication, eviction, failures,
       retries, late completions, ownership, and renderer transitions.
 - [ ] Attribution/coverage labels reflect the active catalog entry and locale.
-- [ ] Deterministic Playwright tests verify same-origin texture requests,
+- [x] Deterministic Playwright tests verify same-origin texture requests,
       readiness, overview/detail transitions, and no legacy texture hot-links.
-- [ ] Existing procedural parity and viewer behavior remain intact.
-- [ ] Run Angular build after changing templates or template-bound types.
+- [x] Existing procedural parity and viewer behavior remain intact.
+- [x] Run Angular build after changing templates or template-bound types.
 
 Relevant existing tests:
 [system-scene unit tests](../src/app/scene/viewer/viewer-system-scene.vitest.ts),
@@ -1553,8 +1830,9 @@ npm run e2e:spec -- e2e\tests\viewer-planet-surfaces.spec.ts e2e\tests\viewer-in
 npm run build
 ```
 
-Record actual commands and outcomes below. Stage 0 results are recorded in the
-execution log; texture-specific validation remains pending.
+Record actual commands and outcomes below. Focused texture integration evidence
+is recorded in the execution log; real-device performance and final appearance
+acceptance remain pending.
 
 ### User visual review in Stellar Viewer
 
@@ -1577,8 +1855,8 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | Body             | Asset version / tier                          | Automated result                                                                   | User visual decision | Evidence / requested revision                                            |
 | ---------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------ |
 | Earth            | Repository-stored earth-july-v2, low/standard | Offline decode, hashes, normal/UV convention and size checks passed                | On hold              | Not deployed or Viewer-integrated; runtime alignment/performance pending |
-| Luna             | Repository-stored luna-v2, low/standard       | Offline decode, hashes, exact LOLA correspondence, normal and budget checks passed | On hold              | Not deployed or Viewer-integrated; fine alignment/performance pending    |
-| Mars             | Repository-stored mars-v1, low/standard       | Offline decode, hashes, signed heights, normal direction and budget checks passed  | On hold              | Not deployed or Viewer-integrated; fine alignment/performance pending    |
+| Luna             | Repository-stored luna-v3, low/standard       | Offline decode, hashes, exact LOLA correspondence, normal and budget checks passed | On hold              | Not deployed or Viewer-integrated; fine alignment/performance pending    |
+| Mars             | Repository-stored mars-v2, low/standard       | Offline decode, hashes, signed heights, normal direction and budget checks passed  | On hold              | Not deployed or Viewer-integrated; fine alignment/performance pending    |
 | Mercury          | Pending                                       | Not run                                                                            | Pending              |                                                                          |
 | Expansion bodies | Add one row per approved body                 | Not run                                                                            | Pending              |                                                                          |
 
@@ -1617,7 +1895,24 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-08 | Stage 1 quality policy | User approved shared pure helper; `npm run test:spec -- src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash.vitest.ts` | Passed: 29 tests; splash selector behavior preserved | Viewer tier integration deferred to catalog stages |
 | 2026-10-08 | Stage 1 quality policy | `npx --no-install eslint src\app\scene\render-quality.ts src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash-state.ts` | Passed | |
 | 2026-10-08 | Stage 1 contract inspection | Cache-busted root OpenAPI and SolarSystem module | HTTP 200; `sol` and `sol-luna` documented; other pilot IDs unresolved | Require authoritative identities before catalog wiring |
-| 2026-10-08 | Stage 1 contract approval | Fresh no-cache fetch of root and reference graph; identity schema checks; authenticated solar-system-get and celestial-body-list reads; user approval | Approved new optional catalogIdentity contract; 140 documents fetched; both live reads supplied all 24 identities; checked classifications and parent/anchor links matched | Supersedes initial identity blocker; DTO/validator/catalog implementation pending; exact assets and rights still require clearance |
+| 2026-10-08 | Stage 1 contract approval | Fresh no-cache fetch of root and reference graph; identity schema checks; authenticated solar-system-get and celestial-body-list reads; user approval | Approved new optional catalogIdentity contract; 140 documents fetched; both live reads supplied all 24 identities; checked classifications and parent/anchor links matched | Supersedes initial identity blocker; Stage 3 DTO and exact selector now implemented |
+
+| 2026-10-08 | Stage 3 contract refresh | `curl.exe` no-cache fetches of cache-busted root OpenAPI, solar-system/celestial OpenAPI modules, CatalogIdentity and body response/upsert schemas | All seven relevant documents returned HTTP 200; root 29,149 bytes; namespace/key are optional nullable exact tokens; unknown valid pairs remain procedural | Contract refreshed before implementation; cache/loader and runtime material integration remain pending |
+| 2026-10-08 | Stage 3 resolver tests | `npm run test:spec -- src\app\scene\planet\planet-texture-cache.vitest.ts` | Passed: 1 file, 23 tests; exact `sol/earth`, `sol/luna`, `sol/mars` selection maps to earth-july-v2, luna-v3 and mars-v2; unknown/missing/non-exact pairs procedural; stars/gas/ice giants excluded | Integrate loading and ownership next |
+| 2026-10-08 | Stage 3 typecheck | `npm run typecheck` | Passed: application and Vitest spec TypeScript checks | |
+| 2026-10-08 | Stage 3 lint | `npx --no-install eslint src\app\model\catalog-identity.ts src\app\model\solar-system-get.ts src\app\model\celestial-body-list.ts src\app\model\celestial-body-upsert.ts src\app\scene\planet\planet-surface-catalog.ts src\app\scene\planet\planet-surface-resolver.ts src\app\scene\planet\planet-texture-cache.vitest.ts` | Passed | |
+| 2026-10-08 | Stage 3 file paths | PowerShell `Test-Path` over all registered preview/albedo/normal files | Passed: all 15 catalog file paths exist | |
+| 2026-10-08 | Stage 3 build | `npm run build` | Passed: E2E partition gate and Angular production/template build | |
+
+| 2026-10-08 | Stage 3/4 implementation decisions | Selectable user approval: Earth-only catalog clouds; 96 MiB standard / 32 MiB low shared catalog-cache estimates | Approved and implemented; procedural limits and splash behavior preserved | Estimates are not measured aggregate GPU allocations |
+| 2026-10-08 | Stage 3/4 browser stabilization | Earlier focused `npm run e2e:spec -- viewer-planet-surfaces.spec.ts --workers=1` runs | Initial retry click blocked by detail panel; corrected notice layout. Route re-entry expectation corrected because moon focus does not create browser history. Final run passed 10 tests including setup | No forced clicks or fixed waits added; portable software baseline added subsequently |
+| 2026-10-08 | Stage 3/4 final unit regression | `npm run test:spec -- src\app\scene\planet\catalog-surface-loader.vitest.ts src\app\scene\planet\catalog-surface-cache.vitest.ts src\app\scene\planet\planet-texture-cache.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash.vitest.ts` | Passed: 7 files, 127 tests | Loader/cache ownership, exact identity selection, scene behavior, quality and unchanged splash covered |
+| 2026-10-08 | Stage 3/4 final typecheck | `npm run typecheck` | Passed: application and Vitest spec TypeScript | |
+| 2026-10-08 | Stage 3/4 final lint | `npx --no-install eslint` with all changed/untracked TypeScript paths from `git diff --name-only` and `git ls-files --others --exclude-standard`, converted to Windows separators | Passed | Includes shared Playwright configuration and catalog browser tests |
+| 2026-10-08 | Stage 3/4 final build | `npm run build` | Passed: partition gate and production Angular/template compilation | No missing dependency installs required |
+| 2026-10-08 | Stage 3/4 deployed images | PowerShell `Get-ChildItem` count and `Get-FileHash -Algorithm SHA256` comparison of built `textures\sol` files against selected `assets\sol-textures` files | Passed: exactly 15 files; every deployed hash matches the selected image | Originals, superseded candidates, manifests and tools excluded |
+| 2026-10-08 | Portable test policy | Selectable user approval: explicit software WebGL and one default worker everywhere | Implemented in shared Playwright configuration; existing override precedence retained | Software correctness is separate from hardware/performance and visual acceptance |
+| 2026-10-08 | Portable headless regression | `npm run e2e:spec -- viewer-planet-surfaces.spec.ts planet-bake-parity.spec.ts viewer-interactions.spec.ts planet-view-zoom.spec.ts --retries=0` | Passed: 31 tests including setup, no retries; explicit SwiftShader verified. Existing session environment override selected 2 workers | Local Windows headless evidence only; GitHub Actions/Linux not executed here |
 
 | 2026-10-08 | Earth source decisions | Selectable user decisions and primary NASA/NOAA policy/product review | July unshaded BMNG color, disclosed limitations, subtle land-only relief using unrestricted GLOBE v1.0 candidate, session source storage and explicit failure/retry policy approved | Verify exact files and rights; no assets downloaded or processed |
 

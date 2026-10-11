@@ -1,9 +1,42 @@
 # Procedural planetary textures: options, decisions, and implementation plan
 
 Date: 2026-09-28
-Status: Stages 1-3 implemented and validated. Stage 4 outstanding; a Sol-specific decision is pending (see Stage 3).
+Status: Stages 1-3 implemented and validated. Sol's approved Earth/Luna/Mars catalog integration is now implemented alongside the procedural fallback; final Stellar Viewer visual acceptance remains on hold. See the [Sol texture plan](./sol-textures-2026-10-08.md) for current gates.
 
 ## Goal
+
+### Sol catalog integration update (2026-10-08)
+
+The [surface resolver](../src/app/scene/planet/planet-surface-resolver.ts) now
+selects approved imagery only from exact `catalogIdentity.namespace/key` pairs:
+`sol/earth` uses `earth-july-v2`, `sol/luna` uses `luna-v3`, and `sol/mars` uses
+`mars-v2`. Display names, entity IDs, system IDs and legacy `textureKey` hints
+are not lookup inputs. Unsupported identities retain the existing procedural
+path; stars and gas/ice giants retain their dedicated renderers. Splash and
+mining-backdrop selection are unchanged.
+
+Both Viewer scenes use the shared [texture facade](../src/app/scene/planet/planet-texture-cache.ts).
+The [catalog cache](../src/app/scene/planet/catalog-surface-cache.ts) loads only
+previews for overview/companion moons and one selected detail tier for the
+focused body. It uses leased ownership, late-completion disposal, inactive-only
+LRU eviction and estimated-byte admission at 96 MiB standard / 32 MiB low,
+separate from procedural limits. Image textures can reupload across renderer
+contexts; GPU procedural render-target handles still require owner changes.
+The catalog estimates are not measured driver or multi-context GPU allocations.
+
+The full-window width/core/save-data policy selects 4K or 2K detail, further
+limited by renderer texture support. Catalog load errors retain valid preview/
+low imagery, show localized warning/retry or a neutral initial placeholder,
+and never silently substitute procedural geography. Catalog download status is
+a pending-set count, not byte progress. Selected maps are served same-origin
+by a 15-image build allowlist; preparation manifests and sources are excluded.
+Earth keeps its clouds; Luna/Mars do not acquire terrestrial clouds.
+
+Source attribution, interpretation and coverage limitations are available in
+both views. Fine registration and polar boundary/detail-loss review remain
+unfinished; hardware/network/cache measurements and user visual sign-off are
+still outstanding. This update does not lift the acceptance hold. The older
+discussion below records historical decisions before this Sol pilot.
 
 Stop hot-linking third-party planetary imagery and generate planetary surfaces locally, so that procedurally seeded solar systems can be rendered without a curated per-body asset catalog.
 

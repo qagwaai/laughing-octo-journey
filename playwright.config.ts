@@ -31,16 +31,17 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,
-  workers: workerCountFromEnv ?? 2,
-  // These suites drive angular-three/WebGL scenes. On CI there is no GPU, so
-  // Chromium falls back to SwiftShader software rendering and scene transitions
-  // take longer than the Playwright defaults (30s test / 5s expect) allow.
+  workers: workerCountFromEnv ?? 1,
+  // Software WebGL makes scene correctness independent of host GPU availability.
   timeout: 60_000,
   expect: { timeout: 15_000 },
 
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:4200',
+    launchOptions: {
+      args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    },
     trace: 'on-first-retry',
     video: 'on-first-retry',
     screenshot: 'only-on-failure',

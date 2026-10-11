@@ -9,33 +9,26 @@ import {
   input,
   Output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Vector3 } from 'three';
-import type { PlanetBakeResult } from '../planet/planet-bake';
-import {
-  deriveViewerStarProfile,
-  PLANET_VIEW_STAR_LIGHT_INTENSITY,
-  resolveStarFillColor,
-  resolveStarLights,
-  STAR_LIGHT_DECAY,
-  STAR_LIGHT_DISTANCE,
-} from './star-lighting';
-import type { ViewerBody } from '../../model/solar-system-get';
-import { resolveCatalogRadiusKm } from '../../model/physical-catalog';
 import { resolveCelestialAppearance } from '../../model/celestial-appearance';
+import { resolveCatalogRadiusKm } from '../../model/physical-catalog';
 import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import type { ViewerBody } from '../../model/solar-system-get';
+import type { StarProfile } from '../../model/star/star-profile';
 import { GasGiantBody } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
-import type { StarProfile } from '../../model/star/star-profile';
+import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
+import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
+import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
+import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { StarBody } from '../star/star-body';
 import { StarSettings } from '../star/star-settings';
-import { PlanetTextureCache } from '../planet/planet-texture-cache';
-import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { resolveBodyColor, resolveViewerDisplayVector, resolveOrbitRotationEuler } from './viewer-formatters';
 import {
   PLANET_BASE_MOON_ORBIT,
   PLANET_FOCUS_RADIUS_UNIT,
@@ -45,6 +38,15 @@ import {
   resolveGasGiantOrbitRadiusUnits,
   resolveOrbitRadiusUnits,
 } from './planet-view-scale';
+import {
+  deriveViewerStarProfile,
+  PLANET_VIEW_STAR_LIGHT_INTENSITY,
+  resolveStarFillColor,
+  resolveStarLights,
+  STAR_LIGHT_DECAY,
+  STAR_LIGHT_DISTANCE,
+} from './star-lighting';
+import { resolveBodyColor, resolveOrbitRotationEuler, resolveViewerDisplayVector } from './viewer-formatters';
 
 export { resolveOrbitRadiusUnits } from './planet-view-scale';
 
@@ -286,17 +288,17 @@ export class PlanetViewScene {
    * Moons stay at L0: they render far smaller here, and L1 for every moon would
    * cost roughly 21 MiB each.
    */
-  protected readonly surfaces = computed<ReadonlyMap<string, PlanetBakeResult>>(() => {
+  protected readonly surfaces = computed<ReadonlyMap<string, PlanetSurfaceResult>>(() => {
     this.planetTextures.ready();
 
-    const map = new Map<string, PlanetBakeResult>();
+    const map = new Map<string, PlanetSurfaceResult>();
     const selected = this.selectedBody();
     if (selected && !this.selectedGiantProfile()) {
-      const focused = this.planetTextures.get(selected, 'l1');
+      const focused = this.planetTextures.get(selected, 'l1', this.store.snapshot.gl);
       if (focused) map.set(selected.id, focused);
     }
     for (const moon of this.moons()) {
-      const baked = this.planetTextures.get(moon.body, 'l0');
+      const baked = this.planetTextures.get(moon.body, 'l0', this.store.snapshot.gl);
       if (baked) map.set(moon.id, baked);
     }
     return map;
@@ -304,8 +306,21 @@ export class PlanetViewScene {
 
   /** Textured bodies render white; three multiplies `map` by `color`. */
   protected resolveSurfaceTint(bodyId: string, hoverColor: string, baseColor: string): string {
+    const body = this.bodies().find((candidate) => candidate.id === bodyId);
+    if (body && this.isCatalogSurface(body)) {
+      return this.surfaces().has(bodyId) ? '#ffffff' : '#555b65';
+    }
     if (this.hoveredBodyId() === bodyId) return hoverColor;
     return this.surfaces().has(bodyId) ? '#ffffff' : baseColor;
+  }
+
+  protected isCatalogSurface(body: ViewerBody): boolean {
+    return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
+  }
+
+  protected hasSurfaceClouds(body: ViewerBody): boolean {
+    const selection = resolvePlanetSurfaceSource(body, 'l0');
+    return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
   }
 
   protected selectedBody = computed<ViewerBody | null>(() => {
@@ -447,18 +462,23 @@ export class PlanetViewScene {
 
   constructor() {
     // Focused body at L1, its moons at L0. Repeats are ignored by the cache.
-    effect(() => {
-      const renderer = this.store.snapshot.gl ?? null;
+    effect((onCleanup) => {
+      const renderer = this.store.gl();
       const selected = this.selectedBody();
-      // Giants are shaded procedurally, so only terran worlds need the L1 bake.
-      if (selected && !this.selectedGiantProfile()) {
-        this.planetTextures.request(selected, 'l1', renderer);
-      }
-      this.planetTextures.requestMany(
-        this.moons().map((moon) => moon.body),
-        'l0',
-        renderer,
-      );
+      const solidSelected = selected && !this.selectedGiantProfile() ? selected : null;
+      const moons = this.moons().map((moon) => moon.body);
+      this.planetTextures.catalog.quality();
+      const release = untracked(() => {
+        const uses = [
+          ...(solidSelected ? [{ body: solidSelected, tier: 'l1' as const }] : []),
+          ...moons.map((body) => ({ body, tier: 'l0' as const })),
+        ];
+        const release = this.planetTextures.catalog.retain(uses, renderer);
+        if (solidSelected) this.planetTextures.request(solidSelected, 'l1', renderer);
+        this.planetTextures.requestMany(moons, 'l0', renderer);
+        return release;
+      });
+      onCleanup(release);
     });
 
     effect(() => {

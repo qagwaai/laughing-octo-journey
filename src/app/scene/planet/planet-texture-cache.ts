@@ -14,8 +14,15 @@ import { computed, inject, Injectable, InjectionToken, signal } from '@angular/c
 import type { WebGLRenderer } from 'three';
 import type { PlanetLodTier } from '../../model/planet/planet-texture';
 import { appLogger } from '../../services/logger';
+import { CatalogSurfaceCache } from './catalog-surface-cache';
+import type { PlanetSurfaceResult } from './catalog-surface-loader';
 import { bakePlanetTextures as _bakePlanetTextures, type PlanetBakeResult, supportsGpuBake } from './planet-bake';
-import { type PlanetSurfaceRequest, type ResolvablePlanetBody, resolvePlanetSurface } from './planet-surface-resolver';
+import {
+  type PlanetSurfaceRequest,
+  type ResolvablePlanetBody,
+  resolvePlanetSurface,
+  resolvePlanetSurfaceSource,
+} from './planet-surface-resolver';
 
 export const PLANET_CACHE_BAKE_FN = new InjectionToken('PLANET_CACHE_BAKE_FN', {
   providedIn: 'root',
@@ -65,6 +72,7 @@ function limitForTier(tier: PlanetLodTier): number {
 
 @Injectable({ providedIn: 'root' })
 export class PlanetTextureCache {
+  readonly catalog = inject(CatalogSurfaceCache);
   private readonly bake = inject(PLANET_CACHE_BAKE_FN);
   private readonly schedule = inject(PLANET_CACHE_SCHEDULER);
 
@@ -90,10 +98,13 @@ export class PlanetTextureCache {
   private readonly enqueuedCount = signal(0);
   private readonly settledCount = signal(0);
 
-  /** Baked surfaces by cache key. A new map identity is published per completion. */
-  readonly ready = this.readySignal.asReadonly();
+  /** Shared procedural and catalog surfaces by cache key. */
+  readonly ready = computed<ReadonlyMap<string, PlanetSurfaceResult>>(
+    () => new Map<string, PlanetSurfaceResult>([...this.readySignal(), ...this.catalog.ready()]),
+  );
 
-  readonly pending = computed(() => Math.max(0, this.enqueuedCount() - this.settledCount()));
+  readonly proceduralPending = computed(() => Math.max(0, this.enqueuedCount() - this.settledCount()));
+  readonly pending = computed(() => this.proceduralPending() + this.catalog.pending());
   readonly isBaking = computed(() => this.pending() > 0);
 
   /** 0 to 1 across the current batch; 1 when idle so consumers can hide the indicator. */
@@ -120,7 +131,14 @@ export class PlanetTextureCache {
    * can show a body's cheap texture immediately while its L1 bake is still
    * queued, and so no-GPU callers still get the surface they were downgraded to.
    */
-  get(body: ResolvablePlanetBody | null | undefined, tier: PlanetLodTier): PlanetBakeResult | null {
+  get(
+    body: ResolvablePlanetBody | null | undefined,
+    tier: PlanetLodTier,
+    renderer?: WebGLRenderer | null,
+  ): PlanetSurfaceResult | null {
+    if (body && resolvePlanetSurfaceSource(body, tier)?.kind === 'catalog') {
+      return this.catalog.get(body, tier, renderer);
+    }
     const request = resolvePlanetSurface(body, tier);
     if (!request) return null;
 
@@ -133,14 +151,16 @@ export class PlanetTextureCache {
   }
 
   /**
-   * Queues a bake if the body is texturable and not already cached, queued or
-   * known to have failed. Returns the cached result when one is already warm.
+   * Queues the selected surface source unless cached, pending or already failed.
    */
   request(
     body: ResolvablePlanetBody | null | undefined,
     tier: PlanetLodTier,
     renderer?: WebGLRenderer | null,
-  ): PlanetBakeResult | null {
+  ): PlanetSurfaceResult | null {
+    if (body && resolvePlanetSurfaceSource(body, tier)?.kind === 'catalog') {
+      return this.catalog.request(body, tier, renderer);
+    }
     this.adoptRenderer(renderer ?? null);
 
     const request = resolvePlanetSurface(body, this.effectiveTier(tier, renderer));
@@ -177,6 +197,7 @@ export class PlanetTextureCache {
 
   /** Test and teardown hook; disposes every resident texture. */
   clear(): void {
+    this.catalog.clear();
     for (const result of this.entries.values()) {
       result.dispose();
     }
@@ -285,10 +306,11 @@ export class PlanetTextureCache {
       this.entries.set(request.key, result);
       this.evict(request.tier);
       return true;
-    } catch {
+    } catch (error) {
       // A failed bake must not wedge the queue or retry forever; the body keeps
       // its untextured material.
       this.failed.add(request.key);
+      appLogger.error('[planet-surface-bake]', { bodyId: request.bodyId, error });
       return false;
     }
   }

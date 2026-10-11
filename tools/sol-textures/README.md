@@ -26,6 +26,94 @@ normal appearance and authorized promotion for both Luna/Mars tiers. These
 remain non-deployed sets; fine registration and final Stellar Viewer acceptance
 are separate pending gates. Prior `luna-v2`/`mars-v1` sets are retained.
 
+### Fine registration review (2026-10-09)
+
+The selected runtime images are now Viewer-integrated; the earlier preparation
+status above is historical. Registration is a separate gate from polar
+boundary/detail-loss review and final Viewer visual acceptance.
+
+The user approved a read-only audit of all three bodies and a tolerance of one
+delivered normal texel per tier, with unmeasurable regions explicitly excluded.
+Use [registration_review.py](diagnostic/registration_review.py) to verify original
+hashes, selected-image hashes/budgets, and all decoded normal samples against the
+source-grid recipe, then generate a fresh local
+[paired annotation form](diagnostic/registration-review.html):
+
+```powershell
+& $python tools\sol-textures\diagnostic\registration_review.py `
+  --artifact-root $artifactRoot `
+  --output (Join-Path $artifactRoot 'work\registration-review-<new-id>')
+& $python -m http.server 43189 --bind 127.0.0.1 `
+  --directory (Join-Path $artifactRoot 'work\registration-review-<new-id>')
+```
+
+Output must be a new directory inside the configured artifact store's `work`;
+existing evidence and selected textures are never overwritten. The server serves
+only that evidence directory on loopback. Expected raster warnings for PNG/JPEG
+and unreferenced Luna TIFFs do not replace the documented full-globe grid
+convention; Mars uses its actual projected transform converted to degrees.
+
+At `http://127.0.0.1:43189/`, select region and tier, identify the same physical
+feature in actual delivered albedo and source-elevation hillshade, and mark both
+images. Enter a feature name, notes, and a defensible per-click uncertainty.
+The form reports east/north angular displacement and Euclidean displacement in
+normal texels. A conservative bound adds both click uncertainties. Above one
+texel remains open; source haze/rays/vegetation are not homologous terrain
+features. Hillshade uses 8x exaggeration for inspection only.
+
+Use several geographically separated shared features; do not treat one point as
+a global registration guarantee. Earth masked coast cells are intentionally
+neutral and are not shifted coastlines. Luna low/standard both have 1024 x 512
+normals; Earth/Mars standard have 2048 x 1024 normals. An exclusion requires a
+reason and never counts as a passing measurement. Retain explicit open entries
+for unresolved features instead of forcing correspondence.
+
+Annotations persist in browser storage by evidence ID. Download the review JSON
+and retain it in the external evidence directory before clearing browser data.
+The magnified form provides synchronized 1x/2x/4x/8x views, Shift-drag panning,
+and paired hover magnifiers. Clicks and the normal-texel ruler retain their
+source-coordinate meaning at every zoom. Enlarging existing crop pixels adds no
+source detail and does not independently justify a smaller click uncertainty.
+
+Use **Import prior review JSON** to bring earlier annotations into a fresh
+evidence version without overwriting them. Source hashes, selected versions,
+geographic bounds, normal dimensions and tolerance must match. Prior evidence
+metadata is retained in the export; the table recomputes distances rather than
+trusting imported pass flags. **Reopen** restores a record at 4x; saving appends a
+new recheck, leaving the earlier point intact. Describe the precise replacement
+feature and why it is a better correspondence in the notes.
+
+For the preliminary 19-record submission, target Copernicus Low and Valles
+Marineris Standard first, then near-threshold Olympus Low and missing Tycho Low.
+Hellas Low can be explicitly excluded with a reason if no shared feature is
+identifiable. These are targeted follow-ups, not a request to repeat every pair.
+The preliminary table passes do not validate feature identity or default
+uncertainty.
+
+On 2026-10-11 the user accepted the limited sampled fine-registration review
+after the third submission added Tycho Low. All 18 measured bounds meet the
+one-normal-texel tolerance; Copernicus Low and both Hellas tiers are excluded.
+Recorded uncertainty and sparse-feature limitations remain; this is not global
+source co-registration proof. The plan records explicit acceptance without
+changing submitted JSON or textures. Polar boundary/detail-loss review and
+final Viewer visual acceptance remain separate open/on-hold gates.
+
+Record sample coverage, offsets, uncertainty and exclusions in the approved plan
+before declaring the registration gate closed. The tool never closes it
+automatically, modifies images, or treats image-brightness correlation as truth.
+The independent pure residual tests run with:
+
+```powershell
+& $python -m unittest discover -s tools\sol-textures -p test_registration_review.py -v
+node tools\sol-textures\diagnostic\test-registration-review.mjs `
+  http://127.0.0.1:43189/ $priorReviewJson
+```
+
+The browser regression runner uses a fresh isolated headless context and the
+current template against the served evidence. Synthetic rechecks/downloads are
+discarded; it does not modify the supplied review JSON or the user's browser
+storage.
+
 ## What is repeatable
 
 - [pipeline.py](pipeline.py): explicit acquisition, source-hash verification,

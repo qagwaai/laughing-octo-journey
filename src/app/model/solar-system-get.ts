@@ -1,6 +1,7 @@
-import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import type { AsteroidMaterialProfile } from './asteroid-materials';
+import type { CatalogIdentity } from './catalog-identity';
 import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
+import type { ExternalObjectDescriptor } from './external-object-descriptor';
 import { Triple } from './shared/triple';
 import { SolarSystemSummary } from './solar-system-list';
 import type { PhysicalState } from './spatial';
@@ -92,6 +93,7 @@ export interface ViewerBody {
   physical?: PhysicalState | null;
   composition?: AsteroidMaterialProfile | null;
   orbitalElements?: CanonicalViewerBodyOrbitalElements | null;
+  catalogIdentity?: CatalogIdentity | null;
   surfaceArchetype?: SurfaceArchetype | null;
   state?: 'unscanned' | 'active' | 'destroyed';
   planetType?: string | null;

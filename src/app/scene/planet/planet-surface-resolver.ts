@@ -1,19 +1,16 @@
 /**
  * Decides how a celestial body gets its surface.
  *
- * This is deliberately the only place that answers that question. Today every
- * texturable body derives its appearance from its own id through the terran
- * generator, but named systems are expected to diverge: Sol's planets are
- * well known and should read as themselves rather than as generic worlds.
- *
- * Routing every body through here means that divergence is a change to
- * `resolvePlanetArchetype` (or a catalog lookup placed alongside it) rather
- * than a refactor of the viewer scenes. See docs/procedural-planets-2026-09-28.md.
+ * Approved catalog identities select shared imagery; other texturable bodies
+ * retain deterministic procedural surfaces. Stars and giants stay outside this
+ * path. See docs/procedural-planets-2026-09-28.md.
  */
+import type { CatalogIdentity } from '../../model/catalog-identity';
+import { resolveCelestialAppearance } from '../../model/celestial-appearance';
+import type { SurfaceArchetype } from '../../model/celestial-classification';
 import type { PlanetArchetype } from '../../model/planet/planet-seed';
 import type { PlanetLodTier } from '../../model/planet/planet-texture';
-import type { SurfaceArchetype } from '../../model/celestial-classification';
-import { resolveCelestialAppearance } from '../../model/celestial-appearance';
+import { resolveCatalogPlanetSurfaceAsset, type CatalogPlanetSurfaceAsset } from './planet-surface-catalog';
 
 /**
  * Structural subset of `ViewerBody`. Declared locally so the planet generator
@@ -23,6 +20,7 @@ export interface ResolvablePlanetBody {
   id: string;
   bodyType?: string;
   surfaceArchetype?: SurfaceArchetype | null;
+  catalogIdentity?: CatalogIdentity | null;
   displayName?: string;
 }
 
@@ -36,6 +34,17 @@ export interface PlanetSurfaceRequest {
   tier: PlanetLodTier;
   fallbackReason?: string;
 }
+
+export interface CatalogPlanetSurfaceRequest {
+  key: string;
+  bodyId: string;
+  identity: CatalogIdentity;
+  asset: CatalogPlanetSurfaceAsset;
+  tier: PlanetLodTier;
+}
+
+export type PlanetSurfaceSourceRequest =
+  { kind: 'catalog'; request: CatalogPlanetSurfaceRequest } | { kind: 'procedural'; request: PlanetSurfaceRequest };
 
 /**
  * Only planets and moons get generated surfaces. Stars are self-lit sprites,
@@ -87,5 +96,33 @@ export function resolvePlanetSurface(
     generatorVersion: resolved.input.generatorVersion,
     tier,
     fallbackReason: resolved.input.fallbackReason,
+  };
+}
+
+/**
+ * Selects approved imagery only from the exact astronomical identity pair.
+ * Unknown or absent identities retain the existing procedural request.
+ */
+export function resolvePlanetSurfaceSource(
+  body: ResolvablePlanetBody | null | undefined,
+  tier: PlanetLodTier,
+): PlanetSurfaceSourceRequest | null {
+  const proceduralRequest = resolvePlanetSurface(body, tier);
+  if (!proceduralRequest || !body) return null;
+
+  const asset = resolveCatalogPlanetSurfaceAsset(body.catalogIdentity);
+  if (!asset) {
+    return { kind: 'procedural', request: proceduralRequest };
+  }
+
+  return {
+    kind: 'catalog',
+    request: {
+      key: `catalog|${asset.assetVersion}|${tier}|${body.id}`,
+      bodyId: body.id,
+      identity: asset.identity,
+      asset,
+      tier,
+    },
   };
 }

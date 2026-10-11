@@ -561,6 +561,22 @@ export const it: DeepPartial<EnLocale> = {
       sceneLoadingStatus: 'Caricamento sistema...',
       sceneEmptyStatus: 'Seleziona un sistema dalla lista per iniziare.',
       surfaceBakeStatus: 'Generazione delle superfici planetarie...',
+      surfaceCatalogLoading: 'Caricamento texture del catalogo (insiemi in attesa):',
+      surfaceCatalogFailure:
+        'Superficie del catalogo non disponibile. Le immagini caricate vengono mantenute; altrimenti viene mostrato un segnaposto neutro:',
+      surfaceCatalogRetry: 'Riprova il caricamento delle texture',
+      surfaceCatalogSources: 'Fonti del terreno e limitazioni',
+      surfaceCatalogPreview: 'Anteprima',
+      surfaceCatalogLow: 'Dettaglio 2K',
+      surfaceCatalogStandard: 'Dettaglio 4K',
+      surfaceCatalogPendingReview:
+        "La registrazione precisa e la revisione dei confini polari e della perdita di dettaglio non sono completate. L'accettazione visiva finale nello Stellar Viewer resta sospesa. Le fonti sono fornite senza garanzie; non implicano approvazione da parte delle agenzie.",
+      surfaceCatalogEarthCoverage:
+        'Composito BMNG fisso di luglio, non meteo in tempo reale. Blu oceanico sintetico, fusione costiera e possibili nuvole/neve residue. Rilievo terrestre GLOBE senza esagerazione; normali oceaniche e di transizione costiera neutre.',
+      surfaceCatalogLunaCoverage:
+        "Colore visibile adattato alla percezione; sostituzione polare monocromatica a risoluzione inferiore oltre 70 gradi e piccole lacune ricostruite. Il rilievo LOLA contiene regioni interpolate; resta una distorsione polare nell'albedo.",
+      surfaceCatalogMarsCoverage:
+        'Colore Viking con verde sintetico, copertura rosso/violetto incompleta e foschia/illuminazione residue. Il rilievo MOLA contiene lacune interpolate; la registrazione delle reti di controllo immagine/DEM non e verificata.',
       sceneErrorPrefix: 'Caricamento sistema fallito:',
       planetViewZoomLabel: 'Scala',
       planetViewExitHint: 'Click destro nello spazio vuoto per tornare al visualizzatore stellare.',
@@ -575,11 +591,14 @@ export const it: DeepPartial<EnLocale> = {
       distanceModeTitle: 'Scala delle distanze',
       proportionalDistances: 'Distanze proporzionali',
       compressedDistances: 'Panoramica compressa',
-      proportionalDistanceNote: 'Distanze lineari: 1 UA = 5 unità della scena. I corpi sono ingranditi; usa lo zoom o il dettaglio per osservare le lune.',
-      compressedDistanceNote: 'Distanze logaritmiche per la leggibilità; le separazioni non sono proporzionali. I corpi sono ingranditi.',
+      proportionalDistanceNote:
+        'Distanze lineari: 1 UA = 5 unità della scena. I corpi sono ingranditi; usa lo zoom o il dettaglio per osservare le lune.',
+      compressedDistanceNote:
+        'Distanze logaritmiche per la leggibilità; le separazioni non sono proporzionali. I corpi sono ingranditi.',
       showCompressedDistances: 'Passa alla panoramica compressa',
       showProportionalDistances: 'Passa alle distanze proporzionali',
-      orbitGuideNote: 'Le guide orbitali sono illustrative, non traiettorie. Le posizioni memorizzate usano una rotazione solo visiva; l’allineamento fisico dei sistemi di riferimento non è garantito.',
+      orbitGuideNote:
+        'Le guide orbitali sono illustrative, non traiettorie. Le posizioni memorizzate usano una rotazione solo visiva; l’allineamento fisico dei sistemi di riferimento non è garantito.',
       legendPlanet: 'Pianeta',
       legendPlanetOrbit: 'Orbita pianeta',
       legendMarketStation: 'Stazione mercato',

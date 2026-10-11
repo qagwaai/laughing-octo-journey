@@ -56,12 +56,12 @@
     [roughnessMap]="_selectedSurface?.material ?? null"
     [metalnessMap]="_selectedSurface?.material ?? null"
     [color]="resolveSurfaceTint(selected.id, '#f2f8ff', '#ffffff')"
-    [emissive]="hoveredBodyId() === selected.id ? '#27466a' : '#1a2638'"
+    [emissive]="hoveredBodyId() === selected.id ? '#27466a' : isCatalogSurface(selected) ? '#000000' : '#1a2638'"
     [emissiveIntensity]="hoveredBodyId() === selected.id ? 0.4 : 0.18"
     [roughness]="_selectedSurface?.material ? 1 : 0.72"
     [metalness]="_selectedSurface?.material ? 1 : 0"
   />
-  @if (_selectedSurface) {
+  @if (_selectedSurface && hasSurfaceClouds(selected)) {
   <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
   } }
 </ngt-mesh>
@@ -84,12 +84,12 @@
   <ngt-mesh-standard-material
     [map]="surfaces().get(moon.id)?.albedo ?? null"
     [color]="resolveSurfaceTint(moon.id, '#f4f8ff', '#ffffff')"
-    [emissive]="hoveredBodyId() === moon.id ? '#24415f' : '#151f2d'"
+    [emissive]="hoveredBodyId() === moon.id ? '#24415f' : isCatalogSurface(moon.body) ? '#000000' : '#151f2d'"
     [emissiveIntensity]="hoveredBodyId() === moon.id ? 0.32 : 0.14"
     [roughness]="0.78"
     [metalness]="0"
   />
-  @if (surfaces().has(moon.id)) {
+  @if (surfaces().has(moon.id) && hasSurfaceClouds(moon.body)) {
   <app-planet-cloud-layer [bodyId]="moon.id" [radius]="moon.radius" />
   }
 </ngt-mesh>

@@ -9,25 +9,38 @@ import {
   input,
   Output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { BufferGeometry, Color, IcosahedronGeometry, type Texture, Vector3 } from 'three';
+import { ASTEROID_GENERATOR_VERSION, resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { isValidShipSpatial } from '../../model/math/spatial';
+import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
 import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
-import { resolveCelestialAppearance } from '../../model/celestial-appearance';
-import { ASTEROID_GENERATOR_VERSION } from '../../model/celestial-appearance';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
-import { PlanetTextureCache } from '../planet/planet-texture-cache';
-import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
-import { GasGiantBody, type GasGiantMoonInput } from '../gas-giant/gas-giant-body';
+import type { StarProfile } from '../../model/star/star-profile';
 import type { GasGiantBandSize } from '../gas-giant/gas-giant-bands';
+import { GasGiantBody, type GasGiantMoonInput } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { resolveDescriptorRenderProfile, type DescriptorRenderProfile } from './viewer-descriptor-selectors';
+import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
+import { PlanetTextureCache } from '../planet/planet-texture-cache';
+import { StarBody } from '../star/star-body';
+import { StarSettings } from '../star/star-settings';
+import {
+  deriveViewerStarProfile,
+  resolveStarFillColor,
+  resolveStarLights,
+  STAR_LIGHT_DECAY,
+  STAR_LIGHT_DISTANCE,
+  type StarLightInput,
+  VIEWER_SCENE_STAR_LIGHT_INTENSITY,
+} from './star-lighting';
+import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
   isMarketStationBody,
@@ -38,41 +51,22 @@ import {
   resolveBodyScenePosition,
   resolveBodySceneRadius,
   resolveOrbitColor,
+  resolveOrbitRotationEuler,
   resolveSceneDistanceFromKm,
   resolveScenePositionFromSpatialKm,
   resolveViewerDisplayVector,
-  resolveOrbitRotationEuler,
-  type ViewerDistanceMode,
   VIEWER_SCENE_ACTIVE_SHIP_COLOR,
   VIEWER_SCENE_INACTIVE_SHIP_COLOR,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
   VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
+  type ViewerDistanceMode,
 } from './viewer-formatters';
-import {
-  deriveViewerStarProfile,
-  resolveStarFillColor,
-  resolveStarLights,
-  STAR_LIGHT_DECAY,
-  STAR_LIGHT_DISTANCE,
-  type StarLightInput,
-  VIEWER_SCENE_STAR_LIGHT_INTENSITY,
-} from './star-lighting';
-import type { StarProfile } from '../../model/star/star-profile';
-import { StarBody } from '../star/star-body';
-import { StarSettings } from '../star/star-settings';
 import { ViewerShipMesh } from './viewer-ship-mesh';
 
 type BodyGeometryKind =
-  | 'sphere'
-  | 'box'
-  | 'icosahedron'
-  | 'octahedron'
-  | 'capsule'
-  | 'cylinder'
-  | 'torus'
-  | 'rock-deformed';
+  'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus' | 'rock-deformed';
 
 export interface ViewerSystemSceneInputs {
   bodies: ViewerBody[];
@@ -661,7 +655,9 @@ function buildDeterministicRockGeometry(params: {
 }
 
 export function resolveViewerSceneCameraDistanceRange(
-  bodies: ViewerBody[], mode: ViewerDistanceMode = 'compressed', ships: ShipSummary[] = [],
+  bodies: ViewerBody[],
+  mode: ViewerDistanceMode = 'compressed',
+  ships: ShipSummary[] = [],
 ): ViewerSceneCameraDistanceRange {
   const extent = Math.max(
     resolveRenderedExtent(mapBodiesToRendered(bodies, undefined, null, [], mode)),
@@ -670,9 +666,10 @@ export function resolveViewerSceneCameraDistanceRange(
   // Min is always the planet-detail floor — allow zooming right up to bodies.
   const minDistance = VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
 
-  let maxDistance = mode === 'proportional'
-    ? Math.max(VIEWER_CAMERA_DISTANCE_MAX_FLOOR, extent * 2.25 + 18)
-    : clamp(extent * 2.25 + 18, VIEWER_CAMERA_DISTANCE_MAX_FLOOR, VIEWER_CAMERA_DISTANCE_MAX_CEILING);
+  let maxDistance =
+    mode === 'proportional'
+      ? Math.max(VIEWER_CAMERA_DISTANCE_MAX_FLOOR, extent * 2.25 + 18)
+      : clamp(extent * 2.25 + 18, VIEWER_CAMERA_DISTANCE_MAX_FLOOR, VIEWER_CAMERA_DISTANCE_MAX_CEILING);
   if (maxDistance < minDistance + VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP) {
     maxDistance = minDistance + VIEWER_CAMERA_DISTANCE_MIN_MAX_GAP;
   }
@@ -683,14 +680,24 @@ export function resolveViewerSceneCameraDistanceRange(
   };
 }
 
-export function resolveZoomDistance(zoomLevel: number, bodies: ViewerBody[], mode: ViewerDistanceMode = 'compressed', ships: ShipSummary[] = []): number {
+export function resolveZoomDistance(
+  zoomLevel: number,
+  bodies: ViewerBody[],
+  mode: ViewerDistanceMode = 'compressed',
+  ships: ShipSummary[] = [],
+): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships);
   const normalized = clamp(zoomLevel, 0, 100) / 100;
   // Logarithmic mapping: evenly distributes zoom across planet-detail to full-system scale.
   return min * Math.pow(max / min, normalized);
 }
 
-export function resolveZoomPercent(distance: number, bodies: ViewerBody[], mode: ViewerDistanceMode = 'compressed', ships: ShipSummary[] = []): number {
+export function resolveZoomPercent(
+  distance: number,
+  bodies: ViewerBody[],
+  mode: ViewerDistanceMode = 'compressed',
+  ships: ShipSummary[] = [],
+): number {
   const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships);
   if (max <= min || min <= 0) {
     return 0;
@@ -771,7 +778,8 @@ export function mapBodiesToRendered(
         body.surfaceArchetype === 'asteroid'
           ? Math.min(
               0.98,
-              (descriptorProfile?.roughness ?? 0.84) + seededUnit(createDeterministicSeed(asteroidAppearanceSeed(body.id)), 0x44) * 0.1,
+              (descriptorProfile?.roughness ?? 0.84) +
+                seededUnit(createDeterministicSeed(asteroidAppearanceSeed(body.id)), 0x44) * 0.1,
             )
           : (descriptorProfile?.roughness ?? 0.8),
       materialMetalness:
@@ -853,7 +861,9 @@ export function mapBodiesToRendered(
  *   bodies (see `resolveSceneDistanceFromKm`).
  */
 export function mapShipsToRendered(
-  ships: ShipSummary[], activeShipId: string | null, mode: ViewerDistanceMode = 'compressed',
+  ships: ShipSummary[],
+  activeShipId: string | null,
+  mode: ViewerDistanceMode = 'compressed',
 ): RenderedShip[] {
   return ships.map((ship): RenderedShip => {
     const isActive = activeShipId !== null && ship.id === activeShipId;
@@ -1077,12 +1087,11 @@ export class ViewerSystemScene {
   });
 
   /** The brightest star lights the giants' ring and moon shadows. */
-  protected readonly primaryStarLight = computed(
-    () =>
-      this.starLights().reduce<ReturnType<typeof resolveStarLights>[number] | null>(
-        (best, light) => (!best || light.intensity > best.intensity ? light : best),
-        null,
-      ),
+  protected readonly primaryStarLight = computed(() =>
+    this.starLights().reduce<ReturnType<typeof resolveStarLights>[number] | null>(
+      (best, light) => (!best || light.intensity > best.intensity ? light : best),
+      null,
+    ),
   );
 
   /**
@@ -1098,7 +1107,7 @@ export class ViewerSystemScene {
     const giants = this.giantProfiles();
     for (const body of this.rendered()) {
       if (giants.has(body.id)) continue;
-      const baked = this.planetTextures.get(body.source, 'l0');
+      const baked = this.planetTextures.get(body.source, 'l0', this.store.snapshot.gl);
       if (baked) {
         surfaces.set(body.id, baked.albedo);
       }
@@ -1120,12 +1129,25 @@ export class ViewerSystemScene {
    * carries the body's colour. Untextured bodies keep their flat tint.
    */
   protected resolveSurfaceColor(body: RenderedBody): string {
+    if (resolvePlanetSurfaceSource(body.source, 'l0')?.kind === 'catalog') {
+      return this.bodySurfaces().has(body.id) ? '#ffffff' : '#555b65';
+    }
     if (this.hoveredBodyId() === body.id) return '#ff3b30';
     if (this.targetedBodyId() === body.id) return '#f59e0b';
     return this.bodySurfaces().has(body.id) ? '#ffffff' : body.materialColor;
   }
 
-  protected resolveRockGeometry(body: RenderedBody): BufferGeometry {    const seed = body.rockSeed ?? body.id;
+  protected isCatalogSurface(body: ViewerBody): boolean {
+    return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
+  }
+
+  protected hasSurfaceClouds(body: ViewerBody): boolean {
+    const selection = resolvePlanetSurfaceSource(body, 'l0');
+    return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
+  }
+
+  protected resolveRockGeometry(body: RenderedBody): BufferGeometry {
+    const seed = body.rockSeed ?? body.id;
     const key = [
       seed,
       body.radius.toFixed(4),
@@ -1203,16 +1225,20 @@ export class ViewerSystemScene {
         const scaledRadius = proportional
           ? resolveSceneDistanceFromKm(semiMajorAxisKm, 'proportional')
           : isAnchoredOrbit
-          ? resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile!.scale
-          : resolveSceneDistanceFromKm(semiMajorAxisKm);
-        const radiusX = proportional ? scaledRadius : Math.max(
-          isAnchoredOrbit ? orbitProfile!.minRadiusX : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
-          +scaledRadius.toFixed(3),
-        );
-        const radiusZ = proportional ? radiusX * Math.sqrt(1 - eccentricity * eccentricity) : Math.max(
-          isAnchoredOrbit ? orbitProfile!.minRadiusZ : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
-          +(radiusX * Math.sqrt(1 - eccentricity * eccentricity)).toFixed(3),
-        );
+            ? resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile!.scale
+            : resolveSceneDistanceFromKm(semiMajorAxisKm);
+        const radiusX = proportional
+          ? scaledRadius
+          : Math.max(
+              isAnchoredOrbit ? orbitProfile!.minRadiusX : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
+              +scaledRadius.toFixed(3),
+            );
+        const radiusZ = proportional
+          ? radiusX * Math.sqrt(1 - eccentricity * eccentricity)
+          : Math.max(
+              isAnchoredOrbit ? orbitProfile!.minRadiusZ : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
+              +(radiusX * Math.sqrt(1 - eccentricity * eccentricity)).toFixed(3),
+            );
 
         const anchorPosition = anchorId && byId.has(anchorId) ? byId.get(anchorId)!.position : [0, 0, 0];
 
@@ -1258,13 +1284,20 @@ export class ViewerSystemScene {
     // Queue L0 surfaces for the system's bodies. The cache ignores repeats and
     // untexturable bodies, so re-running this on input changes is cheap. Giants
     // are shaded procedurally and never need a terrain bake.
-    effect(() => {
+    effect((onCleanup) => {
       const giants = this.giantProfiles();
-      this.planetTextures.requestMany(
-        this.bodies().filter((body) => !giants.has(body.id)),
-        'l0',
-        this.store.snapshot.gl ?? null,
-      );
+      const bodies = this.bodies().filter((body) => !giants.has(body.id));
+      const renderer = this.store.gl();
+      this.planetTextures.catalog.quality();
+      const release = untracked(() => {
+        const release = this.planetTextures.catalog.retain(
+          bodies.map((body) => ({ body, tier: 'l0' })),
+          renderer,
+        );
+        this.planetTextures.requestMany(bodies, 'l0', renderer);
+        return release;
+      });
+      onCleanup(release);
     });
 
     effect(() => {
@@ -1314,9 +1347,11 @@ export class ViewerSystemScene {
           controls.target.set(0, 0, 0);
           const direction = camera.position.clone();
           if (direction.lengthSq() < 1e-6) direction.set(0, 0.2, 1);
-          camera.position.copy(direction.normalize().multiplyScalar(
-            resolveZoomDistance(this.zoomLevel(), this.bodies(), this.distanceMode(), this.ships()),
-          ));
+          camera.position.copy(
+            direction
+              .normalize()
+              .multiplyScalar(resolveZoomDistance(this.zoomLevel(), this.bodies(), this.distanceMode(), this.ships())),
+          );
           controls.update();
         }
       }

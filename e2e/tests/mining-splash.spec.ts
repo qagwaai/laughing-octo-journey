@@ -18,39 +18,48 @@ test.beforeEach(async ({ page }) => {
   await new SocketIOMock(page).setup();
 });
 
-test('shows the scene immediately, loads one real tier, and retains intro controls', async ({ page }) => {
-  const assets: string[] = [];
-  const requests: string[] = [];
-  const errors: string[] = [];
-  page.on('request', (request) => {
-    const url = new URL(request.url());
-    if (url.pathname.endsWith('.glb')) assets.push(request.url());
-    if (url.protocol.startsWith('http')) requests.push(request.url());
+for (const bodyId of [SPLASH_PLANET_BODY_ID, 'nova-splash-giant-05', 'nova-splash-star-g']) {
+  test(`shows the scene immediately, loads one real tier, and retains intro controls (${bodyId})`, async ({ page }) => {
+    const assets: string[] = [];
+    const requests: string[] = [];
+    const errors: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('.glb')) assets.push(request.url());
+      if (url.protocol.startsWith('http')) requests.push(request.url());
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(pinnedSplash('/', bodyId));
+    await expect(page).toHaveURL(/\/knot\(left:intro\)/, { timeout: 4500 });
+    await expect(page.getByRole('heading', { name: 'Welcome to Project Stellar' })).toBeVisible();
+    const overlay = page.locator('app-mining-splash-overlay section');
+    const expectReady = async () => {
+      // Reloading real GLB textures and shaders can be slower under software WebGL.
+      await expect(overlay).toHaveAttribute('data-state', /^(ready|error)$/, { timeout: 30_000 });
+      await expect(overlay).toHaveAttribute('data-state', 'ready');
+    };
+    await expectReady();
+    const tier = await page.locator('app-mining-splash-overlay section').getAttribute('data-quality');
+    const diagnostics = page.getByLabel('3D model diagnostics');
+    await expect(diagnostics).toContainText(
+      tier === 'standard' ? 'Standard GLB (154k triangles)' : 'Low GLB (50k triangles)',
+    );
+    await expect(diagnostics).toContainText(/3D ready in \d+\.\d{2} s/);
+    expect(assets.filter((url) => /asteroid-mining-rig\.(standard|low)\.glb/.test(url))).toHaveLength(1);
+    expect(assets.some((url) => /Asteroid_Mining_Rig_/.test(url))).toBe(false);
+    // The planet surface is generated at runtime, so the splash must reach no third-party host.
+    const origin = new URL(page.url()).origin;
+    expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
+    expect(errors).toEqual([]);
+    await page.getByRole('button', { name: 'Use still image' }).click();
+    await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'static');
+    await expect(diagnostics).toContainText('Still image');
+    await expect(page.locator('app-mining-splash-overlay img')).toBeVisible();
+    await page.getByRole('button', { name: 'Load 3D scene' }).click();
+    await expectReady();
+    expect(errors).toEqual([]);
   });
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/');
-  await expect(page).toHaveURL(/\/knot\(left:intro\)/, { timeout: 4500 });
-  await expect(page.getByRole('heading', { name: 'Welcome to Project Stellar' })).toBeVisible();
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
-  const tier = await page.locator('app-mining-splash-overlay section').getAttribute('data-quality');
-  const diagnostics = page.getByLabel('3D model diagnostics');
-  await expect(diagnostics).toContainText(
-    tier === 'standard' ? 'Standard GLB (154k triangles)' : 'Low GLB (50k triangles)',
-  );
-  await expect(diagnostics).toContainText(/3D ready in \d+\.\d{2} s/);
-  expect(assets.filter((url) => /asteroid-mining-rig\.(standard|low)\.glb/.test(url))).toHaveLength(1);
-  expect(assets.some((url) => /Asteroid_Mining_Rig_/.test(url))).toBe(false);
-  // The planet surface is generated at runtime, so the splash must reach no third-party host.
-  const origin = new URL(page.url()).origin;
-  expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
-  expect(errors).toEqual([]);
-  await page.getByRole('button', { name: 'Use still image' }).click();
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'static');
-  await expect(diagnostics).toContainText('Still image');
-  await expect(page.locator('app-mining-splash-overlay img')).toBeVisible();
-  await page.getByRole('button', { name: 'Load 3D scene' }).click();
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
-});
+}
 
 test('reports asset errors and allows retry without blocking login', async ({ page }) => {
   await page.route('**/asteroid-mining-rig.*.glb*', (route) => route.abort());
@@ -146,10 +155,15 @@ test('adjusts storm activity independently of cloud coverage', async ({ page }) 
 
 for (const style of ['thin', 'thick'] as const) {
   test(`keeps ${style} clouds moving while orbit controls pause camera drift`, async ({ page }) => {
+    const clockStart = new Date('2026-01-01T00:00:00Z');
+    await page.clock.install({ time: clockStart });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto(pinnedSplash('/knot(left:intro)'));
     const overlay = page.locator('app-mining-splash-overlay section');
     await expect(overlay).toHaveAttribute('data-state', 'ready');
     await page.getByRole('combobox', { name: 'Cloud style' }).selectOption(style);
+    // A deadline beyond the test timeout avoids a browser round-trip timestamp race.
+    await page.clock.pauseAt(clockStart.getTime() + 60 * 60 * 1000);
     const cloudAngle = () =>
       page.evaluate(
         (expectedOpacity) => {
@@ -162,7 +176,16 @@ for (const style of ['thin', 'thick'] as const) {
             if (node.type !== 'Mesh') return;
             const mesh = node as Mesh;
             const material = mesh.material as MeshStandardMaterial;
-            if (material.transparent && material.opacity === expectedOpacity && material.map?.image?.width >= 256) {
+            const image: unknown = material.map?.image;
+            if (
+              material.transparent &&
+              material.opacity === expectedOpacity &&
+              typeof image === 'object' &&
+              image !== null &&
+              'width' in image &&
+              typeof image.width === 'number' &&
+              image.width >= 256
+            ) {
               angle = mesh.rotation.y;
             }
           });
@@ -171,8 +194,13 @@ for (const style of ['thin', 'thick'] as const) {
         },
         style === 'thick' ? 1 : 0.7,
       );
-    const start = await cloudAngle();
-    await expect.poll(cloudAngle).toBeGreaterThan(start + 0.003);
+    const expectCloudMotion = async () => {
+      const start = await cloudAngle();
+      // Each jump fires one frame; multiple jumps respect the production delta clamp.
+      for (let frame = 0; frame < 10; frame++) await page.clock.fastForward(50);
+      expect(await cloudAngle()).toBeGreaterThan(start + 0.003);
+    };
+    await expectCloudMotion();
     const bounds = await page.locator('ngt-canvas canvas').first().boundingBox();
     expect(bounds).not.toBeNull();
     const x = bounds!.x + bounds!.width / 2;
@@ -180,9 +208,9 @@ for (const style of ['thin', 'thick'] as const) {
     await page.mouse.move(x, y);
     await page.mouse.down();
     await page.mouse.move(x + 100, y - 40, { steps: 8 });
+    await page.clock.fastForward(50);
     await expect(overlay).toHaveAttribute('data-motion', 'orbit');
-    const pausedAngle = await cloudAngle();
-    await expect.poll(cloudAngle, { timeout: 5_000 }).toBeGreaterThan(pausedAngle + 0.003);
+    await expectCloudMotion();
     await expect(overlay).toHaveAttribute('data-motion', 'orbit');
     await page.mouse.up();
   });
@@ -382,21 +410,25 @@ test('renders a pinned gas giant with its own controls and no shader errors', as
   await expect(overlay).toHaveAttribute('data-planet-kind', 'gas-giant');
   await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
   await expect(page.getByRole('slider', { name: /Storm activity/ })).toBeVisible();
-  await expect.poll(() => readSplashGasGiant(page)).toEqual({
-    bodyId: 'nova-splash-giant-05',
-    palette: 'saturnian',
-    rings: true,
-  });
+  await expect
+    .poll(() => readSplashGasGiant(page))
+    .toEqual({
+      bodyId: 'nova-splash-giant-05',
+      palette: 'saturnian',
+      rings: true,
+    });
 
   const canvas = page.locator('ngt-canvas canvas').first();
   const seeded = await canvas.screenshot();
   await page.getByRole('combobox', { name: 'Giant palette' }).selectOption('ice');
   await page.getByRole('combobox', { name: 'Rings' }).selectOption('off');
-  await expect.poll(() => readSplashGasGiant(page)).toEqual({
-    bodyId: 'nova-splash-giant-05',
-    palette: 'ice',
-    rings: false,
-  });
+  await expect
+    .poll(() => readSplashGasGiant(page))
+    .toEqual({
+      bodyId: 'nova-splash-giant-05',
+      palette: 'ice',
+      rings: false,
+    });
   await expect.poll(async () => canvas.screenshot()).not.toEqual(seeded);
   expect(
     consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
@@ -439,12 +471,14 @@ test('renders a pinned star with its spectral class, flare control and no shader
   await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
   const flare = page.getByRole('slider', { name: /Flare activity/ });
   await expect(flare).toBeVisible();
-  await expect.poll(() => readSplashStar(page)).toMatchObject({
-    bodyId: 'nova-splash-star-g',
-    letter: 'G',
-    subtype: 2,
-    luminosityClass: 'V',
-  });
+  await expect
+    .poll(() => readSplashStar(page))
+    .toMatchObject({
+      bodyId: 'nova-splash-star-g',
+      letter: 'G',
+      subtype: 2,
+      luminosityClass: 'V',
+    });
   await flare.fill('100');
   await expect(flare).toHaveValue('100');
 
@@ -452,12 +486,14 @@ test('renders a pinned star with its spectral class, flare control and no shader
   await expect(starClass).toHaveValue('seeded');
   await starClass.selectOption('M4V');
   await expect(page.getByTestId('splash-star-class')).toContainText('M4V');
-  await expect.poll(() => readSplashStar(page)).toMatchObject({
-    bodyId: 'nova-splash-star-g',
-    letter: 'M',
-    subtype: 4,
-    luminosityClass: 'V',
-  });
+  await expect
+    .poll(() => readSplashStar(page))
+    .toMatchObject({
+      bodyId: 'nova-splash-star-g',
+      letter: 'M',
+      subtype: 4,
+      luminosityClass: 'V',
+    });
   await starClass.selectOption('seeded');
   await expect(page.getByTestId('splash-star-class')).toContainText('G2V');
   await expect.poll(() => readSplashStar(page)).toMatchObject({ letter: 'G', subtype: 2 });
@@ -467,19 +503,19 @@ test('renders a pinned star with its spectral class, flare control and no shader
 });
 
 test('previews an unlisted body as a star with splashKind and splashSpectralClass', async ({ page }) => {
-  await page.goto(
-    `${pinnedSplash('/knot(left:intro)', 'preview-star')}&splashKind=star&splashSpectralClass=K5III`,
-  );
+  await page.goto(`${pinnedSplash('/knot(left:intro)', 'preview-star')}&splashKind=star&splashSpectralClass=K5III`);
   const overlay = page.locator('app-mining-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
   await expect(page.getByTestId('splash-star-class')).toContainText('K5III');
-  await expect.poll(() => readSplashStar(page)).toMatchObject({
-    bodyId: 'preview-star',
-    letter: 'K',
-    subtype: 5,
-    luminosityClass: 'III',
-  });
+  await expect
+    .poll(() => readSplashStar(page))
+    .toMatchObject({
+      bodyId: 'preview-star',
+      letter: 'K',
+      subtype: 5,
+      luminosityClass: 'III',
+    });
 });
 
 test('picks the splash planet from the rotation when not pinned', async ({ page }) => {

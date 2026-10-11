@@ -134,7 +134,7 @@
         ? '#8f0000'
         : targetedBodyId() === body.id
           ? '#92400e'
-          : body.materialEmissive
+          : isCatalogSurface(body.source) ? '#000000' : body.materialEmissive
     "
     [emissiveIntensity]="
       hoveredBodyId() === body.id
@@ -143,7 +143,7 @@
     "
     [flatShading]="body.geometryKind === 'rock-deformed'"
   />
-  @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id)) {
+  @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id) && hasSurfaceClouds(body.source)) {
   <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
   } }
 </ngt-mesh>

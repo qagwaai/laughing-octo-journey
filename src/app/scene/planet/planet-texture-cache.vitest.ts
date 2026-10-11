@@ -1,9 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
-import type { PlanetBakeOptions, PlanetBakeResult } from './planet-bake';
 import type { SurfaceArchetype } from '../../model/celestial-classification';
+import type { PlanetBakeOptions, PlanetBakeResult } from './planet-bake';
 import type { ResolvablePlanetBody } from './planet-surface-resolver';
-import { isTexturableBody, resolvePlanetSurface } from './planet-surface-resolver';
+import { isTexturableBody, resolvePlanetSurface, resolvePlanetSurfaceSource } from './planet-surface-resolver';
 import {
   PLANET_CACHE_BAKE_FN,
   PLANET_CACHE_L1_LIMIT,
@@ -101,17 +101,114 @@ describe('planet surface resolver', () => {
   });
 
   it('builds keys that separate archetypes for the same body and tier', () => {
-    const rocky = resolvePlanetSurface(
-      { id: 'same-id', bodyType: 'planet', surfaceArchetype: 'rocky' },
-      'l0',
-    );
-    const ocean = resolvePlanetSurface(
-      { id: 'same-id', bodyType: 'planet', surfaceArchetype: 'ocean' },
-      'l0',
-    );
+    const rocky = resolvePlanetSurface({ id: 'same-id', bodyType: 'planet', surfaceArchetype: 'rocky' }, 'l0');
+    const ocean = resolvePlanetSurface({ id: 'same-id', bodyType: 'planet', surfaceArchetype: 'ocean' }, 'l0');
 
     expect(rocky?.key).not.toBe(ocean?.key);
     expect(ocean?.fallbackReason).toContain('ocean');
+  });
+
+  it('selects the approved Sol assets by exact catalog identity', () => {
+    const earth = resolvePlanetSurfaceSource(
+      {
+        ...makeBody('game-earth'),
+        surfaceArchetype: 'ocean',
+        catalogIdentity: { namespace: 'sol', key: 'earth' },
+      },
+      'l1',
+    );
+    const luna = resolvePlanetSurfaceSource(
+      {
+        ...makeBody('game-luna', 'moon'),
+        catalogIdentity: { namespace: 'sol', key: 'luna' },
+      },
+      'l0',
+    );
+    const mars = resolvePlanetSurfaceSource(
+      {
+        ...makeBody('game-mars'),
+        catalogIdentity: { namespace: 'sol', key: 'mars' },
+      },
+      'l1',
+    );
+
+    expect(earth).toMatchObject({
+      kind: 'catalog',
+      request: {
+        key: 'catalog|earth-july-v2|l1|game-earth',
+        asset: { assetVersion: 'earth-july-v2' },
+      },
+    });
+    expect(luna).toMatchObject({
+      kind: 'catalog',
+      request: {
+        key: 'catalog|luna-v3|l0|game-luna',
+        asset: { assetVersion: 'luna-v3' },
+      },
+    });
+    expect(mars).toMatchObject({
+      kind: 'catalog',
+      request: {
+        key: 'catalog|mars-v2|l1|game-mars',
+        asset: { assetVersion: 'mars-v2' },
+      },
+    });
+  });
+
+  it('keeps unsupported, missing, and non-exact identities procedural', () => {
+    const identities = [
+      { namespace: 'other', key: 'earth' },
+      { namespace: 'sol', key: 'Earth' },
+      { namespace: 'sol', key: 'moon' },
+      { namespace: 'sol', key: 'earth ' },
+      null,
+      undefined,
+    ];
+
+    for (const catalogIdentity of identities) {
+      const selection = resolvePlanetSurfaceSource(
+        {
+          ...makeBody('sol-earth', 'planet'),
+          displayName: 'Earth',
+          catalogIdentity,
+        },
+        'l0',
+      );
+      expect(selection?.kind).toBe('procedural');
+    }
+  });
+
+  it('keeps stars and giant surfaces outside the catalog selection path', () => {
+    expect(
+      resolvePlanetSurfaceSource(
+        {
+          ...makeBody('sun', 'star'),
+          surfaceArchetype: 'star',
+          catalogIdentity: { namespace: 'sol', key: 'earth' },
+        },
+        'l0',
+      ),
+    ).toBeNull();
+    expect(
+      resolvePlanetSurfaceSource(
+        {
+          ...makeBody('jupiter'),
+          surfaceArchetype: 'gas-giant',
+          catalogIdentity: { namespace: 'sol', key: 'earth' },
+        },
+        'l0',
+      ),
+    ).toBeNull();
+    expect(
+      resolvePlanetSurfaceSource(
+        {
+          ...makeBody('neptune'),
+          surfaceArchetype: 'ice-giant',
+          catalogIdentity: { namespace: 'sol', key: 'earth' },
+        },
+        'l0',
+      ),
+    ).toBeNull();
   });
 
   it('returns null for untexturable bodies and bodies without an id', () => {

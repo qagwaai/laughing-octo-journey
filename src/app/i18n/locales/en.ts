@@ -738,6 +738,22 @@ export const en = {
       sceneLoadingStatus: 'Loading system...',
       sceneEmptyStatus: 'Select a system from the list to begin.',
       surfaceBakeStatus: 'Generating planetary surfaces...',
+      surfaceCatalogLoading: 'Loading catalog texture sets (pending):',
+      surfaceCatalogFailure:
+        'Catalog surface unavailable. Retaining loaded imagery; otherwise showing a neutral placeholder:',
+      surfaceCatalogRetry: 'Retry texture loading',
+      surfaceCatalogSources: 'Terrain sources and limitations',
+      surfaceCatalogPreview: 'Preview',
+      surfaceCatalogLow: '2K detail',
+      surfaceCatalogStandard: '4K detail',
+      surfaceCatalogPendingReview:
+        'Fine registration and polar boundary/detail-loss review are unfinished. Final Stellar Viewer visual acceptance is on hold. Sources are supplied as-is; no agency endorsement is implied.',
+      surfaceCatalogEarthCoverage:
+        'Fixed July BMNG composite, not live weather. Synthetic ocean blue, coastal blending and possible residual clouds/snow. Unexaggerated land-only GLOBE relief; ocean/coastal-transition normals are neutral.',
+      surfaceCatalogLunaCoverage:
+        'Appearance-adapted visible color; lower-resolution monochrome polar substitution beyond 70 degrees and small inpainted dropouts. LOLA relief includes interpolated regions; residual polar albedo pinching remains.',
+      surfaceCatalogMarsCoverage:
+        'Viking color with synthetic green, incomplete red/violet coverage and residual haze/illumination. MOLA relief includes interpolated gaps; image/DEM control-network registration remains unverified.',
       sceneErrorPrefix: 'Failed to load system:',
       planetViewZoomLabel: 'Scale',
       planetViewExitHint: 'Right-click empty space to return to the stellar viewer.',
@@ -752,11 +768,14 @@ export const en = {
       distanceModeTitle: 'Distance scale',
       proportionalDistances: 'Proportional distances',
       compressedDistances: 'Compressed overview',
-      proportionalDistanceNote: 'Linear distances: 1 AU = 5 scene units. Body sizes are enlarged; zoom or open detail to inspect moons.',
-      compressedDistanceNote: 'Logarithmic distances for readability; spacing is not proportional. Body sizes are enlarged.',
+      proportionalDistanceNote:
+        'Linear distances: 1 AU = 5 scene units. Body sizes are enlarged; zoom or open detail to inspect moons.',
+      compressedDistanceNote:
+        'Logarithmic distances for readability; spacing is not proportional. Body sizes are enlarged.',
       showCompressedDistances: 'Switch to compressed overview',
       showProportionalDistances: 'Switch to proportional distances',
-      orbitGuideNote: 'Orbit guides are illustrative, not trajectories. Stored positions use a display-only rotation; physical frame alignment is not guaranteed.',
+      orbitGuideNote:
+        'Orbit guides are illustrative, not trajectories. Stored positions use a display-only rotation; physical frame alignment is not guaranteed.',
       legendPlanet: 'Planet',
       legendPlanetOrbit: 'Planet Orbit',
       legendMarketStation: 'Market Station',
