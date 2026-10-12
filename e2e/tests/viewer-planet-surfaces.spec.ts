@@ -125,6 +125,7 @@ async function renderedSurface(page: import('@playwright/test').Page, name: stri
       roughnessMap: !!material.roughnessMap,
       color: material.color.getHexString(),
       emissive: material.emissive.getHexString(),
+      emissiveIntensity: material.emissiveIntensity,
       source:
         typeof albedoImage === 'object' &&
         albedoImage !== null &&
@@ -134,6 +135,23 @@ async function renderedSurface(page: import('@playwright/test').Page, name: stri
           : null,
     };
   }, name);
+}
+
+async function setSystemBodyTarget(page: import('@playwright/test').Page, bodyId: string | null) {
+  await page.evaluate((bodyId) => {
+    const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+    const host = document.querySelector('app-viewer-scene-page');
+    if (!ngApi?.getComponent || !host) throw new Error('viewer scene component is unavailable');
+
+    const component = ngApi.getComponent(host) as {
+      viewerTargetService: {
+        target: (id: string) => void;
+        clearTarget: () => void;
+      };
+    };
+    if (bodyId) component.viewerTargetService.target(bodyId);
+    else component.viewerTargetService.clearTarget();
+  }, bodyId);
 }
 
 test.describe('viewer catalog planet surfaces', () => {
@@ -185,6 +203,43 @@ test.describe('viewer catalog planet surfaces', () => {
     await expect(page.getByTestId('viewer-surface-sources')).toContainText('NOAA GLOBE');
     await expect(page.getByTestId('viewer-surface-sources')).toContainText('on hold');
     expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
+  });
+
+  test('keeps catalog albedo tint neutral when targeted and in focused detail', async ({ page }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 4 }),
+    );
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, catalogBodies());
+
+    await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({ color: 'ffffff', emissive: '000000' });
+    await setSystemBodyTarget(page, 'earth');
+    await expect
+      .poll(async () => renderedSurface(page, 'Earth'))
+      .toMatchObject({
+        color: 'ffffff',
+        emissive: '92400e',
+      });
+    await setSystemBodyTarget(page, null);
+    await expect
+      .poll(async () => renderedSurface(page, 'Earth'))
+      .toMatchObject({
+        color: 'ffffff',
+        emissive: '000000',
+      });
+
+    for (const bodyId of ['earth', 'luna', 'mars']) {
+      const displayName = bodyId === 'luna' ? 'Luna' : bodyId[0].toUpperCase() + bodyId.slice(1);
+      await enterPlanetViewViaSceneComponent(page, bodyId);
+      await expect.poll(async () => (await renderedSurface(page, displayName))?.albedoWidth).toBe(2048);
+      expect(await renderedSurface(page, displayName)).toMatchObject({ color: 'ffffff', emissive: '000000' });
+
+      if (bodyId !== 'mars') {
+        await page.goBack();
+        await expect(page).toHaveURL(/right:viewer-scene\/sol/);
+      }
+    }
   });
 
   test('loads only low detail on constrained policy, preserves Luna preview, and upgrades normal maps', async ({

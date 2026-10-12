@@ -142,7 +142,7 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
 | 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default and current cloud layer on 2026-10-12; Earth/Luna overview overlap and material tint/emissive review remain open |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default, current cloud layer, and transient highlight restoration on 2026-10-12; tint/emissive review closed; Earth/Luna overview overlap remains open |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -2167,8 +2167,12 @@ flake rate or replace the pending Actions/Linux execution.
 - [ ] Treat Venus/Titan radar or infrared terrain as a separately labeled
       surface-reveal mode, not ordinary visible-light appearance. Such a mode
       needs separate approval before implementation.
-- [ ] Verify material tint/emissive/highlight behavior does not permanently
-      recolor the familiar terrain.
+- [x] Verify material tint/emissive/highlight behavior does not permanently
+      recolor the familiar terrain. Catalog tint is white and idle emissive is
+      neutral; overview target highlighting returns to neutral when cleared.
+      Focused-detail base values are covered for Earth/Luna/Mars, and the user
+      confirmed the transient hover highlight clears to the same accepted,
+      cloud-covered appearance on 2026-10-12.
 - [x] Generate selected-body source links through
       [ExternalAnchorsComponent](../src/app/component/external-anchors.ts).
 - [x] Add fuller provenance, color interpretation, and coverage notes in a
@@ -2359,6 +2363,8 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-12 | Stage 2 encoding suitability | Offline JPEG/WebP comparison for all Earth/Luna/Mars preview, low, and standard albedos using the pinned GDAL WebP driver and source-grid RGB references | 54 WebP variants encoded/decoded; selected test candidates all meet the existing 40 dB PSNR floor; all low/standard transfer totals meet caps, with 403,450-2,145,604 bytes saved per body/tier | Offline evidence only; selected JPEGs and application unchanged; actual TextureLoader/deployment and visual acceptance plus seam/orientation evidence remain pending |
 
 | 2026-10-12 | Stage 2 closure | User accepted limited registration, polar, seam/orientation and sampled source-shadow reviews with recorded caveats; accepted matched WebP/JPEG albedo appearance for Earth, Luna and Mars; no KTX2 evaluation required | Stage 2 checklist complete and Stage 2 marked Done for the active pilot at the approved scope; no asset or production rendering changes | Earth lighting/cloud presentation, Earth/Luna overview overlap, material tint/emissive review, representative performance and final Viewer acceptance remain separate open gates |
+
+| 2026-10-12 | Stage 4 material tint/emissive/highlight review | `npm run e2e:spec -- e2e/tests/viewer-planet-surfaces.spec.ts -g "keeps catalog albedo tint neutral"` passed; `npm run typecheck` passed; user inspected focused Earth hover and confirmed the highlight clears | Catalog tint remains white; overview target emissive returns to neutral after clearing; focused-detail Earth/Luna/Mars retain neutral base material values. User accepted the current cloud-covered Earth appearance and confirmed hover restoration in the live Viewer | This Stage 4 checklist item is closed; Earth/Luna overview overlap, representative performance, and final Viewer visual acceptance remain separate open gates |
 
 Add dated rows for implementation, rights clearance, measurements, automated
 results, and user visual decisions. Keep failed checks and deferred assets visible
