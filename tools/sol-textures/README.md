@@ -1,5 +1,15 @@
 # Rebuilding the Sol texture pilot
 
+**Restart handoff (2026-10-12):** limited registration, polar visual and sampled
+source-shadow reviews are accepted as recorded in the approved plan. Encoding
+suitability and remaining seam/orientation checks are next; final Viewer
+acceptance stays on hold. All session-owned review servers were stopped.
+Eight reviewer exports are preserved byte-for-byte in the external
+`work/reviewer-submissions-2026-10-12-v1` directory, alongside the retained
+diagnostic evidence directories. Original submissions and selected textures
+are unchanged. Reopen an existing form by serving its evidence folder on
+loopback; never regenerate over that folder.
+
 This is a local, explicit-source pipeline, not a Viewer catalog loader. It
 reconstructs the approved October 2026 Earth/Luna/Mars candidates; Mercury is
 excluded. Originals, environments, working rasters and diagnostic output must
@@ -115,6 +125,97 @@ discarded; it does not modify the supplied review JSON or the user's browser
 storage.
 
 ## What is repeatable
+
+### Guided polar screening
+
+On 2026-10-11 the user accepted the limited Luna/Mars polar boundary/detail-loss
+visual review for both poles and tiers, explicitly resolving Luna south Low's
+"unsure" export entry. The plan retains that clarification and earlier concerns;
+submitted JSON and textures are unchanged. Residual pinching/sampling and
+source-reference limitations remain. This does not close other Stage 2 checks
+or release final Viewer visual acceptance.
+
+### Source-shadow screening
+
+On 2026-10-12 the user accepted the limited Tycho/Olympus Mons source-shadow
+assessment at both tiers, explicitly resolving Tycho Low's accidental "unsure"
+selection and confirming inspection under both opposite light directions.
+The plan records those clarifications without editing the submission. This
+does not prove globe-wide shadow-free albedo or provide final Viewer lighting
+acceptance; textures and production lighting remain unchanged.
+
+Run [prepare-source-shadow-guide.mjs](diagnostic/prepare-source-shadow-guide.mjs)
+against the existing loopback diagnostic server on port 43187:
+
+```powershell
+node tools\sol-textures\diagnostic\prepare-source-shadow-guide.mjs $newExternalOutput
+& $python -m http.server 43194 --bind 127.0.0.1 --directory $newExternalOutput
+```
+
+This prepares Tycho/Olympus Mons at low/standard tiers: 28 pixel-exact
+768 x 512 images covering unlit albedo, gray terrain relief, lit albedo without
+terrain normals and combined albedo/relief. Lit cases use opposite light
+directions at 65-degree incidence, ambient 0.15, directional intensity 2 and
+normal scale `[1, 1]`. Geometry, camera and mipmapped filtering are fixed per
+group. Gray material is `#777777`; color has white tint. Input/output/script
+hashes and full render settings are retained.
+
+The local form has independently selectable panels, group-aware saved notes,
+browser persistence and nonempty exports. Fixed darkness may be reflectance
+or acquisition illumination; persistence alone is not proof of a baked shadow.
+Describe specific contradictory wall/ridge shading or double-lighting effects.
+This initial sampled assessment does not certify all source pixels or final
+Viewer lighting. Selected textures and production rendering are unchanged.
+
+For targeted Luna investigation, run the preparation command with
+`--luna-controls $externalSourceReferenceDirectory`. The reference directory
+must contain the retained north/south `luna-*-original-dem-cpu-relief.png`
+files from the source-pole investigation. This creates four Luna pole/tier
+groups, 72 matched images and two source-derived CPU references. Additional
+closer views use nearest filtering and neutral normals under both light
+directions. Neutral controls retain identical dark material and lighting.
+Nearest filtering is an artifact probe, not a proposed runtime change.
+The CPU references have different projection/orientation/light and sampling;
+they are context, not pixel-aligned ground truth. All inputs/outputs are hashed.
+
+Use [prepare-polar-guide.mjs](diagnostic/prepare-polar-guide.mjs) for the first
+Mars north-pole Standard comparison. Start the existing diagnostic server with
+the retained landmark directory on loopback port 43187, then run:
+
+```powershell
+node tools\sol-textures\diagnostic\prepare-polar-guide.mjs $newExternalOutput
+& $python -m http.server 43191 --bind 127.0.0.1 --directory $newExternalOutput
+```
+
+Add `--all` to the preparation command for eight Luna/Mars north/south
+low/standard groups (80 images). Mars north Standard is included for reference
+after the user's positive verbal review. Use the group selector to review the
+seven remaining groups; saved observations include their group and comparison.
+The form shows saved notes and blocks empty exports: click **Save observation**
+before downloading. Earlier submissions and browser storage are not migrated
+or replaced.
+
+The output directory must be new and outside the repository. The tool captures
+ten raw 768 x 512 canvas images: earlier Mars v1 versus selected Mars v2,
+gray-relief views at 12/6-degree fields of view under left/right grazing lights,
+and albedo + relief at 12 degrees under the left light.
+Both variants use identical geometry, framing, lighting and mipmapped filtering.
+Gray relief uses neutral `#777777`, ambient intensity 0.08 and directional
+intensity 3 at 82 degrees from the polar normal. Normal scale stays `[1, 1]`;
+this diagnostic lighting is not runtime lighting or a texture correction.
+The shared harness resets its original material/light settings whenever no
+profile is requested. Render evidence records each profile, light position,
+intensities, material color and normal scale.
+Projected 85/87-degree latitude circles identify the blend band; switch guides
+off before assessing a suspected ring. The earlier baseline is not ground truth.
+Input/output hashes and render settings are retained alongside the form.
+
+Select an observation and enter notes rather than precisely clicking landmarks.
+Observations persist locally by evidence ID and can be exported. This is only a
+guided screening exercise: the expanded set covers bodies, poles, tiers and
+two light directions, but reviewer observations and additional filter/source
+controls are still needed before polar-review acceptance. No textures are
+modified and final Viewer acceptance remains on hold.
 
 - [pipeline.py](pipeline.py): explicit acquisition, source-hash verification,
   all three approved processing recipes, full output decoding/hash/budget

@@ -76,6 +76,15 @@ async function render(options = {}) {
   const tier = options.tier ?? document.querySelector('#tier').value;
   const view = options.view ?? document.querySelector('#view').value;
   const mode = options.mode ?? document.querySelector('#mode').value;
+  const lighting = options.lighting ?? 'default';
+  assert(
+    ['default', 'polar-grazing-left', 'polar-grazing-right', 'source-shadow-left', 'source-shadow-right'].includes(
+      lighting,
+    ),
+    'Unknown diagnostic lighting',
+  );
+  const grazing = lighting !== 'default';
+  const sourceShadow = lighting.startsWith('source-shadow-');
   const albedo = await texture(body, tier, 'albedo');
   const variant = options.variant ?? 'selected';
   assert(['selected', 'baseline', 'geodesic', 'transition'].includes(variant), 'Unknown normal experiment');
@@ -119,8 +128,13 @@ async function render(options = {}) {
       ? new T.MeshBasicMaterial({ map: albedo })
       : new T.MeshStandardMaterial({
           map: ['gray-relief', 'gray', 'flat-normal'].includes(mode) ? null : albedo,
-          normalMap: mode === 'gray' ? null : mode === 'flat-normal' ? flatNormal : normal,
-          color: mode === 'viewer-tint' ? '#f2f8ff' : '#ffffff',
+          normalMap: ['gray', 'lit-albedo'].includes(mode) ? null : mode === 'flat-normal' ? flatNormal : normal,
+          color:
+            mode === 'viewer-tint'
+              ? '#f2f8ff'
+              : grazing && ['gray-relief', 'flat-normal'].includes(mode)
+                ? '#777777'
+                : '#ffffff',
           roughness: 0.72,
           metalness: 0,
           emissive: mode === 'viewer-tint' ? '#1a2638' : '#000000',
@@ -138,7 +152,19 @@ async function render(options = {}) {
   camera.updateMatrixWorld(true);
   const right = new T.Vector3().setFromMatrixColumn(camera.matrix, 0);
   const up = new T.Vector3().setFromMatrixColumn(camera.matrix, 1);
-  light.position.copy(camera.position).addScaledVector(right, -2).addScaledVector(up, 2);
+  ambient.intensity = sourceShadow ? 0.15 : grazing ? 0.08 : 0.35;
+  light.intensity = sourceShadow ? 2 : grazing ? 3 : 2.2;
+  if (grazing) {
+    const incidence = ((sourceShadow ? 65 : 82) * Math.PI) / 180;
+    light.position
+      .copy(camera.position)
+      .normalize()
+      .multiplyScalar(Math.cos(incidence))
+      .addScaledVector(right, Math.sin(incidence) * (lighting.endsWith('-left') ? -1 : 1))
+      .multiplyScalar(5);
+  } else {
+    light.position.copy(camera.position).addScaledVector(right, -2).addScaledVector(up, 2);
+  }
   renderer.render(scene, camera);
   const ray = new T.Raycaster();
   ray.setFromCamera(new T.Vector2(0, 0), camera);
@@ -153,6 +179,13 @@ async function render(options = {}) {
     filtering,
     segments,
     fov: camera.fov,
+    lighting,
+    materialColor: sphere.material.color.getHexString(),
+    normalScale: sphere.material.normalScale?.toArray() ?? null,
+    usesTerrainNormals: sphere.material.normalMap != null && sphere.material.normalMap !== flatNormal,
+    ambientIntensity: ambient.intensity,
+    directionalIntensity: light.intensity,
+    lightPosition: light.position.toArray(),
     colorSpace: albedo.colorSpace,
     normalColorSpace: normal?.colorSpace,
     flipY: albedo.flipY,

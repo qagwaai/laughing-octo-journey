@@ -1,9 +1,35 @@
 # Sol planetary textures: implementation and validation plan
 
 Date: 2026-10-08  
-Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 remains in progress: limited sampled fine registration was explicitly accepted on 2026-10-11 with exclusions and uncertainty limitations; polar boundary/detail-loss review remains unfinished. With explicit user approval, Stage 3 catalog loading/cache ownership and initial Stage 4 Viewer integration are implemented for earth-july-v2, luna-v3 and mars-v2. Selected runtime images are now served same-origin; originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural. Hardware/network performance and final Stellar Viewer visual acceptance remain pending; visual acceptance is still on hold.
+Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 remains in progress: limited sampled fine registration and limited Luna/Mars polar boundary/detail-loss visual review were explicitly accepted on 2026-10-11; the sampled Tycho/Olympus Mons source-shadow assessment was accepted on 2026-10-12, with documented limitations. Encoding suitability and remaining seam/orientation checks are still pending. With explicit user approval, Stage 3 catalog loading/cache ownership and initial Stage 4 Viewer integration are implemented for earth-july-v2, luna-v3 and mars-v2. Selected runtime images are now served same-origin; originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural. Hardware/network performance and final Stellar Viewer visual acceptance remain pending; visual acceptance is still on hold.
 
 ## Goal and approved decisions
+
+### Restart handoff (2026-10-12)
+
+- Accepted limited reviews: sampled fine registration; Luna/Mars polar
+  boundary/detail-loss; Tycho/Olympus Mons source-shadow assessment at both tiers.
+  Acceptance scope, exclusions, verbal clarifications and limitations are
+  recorded in the Stage 2 history below; none implies globe-wide scientific
+  validation or final Viewer sign-off.
+- Next work: **encoding suitability**, then consolidate/complete remaining
+  seam/orientation evidence. Stage 2 remains In progress; Stage 3 is Done.
+  Final Stellar Viewer visual acceptance remains explicitly on hold.
+- Selected assets remain Earth `earth-july-v2`, Luna `luna-v3`, Mars `mars-v2`.
+  No texture corrections or production lighting changes were made during review.
+- All eight submitted review JSON files were copied byte-for-byte into external
+  `work/reviewer-submissions-2026-10-12-v1`; originals remain untouched.
+  The approved external store is
+  `D:\at-template\artifacts\laughing-octo-journey\sol-textures`.
+  Diagnostic evidence directories referenced below are retained, not deleted.
+- All five session-owned diagnostic/review servers were stopped for restart.
+  No listeners remained on ports 43187 or 43189-43194 after cleanup.
+  They do not need to be running to resume encoding/seam evidence review.
+  To reopen a retained form, use the loopback HTTP command in the
+  [tool guide](../tools/sol-textures/README.md) against its existing evidence
+  directory; do not regenerate into or overwrite it.
+- No commit or push was performed by the assistant during this review work.
+  Inspect the worktree after restart and preserve any user commits/changes.
 
 **Current selected texture sets (2026-10-08):** Earth `earth-july-v2`,
 Luna `luna-v3`, Mars `mars-v2`. The user gave final acceptance of the current
@@ -102,17 +128,17 @@ Use `Not started`, `In progress`, `Blocked`, `Awaiting visual review`, or `Done`
 Mark a stage done only when its acceptance evidence is recorded. A source found
 in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 
-| Stage | Work                                                           | Prerequisites                          | Status      | Evidence / blocker                                                                                                                                                                                                            |
-| ----- | -------------------------------------------------------------- | -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0     | Minimize station meshes to 5% linear size                      | None                                   | Done        | Automated verification passed; user confirmed Stellar Viewer visual validation complete on 2026-10-08                                                                                                                         |
-| 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                                      |
-| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | In progress | Selected earth-july-v2, luna-v3 and mars-v2 prepared; limited sampled fine registration accepted with exclusions; polar boundary/detail-loss and remaining renderer checks pending; Mercury excluded until separately cleared |
-| 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                                 |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; visual lighting review still pending                                                             |
-| 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                                     |
-| 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                                      |
-| 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                                  |
-| 8     | Release verification and documentation                         | Stages 5-7                             | Not started | Production assets and regression evidence pending                                                                                                                                                                             |
+| Stage | Work                                                           | Prerequisites                          | Status      | Evidence / blocker                                                                                                                                                                                                |
+| ----- | -------------------------------------------------------------- | -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Minimize station meshes to 5% linear size                      | None                                   | Done        | Automated verification passed; user confirmed Stellar Viewer visual validation complete on 2026-10-08                                                                                                             |
+| 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
+| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | In progress | Limited registration, polar visual review and Tycho/Olympus source-shadow assessment accepted with limitations; encoding and remaining seam/orientation checks pending; Mercury excluded until separately cleared |
+| 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; visual lighting review still pending                                                 |
+| 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
+| 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
+| 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
+| 8     | Release verification and documentation                         | Stages 5-7                             | Not started | Production assets and regression evidence pending                                                                                                                                                                 |
 
 ### Stage 0: unblock visual validation
 
@@ -1577,6 +1603,201 @@ shift, texture change or submitted-file edit was made. Polar boundary/detail-los
 review remains open and final Stellar Viewer visual acceptance remains on hold.
 Earlier pending statements in this audit are chronological checkpoints,
 superseded by this explicit acceptance.
+
+#### Polar boundary/detail-loss follow-up started (2026-10-11)
+
+The user selected one guided Mars north-pole comparison before expanding to
+both bodies and tiers. Read-only preparation uses the existing diagnostic
+renderer and [prepare-polar-guide.mjs](../tools/sol-textures/diagnostic/prepare-polar-guide.mjs).
+Six pixel-exact images compare prior Mars v1 against selected Mars v2 with
+identical light, geometry, framing and mipmapped filtering: gray relief at
+12/6-degree fields of view, plus albedo/relief at 12 degrees. Latitude guides
+mark 85 degrees (treatment begins) and 87 degrees (blend completes), projected
+from the recorded north-pole camera. The baseline is not ground truth.
+
+Final evidence is retained externally under
+`work/polar-guided-mars-north-2026-10-11-v2`, including source/output/script hashes
+and render settings. The first preparation used CSS screenshots with a
+513-pixel height; the final version exports the raw 768 x 512 canvas so guide
+coordinates match the rendered pixels exactly. The earlier output is preserved.
+All six images rendered without console/page errors. An isolated headless form
+check passed image dimensions, guide ordering/visibility, required notes,
+observation persistence and export; synthetic observations were discarded.
+
+The form asks for possible boundary changes, detail loss or uncertainty, with
+free-text notes; no precision landmark marking is required. This first example
+does not close any polar gate: both poles, Luna/Mars low/standard, changing light
+and nearest/mipmapped controls remain required. No selected assets were changed;
+final Viewer visual acceptance remains on hold.
+
+The initial `mars-polar-observations.json` contains an **unsure** observation:
+"do not see any differences - no features whatsoever." The reviewer described
+both images as completely white. Pixel inspection found no pure-white clipping,
+but the overview's 5th/50th/95th brightness percentiles were 184/211/230 on
+the 0-to-255 scale. This is insufficiently readable review presentation,
+not a polar pass or evidence that features are absent. The submission is
+preserved unchanged.
+
+The user approved darker neutral material and two grazing-light directions,
+without normal-strength exaggeration. Revised evidence under
+`work/polar-guided-mars-north-2026-10-11-v3` contains ten raw 768 x 512 images.
+Gray relief uses `#777777`, ambient 0.08, directional intensity 3 and 82-degree
+incidence from left/right; normal scale remains `[1, 1]`. Both overview
+directions have brightness percentiles 15/50/95, without pure-black/white
+clipping. Crater/ridge shading and baseline central spoking are visibly
+discernible; smoother selected central relief remains a comparison question,
+not an established loss of legitimate terrain. Dark regions from grazing
+illumination must not be interpreted as missing detail.
+
+The original diagnostic defaults are restored on each non-profile render.
+Validation passed: the existing `run-checks.mjs` runner (36 GPU cases,
+39 screenshots), plus isolated headless checks of all ten images, projected
+guides, required notes, observation export/persistence, unchanged normal scale
+and restoration of default lighting. Synthetic observations were discarded.
+Source/output/script hashes and full light/material settings are retained.
+Earlier evidence and textures remain unchanged; polar review remains open.
+
+The reviewer subsequently reported that the darker presentation was much
+clearer, that they could complete the guided review, and that selected
+**Mars v2 geodesic looked much better**. This is a positive verbal assessment
+of the Mars north Standard screening, not acceptance of all polar cases.
+The supplied `mars-polar-observations-v2.json` identifies the revised v3
+evidence but contains an empty `records` array; no per-comparison observations
+were saved in that export. Preserve the file unchanged and distinguish the
+verbal assessment from structured evidence. Other poles, bodies, tiers and
+filter controls remain unreviewed; the polar gate stays open.
+
+The user then explicitly selected retaining that verbal preference and preparing
+the remaining bodies, poles and tiers with the clearer presentation.
+Expanded evidence under `work/polar-guided-all-2026-10-11-v1` contains eight
+body/pole/tier groups and 80 matched images (five comparison pairs per group).
+Mars north Standard is retained as reference; the other seven groups await
+review. Each group includes left/right grazing-light gray overviews and
+closeups plus albedo/relief under left light, with unchanged normal strength.
+Luna compares v2/v3 and Mars compares v1/v2.
+
+The form now records the body/pole/tier with each observation, displays saved
+notes and prevents downloading an empty review. Source/output hashes and render
+settings remain recorded. An isolated headless check passed all 80 image loads,
+group/version labels, latitude guides, required notes, empty-export prevention,
+saved summaries, export and persistence; synthetic data was discarded.
+This expands preparation, not acceptance: baseline is not ground truth,
+nearest-filter controls and source-derived detail validation remain separate
+evidence needs, and no polar gate or final Viewer hold is closed.
+
+The submitted `polar-observations.json` contains eight observations covering
+all body/pole/tier groups. All four Mars groups are marked acceptable with
+"no concerns". Both Luna north tiers are marked as possible boundary concerns
+("almost looks pinched" / "looks somewhat pinched"); both Luna south tiers
+are marked as possible detail loss ("softened too much"). These are reviewer
+findings, not established source or processing defects. Seven records refer
+to the left-lit blend overview; Luna south Low refers to the left-lit closeup.
+The export does not establish whether other lighting/views were inspected.
+
+Mars has positive screening evidence across both poles and tiers, but the
+full polar gate remains open because of the four Luna concerns and outstanding
+filter/source-detail controls. Localize north pinching relative to the pole
+and 85-to-87-degree blend band, then compare the south features against
+source-derived relief before proposing any correction. Preserve the submitted
+JSON and selected assets unchanged; final Viewer acceptance remains on hold.
+
+The reviewer clarified that Luna north pinching is **at the central pole**:
+terrain appears pulled into a point or spokes, rather than reporting a ring
+across the blend band. Track this as residual central polar structure; its
+cause is not yet established. The observation was made in gray-relief mode,
+so albedo pinching alone cannot explain that particular image. Luna south's
+reported excessive softening still needs localized source/baseline comparison.
+
+The user approved proceeding with targeted Luna investigation. Evidence under
+`work/luna-polar-controls-2026-10-11-v1` contains four pole/tier groups,
+72 matched images and two retained original-DEM CPU relief references.
+The closer-view controls add nearest filtering and neutral normals under
+left/right grazing lights, retaining dark material and normal scale `[1, 1]`.
+No texture was rewritten. Source/output/script hashes and render settings
+are retained. The CPU references differ in projection, orientation, light
+and sampling and are explicitly not pixel-aligned ground truth.
+
+Inspection of Luna north Standard shows no central spokes in the neutral-normal
+control, while the selected nearest-normal view retains radial/block-like
+sampling structure. This implicates normal sampling and/or its tangent
+interaction rather than sphere geometry/lighting alone in those examined
+views; it does not isolate a source-data defect. Nearest filtering introduces
+its own aliasing. South softening still requires a specific feature/location
+before claiming loss of legitimate terrain or proposing a correction.
+An isolated headless check passed all 72 images, both source references,
+group/control labels, nonempty exports, saved summaries and persistence;
+synthetic data was discarded. The polar gate and final Viewer hold stay open.
+
+**Accepted limited polar boundary/detail-loss visual review (2026-10-11):**
+the submitted `polar-observations-v2.json` marks Luna north Standard/Low and
+south Standard acceptable. Luna south Low is recorded as "unsure" with
+"no concerns"; the user explicitly clarified acceptance of that group and
+closure of the limited polar visual review. Together with the four acceptable
+Mars records in `polar-observations.json`, this supplies reviewer acceptance
+for Luna/Mars, both poles and both tiers. The submitted JSON remains unchanged;
+the clarification is recorded here, not silently substituted into its records.
+
+This is acceptance of the current selected geodesic treatment as visually
+good enough in the diagnostic review, not proof that residual central pinching,
+sampling artifacts or legitimate detail loss are absent. The retained source
+references are not pixel-aligned ground truth; recorded observations name
+individual cases rather than establishing exhaustive viewing of every control.
+Earlier Luna concerns and all evidence remain preserved. No selected texture,
+normal strength or production rendering changed. Earlier open statements in
+this polar-review history are superseded only for this limited acceptance.
+Stage 2 remains in progress for its other checks, and final Stellar Viewer
+visual acceptance remains on hold.
+
+#### Source-shadow assessment started (2026-10-11)
+
+The user selected guided Tycho (Luna) and Olympus Mons (Mars) comparisons at
+both tiers, expanding only if needed. The source audit already cautions that
+photometric normalization is not proof of shadow-free albedo; fixed dark
+patches can also be true reflectance. No shadow-removal processing is approved.
+
+[prepare-source-shadow-guide.mjs](../tools/sol-textures/diagnostic/prepare-source-shadow-guide.mjs)
+prepares 28 controlled views: unlit selected albedo and left/right lighting
+for gray relief, albedo without terrain normals, and combined albedo/relief.
+The diagnostic light has 65-degree incidence, ambient 0.15 and directional
+intensity 2; physical normal scale remains `[1, 1]`. Cameras, geometry and
+mipmapped filtering are fixed within each group. Color tint is white; gray
+relief uses `#777777`. This is isolated diagnostic lighting, not a Viewer change.
+The form asks for specific source-shading conflicts, contradictory crater-wall
+lighting or apparent relief inversion, not arbitrary fixed dark patches.
+
+Final evidence under `work/source-shadow-guide-2026-10-11-v2` contains
+source/output/script hashes and full render settings. The earlier v1 preparation
+is retained. All 28 images rendered successfully and generation asserts the
+exact terrain-normal-enabled/disabled control states. Isolated headless checks
+passed all images in both panel selectors, required notes, empty-export
+prevention, group-aware summaries/export, persistence and default-light
+restoration; synthetic observations were discarded. The existing GPU runner
+passed 36 cases and captured 39 screenshots under
+`work/source-shadow-default-regression-2026-10-11-v1`.
+Source-shadow acceptance remains pending reviewer findings. Selected assets,
+prior observations and production rendering are unchanged; final Viewer visual
+acceptance remains on hold.
+
+**Accepted limited sampled source-shadow assessment (2026-10-12):**
+`source-shadow-observations.json` contains four observations, one for each
+Tycho/Olympus Mons low/standard group. Tycho Standard and both Olympus tiers
+are marked acceptable; Tycho Low is marked "unsure" with positive notes.
+The user explicitly clarified that Tycho Low's "unsure" selection was
+accidental and accepted it. The user also confirmed inspecting combined
+albedo/terrain relief under both opposite light directions for all four
+groups, finding no distracting fixed-shadow or double-lighting conflict,
+and explicitly accepted the limited sampled assessment.
+
+The export records only the last panel pairing for each observation, not
+viewing history; the opposite-light coverage and Tycho Low acceptance are
+reviewer confirmations recorded here. The submitted JSON remains unchanged.
+This closes the sampled Tycho/Olympus diagnostic assessment, not proof of
+shadow-free albedo across either globe, Earth coverage, or a final Viewer
+lighting review. Source-illumination/reflectance ambiguities remain documented.
+No source-shadow correction, asset change or production lighting change was
+made. Earlier pending statements in this section are superseded for this
+limited acceptance only. Stage 2 still needs encoding suitability and
+remaining seam/orientation checks; final Viewer acceptance stays on hold.
 
 ```powershell
 & $python -m unittest discover -s tools\sol-textures -p 'test_*.py' -v
