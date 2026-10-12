@@ -5,6 +5,7 @@ import {
   resolveOrbitRadiusUnits,
   resolvePlanetViewBodyRadiusKm,
   resolvePlanetViewCameraDistanceRange,
+  resolvePlanetViewCameraDirection,
   resolveStarMarker,
   resolveStarMarkers,
 } from './planet-view-scene';
@@ -59,6 +60,29 @@ describe('resolvePlanetViewCameraDistanceRange', () => {
 
     expect(range.min).toBe(14);
     expect(range.max).toBe(180);
+  });
+});
+
+describe('resolvePlanetViewCameraDirection', () => {
+  it('points the default camera toward the primary star', () => {
+    const direction = resolvePlanetViewCameraDirection([-3, 4, -12]);
+
+    expect(direction[0]).toBeCloseTo(-3 / 13);
+    expect(direction[1]).toBeCloseTo(4 / 13);
+    expect(direction[2]).toBeCloseTo(-12 / 13);
+  });
+
+  it('uses the previous default angle when no usable star direction exists', () => {
+    const expectedLength = Math.hypot(0.4, 0.22, 1);
+
+    const expected = [
+      0.4 / expectedLength,
+      0.22 / expectedLength,
+      1 / expectedLength,
+    ];
+    for (const direction of [resolvePlanetViewCameraDirection(null), resolvePlanetViewCameraDirection([0, 0, 0])]) {
+      direction.forEach((component, index) => expect(component).toBeCloseTo(expected[index]));
+    }
   });
 });
 

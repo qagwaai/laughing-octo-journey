@@ -142,7 +142,7 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
 | 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; Earth daylight/cloud presentation and Earth/Luna overview overlap need separate review; material tint/emissive review remains open |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default and current cloud layer on 2026-10-12; Earth/Luna overview overlap and material tint/emissive review remain open |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -1991,13 +1991,29 @@ centered 2x crop:
 The image-only comparisons isolate encoding appearance, not Viewer lighting,
 relief, or clouds. No cloud-free production scene was created. The user
 accepted the matched Earth, Luna, and Mars albedo-only comparisons on
-2026-10-12; this acceptance does not extend to Earth Viewer lighting/cloud
-presentation or final Stellar Viewer sign-off.
+2026-10-12; this acceptance does not by itself establish final Stellar Viewer
+sign-off.
 
-Earth remains unresolved in the actual Viewer: lighting/day-side framing is
-not clear and clouds obscure close evaluation. The review did not establish
-representative hardware/network performance. Actual Viewer presentation,
-performance, and final Stellar Viewer sign-off remain pending.
+The initial Earth Viewer review found the daylight framing unclear and clouds
+obscuring close evaluation. The follow-up below records the accepted camera
+change and cloud-layer review. Representative hardware/network performance,
+the Earth/Luna overview overlap, and final Stellar Viewer visual sign-off
+remain separate open items.
+
+#### Earth star-facing detail review (2026-10-12)
+
+The user approved a default planet-detail camera direction aligned with the
+primary star, with the existing lighting intensities unchanged. The camera
+snap now uses the primary star's scene-space direction; if no usable star
+position exists, it retains the prior default angle. In the running Viewer the
+camera/star direction alignment was 1.0, with the star point light still at
+intensity 1.5 and zero distance falloff. The view showed substantially more
+sunlit Earth terrain. The user accepted this daylight framing and confirmed
+the existing cloud layer is acceptable. A clear day/night boundary is not
+prominent in the star-facing view and was not a requirement for acceptance.
+No light intensity or cloud setting was changed. The focused camera helper
+tests, lint, and application/spec typecheck passed; final Stage 6 visual
+acceptance remains on hold.
 
 ### Stage 3: catalog and shared surface loading
 

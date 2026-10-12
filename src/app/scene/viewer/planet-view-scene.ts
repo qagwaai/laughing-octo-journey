@@ -100,8 +100,22 @@ export interface PlanetViewCameraDistanceRange {
   max: number;
 }
 
+const DEFAULT_PLANET_VIEW_CAMERA_DIRECTION = [0.4, 0.22, 1] as const;
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+export function resolvePlanetViewCameraDirection(
+  starPosition: readonly [number, number, number] | null,
+): [number, number, number] {
+  const direction =
+    starPosition && starPosition.every(Number.isFinite) ? new Vector3(...starPosition) : new Vector3();
+  if (direction.lengthSq() === 0) {
+    direction.set(...DEFAULT_PLANET_VIEW_CAMERA_DIRECTION);
+  }
+  direction.normalize();
+  return direction.toArray();
 }
 
 function resolveEstimatedDiameterM(body: ViewerBody | null): number | null {
@@ -499,8 +513,7 @@ export class PlanetViewScene {
       const targetDistance = minDistance + ((maxDistance - minDistance) * normalizedZoom) / 100;
 
       if (this.needsCameraSnap()) {
-        // On snap: point camera from a default angle then let controls take over
-        const direction = new Vector3(0.4, 0.22, 1).normalize();
+        const direction = new Vector3(...resolvePlanetViewCameraDirection(this.primaryStar()?.position ?? null));
         camera.position.copy(controls.target.clone().add(direction.multiplyScalar(targetDistance)));
         this.needsCameraSnap.set(false);
       }
