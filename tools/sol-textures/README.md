@@ -1,21 +1,24 @@
 # Rebuilding the Sol texture pilot
 
 **Restart handoff (2026-10-12):** limited registration, polar visual and sampled
-source-shadow reviews are accepted as recorded in the approved plan. Encoding
-suitability and remaining seam/orientation checks are next; final Viewer
-acceptance stays on hold. All session-owned review servers were stopped.
+source-shadow reviews are accepted as recorded in the approved plan. WebP
+suitability is resolved for the active Viewer assets, and 36 isolated
+Three.js seam/orientation cases passed with 39 screenshots screened; the user
+accepted that limited screening with the documented caveats. Detailed
+appearance review, representative hardware/network performance and final
+Viewer acceptance remain open. All session-owned review servers were stopped.
 Eight reviewer exports are preserved byte-for-byte in the external
 `work/reviewer-submissions-2026-10-12-v1` directory, alongside the retained
 diagnostic evidence directories. Original submissions and selected textures
 are unchanged. Reopen an existing form by serving its evidence folder on
 loopback; never regenerate over that folder.
 
-This is a local, explicit-source pipeline, not a Viewer catalog loader. It
-reconstructs the approved October 2026 Earth/Luna/Mars candidates; Mercury is
-excluded. Originals, environments, working rasters and diagnostic output must
-stay outside Git and deployed assets in the configured external artifact store.
-Prepared selected maps belong in
-`assets/sol-textures/<new-version>` until separate deployment/integration approval.
+This is a local, explicit-source generation pipeline, not a Viewer catalog
+loader. It reconstructs the approved October 2026 Earth/Luna/Mars candidates;
+Mercury is excluded. The selected WebP versions are integrated into the Viewer
+catalog, while future candidates still require separate review and integration.
+Originals, environments, working rasters and diagnostic output must stay
+outside Git and deployed assets in the configured external artifact store.
 
 Python creates `__pycache__` folders containing compiled `.pyc` files when
 scripts/tests run. They are disposable local caches and are ignored by Git,
@@ -30,11 +33,15 @@ the per-version manifests in [assets/sol-textures](../../assets/sol-textures).
 The manifests include rights, attribution, coverage, interpretation, actual
 bytes and SHA-256; registry identity does not itself approve imagery.
 
-**Current selected versions (2026-10-08):** Earth `earth-july-v2`,
-Luna `luna-v3`, Mars `mars-v2`. The user accepted the current geodesic polar
-normal appearance and authorized promotion for both Luna/Mars tiers. These
-remain non-deployed sets; fine registration and final Stellar Viewer acceptance
-are separate pending gates. Prior `luna-v2`/`mars-v1` sets are retained.
+**Current runtime versions (2026-10-12):** Earth `earth-july-v3`,
+Luna `luna-v4`, Mars `mars-v3`. These use the offline-selected WebP albedo
+encodes and preserve the accepted geodesic normal maps unchanged. Prior JPEG
+versions `earth-july-v2`, `luna-v3`, and `mars-v2` remain in Git as
+non-runtime baselines; earlier Luna/Mars normal versions remain retained.
+The active-WebP diagnostic suite passed 36 cases and its 39 screenshots were
+screened for seams/orientation at diagnostic scale. User appearance review,
+representative hardware/network performance and final Stellar Viewer
+acceptance are separate gates.
 
 ### Fine registration review (2026-10-09)
 
@@ -388,10 +395,10 @@ cache-busted OpenAPI.
 
 & $python tools\sol-textures\pipeline.py verify `
   --output (Join-Path $artifactRoot 'rebuilds\earth-july-rebuild-2027') `
-  --compare assets\sol-textures\earth-july-v2
+  --compare assets\sol-textures\earth-july-v3
 ```
 
-Use the corresponding `luna-v3`/`mars-v2` comparison paths for those bodies.
+Use the corresponding `luna-v4`/`mars-v3` comparison paths for those bodies.
 Output directories must not already exist. Run bodies serially if sharing the
 same working folder. Errors are explicit, not success-shaped fallback outputs.
 After successful review, copy selected maps/manifests into a new repository

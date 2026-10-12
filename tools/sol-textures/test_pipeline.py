@@ -60,6 +60,24 @@ class PipelineTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "transfer exceeded"):
                 budgets(manifest["products"], recipe["prefix"])
 
+    def test_selected_webp_versions_keep_jpeg_baselines_out_of_runtime_sets(self):
+        root = Path(__file__).resolve().parents[2] / "assets" / "sol-textures"
+        for body, recipe in RECIPES.items():
+            with self.subTest(body=body):
+                directory = root / recipe["version"]
+                manifest = json.loads((directory / "derivative-manifest.json").read_text())
+                self.assertEqual(len(manifest["products"]), 5)
+                self.assertFalse(any(path.suffix == ".jpg" for path in directory.iterdir()))
+                for tier, quality in recipe["webpQualities"].items():
+                    name = f"{recipe['prefix']}-{tier}-albedo.webp"
+                    product = manifest["products"][name]
+                    self.assertEqual(product["webpQuality"], quality)
+                    self.assertGreaterEqual(product["psnrDbVersusResampledRgb"], 40)
+                    with rasterio.open(directory / name) as image:
+                        self.assertEqual(image.dtypes, ("uint8",) * 3)
+                        self.assertEqual([image.width, image.height], product["dimensions"])
+                self.assertEqual(manifest["provenance"]["encodingDecision"]["jpegRuntimeFallback"], False)
+
     def test_failures_are_not_disabled_by_optimized_python(self):
         with self.assertRaisesRegex(ValueError, "explicit"):
             require(False, "explicit")

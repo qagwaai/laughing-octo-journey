@@ -24,6 +24,7 @@ const mime = {
   '.js': 'text/javascript',
   '.json': 'application/json',
   '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.png': 'image/png',
 };
 const routes = new Map([
@@ -33,7 +34,8 @@ const routes = new Map([
   ['/three/build/three.module.js', path.join(repository, 'node_modules', 'three', 'build', 'three.module.js')],
   ['/three/build/three.core.js', path.join(repository, 'node_modules', 'three', 'build', 'three.core.js')],
 ]);
-for (const version of ['earth-july-v2', 'luna-v2', 'mars-v1', 'luna-v3', 'mars-v2']) {
+for (const version of ['earth-july-v2', 'luna-v2', 'mars-v1', 'luna-v3', 'mars-v2',
+  'earth-july-v3', 'luna-v4', 'mars-v3']) {
   const folder = path.join(repository, 'assets', 'sol-textures', version);
   for (const file of fs.readdirSync(folder)) routes.set(`/textures/${version}/${file}`, path.join(folder, file));
 }

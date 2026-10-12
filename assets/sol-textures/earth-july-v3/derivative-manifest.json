@@ -1,0 +1,302 @@
+{
+  "tools": {
+    "python": "3.14.5",
+    "rasterio": "1.5.2",
+    "gdal": "3.12.2",
+    "numpy": "2.5.3",
+    "webpEncoder": "GDAL 3.12.2 WEBP driver"
+  },
+  "products": {
+    "earth-july-preview-albedo.webp": {
+      "dimensions": [
+        512,
+        256
+      ],
+      "bytes": 20104,
+      "sha256": "9f3e1331adc4c31bb29520c514df6d899a1b5bd758359155c11d730886f3d865",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 90,
+      "psnrDbVersusResampledRgb": 40.22765432711027
+    },
+    "earth-july-low-albedo.webp": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "bytes": 142562,
+      "sha256": "a9ea04fe1bc10952c6cb48e537667066f7a01a30ebb33f6eb01d90b2b71f2586",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 85,
+      "psnrDbVersusResampledRgb": 40.66789854235022
+    },
+    "earth-july-standard-albedo.webp": {
+      "dimensions": [
+        4096,
+        2048
+      ],
+      "bytes": 341874,
+      "sha256": "d56214be74cf6f7a4ea9f6e68a144c060e46bec11d46b77b4420b26a1910fe89",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 80,
+      "psnrDbVersusResampledRgb": 40.56315379992833
+    },
+    "earth-july-low-normal.png": {
+      "dimensions": [
+        1024,
+        512
+      ],
+      "bytes": 66205,
+      "sha256": "6be1e8f3d7314b2697cbd677ae5554287d503edf2c4fd7551c11a072a0749b71",
+      "pngChunks": [
+        "IHDR",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IEND"
+      ],
+      "colorSpace": "NoColorSpace (linear data)",
+      "reliefExaggeration": 1,
+      "referenceRadiusMetres": 6371000,
+      "poleRowsNeutral": true,
+      "longitudeGradient": "periodic"
+    },
+    "earth-july-standard-normal.png": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "bytes": 271787,
+      "sha256": "b11f177c4d08bbb9a51803f4bcebe0db9f12581d75294bfb930294d48e1ac893",
+      "pngChunks": [
+        "IHDR",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IDAT",
+        "IEND"
+      ],
+      "colorSpace": "NoColorSpace (linear data)",
+      "reliefExaggeration": 1,
+      "referenceRadiusMetres": 6371000,
+      "poleRowsNeutral": true,
+      "longitudeGradient": "periodic"
+    }
+  },
+  "budgets": {
+    "low": {
+      "files": [
+        "earth-july-preview-albedo.webp",
+        "earth-july-low-albedo.webp",
+        "earth-july-low-normal.png"
+      ],
+      "transferBytesIncludingPreview": 228871,
+      "transferCapMiB": 2,
+      "estimatedRgba8MipmappedBytes": 14680065,
+      "residentCapMiB": 32
+    },
+    "standard": {
+      "files": [
+        "earth-july-preview-albedo.webp",
+        "earth-july-standard-albedo.webp",
+        "earth-july-standard-normal.png"
+      ],
+      "transferBytesIncludingPreview": 633765,
+      "transferCapMiB": 4,
+      "estimatedRgba8MipmappedBytes": 56623105,
+      "residentCapMiB": 96
+    }
+  },
+  "provenance": {
+    "sourceAudit": "docs/sol-textures-2026-10-08.md",
+    "originals": "External artifact store sources/earth; configured via --artifact-root or SOL_TEXTURE_ARTIFACT_ROOT; not included in the repository",
+    "repositoryStorage": "Active same-origin runtime WebP albedo and unchanged accepted normal maps; prior JPEG asset version remains in Git as non-runtime backup",
+    "sourceRetrievedAt": "2026-10-08",
+    "albedoSourceUrl": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/july/world.200407.3x5400x2700_geo.tif",
+    "albedoSourceSha256": "a6d0df740db7eea2d8e274ecffcc1181df60c5329a7c16e637db6046b77b94c2",
+    "albedoCredit": "Reto St\u00f6ckli, NASA Earth Observatory (NASA Goddard Space Flight Center)",
+    "albedoCitation": "R. St\u00f6ckli, E. Vermote, N. Saleous, R. Simmon and D. Herring (2005), Blue Marble Next Generation",
+    "albedoReportUrl": "https://assets.science.nasa.gov/content/dam/science/esd/eo/content-feature/bluemarble/bmng.pdf",
+    "albedoRightsUrl": "https://www.nasa.gov/nasa-brand-center/images-and-media/",
+    "elevationSources": "NOAA GLOBE v1.0 unrestricted a10g.gz through p10g.gz; individual source hashes recorded in source audit",
+    "elevationSourceUrlPattern": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/{a..p}10g.gz",
+    "elevationCitationUrl": "https://www.ngdc.noaa.gov/mgg/topo/globe.html",
+    "rightsNotes": "Source-clearance gate approved; retain NASA acknowledgment and third-party caveats, GLOBE citation, DTED Level 0/NIMA credit, no-endorsement and accuracy/as-is notices recorded in source audit",
+    "processingScriptSha256": "20cf6deee5da87bf9752338a7a72fb69b8b2a4adb56e9dca3ef70af8b42f3b0c",
+    "color": "July BMNG; linear-light area averaging under approved sRGB assumption; JPEG98",
+    "height": "Unrestricted GLOBE; streaming 20x20 area reduction, weighted land-only averaging",
+    "dTileCorrection": "Use documented bounds and 30-arc-second cells; original header unchanged",
+    "normals": "Physical slopes, radius 6371000 m, no exaggeration; red=-eastSlope, green=+southSlope",
+    "coasts": "Mixed-ocean cells and their gradient-neighbours neutral; no seafloor or coastline cliffs",
+    "orientation": "North-up -180..180; intended TextureLoader flipY=true, RepeatWrapping S, ClampToEdge T",
+    "runtime": "Viewer-integrated WebP albedo; unchanged linear normal maps; no JPEG runtime fallback; load failure uses existing explicit warning/retry; appearance acceptance remains pending",
+    "sourceAuditBase": "repository",
+    "sources": [
+      {
+        "file": "world.200407.3x5400x2700_geo.tif",
+        "url": "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/july/world.200407.3x5400x2700_geo.tif",
+        "bytes": 12175080,
+        "sha256": "a6d0df740db7eea2d8e274ecffcc1181df60c5329a7c16e637db6046b77b94c2"
+      },
+      {
+        "file": "a10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/a10g.gz",
+        "bytes": 20396907,
+        "sha256": "bc8e2e0d612999c9f8fbd54b22b5b201a102df1e661e7198eb1e648af32f6a78"
+      },
+      {
+        "file": "b10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/b10g.gz",
+        "bytes": 18015073,
+        "sha256": "d01ed81c59423ee30f7bc7550601707848c673210e0ba41db7a7a8b1ad8128d2"
+      },
+      {
+        "file": "c10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/c10g.gz",
+        "bytes": 24828988,
+        "sha256": "294096d7e1c35cd126d412072c3d95a47313e024f8888d54facb3b88ad6ec1e9"
+      },
+      {
+        "file": "d10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/d10g.gz",
+        "bytes": 32135119,
+        "sha256": "5ce64b45a8cd54b296f232767583f6f39f3698ca54992590b469816336122365"
+      },
+      {
+        "file": "e10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/e10g.gz",
+        "bytes": 17228609,
+        "sha256": "09422b1d5d1ca69b6e98eeb758f3c83b02d7871348a1f1850fd77ad3d7be86e6"
+      },
+      {
+        "file": "f10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/f10g.gz",
+        "bytes": 19023189,
+        "sha256": "222b13cfd079da87d4ae851284c181ceea84945d5d121cb91039c2dfbbf8fd09"
+      },
+      {
+        "file": "g10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/g10g.gz",
+        "bytes": 59501587,
+        "sha256": "36296e0fe9e7ee9ffe41c9e4b7b74a4bf8d2254b25ca7c9bdade2b6cede0f5c3"
+      },
+      {
+        "file": "h10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/h10g.gz",
+        "bytes": 27900726,
+        "sha256": "6ba2d4acc0a6debf5e6d2be76b9e21501a5e1f90f18486f27f099bfdc9c23738"
+      },
+      {
+        "file": "i10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/i10g.gz",
+        "bytes": 165338,
+        "sha256": "766b40c4ee25566fb6e370a0eb2d4fd5f843da4475d007f2852857d1082d3259"
+      },
+      {
+        "file": "j10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/j10g.gz",
+        "bytes": 21249443,
+        "sha256": "655a84859f6d73d147f5650a0593c48c178279445afa68e9c71cfde67be3d620"
+      },
+      {
+        "file": "k10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/k10g.gz",
+        "bytes": 16203482,
+        "sha256": "1df600a166503afc328dcdebca759751478a80adca14d3347e6cfcc9d942c8bc"
+      },
+      {
+        "file": "l10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/l10g.gz",
+        "bytes": 11620467,
+        "sha256": "f448ccafe7a891bb65bdb6641c645d4f2a3895d593ac83705b9c3c3f7d15cd10"
+      },
+      {
+        "file": "m10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/m10g.gz",
+        "bytes": 6145507,
+        "sha256": "04407e4f3b37acd66db72f765452690a5852118c04ce838076f8186b82838739"
+      },
+      {
+        "file": "n10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/n10g.gz",
+        "bytes": 8521834,
+        "sha256": "6be2f38f7ac076d0e36ad2199ad2647ecaa9701866fbe84d271b53b699f845ec"
+      },
+      {
+        "file": "o10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/o10g.gz",
+        "bytes": 9071477,
+        "sha256": "fb12cd9963703f7234f52437a36e491d58ac434e0bc0ea6290c3156550f91819"
+      },
+      {
+        "file": "p10g.gz",
+        "url": "https://www.ngdc.noaa.gov/mgg/topo/DATATILES/elev/p10g.gz",
+        "bytes": 9247141,
+        "sha256": "87a07cce4270cdd5d4cefeb5d53a00b76eae5c8ea277e1dbabe9fd08aa1a88ff"
+      }
+    ],
+    "recipe": {
+      "version": "earth-july-v3",
+      "baselineVersion": "earth-july-v2",
+      "prefix": "earth-july",
+      "radius": 6371000,
+      "color": "world.200407.3x5400x2700_geo.tif",
+      "normalStandard": [
+        2048,
+        1024
+      ],
+      "webpQualities": {
+        "preview": 90,
+        "low": 85,
+        "standard": 80
+      }
+    },
+    "encodingDecision": {
+      "format": "lossy WebP",
+      "offlineQualityFloorDb": 40,
+      "selection": "Smallest of six GDAL WebP quality candidates at/above the floor per map",
+      "comparisonEvidence": "External artifact store work/encoding-suitability-2026-10-12-v1/encoding-comparison.json",
+      "limitations": "PSNR floor and byte budget are offline compression evidence, not perceptual visual acceptance",
+      "jpegBaselineVersion": "earth-july-v2",
+      "jpegRuntimeFallback": false
+    }
+  }
+}

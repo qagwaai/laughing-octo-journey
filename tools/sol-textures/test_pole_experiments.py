@@ -8,7 +8,7 @@ from pipeline import RECIPES, digest
 
 
 class PolarExperimentTests(unittest.TestCase):
-    def test_promoted_versions_preserve_color_and_nonpolar_normals(self):
+    def test_webp_versions_preserve_accepted_normals_and_retain_jpeg_baselines(self):
         root = Path(__file__).resolve().parents[2] / "assets" / "sol-textures"
         for body in ["luna", "mars"]:
             recipe = RECIPES[body]
@@ -16,8 +16,9 @@ class PolarExperimentTests(unittest.TestCase):
             manifest = json.loads((selected / "derivative-manifest.json").read_text())
             self.assertEqual(manifest["provenance"]["polarAcceptance"]["variant"], "geodesic")
             for tier in ["preview", "low", "standard"]:
-                name = f"{body}-{tier}-albedo.jpg"
-                self.assertEqual(digest(selected / name), digest(previous / name))
+                name = f"{recipe['prefix']}-{tier}-albedo.webp"
+                self.assertGreaterEqual(manifest["products"][name]["psnrDbVersusResampledRgb"], 40)
+                self.assertTrue((previous / f"{recipe['prefix']}-{tier}-albedo.jpg").is_file())
             for tier in ["low", "standard"]:
                 name = f"{body}-{tier}-normal.png"
                 with rasterio.open(selected / name) as file:

@@ -37,7 +37,7 @@ describe('catalog surface loader', () => {
     const albedo = image(512, 256);
     const load = vi.spyOn(TextureLoader.prototype, 'loadAsync').mockResolvedValue(albedo);
     const surface = await loadCatalogSurface(request('preview'));
-    expect(load).toHaveBeenCalledExactlyOnceWith('textures/sol/earth-july-v2/earth-july-preview-albedo.jpg');
+    expect(load).toHaveBeenCalledExactlyOnceWith('textures/sol/earth-july-v3/earth-july-preview-albedo.webp');
     expect(surface.source).toBe('catalog');
     expect(surface.normal).toBeUndefined();
     expect(surface.material).toBeUndefined();
@@ -58,8 +58,8 @@ describe('catalog surface loader', () => {
       .mockResolvedValueOnce(normal);
     const surface = await loadCatalogSurface(request('low', 'mars'));
     expect(load.mock.calls.map(([url]) => url)).toEqual([
-      'textures/sol/mars-v2/mars-low-albedo.jpg',
-      'textures/sol/mars-v2/mars-low-normal.png',
+      'textures/sol/mars-v3/mars-low-albedo.webp',
+      'textures/sol/mars-v3/mars-low-normal.png',
     ]);
     expect(normal.colorSpace).toBe(NoColorSpace);
     expect(normal.flipY).toBe(true);
@@ -76,7 +76,7 @@ describe('catalog surface loader', () => {
       .mockResolvedValueOnce(image(4096, 2048))
       .mockResolvedValueOnce(image(1024, 512));
     const surface = await loadCatalogSurface(request('standard', 'luna'));
-    expect(load.mock.calls[1][0]).toBe('textures/sol/luna-v3/luna-standard-normal.png');
+    expect(load.mock.calls[1][0]).toBe('textures/sol/luna-v4/luna-standard-normal.png');
     expect(surface.normal?.image.width).toBe(1024);
   });
 

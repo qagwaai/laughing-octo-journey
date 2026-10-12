@@ -52,19 +52,19 @@
                 "ignore": ["image_45274a29-f398-41b9-804a-5f56992abb15_0.png"]
               },
               {
-                "glob": "earth-july-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{jpg,png}",
-                "input": "assets/sol-textures/earth-july-v2",
-                "output": "textures/sol/earth-july-v2"
+                "glob": "earth-july-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{webp,png}",
+                "input": "assets/sol-textures/earth-july-v3",
+                "output": "textures/sol/earth-july-v3"
               },
               {
-                "glob": "luna-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{jpg,png}",
-                "input": "assets/sol-textures/luna-v3",
-                "output": "textures/sol/luna-v3"
+                "glob": "luna-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{webp,png}",
+                "input": "assets/sol-textures/luna-v4",
+                "output": "textures/sol/luna-v4"
               },
               {
-                "glob": "mars-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{jpg,png}",
-                "input": "assets/sol-textures/mars-v2",
-                "output": "textures/sol/mars-v2"
+                "glob": "mars-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{webp,png}",
+                "input": "assets/sol-textures/mars-v3",
+                "output": "textures/sol/mars-v3"
               }
             ],
             "styles": ["src/styles.css"],

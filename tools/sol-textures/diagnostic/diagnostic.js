@@ -1,6 +1,6 @@
 import * as T from '/three/build/three.module.js';
 
-const versions = { earth: 'earth-july-v2', luna: 'luna-v3', mars: 'mars-v2' };
+const versions = { earth: 'earth-july-v3', luna: 'luna-v4', mars: 'mars-v3' };
 const legacyVersions = { luna: 'luna-v2', mars: 'mars-v1' };
 const canvas = document.querySelector('#canvas');
 const status = document.querySelector('#status');
@@ -49,7 +49,7 @@ for (const item of entries) {
 
 async function texture(body, tier, kind, version = versions[body]) {
   const prefix = body === 'earth' ? 'earth-july' : body;
-  const name = `${prefix}-${tier}-${kind}.${kind === 'albedo' ? 'jpg' : 'png'}`;
+  const name = `${prefix}-${tier}-${kind}.${kind === 'albedo' ? 'webp' : 'png'}`;
   const key = `${version}/${name}`;
   if (cache.has(key)) return cache.get(key);
   const loaded = await loader.loadAsync(`/textures/${version}/${name}`);

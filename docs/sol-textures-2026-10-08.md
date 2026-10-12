@@ -1,7 +1,7 @@
 # Sol planetary textures: implementation and validation plan
 
 Date: 2026-10-08  
-Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 remains in progress: limited sampled fine registration and limited Luna/Mars polar boundary/detail-loss visual review were explicitly accepted on 2026-10-11; the sampled Tycho/Olympus Mons source-shadow assessment was accepted on 2026-10-12, with documented limitations. Encoding suitability and remaining seam/orientation checks are still pending. With explicit user approval, Stage 3 catalog loading/cache ownership and initial Stage 4 Viewer integration are implemented for earth-july-v2, luna-v3 and mars-v2. Selected runtime images are now served same-origin; originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural. Hardware/network performance and final Stellar Viewer visual acceptance remain pending; visual acceptance is still on hold.
+Status: Stages 0-3 are complete for the active Earth/Luna/Mars pilot; Stage 2 closed on 2026-10-12 at the accepted, documented review scope. Sampled fine registration, Luna/Mars polar boundary/detail-loss, seam/orientation and Tycho/Olympus Mons source-shadow reviews were accepted with caveats. WebP is active in the Viewer per the user's direction, prior JPEG versions remain non-runtime baselines, selected maps passed transfer-budget, browser-load, rebuild and isolated Three.js checks, and the user accepted matched WebP/JPEG albedo appearance comparisons for all three bodies. KTX2 is not required for Stage 2 closure. Earth’s actual Viewer presentation remains a separate open issue because daylight framing is unclear and the cloud layer obscures close inspection; Earth/Luna overlap in proportional overview is also a separate Viewer presentation issue. Representative hardware/network performance and final Stellar Viewer visual acceptance remain pending; final visual acceptance is still on hold. The active versions are earth-july-v3, luna-v4, and mars-v3. Originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural.
 
 ## Goal and approved decisions
 
@@ -12,11 +12,17 @@ Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 re
   Acceptance scope, exclusions, verbal clarifications and limitations are
   recorded in the Stage 2 history below; none implies globe-wide scientific
   validation or final Viewer sign-off.
-- Next work: **encoding suitability**, then consolidate/complete remaining
-  seam/orientation evidence. Stage 2 remains In progress; Stage 3 is Done.
+- The user accepted the limited WebP seam/orientation screening with its
+  stated caveats and accepted matched WebP/JPEG albedo appearance comparisons
+  for Earth, Luna, and Mars on 2026-10-12. Runtime checks are complete;
+  representative hardware/network performance and final Viewer acceptance
+  remain open. Stage 2 is Done for the active pilot at the documented scope;
+  Stage 3 is Done. KTX2 is not a Stage 2 gate.
   Final Stellar Viewer visual acceptance remains explicitly on hold.
-- Selected assets remain Earth `earth-july-v2`, Luna `luna-v3`, Mars `mars-v2`.
-  No texture corrections or production lighting changes were made during review.
+- Active runtime versions are Earth `earth-july-v3`, Luna `luna-v4`, and Mars
+  `mars-v3`; the prior JPEG versions remain as non-runtime baselines. The
+  selected source maps and relief were not corrected, and production lighting
+  was not changed.
 - All eight submitted review JSON files were copied byte-for-byte into external
   `work/reviewer-submissions-2026-10-12-v1`; originals remain untouched.
   The approved external store is
@@ -31,11 +37,13 @@ Status: Stages 0 and 1 complete for the active Earth/Luna/Mars pilot. Stage 2 re
 - No commit or push was performed by the assistant during this review work.
   Inspect the worktree after restart and preserve any user commits/changes.
 
-**Current selected texture sets (2026-10-08):** Earth `earth-july-v2`,
+**Accepted source/relief texture sets (2026-10-08):** Earth `earth-july-v2`,
 Luna `luna-v3`, Mars `mars-v2`. The user gave final acceptance of the current
 geodesic polar normal appearance for Luna/Mars and explicitly authorized
 promotion of both tiers, keeping albedo unchanged and prior versions retained.
-This supersedes the earlier leading-candidate-only decision. It does not
+The later WebP versions change albedo encoding only, preserve these accepted
+normal maps, and retain these JPEG versions as non-runtime baselines. This
+supersedes the earlier leading-candidate-only decision. It does not
 complete fine registration or release the final Stellar Viewer acceptance hold.
 
 **Current storage decision (supersedes session-only original storage):**
@@ -132,9 +140,9 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | ----- | -------------------------------------------------------------- | -------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0     | Minimize station meshes to 5% linear size                      | None                                   | Done        | Automated verification passed; user confirmed Stellar Viewer visual validation complete on 2026-10-08                                                                                                             |
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
-| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | In progress | Limited registration, polar visual review and Tycho/Olympus source-shadow assessment accepted with limitations; encoding and remaining seam/orientation checks pending; Mercury excluded until separately cleared |
+| 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; visual lighting review still pending                                                 |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; Earth daylight/cloud presentation and Earth/Luna overview overlap need separate review; material tint/emissive review remains open |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -780,24 +788,136 @@ following dimensions: 512 x 256 color preview; 2048 x 1024 low and 4096 x 2048
 standard albedo; 1024 x 512 low and 2048 x 1024 standard normal maps.
 The user subsequently selected JPEG quality 98 after measured quality 90/95/98
 comparisons, and approved physical-scale, unexaggerated relief with neutral
-ocean/coastal-transition cells. The aggregate checklist below remains open
-until Luna/Mars and relevant renderer checks are complete.
+ocean/coastal-transition cells. The checklist below records completion at the
+accepted pilot scope; review caveats and separate release gates remain explicit.
 
 - [x] Preserve approved originals outside deployed runtime assets; generate
       derivatives to distinct paths using existing local tooling.
 - [x] Produce preview, 2K, and 4K variants only where source detail warrants them.
-- [ ] Normalize suitable whole-globe products to the renderer's equirectangular
-      UV convention; verify orientation, seams, and poles.
+- [x] Normalize suitable whole-globe products to the renderer's equirectangular
+      UV convention; verify orientation, seams, and poles. The limited active-
+      WebP seam/orientation and polar reviews were accepted with documented
+      caveats; this is not globe-wide scientific validation.
 - [x] Use sRGB for albedo and linear semantics for normal/material data.
 - [x] Use actual elevation for relief where available. A grayscale bump image
       is not a normal map; image brightness is not terrain elevation.
-- [ ] Avoid colored elevation/shaded-relief maps as natural albedo and assess
-      baked source shadows before applying runtime lighting.
+- [x] Avoid colored elevation/shaded-relief maps as natural albedo and assess
+      baked source shadows before applying runtime lighting. The limited
+      Tycho/Olympus Mons source-shadow review was accepted; source reflectance
+      ambiguities and sample scope remain documented.
 - [x] Record exact processing commands, tool versions, dimensions, bytes,
       hashes, and source-to-derivative changes.
-- [ ] Evaluate JPEG/WebP first using existing loaders. Evaluate KTX2 only if
-      measured memory/transfer requirements justify it; verify existing decoder
-      assets and loader wiring before adding tooling.
+- [x] Review active WebP albedo appearance against the retained JPEG baselines.
+      On 2026-10-12 the user accepted matched full-map and close-up comparisons
+      for Earth, Luna, and Mars; results and caveats are recorded below. This
+      accepts albedo encoding appearance only, not Earth Viewer lighting/cloud
+      presentation, representative hardware/network performance, or final
+      Stellar Viewer sign-off. KTX2 evaluation is not a Stage 2 closure
+      prerequisite; reconsider only if future measured requirements justify it.
+
+#### JPEG/WebP encoding suitability (2026-10-12)
+
+The user first selected an offline JPEG-versus-WebP comparison. The pinned
+Python 3.14.5 / rasterio 1.5.2 / GDAL 3.12.2 / NumPy 2.5.3 environment's
+existing GDAL WebP driver encoded six lossy quality settings (75, 80, 85, 90,
+95, 98) for each preview/low/standard albedo. All 54 WebP outputs decoded as
+RGB at the expected dimensions. Original source hashes were rechecked, and the
+source-grid RGB references were reconstructed with the approved pipeline
+recipes; the selected JPEG PSNR measurements matched their manifests within
+0.01 dB.
+
+For comparison, the smallest of the six tested candidates at or above the
+pipeline's existing 40 dB offline PSNR floor was chosen independently for each
+albedo map. The floor and transfer budgets are offline compression checks,
+not perceptual acceptance. Transfer totals below include the shared preview,
+selected tier albedo, and unchanged tier normal PNG; caps remain 2 MiB low /
+4 MiB standard.
+
+| Body / asset version  | WebP preview / low / standard choice (quality, PSNR) | Low total: JPEG -> WebP (saved)      | Standard total: JPEG -> WebP (saved)   |
+| --------------------- | ---------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Earth / earth-july-v2 | q90 / 40.23 dB; q85 / 40.67 dB; q80 / 40.56 dB      | 632,321 -> 228,871 B (403,450 B)     | 2,040,763 -> 633,765 B (1,406,998 B)   |
+| Luna / luna-v3        | q90 / 40.80 dB; q90 / 40.69 dB; q90 / 40.74 dB      | 1,702,240 -> 1,090,250 B (611,990 B) | 3,405,555 -> 2,327,118 B (1,078,437 B) |
+| Mars / mars-v2        | q95 / 40.51 dB; q90 / 40.55 dB; q85 / 40.31 dB      | 1,140,522 -> 595,938 B (544,584 B)   | 4,026,793 -> 1,881,189 B (2,145,604 B) |
+
+All tested bodies/tiers remain within the approved transfer caps. WebP is
+promising for transfer reduction, but this does not measure network time or
+reduce decoded RGBA8/GPU residency. The selected JPEG assets, manifests,
+application loader, Angular allowlist, and production output were unchanged.
+KTX2 was not evaluated. The user then selected integration of WebP as the
+active Viewer format, preserving the JPEG versions outside the runtime
+allowlist and requiring the existing explicit load-error/retry behavior rather
+than JPEG fallback. Selected albedo candidates were staged as new asset
+versions; accepted normal PNGs were copied byte-for-byte. This is the current
+format/transfer decision, not user visual appearance acceptance. Final Stellar
+Viewer visual acceptance remains on hold.
+
+Evidence and all candidate encodes are retained outside Git under
+`work/encoding-suitability-2026-10-12-v1` in the approved artifact store.
+`encoding-comparison.json` records per-file dimensions, bytes, SHA-256,
+quality, source-reference PSNR, selected-tier totals, and tool versions;
+`compare_encoding.py` records the reproducible procedure (SHA-256
+`A354802E8E15B16FA893D65E37ABB61928D901606261187FCA819B7E9573D0E3`).
+The comparison JSON SHA-256 is
+`6563D1B5C7B4BFA661C177837C0D760EC1A6FDBA3B48A2FC842D0EB8E2869BDE`.
+The selected albedo/normal files and manifests are in
+[`earth-july-v3`](../assets/sol-textures/earth-july-v3),
+[`luna-v4`](../assets/sol-textures/luna-v4), and
+[`mars-v3`](../assets/sol-textures/mars-v3). Their previous JPEG versions
+remain in Git but are excluded from the Angular runtime allowlist. The
+reproducible `pipeline.py` now regenerates the selected WebP versions; fresh
+external rebuilds were compared byte-for-byte with all 15 active image files.
+
+#### WebP runtime loading and visual-review gate
+
+The central surface catalog selects the new WebP asset versions. The existing
+Three `TextureLoader` handles their same-origin image requests without a new
+decoder package or JPEG fallback. Angular's asset allowlist includes only the
+three active WebP/PNG directories; the JPEG baselines and manifests are not
+runtime assets. Failure continues through the existing catalog error/retry
+UI.
+
+Automated checks verify browser WebP decoding through the Viewer, the
+`image/webp` response type, same-origin requests, selected preview/detail
+tiers, and no JPEG request after an initial WebP failure. The isolated Three
+diagnostic harness now loads the active WebP albedos so the remaining seam,
+orientation, and filter review exercises the deployed encoding. These are
+runtime correctness checks, not a user judgment of compression artifacts or
+final Viewer appearance. The existing WebP visual comparison and final
+Stellar Viewer appearance acceptance remain open/on hold.
+
+#### Active-WebP seam/orientation diagnostic (2026-10-12)
+
+The isolated Three.js harness rendered 36 active-WebP cases and saved 39
+screenshots to
+`D:\at-template\artifacts\laughing-octo-journey\sol-textures\work\webp-active-gpu-2026-10-12-v1`.
+The report records WebGL 2 / Three.js r182, a 768x512 viewport at DPR 1, and
+SwiftShader software rendering. All 15 GPU texture samples had zero
+linear-sample byte error; normal-channel direction checks passed, and three
+repeated load/dispose cycles returned to the same texture-count baseline.
+The report status is `passed`.
+
+The 39-image set was screened for body identity, seam/front views, both poles,
+albedo and gray relief. No obvious globe-scale albedo orientation reversal or
+abrupt seam is apparent at this diagnostic scale. The user accepted this
+limited screening on 2026-10-12 with these caveats; it is not fine-detail
+appearance acceptance. The harness is not the Angular Viewer, uses a software
+rasterizer, makes no hardware-performance claim, and does not establish fine
+source alignment. Detailed appearance and final Stellar Viewer acceptance
+remain pending. `gpu-checks.json` is the machine-readable result; no screenshot
+or report was added to the repository.
+
+Integration validation:
+
+- `python -m unittest discover -s tools\sol-textures -p 'test_*.py' -v`
+  (pinned artifact-store Python): 31 tests passed.
+- `npm run test:spec -- src\app\scene\planet\catalog-surface-loader.vitest.ts src\app\scene\planet\catalog-surface-cache.vitest.ts src\app\scene\planet\planet-texture-cache.vitest.ts`:
+  44 tests passed across three files.
+- `npm run typecheck` and `npm run build`: passed. The production output
+  contains exactly 15 catalog images (9 WebP, 6 PNG; no JPEG).
+- `npm run e2e:spec -- e2e\tests\viewer-planet-surfaces.spec.ts --workers=1`:
+  11 tests passed, including WebP MIME/loading and no-fallback behavior.
+- Fresh external rebuilds matched all 15 active image hashes byte-for-byte;
+  the diagnostic harness passed 36 render cases. `git diff --check` passed.
 
 #### Earth v2: offline derivative evidence
 
@@ -1822,6 +1942,63 @@ The user also reported a green full E2E execution on 2026-10-09. This is
 user-reported regression evidence (command/environment/count not supplied),
 not registration or visual acceptance.
 
+#### Actual-Viewer and matched-baseline WebP appearance review (2026-10-12)
+
+The review used the already-running local Stellar Viewer at
+`http://localhost:4200` after the user logged in. The browser viewport was
+1568x861 CSS pixels at DPR 1; WebGL reported ANGLE / Intel UHD Graphics
+Direct3D11. The active Viewer used the selected standard WebP albedo maps
+(4096x2048) with the accepted normal PNGs. No production lighting, texture,
+or catalog configuration was changed. The matched WebP/JPEG comparisons
+below were image-only; they do not constitute final Viewer acceptance.
+
+- **Luna:** Standard tier inspected at overview and close-up. No obvious
+  compression artifacts were noticed at those scales. The matched JPEG
+  comparison was also nearly indistinguishable at full-map and 2x crop scales;
+  the user accepted the albedo appearance comparison on 2026-10-12.
+- **Mars:** Standard tier inspected at overview and close-up. No obvious
+  compression artifacts were noticed; the Viewer moon-orbit guide line can
+  cross the body and distract from inspection. The matched JPEG comparison was
+  also nearly indistinguishable at full-map and 2x crop scales; the user
+  accepted the albedo appearance on 2026-10-12.
+- **Earth:** Standard tier inspected in the Viewer and compared directly with
+  the retained JPEG baseline as an albedo-only image at matched framing. The
+  WebP and JPEG look nearly indistinguishable at full-map and 2x crop scales;
+  no obvious WebP-specific banding, ringing, blur, or color shift was noticed.
+  In the live Viewer, the 18% view remains dark/cloud-dominated and does not
+  establish clear daylight framing. At maximum zoom, the separate Earth cloud
+  overlay visibly becomes blocky and obscures the underlying albedo. The
+  Viewer supplies this layer as a 256x128 cloud texture at opacity 0.7; it is
+  not the WebP surface map. The user accepted the albedo-only comparison on
+  2026-10-12; this does not accept the separate Viewer lighting/cloud
+  presentation.
+- **Separate Viewer scale/presentation issue:** In proportional system
+  overview, Earth and Luna visibly overlap. Runtime measurements showed
+  approximate radii 0.1168 and 0.0459 scene units, with center separation
+  0.0124; their combined radii are 0.1627. This is a body-scale/presentation
+  issue, not a WebP encoding defect, and remains separate from this texture
+  appearance review.
+
+Matched standard albedo images were shown at the same 1568x861 viewport and
+centered 2x crop:
+
+| Body | WebP / quality / bytes | JPEG / quality / bytes | Transfer reduction | Appearance observation |
+| ---- | ---------------------- | ---------------------- | ------------------ | ---------------------- |
+| Earth | 4096x2048 / 80 / 341,874 | 4096x2048 / 98 / 1,720,257 | 80.1% | Nearly indistinguishable; no obvious banding, ringing, blur, or color shift |
+| Luna | 4096x2048 / 90 / 1,662,886 | 4096x2048 / 95 / 2,704,268 | 38.5% | Nearly indistinguishable at full-map and 2x crop scales |
+| Mars | 4096x2048 / 85 / 439,394 | 4096x2048 / 98 / 2,560,415 | 82.8% | Nearly indistinguishable at full-map and 2x crop scales |
+
+The image-only comparisons isolate encoding appearance, not Viewer lighting,
+relief, or clouds. No cloud-free production scene was created. The user
+accepted the matched Earth, Luna, and Mars albedo-only comparisons on
+2026-10-12; this acceptance does not extend to Earth Viewer lighting/cloud
+presentation or final Stellar Viewer sign-off.
+
+Earth remains unresolved in the actual Viewer: lighting/day-side framing is
+not clear and clouds obscure close evaluation. The review did not establish
+representative hardware/network performance. Actual Viewer presentation,
+performance, and final Stellar Viewer sign-off remain pending.
+
 ### Stage 3: catalog and shared surface loading
 
 - [x] Introduce typed catalog/procedural request variants with source-specific
@@ -2162,6 +2339,10 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-08 | Stage 2 isolated diagnostics | Nine paired source landmark panels; Three182 GPU upload/channel/water checks, 36 render cases and repeated disposal; Playwright SwiftShader evidence runner | GPU correctness smoke tests passed; qualitative landmark agreement except inconclusive Hellas fine fit; Luna north radial pinching and subtler Mars pole pattern recorded | Stage 2 not closed; no corrective assets or production integration; final Viewer visual acceptance on hold |
 
 | 2026-10-08 | External storage | User approved project-specific Sol store under D:\at-template\artifacts; copy-only archival and per-file hash inventory; portable root and restore/rebuild commands | 147 files / 1,289,624,563 bytes archived and verified outside Git; original session copies untouched; no repository image-byte changes | Other environment chooses its own root; keep independent backup; unrelated artifact types excluded |
+
+| 2026-10-12 | Stage 2 encoding suitability | Offline JPEG/WebP comparison for all Earth/Luna/Mars preview, low, and standard albedos using the pinned GDAL WebP driver and source-grid RGB references | 54 WebP variants encoded/decoded; selected test candidates all meet the existing 40 dB PSNR floor; all low/standard transfer totals meet caps, with 403,450-2,145,604 bytes saved per body/tier | Offline evidence only; selected JPEGs and application unchanged; actual TextureLoader/deployment and visual acceptance plus seam/orientation evidence remain pending |
+
+| 2026-10-12 | Stage 2 closure | User accepted limited registration, polar, seam/orientation and sampled source-shadow reviews with recorded caveats; accepted matched WebP/JPEG albedo appearance for Earth, Luna and Mars; no KTX2 evaluation required | Stage 2 checklist complete and Stage 2 marked Done for the active pilot at the approved scope; no asset or production rendering changes | Earth lighting/cloud presentation, Earth/Luna overview overlap, material tint/emissive review, representative performance and final Viewer acceptance remain separate open gates |
 
 Add dated rows for implementation, rights clearance, measurements, automated
 results, and user visual decisions. Keep failed checks and deferred assets visible

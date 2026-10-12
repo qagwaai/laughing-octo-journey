@@ -29,8 +29,8 @@ export interface CatalogPlanetSurfaceAsset {
 export const SOL_PLANET_SURFACE_CATALOG = [
   {
     identity: { namespace: 'sol', key: 'earth' },
-    assetVersion: 'earth-july-v2',
-    assetDirectory: 'assets/sol-textures/earth-july-v2',
+    assetVersion: 'earth-july-v3',
+    assetDirectory: 'assets/sol-textures/earth-july-v3',
     clouds: true,
     credit: 'Reto St\u00f6ckli, NASA Earth Observatory (NASA/GSFC); NOAA GLOBE v1.0, DTED Level 0/NIMA',
     citations: [
@@ -43,15 +43,15 @@ export const SOL_PLANET_SURFACE_CATALOG = [
     ],
     normalDimensions: { low: [1024, 512], standard: [2048, 1024] },
     files: {
-      preview: { albedo: 'earth-july-preview-albedo.jpg' },
-      low: { albedo: 'earth-july-low-albedo.jpg', normal: 'earth-july-low-normal.png' },
-      standard: { albedo: 'earth-july-standard-albedo.jpg', normal: 'earth-july-standard-normal.png' },
+      preview: { albedo: 'earth-july-preview-albedo.webp' },
+      low: { albedo: 'earth-july-low-albedo.webp', normal: 'earth-july-low-normal.png' },
+      standard: { albedo: 'earth-july-standard-albedo.webp', normal: 'earth-july-standard-normal.png' },
     },
   },
   {
     identity: { namespace: 'sol', key: 'luna' },
-    assetVersion: 'luna-v3',
-    assetDirectory: 'assets/sol-textures/luna-v3',
+    assetVersion: 'luna-v4',
+    assetDirectory: 'assets/sol-textures/luna-v4',
     clouds: false,
     credit: "NASA's Scientific Visualization Studio; Ernie Wright (USRA), Noah Petro (NASA/GSFC), LROC and LOLA teams",
     citations: [
@@ -63,15 +63,15 @@ export const SOL_PLANET_SURFACE_CATALOG = [
     ],
     normalDimensions: { low: [1024, 512], standard: [1024, 512] },
     files: {
-      preview: { albedo: 'luna-preview-albedo.jpg' },
-      low: { albedo: 'luna-low-albedo.jpg', normal: 'luna-low-normal.png' },
-      standard: { albedo: 'luna-standard-albedo.jpg', normal: 'luna-standard-normal.png' },
+      preview: { albedo: 'luna-preview-albedo.webp' },
+      low: { albedo: 'luna-low-albedo.webp', normal: 'luna-low-normal.png' },
+      standard: { albedo: 'luna-standard-albedo.webp', normal: 'luna-standard-normal.png' },
     },
   },
   {
     identity: { namespace: 'sol', key: 'mars' },
-    assetVersion: 'mars-v2',
-    assetDirectory: 'assets/sol-textures/mars-v2',
+    assetVersion: 'mars-v3',
+    assetDirectory: 'assets/sol-textures/mars-v3',
     clouds: false,
     credit: 'NASA/Viking/PDS, USGS Astrogeology; NASA/MGS/MOLA team',
     citations: [
@@ -91,9 +91,9 @@ export const SOL_PLANET_SURFACE_CATALOG = [
     ],
     normalDimensions: { low: [1024, 512], standard: [2048, 1024] },
     files: {
-      preview: { albedo: 'mars-preview-albedo.jpg' },
-      low: { albedo: 'mars-low-albedo.jpg', normal: 'mars-low-normal.png' },
-      standard: { albedo: 'mars-standard-albedo.jpg', normal: 'mars-standard-normal.png' },
+      preview: { albedo: 'mars-preview-albedo.webp' },
+      low: { albedo: 'mars-low-albedo.webp', normal: 'mars-low-normal.png' },
+      standard: { albedo: 'mars-standard-albedo.webp', normal: 'mars-standard-normal.png' },
     },
   },
 ] as const satisfies readonly CatalogPlanetSurfaceAsset[];

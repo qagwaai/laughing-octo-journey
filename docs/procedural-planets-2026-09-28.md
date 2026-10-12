@@ -9,8 +9,9 @@ Status: Stages 1-3 implemented and validated. Sol's approved Earth/Luna/Mars cat
 
 The [surface resolver](../src/app/scene/planet/planet-surface-resolver.ts) now
 selects approved imagery only from exact `catalogIdentity.namespace/key` pairs:
-`sol/earth` uses `earth-july-v2`, `sol/luna` uses `luna-v3`, and `sol/mars` uses
-`mars-v2`. Display names, entity IDs, system IDs and legacy `textureKey` hints
+`sol/earth` uses `earth-july-v3`, `sol/luna` uses `luna-v4`, and `sol/mars` uses
+`mars-v3`. Their albedo maps use same-origin WebP; the prior JPEG asset
+versions remain non-runtime baselines. Display names, entity IDs, system IDs and legacy `textureKey` hints
 are not lookup inputs. Unsupported identities retain the existing procedural
 path; stars and gas/ice giants retain their dedicated renderers. Splash and
 mining-backdrop selection are unchanged.

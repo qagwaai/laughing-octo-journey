@@ -135,22 +135,22 @@ describe('planet surface resolver', () => {
     expect(earth).toMatchObject({
       kind: 'catalog',
       request: {
-        key: 'catalog|earth-july-v2|l1|game-earth',
-        asset: { assetVersion: 'earth-july-v2' },
+        key: 'catalog|earth-july-v3|l1|game-earth',
+        asset: { assetVersion: 'earth-july-v3' },
       },
     });
     expect(luna).toMatchObject({
       kind: 'catalog',
       request: {
-        key: 'catalog|luna-v3|l0|game-luna',
-        asset: { assetVersion: 'luna-v3' },
+        key: 'catalog|luna-v4|l0|game-luna',
+        asset: { assetVersion: 'luna-v4' },
       },
     });
     expect(mars).toMatchObject({
       kind: 'catalog',
       request: {
-        key: 'catalog|mars-v2|l1|game-mars',
-        asset: { assetVersion: 'mars-v2' },
+        key: 'catalog|mars-v3|l1|game-mars',
+        asset: { assetVersion: 'mars-v3' },
       },
     });
   });

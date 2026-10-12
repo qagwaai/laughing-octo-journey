@@ -105,7 +105,7 @@ describe('catalog surface cache', () => {
     cache.request(body(), 'l1');
     await started();
     expect(jobs.map((job) => job.request.variant)).toEqual(['preview', quality]);
-    expect(jobs[1].request.key).toContain(`earth-july-v2|${quality}|l1`);
+    expect(jobs[1].request.key).toContain(`earth-july-v3|${quality}|l1`);
     expect(cache.pending()).toBe(2);
   });
 

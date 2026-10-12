@@ -158,8 +158,14 @@ test.describe('viewer catalog planet surfaces', () => {
   test('loads only the exact approved previews, applies white terrain tint and Earth-only clouds', async ({ page }) => {
     const problems = collectRenderProblems(page);
     const requests: string[] = [];
+    const albedoContentTypes: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/textures/sol/')) requests.push(request.url());
+    });
+    page.on('response', (response) => {
+      if (response.url().match(/\/textures\/sol\/[^/]+\/[^/]+-preview-albedo\.webp$/)) {
+        albedoContentTypes.push(response.headers()['content-type'] ?? '');
+      }
     });
     const { mock } = await setupViewerSceneTest(page);
     await navigateToSystemScene(page, mock, catalogBodies());
@@ -168,11 +174,12 @@ test.describe('viewer catalog planet surfaces', () => {
     await expect.poll(async () => (await renderedSurface(page, 'Mars'))?.albedoWidth).toBe(512);
     await expect.poll(() => cloudTextureWidths(page)).toEqual([128]);
     expect(requests.map((url) => new URL(url).pathname).sort()).toEqual([
-      '/textures/sol/earth-july-v2/earth-july-preview-albedo.jpg',
-      '/textures/sol/luna-v3/luna-preview-albedo.jpg',
-      '/textures/sol/mars-v2/mars-preview-albedo.jpg',
+      '/textures/sol/earth-july-v3/earth-july-preview-albedo.webp',
+      '/textures/sol/luna-v4/luna-preview-albedo.webp',
+      '/textures/sol/mars-v3/mars-preview-albedo.webp',
     ]);
     expect(requests.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+    expect(albedoContentTypes).toEqual(['image/webp', 'image/webp', 'image/webp']);
     expect(await renderedSurface(page, 'Earth')).toMatchObject({ color: 'ffffff', emissive: '000000' });
     await page.getByTestId('viewer-surface-sources').locator('summary').click();
     await expect(page.getByTestId('viewer-surface-sources')).toContainText('NOAA GLOBE');
@@ -202,7 +209,7 @@ test.describe('viewer catalog planet surfaces', () => {
     });
     await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(512);
     await expect.poll(() => cloudTextureWidths(page)).toEqual([256]);
-    expect(requests).toContain('/textures/sol/earth-july-v2/earth-july-low-normal.png');
+    expect(requests).toContain('/textures/sol/earth-july-v3/earth-july-low-normal.png');
     expect(requests.some((path) => path.includes('standard'))).toBe(false);
     expect(requests.some((path) => path.includes('luna-low') || path.includes('mars-low'))).toBe(false);
     await page.getByRole('button', { name: 'Focus Luna' }).click();
@@ -245,7 +252,7 @@ test.describe('viewer catalog planet surfaces', () => {
     await navigateToSystemScene(page, mock, catalogBodies());
     await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
     let failures = 0;
-    await page.route('**/textures/sol/earth-july-v2/earth-july-standard-normal.png', (route) => {
+    await page.route('**/textures/sol/earth-july-v3/earth-july-standard-normal.png', (route) => {
       failures += 1;
       return failures === 1 ? route.fulfill({ status: 503, body: 'temporary failure' }) : route.continue();
     });
@@ -261,13 +268,19 @@ test.describe('viewer catalog planet surfaces', () => {
 
   test('shows a neutral placeholder and explicit retry when initial catalog imagery fails', async ({ page }) => {
     let fail = true;
-    await page.route('**/textures/sol/luna-v3/luna-preview-albedo.jpg', (route) =>
+    const surfaceRequests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/textures/sol/')) surfaceRequests.push(new URL(request.url()).pathname);
+    });
+    await page.route('**/textures/sol/luna-v4/luna-preview-albedo.webp', (route) =>
       fail ? route.fulfill({ status: 404, body: 'missing fixture' }) : route.continue(),
     );
     const { mock } = await setupViewerSceneTest(page);
     await navigateToSystemScene(page, mock, catalogBodies());
     await expect(page.getByTestId('viewer-surface-error')).toBeVisible();
     expect(await renderedSurface(page, 'Luna')).toMatchObject({ albedoWidth: null, color: '555b65' });
+    expect(surfaceRequests).toContain('/textures/sol/luna-v4/luna-preview-albedo.webp');
+    expect(surfaceRequests.some((path) => path.endsWith('.jpg'))).toBe(false);
     fail = false;
     await page.getByTestId('viewer-surface-retry').click();
     await expect.poll(async () => (await renderedSurface(page, 'Luna'))?.albedoWidth).toBe(512);

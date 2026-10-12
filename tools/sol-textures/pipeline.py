@@ -25,17 +25,18 @@ ROOT = Path(__file__).resolve().parent
 REPOSITORY = ROOT.parent.parent
 MIB = 1024 * 1024
 RECIPES = {
-    "earth": {"version": "earth-july-v2", "prefix": "earth-july", "radius": 6371000,
+    "earth": {"version": "earth-july-v3", "baselineVersion": "earth-july-v2",
+              "prefix": "earth-july", "radius": 6371000,
               "color": "world.200407.3x5400x2700_geo.tif", "normalStandard": [2048, 1024],
-              "qualityStandard": 98},
-    "luna": {"version": "luna-v3", "baselineVersion": "luna-v2", "polarTreatment": "geodesic",
+              "webpQualities": {"preview": 90, "low": 85, "standard": 80}},
+    "luna": {"version": "luna-v4", "baselineVersion": "luna-v3", "polarTreatment": "geodesic",
              "prefix": "luna", "radius": 1737400,
              "color": "lroc_color_16bit_srgb_4k.tif", "height": "ldem_16_uint.tif",
-             "normalStandard": [1024, 512], "qualityStandard": 95},
-    "mars": {"version": "mars-v2", "baselineVersion": "mars-v1", "polarTreatment": "geodesic",
+             "normalStandard": [1024, 512], "webpQualities": {"preview": 90, "low": 90, "standard": 90}},
+    "mars": {"version": "mars-v3", "baselineVersion": "mars-v2", "polarTreatment": "geodesic",
              "prefix": "mars", "radius": 3396000,
              "color": "Mars_Viking_ClrMosaic_global_925m.tif", "height": "megt90n000eb.img",
-             "normalStandard": [2048, 1024], "qualityStandard": 98},
+             "normalStandard": [2048, 1024], "webpQualities": {"preview": 95, "low": 90, "standard": 85}},
 }
 LUNA_REFERENCE = {
     "file": "LDEM_16.IMG", "bytes": 33177600,
@@ -216,7 +217,7 @@ def mars_color_working(directory, path):
 def budgets(products, prefix):
     result = {}
     for tier, cap, resident_cap in [("low", 2, 32), ("standard", 4, 96)]:
-        names = [f"{prefix}-preview-albedo.jpg", f"{prefix}-{tier}-albedo.jpg", f"{prefix}-{tier}-normal.png"]
+        names = [f"{prefix}-preview-albedo.webp", f"{prefix}-{tier}-albedo.webp", f"{prefix}-{tier}-normal.png"]
         transfer = sum(products[name]["bytes"] for name in names)
         resident = sum(math.ceil(width * height * 4 * 4 / 3)
                        for width, height in [products[name]["dimensions"] for name in names])
@@ -241,7 +242,8 @@ def verify_outputs(directory, comparison=None):
             png_chunks(file)
             require(np.all(decoded[:, 0] == np.array([128, 128, 255])[:, None]) and
                     np.all(decoded[:, -1] == np.array([128, 128, 255])[:, None]), "Pole normals")
-    prefix = next(name.removesuffix("-preview-albedo.jpg") for name in manifest["products"] if "-preview-albedo.jpg" in name)
+    prefix = next(name.removesuffix("-preview-albedo.webp") for name in manifest["products"]
+                  if "-preview-albedo.webp" in name)
     require(budgets(manifest["products"], prefix) == manifest["budgets"], "Recorded budget mismatch")
     if comparison:
         previous = json.loads((comparison / "derivative-manifest.json").read_text())
@@ -283,13 +285,14 @@ def prepare(body, source_dir, output, work_dir):
         else:
             filtered = np.stack([resize(channel, width, height) for channel in linear])
         rgb = np.rint(linear_to_srgb(np.clip(filtered, 0, 1)) * 255).astype(np.uint8)
-        path = output / f"{recipe['prefix']}-{tier}-albedo.jpg"
-        quality = recipe["qualityStandard"] if tier == "standard" else 98
-        decoded = write_image(path, rgb, "JPEG", QUALITY=quality, PROGRESSIVE="YES")
+        path = output / f"{recipe['prefix']}-{tier}-albedo.webp"
+        quality = recipe["webpQualities"][tier]
+        decoded = write_image(path, rgb, "WEBP", QUALITY=quality, LOSSLESS="NO")
         mse = float(np.mean((decoded.astype(np.float64) - rgb) ** 2))
         products[path.name] = {"dimensions": [width, height], "bytes": path.stat().st_size, "sha256": digest(path),
                                "colorSpace": "sRGB (source ICC verified)" if body == "luna" else "sRGB display assumption; source has no ICC",
-                               "jpegQuality": quality, "psnrDbVersusResampledRgb": 10 * math.log10(255 * 255 / mse)}
+                               "encoding": "lossy WebP", "webpQuality": quality,
+                               "psnrDbVersusResampledRgb": 10 * math.log10(255 * 255 / mse)}
     if body == "mars":
         temporary.unlink()
     if body == "earth":
@@ -324,6 +327,21 @@ def prepare(body, source_dir, output, work_dir):
     provenance["sources"] = source_records(body)
     provenance["processingScriptSha256"] = digest(Path(__file__))
     provenance["recipe"] = recipe
+    provenance["repositoryStorage"] = (
+        "Active same-origin runtime WebP albedo and unchanged accepted normal maps; "
+        "prior JPEG asset version remains in Git as non-runtime backup")
+    provenance["runtime"] = (
+        "Viewer-integrated WebP albedo; unchanged linear normal maps; no JPEG runtime fallback; "
+        "load failure uses existing explicit warning/retry; appearance acceptance remains pending")
+    provenance["encodingDecision"] = {
+        "format": "lossy WebP",
+        "offlineQualityFloorDb": 40,
+        "selection": "Smallest of six GDAL WebP quality candidates at/above the floor per map",
+        "comparisonEvidence": "External artifact store work/encoding-suitability-2026-10-12-v1/encoding-comparison.json",
+        "limitations": "PSNR floor and byte budget are offline compression evidence, not perceptual visual acceptance",
+        "jpegBaselineVersion": recipe["baselineVersion"],
+        "jpegRuntimeFallback": False,
+    }
     if recipe.get("polarTreatment") == "geodesic":
         provenance["polarRecipeScriptSha256"] = digest(ROOT / "polar_normals.py")
         provenance["normal"] = (
@@ -339,7 +357,8 @@ def prepare(body, source_dir, output, work_dir):
                             "fine registration unproven; final Stellar Viewer acceptance remains on hold",
         }
     manifest = {"tools": {"python": platform.python_version(), "rasterio": rasterio.__version__,
-                          "gdal": rasterio.__gdal_version__, "numpy": np.__version__},
+                          "gdal": rasterio.__gdal_version__, "numpy": np.__version__,
+                          "webpEncoder": f"GDAL {rasterio.__gdal_version__} WEBP driver"},
                 "products": products, "budgets": budgets(products, recipe["prefix"]), "provenance": provenance}
     (output / "derivative-manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     verify_outputs(output)
