@@ -23,6 +23,16 @@
     />
   </ngt-canvas>
 
+  @if (labeledBody(); as body) {
+  <aside class="viewer-body-label" data-testid="viewer-body-label" aria-live="polite">
+    <strong>{{ body.displayName }}</strong>
+    <span>{{ body.bodyType }}</span>
+    @if (isBodyTargeted(body)) {
+    <span class="viewer-body-label__targeted">{{ t.game.viewer.bodyTargetedLabel }}</span>
+    }
+  </aside>
+  }
+
   <app-planet-surface-progress />
 
   <section

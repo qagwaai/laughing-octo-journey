@@ -44,6 +44,7 @@ import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './
 import {
   isGateBody,
   isMarketStationBody,
+  isMoonBody,
   isStarBody,
   isStationBody,
   resolveAnchoredOrbitSceneProfile,
@@ -84,6 +85,7 @@ interface RenderedBody {
   color: string;
   radius: number;
   position: [number, number, number];
+  hostOverlapAdjusted: boolean;
   isStar: boolean;
   isMarketStation: boolean;
   isGate: boolean;
@@ -152,6 +154,7 @@ export interface ViewerSceneCameraDistanceRange {
 
 const VIEWER_DEFAULT_CAMERA_POSITION: [number, number, number] = [0, 3.5, 28];
 export const VIEWER_STATION_MESH_SCALE = 0.05;
+export const VIEWER_ANCHORED_BODY_CLEARANCE = 0.015;
 const VIEWER_CAMERA_TWEEN_DURATION_SEC = 0.45;
 const VIEWER_TARGET_FLY_DURATION_SEC = 3.5;
 const VIEWER_TARGET_FLY_COMPLETION_T = 0.985;
@@ -188,6 +191,79 @@ function resolveLocalAsteroidProjectionWeight(zoomLevel: number | undefined): nu
   }
 
   return clamp(1 - zoomLevel / VIEWER_LOCAL_ASTEROID_VIEW_ZOOM_THRESHOLD, 0, 1);
+}
+
+function resolveBodyVisualRadius(body: RenderedBody): number {
+  return body.radius * Math.max(...body.geometryScale.map((axis) => Math.abs(axis)));
+}
+
+function resolveAnchoredBodyOverlaps(bodies: RenderedBody[]): RenderedBody[] {
+  const byId = new Map(bodies.map((body) => [body.id, body]));
+  const positions = new Map<string, { position: [number, number, number]; adjusted: boolean }>();
+  const resolving = new Set<string>();
+
+  const resolve = (body: RenderedBody): { position: [number, number, number]; adjusted: boolean } => {
+    const cached = positions.get(body.id);
+    if (cached) return cached;
+    if (resolving.has(body.id)) return { position: body.position, adjusted: false };
+    resolving.add(body.id);
+
+    const anchorId = body.source.orbitalElements?.anchorBodyId ?? body.source.parentBodyId;
+    const host = anchorId ? byId.get(anchorId) : undefined;
+    if ((!isMoonBody(body.source) && !isStationBody(body.source)) || !host || host === body) {
+      const unchanged = { position: body.position, adjusted: false };
+      positions.set(body.id, unchanged);
+      resolving.delete(body.id);
+      return unchanged;
+    }
+
+    const hostResult = resolve(host);
+    let direction = new Vector3(
+      body.position[0] - hostResult.position[0],
+      body.position[1] - hostResult.position[1],
+      body.position[2] - hostResult.position[2],
+    );
+    const distance = direction.length();
+    if (distance === 0) {
+      const bodyPositionKm = body.source.spatial.positionKm;
+      const hostPositionKm = host.source.spatial.positionKm;
+      const displayDirection = resolveViewerDisplayVector({
+        x: bodyPositionKm.x - hostPositionKm.x,
+        y: bodyPositionKm.y - hostPositionKm.y,
+        z: bodyPositionKm.z - hostPositionKm.z,
+      });
+      direction = new Vector3(...displayDirection);
+    }
+    if (!Number.isFinite(distance) || direction.lengthSq() === 0) {
+      const unchanged = { position: body.position, adjusted: false };
+      positions.set(body.id, unchanged);
+      resolving.delete(body.id);
+      return unchanged;
+    }
+
+    const minimumDistance =
+      resolveBodyVisualRadius(host) + resolveBodyVisualRadius(body) + VIEWER_ANCHORED_BODY_CLEARANCE;
+    direction.normalize();
+    const adjusted =
+      distance < minimumDistance
+        ? {
+            position: [
+              hostResult.position[0] + direction.x * minimumDistance,
+              hostResult.position[1] + direction.y * minimumDistance,
+              hostResult.position[2] + direction.z * minimumDistance,
+            ] as [number, number, number],
+            adjusted: true,
+          }
+        : { position: body.position, adjusted: false };
+    positions.set(body.id, adjusted);
+    resolving.delete(body.id);
+    return adjusted;
+  };
+
+  return bodies.map((body) => {
+    const resolved = resolve(body);
+    return { ...body, position: resolved.position, hostOverlapAdjusted: resolved.adjusted };
+  });
 }
 
 function resolveRenderedExtent(rendered: RenderedBody[]): number {
@@ -756,6 +832,7 @@ export function mapBodiesToRendered(
       color: descriptorProfile?.color ?? resolveBodyColor(body),
       radius: resolvedRadius,
       position,
+      hostOverlapAdjusted: false,
       isStar: isStarBody(body),
       isMarketStation,
       isGate,
@@ -795,7 +872,7 @@ export function mapBodiesToRendered(
 
   const localProjectionWeight = resolveLocalAsteroidProjectionWeight(zoomLevel);
   if (mode === 'proportional' || !targetBodyId || localProjectionWeight <= 0) {
-    return rendered;
+    return resolveAnchoredBodyOverlaps(rendered);
   }
 
   const targetBody = bodies.find((body) => body.id === targetBodyId);
@@ -814,10 +891,10 @@ export function mapBodiesToRendered(
   }
 
   if (!targetPositionKm || !targetPositionScene) {
-    return rendered;
+    return resolveAnchoredBodyOverlaps(rendered);
   }
 
-  return rendered.map((candidate) => {
+  const locallyProjected = rendered.map((candidate) => {
     if ((targetBody && candidate.id === targetBodyId) || !isAsteroidBody(candidate.source)) {
       return candidate;
     }
@@ -848,6 +925,7 @@ export function mapBodiesToRendered(
       position: localPosition,
     };
   });
+  return resolveAnchoredBodyOverlaps(locallyProjected);
 }
 
 /**
@@ -1141,6 +1219,14 @@ export class ViewerSystemScene {
     return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
   }
 
+  protected isStationBody(body: ViewerBody): boolean {
+    return isStationBody(body);
+  }
+
+  protected resolveStationPickRadius(body: RenderedBody): number {
+    return Math.max(resolveBodyVisualRadius(body) * 4, 0.04);
+  }
+
   protected hasSurfaceClouds(body: ViewerBody): boolean {
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
@@ -1227,13 +1313,13 @@ export class ViewerSystemScene {
           : isAnchoredOrbit
             ? resolveSceneDistanceFromKm(semiMajorAxisKm) * orbitProfile!.scale
             : resolveSceneDistanceFromKm(semiMajorAxisKm);
-        const radiusX = proportional
+        let radiusX = proportional
           ? scaledRadius
           : Math.max(
               isAnchoredOrbit ? orbitProfile!.minRadiusX : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_X,
               +scaledRadius.toFixed(3),
             );
-        const radiusZ = proportional
+        let radiusZ = proportional
           ? radiusX * Math.sqrt(1 - eccentricity * eccentricity)
           : Math.max(
               isAnchoredOrbit ? orbitProfile!.minRadiusZ : VIEWER_SCENE_PRIMARY_ORBIT_MIN_RADIUS_Z,
@@ -1241,6 +1327,13 @@ export class ViewerSystemScene {
             );
 
         const anchorPosition = anchorId && byId.has(anchorId) ? byId.get(anchorId)!.position : [0, 0, 0];
+        const anchorBody = anchorId ? byId.get(anchorId) : undefined;
+        if (body.hostOverlapAdjusted && anchorBody) {
+          const minimumVisibleOrbit =
+            resolveBodyVisualRadius(anchorBody) + resolveBodyVisualRadius(body) + VIEWER_ANCHORED_BODY_CLEARANCE;
+          radiusX = Math.max(radiusX, minimumVisibleOrbit);
+          radiusZ = Math.max(radiusZ, minimumVisibleOrbit);
+        }
 
         let opacity: number;
         if (focusedPlanetId) {

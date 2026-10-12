@@ -797,6 +797,7 @@ export const en = {
       detailsEmptyStatus: 'No bodies found for this system.',
       detailsErrorPrefix: 'Failed to load bodies:',
       detailsTargetButton: 'Target',
+      bodyTargetedLabel: 'Targeted',
       detailsColumnName: 'Name',
       detailsColumnType: 'Type',
       detailsColumnDiameter: 'Diameter (m)',

@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
+import { resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
+  isStationBody,
+  resolveBodySceneRadius,
+  resolveScenePositionFromSpatialKm,
+  resolveViewerDisplayVector,
   VIEWER_SCENE_ACTIVE_SHIP_COLOR,
   VIEWER_SCENE_INACTIVE_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_COLOR,
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
-  resolveScenePositionFromSpatialKm,
-  resolveBodySceneRadius,
-  isStationBody,
 } from './viewer-formatters';
-import { resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import { resolveViewerShipMeshKind } from './viewer-ship-mesh';
 import {
   degToRad,
@@ -21,6 +22,7 @@ import {
   resolveViewerSceneCameraDistanceRange,
   resolveZoomDistance,
   resolveZoomPercent,
+  VIEWER_ANCHORED_BODY_CLEARANCE,
   VIEWER_STATION_MESH_SCALE,
 } from './viewer-system-scene';
 
@@ -190,8 +192,20 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     { name: 'legacy non-market', family: '', kind: 'sphere', scale: [1, 1, 1], rotation: [0, 0, 0] },
     { name: 'trade hub', family: 'trade-hub', kind: 'box', scale: [1.65, 0.82, 1.65], rotation: [0, 0.14, 0] },
     { name: 'refinery', family: 'refinery', kind: 'cylinder', scale: [0.92, 1.5, 0.92], rotation: [0, 0.2, 0] },
-    { name: 'naval outpost', family: 'naval-outpost', kind: 'octahedron', scale: [1.12, 1.48, 1.12], rotation: [0.1, 0.28, 0] },
-    { name: 'research platform', family: 'research-platform', kind: 'torus', scale: [1.36, 1.36, 1.36], rotation: [Math.PI / 2, 0.3, 0] },
+    {
+      name: 'naval outpost',
+      family: 'naval-outpost',
+      kind: 'octahedron',
+      scale: [1.12, 1.48, 1.12],
+      rotation: [0.1, 0.28, 0],
+    },
+    {
+      name: 'research platform',
+      family: 'research-platform',
+      kind: 'torus',
+      scale: [1.36, 1.36, 1.36],
+      rotation: [Math.PI / 2, 0.3, 0],
+    },
   ];
 
   it.each(stationVariants)('scales $name mesh dimensions to 5% without changing scene data', (variant) => {
@@ -199,13 +213,15 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
       ...marketStation,
       stationKind: variant.family === undefined ? 'market' : undefined,
       physicalCatalog: { meanRadiusKm: 2 },
-      ...(variant.family ? {
-        externalObjectDescriptor: {
-          ...gateBody.externalObjectDescriptor!,
-          domain: 'stations',
-          objectFamily: variant.family,
-        },
-      } : {}),
+      ...(variant.family
+        ? {
+            externalObjectDescriptor: {
+              ...gateBody.externalObjectDescriptor!,
+              domain: 'stations',
+              objectFamily: variant.family,
+            },
+          }
+        : {}),
     };
     const original = structuredClone(body);
     const profile = resolveDescriptorRenderProfile(body.externalObjectDescriptor);
@@ -256,7 +272,7 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     const normal = mapBodiesToRendered([asteroidA, asteroidB], 0, null, [], 'proportional');
     const targeted = mapBodiesToRendered([asteroidA, asteroidB], 0, asteroidA.id, [], 'proportional');
     expect(targeted.map((body) => body.position)).toEqual(normal.map((body) => body.position));
-    expect(targeted[1].position[2] - targeted[0].position[2]).toBeCloseTo(500 / 149_597_870.7 * 5, 12);
+    expect(targeted[1].position[2] - targeted[0].position[2]).toBeCloseTo((500 / 149_597_870.7) * 5, 12);
   });
   it('extends camera framing beyond the compressed ceiling for proportional outer systems', () => {
     const outer = { ...planet, spatial: { ...planet.spatial, positionKm: { x: 1e10, y: 0, z: 0 } } };
@@ -266,12 +282,24 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(resolveZoomPercent(distance, [outer], 'proportional')).toBeCloseTo(63, 8);
   });
   it('keeps ships, stations, gates, targets and canonical snapshots in consistent spaces', () => {
-    const spatial = { solarSystemId: 'sol', frame: 'barycentric' as const,
-      positionKm: Object.freeze({ x: 1e6, y: 2e6, z: 3e6 }), epochMs: 0 };
-    const ship: ShipSummary = { id: 'display-ship', name: 'Display ship', model: 'Scavenger Pod',
-      tier: 1, status: 'ACTIVE', spatial };
-    const bodies = [planet, marketStation, star, { ...marketStation, id: 'gate', bodyType: 'gate' }]
-      .map((body) => ({ ...body, spatial }));
+    const spatial = {
+      solarSystemId: 'sol',
+      frame: 'barycentric' as const,
+      positionKm: Object.freeze({ x: 1e6, y: 2e6, z: 3e6 }),
+      epochMs: 0,
+    };
+    const ship: ShipSummary = {
+      id: 'display-ship',
+      name: 'Display ship',
+      model: 'Scavenger Pod',
+      tier: 1,
+      status: 'ACTIVE',
+      spatial,
+    };
+    const bodies = [planet, marketStation, star, { ...marketStation, id: 'gate', bodyType: 'gate' }].map((body) => ({
+      ...body,
+      spatial,
+    }));
     const rendered = mapBodiesToRendered(bodies);
     const ships = mapShipsToRendered([ship], ship.id);
     const expected = resolveScenePositionFromSpatialKm(spatial.positionKm);
@@ -311,7 +339,59 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(projectedMoon.position[2]).toBeGreaterThan(0);
     expect(Math.abs(projectedMoon.position[1])).toBeGreaterThan(projectedMoon.position[2]);
     expect(ordered.find((body) => body.id === companion.id)?.position[0]).toBeLessThan(0);
-    expect(mapBodiesToRendered([moon])[0].position).toEqual(projectedMoon.position);
+    expect(mapBodiesToRendered([moon])[0].position).toEqual(resolveScenePositionFromSpatialKm(moon.spatial.positionKm));
+  });
+  it('expands only overlapping anchored moons and stations while preserving direction in both modes', () => {
+    const host: ViewerBody = {
+      ...planet,
+      id: 'overlap-host',
+      spatial: { ...planet.spatial, positionKm: { x: 149_597_870, y: 0, z: 0 } },
+    };
+    const moon: ViewerBody = {
+      ...marketStation,
+      id: 'overlap-moon',
+      bodyType: 'moon',
+      surfaceArchetype: 'rocky-moon',
+      parentBodyId: host.id,
+      spatial: { ...host.spatial, positionKm: { x: 149_597_870, y: 1_000, z: 2_000 } },
+      orbitalElements: { ...marketStation.orbitalElements!, anchorBodyId: host.id },
+      physicalCatalog: { estimatedDiameterM: 3_474_800 },
+    };
+    const station: ViewerBody = {
+      ...marketStation,
+      id: 'overlap-station',
+      parentBodyId: host.id,
+      spatial: { ...host.spatial, positionKm: { x: 149_597_870, y: -1_000, z: 1_000 } },
+      orbitalElements: { ...marketStation.orbitalElements!, anchorBodyId: host.id },
+    };
+
+    for (const mode of ['proportional', 'compressed'] as const) {
+      const mapped = mapBodiesToRendered([station, moon, host], 100, null, [], mode);
+      const renderedHost = mapped.find((body) => body.id === host.id)!;
+      const renderedMoon = mapped.find((body) => body.id === moon.id)!;
+      const renderedStation = mapped.find((body) => body.id === station.id)!;
+      const direction = resolveViewerDisplayVector({
+        x: moon.spatial.positionKm.x - host.spatial.positionKm.x,
+        y: moon.spatial.positionKm.y - host.spatial.positionKm.y,
+        z: moon.spatial.positionKm.z - host.spatial.positionKm.z,
+      });
+      const moonOffset = renderedMoon.position.map((value, axis) => value - renderedHost.position[axis]) as [
+        number,
+        number,
+        number,
+      ];
+      const dot = moonOffset.reduce((sum, value, axis) => sum + value * direction[axis], 0);
+
+      expect(renderedHost.position).toEqual(resolveScenePositionFromSpatialKm(host.spatial.positionKm, mode));
+      expect(renderedMoon.hostOverlapAdjusted).toBe(true);
+      expect(renderedStation.hostOverlapAdjusted).toBe(true);
+      expect(Math.hypot(...moonOffset)).toBeCloseTo(
+        renderedHost.radius + renderedMoon.radius + VIEWER_ANCHORED_BODY_CLEARANCE,
+        6,
+      );
+      expect(dot).toBeGreaterThan(0);
+      expect(moon.spatial.positionKm).toEqual({ x: 149_597_870, y: 1_000, z: 2_000 });
+    }
   });
   it('partitions stars and non-stars and assigns colors/positions', () => {
     const rendered = mapBodiesToRendered([star, planet, marketStation]);
@@ -415,9 +495,7 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(localSeparation).toBeGreaterThan(0.05);
     expect(localB!.position[1] - localA!.position[1]).toBeGreaterThan(0);
     expect(localB!.position[2] - localA!.position[2]).toBeGreaterThan(0);
-    expect(localB!.position[2] - localA!.position[2]).toBeCloseTo(
-      2 * (localB!.position[1] - localA!.position[1]), 3,
-    );
+    expect(localB!.position[2] - localA!.position[2]).toBeCloseTo(2 * (localB!.position[1] - localA!.position[1]), 3);
   });
 
   it('reprojects nearby asteroids into local space when a ship is targeted at close zoom', () => {

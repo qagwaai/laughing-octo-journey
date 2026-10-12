@@ -620,6 +620,7 @@ export const it: DeepPartial<EnLocale> = {
       detailsEmptyStatus: 'Nessun corpo trovato per questo sistema.',
       detailsErrorPrefix: 'Caricamento corpi fallito:',
       detailsTargetButton: 'Punta',
+      bodyTargetedLabel: 'Puntato',
       detailsColumnName: 'Nome',
       detailsColumnType: 'Tipo',
       detailsColumnDiameter: 'Diametro (m)',

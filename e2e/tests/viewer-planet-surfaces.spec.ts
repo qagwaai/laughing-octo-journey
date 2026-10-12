@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Mesh, MeshStandardMaterial, Scene } from 'three';
+import type { Camera, Mesh, MeshStandardMaterial, Scene } from 'three';
 import type { ViewerBody } from '../../src/app/model/solar-system-get';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { SocketIOMock } from '../fixtures/socket-mock';
@@ -154,6 +154,31 @@ async function setSystemBodyTarget(page: import('@playwright/test').Page, bodyId
   }, bodyId);
 }
 
+async function renderedBodyScreenPosition(page: import('@playwright/test').Page, displayName: string) {
+  return page.evaluate(
+    ({ displayName }) => {
+      const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+      const canvas = document.querySelector('.viewer-scene-host ngt-canvas');
+      if (!ngApi?.getComponent || !canvas) return null;
+
+      const component = ngApi.getComponent(canvas) as {
+        store: { snapshot: { scene: Scene | null; camera: Camera | null } };
+      };
+      const { scene, camera } = component.store.snapshot;
+      const body = scene?.getObjectByName(displayName);
+      if (!body || !camera) return null;
+
+      const projected = body.getWorldPosition(body.position.clone()).project(camera);
+      const bounds = canvas.getBoundingClientRect();
+      return {
+        x: bounds.left + ((projected.x + 1) / 2) * bounds.width,
+        y: bounds.top + ((1 - projected.y) / 2) * bounds.height,
+      };
+    },
+    { displayName },
+  );
+}
+
 test.describe('viewer catalog planet surfaces', () => {
   test('provides software WebGL2 with capacity for the standard catalog tier', async ({ page }) => {
     await page.goto('/');
@@ -221,6 +246,8 @@ test.describe('viewer catalog planet surfaces', () => {
         color: 'ffffff',
         emissive: '92400e',
       });
+    await expect(page.getByTestId('viewer-body-label')).toContainText('Earth');
+    await expect(page.getByTestId('viewer-body-label')).toContainText('Targeted');
     await setSystemBodyTarget(page, null);
     await expect
       .poll(async () => renderedSurface(page, 'Earth'))
@@ -228,6 +255,7 @@ test.describe('viewer catalog planet surfaces', () => {
         color: 'ffffff',
         emissive: '000000',
       });
+    await expect(page.getByTestId('viewer-body-label')).toHaveCount(0);
 
     for (const bodyId of ['earth', 'luna', 'mars']) {
       const displayName = bodyId === 'luna' ? 'Luna' : bodyId[0].toUpperCase() + bodyId.slice(1);
@@ -240,6 +268,35 @@ test.describe('viewer catalog planet surfaces', () => {
         await expect(page).toHaveURL(/right:viewer-scene\/sol/);
       }
     }
+  });
+
+  test('shows identity on hover for moons and stations and clears it on pointer-out', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock);
+
+    const label = page.getByTestId('viewer-body-label');
+    await expect.poll(async () => Boolean(await renderedBodyScreenPosition(page, 'Earth'))).toBe(true);
+    const earthPosition = await renderedBodyScreenPosition(page, 'Earth');
+    if (!earthPosition) throw new Error('Earth is not rendered in the viewer scene');
+    await page.mouse.move(earthPosition.x, earthPosition.y);
+    await expect(label).toContainText('Earth');
+
+    await expect.poll(async () => Boolean(await renderedBodyScreenPosition(page, 'Luna'))).toBe(true);
+    const lunaPosition = await renderedBodyScreenPosition(page, 'Luna');
+    if (!lunaPosition) throw new Error('Luna is not rendered in the viewer scene');
+    await page.mouse.move(lunaPosition.x, lunaPosition.y);
+    await expect(label).toContainText('Luna');
+    await expect(label).toContainText('moon');
+
+    await expect.poll(async () => Boolean(await renderedBodyScreenPosition(page, 'Sol Market Alpha'))).toBe(true);
+    const stationPosition = await renderedBodyScreenPosition(page, 'Sol Market Alpha');
+    if (!stationPosition) throw new Error('Sol Market Alpha is not rendered in the viewer scene');
+    await page.mouse.move(stationPosition.x, stationPosition.y);
+    await expect(label).toContainText('Sol Market Alpha');
+    await expect(label).toContainText('station');
+
+    await page.mouse.move(stationPosition.x + 120, stationPosition.y + 100);
+    await expect(label).toHaveCount(0);
   });
 
   test('loads only low detail on constrained policy, preserves Luna preview, and upgrades normal maps', async ({

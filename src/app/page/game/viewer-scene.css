@@ -150,6 +150,37 @@
   font-weight: 500;
 }
 
+.viewer-body-label {
+  position: absolute;
+  top: 13rem;
+  left: 1rem;
+  z-index: 10010;
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  max-width: min(18rem, calc(100% - 6rem));
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(162, 210, 255, 0.4);
+  border-radius: 9px;
+  background: rgba(7, 18, 33, 0.92);
+  color: #f2f8ff;
+  font-size: 0.82rem;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.viewer-body-label span {
+  color: #b9dafc;
+  text-transform: capitalize;
+}
+
+.viewer-body-label .viewer-body-label__targeted {
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .viewer-detail-pane {
   position: absolute;
   right: 4.8rem;

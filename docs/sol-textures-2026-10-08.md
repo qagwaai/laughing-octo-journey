@@ -1,7 +1,7 @@
 # Sol planetary textures: implementation and validation plan
 
 Date: 2026-10-08  
-Status: Stages 0-3 are complete for the active Earth/Luna/Mars pilot; Stage 2 closed on 2026-10-12 at the accepted, documented review scope. Sampled fine registration, Luna/Mars polar boundary/detail-loss, seam/orientation and Tycho/Olympus Mons source-shadow reviews were accepted with caveats. WebP is active in the Viewer per the user's direction, prior JPEG versions remain non-runtime baselines, selected maps passed transfer-budget, browser-load, rebuild and isolated Three.js checks, and the user accepted matched WebP/JPEG albedo appearance comparisons for all three bodies. KTX2 is not required for Stage 2 closure. Earth’s actual Viewer presentation remains a separate open issue because daylight framing is unclear and the cloud layer obscures close inspection; Earth/Luna overlap in proportional overview is also a separate Viewer presentation issue. Representative hardware/network performance and final Stellar Viewer visual acceptance remain pending; final visual acceptance is still on hold. The active versions are earth-july-v3, luna-v4, and mars-v3. Originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural.
+Status: Stages 0-3 are complete for the active Earth/Luna/Mars pilot; Stage 2 closed on 2026-10-12 at the accepted, documented review scope. Sampled fine registration, Luna/Mars polar boundary/detail-loss, seam/orientation and Tycho/Olympus Mons source-shadow reviews were accepted with caveats. WebP is active in the Viewer per the user's direction, prior JPEG versions remain non-runtime baselines, selected maps passed transfer-budget, browser-load, rebuild and isolated Three.js checks, and the user accepted matched WebP/JPEG albedo appearance comparisons for all three bodies. KTX2 is not required for Stage 2 closure. Earth’s actual Viewer presentation remains a separate open issue because daylight framing is unclear and the cloud layer obscures close inspection. A display-only host/child overlap correction and identity-picking cues are implemented for proportional and compressed overviews and were visually accepted on 2026-10-12; exact-direction sibling overlaps may remain. Representative hardware/network performance and final Stellar Viewer visual acceptance remain pending; final visual acceptance is still on hold. The active versions are earth-july-v3, luna-v4, and mars-v3. Originals/notices and evidence remain in the external artifact store. Mercury and unsupported identities remain procedural.
 
 ## Goal and approved decisions
 
@@ -142,7 +142,7 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
 | 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default, current cloud layer, and transient highlight restoration on 2026-10-12; tint/emissive review closed; Earth/Luna overview overlap remains open |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default, current cloud layer, transient highlight restoration, and overview host/child separation on 2026-10-12; tint/emissive review closed; exact-direction sibling overlaps may remain |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -1996,9 +1996,27 @@ sign-off.
 
 The initial Earth Viewer review found the daylight framing unclear and clouds
 obscuring close evaluation. The follow-up below records the accepted camera
-change and cloud-layer review. Representative hardware/network performance,
-the Earth/Luna overview overlap, and final Stellar Viewer visual sign-off
-remain separate open items.
+change and cloud-layer review. Representative hardware/network performance
+and final Stellar Viewer visual sign-off remain separate open items.
+
+#### Overview host/child overlap and picking (2026-10-12)
+
+The proportional and compressed overviews now apply a display-only minimum
+clearance to anchored moons and stations when their projected centers would
+intersect the host's visible extent. Direction is preserved where available;
+compressed projection collisions use canonical relative direction only to
+recover that direction. Canonical positions and backend data are unchanged.
+Contextual hover/target labels identify rendered bodies, and small station
+meshes receive a transparent selection shell while retaining their 5% visible
+scale. Sibling bodies with the same direction are intentionally not repositioned.
+
+Automated unit coverage validates proportional/compressed host clearance,
+direction, and source-data preservation. The browser regression verifies hover
+identity on Earth, Luna, and a small market station, then verifies pointer-out
+clears the label. The user reviewed and accepted the live Earth/Luna and
+Mars/moon separation in both modes, including the label below the distance-mode
+card and clear of the contract warning. Exact-direction sibling overlaps may
+remain under the user's chosen policy.
 
 #### Earth star-facing detail review (2026-10-12)
 
@@ -2173,6 +2191,12 @@ flake rate or replace the pending Actions/Linux execution.
       Focused-detail base values are covered for Earth/Luna/Mars, and the user
       confirmed the transient hover highlight clears to the same accepted,
       cloud-covered appearance on 2026-10-12.
+- [x] Prevent visible host-child overlap for anchored moons and stations in
+      proportional and compressed overviews without changing canonical
+      positions. Preserve orbital direction, provide contextual hover/target
+      identity, and keep small station meshes selectable. Automated coverage
+      passes and the user accepted the live overview presentation on
+      2026-10-12; exact-direction sibling overlaps can remain.
 - [x] Generate selected-body source links through
       [ExternalAnchorsComponent](../src/app/component/external-anchors.ts).
 - [x] Add fuller provenance, color interpretation, and coverage notes in a
@@ -2365,6 +2389,8 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-12 | Stage 2 closure | User accepted limited registration, polar, seam/orientation and sampled source-shadow reviews with recorded caveats; accepted matched WebP/JPEG albedo appearance for Earth, Luna and Mars; no KTX2 evaluation required | Stage 2 checklist complete and Stage 2 marked Done for the active pilot at the approved scope; no asset or production rendering changes | Earth lighting/cloud presentation, Earth/Luna overview overlap, material tint/emissive review, representative performance and final Viewer acceptance remain separate open gates |
 
 | 2026-10-12 | Stage 4 material tint/emissive/highlight review | `npm run e2e:spec -- e2e/tests/viewer-planet-surfaces.spec.ts -g "keeps catalog albedo tint neutral"` passed; `npm run typecheck` passed; user inspected focused Earth hover and confirmed the highlight clears | Catalog tint remains white; overview target emissive returns to neutral after clearing; focused-detail Earth/Luna/Mars retain neutral base material values. User accepted the current cloud-covered Earth appearance and confirmed hover restoration in the live Viewer | This Stage 4 checklist item is closed; Earth/Luna overview overlap, representative performance, and final Viewer visual acceptance remain separate open gates |
+
+| 2026-10-12 | Stage 4 overview overlap implementation and visual review | Focused Viewer scene unit tests passed; `npm run e2e:spec -- e2e/tests/viewer-planet-surfaces.spec.ts -g "shows identity on hover"` passed (2 tests); `npm run typecheck` passed; user accepted the live layout | Display-only host clearance in both distance modes; distinct Earth, Luna, and station hover identities plus pointer-out clearing verified; canonical body positions unchanged; live Earth/Luna and Mars/moon separations visually accepted in both modes | Exact-direction sibling overlap remains possible by design; representative performance and final Viewer sign-off are still separate gates |
 
 Add dated rows for implementation, rights clearance, measurements, automated
 results, and user visual decisions. Keep failed checks and deferred assets visible

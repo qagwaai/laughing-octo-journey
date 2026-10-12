@@ -29,9 +29,9 @@ import {
   type DescriptorRenderProfile,
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
+import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
-import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { RenderStatsService } from '../../services/render-stats.service';
@@ -208,6 +208,12 @@ export default class ViewerScenePage implements OnDestroy {
   protected ships = signal<ShipSummary[]>([]);
   protected hoveredBody = signal<ViewerBody | null>(null);
   protected focusedPlanet = signal<ViewerBody | null>(null);
+  protected readonly labeledBody = computed<ViewerBody | null>(() => {
+    const hovered = this.hoveredBody();
+    if (hovered) return hovered;
+    const targetId = this.viewerTargetService.targetBodyId();
+    return targetId ? (this.effectiveSceneBodies().find((body) => body.id === targetId) ?? null) : null;
+  });
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
@@ -215,7 +221,7 @@ export default class ViewerScenePage implements OnDestroy {
   protected distanceMode = signal<ViewerDistanceMode>('proportional');
 
   toggleDistanceMode(): void {
-    this.distanceMode.update((mode) => mode === 'proportional' ? 'compressed' : 'proportional');
+    this.distanceMode.update((mode) => (mode === 'proportional' ? 'compressed' : 'proportional'));
     if (!this.viewerTargetService.targetBodyId() && !this.focusedPlanet()) {
       this.zoomLevel.set(100);
     }
@@ -335,6 +341,10 @@ export default class ViewerScenePage implements OnDestroy {
     this.hoveredBody.set(body);
   }
 
+  protected isBodyTargeted(body: ViewerBody): boolean {
+    return this.viewerTargetService.targetBodyId() === body.id;
+  }
+
   protected onFocusedPlanetChange(body: ViewerBody | null): void {
     this.focusedPlanet.set(body);
   }
@@ -348,22 +358,25 @@ export default class ViewerScenePage implements OnDestroy {
     this.isPlanetTransitioning.set(true);
     this.planetTransitionTimer = setTimeout(() => {
       this.planetTransitionTimer = null;
-      void this.router.navigate([{ outlets: { right: ['planet-view', solarSystemId, body.id] } }], {
-        preserveFragment: true,
-        state: {
-          playerName: this.playerName(),
-          solarSystem: this.solarSystem(),
-          bodies: this.bodies(),
-        },
-      }).then((navigated) => {
-        if (!navigated) {
+      void this.router
+        .navigate([{ outlets: { right: ['planet-view', solarSystemId, body.id] } }], {
+          preserveFragment: true,
+          state: {
+            playerName: this.playerName(),
+            solarSystem: this.solarSystem(),
+            bodies: this.bodies(),
+          },
+        })
+        .then((navigated) => {
+          if (!navigated) {
+            this.isPlanetTransitioning.set(false);
+            appLogger.warn('Planet view navigation was cancelled', { solarSystemId, bodyId: body.id });
+          }
+        })
+        .catch((error: unknown) => {
           this.isPlanetTransitioning.set(false);
-          appLogger.warn('Planet view navigation was cancelled', { solarSystemId, bodyId: body.id });
-        }
-      }).catch((error: unknown) => {
-        this.isPlanetTransitioning.set(false);
-        appLogger.error('Planet view navigation failed', { solarSystemId, bodyId: body.id, error });
-      });
+          appLogger.error('Planet view navigation failed', { solarSystemId, bodyId: body.id, error });
+        });
     }, 140);
   }
 
