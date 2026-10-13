@@ -577,6 +577,15 @@ export const it: DeepPartial<EnLocale> = {
         "Colore visibile adattato alla percezione; sostituzione polare monocromatica a risoluzione inferiore oltre 70 gradi e piccole lacune ricostruite. Il rilievo LOLA contiene regioni interpolate; resta una distorsione polare nell'albedo.",
       surfaceCatalogMarsCoverage:
         'Colore Viking con verde sintetico, copertura rosso/violetto incompleta e foschia/illuminazione residue. Il rilievo MOLA contiene lacune interpolate; la registrazione delle reti di controllo immagine/DEM non e verificata.',
+      atmosphereSourcesTitle: 'Fonti dell’aspetto atmosferico',
+      venusAtmosphereCredit: 'Texture Solar System Scope, CC BY 4.0.',
+      venusAtmosphereNotes:
+        'Texture stilizzata di nubi in luce visibile. I JPEG originali sono usati senza modifiche; 2K nella panoramica e 4K nel dettaglio. La fonte non identifica i dati NASA derivati per ciascun file.',
+      titanAtmosphereCredit: 'Foschia statica originale generata dal progetto; non viene usata alcuna texture esterna.',
+      titanAtmosphereNotes:
+        'Foschia illustrativa color ocra in luce visibile, con colori basati sulle immagini Cassini. Il suolo di Titano e oscurato; non vengono mostrate immagini infrarosse della superficie.',
+      venusAtmosphereSourceLink: 'Pacchetto texture Solar System Scope',
+      atmosphereLicenseLink: 'Creative Commons Attribuzione 4.0',
       sceneErrorPrefix: 'Caricamento sistema fallito:',
       planetViewZoomLabel: 'Scala',
       planetViewExitHint: 'Click destro nello spazio vuoto per tornare al visualizzatore stellare.',

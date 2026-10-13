@@ -60,9 +60,17 @@
     [emissiveIntensity]="hoveredBodyId() === selected.id ? 0.4 : 0.18"
     [roughness]="_selectedSurface?.material ? 1 : 0.72"
     [metalness]="_selectedSurface?.material ? 1 : 0"
+    [visible]="!dedicatedAtmosphere(selected)"
   />
   @if (_selectedSurface && hasSurfaceClouds(selected)) {
   <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
+  } @if (dedicatedAtmosphere(selected); as _atmosphere) {
+  <app-planet-atmosphere-layer
+    [bodyId]="selected.id"
+    [atmosphereBody]="_atmosphere"
+    [radius]="selectedBodyRadiusUnits()"
+    [quality]="'detail'"
+  />
   } }
 </ngt-mesh>
 
@@ -72,6 +80,7 @@
   <ngt-mesh-basic-material [color]="'#b9d6ff'" [transparent]="true" [opacity]="0.24" [side]="2" [depthWrite]="false" />
 </ngt-mesh>
 
+@let _moonAtmosphere = dedicatedAtmosphere(moon.body);
 <ngt-mesh
   [position]="moon.position"
   [name]="moon.displayName"
@@ -88,9 +97,17 @@
     [emissiveIntensity]="hoveredBodyId() === moon.id ? 0.32 : 0.14"
     [roughness]="0.78"
     [metalness]="0"
+    [visible]="_moonAtmosphere === null"
   />
   @if (surfaces().has(moon.id) && hasSurfaceClouds(moon.body)) {
   <app-planet-cloud-layer [bodyId]="moon.id" [radius]="moon.radius" />
+  } @if (_moonAtmosphere) {
+  <app-planet-atmosphere-layer
+    [bodyId]="moon.id"
+    [atmosphereBody]="_moonAtmosphere"
+    [radius]="moon.radius"
+    [quality]="'detail'"
+  />
   }
 </ngt-mesh>
 } @for (star of starMarkers(); track star.id) {

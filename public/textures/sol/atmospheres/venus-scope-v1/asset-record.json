@@ -1,0 +1,43 @@
+{
+  "asset": "Solar System Scope Venus Atmosphere texture",
+  "sourcePage": "https://www.solarsystemscope.com/textures/",
+  "sourceFiles": [
+    {
+      "url": "https://www.solarsystemscope.com/textures/download/2k_venus_atmosphere.jpg",
+      "dimensions": "2048x1024",
+      "bytes": 229696,
+      "sha256": "225012AD4911730605C4E189CA2A3BF674FCE50CC48AAB4102B936B47D6991AC"
+    },
+    {
+      "url": "https://www.solarsystemscope.com/textures/download/4k_venus_atmosphere.jpg",
+      "dimensions": "4096x2048",
+      "bytes": 1546146,
+      "sha256": "A14AEBA3C6AD7A56F989BB32008DEC548077AEDED420495B34DF98F2DC14BA91"
+    }
+  ],
+  "runtimeFiles": [
+    {
+      "localFile": "venus-atmosphere-2k.webp",
+      "derivedFrom": "2k_venus_atmosphere.jpg",
+      "dimensions": "2048x1024",
+      "bytes": 23660,
+      "webpQuality": 75,
+      "psnrDbVsSource": 44.22,
+      "sha256": "8E2891FB6FA625B5920AD33647DD226FF447B8950ECB5A5F63B334F3AFE775A0"
+    },
+    {
+      "localFile": "venus-atmosphere-4k.webp",
+      "derivedFrom": "4k_venus_atmosphere.jpg",
+      "dimensions": "4096x2048",
+      "bytes": 67858,
+      "webpQuality": 75,
+      "psnrDbVsSource": 43.69,
+      "sha256": "213CADFC1C9E943B5BCA960C8914290F692C0B85F2ED202C3CB5C0A228DD3420"
+    }
+  ],
+  "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "requiredAttribution": "Solar System Scope (solarsystemscope.com), CC BY 4.0",
+  "modifications": "Re-encoded from the source JPEGs to lossy WebP (sharp 0.34.5 / libwebp 1.6.0, quality 75, effort 6); no other changes. Quality is the smallest of 75/80/85/90/95/98 meeting the 40 dB PSNR floor against the decoded source. Original JPEGs are retained outside the runtime folder.",
+  "provenanceNote": "The source page describes the pack as based on NASA elevation and imagery data but does not identify the underlying Venus inputs per file. This is attributed as Solar System Scope's licensed texture, not as a NASA-produced asset."
+}

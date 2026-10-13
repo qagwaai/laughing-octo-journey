@@ -142,7 +142,7 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
 | 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Both Viewer surfaces wired; Earth-only catalog clouds, source links, disclosures and localized loading/error UI implemented; user accepted the star-facing Earth detail default, current cloud layer, transient highlight restoration, and overview host/child separation on 2026-10-12; tint/emissive review closed; exact-direction sibling overlaps may remain |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Venus/Titan atmospheres visually accepted in overview and detail on 2026-10-12. Earlier tint/highlight and host-child overlap reviews were accepted; radar/infrared reveal mode deferred; exact-direction sibling overlaps may remain |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -2181,10 +2181,22 @@ flake rate or replace the pending Actions/Linux execution.
 - [x] Keep normal/material maps optional; do not fabricate unsupported channels.
 - [x] Add active-pilot atmosphere policy: Earth cloud layer, no terrestrial
       clouds on Luna/Mars. Unsupported bodies retain their existing behavior.
-- [ ] Dedicated Venus/Titan treatment requires a separately approved expansion.
+- [x] Approve dedicated Venus/Titan atmosphere expansion. The user selected
+      both bodies and approved the static, source-faithful atmosphere-only
+      treatment on 2026-10-12; implementation and final visual review remain
+      tracked below.
 - [ ] Treat Venus/Titan radar or infrared terrain as a separately labeled
       surface-reveal mode, not ordinary visible-light appearance. Such a mode
       needs separate approval before implementation.
+- [x] Implement the approved Venus/Titan atmosphere-only expansion; the user
+      selected both bodies, separate atmosphere layers over neutral or obscured
+      ground, both overview and focused-detail presentation with detail-scaled
+      fidelity, and per-product scientific/public-source rights verification
+      on 2026-10-12. Venus's CC BY 4.0 source (served as q75 WebP) and the
+      original static Titan haze (retargeted to the Cassini PIA06230 tan) are
+      wired in both views. Automated checks pass, and the user visually
+      accepted both bodies in overview and focused detail on 2026-10-12.
+      Hidden-surface reveal modes remain deferred.
 - [x] Verify material tint/emissive/highlight behavior does not permanently
       recolor the familiar terrain. Catalog tint is white and idle emissive is
       neutral; overview target highlighting returns to neutral when cleared.
@@ -2206,29 +2218,85 @@ flake rate or replace the pending Actions/Linux execution.
       [Italian](../src/app/i18n/locales/it.ts).
 - [x] Leave splash code, splash asset selection, and splash behavior unchanged.
 
+#### Venus/Titan expansion decisions (2026-10-12)
+
+Approved scope:
+
+- Include both Venus and Titan, beginning with atmosphere-covered presentation.
+- Render atmosphere as a separate layer over neutral or obscured ground.
+- Cover system overview and focused body detail, scaling fidelity as needed.
+- Use a source-faithful visible-light target: dense pale cream/yellow Venus
+  clouds and Titan's muted butterscotch-tan haze, with the ground hidden; begin with static
+  layers and no animation or user controls.
+- Research scientific/public sources and verify rights for each selected
+  product before recommending or using it. Public-domain or clearly reusable
+  sources with required attribution are acceptable; do not use uncleared assets.
+- Defer Venus radar and Titan infrared surface-reveal modes; do not implement
+  them as part of this atmosphere-only work.
+
+Source research found a map-suitable Venus atmosphere texture from Solar
+System Scope, offered under CC BY 4.0 with attribution. The user approved its
+use on 2026-10-12; its page describes a stylized derivative from NASA
+elevation/imagery without a file-by-file provenance chain. Attribute the asset
+to Solar System Scope, not NASA, and retain the provenance caveat.
+Research did not find a rights-cleared, map-suitable visible-light Titan haze
+texture. A Cassini ISS true-color Titan image is a single-disk photograph, not
+a globe map; NASA Photojournal's Titan mapping example is explicitly
+false-color infrared surface data and is out of scope. Do not use either as a
+wrapped Titan haze map.
+
+On 2026-10-12 the user approved proceeding with the Venus Solar System Scope
+CC BY 4.0 candidate and a project-authored static Titan haze rather than
+wrapping a non-map photograph or using hidden-surface infrared data. Record
+Solar System Scope attribution and the CC BY 4.0 license with the Venus asset;
+the Titan haze is original project artwork. Acceptance requires automated
+tests plus the user's live review of overview and focused detail for both
+bodies. This source approval is not final visual acceptance.
+
+During live review on 2026-10-12 the user flagged the first Titan haze as too
+orange next to the Cassini ISS true-color disk
+[PIA06230](https://assets.science.nasa.gov/dynamicimage/assets/science/psd/solar/2023/09/PIA06230.jpg).
+Sampling that image's lit disk gave a median near `rgb(155, 129, 68)` (hue
+about 40 degrees), while the first palette's midpoint was about
+`rgb(211, 107, 44)` (hue about 22 degrees). The haze was retargeted to a muted
+butterscotch-tan ramp from `rgb(124, 96, 40)` to `rgb(200, 166, 80)`, with
+lower procedural contrast and a gentle darker northern hemisphere. PIA06230 is
+used only as a color reference; no NASA pixels are wrapped or shipped. A unit
+test bounds the mean green/red and blue/red ratios to that reference.
+
+Per the project's WebP decision for catalog maps, the Venus runtime files are
+lossy WebP re-encodes of the Solar System Scope JPEGs (sharp 0.34.5 / libwebp
+1.6.0, effort 6). The smallest of q75/80/85/90/95/98 meeting the 40 dB PSNR
+floor was q75 for both tiers: 2K 229,696 -> 23,660 B (44.22 dB) and 4K
+1,546,146 -> 67,858 B (43.69 dB). The original JPEGs, encoding report, and
+script are retained outside the runtime folder in the session artifact store;
+source URLs, byte counts, and hashes for both originals and WebPs are in the
+asset record. PSNR is an offline check, not visual acceptance.
+
 ## Candidate source register
 
 All entries below are research candidates, not commercial-use clearance or
 visual sign-off. USGS catalog search and browser inspection identified these
 products; some product pages require browser-rendered content.
 
-| Body                                             | Source                                                                                                                                     | Qualification                                                                                                   | Priority         |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------- |
-| Earth                                            | [NASA Blue Marble: Next Generation](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/)                         | Cloud-removed monthly composites; choose one baseline month                                                     | Pilot            |
-| Luna                                             | [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)                                                                                       | Color/elevation designed for rendering; updated color includes documented polar substitutions and inpainting    | Pilot            |
-| Mars                                             | [USGS Viking global color mosaic](https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m)                           | Inspect seams and residual illumination                                                                         | Pilot            |
-| Mercury                                          | [USGS MESSENGER color mosaic](https://astrogeology.usgs.gov/search/map/mercury_messenger_mdis_global_color_mosaic_665m)                    | Infrared-containing filter combination is not ordinary natural color; select/document a natural-looking variant | Pilot            |
-| Io                                               | [USGS Galileo/Voyager color-merged mosaic](https://astrogeology.usgs.gov/search/map/io_galileo_ssi_voyager_color_merged_global_mosaic_1km) | Verify selected color interpretation and merged-image illumination                                              | Expansion        |
-| Europa                                           | [USGS Voyager/Galileo mosaic](https://astrogeology.usgs.gov/search/map/europa_voyager_galileo_ssi_global_mosaic_500m)                      | Verify color availability, coverage, and illumination                                                           | Expansion        |
-| Ganymede                                         | [USGS color global mosaic](https://astrogeology.usgs.gov/search/map/ganymede_voyager_galileo_ssi_color_global_mosaic_1_4km)                | Mixed source resolution                                                                                         | Expansion        |
-| Callisto                                         | [USGS Galileo/Voyager mosaic](https://astrogeology.usgs.gov/search/map/callisto_galileo_voyager_global_mosaic_1km)                         | Confirm color treatment                                                                                         | Expansion        |
-| Enceladus                                        | [USGS Cassini mosaic, 2024](https://astrogeology.usgs.gov/search/map/enceladus-cassini-global-mosaic-100m-schenk)                          | Grayscale; matching elevation cataloged; avoid invented colored terrain                                         | Expansion        |
-| Tethys                                           | [USGS Cassini mosaic](https://astrogeology.usgs.gov/search/map/tethys_cassini_global_mosaic_293m)                                          | Simple-cylindrical map; inspect coverage and quality                                                            | Expansion        |
-| Pluto                                            | [USGS New Horizons mosaic](https://astrogeology.usgs.gov/search/map/pluto_new_horizons_lorri_mvic_global_mosaic_300m)                      | Uneven observed resolution/coverage; verify color separately                                                    | Expansion        |
-| Charon                                           | [USGS New Horizons mosaic](https://astrogeology.usgs.gov/search/map/charon_new_horizons_lorri_mvic_global_mosaic_300m)                     | Uneven observed resolution/coverage; verify color separately                                                    | Expansion        |
-| Triton                                           | [USGS Voyager 2 color mosaic](https://astrogeology.usgs.gov/search/map/triton_voyager_2_global_color_mosaic_600m)                          | Synthesized color and incomplete observations require labels                                                    | Expansion        |
-| Venus / Titan                                    | Source selection pending                                                                                                                   | Atmosphere-covered appearance first; radar/infrared surface is a distinct presentation                          | Special case     |
-| Mimas, Dione, Rhea, Iapetus, major Uranian moons | Individual products not yet verified                                                                                                       | Include only after source, rights, coverage, and quality review                                                 | Further research |
+| Body                                             | Source                                                                                                                                     | Qualification                                                                                                                                                                                                                                            | Priority         |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Earth                                            | [NASA Blue Marble: Next Generation](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/)                         | Cloud-removed monthly composites; choose one baseline month                                                                                                                                                                                              | Pilot            |
+| Luna                                             | [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)                                                                                       | Color/elevation designed for rendering; updated color includes documented polar substitutions and inpainting                                                                                                                                             | Pilot            |
+| Mars                                             | [USGS Viking global color mosaic](https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m)                           | Inspect seams and residual illumination                                                                                                                                                                                                                  | Pilot            |
+| Mercury                                          | [USGS MESSENGER color mosaic](https://astrogeology.usgs.gov/search/map/mercury_messenger_mdis_global_color_mosaic_665m)                    | Infrared-containing filter combination is not ordinary natural color; select/document a natural-looking variant                                                                                                                                          | Pilot            |
+| Io                                               | [USGS Galileo/Voyager color-merged mosaic](https://astrogeology.usgs.gov/search/map/io_galileo_ssi_voyager_color_merged_global_mosaic_1km) | Verify selected color interpretation and merged-image illumination                                                                                                                                                                                       | Expansion        |
+| Europa                                           | [USGS Voyager/Galileo mosaic](https://astrogeology.usgs.gov/search/map/europa_voyager_galileo_ssi_global_mosaic_500m)                      | Verify color availability, coverage, and illumination                                                                                                                                                                                                    | Expansion        |
+| Ganymede                                         | [USGS color global mosaic](https://astrogeology.usgs.gov/search/map/ganymede_voyager_galileo_ssi_color_global_mosaic_1_4km)                | Mixed source resolution                                                                                                                                                                                                                                  | Expansion        |
+| Callisto                                         | [USGS Galileo/Voyager mosaic](https://astrogeology.usgs.gov/search/map/callisto_galileo_voyager_global_mosaic_1km)                         | Confirm color treatment                                                                                                                                                                                                                                  | Expansion        |
+| Enceladus                                        | [USGS Cassini mosaic, 2024](https://astrogeology.usgs.gov/search/map/enceladus-cassini-global-mosaic-100m-schenk)                          | Grayscale; matching elevation cataloged; avoid invented colored terrain                                                                                                                                                                                  | Expansion        |
+| Tethys                                           | [USGS Cassini mosaic](https://astrogeology.usgs.gov/search/map/tethys_cassini_global_mosaic_293m)                                          | Simple-cylindrical map; inspect coverage and quality                                                                                                                                                                                                     | Expansion        |
+| Pluto                                            | [USGS New Horizons mosaic](https://astrogeology.usgs.gov/search/map/pluto_new_horizons_lorri_mvic_global_mosaic_300m)                      | Uneven observed resolution/coverage; verify color separately                                                                                                                                                                                             | Expansion        |
+| Charon                                           | [USGS New Horizons mosaic](https://astrogeology.usgs.gov/search/map/charon_new_horizons_lorri_mvic_global_mosaic_300m)                     | Uneven observed resolution/coverage; verify color separately                                                                                                                                                                                             | Expansion        |
+| Triton                                           | [USGS Voyager 2 color mosaic](https://astrogeology.usgs.gov/search/map/triton_voyager_2_global_color_mosaic_600m)                          | Synthesized color and incomplete observations require labels                                                                                                                                                                                             | Expansion        |
+| Venus                                            | [Solar System Scope planet textures](https://www.solarsystemscope.com/textures/)                                                           | User approved 2K/4K equirectangular atmosphere map under CC BY 4.0; served as q75 WebP re-encodes; source page notes NASA-derived inputs but no file-specific provenance; attribution, source and runtime hashes recorded in `public/textures/sol/atmospheres/venus-scope-v1/asset-record.json` | Special case     |
+| Titan                                            | Original project-generated static haze                                                                                                    | Illustrative butterscotch-tan haze color-matched to Cassini ISS PIA06230; not a NASA or Cassini texture, and not surface data                                                                                                                            | Special case     |
+| Mimas, Dione, Rhea, Iapetus, major Uranian moons | Individual products not yet verified                                                                                                       | Include only after source, rights, coverage, and quality review                                                                                                                                                                                          | Further research |
 
 ### Rights gate
 
@@ -2391,6 +2459,10 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-12 | Stage 4 material tint/emissive/highlight review | `npm run e2e:spec -- e2e/tests/viewer-planet-surfaces.spec.ts -g "keeps catalog albedo tint neutral"` passed; `npm run typecheck` passed; user inspected focused Earth hover and confirmed the highlight clears | Catalog tint remains white; overview target emissive returns to neutral after clearing; focused-detail Earth/Luna/Mars retain neutral base material values. User accepted the current cloud-covered Earth appearance and confirmed hover restoration in the live Viewer | This Stage 4 checklist item is closed; Earth/Luna overview overlap, representative performance, and final Viewer visual acceptance remain separate open gates |
 
 | 2026-10-12 | Stage 4 overview overlap implementation and visual review | Focused Viewer scene unit tests passed; `npm run e2e:spec -- e2e/tests/viewer-planet-surfaces.spec.ts -g "shows identity on hover"` passed (2 tests); `npm run typecheck` passed; user accepted the live layout | Display-only host clearance in both distance modes; distinct Earth, Luna, and station hover identities plus pointer-out clearing verified; canonical body positions unchanged; live Earth/Luna and Mars/moon separations visually accepted in both modes | Exact-direction sibling overlap remains possible by design; representative performance and final Viewer sign-off are still separate gates |
+
+| 2026-10-12 | Stage 4 Venus/Titan atmosphere implementation | Solar System Scope product page and CC BY 4.0 reviewed; Titan NASA Photojournal infrared surface imagery excluded; focused unit/build/typecheck/E2E checks passed | Venus 2K/4K atmosphere maps downloaded with SHA-256 records; static original Titan haze generated at view-appropriate detail; ground mesh hidden; both overview and focused detail covered; source/license disclosure wired into Viewer and localized | User must visually review both bodies in both views; texture provenance is credited to Solar System Scope, not NASA; Titan haze is illustrative and project-authored |
+
+| 2026-10-12 | Stage 4 Titan color retarget and Venus WebP | PIA06230 lit-disk color sampled; Venus WebP quality sweep q75-q98 with PSNR vs decoded source | Titan palette retargeted from red-orange to reference-matched tan with a ratio-bounded unit test; Venus runtime switched to q75 WebP (2K 23,660 B / 44.22 dB; 4K 67,858 B / 43.69 dB), JPEG originals archived outside runtime | User visually accepted Titan and Venus in overview and focused detail; Stage 4 atmosphere implementation item closed. Radar/infrared surface-reveal mode remains deferred |
 
 Add dated rows for implementation, rights clearance, measurements, automated
 results, and user visual decisions. Keep failed checks and deferred assets visible

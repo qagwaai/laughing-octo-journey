@@ -24,6 +24,8 @@ import { GasGiantBody } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
 import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
+import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
+import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
@@ -109,8 +111,7 @@ function clamp(value: number, min: number, max: number): number {
 export function resolvePlanetViewCameraDirection(
   starPosition: readonly [number, number, number] | null,
 ): [number, number, number] {
-  const direction =
-    starPosition && starPosition.every(Number.isFinite) ? new Vector3(...starPosition) : new Vector3();
+  const direction = starPosition && starPosition.every(Number.isFinite) ? new Vector3(...starPosition) : new Vector3();
   if (direction.lengthSq() === 0) {
     direction.set(...DEFAULT_PLANET_VIEW_CAMERA_DIRECTION);
   }
@@ -257,7 +258,7 @@ export function resolveStarMarker(
 @Component({
   selector: 'app-planet-view-scene',
   templateUrl: './planet-view-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, GasGiantBody, StarBody],
+  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, PlanetAtmosphereLayer, GasGiantBody, StarBody],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -307,11 +308,12 @@ export class PlanetViewScene {
 
     const map = new Map<string, PlanetSurfaceResult>();
     const selected = this.selectedBody();
-    if (selected && !this.selectedGiantProfile()) {
+    if (selected && !this.selectedGiantProfile() && !resolveDedicatedAtmosphere(selected)) {
       const focused = this.planetTextures.get(selected, 'l1', this.store.snapshot.gl);
       if (focused) map.set(selected.id, focused);
     }
     for (const moon of this.moons()) {
+      if (resolveDedicatedAtmosphere(moon.body)) continue;
       const baked = this.planetTextures.get(moon.body, 'l0', this.store.snapshot.gl);
       if (baked) map.set(moon.id, baked);
     }
@@ -332,7 +334,12 @@ export class PlanetViewScene {
     return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
   }
 
+  protected dedicatedAtmosphere(body: ViewerBody) {
+    return resolveDedicatedAtmosphere(body);
+  }
+
   protected hasSurfaceClouds(body: ViewerBody): boolean {
+    if (this.dedicatedAtmosphere(body)) return false;
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
   }
@@ -479,8 +486,11 @@ export class PlanetViewScene {
     effect((onCleanup) => {
       const renderer = this.store.gl();
       const selected = this.selectedBody();
-      const solidSelected = selected && !this.selectedGiantProfile() ? selected : null;
-      const moons = this.moons().map((moon) => moon.body);
+      const solidSelected =
+        selected && !this.selectedGiantProfile() && !resolveDedicatedAtmosphere(selected) ? selected : null;
+      const moons = this.moons()
+        .map((moon) => moon.body)
+        .filter((body) => !resolveDedicatedAtmosphere(body));
       this.planetTextures.catalog.quality();
       const release = untracked(() => {
         const uses = [

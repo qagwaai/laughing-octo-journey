@@ -129,6 +129,7 @@
   </ngt-group>
   } @else {
   <ngt-mesh-standard-material
+    [visible]="!dedicatedAtmosphere(body.source)"
     [map]="bodySurfaces().get(body.id) ?? null"
     [color]="resolveSurfaceColor(body)"
     [roughness]="body.materialRoughness"
@@ -147,9 +148,16 @@
     "
     [flatShading]="body.geometryKind === 'rock-deformed'"
   />
-  @if (body.geometryKind === 'sphere' && bodySurfaces().has(body.id) && hasSurfaceClouds(body.source)) {
+  @if (body.geometryKind === 'sphere') { @if (dedicatedAtmosphere(body.source); as _atmosphere) {
+  <app-planet-atmosphere-layer
+    [bodyId]="body.id"
+    [atmosphereBody]="_atmosphere"
+    [radius]="body.radius"
+    [quality]="'overview'"
+  />
+  } @else if (bodySurfaces().has(body.id) && hasSurfaceClouds(body.source)) {
   <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
-  } }
-</ngt-mesh>
+  } } }
+  </ngt-mesh>
 </ngt-group>
 }

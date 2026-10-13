@@ -26,6 +26,8 @@ import type { GasGiantBandSize } from '../gas-giant/gas-giant-bands';
 import { GasGiantBody, type GasGiantMoonInput } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
+import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
+import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
 import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
@@ -1004,7 +1006,15 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
 @Component({
   selector: 'app-viewer-system-scene',
   templateUrl: './viewer-system-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, ViewerShipMesh, PlanetCloudLayer, GasGiantBody, StarBody],
+  imports: [
+    NgtArgs,
+    NgtsOrbitControls,
+    ViewerShipMesh,
+    PlanetCloudLayer,
+    PlanetAtmosphereLayer,
+    GasGiantBody,
+    StarBody,
+  ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -1184,7 +1194,7 @@ export class ViewerSystemScene {
     const surfaces = new Map<string, Texture>();
     const giants = this.giantProfiles();
     for (const body of this.rendered()) {
-      if (giants.has(body.id)) continue;
+      if (giants.has(body.id) || resolveDedicatedAtmosphere(body.source)) continue;
       const baked = this.planetTextures.get(body.source, 'l0', this.store.snapshot.gl);
       if (baked) {
         surfaces.set(body.id, baked.albedo);
@@ -1219,6 +1229,10 @@ export class ViewerSystemScene {
     return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
   }
 
+  protected dedicatedAtmosphere(body: ViewerBody) {
+    return resolveDedicatedAtmosphere(body);
+  }
+
   protected isStationBody(body: ViewerBody): boolean {
     return isStationBody(body);
   }
@@ -1228,6 +1242,7 @@ export class ViewerSystemScene {
   }
 
   protected hasSurfaceClouds(body: ViewerBody): boolean {
+    if (this.dedicatedAtmosphere(body)) return false;
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
   }
@@ -1379,7 +1394,7 @@ export class ViewerSystemScene {
     // are shaded procedurally and never need a terrain bake.
     effect((onCleanup) => {
       const giants = this.giantProfiles();
-      const bodies = this.bodies().filter((body) => !giants.has(body.id));
+      const bodies = this.bodies().filter((body) => !giants.has(body.id) && !resolveDedicatedAtmosphere(body));
       const renderer = this.store.gl();
       this.planetTextures.catalog.quality();
       const release = untracked(() => {

@@ -37,7 +37,7 @@ import { PlanetTextureCache } from './planet-texture-cache';
         }
       </div>
     }
-    @if (catalogAssets().length > 0) {
+    @if (catalogAssets().length > 0 || atmosphereSources().length > 0) {
       <div class="surface-notices">
         @if (planetTextures.catalog.issues().length > 0) {
           <div class="surface-notice surface-notice--error" role="alert" data-testid="viewer-surface-error">
@@ -73,6 +73,19 @@ import { PlanetTextureCache } from './planet-texture-cache';
               <p>{{ coverage(asset) }}</p>
               <app-external-anchors [anchors]="sourceAnchors(asset)" layout="stack" />
             </section>
+          }
+          @if (atmosphereSources().length > 0) {
+            <h3>{{ t.game.viewer.atmosphereSourcesTitle }}</h3>
+            @for (source of atmosphereSources(); track source.bodyId) {
+              <section [attr.data-atmosphere-source]="source.bodyId">
+                <strong>{{ source.bodyName }}</strong>
+                <p>{{ source.credit }}</p>
+                <p>{{ source.notes }}</p>
+                @if (source.links.length > 0) {
+                  <app-external-anchors [anchors]="source.links" layout="stack" />
+                }
+              </section>
+            }
           }
           <p>{{ t.game.viewer.surfaceCatalogPendingReview }}</p>
         </details>
@@ -168,6 +181,35 @@ export class PlanetSurfaceProgress {
 
   protected readonly baking = this.planetTextures.isBaking;
   protected readonly percent = computed(() => Math.round(this.planetTextures.progress() * 100));
+  protected readonly atmosphereSources = computed(() => [
+    {
+      bodyId: 'venus',
+      bodyName: 'Venus',
+      credit: this.t.game.viewer.venusAtmosphereCredit,
+      notes: this.t.game.viewer.venusAtmosphereNotes,
+      links: [
+        {
+          href: 'https://www.solarsystemscope.com/textures/',
+          text: this.t.game.viewer.venusAtmosphereSourceLink,
+          ariaLabel: this.t.game.viewer.venusAtmosphereSourceLink,
+          showOrb: false,
+        },
+        {
+          href: 'https://creativecommons.org/licenses/by/4.0/',
+          text: this.t.game.viewer.atmosphereLicenseLink,
+          ariaLabel: this.t.game.viewer.atmosphereLicenseLink,
+          showOrb: false,
+        },
+      ],
+    },
+    {
+      bodyId: 'titan',
+      bodyName: 'Titan',
+      credit: this.t.game.viewer.titanAtmosphereCredit,
+      notes: this.t.game.viewer.titanAtmosphereNotes,
+      links: [],
+    },
+  ]);
   protected readonly catalogAssets = computed(() => [
     ...new Map(
       this.planetTextures.catalog.active().map((request) => [request.asset.assetVersion, request.asset]),
