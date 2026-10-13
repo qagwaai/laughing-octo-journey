@@ -11,8 +11,8 @@ function request(variant: 'preview' | 'low' | 'standard', key = 'earth'): Catalo
   const selection = resolvePlanetSurfaceSource(
     {
       id: key,
-      bodyType: key === 'luna' ? 'moon' : 'planet',
-      surfaceArchetype: key === 'luna' ? 'rocky-moon' : 'rocky',
+      bodyType: key === 'luna' || key === 'io' ? 'moon' : 'planet',
+      surfaceArchetype: key === 'luna' || key === 'io' ? 'rocky-moon' : 'rocky',
       catalogIdentity: { namespace: 'sol', key },
     },
     variant === 'preview' ? 'l0' : 'l1',
@@ -78,6 +78,17 @@ describe('catalog surface loader', () => {
     const surface = await loadCatalogSurface(request('standard', 'luna'));
     expect(load.mock.calls[1][0]).toBe('textures/sol/luna-v4/luna-standard-normal.png');
     expect(surface.normal?.image.width).toBe(1024);
+  });
+
+  it('loads Io albedo only for the selected tier', async () => {
+    const albedo = image(2048, 1024);
+    const load = vi.spyOn(TextureLoader.prototype, 'loadAsync').mockResolvedValueOnce(albedo);
+    const surface = await loadCatalogSurface(request('low', 'io'));
+    expect(load).toHaveBeenCalledExactlyOnceWith('textures/sol/io-v1/io-low-albedo.webp');
+    expect(surface.normal).toBeUndefined();
+    expect(albedo.colorSpace).toBe(SRGBColorSpace);
+    surface.dispose();
+    expect(albedo.dispose).toHaveBeenCalledOnce();
   });
 
   it('disposes a loaded albedo when the normal download fails and rejects explicitly', async () => {

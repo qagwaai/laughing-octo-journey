@@ -24,9 +24,16 @@ export function catalogTextureDimensions(request: CatalogSurfaceLoadRequest): {
   albedo: readonly [number, number];
   normal?: readonly [number, number];
 } {
+  const files = request.asset.files[request.variant];
+  const normalFile = 'normal' in files ? files.normal : undefined;
+  const normalDimensions =
+    normalFile && request.variant !== 'preview' ? request.asset.normalDimensions?.[request.variant] : undefined;
+  if (normalFile && !normalDimensions) {
+    throw new Error(`Missing normal-map dimensions for ${request.asset.identity.key} ${request.variant} tier`);
+  }
   return {
     albedo: request.variant === 'preview' ? [512, 256] : request.variant === 'low' ? [2048, 1024] : [4096, 2048],
-    normal: request.variant === 'preview' ? undefined : request.asset.normalDimensions[request.variant],
+    normal: normalDimensions,
   };
 }
 
@@ -65,8 +72,8 @@ export async function loadCatalogSurface(request: CatalogSurfaceLoadRequest): Pr
   };
   try {
     const albedo = await load(files.albedo, dimensions.albedo, true);
-    const normal =
-      'normal' in files && dimensions.normal ? await load(files.normal, dimensions.normal, false) : undefined;
+    const normalFile = 'normal' in files ? files.normal : undefined;
+    const normal = normalFile && dimensions.normal ? await load(normalFile, dimensions.normal, false) : undefined;
     return {
       source: 'catalog',
       albedo,

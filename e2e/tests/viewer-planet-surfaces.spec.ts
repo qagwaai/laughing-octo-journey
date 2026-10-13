@@ -105,6 +105,24 @@ function catalogBodies(): ViewerBody[] {
   });
 }
 
+function ioBody(): ViewerBody {
+  return {
+    id: 'io',
+    bodyType: 'moon',
+    surfaceArchetype: 'rocky-moon',
+    state: 'unscanned',
+    displayName: 'Io',
+    catalogIdentity: { namespace: 'sol', key: 'io' },
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 778_121_700, y: 0, z: 0 },
+      epochMs: 1715000000000,
+    },
+    physicalCatalog: { estimatedDiameterM: 3_643_000, radiusKm: 1821 },
+  };
+}
+
 function atmosphereBodies(): ViewerBody[] {
   const venus: ViewerBody = {
     id: 'venus',
@@ -205,6 +223,21 @@ async function renderedAtmosphere(page: import('@playwright/test').Page, bodyId:
   );
 }
 
+async function renderedIoCueCounts(page: import('@playwright/test').Page) {
+  return page.evaluate(() => {
+    const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
+    const canvas = document.querySelector('.viewer-scene-host ngt-canvas, .planet-view-host ngt-canvas');
+    if (!ngApi?.getComponent || !canvas) return null;
+    const component = ngApi.getComponent(canvas) as { store: { snapshot: { scene: Scene | null } } };
+    const counts = { hotspots: 0, plumes: 0 };
+    component.store.snapshot.scene?.traverse((object) => {
+      if (object.name.startsWith('Io volcanic hotspot ')) counts.hotspots += 1;
+      if (object.name.startsWith('Io volcanic plume ')) counts.plumes += 1;
+    });
+    return counts;
+  });
+}
+
 async function setSystemBodyTarget(page: import('@playwright/test').Page, bodyId: string | null) {
   await page.evaluate((bodyId) => {
     const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
@@ -296,6 +329,33 @@ test.describe('viewer catalog planet surfaces', () => {
     await expect(page.getByTestId('viewer-surface-sources')).toContainText('NOAA GLOBE');
     await expect(page.getByTestId('viewer-surface-sources')).toContainText('on hold');
     expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
+  });
+
+  test('renders Io albedo and static volcanic cues in overview and focused detail', async ({ page }) => {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 4 }),
+    );
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('/textures/sol/io-v1/')) requests.push(new URL(request.url()).pathname);
+    });
+    const { mock } = await setupViewerSceneTest(page);
+    await navigateToSystemScene(page, mock, [...catalogBodies(), ioBody()]);
+
+    await expect.poll(async () => (await renderedSurface(page, 'Io'))?.albedoWidth).toBe(512);
+    await expect.poll(() => renderedIoCueCounts(page)).toEqual({ hotspots: 4, plumes: 4 });
+    await page.getByTestId('viewer-surface-sources').locator('summary').click();
+    await expect(page.getByTestId('viewer-surface-sources')).toContainText(
+      'U.S. Geological Survey Astrogeology Science Center',
+    );
+    await expect(page.getByTestId('viewer-surface-sources')).toContainText('illustrative, not current activity');
+
+    await enterPlanetViewViaSceneComponent(page, 'io');
+    await expect.poll(async () => (await renderedSurface(page, 'Io'))?.albedoWidth).toBe(2048);
+    await expect.poll(() => renderedIoCueCounts(page)).toEqual({ hotspots: 4, plumes: 4 });
+    expect(requests).toContain('/textures/sol/io-v1/io-preview-albedo.webp');
+    expect(requests).toContain('/textures/sol/io-v1/io-low-albedo.webp');
+    expect(requests.some((path) => path.includes('normal'))).toBe(false);
   });
 
   test('keeps catalog albedo tint neutral when targeted and in focused detail', async ({ page }) => {

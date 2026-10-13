@@ -754,6 +754,8 @@ export const en = {
         'Appearance-adapted visible color; lower-resolution monochrome polar substitution beyond 70 degrees and small inpainted dropouts. LOLA relief includes interpolated regions; residual polar albedo pinching remains.',
       surfaceCatalogMarsCoverage:
         'Viking color with synthetic green, incomplete red/violet coverage and residual haze/illumination. MOLA relief includes interpolated gaps; image/DEM control-network registration remains unverified.',
+      surfaceCatalogIoCoverage:
+        'USGS Galileo/Voyager color-merged mosaic: Galileo color ratios over higher-resolution monochrome imagery. Mixed-era illumination, uneven coverage and interpolated polar gaps; not uniform natural-color observations. Project-authored static hotspots and short plumes are illustrative, not current activity reports. No normal or relief map is supplied.',
       atmosphereSourcesTitle: 'Atmosphere appearance sources',
       venusAtmosphereCredit: 'Solar System Scope texture, CC BY 4.0.',
       venusAtmosphereNotes:

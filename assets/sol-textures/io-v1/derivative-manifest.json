@@ -1,0 +1,200 @@
+{
+  "tools": {
+    "python": "3.15.0",
+    "rasterio": "1.5.2",
+    "gdal": "3.12.2",
+    "numpy": "2.5.3",
+    "webpEncoder": "GDAL 3.12.2 WEBP driver"
+  },
+  "products": {
+    "io-preview-albedo.webp": {
+      "dimensions": [
+        512,
+        256
+      ],
+      "bytes": 46222,
+      "sha256": "03d57aa19be313de6a2593ad4ff9d5a45aea27bc373cfb180e4b2846f7974e33",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 95,
+      "psnrDbVersusResampledRgb": 40.728789536426795,
+      "qualityCandidates": [
+        {
+          "webpQuality": 75,
+          "bytes": 14226,
+          "psnrDbVersusResampledRgb": 34.481743824296146
+        },
+        {
+          "webpQuality": 80,
+          "bytes": 17982,
+          "psnrDbVersusResampledRgb": 35.62713649306123
+        },
+        {
+          "webpQuality": 85,
+          "bytes": 23144,
+          "psnrDbVersusResampledRgb": 37.00422215176723
+        },
+        {
+          "webpQuality": 90,
+          "bytes": 30928,
+          "psnrDbVersusResampledRgb": 38.62372751525338
+        },
+        {
+          "webpQuality": 95,
+          "bytes": 46222,
+          "psnrDbVersusResampledRgb": 40.728789536426795
+        },
+        {
+          "webpQuality": 98,
+          "bytes": 58208,
+          "psnrDbVersusResampledRgb": 41.52591790525526
+        }
+      ]
+    },
+    "io-low-albedo.webp": {
+      "dimensions": [
+        2048,
+        1024
+      ],
+      "bytes": 256776,
+      "sha256": "f12c70a2785ccbd9c93736937112798b326fdc92529dd2b5e28014a12c4a10f5",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 90,
+      "psnrDbVersusResampledRgb": 41.10702958828081,
+      "qualityCandidates": [
+        {
+          "webpQuality": 75,
+          "bytes": 108544,
+          "psnrDbVersusResampledRgb": 37.605454613682845
+        },
+        {
+          "webpQuality": 80,
+          "bytes": 136830,
+          "psnrDbVersusResampledRgb": 38.504811329907085
+        },
+        {
+          "webpQuality": 85,
+          "bytes": 184736,
+          "psnrDbVersusResampledRgb": 39.697479456762366
+        },
+        {
+          "webpQuality": 90,
+          "bytes": 256776,
+          "psnrDbVersusResampledRgb": 41.10702958828081
+        },
+        {
+          "webpQuality": 95,
+          "bytes": 456048,
+          "psnrDbVersusResampledRgb": 43.53901227803646
+        },
+        {
+          "webpQuality": 98,
+          "bytes": 581172,
+          "psnrDbVersusResampledRgb": 44.32880319296352
+        }
+      ]
+    },
+    "io-standard-albedo.webp": {
+      "dimensions": [
+        4096,
+        2048
+      ],
+      "bytes": 364298,
+      "sha256": "b91f576f70180d1c31ffb03800914880498acbe6e50c6dbf33fc62fc3526381d",
+      "colorSpace": "sRGB display assumption; source has no ICC",
+      "encoding": "lossy WebP",
+      "webpQuality": 80,
+      "psnrDbVersusResampledRgb": 40.32435359922735,
+      "qualityCandidates": [
+        {
+          "webpQuality": 75,
+          "bytes": 286038,
+          "psnrDbVersusResampledRgb": 39.44018853974596
+        },
+        {
+          "webpQuality": 80,
+          "bytes": 364298,
+          "psnrDbVersusResampledRgb": 40.32435359922735
+        },
+        {
+          "webpQuality": 85,
+          "bytes": 493310,
+          "psnrDbVersusResampledRgb": 41.347677380117965
+        },
+        {
+          "webpQuality": 90,
+          "bytes": 706258,
+          "psnrDbVersusResampledRgb": 42.714598278884054
+        },
+        {
+          "webpQuality": 95,
+          "bytes": 1261416,
+          "psnrDbVersusResampledRgb": 44.844674341705655
+        },
+        {
+          "webpQuality": 98,
+          "bytes": 1692252,
+          "psnrDbVersusResampledRgb": 45.773628498936276
+        }
+      ]
+    }
+  },
+  "budgets": {
+    "low": {
+      "files": [
+        "io-preview-albedo.webp",
+        "io-low-albedo.webp"
+      ],
+      "transferBytesIncludingPreview": 302998,
+      "transferCapMiB": 2,
+      "estimatedRgba8MipmappedBytes": 11883862,
+      "residentCapMiB": 32
+    },
+    "standard": {
+      "files": [
+        "io-preview-albedo.webp",
+        "io-standard-albedo.webp"
+      ],
+      "transferBytesIncludingPreview": 410520,
+      "transferCapMiB": 4,
+      "estimatedRgba8MipmappedBytes": 45438294,
+      "residentCapMiB": 96
+    }
+  },
+  "provenance": {
+    "sourceAudit": "docs/sol-textures-2026-10-08.md",
+    "sourceAuditBase": "repository",
+    "sources": [
+      {
+        "file": "Io_GalileoSSI-Voyager_Global_Mosaic_ClrMerge_1km.tif",
+        "url": "https://planetarymaps.usgs.gov/mosaic/Io_GalileoSSI-Voyager_Global_Mosaic_ClrMerge_1km.tif",
+        "bytes": 196637696,
+        "sha256": "135f88cb645bfdb4e045b380971ab2ba14e230590c96c9c86cfe7310fda881ac"
+      }
+    ],
+    "processingScriptSha256": "d53a31209113653d6a2e39a09d5a00e912f64d64efa0ce70a3127b6443474940",
+    "recipe": {
+      "version": "io-v1",
+      "prefix": "io",
+      "radius": 1821460,
+      "color": "Io_GalileoSSI-Voyager_Global_Mosaic_ClrMerge_1km.tif",
+      "sourceDimensions": [
+        11445,
+        5723
+      ],
+      "qualityFloorDb": 40
+    },
+    "repositoryStorage": "Preview, low, and standard same-origin WebP albedo only; original GeoTIFF stays external",
+    "runtime": "Viewer-integrated WebP albedo with no normal/material map; catalog load failures retain existing explicit warning/retry behavior",
+    "interpretation": "USGS Galileo/Voyager color-merged mosaic; Galileo color ratios are superimposed on higher-resolution monochrome imagery. Source era, color interpretation, coverage, and illumination vary.",
+    "poleTreatment": "The single all-zero north edge row was filled from the adjacent source row before filtering.",
+    "encodingDecision": {
+      "format": "lossy WebP",
+      "offlineQualityFloorDb": 40,
+      "selection": "Smallest byte-size candidate among GDAL WebP qualities 75, 80, 85, 90, 95, and 98 meeting the 40 dB floor",
+      "limitations": "PSNR and byte budgets are offline checks, not perceptual visual acceptance",
+      "jpegRuntimeFallback": false
+    }
+  }
+}

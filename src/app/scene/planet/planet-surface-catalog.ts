@@ -6,11 +6,11 @@ export interface PlanetSurfaceTextureFiles {
   };
   low: {
     albedo: string;
-    normal: string;
+    normal?: string;
   };
   standard: {
     albedo: string;
-    normal: string;
+    normal?: string;
   };
 }
 
@@ -23,7 +23,8 @@ export interface CatalogPlanetSurfaceAsset {
   credit: string;
   citations: readonly string[];
   sourceLinks: readonly { href: string; text: string }[];
-  normalDimensions: Readonly<Record<'low' | 'standard', readonly [number, number]>>;
+  normalDimensions?: Readonly<Record<'low' | 'standard', readonly [number, number]>>;
+  volcanism?: 'io';
 }
 
 export const SOL_PLANET_SURFACE_CATALOG = [
@@ -94,6 +95,32 @@ export const SOL_PLANET_SURFACE_CATALOG = [
       preview: { albedo: 'mars-preview-albedo.webp' },
       low: { albedo: 'mars-low-albedo.webp', normal: 'mars-low-normal.png' },
       standard: { albedo: 'mars-standard-albedo.webp', normal: 'mars-standard-normal.png' },
+    },
+  },
+  {
+    identity: { namespace: 'sol', key: 'io' },
+    assetVersion: 'io-v1',
+    assetDirectory: 'assets/sol-textures/io-v1',
+    clouds: false,
+    volcanism: 'io',
+    credit: 'U.S. Geological Survey Astrogeology Science Center; Galileo SSI and Voyager imaging data',
+    citations: [
+      'Io Galileo SSI / Voyager Color Merged Global Mosaic 1km; Galileo color ratios over higher-resolution monochrome imagery.',
+    ],
+    sourceLinks: [
+      {
+        href: 'https://astrogeology.usgs.gov/search/map/io_galileo_ssi_voyager_color_merged_global_mosaic_1km',
+        text: 'USGS Io color-merged mosaic',
+      },
+      {
+        href: 'https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits',
+        text: 'USGS copyrights and credits',
+      },
+    ],
+    files: {
+      preview: { albedo: 'io-preview-albedo.webp' },
+      low: { albedo: 'io-low-albedo.webp' },
+      standard: { albedo: 'io-standard-albedo.webp' },
     },
   },
 ] as const satisfies readonly CatalogPlanetSurfaceAsset[];

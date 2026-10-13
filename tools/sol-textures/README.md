@@ -14,9 +14,10 @@ are unchanged. Reopen an existing form by serving its evidence folder on
 loopback; never regenerate over that folder.
 
 This is a local, explicit-source generation pipeline, not a Viewer catalog
-loader. It reconstructs the approved October 2026 Earth/Luna/Mars candidates;
-Mercury is excluded. The selected WebP versions are integrated into the Viewer
-catalog, while future candidates still require separate review and integration.
+loader. It reconstructs the approved October 2026 Earth/Luna/Mars textures and
+the approved Io surface texture; Mercury remains excluded. The selected WebP
+versions are integrated into the Viewer catalog, while future candidates still
+require separate review and integration.
 Originals, environments, working rasters and diagnostic output must stay
 outside Git and deployed assets in the configured external artifact store.
 
@@ -34,8 +35,12 @@ The manifests include rights, attribution, coverage, interpretation, actual
 bytes and SHA-256; registry identity does not itself approve imagery.
 
 **Current runtime versions (2026-10-12):** Earth `earth-july-v3`,
-Luna `luna-v4`, Mars `mars-v3`. These use the offline-selected WebP albedo
-encodes and preserve the accepted geodesic normal maps unchanged. Prior JPEG
+Luna `luna-v4`, Mars `mars-v3`, and Io `io-v1`. Earth/Luna/Mars use the
+offline-selected WebP albedo encodes and preserve the accepted geodesic normal
+maps unchanged. Io uses a USGS Galileo/Voyager color-merged albedo at preview,
+low, and standard tiers; no Io normal map is supplied or fabricated. Its static
+hotspot/plume cues are project-authored illustrative rendering, not features
+claimed to be current observations or geolocated measurements. Prior JPEG
 versions `earth-july-v2`, `luna-v3`, and `mars-v2` remain in Git as
 non-runtime baselines; earlier Luna/Mars normal versions remain retained.
 The active-WebP diagnostic suite passed 36 cases and its 39 screenshots were
@@ -349,14 +354,15 @@ hash-verifies each copied file and never deletes session originals.
 
 ## Acquire or restore approved originals
 
-Arrange source files in `$sourceRoot\earth`, `\luna` and `\mars`. You may restore
-the audited originals there instead of downloading. Acquisition is never
+Arrange source files in `$sourceRoot\earth`, `\luna`, `\mars` and `\io`. You may
+restore the audited originals there instead of downloading. Acquisition is never
 triggered implicitly by preparation:
 
 ```powershell
 & $python tools\sol-textures\pipeline.py fetch earth --artifact-root $artifactRoot
 & $python tools\sol-textures\pipeline.py fetch luna --artifact-root $artifactRoot
 & $python tools\sol-textures\pipeline.py fetch mars --artifact-root $artifactRoot
+& $python tools\sol-textures\pipeline.py fetch io --artifact-root $artifactRoot
 # Optional pinned historical notices/labels, not automatically current-rights review:
 & $python tools\sol-textures\pipeline.py fetch mars --artifact-root $artifactRoot --include-notices
 ```
@@ -393,20 +399,25 @@ cache-busted OpenAPI.
   --artifact-root $artifactRoot `
   --output (Join-Path $artifactRoot 'rebuilds\mars-rebuild-2027')
 
+& $python tools\sol-textures\pipeline.py prepare io `
+  --artifact-root $artifactRoot `
+  --output (Join-Path $artifactRoot 'rebuilds\io-rebuild-2027')
+
 & $python tools\sol-textures\pipeline.py verify `
   --output (Join-Path $artifactRoot 'rebuilds\earth-july-rebuild-2027') `
   --compare assets\sol-textures\earth-july-v3
 ```
 
-Use the corresponding `luna-v4`/`mars-v3` comparison paths for those bodies.
+Use the corresponding `luna-v4`/`mars-v3`/`io-v1` comparison paths for those bodies.
 Output directories must not already exist. Run bodies serially if sharing the
 same working folder. Errors are explicit, not success-shaped fallback outputs.
 After successful review, copy selected maps/manifests into a new repository
 asset version; do not promote every test rebuild into Git.
 Do not use a folder containing originals as output. On failure, partial derivative
 directories remain for inspection and must not be promoted; successful directories
-contain five maps and a manifest. Working files are deleted only after successful
-color encoding. Only selected reviewed versions should be kept in Git.
+contain five maps and a manifest for Earth/Luna/Mars, or three albedo maps and a
+manifest for Io. Working files are deleted only after successful color encoding.
+Only selected reviewed versions should be kept in Git.
 
 Recipes preserve the approved decisions:
 

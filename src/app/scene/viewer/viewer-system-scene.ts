@@ -29,6 +29,7 @@ import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-set
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
+import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { StarBody } from '../star/star-body';
@@ -1012,6 +1013,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     ViewerShipMesh,
     PlanetCloudLayer,
     PlanetAtmosphereLayer,
+    PlanetVolcanismLayer,
     GasGiantBody,
     StarBody,
   ],
@@ -1245,6 +1247,11 @@ export class ViewerSystemScene {
     if (this.dedicatedAtmosphere(body)) return false;
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
+  }
+
+  protected hasIoVolcanism(body: ViewerBody): boolean {
+    const selection = resolvePlanetSurfaceSource(body, 'l0');
+    return selection?.kind === 'catalog' && selection.request.asset.volcanism === 'io';
   }
 
   protected resolveRockGeometry(body: RenderedBody): BufferGeometry {

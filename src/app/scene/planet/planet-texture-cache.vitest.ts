@@ -131,6 +131,15 @@ describe('planet surface resolver', () => {
       },
       'l1',
     );
+    const io = resolvePlanetSurfaceSource(
+      {
+        id: 'game-io',
+        bodyType: 'moon',
+        surfaceArchetype: 'rocky-moon',
+        catalogIdentity: { namespace: 'sol', key: 'io' },
+      },
+      'l1',
+    );
 
     expect(earth).toMatchObject({
       kind: 'catalog',
@@ -153,6 +162,15 @@ describe('planet surface resolver', () => {
         asset: { assetVersion: 'mars-v3' },
       },
     });
+    expect(io).toMatchObject({
+      kind: 'catalog',
+      request: {
+        key: 'catalog|io-v1|l1|game-io',
+        asset: { assetVersion: 'io-v1', volcanism: 'io' },
+      },
+    });
+    if (io?.kind !== 'catalog') throw new Error('Io catalog selection missing');
+    expect(io.request.asset.normalDimensions).toBeUndefined();
   });
 
   it('keeps unsupported, missing, and non-exact identities procedural', () => {

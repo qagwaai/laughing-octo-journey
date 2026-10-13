@@ -64,6 +64,8 @@
   />
   @if (_selectedSurface && hasSurfaceClouds(selected)) {
   <app-planet-cloud-layer [bodyId]="selected.id" [radius]="selectedBodyRadiusUnits()" [resolution]="256" />
+  } @if (hasIoVolcanism(selected)) {
+  <app-planet-volcanism-layer [radius]="selectedBodyRadiusUnits()" [quality]="'detail'" />
   } @if (dedicatedAtmosphere(selected); as _atmosphere) {
   <app-planet-atmosphere-layer
     [bodyId]="selected.id"
@@ -101,6 +103,8 @@
   />
   @if (surfaces().has(moon.id) && hasSurfaceClouds(moon.body)) {
   <app-planet-cloud-layer [bodyId]="moon.id" [radius]="moon.radius" />
+  } @if (hasIoVolcanism(moon.body)) {
+  <app-planet-volcanism-layer [radius]="moon.radius" [quality]="'overview'" />
   } @if (_moonAtmosphere) {
   <app-planet-atmosphere-layer
     [bodyId]="moon.id"

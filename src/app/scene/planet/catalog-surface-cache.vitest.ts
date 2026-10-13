@@ -16,15 +16,18 @@ import { PLANET_CACHE_BAKE_FN, PlanetTextureCache } from './planet-texture-cache
 function body(key = 'earth', id = key): ResolvablePlanetBody {
   return {
     id,
-    bodyType: key === 'luna' ? 'moon' : 'planet',
-    surfaceArchetype: key === 'luna' ? 'rocky-moon' : 'rocky',
+    bodyType: key === 'luna' || key === 'io' ? 'moon' : 'planet',
+    surfaceArchetype: key === 'luna' || key === 'io' ? 'rocky-moon' : 'rocky',
     catalogIdentity: { namespace: 'sol', key },
   };
 }
 
 function result(request: CatalogSurfaceLoadRequest): CatalogPlanetSurfaceResult {
   const albedo = new Texture<HTMLImageElement>();
-  const normal = request.variant === 'preview' ? undefined : new Texture<HTMLImageElement>();
+  const files = request.asset.files[request.variant];
+  const normal = request.variant !== 'preview' && 'normal' in files && files.normal
+    ? new Texture<HTMLImageElement>()
+    : undefined;
   return {
     source: 'catalog',
     request,
@@ -97,6 +100,18 @@ describe('catalog surface cache', () => {
     expect(facade.pending()).toBe(0);
     expect(facade.ready().size).toBe(3);
     expect(facade.get(bodies[0], 'l0')?.source).toBe('catalog');
+  });
+
+  it('loads Io as a catalog moon without estimating or requesting a nonexistent normal map', async () => {
+    const { cache, jobs } = setup('low');
+    const io = body('io');
+    cache.request(io, 'l1');
+    await started();
+    expect(jobs.map((job) => job.request.variant)).toEqual(['preview', 'low']);
+    expect(jobs[1].request.asset.files.low).toEqual({ albedo: 'io-low-albedo.webp' });
+    expect(jobs[1].request.estimatedBytes).toBe(
+      Math.ceil((2048 * 1024 * 4 * 4) / 3),
+    );
   });
 
   it.each(['standard', 'low'] as const)('loads preview and only selected %s detail', async (quality) => {

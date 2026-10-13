@@ -577,6 +577,8 @@ export const it: DeepPartial<EnLocale> = {
         "Colore visibile adattato alla percezione; sostituzione polare monocromatica a risoluzione inferiore oltre 70 gradi e piccole lacune ricostruite. Il rilievo LOLA contiene regioni interpolate; resta una distorsione polare nell'albedo.",
       surfaceCatalogMarsCoverage:
         'Colore Viking con verde sintetico, copertura rosso/violetto incompleta e foschia/illuminazione residue. Il rilievo MOLA contiene lacune interpolate; la registrazione delle reti di controllo immagine/DEM non e verificata.',
+      surfaceCatalogIoCoverage:
+        'Mosaico USGS a colori unito Galileo/Voyager: rapporti cromatici Galileo sovrapposti a immagini monocromatiche a risoluzione superiore. Illuminazione di epoche diverse, copertura irregolare e lacune polari interpolate; non e un’osservazione a colori naturali uniforme. I punti caldi statici e i brevi pennacchi, creati dal progetto, sono illustrativi e non indicano attivita attuale. Non e fornita alcuna mappa normale o del rilievo.',
       atmosphereSourcesTitle: 'Fonti dell’aspetto atmosferico',
       venusAtmosphereCredit: 'Texture Solar System Scope, CC BY 4.0.',
       venusAtmosphereNotes:

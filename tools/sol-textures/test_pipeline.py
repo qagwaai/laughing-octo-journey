@@ -9,7 +9,20 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
 
-from pipeline import RECIPES, budgets, fetch_sources, normal_map, png_chunks, require, source_records, srgb_to_linear, linear_to_srgb, verify_sources
+from pipeline import (
+    RECIPES,
+    budgets,
+    fetch_sources,
+    fill_io_north_edge,
+    linear_to_srgb,
+    normal_map,
+    png_chunks,
+    require,
+    resize_io,
+    source_records,
+    srgb_to_linear,
+    verify_sources,
+)
 
 
 class PipelineTests(unittest.TestCase):
@@ -49,6 +62,29 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(len(source_records("earth")), 17)
         self.assertEqual(len(source_records("luna")), 3)
         self.assertEqual(len(source_records("mars")), 2)
+        self.assertEqual(len(source_records("io")), 1)
+
+    def test_io_fills_only_the_documented_single_north_edge_nodata_row(self):
+        color = np.ones((3, 4, 8), dtype=np.uint8) * 40
+        color[:, 0, :] = 0
+        filled = fill_io_north_edge(color)
+        self.assertTrue(np.array_equal(filled[:, 0, :], filled[:, 1, :]))
+        with self.assertRaisesRegex(ValueError, "Unexpected Io no-data coverage"):
+            fill_io_north_edge(np.zeros((3, 4, 8), dtype=np.uint8))
+
+    def test_io_resize_preserves_equirectangular_orientation(self):
+        from rasterio.transform import from_bounds
+
+        image = np.stack(
+            [
+                np.array([[0, 1, 2, 3], [4, 5, 6, 7]], dtype=np.float32),
+                np.full((2, 4), 12, dtype=np.float32),
+                np.full((2, 4), 24, dtype=np.float32),
+            ]
+        )
+        transform = from_bounds(-180, -90, 180, 90, 4, 2)
+        filtered = resize_io(image, transform, "EPSG:4326", (-180, -90, 180, 90), 4, 2)
+        self.assertTrue(np.array_equal(filtered, image))
 
     def test_current_asset_budgets_and_failure(self):
         root = Path(__file__).resolve().parents[2] / "assets" / "sol-textures"
@@ -66,13 +102,24 @@ class PipelineTests(unittest.TestCase):
             with self.subTest(body=body):
                 directory = root / recipe["version"]
                 manifest = json.loads((directory / "derivative-manifest.json").read_text())
-                self.assertEqual(len(manifest["products"]), 5)
+                expected_product_count = 3 if body == "io" else 5
+                self.assertEqual(len(manifest["products"]), expected_product_count)
                 self.assertFalse(any(path.suffix == ".jpg" for path in directory.iterdir()))
-                for tier, quality in recipe["webpQualities"].items():
+                for tier in ["preview", "low", "standard"]:
                     name = f"{recipe['prefix']}-{tier}-albedo.webp"
                     product = manifest["products"][name]
-                    self.assertEqual(product["webpQuality"], quality)
                     self.assertGreaterEqual(product["psnrDbVersusResampledRgb"], 40)
+                    if body == "io":
+                        eligible = [
+                            candidate
+                            for candidate in product["qualityCandidates"]
+                            if candidate["psnrDbVersusResampledRgb"] >= 40
+                        ]
+                        selected = min(eligible, key=lambda candidate: (candidate["bytes"], candidate["webpQuality"]))
+                        self.assertEqual(product["webpQuality"], selected["webpQuality"])
+                        self.assertNotIn(f"io-{tier}-normal.png", manifest["products"])
+                    else:
+                        self.assertEqual(product["webpQuality"], recipe["webpQualities"][tier])
                     with rasterio.open(directory / name) as image:
                         self.assertEqual(image.dtypes, ("uint8",) * 3)
                         self.assertEqual([image.width, image.height], product["dimensions"])

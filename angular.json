@@ -65,6 +65,11 @@
                 "glob": "mars-{preview-albedo,low-albedo,low-normal,standard-albedo,standard-normal}.{webp,png}",
                 "input": "assets/sol-textures/mars-v3",
                 "output": "textures/sol/mars-v3"
+              },
+              {
+                "glob": "io-{preview,low,standard}-albedo.webp",
+                "input": "assets/sol-textures/io-v1",
+                "output": "textures/sol/io-v1"
               }
             ],
             "styles": ["src/styles.css"],

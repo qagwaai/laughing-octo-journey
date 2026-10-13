@@ -221,6 +221,8 @@ export class PlanetSurfaceProgress {
         return this.t.game.viewer.surfaceCatalogEarthCoverage;
       case 'luna':
         return this.t.game.viewer.surfaceCatalogLunaCoverage;
+      case 'io':
+        return this.t.game.viewer.surfaceCatalogIoCoverage;
       default:
         return this.t.game.viewer.surfaceCatalogMarsCoverage;
     }

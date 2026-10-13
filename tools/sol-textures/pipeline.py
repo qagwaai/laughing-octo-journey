@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 import platform
+import shutil
 import urllib.request
 import warnings
 
@@ -37,7 +38,11 @@ RECIPES = {
              "prefix": "mars", "radius": 3396000,
              "color": "Mars_Viking_ClrMosaic_global_925m.tif", "height": "megt90n000eb.img",
              "normalStandard": [2048, 1024], "webpQualities": {"preview": 95, "low": 90, "standard": 85}},
+    "io": {"version": "io-v1", "prefix": "io", "radius": 1821460,
+           "color": "Io_GalileoSSI-Voyager_Global_Mosaic_ClrMerge_1km.tif",
+           "sourceDimensions": [11445, 5723], "qualityFloorDb": 40},
 }
+WEBP_QUALITY_CANDIDATES = (75, 80, 85, 90, 95, 98)
 LUNA_REFERENCE = {
     "file": "LDEM_16.IMG", "bytes": 33177600,
     "sha256": "a511e40d7a3ea3275945b4da2a1df377133264fab0be94b7434b1cf8907254cb",
@@ -61,7 +66,7 @@ def source_records(body, include_notices=False):
     names = {recipe["color"]}
     if body == "earth":
         names.update(letter + "10g.gz" for letter in "abcdefghijklmnop")
-    else:
+    elif recipe.get("height"):
         names.add(recipe["height"])
     selected = [entry for entry in manifest["files"] if include_notices or entry["file"] in names]
     require(names.issubset({entry["file"] for entry in selected}), "Incomplete source manifest")
@@ -111,6 +116,60 @@ def resize(array, width, height):
               dst_transform=from_bounds(-180, -90, 180, 90, width, height),
               src_crs="EPSG:4326", dst_crs="EPSG:4326", resampling=Resampling.average)
     return result
+
+
+def resize_io(array, transform, crs, bounds, width, height):
+    filtered = np.empty((3, height, width), dtype=np.float32)
+    destination_transform = from_bounds(*bounds, width, height)
+    for band in range(3):
+        reproject(source=array[band], destination=filtered[band],
+                  src_transform=transform, src_crs=crs,
+                  dst_transform=destination_transform, dst_crs=crs,
+                  resampling=Resampling.average)
+    require(np.isfinite(filtered).all(), "Io color map contains unfilled cells")
+    return filtered
+
+
+def fill_io_north_edge(color):
+    missing = np.all(color == 0, axis=0)
+    missing_rows = np.flatnonzero(np.all(missing, axis=1))
+    require(
+        missing_rows.tolist() == [0] and int(missing.sum()) == color.shape[2],
+        "Unexpected Io no-data coverage; review before filling",
+    )
+    color[:, 0, :] = color[:, 1, :]
+    return color
+
+
+def encode_io_albedo(path, work_dir, rgb):
+    candidates = []
+    for quality in WEBP_QUALITY_CANDIDATES:
+        candidate_path = work_dir / f"{path.stem}-q{quality}.webp"
+        decoded = write_image(candidate_path, rgb, "WEBP", QUALITY=quality, LOSSLESS="NO")
+        mse = float(np.mean((decoded.astype(np.float64) - rgb) ** 2))
+        psnr = 10 * math.log10(255 * 255 / mse) if mse else math.inf
+        candidates.append({
+            "path": candidate_path,
+            "quality": quality,
+            "bytes": candidate_path.stat().st_size,
+            "psnrDbVersusResampledRgb": psnr,
+        })
+    eligible = [candidate for candidate in candidates if candidate["psnrDbVersusResampledRgb"] >= 40]
+    require(bool(eligible), "No Io WebP candidate meets the 40 dB quality floor")
+    selected = min(eligible, key=lambda candidate: (candidate["bytes"], candidate["quality"]))
+    decoded = write_image(path, rgb, "WEBP", QUALITY=selected["quality"], LOSSLESS="NO")
+    mse = float(np.mean((decoded.astype(np.float64) - rgb) ** 2))
+    psnr = 10 * math.log10(255 * 255 / mse) if mse else math.inf
+    for candidate in candidates:
+        candidate["path"].unlink()
+    return selected["quality"], psnr, [
+        {
+            "webpQuality": candidate["quality"],
+            "bytes": candidate["bytes"],
+            "psnrDbVersusResampledRgb": candidate["psnrDbVersusResampledRgb"],
+        }
+        for candidate in candidates
+    ]
 
 
 def normal_map(heights, radius, land=None):
@@ -217,7 +276,10 @@ def mars_color_working(directory, path):
 def budgets(products, prefix):
     result = {}
     for tier, cap, resident_cap in [("low", 2, 32), ("standard", 4, 96)]:
-        names = [f"{prefix}-preview-albedo.webp", f"{prefix}-{tier}-albedo.webp", f"{prefix}-{tier}-normal.png"]
+        names = [f"{prefix}-preview-albedo.webp", f"{prefix}-{tier}-albedo.webp"]
+        normal = f"{prefix}-{tier}-normal.png"
+        if normal in products:
+            names.append(normal)
         transfer = sum(products[name]["bytes"] for name in names)
         resident = sum(math.ceil(width * height * 4 * 4 / 3)
                        for width, height in [products[name]["dimensions"] for name in names])
@@ -265,9 +327,17 @@ def prepare(body, source_dir, output, work_dir):
     work_dir.mkdir(parents=True, exist_ok=True)
     temporary = work_dir / "viking-linear-working.tif"
     products = {}
+    io_map = None
     if body == "mars":
         mars_color_working(source_dir, temporary)
         linear = None
+    elif body == "io":
+        with rasterio.open(source_dir / recipe["color"]) as source:
+            require([source.width, source.height] == recipe["sourceDimensions"], "Unexpected Io mosaic dimensions")
+            require(source.count == 3 and source.dtypes == ("uint8",) * 3, "Unexpected Io mosaic bands/type")
+            color = fill_io_north_edge(source.read())
+            io_map = (source.transform, source.crs, tuple(source.bounds))
+        linear = srgb_to_linear(color.astype(np.float32) / 255)
     else:
         with rasterio.open(source_dir / recipe["color"]) as source:
             array = source.read()
@@ -282,24 +352,40 @@ def prepare(body, source_dir, output, work_dir):
                               dst_transform=from_bounds(-180, -90, 180, 90, width, height),
                               dst_crs="EPSG:4326", dst_nodata=np.nan, resampling=Resampling.average)
             require(np.isfinite(filtered).all() and np.all(filtered > 0), "Missing color cells")
+        elif body == "io":
+            if io_map is None:
+                raise ValueError("Io projection metadata is missing")
+            transform, crs, bounds = io_map
+            filtered = resize_io(linear, transform, crs, bounds, width, height)
         else:
             filtered = np.stack([resize(channel, width, height) for channel in linear])
         rgb = np.rint(linear_to_srgb(np.clip(filtered, 0, 1)) * 255).astype(np.uint8)
         path = output / f"{recipe['prefix']}-{tier}-albedo.webp"
-        quality = recipe["webpQualities"][tier]
-        decoded = write_image(path, rgb, "WEBP", QUALITY=quality, LOSSLESS="NO")
-        mse = float(np.mean((decoded.astype(np.float64) - rgb) ** 2))
-        products[path.name] = {"dimensions": [width, height], "bytes": path.stat().st_size, "sha256": digest(path),
+        if body == "io":
+            quality, psnr, candidates = encode_io_albedo(path, work_dir, rgb)
+        else:
+            quality = recipe["webpQualities"][tier]
+            decoded = write_image(path, rgb, "WEBP", QUALITY=quality, LOSSLESS="NO")
+            mse = float(np.mean((decoded.astype(np.float64) - rgb) ** 2))
+            psnr = 10 * math.log10(255 * 255 / mse) if mse else math.inf
+            candidates = None
+        require(psnr >= 40, f"{body} {tier} albedo is below the 40 dB quality floor")
+        product = {"dimensions": [width, height], "bytes": path.stat().st_size, "sha256": digest(path),
                                "colorSpace": "sRGB (source ICC verified)" if body == "luna" else "sRGB display assumption; source has no ICC",
                                "encoding": "lossy WebP", "webpQuality": quality,
-                               "psnrDbVersusResampledRgb": 10 * math.log10(255 * 255 / mse)}
+                               "psnrDbVersusResampledRgb": psnr}
+        if candidates is not None:
+            product["qualityCandidates"] = candidates
+        products[path.name] = product
     if body == "mars":
         temporary.unlink()
     if body == "earth":
         summed, fraction = earth_elevation(source_dir)
-    else:
+    elif body != "io":
         elevation = load_height(body, source_dir)
-    for tier, (width, height) in [("low", [1024, 512]), ("standard", recipe["normalStandard"])]:
+    for tier, (width, height) in (
+        [] if body == "io" else [("low", [1024, 512]), ("standard", recipe["normalStandard"])]
+    ):
         land = None
         if body == "earth":
             weighted, coverage = resize(summed, width, height), resize(fraction, width, height)
@@ -320,28 +406,51 @@ def prepare(body, source_dir, output, work_dir):
                                "referenceRadiusMetres": recipe["radius"], "poleRowsNeutral": True,
                                "longitudeGradient": "periodic"}
     # Preserve audited rights/interpretation when making an exact-source new version.
-    previous = REPOSITORY / "assets" / "sol-textures" / recipe.get("baselineVersion", recipe["version"]) / "derivative-manifest.json"
-    provenance = json.loads(previous.read_text())["provenance"].copy()
-    provenance["sourceAudit"] = "docs/sol-textures-2026-10-08.md"
-    provenance["sourceAuditBase"] = "repository"
-    provenance["sources"] = source_records(body)
-    provenance["processingScriptSha256"] = digest(Path(__file__))
-    provenance["recipe"] = recipe
-    provenance["repositoryStorage"] = (
-        "Active same-origin runtime WebP albedo and unchanged accepted normal maps; "
-        "prior JPEG asset version remains in Git as non-runtime backup")
-    provenance["runtime"] = (
-        "Viewer-integrated WebP albedo; unchanged linear normal maps; no JPEG runtime fallback; "
-        "load failure uses existing explicit warning/retry; appearance acceptance remains pending")
-    provenance["encodingDecision"] = {
-        "format": "lossy WebP",
-        "offlineQualityFloorDb": 40,
-        "selection": "Smallest of six GDAL WebP quality candidates at/above the floor per map",
-        "comparisonEvidence": "External artifact store work/encoding-suitability-2026-10-12-v1/encoding-comparison.json",
-        "limitations": "PSNR floor and byte budget are offline compression evidence, not perceptual visual acceptance",
-        "jpegBaselineVersion": recipe["baselineVersion"],
-        "jpegRuntimeFallback": False,
-    }
+    if body == "io":
+        provenance = {
+            "sourceAudit": "docs/sol-textures-2026-10-08.md",
+            "sourceAuditBase": "repository",
+            "sources": source_records(body),
+            "processingScriptSha256": digest(Path(__file__)),
+            "recipe": recipe,
+            "repositoryStorage": "Preview, low, and standard same-origin WebP albedo only; original GeoTIFF stays external",
+            "runtime": "Viewer-integrated WebP albedo with no normal/material map; catalog load failures retain existing explicit warning/retry behavior",
+            "interpretation": (
+                "USGS Galileo/Voyager color-merged mosaic; Galileo color ratios are superimposed on higher-resolution "
+                "monochrome imagery. Source era, color interpretation, coverage, and illumination vary."
+            ),
+            "poleTreatment": "The single all-zero north edge row was filled from the adjacent source row before filtering.",
+            "encodingDecision": {
+                "format": "lossy WebP",
+                "offlineQualityFloorDb": 40,
+                "selection": "Smallest byte-size candidate among GDAL WebP qualities 75, 80, 85, 90, 95, and 98 meeting the 40 dB floor",
+                "limitations": "PSNR and byte budgets are offline checks, not perceptual visual acceptance",
+                "jpegRuntimeFallback": False,
+            },
+        }
+    else:
+        previous = REPOSITORY / "assets" / "sol-textures" / recipe.get("baselineVersion", recipe["version"]) / "derivative-manifest.json"
+        provenance = json.loads(previous.read_text())["provenance"].copy()
+        provenance["sourceAudit"] = "docs/sol-textures-2026-10-08.md"
+        provenance["sourceAuditBase"] = "repository"
+        provenance["sources"] = source_records(body)
+        provenance["processingScriptSha256"] = digest(Path(__file__))
+        provenance["recipe"] = recipe
+        provenance["repositoryStorage"] = (
+            "Active same-origin runtime WebP albedo and unchanged accepted normal maps; "
+            "prior JPEG asset version remains in Git as non-runtime backup")
+        provenance["runtime"] = (
+            "Viewer-integrated WebP albedo; unchanged linear normal maps; no JPEG runtime fallback; "
+            "load failure uses existing explicit warning/retry; appearance acceptance remains pending")
+        provenance["encodingDecision"] = {
+            "format": "lossy WebP",
+            "offlineQualityFloorDb": 40,
+            "selection": "Smallest of six GDAL WebP quality candidates at/above the floor per map",
+            "comparisonEvidence": "External artifact store work/encoding-suitability-2026-10-12-v1/encoding-comparison.json",
+            "limitations": "PSNR floor and byte budget are offline compression checks, not perceptual visual acceptance",
+            "jpegBaselineVersion": recipe["baselineVersion"],
+            "jpegRuntimeFallback": False,
+        }
     if recipe.get("polarTreatment") == "geodesic":
         provenance["polarRecipeScriptSha256"] = digest(ROOT / "polar_normals.py")
         provenance["normal"] = (

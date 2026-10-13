@@ -27,6 +27,7 @@ import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
+import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { StarBody } from '../star/star-body';
@@ -258,7 +259,15 @@ export function resolveStarMarker(
 @Component({
   selector: 'app-planet-view-scene',
   templateUrl: './planet-view-scene.html',
-  imports: [NgtArgs, NgtsOrbitControls, PlanetCloudLayer, PlanetAtmosphereLayer, GasGiantBody, StarBody],
+  imports: [
+    NgtArgs,
+    NgtsOrbitControls,
+    PlanetCloudLayer,
+    PlanetAtmosphereLayer,
+    PlanetVolcanismLayer,
+    GasGiantBody,
+    StarBody,
+  ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -342,6 +351,11 @@ export class PlanetViewScene {
     if (this.dedicatedAtmosphere(body)) return false;
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
+  }
+
+  protected hasIoVolcanism(body: ViewerBody): boolean {
+    const selection = resolvePlanetSurfaceSource(body, 'l0');
+    return selection?.kind === 'catalog' && selection.request.asset.volcanism === 'io';
   }
 
   protected selectedBody = computed<ViewerBody | null>(() => {
