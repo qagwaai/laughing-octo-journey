@@ -48,7 +48,20 @@ successful (stale) bundle to new page loads. The error page auto-reloads every
 
 ### Dependency Security
 
+Angular framework packages, `@angular/compiler-cli`, and `@angular/localize`
+are pinned to `21.2.25`. Upgrade these together, including animations, forms,
+and both platform-browser packages: their exact-version peer dependencies make
+individual framework bumps uninstallable. CLI/build and Material/CDK have
+separate compatible version ranges and are not part of this framework patch.
+Validate coordinated updates with `npm ci`, `npm run typecheck`, `npm run build`,
+`npm run test:ci`, and `npm run e2e -- --reporter=line --workers=1 --retries=0`.
+
 CI installs the lockfile with `npm ci --ignore-scripts` and runs `npm audit --audit-level=high`.
+CLI `21.2.26` brings MCP SDK `1.31.0` for
+[GHSA-6qxp-vccf-f47h](https://github.com/advisories/GHSA-6qxp-vccf-f47h).
+The lockfile also resolves `source-map-js` to `1.2.2` for
+[GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q);
+keep this transitive patch when regenerating the lockfile.
 The npm override for `piscina` pins the patched `5.3.2` release for
 [GHSA-67c8-pqhq-4rmx](https://github.com/advisories/GHSA-67c8-pqhq-4rmx) without downgrading Angular.
 Remove this override once `@angular/build` requires a patched Piscina release, then regenerate the lockfile
