@@ -514,7 +514,9 @@ test.describe('Viewer — Scene Rendering', () => {
       if (!scene) return false;
       const source = (ng.getComponent(host) as { bodies(): ViewerBody[] }).bodies();
       const lights: number[][] = [];
-      scene.traverse((object) => { if (object.type === 'PointLight') lights.push(object.position.toArray()); });
+      scene.traverse((object) => {
+        if (object.type === 'PointLight') lights.push(object.getWorldPosition(object.position.clone()).toArray());
+      });
       return ['basis-companion', 'basis-moon'].every((id) => {
         const body = source.find((candidate) => candidate.id === id);
         if (!body) return false;
@@ -525,7 +527,8 @@ test.describe('Viewer — Scene Rendering', () => {
         let shell: Object3D | undefined;
         scene.traverse((object) => { if (object.name === body.displayName && object.type === 'Mesh') shell = object; });
         const matches = (position: number[]) => position.every((value, index) => Math.abs(value - expected[index]) < 1e-6);
-        return !!shell && matches(shell.position.toArray()) && (id !== 'basis-companion' || lights.some(matches));
+        return !!shell && matches(shell.getWorldPosition(shell.position.clone()).toArray())
+          && (id !== 'basis-companion' || lights.some(matches));
       });
     })).toBe(true);
     await page.getByTestId('viewer-distance-toggle').click();
@@ -542,7 +545,8 @@ test.describe('Viewer — Scene Rendering', () => {
         const expected = [p.x, -p.z, p.y].map((value) => value / 149_597_870.7 * 5);
         let mesh: Object3D | undefined;
         scene.traverse((object) => { if (object.name === body.displayName && object.type === 'Mesh') mesh = object; });
-        return !!mesh && mesh.position.toArray().every((value, index) => Math.abs(value - expected[index]) < 1e-10);
+        return !!mesh && mesh.getWorldPosition(mesh.position.clone()).toArray()
+          .every((value, index) => Math.abs(value - expected[index]) < 1e-10);
       });
     })).toBe(true);
     await page.evaluate(() => {
@@ -563,7 +567,9 @@ test.describe('Viewer — Scene Rendering', () => {
       const component = ng.getComponent(host) as { bodies(): ViewerBody[]; selectedBody(): ViewerBody };
       const origin = component.selectedBody().spatial.positionKm;
       const lights: number[][] = [];
-      scene.traverse((object) => { if (object.type === 'PointLight') lights.push(object.position.toArray()); });
+      scene.traverse((object) => {
+        if (object.type === 'PointLight') lights.push(object.getWorldPosition(object.position.clone()).toArray());
+      });
       return ['basis-companion', 'basis-moon'].every((id) => {
         const body = component.bodies().find((candidate) => candidate.id === id);
         if (!body) return false;
@@ -573,10 +579,11 @@ test.describe('Viewer — Scene Rendering', () => {
         const point = body.spatial.positionKm;
         const delta = [point.x - origin.x, -(point.z - origin.z), point.y - origin.y];
         const distance = Math.hypot(...delta);
-        const radius = object.position.length();
+        const position = object.getWorldPosition(object.position.clone());
+        const radius = position.length();
         const expected = delta.map((value) => value / distance * radius);
         const matches = (position: number[]) => position.every((value, index) => Math.abs(value - expected[index]) < 1e-6);
-        return radius > 0 && matches(object.position.toArray()) && (id !== 'basis-companion' || lights.some(matches));
+        return radius > 0 && matches(position.toArray()) && (id !== 'basis-companion' || lights.some(matches));
       });
     })).toBe(true);
   });

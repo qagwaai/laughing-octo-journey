@@ -46,8 +46,9 @@ test.describe('Viewer controls after target completion', () => {
       let earth: Object3D | undefined;
       snapshot.scene.traverse((object) => { if (object.name === 'Earth' && object.type === 'Mesh') earth = object; });
       if (!earth) return null;
-      const screen = earth.position.clone().project(snapshot.camera);
-      return { radius: earth.position.length(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
+      const position = earth.getWorldPosition(earth.position.clone());
+      const screen = position.clone().project(snapshot.camera);
+      return { radius: position.length(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
     });
     await expect.poll(async () => (await readTarget())?.centered).toBe(true);
     const proportional = (await readTarget())!.radius;

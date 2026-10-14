@@ -118,6 +118,12 @@ state-based readiness. Missing WebGL is a test failure, not a successful skip.
 Keep failure screenshots/traces and the existing CI retry for diagnosis; retries
 do not replace deterministic assertions or establish a flake-rate target.
 
+Scene coordinate and camera-centering assertions must use Three.js
+`getWorldPosition()` with a cloned vector, not a mesh's local `position`.
+Viewer body meshes can be nested under positioned groups; local coordinates
+can be zero even when the rendered body is correctly positioned. Retain the
+expected coordinate values and centering tolerances when checking world space.
+
 Run the focused baseline with:
 
 ```powershell

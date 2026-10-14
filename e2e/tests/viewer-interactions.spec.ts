@@ -58,7 +58,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
         if (object.name === 'Sol Market Alpha' && object.type === 'Mesh') station = object;
       });
       if (!station) return null;
-      const screen = station.position.clone().project(snapshot.camera);
+      const screen = station.getWorldPosition(station.position.clone()).project(snapshot.camera);
       return { scale: station.scale.toArray(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
     });
     await expect.poll(async () => (await readStation())?.scale).toEqual([1.65 * 0.05, 0.82 * 0.05, 1.65 * 0.05]);
