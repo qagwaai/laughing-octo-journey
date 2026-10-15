@@ -1,7 +1,15 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { progress } from 'angular-three-soba/loaders';
 import { appLogger } from '../services/logger';
-import { resolveSplashAppearance, selectSplashPlanet, type SplashPlanetKind } from './planet/splash-planet-rotation';
+import {
+  pickRandomSplashPlanet,
+  resolveSplashAppearance,
+  selectSplashPlanet,
+  SPLASH_PLANET_ROTATION,
+  type SplashPickerCategory,
+  type SplashPlanetEntry,
+  type SplashPlanetKind,
+} from './planet/splash-planet-rotation';
 import { selectRenderQuality as selectMiningQuality, type RenderQuality } from './render-quality';
 
 export type MiningQuality = RenderQuality;
@@ -20,15 +28,23 @@ export class MiningSplashState {
   readonly quality = signal<MiningQuality>('low');
   readonly supported = signal(true);
   readonly contextLost = signal(false);
-  /** Chosen once per page load, so retries and still-image toggles keep the same planet. */
-  readonly planet = selectSplashPlanet(window.location.search);
-  readonly planetBodyId = this.planet.id;
-  readonly planetKind: SplashPlanetKind = this.planet.kind;
-  readonly appearance = resolveSplashAppearance(this.planet);
-  readonly planetSurfaceArchetype =
-    this.appearance.valid ? this.appearance.input.surfaceArchetype : null;
+  /** Chosen randomly per page load (or pinned); the overlay picker may replace it for the session. */
+  readonly planet = signal<SplashPlanetEntry>(selectSplashPlanet(window.location.search));
+  readonly planetBodyId = computed(() => this.planet().id);
+  readonly planetKind = computed<SplashPlanetKind>(() => this.planet().kind);
+  readonly appearance = computed(() => resolveSplashAppearance(this.planet()));
+  readonly planetSurfaceArchetype = computed(() => {
+    const appearance = this.appearance();
+    return appearance.valid ? appearance.input.surfaceArchetype : null;
+  });
   /** Stars only. */
-  readonly planetSpectralClass: string | null = this.planet.spectralClass ?? null;
+  readonly planetSpectralClass = computed<string | null>(() => this.planet().spectralClass ?? null);
+  /** Overlay picker state; 'random' means the body was drawn rather than chosen. */
+  readonly pickerCategory = signal<SplashPickerCategory>('random');
+  readonly pickerBody = signal<string>('random');
+  /** True while a picked body's textures are loading; the previous body stays visible. */
+  readonly bodySwapping = signal(false);
+  readonly bodySwapError = signal<string | null>(null);
   readonly moving = computed(
     () => this.status() === 'ready' && !this.reducedMotion() && !this.documentHidden() && !this.orbitPaused(),
   );
@@ -81,6 +97,47 @@ export class MiningSplashState {
 
   useStatic(): void {
     this.status.set('static');
+  }
+
+  /** Switching category draws a random body from it. */
+  chooseCategory(category: SplashPickerCategory): void {
+    this.pickerCategory.set(category);
+    this.pickerBody.set('random');
+    this.reroll();
+  }
+
+  /** `'random'` re-rolls within the current category; otherwise picks the listed body. */
+  chooseBody(bodyId: string): void {
+    if (bodyId === 'random') {
+      this.pickerBody.set('random');
+      this.reroll();
+      return;
+    }
+    const entry = SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === bodyId);
+    if (!entry) throw new Error(`Unknown splash body: ${bodyId}`);
+    this.pickerBody.set(bodyId);
+    this.applyPlanet(entry);
+  }
+
+  reroll(): void {
+    const entry = pickRandomSplashPlanet(this.pickerCategory(), this.planet().id);
+    if (entry) this.applyPlanet(entry);
+  }
+
+  private applyPlanet(entry: SplashPlanetEntry): void {
+    if (entry.id === this.planet().id) return;
+    this.bodySwapError.set(null);
+    this.planet.set(entry);
+  }
+
+  /** A picked body failed to load; the scene keeps showing `displayed`. */
+  rejectPlanet(displayed: SplashPlanetEntry, failed: SplashPlanetEntry, error: unknown): void {
+    appLogger.error(`Mining splash could not load ${failed.id}; keeping ${displayed.id}.`, error);
+    this.bodySwapError.set(failed.id);
+    this.planet.set(displayed);
+    const category = this.pickerCategory();
+    const listed = category !== 'random' && displayed.kind === category;
+    this.pickerBody.set(listed && this.pickerBody() !== 'random' ? displayed.id : 'random');
   }
 
   fail(error: unknown): void {

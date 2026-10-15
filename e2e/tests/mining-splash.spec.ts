@@ -524,6 +524,113 @@ test('picks the splash planet from the rotation when not pinned', async ({ page 
   expect(SPLASH_PLANET_ROTATION.map((entry) => entry.id)).toContain(planet);
 });
 
+/** Names of the scene objects that identify the displayed splash body. */
+async function readSplashBodyNames(page: import('@playwright/test').Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const ng = (window as unknown as { ng: { getComponent: (el: Element | null) => unknown } }).ng;
+    const canvas = ng.getComponent(document.querySelector('ngt-canvas')) as {
+      store: { snapshot: { scene: Scene } };
+    };
+    const names: string[] = [];
+    canvas.store.snapshot.scene.traverse((object) => {
+      if (object.name === 'star' || object.name === 'gas-giant' || object.name.startsWith('sol-')) {
+        names.push(object.name);
+      }
+    });
+    return names;
+  });
+}
+
+/** Resolves once the scene shows the body named by `data-planet` (procedural terran bodies have no named root). */
+async function expectSplashBodySettled(page: import('@playwright/test').Page): Promise<string> {
+  const overlay = page.locator('app-mining-splash-overlay section');
+  let settled = '';
+  await expect
+    .poll(
+      async () => {
+        const id = (await overlay.getAttribute('data-planet')) ?? '';
+        const names = await readSplashBodyNames(page);
+        settled = id;
+        if (id.startsWith('sol-')) return names.length === 1 && names[0] === id;
+        if (id.includes('-star-')) return names.length === 1 && names[0] === 'star';
+        if (id.includes('-giant-')) return names.length === 1 && names[0] === 'gas-giant';
+        return names.length === 0;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  return settled;
+}
+
+test('swaps the splash body in place from the overlay picker without reloading the rig', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  const glbRequests: string[] = [];
+  const requests: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+  });
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith('.glb')) glbRequests.push(request.url());
+    if (url.protocol.startsWith('http')) requests.push(request.url());
+  });
+  await page.goto(pinnedSplash('/knot(left:intro)'));
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  const category = page.getByRole('combobox', { name: 'Body type' });
+  await expect(category).toHaveValue('random');
+  await expect(page.getByRole('combobox', { name: 'Body', exact: true })).toHaveCount(0);
+
+  await category.selectOption('star');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
+  const body = page.getByRole('combobox', { name: 'Body', exact: true });
+  await body.selectOption('nova-splash-star-g');
+  await expect(overlay).toHaveAttribute('data-planet', 'nova-splash-star-g');
+  await expect(page.getByTestId('splash-star-class')).toContainText('G2V');
+  await expect.poll(() => readSplashBodyNames(page)).toEqual(['star']);
+
+  await category.selectOption('sol');
+  await body.selectOption('sol-mars');
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-mars');
+  await expect(page.getByTestId('splash-current-body')).toContainText('Mars');
+  await expect(page.getByTestId('splash-body-credit')).toContainText('Viking');
+  await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+  await expect.poll(() => readSplashBodyNames(page), { timeout: 30_000 }).toEqual(['sol-mars']);
+
+  await body.selectOption('sol-earth');
+  await expect.poll(() => readSplashBodyNames(page), { timeout: 30_000 }).toEqual(['sol-earth']);
+  await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Shuffle' }).click();
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'sol');
+  await expect(overlay).not.toHaveAttribute('data-planet', 'sol-earth');
+  expect(await expectSplashBodySettled(page)).toMatch(/^sol-/);
+  await expect(page.getByTestId('splash-body-error')).toHaveCount(0);
+
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  expect(glbRequests).toHaveLength(1);
+  const origin = new URL(page.url()).origin;
+  expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
+  expect(
+    consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
+  ).toEqual([]);
+});
+
+test('keeps the previous splash body when a picked body fails to load', async ({ page }) => {
+  await page.route('**/textures/sol/**', (route) => route.abort());
+  await page.goto(pinnedSplash('/knot(left:intro)'));
+  const overlay = page.locator('app-mining-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await page.getByRole('combobox', { name: 'Body type' }).selectOption('sol');
+  // Switching category draws a random Sol body; procedural Titan can still load, the rest are blocked.
+  const displayed = await expectSplashBodySettled(page);
+  const target = displayed === 'sol-luna' ? 'sol-mars' : 'sol-luna';
+  await page.getByRole('combobox', { name: 'Body', exact: true }).selectOption(target);
+  await expect(page.getByTestId('splash-body-error')).toBeVisible({ timeout: 30_000 });
+  await expect(overlay).toHaveAttribute('data-planet', displayed);
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+});
+
 test('switches between the 154k, 50k and still-image tiers on demand', async ({ page }) => {
   await page.goto(pinnedSplash('/knot(left:intro)'));
   const overlay = page.locator('app-mining-splash-overlay section');

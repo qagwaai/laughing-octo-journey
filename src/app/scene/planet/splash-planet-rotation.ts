@@ -9,6 +9,10 @@
  * Any id is accepted, so unlisted seeds can be previewed before adding them.
  * ?splashKind=gas-giant|star picks the kind for an unlisted id, and
  * ?splashSpectralClass=<class> sets an unlisted star's class.
+ *
+ * Sol bodies (`sol-earth`, `sol-mars`, ...) render approved catalog imagery and
+ * are part of the rotation. The overlay can also swap the body at runtime; that
+ * choice lasts for the session only.
  */
 import { fnv1a32 } from '../../model/planet/planet-seed';
 import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
@@ -22,13 +26,24 @@ export const SPLASH_PLANET_QUERY_PARAM = 'splashPlanet';
 export const SPLASH_KIND_QUERY_PARAM = 'splashKind';
 export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 
-export type SplashPlanetKind = 'terran' | 'gas-giant' | 'star';
+export type SplashPlanetKind = 'terran' | 'gas-giant' | 'star' | 'sol';
+
+/** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
+export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan'] as const;
+export type SplashSolKey = (typeof SPLASH_SOL_KEYS)[number];
+
+/** Sol bodies with a terran-style cloud shell; Earth's catalog albedo is cloud-free. */
+export function solBodyHasClouds(key: SplashSolKey | undefined): boolean {
+  return key === 'earth';
+}
 
 export interface SplashPlanetEntry {
   id: string;
   kind: SplashPlanetKind;
   /** Stars only; the generator reads the class from here. */
   spectralClass?: string;
+  /** Sol bodies only; selects the catalog imagery. */
+  solKey?: SplashSolKey;
 }
 
 export function resolveSplashAppearance(entry: SplashPlanetEntry) {
@@ -77,6 +92,10 @@ export function splashStarId(spectralClass: string): string {
   return `nova-splash-star-${spectralClass.charAt(0).toLowerCase()}`;
 }
 
+export function splashSolId(key: SplashSolKey): string {
+  return `sol-${key}`;
+}
+
 export const SPLASH_PLANET_ROTATION: readonly SplashPlanetEntry[] = [
   ...TERRAN_IDS.map((id) => ({ id, kind: 'terran' as const })),
   ...GAS_GIANT_IDS.map((id) => ({ id, kind: 'gas-giant' as const })),
@@ -85,7 +104,39 @@ export const SPLASH_PLANET_ROTATION: readonly SplashPlanetEntry[] = [
     kind: 'star' as const,
     spectralClass,
   })),
+  ...SPLASH_SOL_KEYS.map((solKey) => ({ id: splashSolId(solKey), kind: 'sol' as const, solKey })),
 ];
+
+/** Overlay picker categories, in display order; 'random' draws from the whole rotation. */
+export const SPLASH_PICKER_CATEGORIES = ['random', 'terran', 'gas-giant', 'star', 'sol'] as const;
+export type SplashPickerCategory = (typeof SPLASH_PICKER_CATEGORIES)[number];
+
+export function isSplashPickerCategory(value: string): value is SplashPickerCategory {
+  return (SPLASH_PICKER_CATEGORIES as readonly string[]).includes(value);
+}
+
+export function splashEntriesForCategory(
+  category: SplashPickerCategory,
+  rotation: readonly SplashPlanetEntry[] = SPLASH_PLANET_ROTATION,
+): readonly SplashPlanetEntry[] {
+  return category === 'random' ? rotation : rotation.filter((entry) => entry.kind === category);
+}
+
+/**
+ * Picks a random entry from a category, avoiding `currentId` when there is an
+ * alternative so a manual re-roll always visibly changes the body.
+ */
+export function pickRandomSplashPlanet(
+  category: SplashPickerCategory,
+  currentId: string | null = null,
+  random: () => number = Math.random,
+  rotation: readonly SplashPlanetEntry[] = SPLASH_PLANET_ROTATION,
+): SplashPlanetEntry | null {
+  const entries = splashEntriesForCategory(category, rotation);
+  const pool = entries.length > 1 ? entries.filter((entry) => entry.id !== currentId) : entries;
+  if (pool.length === 0) return null;
+  return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))];
+}
 
 function readPinnedKind(params: URLSearchParams): SplashPlanetKind {
   const kind = params.get(SPLASH_KIND_QUERY_PARAM)?.trim().toLowerCase();

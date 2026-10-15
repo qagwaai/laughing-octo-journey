@@ -3,10 +3,15 @@ import { deriveGasGiantProfile, GAS_GIANT_PALETTES } from '../../model/planet/ga
 import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
 import { resolveSpectralClass } from '../../model/star/star-profile';
 import {
+  isSplashPickerCategory,
+  pickRandomSplashPlanet,
   selectSplashPlanet,
   selectSplashPlanetBodyId,
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_ROTATION,
+  SPLASH_SOL_KEYS,
+  solBodyHasClouds,
+  splashEntriesForCategory,
 } from './splash-planet-rotation';
 
 const ids = SPLASH_PLANET_ROTATION.map((entry) => entry.id);
@@ -18,6 +23,7 @@ describe('selectSplashPlanetBodyId', () => {
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'terran')).toHaveLength(25);
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'gas-giant')).toHaveLength(10);
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'star')).toHaveLength(14);
+    expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'sol')).toHaveLength(6);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -95,5 +101,48 @@ describe('selectSplashPlanet stars', () => {
     const seeded = selectSplashPlanet('?splashPlanet=preview-me&splashKind=star');
     expect(STELLAR_CLASS_LETTERS).toContain(seeded.spectralClass);
     expect(selectSplashPlanet('?splashPlanet=preview-me&splashKind=star')).toEqual(seeded);
+  });
+});
+
+describe('splash body picker', () => {
+  it('lists the Sol catalog bodies with their keys', () => {
+    expect(splashEntriesForCategory('sol')).toEqual(
+      SPLASH_SOL_KEYS.map((solKey) => ({ id: `sol-${solKey}`, kind: 'sol', solKey })),
+    );
+    expect(selectSplashPlanet('?splashPlanet=sol-mars')).toEqual({ id: 'sol-mars', kind: 'sol', solKey: 'mars' });
+  });
+
+  it('filters entries by category and draws from the whole rotation for random', () => {
+    expect(splashEntriesForCategory('random')).toBe(SPLASH_PLANET_ROTATION);
+    expect(splashEntriesForCategory('star').every((entry) => entry.kind === 'star')).toBe(true);
+    expect(splashEntriesForCategory('gas-giant')).toHaveLength(10);
+    expect(splashEntriesForCategory('terran')).toHaveLength(25);
+  });
+
+  it('validates category values', () => {
+    expect(isSplashPickerCategory('sol')).toBe(true);
+    expect(isSplashPickerCategory('random')).toBe(true);
+    expect(isSplashPickerCategory('moon')).toBe(false);
+  });
+
+  it('never re-picks the current body when the category has alternatives', () => {
+    const first = splashEntriesForCategory('sol')[0];
+    for (const draw of [0, 0.3, 0.999999]) {
+      const picked = pickRandomSplashPlanet('sol', first.id, () => draw);
+      expect(picked?.kind).toBe('sol');
+      expect(picked?.id).not.toBe(first.id);
+    }
+    expect(pickRandomSplashPlanet('star', 'nova-splash-star-o', () => 0)?.id).toBe('nova-splash-star-b');
+  });
+
+  it('keeps a lone entry and handles empty categories', () => {
+    const lone = [{ id: 'only', kind: 'star' as const, spectralClass: 'G2V' }];
+    expect(pickRandomSplashPlanet('star', 'only', () => 0.5, lone)?.id).toBe('only');
+    expect(pickRandomSplashPlanet('sol', null, () => 0.5, lone)).toBeNull();
+  });
+
+  it('gives only Earth a cloud shell', () => {
+    expect(SPLASH_SOL_KEYS.filter((key) => solBodyHasClouds(key))).toEqual(['earth']);
+    expect(solBodyHasClouds(undefined)).toBe(false);
   });
 });

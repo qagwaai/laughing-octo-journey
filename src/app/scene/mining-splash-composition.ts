@@ -66,7 +66,18 @@ export function createMiningBackdrop(
   materialMap?: Texture | null,
   cloudLayer?: Mesh,
 ): Group {
-  const planet = new Mesh(
+  const planet = createMiningPlanetMesh(albedo, normalMap, materialMap);
+  if (cloudLayer) planet.add(cloudLayer);
+  return createMiningBackdropAround(quality, planet);
+}
+
+/** The radius-4 textured sphere shared by procedural and catalog splash bodies. */
+export function createMiningPlanetMesh(
+  albedo: Texture,
+  normalMap?: Texture | null,
+  materialMap?: Texture | null,
+): Mesh<SphereGeometry, MeshStandardMaterial> {
+  return new Mesh(
     new SphereGeometry(4, 48, 32),
     // Roughness and metalness multiply their maps, so both scalars go to 1 when
     // a material map is present and let the texture drive water versus land.
@@ -79,8 +90,6 @@ export function createMiningBackdrop(
       metalness: materialMap ? 1 : 0,
     }),
   );
-  if (cloudLayer) planet.add(cloudLayer);
-  return createMiningBackdropAround(quality, planet);
 }
 
 /** Builds lights, stars and debris, then places `planet` at the splash focus. */

@@ -4,7 +4,17 @@ import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-gi
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
 import { MiningSplashState, type MiningQuality } from './mining-splash-state';
 import { resolveSpectralClass } from '../model/star/star-profile';
-import { SPLASH_STAR_CLASSES } from './planet/splash-planet-rotation';
+import {
+  isSplashPickerCategory,
+  solBodyHasClouds,
+  SPLASH_PICKER_CATEGORIES,
+  SPLASH_PLANET_BODY_ID,
+  SPLASH_STAR_CLASSES,
+  splashEntriesForCategory,
+  type SplashPickerCategory,
+  type SplashPlanetEntry,
+} from './planet/splash-planet-rotation';
+import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 import { PlanetCloudSettings } from './planet/planet-clouds';
 
@@ -16,8 +26,8 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
       class="splash"
       [attr.data-state]="state.status()"
       [attr.data-quality]="state.quality()"
-      [attr.data-planet]="state.planetBodyId"
-      [attr.data-planet-kind]="state.planetKind"
+      [attr.data-planet]="state.planetBodyId()"
+      [attr.data-planet-kind]="state.planetKind()"
       [attr.data-motion]="state.orbitPaused() ? 'orbit' : state.moving() ? 'drift' : 'still'"
       [attr.aria-label]="t.public.mining.title"
     >
@@ -31,7 +41,7 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
         } @else {
           {{ t.public.mining.staticTier }}
         }
-        · {{ t.public.mining.planetLabel }} {{ state.planetBodyId }}
+        · {{ t.public.mining.planetLabel }} {{ state.planetBodyId() }}
       </div>
       @if (state.status() !== 'ready') {
         <img class="poster" src="models/mining-splash-poster.webp?v=32a3639e" alt="" fetchpriority="high" />
@@ -57,7 +67,38 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
         </div>
       } @else {
         <div class="cloud-controls" (pointerdown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()">
-          @if (state.planetKind === 'gas-giant') {
+          <div class="body-picker" data-testid="splash-body-picker">
+            <label for="splash-body-category">{{ t.public.mining.bodyCategoryLabel }}</label>
+            <select id="splash-body-category" [value]="state.pickerCategory()" (change)="onCategory($event)">
+              @for (category of categories; track category) {
+                <option [value]="category">{{ categoryLabel(category) }}</option>
+              }
+            </select>
+            @if (state.pickerCategory() !== 'random') {
+              <label for="splash-body">{{ t.public.mining.bodyLabel }}</label>
+              <select id="splash-body" [value]="state.pickerBody()" (change)="onBody($event)">
+                <option value="random">{{ t.public.mining.bodyRandom }}</option>
+                @for (entry of categoryEntries(); track entry.id) {
+                  <option [value]="entry.id">{{ bodyLabel(entry) }}</option>
+                }
+              </select>
+            }
+            <button type="button" class="shuffle" [disabled]="state.bodySwapping()" (click)="state.reroll()">
+              {{ t.public.mining.bodyShuffle }}
+            </button>
+            <p class="current-body" data-testid="splash-current-body" aria-live="polite">
+              {{ t.public.mining.bodyCurrent }}: {{ bodyLabel(state.planet()) }}
+              @if (state.bodySwapping()) {
+                <span class="swapping">? {{ t.public.mining.bodyLoading }}</span>
+              }
+            </p>
+            @if (state.bodySwapError()) {
+              <p class="swap-error" role="alert" data-testid="splash-body-error">
+                {{ t.public.mining.bodyLoadError }}
+              </p>
+            }
+          </div>
+          @if (state.planetKind() === 'gas-giant') {
             <label for="splash-giant-palette">{{ t.public.mining.gasGiantPaletteLabel }}</label>
             <select id="splash-giant-palette" [value]="giants.palette()" (change)="onGiantPalette($event)">
               <option value="seeded">{{ t.public.mining.gasGiantPaletteSeeded }}</option>
@@ -83,7 +124,7 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
               [value]="clouds.stormActivity()"
               (input)="onStormActivity($event)"
             />
-          } @else if (state.planetKind === 'star') {
+          } @else if (state.planetKind() === 'star') {
             <p class="star-class" data-testid="splash-star-class">
               {{ t.public.mining.starSpectralClassLabel }}: {{ starClassLabel() }}
             </p>
@@ -106,7 +147,7 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
               [value]="stars.flareActivity()"
               (input)="onFlareActivity($event)"
             />
-          } @else {
+          } @else if (state.planetKind() === 'terran' || hasSolClouds()) {
             <label class="cloud-toggle">
               <input type="checkbox" [checked]="clouds.enabled()" (change)="onCloudToggle($event)" />
               {{ t.public.mining.cloudsLabel }}
@@ -147,6 +188,9 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
               [disabled]="!clouds.enabled()"
               (input)="onStormActivity($event)"
             />
+          }
+          @if (solCredit(); as credit) {
+            <p class="credit" data-testid="splash-body-credit">{{ t.public.mining.bodyCreditLabel }}: {{ credit }}</p>
           }
         </div>
         <div class="caption">
@@ -264,8 +308,35 @@ import { PlanetCloudSettings } from './planet/planet-clouds';
       align-items: center;
       gap: 0.45rem;
     }
-    .star-class {
+    .star-class,
+    .current-body,
+    .swap-error,
+    .credit {
       margin: 0;
+    }
+    .body-picker {
+      display: grid;
+      gap: 0.35rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid #415269;
+    }
+    .body-picker .shuffle {
+      justify-self: start;
+    }
+    .body-picker .shuffle:disabled {
+      cursor: progress;
+      opacity: 0.6;
+    }
+    .swapping {
+      color: #b9c9de;
+    }
+    .swap-error {
+      color: #ffb4a8;
+    }
+    .credit {
+      max-width: 14rem;
+      font-size: 0.65rem;
+      color: #b9c9de;
     }
     .cloud-controls input[type='range'] {
       width: 100%;
@@ -319,10 +390,49 @@ export class MiningSplashOverlay {
   protected readonly starClassLabel = computed(
     () =>
       resolveSpectralClass(
-        resolveStarSpectralClassChoice(this.stars.spectralClass(), this.state.planetSpectralClass),
+        resolveStarSpectralClassChoice(this.stars.spectralClass(), this.state.planetSpectralClass()),
       ).label,
   );
   protected readonly t = locale;
+  protected readonly categories = SPLASH_PICKER_CATEGORIES;
+  protected readonly categoryEntries = computed(() => splashEntriesForCategory(this.state.pickerCategory()));
+  protected readonly hasSolClouds = computed(() => {
+    const entry = this.state.planet();
+    return entry.kind === 'sol' && solBodyHasClouds(entry.solKey);
+  });
+  protected readonly solCredit = computed(() => {
+    const entry = this.state.planet();
+    if (entry.kind !== 'sol' || !entry.solKey) return null;
+    if (entry.solKey === 'venus') return this.t.game.viewer.venusAtmosphereCredit;
+    if (entry.solKey === 'titan') return this.t.game.viewer.titanAtmosphereCredit;
+    return resolveCatalogPlanetSurfaceAsset({ namespace: 'sol', key: entry.solKey })?.credit ?? null;
+  });
+
+  protected categoryLabel(category: SplashPickerCategory): string {
+    return this.t.public.mining.bodyCategories[category];
+  }
+
+  protected bodyLabel(entry: SplashPlanetEntry): string {
+    const labels = this.t.public.mining;
+    if (entry.kind === 'sol' && entry.solKey) return labels.solBodies[entry.solKey];
+    if (entry.kind === 'star') return `${labels.bodyStar} ${entry.spectralClass ?? entry.id}`;
+    const number = /(\d+)$/.exec(entry.id)?.[1];
+    if (entry.kind === 'gas-giant') return number ? `${labels.bodyGiant} ${number}` : entry.id;
+    if (entry.id === SPLASH_PLANET_BODY_ID) return labels.bodyHomeworld;
+    return number ? `${labels.bodyWorld} ${number}` : entry.id;
+  }
+
+  protected onCategory(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    if (!isSplashPickerCategory(target.value)) throw new Error(`Unknown splash body category: ${target.value}`);
+    this.state.chooseCategory(target.value);
+  }
+
+  protected onBody(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) this.state.chooseBody(target.value);
+  }
 
   protected onStarClass(event: Event): void {
     const target = event.target;

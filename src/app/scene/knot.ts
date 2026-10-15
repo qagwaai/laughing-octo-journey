@@ -1,44 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { beforeRender, injectStore } from 'angular-three';
-import {
-  Box3,
-  Color,
-  Group,
-  Mesh,
-  MeshStandardMaterial,
-  Object3D,
-  PerspectiveCamera,
-  SphereGeometry,
-  Vector3,
-} from 'three';
+import { Box3, Color, Group, PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
-import type { GasGiantHandle } from './gas-giant/gas-giant';
 import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
+import { createMiningSplashBody, type MiningSplashBody, type MiningSplashBodySettings } from './mining-splash-body';
 import {
-  createMiningBackdrop,
   createMiningBackdropAround,
   disposeMiningObject,
   MINING_CAMERA_DIRECTION,
   placeMiningCelestialBody,
 } from './mining-splash-composition';
 import { MiningSplashState } from './mining-splash-state';
-import type { PlanetBakeResult } from './planet/planet-bake';
-import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
-import {
-  CLOUD_DRIFT_RADIANS_PER_SECOND,
-  createPlanetCloudTexture,
-  PlanetCloudSettings,
-  type PlanetCloudStyle,
-  type PlanetCloudTexture,
-} from './planet/planet-clouds';
-import { bakeSplashPlanet } from './planet/splash-planet';
+import { createPlanetCloudStormMaterial } from './planet/planet-cloud-storms';
+import { CLOUD_DRIFT_RADIANS_PER_SECOND, createPlanetCloudTexture, PlanetCloudSettings } from './planet/planet-clouds';
+import { resolveSplashAppearance, type SplashPlanetEntry } from './planet/splash-planet-rotation';
 import { createSplashStar, replaceSplashStar } from './star/splash-star';
-import type { StarHandle } from './star/star';
 import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 
 @Component({
@@ -76,15 +57,11 @@ export default class Knot {
     let framing = 1;
     let previousFraming: number | null = null;
     let orbitResumeTimer: ReturnType<typeof setTimeout> | null = null;
-    let clouds: PlanetCloudTexture | undefined;
-    let cloudStormLayer: PlanetCloudStormMaterial | undefined;
-    let cloudMesh: Mesh<SphereGeometry, MeshStandardMaterial> | undefined;
-    let cloudStyle: PlanetCloudStyle | undefined;
-    let giant: GasGiantHandle | undefined;
-    let giantLook: string | undefined;
-    let star: StarHandle | undefined;
-    let starClass: string | null = null;
-    let celestialBody: Object3D | undefined;
+    /** Holds the splash placement; bodies sit at its origin so they can be swapped in place. */
+    let bodySlot: Group | undefined;
+    let body: MiningSplashBody | undefined;
+    let swapToken = 0;
+    const sceneLoaded = signal(0);
     const cameraDirection = MINING_CAMERA_DIRECTION.clone();
     const referenceCameraPosition = new Vector3();
     const orbitCenter = cameraDirection.clone();
@@ -136,7 +113,7 @@ export default class Knot {
       }
       previousFraming = framing;
       referenceCameraPosition.copy(cameraDirection).multiplyScalar(framing);
-      if (celestialBody) placeMiningCelestialBody(celestialBody, referenceCameraPosition);
+      if (bodySlot) placeMiningCelestialBody(bodySlot, referenceCameraPosition);
       if (this.state.reducedMotion()) {
         orbitCenter.copy(camera.position);
         elapsed = 0;
@@ -152,62 +129,122 @@ export default class Knot {
       const style = this.cloudSettings.style();
       const coverage = this.cloudSettings.coverage();
       const stormActivity = this.cloudSettings.stormActivity();
-      if (clouds && cloudMesh && cloudStyle !== style) {
-        const previous = clouds;
-        const previousMaterial = cloudStormLayer?.material;
-        clouds = createPlanetCloudTexture(
-          this.state.planetBodyId,
+      if (body?.clouds && body.cloudMesh && body.cloudStyle !== style) {
+        const previous = body.clouds;
+        const previousMaterial = body.cloudStorm?.material;
+        body.clouds = createPlanetCloudTexture(
+          body.entry.id,
           previous.texture.image.width,
           previous.texture.image.height,
           style,
         );
-        cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, style, clouds.texture);
-        cloudMesh.material = cloudStormLayer.material;
-        cloudStyle = style;
+        body.cloudStorm = createPlanetCloudStormMaterial(body.entry.id, style, body.clouds.texture);
+        body.cloudMesh.material = body.cloudStorm.material;
+        body.cloudStyle = style;
         previousMaterial?.dispose();
         previous.texture.dispose();
       }
-      clouds?.setCoverage(coverage);
-      cloudStormLayer?.setActivity(stormActivity);
-      if (cloudMesh) cloudMesh.visible = enabled;
+      body?.clouds?.setCoverage(coverage);
+      body?.cloudStorm?.setActivity(stormActivity);
+      if (body?.cloudMesh) body.cloudMesh.visible = enabled;
       invalidate();
     });
     effect(() => {
       const palette = this.gasGiantSettings.palette();
       const rings = this.gasGiantSettings.rings();
       const stormActivity = this.cloudSettings.stormActivity();
-      if (giant && giantLook !== `${palette}|${rings}`) {
+      if (body?.giant && body.giantLook !== `${palette}|${rings}`) {
         const quality = untracked(() => this.state.quality());
+        const archetype = resolveSplashAppearance(body.entry);
         const next = createSplashGasGiant({
-          bodyId: this.state.planetBodyId,
-          surfaceArchetype: this.state.planetSurfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
+          bodyId: body.entry.id,
+          surfaceArchetype:
+            archetype.valid && archetype.input.surfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
           quality,
           palette,
           rings,
           stormActivity,
         });
-        giant = replaceSplashGasGiant(giant, next);
-        celestialBody = giant.group;
-        giantLook = `${palette}|${rings}`;
+        body.giant = replaceSplashGasGiant(body.giant, next);
+        body.object = body.giant.group;
+        body.giantLook = `${palette}|${rings}`;
       }
-      giant?.setStormActivity(stormActivity);
+      body?.giant?.setStormActivity(stormActivity);
       invalidate();
     });
     effect(() => {
       const flareActivity = this.starSettings.flareActivity();
-      const spectralClass = resolveStarSpectralClassChoice(
-        this.starSettings.spectralClass(),
-        this.state.planetSpectralClass,
-      );
-      if (star && starClass !== spectralClass) {
-        const quality = untracked(() => this.state.quality());
-        const next = createSplashStar({ bodyId: this.state.planetBodyId, spectralClass, quality, flareActivity });
-        star = replaceSplashStar(star, next);
-        celestialBody = star.group;
-        starClass = spectralClass;
+      const choice = this.starSettings.spectralClass();
+      if (body?.star) {
+        const spectralClass = resolveStarSpectralClassChoice(choice, body.entry.spectralClass ?? null);
+        if (body.starClass !== spectralClass) {
+          const quality = untracked(() => this.state.quality());
+          const next = createSplashStar({ bodyId: body.entry.id, spectralClass, quality, flareActivity });
+          body.star = replaceSplashStar(body.star, next);
+          body.object = body.star.group;
+          body.starClass = spectralClass;
+        }
       }
-      star?.setFlareActivity(flareActivity);
+      body?.star?.setFlareActivity(flareActivity);
       invalidate();
+    });
+    /** Current overlay settings; `seeded` drops per-body overrides so a newly picked body shows its own look. */
+    const bodySettings = (entry: SplashPlanetEntry, seeded: boolean): MiningSplashBodySettings =>
+      untracked(() => ({
+        cloudsEnabled: this.cloudSettings.enabled(),
+        cloudStyle: this.cloudSettings.style(),
+        cloudCoverage: this.cloudSettings.coverage(),
+        stormActivity: this.cloudSettings.stormActivity(),
+        giantPalette: seeded ? 'seeded' : this.gasGiantSettings.palette(),
+        giantRings: seeded ? 'seeded' : this.gasGiantSettings.rings(),
+        starClass: resolveStarSpectralClassChoice(
+          seeded ? 'seeded' : this.starSettings.spectralClass(),
+          entry.spectralClass ?? null,
+        ),
+        flareActivity: this.starSettings.flareActivity(),
+      }));
+    effect(() => {
+      sceneLoaded();
+      const entry = this.state.planet();
+      untracked(() => {
+        if (!bodySlot || !body) return;
+        if (body.entry.id === entry.id) {
+          // Re-selecting the shown body cancels any swap still loading.
+          swapToken++;
+          this.state.bodySwapping.set(false);
+          return;
+        }
+        const slot = bodySlot;
+        const displayed = body.entry;
+        const token = ++swapToken;
+        this.state.bodySwapping.set(true);
+        createMiningSplashBody(entry, {
+          quality: this.state.quality(),
+          renderer: gl,
+          settings: bodySettings(entry, true),
+        }).then(
+          (next) => {
+            if (token !== swapToken || slot !== bodySlot) {
+              next.dispose();
+              return;
+            }
+            body?.dispose();
+            body = next;
+            slot.add(next.object);
+            // The new body was built seeded; aligning the controls keeps the effects from rebuilding it.
+            this.starSettings.spectralClass.set('seeded');
+            this.gasGiantSettings.palette.set('seeded');
+            this.gasGiantSettings.rings.set('seeded');
+            this.state.bodySwapping.set(false);
+            invalidate();
+          },
+          (error: unknown) => {
+            if (token !== swapToken) return;
+            this.state.bodySwapping.set(false);
+            this.state.rejectPlanet(displayed, entry, error);
+          },
+        );
+      });
     });
     const isStatic = computed(() => this.state.status() === 'static');
     effect((onCleanup) => {
@@ -222,66 +259,28 @@ export default class Knot {
       let cancelled = false;
       let model: Group | undefined;
       let backdrop: Group | undefined;
-      let planet: PlanetBakeResult | undefined;
+      let loadedBody: MiningSplashBody | undefined;
       const quality = this.state.quality();
       const version = quality === 'standard' ? 'b4eaa6b9' : '9b277b11';
-      void loader
-        .loadAsync(`models/asteroid-mining-rig.${quality}.glb?v=${version}`)
-        .then((gltf) => {
-          if (cancelled) {
-            disposeMiningObject(gltf.scene);
-            return;
-          }
-          model = gltf.scene;
-          if (this.state.planetKind === 'gas-giant') {
-            const palette = this.gasGiantSettings.palette();
-            const rings = this.gasGiantSettings.rings();
-            giant = createSplashGasGiant({
-              bodyId: this.state.planetBodyId,
-              surfaceArchetype:
-                this.state.planetSurfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
-              quality,
-              palette,
-              rings,
-              stormActivity: this.cloudSettings.stormActivity(),
-            });
-            giantLook = `${palette}|${rings}`;
-            backdrop = createMiningBackdropAround(quality, giant.group);
-            celestialBody = giant.group;
-          } else if (this.state.planetKind === 'star') {
-            starClass = resolveStarSpectralClassChoice(
-              this.starSettings.spectralClass(),
-              this.state.planetSpectralClass,
-            );
-            star = createSplashStar({
-              bodyId: this.state.planetBodyId,
-              spectralClass: starClass,
-              quality,
-              flareActivity: this.starSettings.flareActivity(),
-            });
-            backdrop = createMiningBackdropAround(quality, star.group);
-            celestialBody = star.group;
-          } else {
-            if (!this.state.planetSurfaceArchetype) {
-              throw new Error('Splash demo has no valid surface archetype.');
-            }
-            planet = bakeSplashPlanet(quality, gl, this.state.planetBodyId, this.state.planetSurfaceArchetype);
-            clouds = createPlanetCloudTexture(
-              this.state.planetBodyId,
-              quality === 'standard' ? 512 : 256,
-              quality === 'standard' ? 256 : 128,
-              this.cloudSettings.style(),
-            );
-            cloudStyle = this.cloudSettings.style();
-            clouds.setCoverage(this.cloudSettings.coverage());
-            cloudStormLayer = createPlanetCloudStormMaterial(this.state.planetBodyId, cloudStyle, clouds.texture);
-            cloudStormLayer.setActivity(this.cloudSettings.stormActivity());
-            cloudMesh = new Mesh(new SphereGeometry(4 * 1.012, 64, 48), cloudStormLayer.material);
-            cloudMesh.visible = this.cloudSettings.enabled();
-            backdrop = createMiningBackdrop(quality, planet.albedo, planet.normal, planet.material, cloudMesh);
-            celestialBody = cloudMesh.parent!;
-          }
-          placeMiningCelestialBody(celestialBody, referenceCameraPosition);
+      const entry = untracked(() => this.state.planet());
+      void Promise.allSettled([
+        loader.loadAsync(`models/asteroid-mining-rig.${quality}.glb?v=${version}`),
+        createMiningSplashBody(entry, { quality, renderer: gl, settings: bodySettings(entry, false) }),
+      ]).then(([rig, created]) => {
+        if (cancelled || rig.status === 'rejected' || created.status === 'rejected') {
+          if (rig.status === 'fulfilled') disposeMiningObject(rig.value.scene);
+          if (created.status === 'fulfilled') created.value.dispose();
+          if (cancelled) return;
+          this.state.fail(rig.status === 'rejected' ? rig.reason : (created as PromiseRejectedResult).reason);
+          return;
+        }
+        try {
+          model = rig.value.scene;
+          loadedBody = created.value;
+          const slot = new Group();
+          slot.add(loadedBody.object);
+          backdrop = createMiningBackdropAround(quality, slot);
+          placeMiningCelestialBody(slot, referenceCameraPosition);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -291,66 +290,44 @@ export default class Knot {
           wrapper.add(model);
           wrapper.scale.setScalar(1.9 / Math.max(size.x, size.y, size.z));
           root.add(wrapper);
+          bodySlot = slot;
+          body = loadedBody;
           pendingFrames = 2;
+          sceneLoaded.update((value) => value + 1);
           invalidate();
-        })
-        .catch((error: unknown) => {
-          if (model) {
-            model.parent?.removeFromParent();
-            disposeMiningObject(model);
-            model = undefined;
-          }
-          if (backdrop) {
-            backdrop.removeFromParent();
-            disposeMiningObject(backdrop);
-            backdrop = undefined;
-          } else {
-            cloudMesh?.geometry.dispose();
-            cloudMesh?.material.dispose();
-            clouds?.texture.dispose();
-          }
-          clouds = undefined;
-          celestialBody = undefined;
-          cloudMesh = undefined;
-          cloudStormLayer = undefined;
-          cloudStyle = undefined;
-          giant?.dispose();
-          giant = undefined;
-          star?.dispose();
-          star = undefined;
-          // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
-          planet?.dispose();
-          planet = undefined;
-          if (!cancelled) this.state.fail(error);
-        });
+        } catch (error: unknown) {
+          release();
+          this.state.fail(error);
+        }
+      });
+      const release = () => {
+        swapToken++;
+        if (model) {
+          model.parent?.removeFromParent();
+          disposeMiningObject(model);
+          model = undefined;
+        }
+        // The body owns its GPU resources (bakes, catalog textures, shaders); release it before the backdrop.
+        (body ?? loadedBody)?.dispose();
+        loadedBody = undefined;
+        body = undefined;
+        bodySlot = undefined;
+        if (backdrop) {
+          backdrop.removeFromParent();
+          disposeMiningObject(backdrop);
+          backdrop = undefined;
+        }
+        untracked(() => this.state.bodySwapping.set(false));
+      };
       onCleanup(() => {
         cancelled = true;
         pendingFrames = 0;
         ktx.dispose();
-        if (model) {
-          model.parent?.removeFromParent();
-          disposeMiningObject(model);
-        }
-        backdrop?.removeFromParent();
-        if (backdrop) disposeMiningObject(backdrop);
-        else {
-          cloudMesh?.geometry.dispose();
-          cloudMesh?.material.dispose();
-          clouds?.texture.dispose();
-        }
-        clouds = undefined;
-        celestialBody = undefined;
-        cloudMesh = undefined;
-        cloudStormLayer = undefined;
-        cloudStyle = undefined;
-        giant?.dispose();
-        giant = undefined;
-        star?.dispose();
-        star = undefined;
-        planet?.dispose();
+        release();
       });
     });
     beforeRender(({ delta }) => {
+      const cloudMesh = body?.cloudMesh;
       if (
         cloudMesh &&
         this.state.status() === 'ready' &&
@@ -359,11 +336,13 @@ export default class Knot {
         this.cloudSettings.enabled()
       ) {
         cloudMesh.rotation.y += Math.min(delta, 0.05) * CLOUD_DRIFT_RADIANS_PER_SECOND;
-        cloudStormLayer?.advance(delta);
+        body?.cloudStorm?.advance(delta);
       }
+      const giant = body?.giant;
       if (giant && this.state.status() === 'ready' && !this.state.reducedMotion() && !this.state.documentHidden()) {
         giant.advance(delta);
       }
+      const star = body?.star;
       if (star && this.state.status() === 'ready' && !this.state.reducedMotion() && !this.state.documentHidden()) {
         star.advance(delta);
       }
