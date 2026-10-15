@@ -1,7 +1,7 @@
 # Sol planetary textures: implementation and validation plan
 
 Date: 2026-10-08  
-Status: Stages 0-3 are complete for the Earth/Luna/Mars pilot; the user has now approved and requested a specific Stage 4 Io expansion. The Io source, derivative, catalog integration, and static overview/detail volcanism cues are implemented; automated verification and live visual review are tracked below. Stage 2 closed on 2026-10-12 at the accepted, documented scope. Its sampled fine registration, Luna/Mars polar boundary/detail-loss, seam/orientation, and Tycho/Olympus Mons source-shadow reviews retain caveats. WebP is active in the Viewer; earlier JPEG versions remain non-runtime baselines. Representative hardware/network performance and final Stellar Viewer visual acceptance remain pending; final visual acceptance is still on hold. Active versions are earth-july-v3, luna-v4, mars-v3, and io-v1. Originals/notices remain outside the deployed runtime assets. Mercury and unsupported identities remain procedural.
+Status: Stages 0-4 are complete for the active pilot. The Io source, derivative, catalog integration, and static overview/detail volcanism cues are implemented and accepted for now; animated eruptions are deferred. Stage 2 closed on 2026-10-12 at the accepted, documented scope. Its sampled fine registration, Luna/Mars polar boundary/detail-loss, seam/orientation, and Tycho/Olympus Mons source-shadow reviews retain caveats. WebP is active in the Viewer; earlier JPEG versions remain non-runtime baselines. Representative hardware/network performance and final Stellar Viewer pilot acceptance remain pending. Active versions are earth-july-v3, luna-v4, mars-v3, and io-v1. Originals/notices remain outside the deployed runtime assets. Mercury and unsupported identities remain procedural.
 
 ## Goal and approved decisions
 
@@ -27,9 +27,9 @@ Status: Stages 0-3 are complete for the Earth/Luna/Mars pilot; the user has now 
 - The user approved an Io Stage 4 expansion: USGS color-merged surface imagery
   and subtle static project-authored hotspot/plume cues in overview and focused
   detail. These cues are illustrative, not claims of current activity or
-  geolocated observations. Io's live Stellar Viewer appearance remains to be
-  reviewed; broader moon-catalog expansion and final pilot sign-off remain
-  separate gates.
+  geolocated observations. The user accepted the current Io surface and static
+  cues on 2026-10-15; animated eruptions are deferred. Broader moon-catalog
+  expansion and final pilot sign-off remain separate gates.
 - All eight submitted review JSON files were copied byte-for-byte into external
   `work/reviewer-submissions-2026-10-12-v1`; originals remain untouched.
   The approved external store is
@@ -151,7 +151,7 @@ in a catalog is not yet a cleared, downloaded, or visually accepted asset.
 | 1     | Confirm identities, source rights, and asset budgets           | None                                   | Done        | Active Earth/Luna/Mars source records, interpretation, coverage, policies and budgets consolidated; Forge identity approved; Mercury explicitly deferred                                                          |
 | 2     | Prepare active pilot assets: Earth, Luna, Mars                 | Stage 1                                | Done        | All Stage 2 checklist items accepted at documented scope; limited registration, polar, source-shadow and seam/orientation reviews retain caveats; user accepted matched WebP/JPEG albedo appearance for all three; KTX2 not required; final Viewer presentation/performance and final visual sign-off remain separate open gates; Mercury excluded until separately cleared |
 | 3     | Implement catalog resolution, loading, and ownership           | Stages 1-2; user authorized overlap    | Done        | Exact typed selection, loader and leased byte-budgeted cache implemented; 127 unit tests and 31 headless regression tests passed; production allowlist/hash evidence recorded                                     |
-| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | In progress | Venus/Titan atmospheres visually accepted in overview and detail on 2026-10-12. Io source, albedo, and static illustrative hotspot/plume integration are in progress; live Io review pending. Earlier tint/highlight and host-child overlap reviews were accepted; radar/infrared reveal mode deferred; exact-direction sibling overlaps may remain |
+| 4     | Wire viewer materials, atmospheres, attribution, and status UI | Stage 3                                | Done        | Venus/Titan atmospheres visually accepted in overview and detail on 2026-10-12; Io surface and static illustrative cues accepted on 2026-10-15. Animated eruptions and radar/infrared reveal modes are deferred; exact-direction sibling overlaps may remain |
 | 5     | Automated pilot verification                                   | Stages 0 and 4                         | In progress | Focused unit/browser regressions and production artifact checks passed; Actions/Linux execution and remaining acceptance evidence pending                                                                         |
 | 6     | User visual pilot acceptance in Stellar Viewer                 | Stages 0 and 4                         | Not started | Explicitly on hold at the user's request; offline preparation is not appearance sign-off                                                                                                                          |
 | 7     | Expand approved moon/dwarf-planet catalog                      | Stages 5-6; per-body Stage 1 clearance | Not started | Per-body acceptance required                                                                                                                                                                                      |
@@ -2192,8 +2192,8 @@ flake rate or replace the pending Actions/Linux execution.
       clouds on Luna/Mars. Unsupported bodies retain their existing behavior.
 - [x] Approve dedicated Venus/Titan atmosphere expansion. The user selected
       both bodies and approved the static, source-faithful atmosphere-only
-      treatment on 2026-10-12; implementation and final visual review remain
-      tracked below.
+      treatment on 2026-10-12; implementation and final visual review are
+      recorded below.
 - [x] Approve an Io surface/volcanism expansion. The user selected a visible
       surface, subtle static hotspots and short plumes, and both system overview
       and focused Io detail on 2026-10-12.
@@ -2202,9 +2202,11 @@ flake rate or replace the pending Actions/Linux execution.
       The user approved this exact candidate on 2026-10-12 after its mixed-era
       imagery, interpolated polar gaps, and USGS attribution policy were
       disclosed.
-- [ ] Complete automated Io texture/runtime checks and live visual review in
-      overview and focused detail. Static project-authored cues are illustrative
-      only; they are not geolocated observations or claims of current activity.
+- [x] Complete automated Io texture/runtime checks and live visual review in
+      overview and focused detail. The user accepted the current surface and
+      static project-authored cues on 2026-10-15; cues are illustrative only,
+      not geolocated observations or claims of current activity. Animated
+      eruptions are deferred.
 - [ ] Treat Venus/Titan radar or infrared terrain as a separately labeled
       surface-reveal mode, not ordinary visible-light appearance. Such a mode
       needs separate approval before implementation.
@@ -2355,7 +2357,8 @@ Verification:
 
 ## Candidate source register
 
-Io is now a per-body Stage 4 addition, with live visual acceptance pending.
+Io is a per-body Stage 4 addition; the user accepted the current surface and
+static illustrative cues on 2026-10-15. Animated eruptions remain deferred.
 The remaining entries are research candidates, not commercial-use clearance
 or visual sign-off. Some USGS product pages require browser-rendered content.
 
@@ -2365,7 +2368,7 @@ or visual sign-off. Some USGS product pages require browser-rendered content.
 | Luna                                             | [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/)                                                                                       | Color/elevation designed for rendering; updated color includes documented polar substitutions and inpainting                                                                                                                                             | Pilot            |
 | Mars                                             | [USGS Viking global color mosaic](https://astrogeology.usgs.gov/search/map/mars_viking_global_color_mosaic_925m)                           | Inspect seams and residual illumination                                                                                                                                                                                                                  | Pilot            |
 | Mercury                                          | [USGS MESSENGER color mosaic](https://astrogeology.usgs.gov/search/map/mercury_messenger_mdis_global_color_mosaic_665m)                    | Infrared-containing filter combination is not ordinary natural color; select/document a natural-looking variant                                                                                                                                          | Pilot            |
-| Io                                               | [USGS Galileo/Voyager color-merged mosaic](https://astrogeology.usgs.gov/search/map/io_galileo_ssi_voyager_color_merged_global_mosaic_1km) | Approved for `io-v1`; verify color interpretation, mixed-era imagery and merged-image illumination; final live Viewer review pending                                                                                                                      | Stage 4 approved |
+| Io                                               | [USGS Galileo/Voyager color-merged mosaic](https://astrogeology.usgs.gov/search/map/io_galileo_ssi_voyager_color_merged_global_mosaic_1km) | Approved for `io-v1`; color interpretation, mixed-era imagery and merged-image illumination reviewed for the current implementation                                                                                                                        | Stage 4 accepted |
 | Europa                                           | [USGS Voyager/Galileo mosaic](https://astrogeology.usgs.gov/search/map/europa_voyager_galileo_ssi_global_mosaic_500m)                      | Verify color availability, coverage, and illumination                                                                                                                                                                                                    | Expansion        |
 | Ganymede                                         | [USGS color global mosaic](https://astrogeology.usgs.gov/search/map/ganymede_voyager_galileo_ssi_color_global_mosaic_1_4km)                | Mixed source resolution                                                                                                                                                                                                                                  | Expansion        |
 | Callisto                                         | [USGS Galileo/Voyager mosaic](https://astrogeology.usgs.gov/search/map/callisto_galileo_voyager_global_mosaic_1km)                         | Confirm color treatment                                                                                                                                                                                                                                  | Expansion        |
@@ -2543,6 +2546,8 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-12 | Stage 4 Venus/Titan atmosphere implementation | Solar System Scope product page and CC BY 4.0 reviewed; Titan NASA Photojournal infrared surface imagery excluded; focused unit/build/typecheck/E2E checks passed | Venus 2K/4K atmosphere maps downloaded with SHA-256 records; static original Titan haze generated at view-appropriate detail; ground mesh hidden; both overview and focused detail covered; source/license disclosure wired into Viewer and localized | User must visually review both bodies in both views; texture provenance is credited to Solar System Scope, not NASA; Titan haze is illustrative and project-authored |
 
 | 2026-10-12 | Stage 4 Titan color retarget and Venus WebP | PIA06230 lit-disk color sampled; Venus WebP quality sweep q75-q98 with PSNR vs decoded source | Titan palette retargeted from red-orange to reference-matched tan with a ratio-bounded unit test; Venus runtime switched to q75 WebP (2K 23,660 B / 44.22 dB; 4K 67,858 B / 43.69 dB), JPEG originals archived outside runtime | User visually accepted Titan and Venus in overview and focused detail; Stage 4 atmosphere implementation item closed. Radar/infrared surface-reveal mode remains deferred |
+
+| 2026-10-15 | Stage 4 Io surface and static illustrative cues | User reviewed and accepted the current Io surface and static hotspot/plume presentation | Io Stage 4 review item closed; current cues remain illustrative, not geolocated observations or claims of current activity | Animated eruptions are deferred; no screenshot or device/viewport metadata recorded |
 
 Add dated rows for implementation, rights clearance, measurements, automated
 results, and user visual decisions. Keep failed checks and deferred assets visible
