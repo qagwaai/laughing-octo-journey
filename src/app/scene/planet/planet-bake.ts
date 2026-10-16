@@ -125,6 +125,8 @@ function renderPlanetPass(
       uAridity: { value: values.uAridity },
       uHueBias: { value: values.uHueBias },
       uMode: { value: values.uMode },
+      uIcyMoon: { value: values.uIcyMoon },
+      uRockyMoon: { value: values.uRockyMoon },
       uTexel: { value: [values.uTexel[0], values.uTexel[1]] },
     },
   });
@@ -216,11 +218,12 @@ function bakeOnCpu(climate: PlanetClimate, preset: PlanetLodPreset): PlanetBakeR
 
 export function bakePlanetTextures(options: PlanetBakeOptions): PlanetBakeResult {
   const preset = options.preset ?? PLANET_LOD[options.tier ?? 'l0'];
-  const climate = derivePlanetClimate(
-    options.bodyId,
-    options.archetype ?? 'terran',
-    options.surfaceArchetype ?? 'rocky',
-  );
+  const archetype =
+    options.archetype ??
+    (options.surfaceArchetype === 'icy-moon' || options.surfaceArchetype === 'rocky-moon'
+      ? options.surfaceArchetype
+      : 'terran');
+  const climate = derivePlanetClimate(options.bodyId, archetype, options.surfaceArchetype);
 
   return supportsGpuBake(options.renderer) ? bakeOnGpu(options.renderer, climate, preset) : bakeOnCpu(climate, preset);
 }

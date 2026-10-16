@@ -77,6 +77,25 @@ function gpuRenderer() {
 }
 
 describe('planet surface resolver', () => {
+  it.each(['icy-moon', 'rocky-moon'] as const)('selects %s with tier-separated keys and no fallback', (archetype) => {
+    const body: ResolvablePlanetBody = { id: 'moon', bodyType: 'moon', surfaceArchetype: archetype };
+    const low = resolvePlanetSurface(body, 'l0');
+    const detail = resolvePlanetSurface(body, 'l1');
+    expect(isTexturableBody(body)).toBe(true);
+    expect(low).toMatchObject({
+      archetype,
+      generatorVersion: `${archetype}-v1`,
+      surfaceArchetype: archetype,
+      key: `${archetype}-v1|${archetype}|l0|moon`,
+    });
+    expect(low?.fallbackReason).toBeUndefined();
+    expect(detail?.key).toBe(`${archetype}-v1|${archetype}|l1|moon`);
+    expect(
+      resolvePlanetSurfaceSource({ ...body, catalogIdentity: { namespace: 'sol', key: 'luna' } }, 'l0')?.kind,
+    ).toBe('catalog');
+    expect(resolvePlanetSurface({ ...body, bodyType: 'star' }, 'l0')).toBeNull();
+  });
+
   it('treats planets and moons as texturable and everything else as not', () => {
     expect(isTexturableBody(makeBody('a', 'planet'))).toBe(true);
     expect(isTexturableBody(makeBody('b', 'moon'))).toBe(true);

@@ -9,8 +9,10 @@ const cases: Array<[CanonicalBodyType, SurfaceArchetype, string, string | undefi
   ['planet', 'gas-giant', 'gas-giant', undefined],
   ['planet', 'ice-giant', 'gas-giant', undefined],
   ['star', 'star', 'star', undefined],
-  ['moon', 'rocky-moon', 'terran', 'rocky-moon'],
-  ['moon', 'icy-moon', 'terran', 'icy-moon'],
+  ['moon', 'rocky-moon', 'rocky-moon', undefined],
+  ['moon', 'icy-moon', 'icy-moon', undefined],
+  ['dwarf-planet', 'icy-moon', 'icy-moon', undefined],
+  ['tno', 'icy-moon', 'icy-moon', undefined],
   ['asteroid', 'asteroid', 'asteroid', undefined],
 ];
 

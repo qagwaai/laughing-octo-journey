@@ -26,6 +26,23 @@ const settings: MiningSplashBodySettings = {
 const entry = (id: string) => SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === id)!;
 
 describe('createMiningSplashBody', () => {
+  it.each(['icy-moon', 'rocky-moon'] as const)(
+    'builds %s without clouds and releases its mesh and baked maps',
+    async (kind) => {
+      const body = await createMiningSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });
+      const slot = new Group();
+      slot.add(body.object);
+      expect(body.object.name).toBe(`nova-splash-${kind}-01`);
+      expect(body.cloudMesh).toBeUndefined();
+      expect(body.object.children).toHaveLength(0);
+      const mesh = body.object as Mesh;
+      const disposed = vi.spyOn(mesh.geometry, 'dispose');
+      body.dispose();
+      expect(slot.children).toHaveLength(0);
+      expect(disposed).toHaveBeenCalledOnce();
+    },
+  );
+
   it('builds catalog Sol bodies from the low variant and releases them on dispose', async () => {
     const slot = new Group();
     const body = await createMiningSplashBody(entry('sol-mars'), { quality: 'low', settings });

@@ -533,7 +533,13 @@ async function readSplashBodyNames(page: import('@playwright/test').Page): Promi
     };
     const names: string[] = [];
     canvas.store.snapshot.scene.traverse((object) => {
-      if (object.name === 'star' || object.name === 'gas-giant' || object.name.startsWith('sol-')) {
+      if (
+        object.name === 'star' ||
+        object.name === 'gas-giant' ||
+        object.name.startsWith('sol-') ||
+        object.name.startsWith('nova-splash-icy-moon-') ||
+        object.name.startsWith('nova-splash-rocky-moon-')
+      ) {
         names.push(object.name);
       }
     });
@@ -552,6 +558,7 @@ async function expectSplashBodySettled(page: import('@playwright/test').Page): P
         const names = await readSplashBodyNames(page);
         settled = id;
         if (id.startsWith('sol-')) return names.length === 1 && names[0] === id;
+        if (id.includes('-icy-moon-') || id.includes('-rocky-moon-')) return names.length === 1 && names[0] === id;
         if (id.includes('-star-')) return names.length === 1 && names[0] === 'star';
         if (id.includes('-giant-')) return names.length === 1 && names[0] === 'gas-giant';
         return names.length === 0;
@@ -560,6 +567,82 @@ async function expectSplashBodySettled(page: import('@playwright/test').Page): P
     )
     .toBe(true);
   return settled;
+}
+
+for (const kind of ['icy-moon', 'rocky-moon'] as const) {
+  test(`selects ${kind} without Terran clouds or reloading the rig`, async ({ page }, testInfo) => {
+    const bodyId = `nova-splash-${kind}-01`;
+    const errors: string[] = [];
+    const glbs: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (/Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(message.text())) errors.push(message.text());
+    });
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('.glb')) glbs.push(request.url());
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(pinnedSplash('/knot(left:intro)'));
+    const overlay = page.locator('app-mining-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await page.getByRole('combobox', { name: 'Body type' }).selectOption(kind);
+    await page.getByRole('combobox', { name: 'Body', exact: true }).selectOption(bodyId);
+    await expect(overlay).toHaveAttribute('data-planet-kind', kind);
+    await expect.poll(() => readSplashBodyNames(page)).toEqual([bodyId]);
+    await expect(page.getByTestId('splash-current-body')).toContainText(
+      kind === 'icy-moon' ? 'Icy moon 01' : 'Rocky moon 01',
+    );
+    await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+    const hasNormal = (await overlay.getAttribute('data-quality')) === 'standard';
+    await expect
+      .poll(() =>
+        page.evaluate((bodyId) => {
+          const ng = (window as Window & { ng?: { getComponent: (element: Element) => unknown } }).ng;
+          const canvas = document.querySelector('ngt-canvas');
+          if (!ng || !canvas) return null;
+          const component = ng.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+          const moon = component.store.snapshot.scene.getObjectByName(bodyId) as Mesh | undefined;
+          const material = moon?.material as MeshStandardMaterial | undefined;
+          return {
+            map: !!material?.map,
+            normal: !!material?.normalMap,
+            material: !!material?.roughnessMap,
+            children: moon?.children.length,
+          };
+        }, bodyId),
+      )
+      .toMatchObject({ map: true, normal: hasNormal, material: true, children: 0 });
+    await page.screenshot({ path: testInfo.outputPath(`${kind}-splash.png`) });
+    expect(glbs).toHaveLength(1);
+    expect(errors).toEqual([]);
+  });
+
+  test(`pins and shuffles ${kind} at low splash quality without a cloud shell`, async ({ page }) => {
+    const glbs: string[] = [];
+    page.on('request', (request) => {
+      if (new URL(request.url()).pathname.endsWith('.glb')) glbs.push(request.url());
+    });
+    await page.setViewportSize({ width: 700, height: 800 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const bodyId = `nova-splash-${kind}-01`;
+    await page.goto(pinnedSplash('/knot(left:intro)', bodyId));
+    const overlay = page.locator('app-mining-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await expect(overlay).toHaveAttribute('data-quality', 'low');
+    await expect.poll(() => readSplashBodyNames(page)).toEqual([bodyId]);
+    await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+    const category = page.getByRole('combobox', { name: 'Body type' });
+    await category.selectOption(kind);
+    await expect(overlay).not.toHaveAttribute('data-planet', bodyId);
+    const currentId = await expectSplashBodySettled(page);
+    await page.getByRole('button', { name: 'Shuffle' }).click();
+    await expect(overlay).not.toHaveAttribute('data-planet', currentId);
+    expect(await expectSplashBodySettled(page)).not.toBe(currentId);
+    await expect(overlay).toHaveAttribute('data-planet-kind', kind);
+    expect(glbs).toHaveLength(1);
+    await category.selectOption('terran');
+    await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toBeVisible();
+  });
 }
 
 test('swaps the splash body in place from the overlay picker without reloading the rig', async ({ page }) => {

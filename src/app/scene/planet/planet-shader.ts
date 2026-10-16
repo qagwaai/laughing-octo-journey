@@ -22,6 +22,8 @@ import {
   WATER_METALNESS,
   WATER_ROUGHNESS,
 } from '../../model/planet/planet-surface';
+import { ICY_MOON_SURFACE_GLSL } from './icy-moon-shader';
+import { ROCKY_MOON_SURFACE_GLSL } from './rocky-moon-shader';
 
 /** GLSL has no implicit int-to-float promotion, so literals must keep a decimal point. */
 function glslFloat(value: number): string {
@@ -77,6 +79,8 @@ uniform float uMountainAmplitude;
 uniform float uAridity;
 uniform float uHueBias;
 uniform int uMode;
+uniform float uIcyMoon;
+uniform float uRockyMoon;
 uniform vec2 uTexel;
 
 const float PI = 3.141592653589793;
@@ -178,7 +182,12 @@ float ridged3(vec3 p, uint seed, int octaves) {
   return sum / total;
 }
 
+${ICY_MOON_SURFACE_GLSL}
+${ROCKY_MOON_SURFACE_GLSL}
+
 float planetElevation(vec3 p) {
+  if (uIcyMoon > 0.5) return icyMoonElevation(p);
+  if (uRockyMoon > 0.5) return rockyMoonElevation(p);
   uint seed = planetSeed();
 
   float warpX = fbm3(vec3(p.x * 1.7 + 11.3, p.y * 1.7, p.z * 1.7), seed ^ 0x1f83d9abu, 3) - 0.5;
@@ -202,6 +211,8 @@ float planetElevation(vec3 p) {
 }
 
 vec3 planetAlbedo(float elevation, float sinLatitude) {
+  if (uIcyMoon > 0.5) return icyMoonAlbedo(elevation);
+  if (uRockyMoon > 0.5) return rockyMoonAlbedo(elevation);
   float absLatitude = abs(sinLatitude);
   vec3 color;
 
@@ -227,6 +238,8 @@ vec3 planetAlbedo(float elevation, float sinLatitude) {
 }
 
 vec3 planetMaterial(float elevation, float sinLatitude) {
+  if (uIcyMoon > 0.5) return icyMoonMaterial(elevation);
+  if (uRockyMoon > 0.5) return rockyMoonMaterial(elevation);
   float absLatitude = abs(sinLatitude);
 
   // Mirrors planetMaterial in planet-surface.ts.
@@ -301,6 +314,8 @@ export interface PlanetShaderUniformValues {
   uAridity: number;
   uHueBias: number;
   uMode: number;
+  uIcyMoon: number;
+  uRockyMoon: number;
   uTexel: readonly [number, number];
 }
 
@@ -323,6 +338,8 @@ export function buildPlanetShaderUniforms(
     uAridity: climate.aridity,
     uHueBias: climate.hueBias,
     uMode: mode,
+    uIcyMoon: climate.archetype === 'icy-moon' ? 1 : 0,
+    uRockyMoon: climate.archetype === 'rocky-moon' ? 1 : 0,
     uTexel: [1 / width, 1 / height],
   };
 }

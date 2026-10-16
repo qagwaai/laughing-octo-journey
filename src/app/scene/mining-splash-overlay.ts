@@ -1,9 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { locale } from '../i18n/locale';
 import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
+import { resolveSpectralClass } from '../model/star/star-profile';
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
 import { MiningSplashState, type MiningQuality } from './mining-splash-state';
-import { resolveSpectralClass } from '../model/star/star-profile';
+import { PlanetCloudSettings } from './planet/planet-clouds';
+import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import {
   isSplashPickerCategory,
   solBodyHasClouds,
@@ -14,9 +16,7 @@ import {
   type SplashPickerCategory,
   type SplashPlanetEntry,
 } from './planet/splash-planet-rotation';
-import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
-import { PlanetCloudSettings } from './planet/planet-clouds';
 
 @Component({
   selector: 'app-mining-splash-overlay',
@@ -389,9 +389,8 @@ export class MiningSplashOverlay {
   protected readonly starClasses = SPLASH_STAR_CLASSES;
   protected readonly starClassLabel = computed(
     () =>
-      resolveSpectralClass(
-        resolveStarSpectralClassChoice(this.stars.spectralClass(), this.state.planetSpectralClass()),
-      ).label,
+      resolveSpectralClass(resolveStarSpectralClassChoice(this.stars.spectralClass(), this.state.planetSpectralClass()))
+        .label,
   );
   protected readonly t = locale;
   protected readonly categories = SPLASH_PICKER_CATEGORIES;
@@ -418,6 +417,8 @@ export class MiningSplashOverlay {
     if (entry.kind === 'star') return `${labels.bodyStar} ${entry.spectralClass ?? entry.id}`;
     const number = /(\d+)$/.exec(entry.id)?.[1];
     if (entry.kind === 'gas-giant') return number ? `${labels.bodyGiant} ${number}` : entry.id;
+    if (entry.kind === 'icy-moon') return number ? `${labels.bodyIcyMoon} ${number}` : entry.id;
+    if (entry.kind === 'rocky-moon') return number ? `${labels.bodyRockyMoon} ${number}` : entry.id;
     if (entry.id === SPLASH_PLANET_BODY_ID) return labels.bodyHomeworld;
     return number ? `${labels.bodyWorld} ${number}` : entry.id;
   }

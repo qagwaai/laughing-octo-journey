@@ -27,9 +27,9 @@ import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
+import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { StarBody } from '../star/star-body';
 import { StarSettings } from '../star/star-settings';
 import {
@@ -350,7 +350,9 @@ export class PlanetViewScene {
   protected hasSurfaceClouds(body: ViewerBody): boolean {
     if (this.dedicatedAtmosphere(body)) return false;
     const selection = resolvePlanetSurfaceSource(body, 'l0');
-    return selection?.kind === 'catalog' ? selection.request.asset.clouds : true;
+    return selection?.kind === 'catalog'
+      ? selection.request.asset.clouds
+      : body.surfaceArchetype !== 'icy-moon' && body.surfaceArchetype !== 'rocky-moon';
   }
 
   protected hasIoVolcanism(body: ViewerBody): boolean {

@@ -5,7 +5,7 @@ import {
   pickRandomSplashPlanet,
   resolveSplashAppearance,
   selectSplashPlanet,
-  SPLASH_PLANET_ROTATION,
+  SPLASH_SELECTABLE_BODIES,
   type SplashPickerCategory,
   type SplashPlanetEntry,
   type SplashPlanetKind,
@@ -113,7 +113,7 @@ export class MiningSplashState {
       this.reroll();
       return;
     }
-    const entry = SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === bodyId);
+    const entry = SPLASH_SELECTABLE_BODIES.find((candidate) => candidate.id === bodyId);
     if (!entry) throw new Error(`Unknown splash body: ${bodyId}`);
     this.pickerBody.set(bodyId);
     this.applyPlanet(entry);

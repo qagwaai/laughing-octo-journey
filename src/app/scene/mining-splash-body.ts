@@ -24,18 +24,14 @@ import type { GasGiantPaletteChoice, GasGiantRingChoice } from './gas-giant/gas-
 import { createSplashGasGiant } from './gas-giant/splash-gas-giant';
 import { createMiningPlanetMesh, disposeMiningObject } from './mining-splash-composition';
 import type { MiningQuality } from './mining-splash-state';
-import { loadCatalogSurface, type CatalogPlanetSurfaceResult } from './planet/catalog-surface-loader';
+import { type CatalogPlanetSurfaceResult, loadCatalogSurface } from './planet/catalog-surface-loader';
 import { createTitanHazeTexture, resolveVenusAtmosphereUrl } from './planet/planet-atmosphere';
 import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import { createPlanetCloudTexture, type PlanetCloudStyle, type PlanetCloudTexture } from './planet/planet-clouds';
 import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import { createIoVolcanicCues } from './planet/planet-volcanism-layer';
 import { bakeSplashPlanet } from './planet/splash-planet';
-import {
-  resolveSplashAppearance,
-  solBodyHasClouds,
-  type SplashPlanetEntry,
-} from './planet/splash-planet-rotation';
+import { resolveSplashAppearance, solBodyHasClouds, type SplashPlanetEntry } from './planet/splash-planet-rotation';
 import { createSplashStar } from './star/splash-star';
 import type { StarHandle } from './star/star';
 
@@ -129,6 +125,10 @@ export async function createMiningSplashBody(
   if (!appearance.valid) throw new Error('Splash demo has no valid surface archetype.');
   const bake = bakeSplashPlanet(quality, options.renderer, entry.id, appearance.input.surfaceArchetype);
   const mesh = createMiningPlanetMesh(bake.albedo, bake.normal, bake.material);
+  if (entry.kind === 'icy-moon' || entry.kind === 'rocky-moon') {
+    mesh.name = entry.id;
+    return plainBody(entry, mesh, () => bake.dispose());
+  }
   // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
   return withClouds(entry, mesh, options, () => bake.dispose());
 }
@@ -233,7 +233,13 @@ export function createIoVolcanicCueGroup(quality: MiningQuality): Group {
     cueGroup.rotation.copy(new Euler(...cue.rotation));
     const halo = new Mesh(
       new SphereGeometry(1, cue.sphereSegments, cue.sphereSegments),
-      new MeshBasicMaterial({ color: '#ff672d', transparent: true, opacity: 0.18, depthWrite: false, toneMapped: false }),
+      new MeshBasicMaterial({
+        color: '#ff672d',
+        transparent: true,
+        opacity: 0.18,
+        depthWrite: false,
+        toneMapped: false,
+      }),
     );
     halo.position.set(0, cue.haloThickness / 2, 0);
     halo.scale.set(cue.haloRadius, cue.haloThickness, cue.haloRadius);

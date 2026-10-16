@@ -5,12 +5,16 @@ import { resolveSpectralClass } from '../../model/star/star-profile';
 import {
   isSplashPickerCategory,
   pickRandomSplashPlanet,
+  resolveSplashAppearance,
   selectSplashPlanet,
   selectSplashPlanetBodyId,
+  solBodyHasClouds,
+  SPLASH_ICY_MOONS,
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_ROTATION,
+  SPLASH_ROCKY_MOONS,
+  SPLASH_SELECTABLE_BODIES,
   SPLASH_SOL_KEYS,
-  solBodyHasClouds,
   splashEntriesForCategory,
 } from './splash-planet-rotation';
 
@@ -105,6 +109,42 @@ describe('selectSplashPlanet stars', () => {
 });
 
 describe('splash body picker', () => {
+  it('offers rocky moons explicitly with deterministic pins and an unchanged random pool', () => {
+    expect(splashEntriesForCategory('rocky-moon')).toBe(SPLASH_ROCKY_MOONS);
+    expect(SPLASH_ROCKY_MOONS).toHaveLength(6);
+    expect(isSplashPickerCategory('rocky-moon')).toBe(true);
+    expect(SPLASH_PLANET_ROTATION.some((entry) => entry.kind === 'rocky-moon')).toBe(false);
+    expect(new Set(SPLASH_SELECTABLE_BODIES.map((entry) => entry.id)).size).toBe(SPLASH_SELECTABLE_BODIES.length);
+    const first = SPLASH_ROCKY_MOONS[0];
+    expect(selectSplashPlanet(`?splashPlanet=${first.id}&splashKind=star`)).toEqual(first);
+    expect(selectSplashPlanet('?splashPlanet=preview-rock&splashKind=rocky-moon').kind).toBe('rocky-moon');
+    expect(pickRandomSplashPlanet('rocky-moon', first.id, () => 0)?.id).not.toBe(first.id);
+    expect(resolveSplashAppearance(first)).toMatchObject({
+      valid: true,
+      input: {
+        bodyType: 'moon',
+        surfaceArchetype: 'rocky-moon',
+        renderer: 'rocky-moon',
+        generatorVersion: 'rocky-moon-v1',
+      },
+    });
+  });
+
+  it('offers icy moons explicitly without changing the startup or random pool', () => {
+    expect(splashEntriesForCategory('icy-moon')).toBe(SPLASH_ICY_MOONS);
+    expect(SPLASH_ICY_MOONS).toHaveLength(6);
+    expect(isSplashPickerCategory('icy-moon')).toBe(true);
+    expect(SPLASH_PLANET_ROTATION.some((entry) => entry.kind === 'icy-moon')).toBe(false);
+    const first = SPLASH_ICY_MOONS[0];
+    expect(selectSplashPlanet(`?splashPlanet=${first.id}`)).toEqual(first);
+    expect(selectSplashPlanet('?splashPlanet=preview-ice&splashKind=icy-moon').kind).toBe('icy-moon');
+    expect(pickRandomSplashPlanet('icy-moon', first.id, () => 0)?.id).not.toBe(first.id);
+    expect(resolveSplashAppearance(first)).toMatchObject({
+      valid: true,
+      input: { bodyType: 'moon', surfaceArchetype: 'icy-moon', renderer: 'icy-moon', generatorVersion: 'icy-moon-v1' },
+    });
+  });
+
   it('lists the Sol catalog bodies with their keys', () => {
     expect(splashEntriesForCategory('sol')).toEqual(
       SPLASH_SOL_KEYS.map((solKey) => ({ id: `sol-${solKey}`, kind: 'sol', solKey })),

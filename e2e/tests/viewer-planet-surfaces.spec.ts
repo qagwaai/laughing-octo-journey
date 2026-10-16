@@ -655,6 +655,37 @@ async function cloudTextureWidths(page: import('@playwright/test').Page): Promis
 }
 
 test.describe('viewer procedural planet surfaces', () => {
+  for (const archetype of ['icy-moon', 'rocky-moon'] as const) {
+    for (const focused of ['earth', 'luna']) {
+      test(`renders ${archetype} overview and ${focused === 'luna' ? 'focused relief' : 'companion moon'} without clouds`, async ({
+        page,
+      }, testInfo) => {
+        const problems = collectRenderProblems(page);
+        const { mock } = await setupViewerSceneTest(page);
+        const bodies = SOL_SYSTEM_BODIES.map((body: ViewerBody) =>
+          body.id === 'luna' ? { ...body, surfaceArchetype: archetype } : body,
+        );
+        await navigateToSystemScene(page, mock, bodies);
+        await waitForSurfacesBaked(page, 3);
+        await expect.poll(() => renderedSurface(page, 'Luna')).toMatchObject({ albedoWidth: 256 });
+        await expect.poll(() => cloudTextureWidths(page)).toEqual([128, 128]);
+        await enterPlanetViewViaSceneComponent(page, focused);
+        await expect(new PlanetViewPage(page).header).toBeVisible();
+        await waitForSurfacesBaked(page);
+        await expect
+          .poll(() => renderedSurface(page, 'Luna'))
+          .toMatchObject(
+            focused === 'luna' ? { albedoWidth: 2048, normalWidth: 1024, roughnessMap: true } : { albedoWidth: 256 },
+          );
+        await expect.poll(() => cloudTextureWidths(page)).toEqual(focused === 'luna' ? [] : [256]);
+        if (focused === 'luna') await page.screenshot({ path: testInfo.outputPath(`${archetype}-detail.png`) });
+        expect(
+          problems.filter((text) => SHADER_FAILURE.test(text) || text.includes(`No dedicated ${archetype} renderer`)),
+        ).toEqual([]);
+      });
+    }
+  }
+
   test('bakes system-view surfaces through three.js without shader errors', async ({ page }) => {
     const problems = collectRenderProblems(page);
     const { mock } = await setupViewerSceneTest(page);
@@ -665,7 +696,7 @@ test.describe('viewer procedural planet surfaces', () => {
     // texturable, so three surfaces is the full expected set.
     await waitForSurfacesBaked(page, 3);
 
-    await expect.poll(() => cloudTextureWidths(page)).toEqual([128, 128, 128]);
+    await expect.poll(() => cloudTextureWidths(page)).toEqual([128, 128]);
     expect(problems.filter((text) => SHADER_FAILURE.test(text))).toEqual([]);
   });
 

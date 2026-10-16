@@ -4,9 +4,17 @@
  * Elevation is evaluated once per texel and reused for both the albedo and the
  * normal map, which halves the noise work compared with independent passes.
  */
+import { icyMoonAlbedo, icyMoonElevation, icyMoonMaterial } from './icy-moon-surface';
 import { clamp01 } from './planet-noise';
 import type { PlanetClimate } from './planet-seed';
 import { directionFromEquirect, planetAlbedo, planetElevation, planetMaterial } from './planet-surface';
+import { rockyMoonAlbedo, rockyMoonElevation, rockyMoonMaterial } from './rocky-moon-surface';
+
+const SURFACE_MODELS = {
+  terran: { elevation: planetElevation, albedo: planetAlbedo, material: planetMaterial },
+  'icy-moon': { elevation: icyMoonElevation, albedo: icyMoonAlbedo, material: icyMoonMaterial },
+  'rocky-moon': { elevation: rockyMoonElevation, albedo: rockyMoonAlbedo, material: rockyMoonMaterial },
+};
 
 export type PlanetLodTier = 'l0' | 'l1';
 
@@ -48,7 +56,7 @@ function buildElevationGrid(climate: PlanetClimate, width: number, height: numbe
     for (let x = 0; x < width; x += 1) {
       const u = (x + 0.5) / width;
       const [dx, dy, dz] = directionFromEquirect(u, v);
-      grid[y * width + x] = planetElevation(dx, dy, dz, climate);
+      grid[y * width + x] = SURFACE_MODELS[climate.archetype].elevation(dx, dy, dz, climate);
     }
   }
 
@@ -68,7 +76,7 @@ function encodeAlbedo(
     const sinLatitude = Math.sin((0.5 - v) * Math.PI);
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
-      const [r, g, b] = planetAlbedo(elevation[index], sinLatitude, climate);
+      const [r, g, b] = SURFACE_MODELS[climate.archetype].albedo(elevation[index], sinLatitude, climate);
       const offset = index * 4;
       pixels[offset] = Math.round(r * 255);
       pixels[offset + 1] = Math.round(g * 255);
@@ -97,7 +105,11 @@ function encodeMaterial(
     const sinLatitude = Math.sin((0.5 - v) * Math.PI);
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
-      const [ao, roughness, metalness] = planetMaterial(elevation[index], sinLatitude, climate);
+      const [ao, roughness, metalness] = SURFACE_MODELS[climate.archetype].material(
+        elevation[index],
+        sinLatitude,
+        climate,
+      );
       const offset = index * 4;
       pixels[offset] = Math.round(ao * 255);
       pixels[offset + 1] = Math.round(roughness * 255);
@@ -117,12 +129,7 @@ function encodeMaterial(
  * Without this the bathymetry is embossed onto the water and the oceans read
  * as bumpy.
  */
-function encodeNormal(
-  elevation: Float32Array,
-  width: number,
-  height: number,
-  seaLevel: number,
-): Uint8ClampedArray {
+function encodeNormal(elevation: Float32Array, width: number, height: number, seaLevel: number): Uint8ClampedArray {
   const pixels = new Uint8ClampedArray(width * height * 4);
   const surfaceAt = (index: number): number => Math.max(elevation[index], seaLevel);
 
@@ -197,15 +204,17 @@ export function rasterizePlanet(climate: PlanetClimate, preset: PlanetLodPreset)
 /** Sampled for the GPU parity comparison, which cannot assert exact equality. */
 export function sampleAlbedoAt(climate: PlanetClimate, u: number, v: number): readonly [number, number, number] {
   const [dx, dy, dz] = directionFromEquirect(u, v);
-  const elevation = planetElevation(dx, dy, dz, climate);
-  const [r, g, b] = planetAlbedo(elevation, dy, climate);
+  const model = SURFACE_MODELS[climate.archetype];
+  const elevation = model.elevation(dx, dy, dz, climate);
+  const [r, g, b] = model.albedo(elevation, dy, climate);
   return [clamp01(r), clamp01(g), clamp01(b)];
 }
 
 /** Samples the ORM triple at one equirect coordinate, for parity testing against the shader. */
 export function sampleMaterialAt(climate: PlanetClimate, u: number, v: number): readonly [number, number, number] {
   const [dx, dy, dz] = directionFromEquirect(u, v);
-  const elevation = planetElevation(dx, dy, dz, climate);
-  const [r, g, b] = planetMaterial(elevation, dy, climate);
+  const model = SURFACE_MODELS[climate.archetype];
+  const elevation = model.elevation(dx, dy, dz, climate);
+  const [r, g, b] = model.material(elevation, dy, climate);
   return [clamp01(r), clamp01(g), clamp01(b)];
 }

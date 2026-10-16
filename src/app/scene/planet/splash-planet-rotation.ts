@@ -7,17 +7,17 @@
  *
  * `?splashPlanet=<id>` pins the planet for screenshots, e2e tests and previews.
  * Any id is accepted, so unlisted seeds can be previewed before adding them.
- * ?splashKind=gas-giant|star picks the kind for an unlisted id, and
+ * ?splashKind=gas-giant|star|icy-moon|rocky-moon picks the kind for an unlisted id, and
  * ?splashSpectralClass=<class> sets an unlisted star's class.
  *
  * Sol bodies (`sol-earth`, `sol-mars`, ...) render approved catalog imagery and
  * are part of the rotation. The overlay can also swap the body at runtime; that
  * choice lasts for the session only.
  */
-import { fnv1a32 } from '../../model/planet/planet-seed';
-import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
 import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 import type { SurfaceArchetype } from '../../model/celestial-classification';
+import { fnv1a32 } from '../../model/planet/planet-seed';
+import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
 
 /** The original fixed splash planet; also the pinned default for tests. */
 export const SPLASH_PLANET_BODY_ID = 'nova-splash-homeworld';
@@ -26,7 +26,7 @@ export const SPLASH_PLANET_QUERY_PARAM = 'splashPlanet';
 export const SPLASH_KIND_QUERY_PARAM = 'splashKind';
 export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 
-export type SplashPlanetKind = 'terran' | 'gas-giant' | 'star' | 'sol';
+export type SplashPlanetKind = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'sol';
 
 /** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
 export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan'] as const;
@@ -47,9 +47,16 @@ export interface SplashPlanetEntry {
 }
 
 export function resolveSplashAppearance(entry: SplashPlanetEntry) {
-  const bodyType = entry.kind === 'star' ? 'star' : 'planet';
+  const isMoon = entry.kind === 'icy-moon' || entry.kind === 'rocky-moon';
+  const bodyType = entry.kind === 'star' ? 'star' : isMoon ? 'moon' : 'planet';
   const surfaceArchetype: SurfaceArchetype =
-    entry.kind === 'star' ? 'star' : entry.kind === 'gas-giant' ? 'gas-giant' : 'rocky';
+    entry.kind === 'star'
+      ? 'star'
+      : entry.kind === 'gas-giant'
+        ? 'gas-giant'
+        : entry.kind === 'icy-moon' || entry.kind === 'rocky-moon'
+          ? entry.kind
+          : 'rocky';
   return resolveCelestialAppearance({
     source: 'demo',
     bodyId: entry.id,
@@ -107,8 +114,31 @@ export const SPLASH_PLANET_ROTATION: readonly SplashPlanetEntry[] = [
   ...SPLASH_SOL_KEYS.map((solKey) => ({ id: splashSolId(solKey), kind: 'sol' as const, solKey })),
 ];
 
-/** Overlay picker categories, in display order; 'random' draws from the whole rotation. */
-export const SPLASH_PICKER_CATEGORIES = ['random', 'terran', 'gas-giant', 'star', 'sol'] as const;
+/** Opt-in demos do not change the existing random startup pool. */
+export const SPLASH_ICY_MOONS: readonly SplashPlanetEntry[] = Array.from({ length: 6 }, (_, index) => ({
+  id: `nova-splash-icy-moon-${String(index + 1).padStart(2, '0')}`,
+  kind: 'icy-moon',
+}));
+export const SPLASH_ROCKY_MOONS: readonly SplashPlanetEntry[] = Array.from({ length: 6 }, (_, index) => ({
+  id: `nova-splash-rocky-moon-${String(index + 1).padStart(2, '0')}`,
+  kind: 'rocky-moon',
+}));
+export const SPLASH_SELECTABLE_BODIES: readonly SplashPlanetEntry[] = [
+  ...SPLASH_PLANET_ROTATION,
+  ...SPLASH_ICY_MOONS,
+  ...SPLASH_ROCKY_MOONS,
+];
+
+/** 'random' retains the original rotation; procedural moons are explicitly selectable. */
+export const SPLASH_PICKER_CATEGORIES = [
+  'random',
+  'terran',
+  'icy-moon',
+  'rocky-moon',
+  'gas-giant',
+  'star',
+  'sol',
+] as const;
 export type SplashPickerCategory = (typeof SPLASH_PICKER_CATEGORIES)[number];
 
 export function isSplashPickerCategory(value: string): value is SplashPickerCategory {
@@ -119,6 +149,8 @@ export function splashEntriesForCategory(
   category: SplashPickerCategory,
   rotation: readonly SplashPlanetEntry[] = SPLASH_PLANET_ROTATION,
 ): readonly SplashPlanetEntry[] {
+  if (category === 'icy-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ICY_MOONS;
+  if (category === 'rocky-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ROCKY_MOONS;
   return category === 'random' ? rotation : rotation.filter((entry) => entry.kind === category);
 }
 
@@ -140,7 +172,7 @@ export function pickRandomSplashPlanet(
 
 function readPinnedKind(params: URLSearchParams): SplashPlanetKind {
   const kind = params.get(SPLASH_KIND_QUERY_PARAM)?.trim().toLowerCase();
-  return kind === 'gas-giant' || kind === 'star' ? kind : 'terran';
+  return kind === 'gas-giant' || kind === 'star' || kind === 'icy-moon' || kind === 'rocky-moon' ? kind : 'terran';
 }
 
 /** An unlisted star uses ?splashSpectralClass, or a class seeded from its id. */
@@ -163,7 +195,10 @@ export function selectSplashPlanet(
   const params = new URLSearchParams(search);
   const pinned = readPinnedBodyId(params);
   if (pinned) {
-    const listed = rotation.find((entry) => entry.id === pinned);
+    const listed =
+      rotation.find((entry) => entry.id === pinned) ??
+      SPLASH_ICY_MOONS.find((entry) => entry.id === pinned) ??
+      SPLASH_ROCKY_MOONS.find((entry) => entry.id === pinned);
     if (listed) return listed;
     const kind = readPinnedKind(params);
     if (kind === 'star') return { id: pinned, kind, spectralClass: readPinnedSpectralClass(params, pinned) };

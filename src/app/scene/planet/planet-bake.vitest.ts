@@ -53,6 +53,29 @@ describe('planet bake capability detection', () => {
 });
 
 describe('planet bake CPU fallback', () => {
+  it.each(['icy-moon', 'rocky-moon'] as const)(
+    'bakes %s albedo, relief and non-metallic material maps and releases them',
+    (archetype) => {
+      const result = bakePlanetTextures({ bodyId: 'moon-bake', surfaceArchetype: archetype, preset: NORMAL_PRESET });
+      expect(result.climate.archetype).toBe(archetype);
+      expect(result.source).toBe('cpu');
+      expect(result.normal?.colorSpace).toBe(NoColorSpace);
+      expect(result.material?.colorSpace).toBe(NoColorSpace);
+      expect(imageOf(result.albedo).width).toBe(64);
+      const explicit = bakePlanetTextures({ bodyId: 'moon-bake', archetype, preset: NORMAL_PRESET });
+      expect(explicit.climate.seed).toBe(result.climate.seed);
+      expect(imageOf(explicit.albedo).data).toEqual(imageOf(result.albedo).data);
+      explicit.dispose();
+      const textures = [result.albedo, result.normal, result.material];
+      const disposed = textures.map((texture) => {
+        if (!texture) throw new Error(`Expected ${archetype} detail texture`);
+        return vi.spyOn(texture, 'dispose');
+      });
+      result.dispose();
+      disposed.forEach((spy) => expect(spy).toHaveBeenCalledOnce());
+    },
+  );
+
   it('falls back to the CPU reference when WebGL2 is unavailable', () => {
     const result = bakePlanetTextures({ bodyId: 'fallback-body', tier: 'l0' });
 

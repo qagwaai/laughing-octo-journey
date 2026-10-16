@@ -86,10 +86,102 @@ Keep procedural generation as the default for arbitrary solar systems.
 
 ## Current implementation and integration seams
 
+### Moon-renderer session closeout (2026-10-16)
+
+- Initial user visual validation is complete for both `icy-moon-v1` and
+  `rocky-moon-v1`, including the user's rocky-moon confirmation at session
+  closeout. No further visual changes were requested. This is initial
+  procedural-renderer acceptance, not a release of the separate Sol imagery
+  pilot's final acceptance hold or representative-hardware performance gates.
+- Both dedicated renderers are implemented for Viewer overview, companion
+  moons, focused detail, and opt-in splash categories. Each splash category
+  has six seeds; startup and Random (any) pools remain unchanged. Both locales
+  are updated. Catalog imagery, Io cues, and Titan haze remain authoritative.
+- The CPU rasterizer shares archetype dispatch across Terran and both moon
+  models; GPU shaders mirror each model. Versioned cache keys keep the new
+  moon surfaces separate from previous Terran fallback results. Existing LOD,
+  renderer ownership, disposal, and error handling are retained.
+- No new assets, dependencies, socket contracts, or imagery licenses were
+  introduced. Mountain relief is normal-mapped, not silhouette displacement.
+- Validation completed before this documentation-only closeout:
+  - `npm run test:spec -- rocky-moon-surface.vitest.ts icy-moon-surface.vitest.ts celestial-appearance.vitest.ts planet-generation.vitest.ts planet-bake.vitest.ts planet-texture-cache.vitest.ts splash-planet-rotation.vitest.ts mining-splash-body.vitest.ts mining-splash-state.vitest.ts mining-splash.vitest.ts planet-view-scene.zoom.vitest.ts viewer-system-scene.vitest.ts`
+    passed: 199 tests across 12 suites.
+  - `npm run build` passed, including Angular template compilation.
+  - `npm run typecheck` passed for app and spec types. Targeted ESLint on all
+    changed/new TypeScript files and `git diff --check` passed.
+  - `npm run e2e:spec -- planet-bake-parity.spec.ts viewer-planet-surfaces.spec.ts mining-splash.spec.ts --grep "viewer|GPU|icy-moon|rocky-moon|swaps.the.splash|picks.the.splash|renders.repeatable.terran" --workers=1`
+    finished with 38 passed and one icy splash test timing out during repeated
+    standard-quality bakes. GPU parity for all moon maps, Viewer views, catalog
+    preservation, and rocky splash cases passed.
+  - The splash tests were then separated by workload: standard-quality
+    selection/map checks and low-quality pin/shuffle/return-to-Terran checks.
+    This preserves behavior assertions without raising timeouts or weakening
+    parity thresholds.
+  - `npm run e2e:spec -- mining-splash.spec.ts --grep "icy-moon|rocky-moon" --workers=1`
+    passed after that adjustment: 5 checks including authentication setup.
+    Final test edits also passed ESLint, `npm run typecheck:spec`, and
+    `git diff --check`. The entire 39-check selection was not rerun after the
+    test-only workload adjustment; no full repository suite was run.
+- Changes remain in the working tree, including the new generator/shader/test
+  files. No commit or push was performed during this session.
+
+### Dedicated procedural rocky moons (2026-10-16)
+
+Canonical `moon` / `rocky-moon` pairs now select `rocky-moon-v1`, not the
+Terran fallback. The same procedural surface is available in Viewer overview,
+companion moons, focused detail, and the explicit splash **Rocky moons**
+category. Startup and Random (any) selection remain unchanged.
+
+The CPU/GPU model combines dark gray-brown regolith plains, brighter ridged
+highlands, overlapping impact bowls/rims, and central peaks in large basins.
+Focused detail and standard splash quality use stronger normal-mapped mountain
+and crater relief than icy moons, plus rough non-metallic material maps.
+Overview/companion moons retain albedo-only L0, and no sphere silhouette is
+displaced. Procedural rocky moons are airless and do not receive Terran clouds.
+
+Catalog imagery still takes precedence: Luna keeps its accepted albedo and
+normal maps, Io keeps its imagery and volcanic cues, and Titan's atmosphere
+is unchanged. No imagery assets or contracts change. Both moon generators
+reuse the existing LOD, scheduling, cache ownership, and disposal paths.
+Unit and e2e coverage includes deterministic terrain, measured relief,
+seam/pole continuity, all three GPU/CPU bake maps, catalog preservation,
+Viewer overview/companion/detail, and splash selection/shuffle/pinning.
+Crater centers use normalized hash vectors rather than trigonometric sampling:
+GPU trig approximation shifted narrow crater rims enough to violate normal-map
+parity. The CPU/GPU outlier and mean-error thresholds remain unchanged.
+The user completed initial rocky-moon visual validation on 2026-10-16.
+No additional appearance changes were requested at closeout.
+
+### Dedicated procedural icy moons (2026-10-16)
+
+Canonical `icy-moon` surfaces now select the dedicated `icy-moon-v1` generator
+instead of the Terran fallback. This applies to moons, icy dwarf planets, and
+TNOs in both Viewer overview and focused detail, using the existing scheduler,
+LOD budgets, renderer ownership, and versioned cache keys. Supported catalog
+identities still take precedence, and Titan retains its dedicated haze layer.
+No Sol imagery or accepted relief maps are changed.
+
+The shared CPU/GPU surface model produces frozen blue-white terrain, mineral
+fractures, seeded impact basins/rims, and localized mountain relief. Detail
+uses normal and non-metallic roughness maps; overview and companion moons use
+albedo-only L0. Relief does not displace the sphere silhouette. Procedural icy
+moons do not receive Terran clouds. Other procedural fallback behavior remains
+unchanged.
+
+The same generator is explicitly selectable in the splash; this separate
+opt-in addition does not expand the Sol imagery pilot or change startup random
+selection. See the [splash update](splash1-2026-09-27.md#icy-moons-2026-10-16).
+Automated coverage includes deterministic CPU generation, seam/pole behavior,
+versioned selection, texture disposal, GPU/CPU map parity, Viewer overview/
+companion/focused rendering, and splash selection/shuffling/pinning. Automated
+checks do not replace user visual acceptance.
+The user completed initial icy-moon visual validation on 2026-10-16; this does
+not release the separate Sol imagery pilot's final acceptance hold.
+
 - [Surface resolver](../src/app/scene/planet/planet-surface-resolver.ts):
   central selection seam; exact supported `sol/earth`, `sol/luna`, `sol/mars`,
   and `sol/io` identities select catalog assets; other eligible solid bodies
-  retain the terran generator.
+  retain a dedicated icy-moon/rocky-moon generator or the existing terran generator.
 - [Texture cache](../src/app/scene/planet/planet-texture-cache.ts):
   shared overview/detail facade for procedural scheduling and
   [catalog texture ownership](../src/app/scene/planet/catalog-surface-cache.ts).
@@ -111,7 +203,8 @@ Keep procedural generation as the default for arbitrary solar systems.
 Both Viewer templates now apply explicit catalog cloud eligibility: Earth
 retains its cloud layer; Luna and Mars do not acquire terrestrial clouds.
 Io does not acquire terrestrial clouds and adds a project-authored static
-volcanism overlay. Procedural cloud behavior and splash paths remain unchanged.
+volcanism overlay. Procedural icy and rocky moons are cloud-free; other procedural
+cloud behavior is unchanged. The opt-in moon splash additions are described above.
 
 ### Contract authority
 

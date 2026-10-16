@@ -1,10 +1,12 @@
-import { GAS_GIANT_GENERATOR_VERSION } from './planet/gas-giant-profile';
-import { PLANET_GENERATOR_VERSION } from './planet/planet-seed';
-import { STAR_GENERATOR_VERSION } from './star/star-profile';
 import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
 import { isCompatibleBodyClassification } from './celestial-classification';
+import { GAS_GIANT_GENERATOR_VERSION } from './planet/gas-giant-profile';
+import { ICY_MOON_GENERATOR_VERSION } from './planet/icy-moon-surface';
+import { PLANET_GENERATOR_VERSION } from './planet/planet-seed';
+import { ROCKY_MOON_GENERATOR_VERSION } from './planet/rocky-moon-surface';
+import { STAR_GENERATOR_VERSION } from './star/star-profile';
 
-export type AppearanceRenderer = 'terran' | 'gas-giant' | 'star' | 'asteroid';
+export type AppearanceRenderer = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'asteroid';
 export const ASTEROID_GENERATOR_VERSION = 'asteroid-v2';
 
 export interface CelestialAppearanceInput {
@@ -19,19 +21,23 @@ export interface CelestialAppearanceInput {
 }
 
 export type CelestialAppearanceResolution =
-  | { valid: true; input: CelestialAppearanceInput }
-  | { valid: false; reason: string };
+  { valid: true; input: CelestialAppearanceInput } | { valid: false; reason: string };
 
 const GENERATOR_VERSIONS: Readonly<Record<AppearanceRenderer, string>> = {
   terran: PLANET_GENERATOR_VERSION,
+  'icy-moon': ICY_MOON_GENERATOR_VERSION,
+  'rocky-moon': ROCKY_MOON_GENERATOR_VERSION,
   'gas-giant': GAS_GIANT_GENERATOR_VERSION,
   star: STAR_GENERATOR_VERSION,
   asteroid: ASTEROID_GENERATOR_VERSION,
 };
 
-export function resolveCelestialAppearance(
-  input: { source: 'canonical' | 'demo'; bodyId: string; bodyType: unknown; surfaceArchetype: unknown },
-): CelestialAppearanceResolution {
+export function resolveCelestialAppearance(input: {
+  source: 'canonical' | 'demo';
+  bodyId: string;
+  bodyType: unknown;
+  surfaceArchetype: unknown;
+}): CelestialAppearanceResolution {
   if (!input.bodyId.trim()) {
     return { valid: false, reason: 'canonical body ID is missing' };
   }
@@ -74,6 +80,12 @@ export function resolveCelestialAppearance(
         renderer: 'gas-giant',
         gasGiantPalette: surfaceArchetype === 'ice-giant' ? 'ice' : 'jovian',
       },
+    };
+  }
+  if (surfaceArchetype === 'icy-moon' || surfaceArchetype === 'rocky-moon') {
+    return {
+      valid: true,
+      input: { ...classified, generatorVersion: GENERATOR_VERSIONS[surfaceArchetype], renderer: surfaceArchetype },
     };
   }
   if (surfaceArchetype === 'rocky') {

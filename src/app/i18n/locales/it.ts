@@ -62,6 +62,8 @@ export const it: DeepPartial<EnLocale> = {
       bodyCategories: {
         random: 'Casuale (qualsiasi)',
         terran: 'Pianeti',
+        'icy-moon': 'Lune ghiacciate',
+        'rocky-moon': 'Lune rocciose',
         'gas-giant': 'Giganti gassosi',
         star: 'Soli',
         sol: 'Sistema solare',
@@ -76,6 +78,8 @@ export const it: DeepPartial<EnLocale> = {
       bodyHomeworld: 'Pianeta natale',
       bodyWorld: 'Mondo',
       bodyGiant: 'Gigante',
+      bodyIcyMoon: 'Luna ghiacciata',
+      bodyRockyMoon: 'Luna rocciosa',
       bodyStar: 'Sole',
       solBodies: {
         earth: 'Terra',

@@ -59,7 +59,12 @@ export function isTexturableBody(body: ResolvablePlanetBody | null | undefined):
     bodyType: body.bodyType,
     surfaceArchetype: body.surfaceArchetype,
   });
-  return resolution.valid && resolution.input.renderer === 'terran';
+  return (
+    resolution.valid &&
+    (resolution.input.renderer === 'terran' ||
+      resolution.input.renderer === 'icy-moon' ||
+      resolution.input.renderer === 'rocky-moon')
+  );
 }
 
 /**
@@ -67,8 +72,10 @@ export function isTexturableBody(body: ResolvablePlanetBody | null | undefined):
  * classification is preserved separately on the request; unsupported solid
  * archetypes use this terran renderer only through the explicit fallback.
  */
-export function resolvePlanetArchetype(_body: ResolvablePlanetBody): PlanetArchetype {
-  return 'terran';
+export function resolvePlanetArchetype(body: ResolvablePlanetBody): PlanetArchetype {
+  return body.surfaceArchetype === 'icy-moon' || body.surfaceArchetype === 'rocky-moon'
+    ? body.surfaceArchetype
+    : 'terran';
 }
 
 export function resolvePlanetSurface(
@@ -86,7 +93,13 @@ export function resolvePlanetSurface(
     bodyType: body.bodyType,
     surfaceArchetype: body.surfaceArchetype,
   });
-  if (!resolved.valid || resolved.input.renderer !== 'terran') return null;
+  if (
+    !resolved.valid ||
+    (resolved.input.renderer !== 'terran' &&
+      resolved.input.renderer !== 'icy-moon' &&
+      resolved.input.renderer !== 'rocky-moon')
+  )
+    return null;
 
   return {
     key: `${resolved.input.generatorVersion}|${resolved.input.surfaceArchetype}|${tier}|${body.id}`,

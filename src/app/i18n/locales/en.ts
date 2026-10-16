@@ -65,6 +65,8 @@ export const en = {
       bodyCategories: {
         random: 'Random (any)',
         terran: 'Planets',
+        'icy-moon': 'Icy moons',
+        'rocky-moon': 'Rocky moons',
         'gas-giant': 'Gas giants',
         star: 'Suns',
         sol: 'Sol system',
@@ -79,6 +81,8 @@ export const en = {
       bodyHomeworld: 'Homeworld',
       bodyWorld: 'World',
       bodyGiant: 'Giant',
+      bodyIcyMoon: 'Icy moon',
+      bodyRockyMoon: 'Rocky moon',
       bodyStar: 'Sun',
       solBodies: {
         earth: 'Earth',

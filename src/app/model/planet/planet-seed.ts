@@ -5,7 +5,9 @@
  * archetype. `planetType` and `visualization.textureKey` remain separate
  * catalog/presentation fields; see docs/procedural-planets-2026-09-28.md.
  */
+import { ICY_MOON_GENERATOR_VERSION } from './icy-moon-surface';
 import { calibrateContinents } from './planet-surface';
+import { ROCKY_MOON_GENERATOR_VERSION } from './rocky-moon-surface';
 
 export const PLANET_GENERATOR_VERSION = 'terran-v2';
 
@@ -15,7 +17,7 @@ export const PLANET_GENERATOR_VERSION = 'terran-v2';
  */
 const climateCache = new Map<string, PlanetClimate>();
 
-export type PlanetArchetype = 'terran';
+export type PlanetArchetype = 'terran' | 'icy-moon' | 'rocky-moon';
 
 export interface PlanetClimate {
   archetype: PlanetArchetype;
@@ -68,19 +70,24 @@ function quantize(value: number): number {
 export function derivePlanetClimate(
   bodyId: string,
   archetype: PlanetArchetype = 'terran',
-  surfaceArchetype = 'rocky',
+  surfaceArchetype = archetype === 'terran' ? 'rocky' : archetype,
 ): PlanetClimate {
-  const cacheKey = `${PLANET_GENERATOR_VERSION}|${surfaceArchetype}|${archetype}|${bodyId}`;
+  const version = {
+    terran: PLANET_GENERATOR_VERSION,
+    'icy-moon': ICY_MOON_GENERATOR_VERSION,
+    'rocky-moon': ROCKY_MOON_GENERATOR_VERSION,
+  }[archetype];
+  const cacheKey = `${version}|${surfaceArchetype}|${archetype}|${bodyId}`;
   const cached = climateCache.get(cacheKey);
   if (cached) return cached;
 
-  const seed = fnv1a32(`${PLANET_GENERATOR_VERSION}|${surfaceArchetype}|${archetype}|${bodyId}`);
+  const seed = fnv1a32(cacheKey);
   const random = createSeededRng(seed);
 
   const base = {
     archetype,
     seed,
-    waterFraction: quantize(lerp(0.45, 0.75, random())),
+    waterFraction: archetype === 'terran' ? quantize(lerp(0.45, 0.75, random())) : 0,
     iceLatitudeDeg: quantize(lerp(55, 80, random())),
     continentFrequency: quantize(lerp(1.4, 2.6, random())),
     warpStrength: quantize(lerp(0.15, 0.45, random())),
@@ -91,7 +98,9 @@ export function derivePlanetClimate(
 
   const climate: PlanetClimate = {
     ...base,
-    ...calibrateContinents(base, base.waterFraction, base.mountainAmplitude),
+    ...(archetype === 'terran'
+      ? calibrateContinents(base, base.waterFraction, base.mountainAmplitude)
+      : { seaLevel: 0, oceanSpan: 1, landSpan: 1 }),
   };
 
   climateCache.set(cacheKey, climate);

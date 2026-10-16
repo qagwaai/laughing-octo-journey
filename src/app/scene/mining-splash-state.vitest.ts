@@ -48,6 +48,17 @@ describe('MiningSplashState body picker', () => {
     expect(() => state.chooseBody('nope')).toThrow('Unknown splash body: nope');
   });
 
+  it.each(['icy-moon', 'rocky-moon'] as const)('selects and shuffles %s through the dedicated category', (kind) => {
+    state.chooseCategory(kind);
+    expect(state.planetKind()).toBe(kind);
+    state.chooseBody(`nova-splash-${kind}-01`);
+    expect(state.planetSurfaceArchetype()).toBe(kind);
+    expect(state.appearance()).toMatchObject({ valid: true, input: { renderer: kind } });
+    state.reroll();
+    expect(state.planetBodyId()).not.toBe(`nova-splash-${kind}-01`);
+    expect(state.planetKind()).toBe(kind);
+  });
+
   it('restores the displayed body and reports a failed swap', () => {
     vi.spyOn(appLogger, 'error').mockImplementation(() => undefined);
     const displayed = state.planet();
