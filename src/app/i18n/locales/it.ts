@@ -15,6 +15,12 @@ export const it: DeepPartial<EnLocale> = {
     levelPrefix: 'Livello',
     loggedInAsPrefix: 'Accesso come:',
     loading: 'Caricamento...',
+    splitter: {
+      label: 'Ridimensiona i pannelli sinistro e destro',
+      showLeft: 'Mostra tutto a sinistra',
+      reset: 'Ripristina divisione al 50/50',
+      showRight: 'Mostra tutto a destra',
+    },
     overlayClose: {
       label: 'Chiudi',
       ariaLabel: 'Chiudi pannello',

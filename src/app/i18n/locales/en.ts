@@ -17,6 +17,12 @@ export const en = {
     levelPrefix: 'Level',
     loggedInAsPrefix: 'Logged in as:',
     loading: 'Loading...',
+    splitter: {
+      label: 'Resize left and right panes',
+      showLeft: 'Show all left',
+      reset: 'Reset split to 50/50',
+      showRight: 'Show all right',
+    },
     overlayClose: {
       label: 'Close',
       ariaLabel: 'Close panel',

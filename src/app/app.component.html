@@ -1,37 +1,91 @@
-<div class="relative flex h-dvh w-full overflow-hidden" [style.cursor]="isResizing() ? 'col-resize' : 'default'">
+<div
+  class="split-layout relative flex h-dvh w-full overflow-hidden"
+  [style.cursor]="isResizing() ? 'col-resize' : 'default'"
+>
   <!-- Left Content Area with Router Outlet -->
-  <div class="relative flex flex-col overflow-auto bg-gray-900 text-white" #leftPanel>
+  <div
+    id="app-left-panel"
+    class="relative flex min-w-0 flex-col overflow-auto bg-gray-900 text-white"
+    [attr.inert]="leftPanelWidth() === 0 ? '' : null"
+    [attr.aria-hidden]="leftPanelWidth() === 0 ? 'true' : null"
+    #leftPanel
+  >
     <router-outlet name="left" />
     <app-left-pane-mission-guidance-overlay />
   </div>
 
   <!-- Divider -->
-  <div class="relative" style="width: 20px; pointer-events: auto; user-select: none; z-index: 10; flex-shrink: 0">
-    <button
-      type="button"
-      class="absolute top-2 left-1/2 z-20 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-      (mousedown)="$event.stopPropagation()"
-      (click)="resetSplit()"
-      aria-label="Reset split to 50/50"
-      title="Reset split to 50/50"
-    >
-      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true">
-        <rect x="4" y="6" width="6" height="12" rx="1" fill="currentColor" opacity="0.85"></rect>
-        <rect x="14" y="6" width="6" height="12" rx="1" fill="currentColor" opacity="0.85"></rect>
-      </svg>
-    </button>
+  <div class="splitter relative z-10">
+    <div class="splitter-controls">
+      <button
+        type="button"
+        class="flex items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+        (click)="setSplit(100)"
+        [attr.aria-label]="t.common.splitter.showLeft"
+        [title]="t.common.splitter.showLeft"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
+          <path d="m9 5 7 7-7 7M20 4v16" fill="none" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+        (click)="resetSplit()"
+        [attr.aria-label]="t.common.splitter.reset"
+        [title]="t.common.splitter.reset"
+      >
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" aria-hidden="true">
+          <rect x="4" y="6" width="6" height="12" rx="1" fill="currentColor" opacity="0.85"></rect>
+          <rect x="14" y="6" width="6" height="12" rx="1" fill="currentColor" opacity="0.85"></rect>
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center rounded border border-gray-500/70 bg-gray-900/90 text-gray-200 hover:border-blue-400 hover:text-blue-300 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+        (click)="setSplit(0)"
+        [attr.aria-label]="t.common.splitter.showRight"
+        [title]="t.common.splitter.showRight"
+      >
+        <svg viewBox="0 0 24 24" class="h-4 w-4" aria-hidden="true">
+          <path d="m15 5-7 7 7 7M4 4v16" fill="none" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+      </button>
+    </div>
 
     <div
       #divider
-      class="absolute top-0 left-1/2 h-full -translate-x-1/2 cursor-col-resize bg-gray-700 transition-colors hover:bg-blue-500"
-      style="width: 2px"
-      (mousedown)="startResize($event)"
+      class="splitter-drag group absolute inset-0 cursor-col-resize focus:ring-2 focus:ring-blue-400 focus:outline-none"
+      role="separator"
+      tabindex="0"
+      aria-orientation="vertical"
+      aria-controls="app-left-panel app-right-panel"
+      [attr.aria-label]="t.common.splitter.label"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="leftPanelWidth()"
+      (pointerdown)="startResize($event)"
+      (pointermove)="resize($event)"
+      (pointerup)="endResize($event)"
+      (pointercancel)="endResize($event)"
+      (lostpointercapture)="endResize($event)"
+      (keydown)="onSplitterKeydown($event)"
       (dblclick)="resetSplit()"
-    ></div>
+    >
+      <div
+        class="pointer-events-none absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 bg-gray-700 transition-colors group-hover:bg-blue-500"
+      ></div>
+    </div>
   </div>
 
   <!-- Right Canvas Area -->
-  <div class="relative max-h-dvh max-w-full min-w-0 flex-1 overflow-hidden" #rightPanel>
+  <div
+    id="app-right-panel"
+    class="relative max-h-dvh max-w-full min-w-0 flex-1 overflow-hidden"
+    [attr.inert]="leftPanelWidth() === 100 ? '' : null"
+    [attr.aria-hidden]="leftPanelWidth() === 100 ? 'true' : null"
+    #rightPanel
+  >
     @if (shipExteriorPrimaryActive()) {
       <div class="absolute inset-0 z-0">
         <router-outlet />

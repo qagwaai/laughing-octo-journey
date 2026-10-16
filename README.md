@@ -17,6 +17,19 @@ This is a template to get started with Angular Three.
 - Run `npm start` to start the development server.
 - Run `npm run start:host` to bind the development server to all network interfaces, then open `http://<your-computer's-LAN-IP>:4200` from another device on the same network. Allow port 4200 through your firewall if needed; this does not expose the app to the public internet.
 
+### Pane splitter
+
+The divider has three stacked icon buttons: **Show all left**, **Reset split to
+50/50**, and **Show all right**. Maximizing a pane hides the other pane while
+keeping the divider and all three controls on-screen. Drag anywhere on the
+divider below the buttons with a mouse, finger, or pen to restore either pane.
+Double-click the divider to return to an equal split.
+
+The draggable rail is 32px wide on desktop and 48px on touch devices or screens
+up to 640px wide, with 44px touch buttons. Keyboard users can focus the separator
+and use Left/Right arrows to resize in 5% steps, Home to show all right, and End
+to show all left. Collapsed panes are excluded from keyboard navigation.
+
 ### Strict Dev Server (fail-closed serving)
 
 `npm start` runs `ng serve` through a local wrapper builder,

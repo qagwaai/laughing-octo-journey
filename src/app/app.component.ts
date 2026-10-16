@@ -6,7 +6,6 @@ import {
   CUSTOM_ELEMENTS_SCHEMA,
   ElementRef,
   inject,
-  NgZone,
   OnDestroy,
   signal,
   viewChild,
@@ -17,6 +16,7 @@ import { NgtsStats } from 'angular-three-soba/stats';
 import { NgtCanvas } from 'angular-three/dom';
 import { filter, map, startWith, Subscription } from 'rxjs';
 import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-guidance-overlay';
+import { locale } from './i18n/locale';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { RoutedScene } from './routed-scene';
 import { MiningSplashOverlay } from './scene/mining-splash-overlay';
@@ -47,6 +47,43 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 
         & canvas {
           margin-top: 0 !important;
+        }
+      }
+
+      .split-layout {
+        --splitter-width: 32px;
+      }
+
+      .splitter {
+        width: var(--splitter-width);
+        flex: none;
+        user-select: none;
+      }
+
+      .splitter-drag {
+        touch-action: none;
+      }
+
+      .splitter-controls {
+        position: absolute;
+        top: 8px;
+        left: 2px;
+        right: 2px;
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .splitter-controls button {
+        width: 100%;
+        aspect-ratio: 1;
+        touch-action: manipulation;
+      }
+
+      @media (any-pointer: coarse), (max-width: 640px) {
+        .split-layout {
+          --splitter-width: 48px;
         }
       }
 
@@ -84,11 +121,10 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 export class AppComponent implements AfterViewInit, OnDestroy {
   private static readonly LOOK_HINT_HIDE_DELAY_MS = 2000;
   private static readonly START_SCANNING_LEFT_WIDTH = 33;
-  private static readonly DIVIDER_WIDTH_PX = 20;
   private static readonly PANEL_SPLIT_DURATION_MS = 700;
   private static readonly PANEL_SPLIT_TRANSITION = `width ${AppComponent.PANEL_SPLIT_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-  protected host = inject(ElementRef);
-  protected ngZone = inject(NgZone);
+  protected host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly t = locale;
   protected cdr = inject(ChangeDetectorRef);
   protected router = inject(Router);
   protected openingAudio = inject(OpeningAudioService);
@@ -96,12 +132,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected renderStats = inject(RenderStatsService);
   private shipExteriorViewHost = inject(ShipExteriorViewHostService);
   private sceneVisibility = inject(SceneVisibilityService);
-  protected leftPanelRef = viewChild.required<ElementRef>('leftPanel');
-  protected rightPanelRef = viewChild.required<ElementRef>('rightPanel');
-  protected dividerRef = viewChild.required<ElementRef>('divider');
+  protected leftPanelRef = viewChild.required<ElementRef<HTMLElement>>('leftPanel');
+  protected rightPanelRef = viewChild.required<ElementRef<HTMLElement>>('rightPanel');
+  protected dividerRef = viewChild.required<ElementRef<HTMLElement>>('divider');
   protected color = signal('#ff0000');
   protected stats = this.renderStats.enabled;
-  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
+  protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats pointer-events-none' };
   protected readonly shipExteriorHudFacade = createShipExteriorViewFacade(
     () => this.shipExteriorViewHost.source() ?? undefined,
   );
@@ -170,6 +206,8 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected contractVarianceToast = this.contractVarianceNotifier.activeToast;
 
   private startX = 0;
+  private startWidth = 50;
+  private activePointerId: number | null = null;
   private lookHintTimerId: number | null = null;
   private splitTransitionTimerId: number | null = null;
   private statsSyncTimerId: number | null = null;
@@ -249,10 +287,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     const leftPanel = this.leftPanelRef().nativeElement;
     const rightPanel = this.rightPanelRef().nativeElement;
     if (leftPanel && rightPanel) {
-      leftPanel.style.width = '50%';
-      leftPanel.style.flex = 'none';
-      rightPanel.style.width = '';
-      rightPanel.style.flex = '1 1 auto';
+      this.applyPanelSplit(50, leftPanel, rightPanel);
     }
 
     window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
@@ -275,7 +310,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   }
 
   private applyStatsVisibility(value: boolean): void {
-    const statsElements = this.host.nativeElement.querySelectorAll('.stats');
+    const statsElements = this.host.nativeElement.querySelectorAll<HTMLElement>('.stats');
     statsElements.forEach((element: HTMLElement) => {
       element.style.display = value ? 'block' : 'none';
     });
@@ -296,85 +331,84 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     this.openingAudio.setAudioHooksEnabled(value);
   }
 
-  startResize(event: MouseEvent) {
+  startResize(event: PointerEvent) {
+    if (event.button !== 0 || !event.isPrimary || this.activePointerId !== null) return;
+
+    event.preventDefault();
+    this.clearSplitTransitionTimer();
     this.isResizing.set(true);
     this.startX = event.clientX;
+    this.startWidth = this.leftPanelWidth();
+    this.activePointerId = event.pointerId;
     this.host.nativeElement.classList.add('resizing');
-
-    // Attach event listeners directly to document (they'll be removed on mouseup)
-    document.addEventListener('mousemove', this.onMouseMoveListener);
-    document.addEventListener('mouseup', this.onMouseUpListener);
+    const divider = this.dividerRef().nativeElement;
+    divider.focus({ preventScroll: true });
+    divider.setPointerCapture(event.pointerId);
   }
 
   resetSplit() {
-    // Reset the state
+    this.setSplit(50);
+  }
+
+  setSplit(leftWidth: number): void {
+    this.endResize();
+    this.clearSplitTransitionTimer();
+    this.applyPanelSplit(
+      Math.min(100, Math.max(0, leftWidth)),
+      this.leftPanelRef().nativeElement,
+      this.rightPanelRef().nativeElement,
+    );
+  }
+
+  resize(event: PointerEvent): void {
+    if (event.pointerId !== this.activePointerId) return;
+
+    const usableWidth = Math.max(1, this.host.nativeElement.clientWidth - this.dividerRef().nativeElement.offsetWidth);
+    const width = this.startWidth + ((event.clientX - this.startX) / usableWidth) * 100;
+    this.applyPanelSplit(
+      Math.min(100, Math.max(0, width)),
+      this.leftPanelRef().nativeElement,
+      this.rightPanelRef().nativeElement,
+    );
+  }
+
+  endResize(event?: PointerEvent): void {
+    if (event && event.pointerId !== this.activePointerId) return;
+
+    const pointerId = this.activePointerId;
+    this.activePointerId = null;
     this.isResizing.set(false);
     this.host.nativeElement.classList.remove('resizing');
-
-    this.leftPanelWidth.set(50);
-    this.clearSplitTransitionTimer();
-    const leftPanel = this.leftPanelRef().nativeElement;
-    const rightPanel = this.rightPanelRef().nativeElement;
-
-    if (leftPanel && rightPanel) {
-      leftPanel.style.width = '50%';
-      leftPanel.style.flex = 'none';
-      rightPanel.style.width = '';
-      rightPanel.style.flex = '1 1 auto';
-
-      // Force a reflow to trigger layout recalculation
-      void leftPanel.offsetHeight;
-      void rightPanel.offsetHeight;
-      void this.host.nativeElement.offsetHeight;
+    const divider = this.dividerRef().nativeElement;
+    if (pointerId !== null && divider.hasPointerCapture(pointerId)) {
+      divider.releasePointerCapture(pointerId);
     }
   }
 
-  private onMouseMoveListener = (event: MouseEvent) => {
-    if (!this.isResizing()) return;
-
-    try {
-      this.ngZone.run(() => {
-        const container = this.host.nativeElement;
-        const deltaX = event.clientX - this.startX;
-        const containerWidth = container.offsetWidth;
-        const usableWidth = Math.max(1, containerWidth - AppComponent.DIVIDER_WIDTH_PX);
-        const newWidth = this.leftPanelWidth() + (deltaX / usableWidth) * 100;
-
-        // Constrain width between 20% and 80%
-        if (newWidth >= 20 && newWidth <= 80) {
-          this.leftPanelWidth.set(newWidth);
-          this.startX = event.clientX;
-          // Directly set the DOM element width for both panels
-          const leftPanel = this.leftPanelRef().nativeElement;
-          const rightPanel = this.rightPanelRef().nativeElement;
-          if (leftPanel && rightPanel) {
-            leftPanel.style.width = newWidth + '%';
-            leftPanel.style.flex = 'none';
-            rightPanel.style.width = '';
-            rightPanel.style.flex = '1 1 auto';
-          }
-        }
-      });
-    } catch {
-      // Silently ignore errors during resize
+  onSplitterKeydown(event: KeyboardEvent): void {
+    let width: number;
+    switch (event.key) {
+      case 'ArrowLeft':
+        width = this.leftPanelWidth() - 5;
+        break;
+      case 'ArrowRight':
+        width = this.leftPanelWidth() + 5;
+        break;
+      case 'Home':
+        width = 0;
+        break;
+      case 'End':
+        width = 100;
+        break;
+      default:
+        return;
     }
-  };
-
-  private onMouseUpListener = (_event: MouseEvent) => {
-    if (this.isResizing()) {
-      this.isResizing.set(false);
-      this.host.nativeElement.classList.remove('resizing');
-
-      // Remove event listeners
-      document.removeEventListener('mousemove', this.onMouseMoveListener);
-      document.removeEventListener('mouseup', this.onMouseUpListener);
-    }
-  };
+    event.preventDefault();
+    this.setSplit(width);
+  }
 
   ngOnDestroy() {
-    // Clean up event listeners
-    document.removeEventListener('mousemove', this.onMouseMoveListener);
-    document.removeEventListener('mouseup', this.onMouseUpListener);
+    this.endResize();
     window.removeEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
     this.clearSplitTransitionTimer();
     this.clearLookHintTimer();
@@ -410,13 +444,15 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   private applyPanelSplit(leftWidth: number, leftPanel: HTMLElement, rightPanel: HTMLElement): void {
     this.leftPanelWidth.set(leftWidth);
-    leftPanel.style.width = `${leftWidth}%`;
+    leftPanel.style.width = `calc(${leftWidth}% - var(--splitter-width) * ${leftWidth / 100})`;
     leftPanel.style.flex = 'none';
     rightPanel.style.width = '';
     rightPanel.style.flex = '1 1 auto';
   }
 
   private clearSplitTransitionTimer(): void {
+    this.leftPanelRef().nativeElement.style.transition = '';
+    this.rightPanelRef().nativeElement.style.transition = '';
     if (this.splitTransitionTimerId === null) {
       return;
     }
