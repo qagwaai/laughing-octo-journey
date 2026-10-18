@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { PRIMARY_OUTLET, Router, Routes, UrlSegment } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 
 const primaryRoutes: Routes = [
@@ -13,8 +14,21 @@ const primaryRoutes: Routes = [
     loadComponent: () => import('./page/public/intro'),
   },
   {
+    path: 'splash',
+    loadComponent: () => import('./scene/splash-scene'),
+  },
+  {
     path: 'knot',
-    loadComponent: () => import('./scene/knot'),
+    pathMatch: 'full',
+    redirectTo: () => {
+      const router = inject(Router);
+      const navigation = router.currentNavigation();
+      if (!navigation) throw new Error('Legacy splash redirect requires an active navigation.');
+      const target = router.parseUrl(router.serializeUrl(navigation.extractedUrl));
+      const primary = target.root.children[PRIMARY_OUTLET];
+      primary.segments[0] = new UrlSegment('splash', primary.segments[0].parameters);
+      return target;
+    },
   },
   {
     path: 'scene-graph',

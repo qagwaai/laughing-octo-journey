@@ -149,7 +149,7 @@ paused. Do not translate a motion assertion into a minimum wall-clock FPS.
 
 Validation on 2026-10-09:
 
-- `npm run e2e:spec -- mining-splash.spec.ts viewer-planet-surfaces.spec.ts --workers=1 --retries=0`
+- `npm run e2e:spec -- splash.spec.ts viewer-planet-surfaces.spec.ts --workers=1 --retries=0`
   passed all 34 tests including setup under headless SwiftShader (8.4 minutes).
   The earlier combined run passed 33 and exposed the near-future `pauseAt`
   timestamp race; the fixed-origin deadline resolves that test-harness error.

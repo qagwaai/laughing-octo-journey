@@ -104,12 +104,12 @@ Keep procedural generation as the default for arbitrary solar systems.
 - No new assets, dependencies, socket contracts, or imagery licenses were
   introduced. Mountain relief is normal-mapped, not silhouette displacement.
 - Validation completed before this documentation-only closeout:
-  - `npm run test:spec -- rocky-moon-surface.vitest.ts icy-moon-surface.vitest.ts celestial-appearance.vitest.ts planet-generation.vitest.ts planet-bake.vitest.ts planet-texture-cache.vitest.ts splash-planet-rotation.vitest.ts mining-splash-body.vitest.ts mining-splash-state.vitest.ts mining-splash.vitest.ts planet-view-scene.zoom.vitest.ts viewer-system-scene.vitest.ts`
+  - `npm run test:spec -- rocky-moon-surface.vitest.ts icy-moon-surface.vitest.ts celestial-appearance.vitest.ts planet-generation.vitest.ts planet-bake.vitest.ts planet-texture-cache.vitest.ts splash-planet-rotation.vitest.ts splash-body.vitest.ts splash-state.vitest.ts splash.vitest.ts planet-view-scene.zoom.vitest.ts viewer-system-scene.vitest.ts`
     passed: 199 tests across 12 suites.
   - `npm run build` passed, including Angular template compilation.
   - `npm run typecheck` passed for app and spec types. Targeted ESLint on all
     changed/new TypeScript files and `git diff --check` passed.
-  - `npm run e2e:spec -- planet-bake-parity.spec.ts viewer-planet-surfaces.spec.ts mining-splash.spec.ts --grep "viewer|GPU|icy-moon|rocky-moon|swaps.the.splash|picks.the.splash|renders.repeatable.terran" --workers=1`
+  - `npm run e2e:spec -- planet-bake-parity.spec.ts viewer-planet-surfaces.spec.ts splash.spec.ts --grep "viewer|GPU|icy-moon|rocky-moon|swaps.the.splash|picks.the.splash|renders.repeatable.terran" --workers=1`
     finished with 38 passed and one icy splash test timing out during repeated
     standard-quality bakes. GPU parity for all moon maps, Viewer views, catalog
     preservation, and rocky splash cases passed.
@@ -117,7 +117,7 @@ Keep procedural generation as the default for arbitrary solar systems.
     selection/map checks and low-quality pin/shuffle/return-to-Terran checks.
     This preserves behavior assertions without raising timeouts or weakening
     parity thresholds.
-  - `npm run e2e:spec -- mining-splash.spec.ts --grep "icy-moon|rocky-moon" --workers=1`
+  - `npm run e2e:spec -- splash.spec.ts --grep "icy-moon|rocky-moon" --workers=1`
     passed after that adjustment: 5 checks including authentication setup.
     Final test edits also passed ESLint, `npm run typecheck:spec`, and
     `git diff --check`. The entire 39-check selection was not rerun after the
@@ -310,7 +310,7 @@ this records user sign-off, not additional measured performance evidence.
 ### Stage 1: identities, rights, and budgets
 
 Quality-policy inspection found an existing pure
-[selectMiningQuality selector](../src/app/scene/mining-splash-state.ts):
+[selectSplashQuality selector](../src/app/scene/splash-state.ts):
 it chooses `low` when viewport width is below 768 CSS pixels, reported CPU cores
 are at most 4, or data saving is enabled; otherwise it chooses `standard`.
 The splash caller uses 4 cores when hardware concurrency is unavailable.
@@ -326,7 +326,7 @@ and actual renderer texture-size support remain separate requirements.
 The user approved this shared-helper approach on 2026-10-08.
 [Quality-policy regression tests](../src/app/scene/render-quality.vitest.ts)
 cover threshold boundaries, data saving, and splash API identity. The combined
-quality-policy and existing mining-splash suite passed (29 tests); targeted lint
+quality-policy and existing splash suite passed (29 tests); targeted lint
 passed. No splash asset, appearance, tier threshold, or lifecycle changed, and
 the Viewer does not consume catalog quality tiers yet.
 
@@ -2578,8 +2578,8 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 | 2026-10-08 | Stage 0          | `npm run e2e:spec -- viewer-interactions.spec.ts --grep '5% station mesh'`                                                                                                                               | Passed: setup and station regression (2 tests)                                                                                     | Awaiting user terrain-visibility and pointer-usability review                                            |
 
 | 2026-10-08 | Stage 0 visual acceptance | User confirmed visual validation complete in Stellar Viewer | Accepted; Stage 0 Done | Device/viewport and screenshots not supplied |
-| 2026-10-08 | Stage 1 quality policy | User approved shared pure helper; `npm run test:spec -- src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash.vitest.ts` | Passed: 29 tests; splash selector behavior preserved | Viewer tier integration deferred to catalog stages |
-| 2026-10-08 | Stage 1 quality policy | `npx --no-install eslint src\app\scene\render-quality.ts src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash-state.ts` | Passed | |
+| 2026-10-08 | Stage 1 quality policy | User approved shared pure helper; `npm run test:spec -- src\app\scene\render-quality.vitest.ts src\app\scene\splash.vitest.ts` | Passed: 29 tests; splash selector behavior preserved | Viewer tier integration deferred to catalog stages |
+| 2026-10-08 | Stage 1 quality policy | `npx --no-install eslint src\app\scene\render-quality.ts src\app\scene\render-quality.vitest.ts src\app\scene\splash-state.ts` | Passed | |
 | 2026-10-08 | Stage 1 contract inspection | Cache-busted root OpenAPI and SolarSystem module | HTTP 200; `sol` and `sol-luna` documented; other pilot IDs unresolved | Require authoritative identities before catalog wiring |
 | 2026-10-08 | Stage 1 contract approval | Fresh no-cache fetch of root and reference graph; identity schema checks; authenticated solar-system-get and celestial-body-list reads; user approval | Approved new optional catalogIdentity contract; 140 documents fetched; both live reads supplied all 24 identities; checked classifications and parent/anchor links matched | Supersedes initial identity blocker; Stage 3 DTO and exact selector now implemented |
 
@@ -2592,7 +2592,7 @@ route/framing, and whether the cache was cold. Review overview and close-up.
 
 | 2026-10-08 | Stage 3/4 implementation decisions | Selectable user approval: Earth-only catalog clouds; 96 MiB standard / 32 MiB low shared catalog-cache estimates | Approved and implemented; procedural limits and splash behavior preserved | Estimates are not measured aggregate GPU allocations |
 | 2026-10-08 | Stage 3/4 browser stabilization | Earlier focused `npm run e2e:spec -- viewer-planet-surfaces.spec.ts --workers=1` runs | Initial retry click blocked by detail panel; corrected notice layout. Route re-entry expectation corrected because moon focus does not create browser history. Final run passed 10 tests including setup | No forced clicks or fixed waits added; portable software baseline added subsequently |
-| 2026-10-08 | Stage 3/4 final unit regression | `npm run test:spec -- src\app\scene\planet\catalog-surface-loader.vitest.ts src\app\scene\planet\catalog-surface-cache.vitest.ts src\app\scene\planet\planet-texture-cache.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\render-quality.vitest.ts src\app\scene\mining-splash.vitest.ts` | Passed: 7 files, 127 tests | Loader/cache ownership, exact identity selection, scene behavior, quality and unchanged splash covered |
+| 2026-10-08 | Stage 3/4 final unit regression | `npm run test:spec -- src\app\scene\planet\catalog-surface-loader.vitest.ts src\app\scene\planet\catalog-surface-cache.vitest.ts src\app\scene\planet\planet-texture-cache.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\render-quality.vitest.ts src\app\scene\splash.vitest.ts` | Passed: 7 files, 127 tests | Loader/cache ownership, exact identity selection, scene behavior, quality and unchanged splash covered |
 | 2026-10-08 | Stage 3/4 final typecheck | `npm run typecheck` | Passed: application and Vitest spec TypeScript | |
 | 2026-10-08 | Stage 3/4 final lint | `npx --no-install eslint` with all changed/untracked TypeScript paths from `git diff --name-only` and `git ls-files --others --exclude-standard`, converted to Windows separators | Passed | Includes shared Playwright configuration and catalog browser tests |
 | 2026-10-08 | Stage 3/4 final build | `npm run build` | Passed: partition gate and production Angular/template compilation | No missing dependency installs required |

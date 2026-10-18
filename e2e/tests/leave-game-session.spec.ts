@@ -13,7 +13,7 @@ import { CharacterListPage } from '../page-objects/character-list.page';
  *
  * Before the fix, clicking this button from ship-exterior-view caused a
  * NavigationError (NG0201: NgtStore not provided) that left both panes blank
- * and the URL unchanged. The fix routes primary to 'intro' instead of 'knot'
+ * and the URL unchanged. The fix routes primary to 'intro' instead of 'splash'
  * so the ngt-canvas is never required during the transition.
  */
 

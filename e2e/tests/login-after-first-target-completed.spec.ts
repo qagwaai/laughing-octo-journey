@@ -60,7 +60,7 @@ test.describe('Login Resume — first-target completed', () => {
 
     await expect(sharedPage).toHaveURL(/ship-exterior-view/, { timeout: 10000 });
     await expect(sharedPage).not.toHaveURL(/right:mission-board/);
-    await expect(sharedPage).not.toHaveURL(/knot/);
+    await expect(sharedPage).not.toHaveURL(/splash/);
     await expect(sharedPage).toHaveURL(/left:game-main/);
     await expect(overlayClose.closeButton).toHaveCount(0);
 

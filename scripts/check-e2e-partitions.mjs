@@ -27,7 +27,7 @@ const PARTITIONS = [
       /^planet-view-zoom\.spec\.ts$/,
       /^planet-bake-parity\.spec\.ts$/,
       /^ship-exterior-.*\.spec\.ts$/,
-      /^mining-splash\.spec\.ts$/,
+      /^splash\.spec\.ts$/,
     ],
   },
   {

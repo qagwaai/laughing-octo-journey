@@ -39,7 +39,7 @@ export const en = {
   },
 
   public: {
-    mining: {
+    splash: {
       title: 'Asteroid mining outpost',
       orbitHint: 'Drag or swipe to orbit · Scroll or pinch to zoom',
       standardTier: 'Standard GLB (154k triangles)',
@@ -67,6 +67,8 @@ export const en = {
       starClassSelectLabel: 'Star class',
       starClassSeeded: 'Seeded',
       starFlareActivityLabel: 'Flare activity',
+      foregroundLabel: 'Foreground',
+      foregroundMiningRig: 'Asteroid mining rig',
       bodyCategoryLabel: 'Body type',
       bodyCategories: {
         random: 'Random (any)',
@@ -104,8 +106,13 @@ export const en = {
       static: 'Static view. Your journey can continue using the controls on the left.',
       staticAction: 'Use still image',
       retry: 'Load 3D scene',
-      switchToStandard: 'Load 154k triangles',
-      switchToLow: 'Load 50k triangles',
+      switchToStandard: 'Load Standard ({triangles} triangles)',
+      switchToLow: 'Load Low ({triangles} triangles)',
+      station: {
+        title: 'Mars orbital station',
+        loading: 'Preparing the Mars orbital station...',
+        tier: 'Station GLB ({triangles} triangles)',
+      },
     },
     intro: {
       title: 'Stellar',

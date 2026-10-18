@@ -30,16 +30,16 @@ for (const bodyId of [SPLASH_PLANET_BODY_ID, 'nova-splash-giant-05', 'nova-splas
     });
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(pinnedSplash('/', bodyId));
-    await expect(page).toHaveURL(/\/knot\(left:intro\)/, { timeout: 4500 });
+    await expect(page).toHaveURL(/\/splash\(left:intro\)/, { timeout: 4500 });
     await expect(page.getByRole('heading', { name: 'Welcome to Project Stellar' })).toBeVisible();
-    const overlay = page.locator('app-mining-splash-overlay section');
+    const overlay = page.locator('app-splash-overlay section');
     const expectReady = async () => {
       // Reloading real GLB textures and shaders can be slower under software WebGL.
       await expect(overlay).toHaveAttribute('data-state', /^(ready|error)$/, { timeout: 30_000 });
       await expect(overlay).toHaveAttribute('data-state', 'ready');
     };
     await expectReady();
-    const tier = await page.locator('app-mining-splash-overlay section').getAttribute('data-quality');
+    const tier = await page.locator('app-splash-overlay section').getAttribute('data-quality');
     const diagnostics = page.getByLabel('3D model diagnostics');
     await expect(diagnostics).toContainText(
       tier === 'standard' ? 'Standard GLB (154k triangles)' : 'Low GLB (50k triangles)',
@@ -52,9 +52,9 @@ for (const bodyId of [SPLASH_PLANET_BODY_ID, 'nova-splash-giant-05', 'nova-splas
     expect(requests.filter((url) => !url.startsWith(origin))).toEqual([]);
     expect(errors).toEqual([]);
     await page.getByRole('button', { name: 'Use still image' }).click();
-    await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'static');
+    await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'static');
     await expect(diagnostics).toContainText('Still image');
-    await expect(page.locator('app-mining-splash-overlay img')).toBeVisible();
+    await expect(page.locator('app-splash-overlay img')).toBeVisible();
     await page.getByRole('button', { name: 'Load 3D scene' }).click();
     await expectReady();
     expect(errors).toEqual([]);
@@ -63,21 +63,21 @@ for (const bodyId of [SPLASH_PLANET_BODY_ID, 'nova-splash-giant-05', 'nova-splas
 
 test('reports asset errors and allows retry without blocking login', async ({ page }) => {
   await page.route('**/asteroid-mining-rig.*.glb*', (route) => route.abort());
-  await page.goto(pinnedSplash('/knot(left:login)'));
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'error');
+  await page.goto(pinnedSplash('/splash(left:login)'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'error');
   await expect(page.getByLabel('3D model diagnostics')).not.toContainText('3D ready in');
   await expect(page.locator('app-login-page')).toBeVisible();
   await page.unroute('**/asteroid-mining-rig.*.glb*');
   await page.getByRole('button', { name: 'Load 3D scene' }).click();
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
 });
 
 test('renders the splash planet with every third-party host blocked', async ({ page }) => {
   await page.route(/^https?:\/\/(?!localhost|127\.0\.0\.1)/, (route) => route.abort());
   const failures: string[] = [];
   page.on('requestfailed', (request) => failures.push(request.url()));
-  await page.goto(pinnedSplash('/knot(left:login)'));
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await page.goto(pinnedSplash('/splash(left:login)'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
   await expect(page.locator('app-login-page')).toBeVisible();
   expect(failures).toEqual([]);
 });
@@ -90,8 +90,8 @@ test('bakes the planet shader through three.js without GPU compile errors', asyn
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
   });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
   expect(
     consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
   ).toEqual([]);
@@ -99,8 +99,8 @@ test('bakes the planet shader through three.js without GPU compile errors', asyn
 
 test('renders repeatable terran clouds and updates them with the splash controls', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   const canvas = page.locator('ngt-canvas canvas').first();
   const withClouds = await canvas.screenshot();
@@ -131,8 +131,8 @@ test('renders repeatable terran clouds and updates them with the splash controls
 
 test('adjusts storm activity independently of cloud coverage', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
   const canvas = page.locator('ngt-canvas canvas').first();
   const coverage = page.getByRole('slider', { name: /Cloud coverage/ });
   const activity = page.getByRole('slider', { name: /Storm activity/ });
@@ -158,8 +158,8 @@ for (const style of ['thin', 'thick'] as const) {
     const clockStart = new Date('2026-01-01T00:00:00Z');
     await page.clock.install({ time: clockStart });
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.goto(pinnedSplash('/knot(left:intro)'));
-    const overlay = page.locator('app-mining-splash-overlay section');
+    await page.goto(pinnedSplash('/splash(left:intro)'));
+    const overlay = page.locator('app-splash-overlay section');
     await expect(overlay).toHaveAttribute('data-state', 'ready');
     await page.getByRole('combobox', { name: 'Cloud style' }).selectOption(style);
     // A deadline beyond the test timeout avoids a browser round-trip timestamp race.
@@ -218,8 +218,8 @@ for (const style of ['thin', 'thick'] as const) {
 
 test('rotates storm texture locally even when the cloud shell is still', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
   await page.getByRole('combobox', { name: 'Cloud style' }).selectOption('thick');
   await page.evaluate(() => {
     const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
@@ -269,8 +269,8 @@ test('rotates storm texture locally even when the cloud shell is still', async (
 test('uses low quality on mobile with reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-quality', 'low');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(page.getByLabel('3D model diagnostics')).toContainText('Low GLB (50k triangles)');
@@ -280,8 +280,8 @@ test('uses low quality on mobile with reduced motion', async ({ page }) => {
 });
 
 test('orbits with the mouse, then resumes cinematic drift from the selected angle', async ({ page }) => {
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-motion', 'drift');
   await expect(overlay).toContainText('Drag or swipe to orbit');
@@ -304,8 +304,8 @@ test('orbits with the mouse, then resumes cinematic drift from the selected angl
 test('orbits by touch on a mobile viewport without enabling automatic reduced-motion drift', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   const bounds = await page.locator('ngt-canvas canvas').first().boundingBox();
   expect(bounds).not.toBeNull();
@@ -354,7 +354,7 @@ test('keeps a chosen static view when a pending asset request fails later', asyn
     await released;
     await route.abort();
   });
-  await page.goto(pinnedSplash('/knot(left:login)'));
+  await page.goto(pinnedSplash('/splash(left:login)'));
   await expect(page.locator('section[data-state="loading"] progress')).toBeVisible();
   await page.getByRole('button', { name: 'Use still image' }).click();
   release();
@@ -368,20 +368,116 @@ test('uses a static poster when WebGL2 is unavailable', async ({ page }) => {
     Object.defineProperty(window, 'WebGL2RenderingContext', { value: undefined, configurable: true });
   });
   await page.goto('/');
-  await expect(page).toHaveURL(/\/knot/);
-  await expect(page.locator('app-mining-splash-overlay section')).toHaveAttribute('data-state', 'static');
-  await expect(page.locator('app-mining-splash-overlay img')).toBeVisible();
+  await expect(page).toHaveURL(/\/splash/);
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'static');
+  await expect(page.locator('app-splash-overlay img')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Load 3D scene' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Welcome to Project Stellar' })).toBeVisible();
 });
 
 test('pins the splash planet from the query string', async ({ page }) => {
-  await page.goto(pinnedSplash('/knot(left:intro)', 'nova-splash-world-07'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)', 'nova-splash-world-07'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-planet', 'nova-splash-world-07');
   await expect(page.getByLabel('3D model diagnostics')).toContainText('Planet nova-splash-world-07');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
 });
+
+test('switches foreground models while preserving the selected background body', async ({ page }) => {
+  const requestedAssets: string[] = [];
+  const errors: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.endsWith('.glb')) requestedAssets.push(request.url());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(pinnedSplash('/splash', 'sol-mars'));
+  const overlay = page.locator('app-splash-overlay section');
+  const foreground = page.getByRole('combobox', { name: 'Foreground', exact: true });
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(foreground).toHaveValue('asteroid-mining-rig');
+  await page.getByRole('combobox', { name: 'Body type', exact: true }).selectOption('sol');
+  await page.getByRole('combobox', { name: 'Body', exact: true }).selectOption('sol-earth');
+  await expect(page.getByTestId('splash-current-body')).toHaveText('Showing: Earth');
+
+  await foreground.selectOption('station');
+  await expect(overlay).toHaveAttribute('data-model', 'station');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(foreground).toHaveValue('station');
+  const initialQuality = await overlay.getAttribute('data-quality');
+  const initialCandidate = initialQuality === 'standard' ? '150k' : '75k';
+  expect(requestedAssets.at(-1)).toContain(`sol-mars-orbit-station-${initialCandidate}.glb`);
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-earth');
+  await expect(page.getByRole('combobox', { name: 'Body type', exact: true })).toHaveValue('sol');
+  await expect(page.getByRole('combobox', { name: 'Body', exact: true })).toHaveValue('sol-earth');
+
+  const nextTriangles = initialQuality === 'standard' ? '74,984' : '149,944';
+  const nextTier = initialQuality === 'standard' ? 'Low' : 'Standard';
+  await page.getByRole('button', { name: `Load ${nextTier} (${nextTriangles} triangles)`, exact: true }).click();
+  await expect(overlay).toHaveAttribute('data-triangles', nextTriangles.replace(',', ''));
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  expect(requestedAssets.at(-1)).toContain(
+    `sol-mars-orbit-station-${initialQuality === 'standard' ? '75k' : '150k'}.glb`,
+  );
+  const finalQuality = initialQuality === 'standard' ? 'low' : 'standard';
+
+  await foreground.selectOption('asteroid-mining-rig');
+  await expect(overlay).toHaveAttribute('data-model', 'asteroid-mining-rig');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(overlay).toHaveAttribute('data-quality', finalQuality);
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-earth');
+  await expect(page.getByRole('combobox', { name: 'Body type', exact: true })).toHaveValue('sol');
+  await expect(page.getByRole('combobox', { name: 'Body', exact: true })).toHaveValue('sol-earth');
+  expect(requestedAssets.at(-1)).toContain(`asteroid-mining-rig.${finalQuality}.glb`);
+  await page.getByRole('button', { name: 'Use still image' }).click();
+  await expect(overlay.locator('img')).toHaveAttribute('src', /models\/mining-splash-poster\.webp/);
+  expect(errors).toEqual([]);
+});
+
+test('loads the market-specific station pair and its isolated static fallback', async ({ page }) => {
+  const requestedAssets: string[] = [];
+  page.on('request', (request) => requestedAssets.push(request.url()));
+  await page.goto('/splash?market=sol-mars-orbit');
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(overlay).toHaveAttribute('data-market', 'sol-mars-orbit');
+  await expect(overlay).toHaveAttribute('data-model', 'station');
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-mars');
+  await expect(overlay).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(overlay.locator('img')).toHaveCount(0);
+  const quality = await overlay.getAttribute('data-quality');
+  const initialCandidate = quality === 'standard' ? '150k' : '75k';
+  const initialTriangles = quality === 'standard' ? '149944' : '74984';
+  await expect(overlay).toHaveAttribute('data-triangles', initialTriangles);
+  expect(requestedAssets.some((url) => url.includes(`sol-mars-orbit-station-${initialCandidate}.glb?v=`))).toBe(true);
+  expect(requestedAssets.some((url) => /sol-mars-orbit-station-poster\.webp\?v=/.test(url))).toBe(true);
+
+  await page.getByRole('button', { name: 'Use still image' }).click();
+  await expect(overlay).toHaveAttribute('data-state', 'static');
+  await expect(overlay).toHaveCSS('background-color', 'rgb(4, 9, 20)');
+  await expect(page.locator('app-splash-overlay img')).toHaveAttribute(
+    'src',
+    /sol-mars-orbit-station-poster\.webp/,
+  );
+});
+
+for (const path of ['/knot', '/knot(left:intro)']) {
+  test(`redirects legacy ${path} links while preserving queries, fragment and outlets`, async ({ page }) => {
+    await page.goto(`${path}?market=sol-mars-orbit&splashPlanet=sol-earth#preview`);
+    await expect.poll(() => new URL(page.url()).pathname).toBe(path.replace('/knot', '/splash'));
+    const url = new URL(page.url());
+    expect(url.pathname).toBe(path.replace('/knot', '/splash'));
+    expect(url.searchParams.get('market')).toBe('sol-mars-orbit');
+    expect(url.searchParams.get('splashPlanet')).toBe('sol-earth');
+    expect(url.hash).toBe('#preview');
+    const overlay = page.locator('app-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await expect(overlay).toHaveAttribute('data-model', 'station');
+    await expect(overlay).toHaveAttribute('data-planet', 'sol-earth');
+    if (path.includes('left:intro')) {
+      await expect(page.getByRole('heading', { name: 'Welcome to Project Stellar' })).toBeVisible();
+    }
+  });
+}
 
 /** Reads the splash gas giant's identity from the live three.js scene. */
 async function readSplashGasGiant(page: import('@playwright/test').Page): Promise<unknown> {
@@ -404,8 +500,8 @@ test('renders a pinned gas giant with its own controls and no shader errors', as
     if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/knot(left:intro)', 'nova-splash-giant-05'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)', 'nova-splash-giant-05'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-planet-kind', 'gas-giant');
   await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
@@ -436,8 +532,8 @@ test('renders a pinned gas giant with its own controls and no shader errors', as
 });
 
 test('previews an unlisted body as a gas giant with splashKind', async ({ page }) => {
-  await page.goto(`${pinnedSplash('/knot(left:intro)', 'preview-me')}&splashKind=gas-giant`);
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(`${pinnedSplash('/splash(left:intro)', 'preview-me')}&splashKind=gas-giant`);
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-planet-kind', 'gas-giant');
   await expect.poll(() => readSplashGasGiant(page)).toMatchObject({ bodyId: 'preview-me' });
@@ -463,8 +559,8 @@ test('renders a pinned star with its spectral class, flare control and no shader
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
   });
-  await page.goto(pinnedSplash('/knot(left:intro)', 'nova-splash-star-g'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)', 'nova-splash-star-g'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
   await expect(page.getByTestId('splash-star-class')).toContainText('G2V');
@@ -503,8 +599,8 @@ test('renders a pinned star with its spectral class, flare control and no shader
 });
 
 test('previews an unlisted body as a star with splashKind and splashSpectralClass', async ({ page }) => {
-  await page.goto(`${pinnedSplash('/knot(left:intro)', 'preview-star')}&splashKind=star&splashSpectralClass=K5III`);
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(`${pinnedSplash('/splash(left:intro)', 'preview-star')}&splashKind=star&splashSpectralClass=K5III`);
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   await expect(overlay).toHaveAttribute('data-planet-kind', 'star');
   await expect(page.getByTestId('splash-star-class')).toContainText('K5III');
@@ -519,8 +615,8 @@ test('previews an unlisted body as a star with splashKind and splashSpectralClas
 });
 
 test('picks the splash planet from the rotation when not pinned', async ({ page }) => {
-  await page.goto('/knot(left:intro)');
-  const planet = await page.locator('app-mining-splash-overlay section').getAttribute('data-planet');
+  await page.goto('/splash(left:intro)');
+  const planet = await page.locator('app-splash-overlay section').getAttribute('data-planet');
   expect(SPLASH_PLANET_ROTATION.map((entry) => entry.id)).toContain(planet);
 });
 
@@ -549,7 +645,7 @@ async function readSplashBodyNames(page: import('@playwright/test').Page): Promi
 
 /** Resolves once the scene shows the body named by `data-planet` (procedural terran bodies have no named root). */
 async function expectSplashBodySettled(page: import('@playwright/test').Page): Promise<string> {
-  const overlay = page.locator('app-mining-splash-overlay section');
+  const overlay = page.locator('app-splash-overlay section');
   let settled = '';
   await expect
     .poll(
@@ -582,8 +678,8 @@ for (const kind of ['icy-moon', 'rocky-moon'] as const) {
       if (new URL(request.url()).pathname.endsWith('.glb')) glbs.push(request.url());
     });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto(pinnedSplash('/knot(left:intro)'));
-    const overlay = page.locator('app-mining-splash-overlay section');
+    await page.goto(pinnedSplash('/splash(left:intro)'));
+    const overlay = page.locator('app-splash-overlay section');
     await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
     await page.getByRole('combobox', { name: 'Body type' }).selectOption(kind);
     await page.getByRole('combobox', { name: 'Body', exact: true }).selectOption(bodyId);
@@ -625,8 +721,8 @@ for (const kind of ['icy-moon', 'rocky-moon'] as const) {
     await page.setViewportSize({ width: 700, height: 800 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     const bodyId = `nova-splash-${kind}-01`;
-    await page.goto(pinnedSplash('/knot(left:intro)', bodyId));
-    const overlay = page.locator('app-mining-splash-overlay section');
+    await page.goto(pinnedSplash('/splash(left:intro)', bodyId));
+    const overlay = page.locator('app-splash-overlay section');
     await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
     await expect(overlay).toHaveAttribute('data-quality', 'low');
     await expect.poll(() => readSplashBodyNames(page)).toEqual([bodyId]);
@@ -657,8 +753,8 @@ test('swaps the splash body in place from the overlay picker without reloading t
     if (url.pathname.endsWith('.glb')) glbRequests.push(request.url());
     if (url.protocol.startsWith('http')) requests.push(request.url());
   });
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
   const category = page.getByRole('combobox', { name: 'Body type' });
   await expect(category).toHaveValue('random');
@@ -701,8 +797,8 @@ test('swaps the splash body in place from the overlay picker without reloading t
 
 test('keeps the previous splash body when a picked body fails to load', async ({ page }) => {
   await page.route('**/textures/sol/**', (route) => route.abort());
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
   await page.getByRole('combobox', { name: 'Body type' }).selectOption('sol');
   // Switching category draws a random Sol body; procedural Titan can still load, the rest are blocked.
@@ -715,11 +811,11 @@ test('keeps the previous splash body when a picked body fails to load', async ({
 });
 
 test('switches between the 154k, 50k and still-image tiers on demand', async ({ page }) => {
-  await page.goto(pinnedSplash('/knot(left:intro)'));
-  const overlay = page.locator('app-mining-splash-overlay section');
+  await page.goto(pinnedSplash('/splash(left:intro)'));
+  const overlay = page.locator('app-splash-overlay section');
   const diagnostics = page.getByLabel('3D model diagnostics');
   const labels = { standard: 'Standard GLB (154k triangles)', low: 'Low GLB (50k triangles)' } as const;
-  const buttons = { standard: 'Load 154k triangles', low: 'Load 50k triangles' } as const;
+  const buttons = { standard: 'Load Standard (154,757 triangles)', low: 'Load Low (50,239 triangles)' } as const;
   const other = (tier: 'standard' | 'low') => (tier === 'standard' ? 'low' : 'standard');
   await expect(overlay).toHaveAttribute('data-state', 'ready');
   const initial = (await overlay.getAttribute('data-quality')) as 'standard' | 'low';

@@ -36,7 +36,7 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   public: {
-    mining: {
+    splash: {
       title: 'Avamposto minerario su asteroide',
       orbitHint: 'Trascina o scorri per ruotare · Rotella o pizzica per ingrandire',
       standardTier: 'GLB standard (154k triangoli)',
@@ -64,6 +64,8 @@ export const it: DeepPartial<EnLocale> = {
       starClassSelectLabel: 'Classe stellare',
       starClassSeeded: 'Dal seme',
       starFlareActivityLabel: 'Attività dei brillamenti',
+      foregroundLabel: 'Primo piano',
+      foregroundMiningRig: 'Impianto minerario di asteroidi',
       bodyCategoryLabel: 'Tipo di corpo',
       bodyCategories: {
         random: 'Casuale (qualsiasi)',
@@ -101,8 +103,13 @@ export const it: DeepPartial<EnLocale> = {
       static: 'Vista statica. Puoi continuare il viaggio usando i controlli a sinistra.',
       staticAction: 'Usa immagine fissa',
       retry: 'Carica scena 3D',
-      switchToStandard: 'Carica 154k triangoli',
-      switchToLow: 'Carica 50k triangoli',
+      switchToStandard: 'Carica Standard ({triangles} triangoli)',
+      switchToLow: 'Carica Bassa ({triangles} triangoli)',
+      station: {
+        title: 'Stazione orbitale di Marte',
+        loading: 'Preparazione della stazione orbitale di Marte...',
+        tier: 'GLB stazione ({triangles} triangoli)',
+      },
     },
     login: {
       title: 'Accesso',
