@@ -85,6 +85,10 @@
   max-height: calc(50% - 2rem);
 }
 
+.viewer-scene-layout .viewer-info-panel--station-target {
+  max-height: calc(35% - 1rem);
+}
+
 .viewer-info-panel__section {
   padding: 0.45rem 0;
   border-top: 1px solid rgba(162, 210, 255, 0.18);
@@ -239,6 +243,15 @@
   gap: 0.5rem;
   padding: 0.8rem;
   border-bottom: 1px solid rgba(162, 210, 255, 0.18);
+}
+
+.viewer-detail-pane__heading {
+  min-width: 0;
+}
+
+.viewer-detail-pane .viewer-closeup-button {
+  margin-top: 0.6rem;
+  min-height: 44px;
 }
 
 .viewer-detail-pane__content {

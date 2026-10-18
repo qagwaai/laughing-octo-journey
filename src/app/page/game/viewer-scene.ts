@@ -32,6 +32,8 @@ import {
 import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
+import type { StationModelStatus } from '../../scene/station/station-model';
+import { hasDedicatedStationModel } from '../../scene/station/station-model-assets';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { RenderStatsService } from '../../services/render-stats.service';
@@ -225,6 +227,24 @@ export default class ViewerScenePage implements OnDestroy {
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
   protected isPlanetTransitioning = signal(false);
+  protected readonly stationModelStatus = signal<StationModelStatus | null>(null);
+  protected readonly stationModelAttempt = signal(0);
+  protected readonly hasDedicatedStationModel = hasDedicatedStationModel;
+
+  protected retryStationModel(): void {
+    this.stationModelAttempt.update((attempt) => attempt + 1);
+  }
+
+  protected openStationView(body: ViewerBody): void {
+    const solarSystemId = this.solarSystemId();
+    if (!solarSystemId || !hasDedicatedStationModel(body)) return;
+    void this.router.navigate([{ outlets: { right: ['station-view', solarSystemId, body.id] } }], {
+      preserveFragment: true,
+      state: { playerName: this.playerName(), solarSystem: this.solarSystem(), bodies: this.bodies() },
+    }).then((navigated) => {
+      if (!navigated) appLogger.warn('Station view navigation was cancelled.', { bodyId: body.id });
+    }).catch((error: unknown) => appLogger.error('Station view navigation failed.', { bodyId: body.id, error }));
+  }
   protected zoomLevel = signal<number>(100);
   protected distanceMode = signal<ViewerDistanceMode>('proportional');
 
@@ -283,6 +303,7 @@ export default class ViewerScenePage implements OnDestroy {
     resetSelectionState: () => {
       this.hoveredBody.set(null);
       this.focusedPlanet.set(null);
+      this.stationModelStatus.set(null);
     },
   });
 
@@ -400,6 +421,18 @@ export default class ViewerScenePage implements OnDestroy {
           appLogger.error('Planet view navigation failed', { solarSystemId, bodyId: body.id, error });
         });
     }, 140);
+  }
+
+  protected canOpenCloseup(body: ViewerBody): boolean {
+    return body.bodyType === 'planet' || body.bodyType === 'moon' || hasDedicatedStationModel(body);
+  }
+
+  protected openInspectedCloseup(body: ViewerBody): void {
+    if (hasDedicatedStationModel(body)) {
+      this.openStationView(body);
+    } else if (body.bodyType === 'planet' || body.bodyType === 'moon') {
+      this.onPlanetViewRequest(body);
+    }
   }
 
   protected onZoomChange(value: string | number): void {

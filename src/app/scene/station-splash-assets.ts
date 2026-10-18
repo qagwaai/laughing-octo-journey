@@ -1,19 +1,12 @@
 import { SPLASH_PLANET_QUERY_PARAM, type SplashPlanetEntry } from './planet/splash-planet-rotation';
-import type { RenderQuality } from './render-quality';
+import { MARS_STATION_ID } from './station/station-model-assets';
+export {
+  MARS_STATION_ASSETS as STATION_SPLASH_ASSETS,
+  MARS_STATION_POSTER_URL as STATION_SPLASH_POSTER_URL,
+} from './station/station-model-assets';
 
 export const STATION_SPLASH_MARKET_QUERY_PARAM = 'market';
-export const STATION_SPLASH_MARKET_ID = 'sol-mars-orbit';
-export interface StationSplashAsset {
-  readonly triangleCount: number;
-  readonly url: string;
-}
-
-export const STATION_SPLASH_ASSETS: Readonly<Record<RenderQuality, StationSplashAsset>> = {
-  standard: { triangleCount: 149_944, url: 'models/sol-mars-orbit-station-150k.glb?v=ffbe3535' },
-  low: { triangleCount: 74_984, url: 'models/sol-mars-orbit-station-75k.glb?v=e6a443e4' },
-};
-
-export const STATION_SPLASH_POSTER_URL = 'models/sol-mars-orbit-station-poster.webp?v=dd98a30d';
+export const STATION_SPLASH_MARKET_ID = MARS_STATION_ID;
 
 export const STATION_SPLASH_MARS: SplashPlanetEntry = {
   id: 'sol-mars',

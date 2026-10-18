@@ -59,6 +59,44 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  it('offers close-ups only for planets, moons, and registered stations and opens the inspected body', async () => {
+    vi.useFakeTimers();
+    try {
+      const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+      const earth = {
+        id: 'earth',
+        bodyType: 'planet',
+        displayName: 'Earth',
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      };
+      const station = { ...earth, id: 'sol-mars-orbit', bodyType: 'station' };
+      const generic = { ...station, id: 'another-station' };
+      expect(component['canOpenCloseup'](earth)).toBe(true);
+      expect(component['canOpenCloseup']({ ...earth, bodyType: 'moon' })).toBe(true);
+      expect(component['canOpenCloseup'](station)).toBe(true);
+      expect(component['canOpenCloseup'](generic)).toBe(false);
+      expect(component['canOpenCloseup']({ ...earth, bodyType: 'star' })).toBe(false);
+      expect(component['canOpenCloseup']({ ...earth, bodyType: 'asteroid' })).toBe(false);
+      component['bodies'].set([earth, station]);
+      component['onTargetBodyRequest'](earth.id);
+      component['inspectTarget']();
+      component['onTargetBodyRequest'](station.id);
+      component['openInspectedCloseup'](component['inspectedBody']()!);
+      await vi.advanceTimersByTimeAsync(150);
+      expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
+        [{ outlets: { right: ['planet-view', 'sol', earth.id] } }],
+        expect.anything(),
+      );
+      component['openInspectedCloseup'](station);
+      expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
+        [{ outlets: { right: ['station-view', 'sol', station.id] } }],
+        expect.anything(),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps inspection independent of hover and target changes, and resolves live body data', () => {
     const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
     const targets = TestBed.inject(ViewerTargetService);

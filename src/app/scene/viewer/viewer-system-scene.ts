@@ -34,6 +34,8 @@ import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { StarBody } from '../star/star-body';
 import { StarSettings } from '../star/star-settings';
+import { StationModel, type StationModelStatus } from '../station/station-model';
+import { hasDedicatedStationModel } from '../station/station-model-assets';
 import {
   deriveViewerStarProfile,
   resolveStarFillColor,
@@ -197,6 +199,7 @@ function resolveLocalAsteroidProjectionWeight(zoomLevel: number | undefined): nu
 }
 
 function resolveBodyVisualRadius(body: RenderedBody): number {
+  if (hasDedicatedStationModel(body.source)) return body.radius * VIEWER_STATION_MESH_SCALE;
   return body.radius * Math.max(...body.geometryScale.map((axis) => Math.abs(axis)));
 }
 
@@ -737,13 +740,21 @@ export function resolveViewerSceneCameraDistanceRange(
   bodies: ViewerBody[],
   mode: ViewerDistanceMode = 'compressed',
   ships: ShipSummary[] = [],
+  targetBodyId?: string | null,
 ): ViewerSceneCameraDistanceRange {
   const extent = Math.max(
     resolveRenderedExtent(mapBodiesToRendered(bodies, undefined, null, [], mode)),
     ...mapShipsToRendered(ships, null, mode).map((ship) => Math.hypot(...ship.position) + 1),
   );
-  // Min is always the planet-detail floor — allow zooming right up to bodies.
-  const minDistance = VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
+  // Dedicated station models need a closer floor than the inflated celestial bodies.
+  const station = targetBodyId
+    ? mapBodiesToRendered(bodies, 0, targetBodyId, ships, mode).find(
+        (body) => body.id === targetBodyId && hasDedicatedStationModel(body.source),
+      )
+    : undefined;
+  const minDistance = station
+    ? Math.max(0.05, resolveBodyVisualRadius(station) * 6)
+    : VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
 
   let maxDistance =
     mode === 'proportional'
@@ -764,8 +775,9 @@ export function resolveZoomDistance(
   bodies: ViewerBody[],
   mode: ViewerDistanceMode = 'compressed',
   ships: ShipSummary[] = [],
+  targetBodyId?: string | null,
 ): number {
-  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships);
+  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships, targetBodyId);
   const normalized = clamp(zoomLevel, 0, 100) / 100;
   // Logarithmic mapping: evenly distributes zoom across planet-detail to full-system scale.
   return min * Math.pow(max / min, normalized);
@@ -776,8 +788,9 @@ export function resolveZoomPercent(
   bodies: ViewerBody[],
   mode: ViewerDistanceMode = 'compressed',
   ships: ShipSummary[] = [],
+  targetBodyId?: string | null,
 ): number {
-  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships);
+  const { min, max } = resolveViewerSceneCameraDistanceRange(bodies, mode, ships, targetBodyId);
   if (max <= min || min <= 0) {
     return 0;
   }
@@ -1016,6 +1029,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     PlanetVolcanismLayer,
     GasGiantBody,
     StarBody,
+    StationModel,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1037,7 +1051,6 @@ export class ViewerSystemScene {
   private orbitControlsRef = viewChild(NgtsOrbitControls);
 
   private cameraTween: CameraTween | null = null;
-  private planetViewRequestTimer: ReturnType<typeof setTimeout> | null = null;
   private lastProcessedTargetBodyId: string | null = null;
   private persistentLookTarget = new Vector3(0, 0, 0);
   private settledCameraPosition: Vector3 | null = null;
@@ -1053,9 +1066,13 @@ export class ViewerSystemScene {
   distanceMode = input<ViewerDistanceMode>('proportional');
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
-  @Output() planetViewRequest = new EventEmitter<ViewerBody>();
   @Output() zoomLevelChange = new EventEmitter<number>();
   @Output() targetBodyRequest = new EventEmitter<string>();
+  @Output() stationModelStatusChange = new EventEmitter<StationModelStatus>();
+  stationModelAttempt = input(0);
+  protected readonly hasDedicatedStationModel = hasDedicatedStationModel;
+  protected readonly stationModelQuality = computed(() => this.planetTextures.catalog.quality());
+  protected readonly stationMeshScale = VIEWER_STATION_MESH_SCALE;
 
   protected readonly rendered = computed<RenderedBody[]>(() =>
     mapBodiesToRendered(this.bodies(), this.zoomLevel(), this.targetBodyId(), this.ships(), this.distanceMode()),
@@ -1445,6 +1462,15 @@ export class ViewerSystemScene {
       const camera = this.store.camera();
       const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
 
+      const stationTarget = this.bodies().find(
+        (body) => body.id === this.targetBodyId() && hasDedicatedStationModel(body),
+      );
+      const near = stationTarget ? 0.001 : 0.1;
+      if (camera && camera.near !== near) {
+        camera.near = near;
+        camera.updateProjectionMatrix();
+      }
+
       if (camera && camera.far !== this.sceneFar()) {
         camera.far = this.sceneFar();
         camera.updateProjectionMatrix();
@@ -1481,6 +1507,7 @@ export class ViewerSystemScene {
           this.rendered().map((body) => body.source),
           this.distanceMode(),
           this.ships(),
+          this.targetBodyId(),
         );
         controls.minDistance = targetDistance;
         controls.maxDistance = targetDistance;
@@ -1537,7 +1564,8 @@ export class ViewerSystemScene {
     });
   }
 
-  onBodyPointerOver(body: ViewerBody) {
+  onBodyPointerOver(body: ViewerBody, event?: { stopPropagation: () => void }) {
+    if (hasDedicatedStationModel(body)) event?.stopPropagation();
     this.hoveredBodyId.set(body.id);
     this.hoveredBodyChange.emit(body);
   }
@@ -1546,35 +1574,6 @@ export class ViewerSystemScene {
     if (event.button !== 0 || event.delta > 2) return;
     event.stopPropagation();
     if (id !== this.targetBodyId()) this.targetBodyRequest.emit(id);
-  }
-
-  onBodyPointerDown(
-    event: {
-      button?: number;
-      buttons?: number;
-      nativeEvent?: { button?: number; buttons?: number; preventDefault?: () => void };
-      stopPropagation?: () => void;
-    },
-    body: ViewerBody,
-  ) {
-    if (!this.isRightButton(event) || body.bodyType !== 'planet') {
-      return;
-    }
-
-    event.stopPropagation?.();
-    event.nativeEvent?.preventDefault?.();
-    this.focusPlanet(body.id);
-
-    if (this.planetViewRequestTimer) {
-      clearTimeout(this.planetViewRequestTimer);
-    }
-    this.planetViewRequestTimer = setTimeout(
-      () => {
-        this.planetViewRequest.emit(body);
-        this.planetViewRequestTimer = null;
-      },
-      Math.round(VIEWER_CAMERA_TWEEN_DURATION_SEC * 1000),
-    );
   }
 
   onScenePointerDown(event: {
@@ -1632,6 +1631,30 @@ export class ViewerSystemScene {
   }
 
   private flyToTargetBody(targetBodyId: string): void {
+    const station = this.bodies().find((body) => body.id === targetBodyId && hasDedicatedStationModel(body));
+    if (station) {
+      // Target the final zoom's adjusted position, not the system-scale host clearance.
+      const closeBodies = mapBodiesToRendered(this.bodies(), 0, targetBodyId, this.ships(), this.distanceMode());
+      const target = closeBodies.find((body) => body.id === targetBodyId)!;
+      const anchorId = station.orbitalElements?.anchorBodyId ?? station.parentBodyId;
+      const host = closeBodies.find((body) => body.id === anchorId);
+      const distance = resolveViewerSceneCameraDistanceRange(
+        this.bodies(),
+        this.distanceMode(),
+        this.ships(),
+        targetBodyId,
+      ).min;
+      let position: [number, number, number] | undefined;
+      if (host) {
+        const outward = new Vector3(...target.position).sub(new Vector3(...host.position));
+        if (outward.lengthSq() > 0) {
+          position = new Vector3(...target.position).add(outward.normalize().multiplyScalar(distance)).toArray();
+        }
+      }
+      this.activeTargetFlightId.set(targetBodyId);
+      this.beginCameraTween(target.position, distance, position, VIEWER_TARGET_FLY_DURATION_SEC, 'target-fly');
+      return;
+    }
     const targetPosition = resolveTargetScenePosition(targetBodyId, this.rendered(), this.renderedShips());
     if (!targetPosition) {
       this.activeTargetFlightId.set(null);
@@ -1690,7 +1713,12 @@ export class ViewerSystemScene {
 
     const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
     if (controls) {
-      const range = resolveViewerSceneCameraDistanceRange(this.bodies(), this.distanceMode(), this.ships());
+      const range = resolveViewerSceneCameraDistanceRange(
+        this.bodies(),
+        this.distanceMode(),
+        this.ships(),
+        this.targetBodyId(),
+      );
       controls.minDistance = range.min;
       controls.maxDistance = range.max;
     }
@@ -1729,6 +1757,8 @@ export class ViewerSystemScene {
   private finalizeCameraTween(): void {
     const tween = this.cameraTween;
     if (tween?.kind === 'target-fly') {
+      // Completion can precede t=1; tiny residual offsets hide station-scale targets.
+      this.store.camera()?.position.copy(tween.toPosition);
       const controls = this.orbitControlsRef()?.controls() as OrbitControlsLike | undefined;
       this.persistentLookTarget.copy(tween.toTarget);
       if (controls?.target) {
@@ -1749,6 +1779,7 @@ export class ViewerSystemScene {
           this.rendered().map((body) => body.source),
           this.distanceMode(),
           this.ships(),
+          this.targetBodyId(),
         ),
       );
     }
@@ -1785,10 +1816,4 @@ export class ViewerSystemScene {
     controls.update();
   }
 
-  ngOnDestroy(): void {
-    if (this.planetViewRequestTimer) {
-      clearTimeout(this.planetViewRequestTimer);
-      this.planetViewRequestTimer = null;
-    }
-  }
 }

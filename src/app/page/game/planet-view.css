@@ -19,7 +19,7 @@
 
 .planet-view-header {
   position: absolute;
-  top: 1rem;
+  top: 4.5rem;
   left: 1rem;
   z-index: 8;
   background: rgba(7, 20, 38, 0.86);
@@ -28,6 +28,25 @@
   padding: 0.58rem 0.75rem;
   min-width: 13rem;
   pointer-events: none;
+}
+
+.planet-view-back {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 10;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  color: #eff7ff;
+  background: #193956;
+  border: 1px solid #82b6dc;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.planet-view-back:focus-visible {
+  outline: 2px solid #eff7ff;
+  outline-offset: 2px;
 }
 
 .planet-view-header__title {

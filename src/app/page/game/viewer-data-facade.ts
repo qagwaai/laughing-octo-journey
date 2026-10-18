@@ -31,6 +31,7 @@ interface ViewerDataFacadeDeps {
   setIsLoading: (value: boolean) => void;
   setSceneError: (value: string | null) => void;
   resetSelectionState: () => void;
+  onBodiesResolved?: (error: string | null) => void;
 }
 
 function normalizeToken(value: string | undefined): string {
@@ -60,6 +61,7 @@ const VIEWER_MARKET_DISCOVERY_LIMIT = 250;
 export class ViewerDataFacade {
   private lastLoadedSystemId: string | null = null;
   private repairedShipIds = new Set<string>();
+  private disposed = false;
 
   constructor(private readonly deps: ViewerDataFacadeDeps) {}
 
@@ -82,6 +84,7 @@ export class ViewerDataFacade {
     this.deps.solarSystemService.getSolarSystem(
       { playerName, sessionKey, solarSystemId },
       (response: SolarSystemGetResponse) => {
+        if (this.disposed || this.deps.getCurrentSolarSystemId() !== solarSystemId) return;
         this.deps.setIsLoading(false);
         if (!response.success) {
           this.deps.setSceneError(`viewer-scene-error ${response.message ?? 'unknown-error'}`);
@@ -116,7 +119,9 @@ export class ViewerDataFacade {
     );
   }
 
-  dispose(): void {}
+  dispose(): void {
+    this.disposed = true;
+  }
 
   private mergeUniqueBodies(bodies: ViewerBody[]): ViewerBody[] {
     const dedupedBodies: ViewerBody[] = [];
@@ -198,6 +203,7 @@ export class ViewerDataFacade {
   ): void {
     const hasStationBodies = baseBodies.some((body) => normalizeToken(body.bodyType) === 'station');
     if (hasStationBodies) {
+      this.deps.onBodiesResolved?.(null);
       return;
     }
 
@@ -215,17 +221,23 @@ export class ViewerDataFacade {
     };
 
     this.deps.marketService.listMarketsByLocation(request, (response: MarketListByLocationResponse) => {
-      if (!response.success || this.deps.getCurrentSolarSystemId() !== solarSystemId) {
+      if (this.disposed || this.deps.getCurrentSolarSystemId() !== solarSystemId) {
+        return;
+      }
+      if (!response.success) {
+        this.deps.onBodiesResolved?.(response.message ?? 'market-station-discovery-failed');
         return;
       }
 
       const marketStations = (response.markets ?? []).map((market) => this.toViewerMarketStationBody(market));
       if (marketStations.length === 0) {
+        this.deps.onBodiesResolved?.(null);
         return;
       }
 
       const mergedBodies = this.mergeUniqueBodies([...this.deps.getBodies(), ...marketStations]);
       this.deps.setBodies(mergedBodies);
+      this.deps.onBodiesResolved?.(null);
     });
   }
 
@@ -246,6 +258,7 @@ export class ViewerDataFacade {
     };
 
     this.deps.shipService.listShipsByOwner(request, (response: ShipListByOwnerResponse) => {
+      if (this.disposed) return;
       if (!response.success || this.deps.getCurrentSolarSystemId() !== solarSystemId) {
         this.deps.setShips([]);
         return;

@@ -18,9 +18,10 @@
           [distanceMode]="distanceMode()"
           [ships]="sceneInputs().ships ?? []"
           [activeShipId]="sceneInputs().activeShipId ?? null"
+          [stationModelAttempt]="stationModelAttempt()"
+          (stationModelStatusChange)="stationModelStatus.set($event)"
           (hoveredBodyChange)="onHoveredBodyChange($event)"
           (focusedPlanetChange)="onFocusedPlanetChange($event)"
-          (planetViewRequest)="onPlanetViewRequest($event)"
           (zoomLevelChange)="onZoomChange($event)"
           (targetBodyRequest)="onTargetBodyRequest($event)"
         />
@@ -28,12 +29,25 @@
 
       <section
         class="viewer-info-panel"
+        [class.viewer-info-panel--station-target]="hasDedicatedStationModel(targetBody())"
         data-testid="viewer-info-panel"
         [attr.aria-label]="t.game.viewer.infoPanelTitle"
         (wheel)="$event.stopPropagation()"
       >
         <h2 class="viewer-info-panel__title">{{ t.game.viewer.infoPanelTitle }}</h2>
-        @if (labeledBody(); as body) {
+        @if (stationModelStatus(); as modelStatus) {
+        <p
+          data-testid="viewer-station-status"
+          [attr.data-state]="modelStatus.state"
+          [attr.data-quality]="modelStatus.quality"
+          [attr.role]="modelStatus.state === 'error' ? 'alert' : 'status'"
+        >
+          @if (modelStatus.state === 'loading') { {{ t.game.viewer.stationModelLoading }} } @else if (modelStatus.state
+          === 'error') { {{ t.game.viewer.stationModelError }}
+          <button type="button" (click)="retryStationModel()">{{ t.game.viewer.stationModelRetry }}</button>
+          }
+        </p>
+        } @if (labeledBody(); as body) {
         <aside class="viewer-body-label" data-testid="viewer-body-label" aria-live="polite">
           <strong>{{ body.displayName }}</strong>
           <span>{{ body.bodyType }}</span>
@@ -196,10 +210,22 @@
       (wheel)="$event.stopPropagation()"
     >
       <header class="viewer-detail-pane__header">
-        <h2 class="viewer-detail-pane__title">
-          {{ body.displayName }}
-          <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
-        </h2>
+        <div class="viewer-detail-pane__heading">
+          <h2 class="viewer-detail-pane__title">
+            {{ body.displayName }}
+            <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
+          </h2>
+          @if (canOpenCloseup(body)) {
+          <button
+            type="button"
+            class="viewer-closeup-button"
+            data-testid="viewer-inspector-closeup"
+            (click)="openInspectedCloseup(body)"
+          >
+            {{ t.game.viewer.openCloseup }}
+          </button>
+          }
+        </div>
         <button type="button" data-testid="viewer-inspector-close" (click)="closeInspector()">
           {{ t.common.overlayClose.label }}
         </button>
