@@ -59,6 +59,38 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  it('keeps inspection independent of hover and target changes, and resolves live body data', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const targets = TestBed.inject(ViewerTargetService);
+    const earth = {
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+    };
+    const mars = { ...earth, id: 'mars', displayName: 'Mars' };
+    component['bodies'].set([earth, mars]);
+    component['inspectTarget']();
+    expect(component['inspectedBody']()).toBeNull();
+    targets.target('earth');
+    component['inspectTarget']();
+    component['onHoveredBodyChange'](mars);
+    component['onHoveredBodyChange'](null);
+    component['onTargetBodyRequest']('mars');
+    expect(targets.targetBodyId()).toBe('mars');
+    expect(component['inspectedBody']()?.id).toBe('earth');
+    component['bodies'].set([{ ...earth, displayName: 'Updated Earth' }, mars]);
+    expect(component['inspectedBody']()?.displayName).toBe('Updated Earth');
+    component['inspectTarget']();
+    expect(component['inspectedBody']()?.id).toBe('mars');
+    component['closeInspector']();
+    expect(component['inspectedBody']()).toBeNull();
+    expect(targets.targetBodyId()).toBe('mars');
+    component['inspectTarget']();
+    component['bodies'].set([]);
+    expect(component['inspectedBody']()).toBeNull();
+  });
+
   it('defaults to proportional distances and toggles modes without changing canonical data or target', () => {
     const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
     const targets = TestBed.inject(ViewerTargetService);

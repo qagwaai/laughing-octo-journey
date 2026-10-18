@@ -78,7 +78,7 @@ export default class SolarSystemDetailsPage {
 
   protected isLoading = signal(false);
   protected loadError = signal<string | null>(null);
-  protected activeTargetId = signal<string | null>(null);
+  protected readonly activeTargetId = this.viewerTargetService.targetBodyId.asReadonly();
 
   protected viewMode = signal<'type' | 'distance'>('type');
   protected expandedTypes = signal<Set<string>>(new Set());
@@ -124,7 +124,6 @@ export default class SolarSystemDetailsPage {
 
   private loadDetails(solarSystemId: string): void {
     this.viewerTargetService.clearTarget();
-    this.activeTargetId.set(null);
     this.detailsFacade.loadDetails(solarSystemId, this.t.game.viewer.detailsErrorPrefix);
   }
 
@@ -148,7 +147,6 @@ export default class SolarSystemDetailsPage {
   }
 
   protected targetBody(id: string): void {
-    this.activeTargetId.set(id);
     this.viewerTargetService.target(id);
   }
 

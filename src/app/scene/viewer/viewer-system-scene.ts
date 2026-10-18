@@ -1055,6 +1055,7 @@ export class ViewerSystemScene {
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
   @Output() planetViewRequest = new EventEmitter<ViewerBody>();
   @Output() zoomLevelChange = new EventEmitter<number>();
+  @Output() targetBodyRequest = new EventEmitter<string>();
 
   protected readonly rendered = computed<RenderedBody[]>(() =>
     mapBodiesToRendered(this.bodies(), this.zoomLevel(), this.targetBodyId(), this.ships(), this.distanceMode()),
@@ -1539,6 +1540,12 @@ export class ViewerSystemScene {
   onBodyPointerOver(body: ViewerBody) {
     this.hoveredBodyId.set(body.id);
     this.hoveredBodyChange.emit(body);
+  }
+
+  onTargetClick(event: { button: number; delta: number; stopPropagation: () => void }, id: string): void {
+    if (event.button !== 0 || event.delta > 2) return;
+    event.stopPropagation();
+    if (id !== this.targetBodyId()) this.targetBodyRequest.emit(id);
   }
 
   onBodyPointerDown(

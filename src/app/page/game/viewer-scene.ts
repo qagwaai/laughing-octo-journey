@@ -189,7 +189,7 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
 export default class ViewerScenePage implements OnDestroy {
   protected readonly t = locale;
   protected readonly isDevBuild = !environment.production;
-  protected host = inject(ElementRef);
+  protected host = inject<ElementRef<HTMLElement>>(ElementRef);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
@@ -207,6 +207,14 @@ export default class ViewerScenePage implements OnDestroy {
   protected bodies = signal<ViewerBody[]>([]);
   protected ships = signal<ShipSummary[]>([]);
   protected hoveredBody = signal<ViewerBody | null>(null);
+  protected readonly targetBody = computed(() => {
+    const id = this.viewerTargetService.targetBodyId();
+    return this.effectiveSceneBodies().find((body) => body.id === id) ?? null;
+  });
+  protected readonly inspectedBodyId = signal<string | null>(null);
+  protected readonly inspectedBody = computed(
+    () => this.effectiveSceneBodies().find((body) => body.id === this.inspectedBodyId()) ?? null,
+  );
   protected focusedPlanet = signal<ViewerBody | null>(null);
   protected readonly labeledBody = computed<ViewerBody | null>(() => {
     const hovered = this.hoveredBody();
@@ -339,6 +347,20 @@ export default class ViewerScenePage implements OnDestroy {
 
   protected onHoveredBodyChange(body: ViewerBody | null): void {
     this.hoveredBody.set(body);
+  }
+
+  protected inspectTarget(): void {
+    const body = this.targetBody();
+    if (body) this.inspectedBodyId.set(body.id);
+  }
+
+  protected onTargetBodyRequest(id: string): void {
+    this.viewerTargetService.target(id);
+  }
+
+  protected closeInspector(): void {
+    this.inspectedBodyId.set(null);
+    this.host.nativeElement.querySelector<HTMLButtonElement>('.viewer-inspect-button')?.focus();
   }
 
   protected isBodyTargeted(body: ViewerBody): boolean {

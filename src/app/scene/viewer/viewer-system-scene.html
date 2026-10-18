@@ -51,6 +51,7 @@
   [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
+  (click)="onTargetClick($event, body.id)"
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
@@ -73,7 +74,7 @@
   }
 </ngt-mesh>
 } @for (ship of renderedShips(); track ship.id) {
-<ngt-group [position]="ship.position" [name]="ship.displayName">
+<ngt-group [position]="ship.position" [name]="ship.displayName" (click)="onTargetClick($event, ship.id)" input>
   <app-viewer-ship-mesh
     [model]="ship.model"
     [color]="ship.color"
@@ -87,6 +88,7 @@
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
   (pointerdown)="onBodyPointerDown($event, body.source)"
+  (click)="onTargetClick($event, body.id)"
   input
 >
   @if (isStationBody(body.source)) {

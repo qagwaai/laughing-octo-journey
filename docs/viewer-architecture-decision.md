@@ -33,7 +33,42 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
   etc.) must be route-loaded indirectly through such a wrapper. Loading a
   scene component directly produces NG0201.
 
+### Viewer overlays
+
+- A single scrollable bottom-left information panel contains the hovered/targeted
+  body summary, focus status, and a compact two-column legend (one column on narrow
+  screens). The legend is expanded initially and can be collapsed.
+- Distance mode controls, the full illustrative-orbit disclaimer, and terrain/
+  atmosphere sources are separate keyboard-accessible disclosures, closed initially.
+  The current distance mode remains visible in its disclosure heading.
+- Surface generation progress, texture loading failures, and retry actions appear
+  in the panel outside the disclosures, so they are not hidden by collapsed notes.
+  Scrolling the panel does not zoom the scene.
+- The right-hand scale slider remains independent. Development-only Viewer QA
+  controls are collapsed inside the panel; their defaults and URL overrides are
+  unchanged. Planetary Lens retains its existing surface-status overlay layout.
+- Hover shows identity and available radius, diameter, and semi-major-axis facts
+  in the compact panel, not a full detail popup. An explicit "Inspect target"
+  button opens a persistent inspector for the navigation target. Inspection does
+  not change targeting, and subsequent hover/target changes do not replace the
+  inspected body until the button is used again.
+- The inspector reserves a 20rem column beside the canvas. In scene panes at most
+  700px wide it reserves the bottom 40% instead, without overlapping the canvas.
+  Physical, Orbit, Position, gate approach, and developer render information use
+  expandable sections. Physical, Orbit, and Position are expanded by default.
+  The header/close action stays visible while details scroll;
+  inspector scrolling does not zoom the scene. Closing preserves the target.
+  While inspecting, the compact Viewer panel's height is capped below the canvas
+  center so it cannot obscure a centered target; its contents remain scrollable.
+
 ### Menu placement & gating
+
+- A short left-click (at most two pixels of pointer travel) on a rendered body
+  or ship uses the same shared target state and camera flight as the list's Target
+  button. The nearest clicked object's handler stops propagation to bodies behind
+  it. Camera drags, non-left clicks, and empty-space clicks do not select or clear
+  targets. Clicking the current target is a no-op. Both panes reflect the shared
+  selection, and an open inspector retains its inspected body.
 
 - The Viewer entry is inserted in `GuardedLeftMenu.menuItems` immediately
   after the Mission Board entry, with icon code `VW`.

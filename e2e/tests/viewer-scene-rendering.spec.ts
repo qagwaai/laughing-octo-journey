@@ -503,6 +503,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, bodies);
     await new ViewerPage(page).expectSceneLoaded();
     await expect(page.getByTestId('viewer-distance-mode')).toContainText('Proportional distances');
+    await page.getByTestId('viewer-distance-mode').locator('summary').click();
     await page.getByTestId('viewer-distance-toggle').click();
     await expect(page.getByTestId('viewer-distance-mode')).toContainText('Compressed overview');
     await expect.poll(() => page.evaluate(() => {

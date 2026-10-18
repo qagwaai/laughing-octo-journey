@@ -1,314 +1,381 @@
-<div class="viewer-scene-host" (wheel)="onWheel($event)">
-  @if (isLoading()) {
-  <p class="viewer-scene-status" data-testid="viewer-scene-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
-  } @else if (sceneError()) {
-  <p class="viewer-scene-status" role="alert" data-testid="viewer-scene-error">{{ sceneError() }}</p>
-  } @else if (!hasSystem()) {
-  <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
-  } @else {
-  <ngt-canvas [stats]="persistentStatsOptions" shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }">
-    <app-viewer-system-scene
-      *canvasContent
-      [bodies]="sceneInputs().bodies"
-      [summary]="sceneInputs().summary"
-      [targetBodyId]="sceneInputs().targetBodyId ?? null"
-      [zoomLevel]="zoomLevel()"
-      [distanceMode]="distanceMode()"
-      [ships]="sceneInputs().ships ?? []"
-      [activeShipId]="sceneInputs().activeShipId ?? null"
-      (hoveredBodyChange)="onHoveredBodyChange($event)"
-      (focusedPlanetChange)="onFocusedPlanetChange($event)"
-      (planetViewRequest)="onPlanetViewRequest($event)"
-      (zoomLevelChange)="onZoomChange($event)"
-    />
-  </ngt-canvas>
+<div class="viewer-scene-host">
+  <div class="viewer-scene-layout" [class.viewer-scene-layout--inspecting]="!!inspectedBody()">
+    <div class="viewer-scene-viewport" (wheel)="onWheel($event)">
+      @if (isLoading()) {
+      <p class="viewer-scene-status" data-testid="viewer-scene-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
+      } @else if (sceneError()) {
+      <p class="viewer-scene-status" role="alert" data-testid="viewer-scene-error">{{ sceneError() }}</p>
+      } @else if (!hasSystem()) {
+      <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
+      } @else {
+      <ngt-canvas [stats]="persistentStatsOptions" shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }">
+        <app-viewer-system-scene
+          *canvasContent
+          [bodies]="sceneInputs().bodies"
+          [summary]="sceneInputs().summary"
+          [targetBodyId]="sceneInputs().targetBodyId ?? null"
+          [zoomLevel]="zoomLevel()"
+          [distanceMode]="distanceMode()"
+          [ships]="sceneInputs().ships ?? []"
+          [activeShipId]="sceneInputs().activeShipId ?? null"
+          (hoveredBodyChange)="onHoveredBodyChange($event)"
+          (focusedPlanetChange)="onFocusedPlanetChange($event)"
+          (planetViewRequest)="onPlanetViewRequest($event)"
+          (zoomLevelChange)="onZoomChange($event)"
+          (targetBodyRequest)="onTargetBodyRequest($event)"
+        />
+      </ngt-canvas>
 
-  @if (labeledBody(); as body) {
-  <aside class="viewer-body-label" data-testid="viewer-body-label" aria-live="polite">
-    <strong>{{ body.displayName }}</strong>
-    <span>{{ body.bodyType }}</span>
-    @if (isBodyTargeted(body)) {
-    <span class="viewer-body-label__targeted">{{ t.game.viewer.bodyTargetedLabel }}</span>
+      <section
+        class="viewer-info-panel"
+        data-testid="viewer-info-panel"
+        [attr.aria-label]="t.game.viewer.infoPanelTitle"
+        (wheel)="$event.stopPropagation()"
+      >
+        <h2 class="viewer-info-panel__title">{{ t.game.viewer.infoPanelTitle }}</h2>
+        @if (labeledBody(); as body) {
+        <aside class="viewer-body-label" data-testid="viewer-body-label" aria-live="polite">
+          <strong>{{ body.displayName }}</strong>
+          <span>{{ body.bodyType }}</span>
+          @if (isBodyTargeted(body)) {
+          <span class="viewer-body-label__targeted">{{ t.game.viewer.bodyTargetedLabel }}</span>
+          }
+        </aside>
+        <div class="viewer-body-facts" data-testid="viewer-body-facts">
+          @if (body.physicalCatalog?.radiusKm != null) {
+          <span>{{ t.game.viewer.planetViewRadiusLabel }}: {{ body.physicalCatalog?.radiusKm }} km</span>
+          } @if (body.physicalCatalog?.estimatedDiameterM != null) {
+          <span>{{ t.game.viewer.detailsColumnDiameter }}: {{ body.physicalCatalog?.estimatedDiameterM }}</span>
+          } @if (body.orbitalElements?.semiMajorAxisKm != null) {
+          <span>{{ t.game.viewer.detailsColumnOrbit }}: {{ body.orbitalElements?.semiMajorAxisKm }}</span>
+          }
+        </div>
+        } @if (targetBody(); as target) {
+        <button
+          type="button"
+          class="viewer-inspect-button"
+          data-testid="viewer-inspect-target"
+          aria-controls="viewer-body-inspector"
+          [attr.aria-expanded]="!!inspectedBody()"
+          (click)="inspectTarget()"
+        >
+          {{ t.game.viewer.inspectTargetLabel }}: {{ target.displayName }}
+        </button>
+        } @if (focusedPlanet(); as focused) {
+        <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
+          {{ t.game.viewer.focusedBodyLabel }} {{ focused.displayName }}
+          <span class="viewer-focus-pill__type">({{ focused.bodyType }})</span>
+        </div>
+        }
+
+        <details class="viewer-legend viewer-info-panel__section" data-testid="viewer-legend" open>
+          <summary>{{ t.game.viewer.legendTitle }}</summary>
+          <div class="viewer-legend__keys">
+            <div class="viewer-legend__item">
+              <span class="viewer-legend__swatch" style="background: #ffffff"></span>
+              <span>{{ t.game.viewer.legendPlanet }}</span>
+            </div>
+            <div class="viewer-legend__item">
+              <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #ffffff"></span>
+              <span>{{ t.game.viewer.legendPlanetOrbit }}</span>
+            </div>
+            <div class="viewer-legend__item">
+              <span class="viewer-legend__swatch" style="background: #22c55e"></span>
+              <span>{{ t.game.viewer.legendMarketStation }}</span>
+            </div>
+            <div class="viewer-legend__item">
+              <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #86efac"></span>
+              <span>{{ t.game.viewer.legendMarketOrbit }}</span>
+            </div>
+            <div class="viewer-legend__item" data-testid="viewer-legend-gate">
+              <span class="viewer-legend__swatch" style="background: #38bdf8"></span>
+              <span>{{ t.game.viewer.legendGateLandmark }}</span>
+            </div>
+            <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
+              <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #fbbf24"></span>
+              <span>{{ t.game.viewer.legendActiveShip }}</span>
+            </div>
+            <div class="viewer-legend__item" data-testid="viewer-legend-inactive-ship">
+              <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #3b82f6"></span>
+              <span>{{ t.game.viewer.legendInactiveShip }}</span>
+            </div>
+            @if (hasUnknownSpatialShip()) {
+            <div class="viewer-legend__item" data-testid="viewer-legend-unknown-ship">
+              <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #ef4444"></span>
+              <span>{{ t.game.viewer.legendUnknownShip }}</span>
+            </div>
+            }
+          </div>
+        </details>
+
+        <details class="viewer-distance-mode viewer-info-panel__section" data-testid="viewer-distance-mode">
+          <summary>
+            {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistances :
+            t.game.viewer.compressedDistances }}
+          </summary>
+          <p>
+            {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistanceNote :
+            t.game.viewer.compressedDistanceNote }}
+          </p>
+          <button type="button" data-testid="viewer-distance-toggle" (click)="toggleDistanceMode()">
+            {{ distanceMode() === 'proportional' ? t.game.viewer.showCompressedDistances :
+            t.game.viewer.showProportionalDistances }}
+          </button>
+        </details>
+
+        <details class="viewer-info-panel__section" data-testid="viewer-display-notes">
+          <summary>{{ t.game.viewer.orbitGuideSummary }}</summary>
+          <p data-testid="viewer-orbit-guide-note">{{ t.game.viewer.orbitGuideNote }}</p>
+        </details>
+
+        <app-planet-surface-progress [embedded]="true" />
+
+        @if (isDevBuild) {
+        <details class="viewer-qa-panel viewer-info-panel__section" data-testid="viewer-qa-panel">
+          <summary>{{ t.game.viewer.qaTitle }}</summary>
+          <label class="viewer-qa-panel__toggle">
+            <input type="checkbox" [checked]="viewerQaEnabled()" (change)="onViewerQaToggle($event)" />
+            <span>{{ t.game.viewer.qaEnableControls }}</span>
+          </label>
+          <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+            <input
+              type="checkbox"
+              [checked]="forceHeroMode()"
+              [disabled]="!viewerQaEnabled()"
+              (change)="onForceHeroToggle($event)"
+            />
+            <span>{{ t.game.viewer.qaForceHero }}</span>
+          </label>
+          <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
+            <input
+              type="checkbox"
+              [checked]="showEffectiveRenderProfile()"
+              [disabled]="!viewerQaEnabled()"
+              (change)="onShowRenderProfileToggle($event)"
+            />
+            <span>{{ t.game.viewer.qaShowProfile }}</span>
+          </label>
+        </details>
+        }
+      </section>
+
+      <div class="viewer-scene-zoom" data-testid="viewer-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
+        <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">
+          {{ t.game.viewer.planetViewZoomLabel }}
+        </label>
+        <input
+          id="viewer-scene-zoom-input"
+          type="range"
+          orient="vertical"
+          min="0"
+          max="100"
+          step="1"
+          [value]="zoomLevel()"
+          (contextmenu)="onZoomContextMenu($event)"
+          (pointerdown)="onZoomPointerDown($event)"
+          (pointerup)="onZoomPointerUp($event)"
+          (mousedown)="onZoomMouseDown($event)"
+          (mouseup)="onZoomMouseUp($event)"
+          (auxclick)="onZoomAuxClick($event)"
+          (input)="onZoomInput($event)"
+          aria-label="Viewer zoom level"
+        />
+        <div class="viewer-scene-zoom__value">{{ zoomPercent() }}%</div>
+      </div>
+
+      @if (isPlanetTransitioning()) {
+      <div class="viewer-scene-transition" data-testid="viewer-scene-transition"></div>
+      } }
+    </div>
+    @if (inspectedBody(); as body) {
+    <aside
+      class="viewer-detail-pane"
+      id="viewer-body-inspector"
+      data-testid="viewer-body-inspector"
+      [attr.aria-label]="t.game.viewer.inspectorTitle"
+      (wheel)="$event.stopPropagation()"
+    >
+      <header class="viewer-detail-pane__header">
+        <h2 class="viewer-detail-pane__title">
+          {{ body.displayName }}
+          <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
+        </h2>
+        <button type="button" data-testid="viewer-inspector-close" (click)="closeInspector()">
+          {{ t.common.overlayClose.label }}
+        </button>
+      </header>
+      <div class="viewer-detail-pane__content">
+        <div class="viewer-detail-pane__row">
+          <span class="viewer-detail-pane__label">ID</span>
+          <span class="viewer-detail-pane__value">{{ body.id }}</span>
+        </div>
+        @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-render">
+          <summary>{{ t.game.viewer.inspectorRenderTitle }}</summary>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Descriptor Domain</span>
+            <span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Object Family</span>
+            <span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Fallback Tier</span>
+            <span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Profile Radius Scale</span>
+            <span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Profile Segments</span>
+            <span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Profile Emissive</span>
+            <span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span>
+          </div>
+        </details>
+        }
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-physical" open>
+          <summary>{{ t.game.viewer.inspectorPhysicalTitle }}</summary>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Spectral Class</span>
+            <span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Luminosity (Solar)</span>
+            <span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Mass (Solar)</span>
+            <span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Planet Type</span>
+            <span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Color</span>
+            <span class="viewer-detail-pane__value">{{ body.visualization?.colorHex ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Texture</span>
+            <span class="viewer-detail-pane__value">{{ body.visualization?.textureKey ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Diameter (m)</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Mass (kg)</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedMassKg ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Radius (km)</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.radiusKm ?? '—' }}</span>
+          </div>
+        </details>
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-orbit" open>
+          <summary>{{ t.game.viewer.inspectorOrbitTitle }}</summary>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Anchor Body</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.anchorBodyId ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Eccentricity</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Inclination (deg)</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span>
+            <span class="viewer-detail-pane__value">
+              {{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Orbital Period (s)</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Epoch</span>
+            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.epoch ?? '—' }}</span>
+          </div>
+        </details>
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-position" open>
+          <summary>{{ t.game.viewer.inspectorPositionTitle }}</summary>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Position (km)</span>
+            <span class="viewer-detail-pane__value">
+              {{ body.spatial.positionKm.x }}, {{ body.spatial.positionKm.y }}, {{ body.spatial.positionKm.z }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Frame</span>
+            <span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Epoch (ms)</span>
+            <span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Solar System</span>
+            <span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span>
+          </div>
+        </details>
+        @if (resolveGateApproachMetadata(body); as gateApproachMetadata) {
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-gate">
+          <summary>{{ t.game.viewer.inspectorGateTitle }}</summary>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
+          </div>
+          <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}
+            </span>
+          </div>
+        </details>
+        }
+      </div>
+    </aside>
     }
-  </aside>
-  }
-
-  <app-planet-surface-progress />
-
-  <section
-    class="viewer-distance-mode"
-    data-testid="viewer-distance-mode"
-    [attr.aria-label]="t.game.viewer.distanceModeTitle"
-  >
-    <strong>
-      {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistances : t.game.viewer.compressedDistances }}
-    </strong>
-    <span>
-      {{ distanceMode() === 'proportional' ? t.game.viewer.proportionalDistanceNote :
-      t.game.viewer.compressedDistanceNote }}
-    </span>
-    <button type="button" data-testid="viewer-distance-toggle" (click)="toggleDistanceMode()">
-      {{ distanceMode() === 'proportional' ? t.game.viewer.showCompressedDistances :
-      t.game.viewer.showProportionalDistances }}
-    </button>
-  </section>
-
-  <div class="viewer-scene-zoom" data-testid="viewer-zoom-slider" (contextmenu)="onZoomContextMenu($event)">
-    <label class="viewer-scene-zoom__label" for="viewer-scene-zoom-input">
-      {{ t.game.viewer.planetViewZoomLabel }}
-    </label>
-    <input
-      id="viewer-scene-zoom-input"
-      type="range"
-      orient="vertical"
-      min="0"
-      max="100"
-      step="1"
-      [value]="zoomLevel()"
-      (contextmenu)="onZoomContextMenu($event)"
-      (pointerdown)="onZoomPointerDown($event)"
-      (pointerup)="onZoomPointerUp($event)"
-      (mousedown)="onZoomMouseDown($event)"
-      (mouseup)="onZoomMouseUp($event)"
-      (auxclick)="onZoomAuxClick($event)"
-      (input)="onZoomInput($event)"
-      aria-label="Viewer zoom level"
-    />
-    <div class="viewer-scene-zoom__value">{{ zoomPercent() }}%</div>
   </div>
-
-  @if (isDevBuild) {
-  <div class="viewer-qa-panel" data-testid="viewer-qa-panel">
-    <div class="viewer-qa-panel__title">Viewer QA</div>
-    <label class="viewer-qa-panel__toggle">
-      <input type="checkbox" [checked]="viewerQaEnabled()" (change)="onViewerQaToggle($event)" />
-      <span>Enable QA Controls</span>
-    </label>
-    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
-      <input
-        type="checkbox"
-        [checked]="forceHeroMode()"
-        [disabled]="!viewerQaEnabled()"
-        (change)="onForceHeroToggle($event)"
-      />
-      <span>Force Hero Detail</span>
-    </label>
-    <label class="viewer-qa-panel__toggle" [class.viewer-qa-panel__toggle--disabled]="!viewerQaEnabled()">
-      <input
-        type="checkbox"
-        [checked]="showEffectiveRenderProfile()"
-        [disabled]="!viewerQaEnabled()"
-        (change)="onShowRenderProfileToggle($event)"
-      />
-      <span>Show Effective Profile</span>
-    </label>
-  </div>
-  } @if (focusedPlanet(); as focused) {
-  <div class="viewer-focus-pill" data-testid="viewer-focus-pill">
-    Focused: {{ focused.displayName }}
-    <span class="viewer-focus-pill__type">({{ focused.bodyType }})</span>
-  </div>
-  }
-
-  <div class="viewer-legend" data-testid="viewer-legend" aria-label="Map legend">
-    <div class="viewer-legend__title">{{ t.game.viewer.legendTitle }}</div>
-    <div class="viewer-legend__item" data-testid="viewer-orbit-guide-note">{{ t.game.viewer.orbitGuideNote }}</div>
-    <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch" style="background: #ffffff"></span>
-      <span>{{ t.game.viewer.legendPlanet }}</span>
-    </div>
-    <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #ffffff"></span>
-      <span>{{ t.game.viewer.legendPlanetOrbit }}</span>
-    </div>
-    <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch" style="background: #22c55e"></span>
-      <span>{{ t.game.viewer.legendMarketStation }}</span>
-    </div>
-    <div class="viewer-legend__item">
-      <span class="viewer-legend__swatch viewer-legend__swatch--orbit" style="background: #86efac"></span>
-      <span>{{ t.game.viewer.legendMarketOrbit }}</span>
-    </div>
-    <div class="viewer-legend__item" data-testid="viewer-legend-gate">
-      <span class="viewer-legend__swatch" style="background: #38bdf8"></span>
-      <span>{{ t.game.viewer.legendGateLandmark }}</span>
-    </div>
-    <div class="viewer-legend__item" data-testid="viewer-legend-active-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #fbbf24"></span>
-      <span>{{ t.game.viewer.legendActiveShip }}</span>
-    </div>
-    <div class="viewer-legend__item" data-testid="viewer-legend-inactive-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #3b82f6"></span>
-      <span>{{ t.game.viewer.legendInactiveShip }}</span>
-    </div>
-    @if (hasUnknownSpatialShip()) {
-    <div class="viewer-legend__item" data-testid="viewer-legend-unknown-ship">
-      <span class="viewer-legend__swatch viewer-legend__swatch--ship" style="background: #ef4444"></span>
-      <span>{{ t.game.viewer.legendUnknownShip }}</span>
-    </div>
-    }
-  </div>
-
-  @if (hoveredBody(); as body) {
-  <div class="viewer-detail-pane">
-    <div class="viewer-detail-pane__title">
-      {{ body.displayName }}
-      <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">ID</span>
-      <span class="viewer-detail-pane__value">{{ body.id }}</span>
-    </div>
-    @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Descriptor Domain</span>
-      <span class="viewer-detail-pane__value">{{ renderProfile.domain }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Object Family</span>
-      <span class="viewer-detail-pane__value">{{ renderProfile.objectFamily }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Fallback Tier</span>
-      <span class="viewer-detail-pane__value">{{ body.externalObjectDescriptor?.fallbackTier ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Profile Radius Scale</span>
-      <span class="viewer-detail-pane__value">{{ renderProfile.radiusScale }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Profile Segments</span>
-      <span class="viewer-detail-pane__value">{{ renderProfile.geometrySegments }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Profile Emissive</span>
-      <span class="viewer-detail-pane__value">{{ renderProfile.emissive }}</span>
-    </div>
-    }
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Spectral Class</span>
-      <span class="viewer-detail-pane__value">{{ body.spectralClass ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Luminosity (Solar)</span>
-      <span class="viewer-detail-pane__value">{{ body.luminositySolar ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Mass (Solar)</span>
-      <span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Planet Type</span>
-      <span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Color</span>
-      <span class="viewer-detail-pane__value">{{ body.visualization?.colorHex ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Texture</span>
-      <span class="viewer-detail-pane__value">{{ body.visualization?.textureKey ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Diameter (m)</span>
-      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Mass (kg)</span>
-      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedMassKg ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Radius (km)</span>
-      <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.radiusKm ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Anchor Body</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.anchorBodyId ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Eccentricity</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Inclination (deg)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Orbital Period (s)</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Epoch</span>
-      <span class="viewer-detail-pane__value">{{ body.orbitalElements?.epoch ?? '—' }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Position (km)</span>
-      <span class="viewer-detail-pane__value">
-        {{ body.spatial.positionKm.x }}, {{ body.spatial.positionKm.y }}, {{ body.spatial.positionKm.z }}
-      </span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Frame</span>
-      <span class="viewer-detail-pane__value">{{ body.spatial.frame }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Epoch (ms)</span>
-      <span class="viewer-detail-pane__value">{{ body.spatial.epochMs }}</span>
-    </div>
-    <div class="viewer-detail-pane__row">
-      <span class="viewer-detail-pane__label">Solar System</span>
-      <span class="viewer-detail-pane__value">{{ body.spatial.solarSystemId }}</span>
-    </div>
-    @if (resolveGateApproachMetadata(body); as gateApproachMetadata) {
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-cue">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachCueLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.approachCue }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-landmark-framing">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateLandmarkFramingLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.landmarkFraming }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-nav-beacon">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateNavBeaconCueLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.navBeaconCue }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-hazard">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateHazardCueLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.hazardCue }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-warning-escalation">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateWarningEscalationLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.warningEscalation }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-recommended-standoff-km">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateRecommendedStandOffKmLabel }}</span>
-      <span class="viewer-detail-pane__value">{{ gateApproachMetadata.recommendedStandOffKm }}</span>
-    </div>
-    <div class="viewer-detail-pane__row" data-testid="viewer-detail-gate-approach-window-km">
-      <span class="viewer-detail-pane__label">{{ t.game.viewer.gateApproachWindowKmLabel }}</span>
-      <span class="viewer-detail-pane__value">
-        {{ gateApproachMetadata.approachWindowKm.min }} - {{ gateApproachMetadata.approachWindowKm.max }}
-      </span>
-    </div>
-    }
-  </div>
-  } @if (isPlanetTransitioning()) {
-  <div class="viewer-scene-transition" data-testid="viewer-scene-transition"></div>
-  } }
 </div>
