@@ -212,6 +212,13 @@ and requires focus restoration each time. Six local repetitions at two workers,
 zero retries, passed in 1.1 minutes; the Angular build and targeted ESLint passed.
 This is the only production behavior change in this investigation.
 
+After the focus fix, [GitHub run 39334654599](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39334654599)
+passed all eight tests (the seven investigated cases plus authentication setup)
+in 2.3 minutes with two workers and zero retries. It tested frontend
+`979ad20d4e9c5d1df677d43aa3a3ff10e9e16b71` and the same pinned backend SHA.
+The local splash redirect failure and load-sensitive full-suite timeouts remain
+unresolved; one focused GitHub pass does not qualify two workers as the default.
+
 Direct strict TypeScript checking of the two edited E2E specs reported existing
 errors in unchanged code: nullable flight coordinates/expect narrowing in the
 flight-mode spec and a required `window.ng` cast in the viewer-controls spec.
