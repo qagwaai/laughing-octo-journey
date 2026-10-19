@@ -4,6 +4,21 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      workers:
+        description: Playwright worker count
+        type: choice
+        options: ['1', '2']
+        default: '1'
+      retries:
+        description: Retries per failed test (use 0 for reliability trials)
+        type: choice
+        options: ['0', '1']
+        default: '1'
+      backend_ref:
+        description: Forge ref or commit SHA (pin a SHA for comparable trials)
+        type: string
+        default: main
 
 permissions:
   contents: read
@@ -36,7 +51,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: qagwaai/solid-train
-          ref: main
+          ref: ${{ inputs.backend_ref || 'main' }}
           path: server
 
       # ── Node.js setup (shared version from frontend .nvmrc) ─────────────────
@@ -96,7 +111,9 @@ jobs:
           OPENAPI_URL: http://localhost:3000/openapi.yaml
           SOCKET_BASE_URL: http://localhost:3000
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/playwright-junit.xml
-        run: npm run e2e -- --reporter=html,junit
+          TRIAL_WORKERS: ${{ inputs.workers || '1' }}
+          TRIAL_RETRIES: ${{ inputs.retries || '1' }}
+        run: npm run e2e -- --workers="$TRIAL_WORKERS" --retries="$TRIAL_RETRIES" --trace=retain-on-failure --reporter=html,junit
 
       - name: Generate E2E summary artifact
         if: always()

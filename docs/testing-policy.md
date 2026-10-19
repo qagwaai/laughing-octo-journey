@@ -106,6 +106,21 @@ contention. `CI_PLAYWRIGHT_WORKERS`, `PLAYWRIGHT_WORKERS`, and `CI_NODE_TOTAL`
 flags also apply to headed/debug runs so those reproduce the same correctness
 baseline; they do not change the application's runtime renderer.
 
+Two-worker reliability trials leave the default at one worker. Run the full
+suite locally with no retries and retain failure traces:
+
+```powershell
+npm run e2e -- --workers=2 --retries=0 --trace=retain-on-failure --reporter=line
+```
+
+The E2E Playwright workflow accepts manual `workers`, `retries`, and `backend_ref`
+inputs. Select two workers, zero retries, and a fixed backend commit SHA for
+comparable GitHub trials. Push runs still use one worker and one retry; workflow
+runs retain failure traces even when retries are disabled. Record frontend and
+backend revisions, Node/browser versions, total wall time, failures, and skips.
+Compare at least three full runs per environment before considering a default
+change. Do not increase timeouts or count retry-recovered tests as clean trials.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with
