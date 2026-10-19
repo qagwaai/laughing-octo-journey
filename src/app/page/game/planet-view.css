@@ -98,9 +98,8 @@
 }
 
 .planet-view-zoom input[type='range'] {
-  -webkit-appearance: slider-vertical;
-  appearance: slider-vertical;
-  writing-mode: bt-lr;
+  writing-mode: vertical-lr;
+  direction: rtl;
   width: 1.3rem;
   height: min(44vh, 270px);
   cursor: pointer;

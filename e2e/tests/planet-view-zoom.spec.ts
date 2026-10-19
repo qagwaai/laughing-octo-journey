@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { PlanetViewPage } from '../page-objects/planet-view.page';
 import { ViewerPage } from '../page-objects/viewer.page';
@@ -17,6 +19,58 @@ async function enterPlanetViewViaInspector(page: Page, bodyId = 'earth'): Promis
 }
 
 test.describe('Planet details zoom pattern', () => {
+  for (const mode of ['viewer', 'planet-view'] as const) {
+    test(`supports standard vertical slider interaction in ${mode}`, async ({ page }) => {
+      const deprecations: string[] = [];
+      page.on('console', (message) => {
+        if (message.text().includes('slider-vertical')) deprecations.push(message.text());
+      });
+
+      // Exercise the production CSS without starting the unrelated WebGL scenes.
+      const component = mode === 'viewer' ? 'viewer-scene' : 'planet-view';
+      const css = await readFile(resolve('src', 'app', 'page', 'game', `${component}.css`), 'utf8');
+      await page.setContent(`
+        <style>${css}</style>
+        <div class="${component}-zoom">
+          <input type="range" min="0" max="100" step="1" aria-label="Zoom level">
+        </div>
+      `);
+
+      const slider = page.getByRole('slider');
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveCSS('writing-mode', 'vertical-lr');
+      await expect(slider).toHaveCSS('direction', 'rtl');
+
+      await slider.focus();
+      await slider.press('Home');
+      await expect(slider).toHaveValue('0');
+      await slider.press('ArrowUp');
+      await expect(slider).toHaveValue('1');
+      await slider.press('ArrowDown');
+      await expect(slider).toHaveValue('0');
+      await slider.press('End');
+      await expect(slider).toHaveValue('100');
+
+      const bounds = await slider.boundingBox();
+      if (!bounds) throw new Error('Zoom slider is missing.');
+      expect(bounds.height).toBeGreaterThan(bounds.width);
+      const x = bounds.x + bounds.width / 2;
+      const top = bounds.y + 10;
+      const bottom = bounds.y + bounds.height - 10;
+      await page.mouse.move(x, top);
+      await page.mouse.down();
+      await page.mouse.move(x, bottom, { steps: 5 });
+      await page.mouse.up();
+      await expect.poll(async () => Number(await slider.inputValue())).toBeLessThan(10);
+      await page.mouse.move(x, bottom);
+      await page.mouse.down();
+      await page.mouse.move(x, top, { steps: 5 });
+      await page.mouse.up();
+      await expect.poll(async () => Number(await slider.inputValue())).toBeGreaterThan(90);
+      expect(deprecations).toEqual([]);
+    });
+  }
+
   test('does not enter close-up on a planet right-click', async ({ page }) => {
     await setupPlanetViewZoomViewer(page);
     const viewer = new ViewerPage(page);

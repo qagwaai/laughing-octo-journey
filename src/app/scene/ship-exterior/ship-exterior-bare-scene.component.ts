@@ -656,7 +656,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       });
     }
     this.attachVisibleCanvas();
-    this.logContextActivation(contextKey);
     this.bumpRuntimeRevision();
     this.floatingDebrisController.requestNearbyItems();
     return true;
@@ -670,7 +669,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     active.toggleFlightMode();
     this.syncPointerLockForActiveContext(false);
-    this.logContextActivation(active.contextKey);
     this.bumpRuntimeRevision();
   }
 
@@ -1331,34 +1329,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     };
 
     this.animationFrameId = requestAnimationFrame(loop);
-  }
-
-  private logContextActivation(contextKey: string): void {
-    if (typeof console === 'undefined') {
-      return;
-    }
-
-    const active = this.registry.getActiveContext();
-    const state = active?.getState();
-    const contextSummary = this.registry.getAllContexts().map((context) => ({
-      contextKey: context.contextKey,
-      shipId: context.getState().shipId,
-      starfieldSignature: context.getStarfieldSignature(),
-      paused: context.isPaused(),
-      renderedFrameCount: context.getRenderedFrameCount(),
-    }));
-
-    console.log('[ship-exterior] active context switched', {
-      contextKey,
-      shipId: state?.shipId ?? null,
-      playerName: state?.playerName ?? null,
-      characterId: state?.characterId ?? null,
-      totalContexts: this.registry.getAllContexts().length,
-      activeStarfieldSignature: active?.getStarfieldSignature() ?? null,
-      flightModeEnabled: active?.flightModeEnabled() ?? false,
-      flightPointerLocked: active?.flightPointerLocked() ?? false,
-      contexts: contextSummary,
-    });
   }
 
   private teardownAllContexts(): void {

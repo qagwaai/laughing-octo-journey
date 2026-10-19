@@ -769,16 +769,8 @@ test.describe('Viewer — Scene Rendering', () => {
       data: loginResponse,
     }));
 
-    const socketConnectedInApp = page
-      .waitForEvent('console', {
-        predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-        timeout: 10_000,
-      })
-      .catch(() => null);
-
     await page.goto('/(left:login)?locale=it');
     await mock.connected;
-    await socketConnectedInApp;
 
     await page.locator('#playerName').fill(TEST_PLAYER);
     await page.locator('#password').fill('testpassword123');
