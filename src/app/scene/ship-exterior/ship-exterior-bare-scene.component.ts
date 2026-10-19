@@ -6,6 +6,7 @@
  */
 import {
   AfterViewInit,
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -13,6 +14,7 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   isDevMode,
   OnDestroy,
   OnInit,
@@ -125,6 +127,7 @@ type ShipExteriorScanDetail =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly injector = inject(Injector);
   protected readonly showDebugButton = isDevMode();
   protected readonly t = locale.shipExterior.debugDrawer;
   protected readonly emptyStateText = locale.shipExterior.emptyState;
@@ -680,7 +683,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
 
     this.releasePilotInput();
     this.debugDrawerOpen.set(true);
-    setTimeout(() => this.debugDrawer()?.nativeElement.focus());
+    afterNextRender(() => {
+      if (this.debugDrawerOpen()) this.debugDrawer()?.nativeElement.focus({ preventScroll: true });
+    }, { injector: this.injector });
   }
 
   closeDebugDrawer(restoreFocus = true): void {
@@ -691,7 +696,9 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     this.releasePilotInput();
     this.debugDrawerOpen.set(false);
     if (restoreFocus) {
-      setTimeout(() => this.debugButton()?.nativeElement.focus());
+      afterNextRender(() => {
+        if (!this.debugDrawerOpen()) this.debugButton()?.nativeElement.focus({ preventScroll: true });
+      }, { injector: this.injector });
     }
   }
 

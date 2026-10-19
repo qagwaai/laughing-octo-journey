@@ -199,6 +199,14 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(debugDrawer(page)).toBeHidden();
     await expect(debugButton(page)).toBeFocused();
     expect(await page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await page.keyboard.press('Enter');
+      await expect(debugDrawer(page)).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(debugDrawer(page)).toBeHidden();
+      await expect(debugButton(page)).toBeFocused();
+    }
   });
 
   test('steers yaw and pitch without orbiting or translating, and ignores unlocked mouse steering', async ({

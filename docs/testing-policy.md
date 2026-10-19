@@ -198,7 +198,24 @@ use Playwright's reported wall time, not that sum, for speed comparisons.
   about 12.5 seconds. Camera/layout checks passed all three repetitions. This is
   not a clean qualification run, and slow GLB timing alone does not explain the
   redirect delay. Loading/redirect thresholds and all production code remain
-  unchanged. No full-suite trial was repeated.
+  unchanged at that stage. No full-suite trial was repeated.
+
+The first focused GitHub execution,
+[run 39333829818](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39333829818),
+passed seven tests including setup and failed the ship drawer focus assertion
+(1.8 minutes). Opening/closing the drawer used a zero-delay timer, which does
+not guarantee Angular has committed its `inert`/visibility bindings. Focus now
+runs after Angular's next render, checks that the drawer still has the requested
+open/closed state, and uses `preventScroll` so focus does not move the scene.
+The regression check also exercises three keyboard open/Escape-close cycles
+and requires focus restoration each time. Six local repetitions at two workers,
+zero retries, passed in 1.1 minutes; the Angular build and targeted ESLint passed.
+This is the only production behavior change in this investigation.
+
+Direct strict TypeScript checking of the two edited E2E specs reported existing
+errors in unchanged code: nullable flight coordinates/expect narrowing in the
+flight-mode spec and a required `window.ng` cast in the viewer-controls spec.
+These were not changed as part of the timing/focus fix.
 
 Manual workflow input `test_grep` accepts a test-title regex for bounded
 investigation; leaving it empty retains full-suite execution. Match the seven
