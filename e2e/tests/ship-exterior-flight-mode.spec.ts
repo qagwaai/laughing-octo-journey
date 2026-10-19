@@ -29,11 +29,15 @@ const layoutBandSelectors = [
 type LayoutBox = { x: number; y: number; width: number; height: number };
 
 async function readLayoutBandBoxes(page: Page): Promise<LayoutBox[]> {
-  const boxes = await Promise.all(layoutBandSelectors.map((selector) => page.locator(selector).boundingBox()));
-  if (boxes.some((box) => box === null)) {
-    throw new Error('Expected every ship-exterior layout band to have a bounding box.');
-  }
-  return boxes as LayoutBox[];
+  return page.evaluate(
+    (selectors) => selectors.map((selector) => {
+      const element = document.querySelector(selector);
+      if (!element) throw new Error(`Missing ship-exterior layout band: ${selector}`);
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+    layoutBandSelectors,
+  );
 }
 
 function expectFullWidthAlignedBands(boxes: readonly LayoutBox[]): void {
@@ -150,7 +154,15 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(page.locator('.ship-exterior-bare-scene__debug')).toHaveCount(0);
 
     await expect.poll(async () => (await readLayoutBandBoxes(page))[2].width).toBeGreaterThan(800);
-    await page.waitForTimeout(250);
+    await expect
+      .poll(() => page.evaluate(() =>
+        ['app-left-panel', 'app-right-panel'].every((id) => {
+          const panel = document.getElementById(id);
+          return panel !== null && panel.style.transition === '' &&
+            panel.getAnimations().every((animation) => animation.playState === 'finished');
+        }),
+      ))
+      .toBe(true);
     const layoutBefore = await readLayoutBandBoxes(page);
     expectFullWidthAlignedBands(layoutBefore);
     await debugButton(page).click();
@@ -159,7 +171,11 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await expect(debugDrawer(page)).toBeFocused();
     await expect(debugDrawer(page)).toContainText('FRAME TIME //');
     await expect(debugDrawer(page)).toContainText('ASTEROID DETAIL CAP //');
-    await page.waitForTimeout(250);
+    await expect
+      .poll(() => debugDrawer(page).evaluate((element) =>
+        element.getAnimations().every((animation) => animation.playState === 'finished'),
+      ))
+      .toBe(true);
     const layoutAfter = await readLayoutBandBoxes(page);
     expectFullWidthAlignedBands(layoutAfter);
     layoutAfter.forEach((box, index) => {

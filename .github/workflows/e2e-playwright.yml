@@ -19,6 +19,10 @@ on:
         description: Forge ref or commit SHA (pin a SHA for comparable trials)
         type: string
         default: main
+      test_grep:
+        description: Optional test-title regex for focused investigation (empty runs the full suite)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -113,7 +117,8 @@ jobs:
           PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/playwright-junit.xml
           TRIAL_WORKERS: ${{ inputs.workers || '1' }}
           TRIAL_RETRIES: ${{ inputs.retries || '1' }}
-        run: npm run e2e -- --workers="$TRIAL_WORKERS" --retries="$TRIAL_RETRIES" --trace=retain-on-failure --reporter=html,junit
+          TEST_GREP: ${{ inputs.test_grep || '.*' }}
+        run: npm run e2e -- --workers="$TRIAL_WORKERS" --retries="$TRIAL_RETRIES" --grep="$TEST_GREP" --trace=retain-on-failure --reporter=html,junit
 
       - name: Generate E2E summary artifact
         if: always()

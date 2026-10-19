@@ -13,10 +13,10 @@ async function waitForFrameChange(options: {
   // (SwiftShader, no GPU) each frame plus canvas readback is far slower than on
   // a GPU dev machine, so this budget is environment-bound rather than arbitrary.
   const timeout = options.timeoutMs ?? 20_000;
+  await options.runInteraction();
   await expect
     .poll(
       async () => {
-        await options.runInteraction();
         const nextFrame = await options.readFrame();
         return nextFrame !== options.baselineFrame;
       },
@@ -121,6 +121,8 @@ test.describe('Viewer controls after target completion', () => {
     await page.mouse.move(2, 2);
     await expect(panel.getByTestId('viewer-body-label')).toContainText('Earth');
     await expect(panel.getByTestId('viewer-body-label')).toContainText('Targeted');
+    // The target label changes before the flight finishes and publishes its zoom.
+    await expect(slider.locator('input')).not.toHaveValue('100');
     await page.screenshot({ path: testInfo.outputPath('viewer-panel-compact.png') });
 
     await notes.locator('summary').focus();
@@ -222,6 +224,7 @@ test.describe('Viewer controls after target completion', () => {
 
     await targetEarthButton.click();
     await expect(targetEarthButton).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
 
     await waitForFrameChange({
       runInteraction: async () => {
@@ -241,11 +244,6 @@ test.describe('Viewer controls after target completion', () => {
     const centerX = (bounds?.x ?? 0) + (bounds?.width ?? 0) / 2;
     const centerY = (bounds?.y ?? 0) + (bounds?.height ?? 0) / 2;
 
-    await page.mouse.move(centerX, centerY);
-    await page.mouse.down({ button: 'left' });
-    await page.mouse.move(centerX + 120, centerY + 30, { steps: 12 });
-    await page.mouse.up({ button: 'left' });
-
     await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.move(centerX, centerY);
@@ -260,8 +258,6 @@ test.describe('Viewer controls after target completion', () => {
     const afterRotateFrame = await getCanvasFrameSignature(canvas);
     expect(afterRotateFrame).not.toBe(initialFrame);
 
-    await page.mouse.wheel(0, -800);
-
     await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.wheel(0, -800);
@@ -275,12 +271,6 @@ test.describe('Viewer controls after target completion', () => {
 
     const panX = (bounds?.x ?? 0) + 24;
     const panY = (bounds?.y ?? 0) + 24;
-    await page.mouse.move(panX, panY);
-    await page.mouse.down({ button: 'right' });
-    await page.mouse.move(panX + 120, panY + 26, { steps: 10 });
-    await page.mouse.up({ button: 'right' });
-    await page.keyboard.press('Escape');
-
     await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.move(panX, panY);

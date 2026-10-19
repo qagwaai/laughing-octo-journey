@@ -172,6 +172,39 @@ readiness, camera-settling, and input-target timing before repeating full trials
 JUnit summary `durationSeconds` sums suite durations under parallel execution;
 use Playwright's reported wall time, not that sum, for speed comparisons.
 
+### Targeted failure investigation: 2026-10-19
+
+- The viewer target label updates before the camera flight finishes. The flight
+  disables orbit controls and publishes the new zoom only on completion. The
+  failing wheel-isolation check captured zoom 100 during flight, then observed
+  the completion value 39. Both affected viewer checks now wait for completion's
+  zoom publication before testing input. Each rotate/zoom/pan gesture runs once;
+  frame polling no longer repeats the input or adds an unconditional first gesture.
+- Ship layout bands are now read atomically in one browser evaluation. The
+  debug-drawer test waits for actual pane/drawer transitions rather than sleeping
+  250 ms. Exact before/after position and size assertions remain unchanged. These
+  remove sampling hazards but do not prove the original 17-pixel shift's cause;
+  a standalone CSS/focus experiment did not reproduce it.
+- The blocked-host splash failure spent about 14 seconds fetching the 7.8 MB
+  standard GLB before decoding/rendering, nearly consuming its 15-second ready
+  assertion. No request failed; resource delay does not establish a renderer bug.
+- The planet right-click flow exhausted the overall test budget while waiting
+  for the viewer URL after the click. The body-drag trace completed its no-target
+  assertion, but exhausted its overall test/teardown budget. Neither trace proves
+  a deterministic input bug. Do not describe the teardown timeout as a browser crash.
+- A focused two-worker, zero-retry stress run repeated all seven cases three
+  times: 20 passed, one failed in 6.1 minutes. The unchanged homeworld redirect
+  check failed once at its original 4.5-second threshold; its GLB request took
+  about 12.5 seconds. Camera/layout checks passed all three repetitions. This is
+  not a clean qualification run, and slow GLB timing alone does not explain the
+  redirect delay. Loading/redirect thresholds and all production code remain
+  unchanged. No full-suite trial was repeated.
+
+Manual workflow input `test_grep` accepts a test-title regex for bounded
+investigation; leaving it empty retains full-suite execution. Match the seven
+cases with the selector above. Focused green runs do not establish full-suite
+two-worker reliability.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with
