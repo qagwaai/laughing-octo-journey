@@ -121,6 +121,57 @@ backend revisions, Node/browser versions, total wall time, failures, and skips.
 Compare at least three full runs per environment before considering a default
 change. Do not increase timeouts or count retry-recovered tests as clean trials.
 
+### Two-worker trial: 2026-10-19
+
+Decision: keep one worker as the default. The first full two-worker run failed
+in both environments, so the three-clean-run qualification was not completed.
+No timeouts, assertions, retries, or production rendering behavior were changed
+to make the trial pass.
+
+The frontend trial revision was `ccbe8c33d2d02e4ed189b667146acd41dccf0f29`
+(test/application code unchanged from `b89a3d1`). GitHub checked out backend
+`13c1fd466f3e2ec602a5671d92df8be372491e75`. The local backend SHA was not verified.
+Local execution reused the running dev server, used Node `24.14.0`, npm `11.18.0`,
+and Chromium `153.0.8010.12`. GitHub used Node `20.19.0`, npm `10.8.2`, and the
+same Chromium version reported by the trace's browser user agent.
+
+| Execution                                                                                      | Workers | Passed | Failed | Skipped | Playwright wall time |
+| ---------------------------------------------------------------------------------------------- | ------: | -----: | -----: | ------: | -------------------: |
+| Full local suite                                                                               |       2 |    265 |      6 |       1 |             41.5 min |
+| [Full GitHub suite](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39324414766) |       2 |    270 |      1 |       1 |             24.4 min |
+| Focused local control                                                                          |       1 |      7 |      0 |       0 |              2.5 min |
+| Focused local comparison                                                                       |       2 |      7 |      0 |       0 |              2.1 min |
+
+All four executions disabled retries and retained failure traces. The full
+local command is shown above. GitHub used:
+
+```powershell
+gh workflow run e2e-playwright.yml --repo qagwaai/laughing-octo-journey --ref trial/e2e-two-workers -f workers=2 -f retries=0 -f backend_ref=13c1fd466f3e2ec602a5671d92df8be372491e75
+```
+
+GitHub's debug-drawer layout check observed a 17-pixel horizontal shift between
+its before/after samples. Local failures were the planet-detail right-click
+exit timeout, the homeworld splash redirect timeout, third-party-blocked splash
+readiness remaining in `loading`, a viewer zoom value changing from 100 to 39,
+the rotate/zoom/pan interaction timeout, and the body-drag interaction/teardown
+timeout. All seven affected tests passed in the subsequent focused controls:
+
+```powershell
+$selector = 'preserves planet details interaction and right-click exit flow|shows the scene.*nova-splash-homeworld|renders the splash planet with every third-party host blocked|consolidates information without hiding notes|keeps rotate, zoom, and pan usable|left-dragging a body rotates|opens an overlay debug drawer'
+npx playwright test --project=chromium --no-deps --grep $selector --workers=1 --retries=0 --trace=retain-on-failure --reporter=line
+npx playwright test --project=chromium --no-deps --grep $selector --workers=2 --retries=0 --trace=retain-on-failure --reporter=line
+```
+
+The earlier one-worker GitHub baseline passed 271 tests with one skip in
+31.4 minutes. The two-worker run was about 22% faster, but failed. This is not
+a controlled speed benchmark: the baseline used the normal retry/trace policy,
+and local/GitHub Node versions and local backend provenance differ. The results
+do not establish resource contention as the sole cause; the splash redirect
+timeout also occurred in an earlier one-worker local run. Investigate layout,
+readiness, camera-settling, and input-target timing before repeating full trials.
+JUnit summary `durationSeconds` sums suite durations under parallel execution;
+use Playwright's reported wall time, not that sum, for speed comparisons.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with
