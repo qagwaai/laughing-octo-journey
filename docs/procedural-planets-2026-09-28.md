@@ -21,7 +21,9 @@ The [catalog cache](../src/app/scene/planet/catalog-surface-cache.ts) loads only
 previews for overview/companion moons and one selected detail tier for the
 focused body. It uses leased ownership, late-completion disposal, inactive-only
 LRU eviction and estimated-byte admission at 96 MiB standard / 32 MiB low,
-separate from procedural limits. Image textures can reupload across renderer
+separate from procedural limits. Procedural limits apply only to unleased
+entries: surfaces a mounted scene is showing are pinned, so large systems do
+not evict their own visible bodies. Image textures can reupload across renderer
 contexts; GPU procedural render-target handles still require owner changes.
 The catalog estimates are not measured driver or multi-context GPU allocations.
 

@@ -14,7 +14,7 @@ import { computed, inject, Injectable, InjectionToken, signal } from '@angular/c
 import type { WebGLRenderer } from 'three';
 import type { PlanetLodTier } from '../../model/planet/planet-texture';
 import { appLogger } from '../../services/logger';
-import { CatalogSurfaceCache } from './catalog-surface-cache';
+import { CatalogSurfaceCache, type CatalogSurfaceUse } from './catalog-surface-cache';
 import type { PlanetSurfaceResult } from './catalog-surface-loader';
 import { bakePlanetTextures as _bakePlanetTextures, type PlanetBakeResult, supportsGpuBake } from './planet-bake';
 import {
@@ -54,7 +54,9 @@ export const PLANET_CACHE_FRAME_BUDGET_MS = 8;
 
 /**
  * L0 is roughly 171 KiB with mipmaps, so this ceiling is about 11 MiB and
- * exists only to stop unbounded growth across many visited systems.
+ * exists only to stop unbounded growth across many visited systems. Surfaces
+ * retained by a mounted scene are exempt, so a system with more texturable
+ * bodies than this (Sol has ~90) cannot evict its own visible moons.
  */
 export const PLANET_CACHE_L0_LIMIT = 64;
 
@@ -82,6 +84,8 @@ export class PlanetTextureCache {
   private readonly queued = new Set<string>();
   private readonly failed = new Set<string>();
   private readonly reportedFallbacks = new Set<string>();
+  /** Procedural keys pinned by mounted scenes; eviction never removes these. */
+  private readonly leases = new Map<symbol, ReadonlySet<string>>();
   private ticking = false;
 
   /**
@@ -195,6 +199,34 @@ export class PlanetTextureCache {
     }
   }
 
+  /**
+   * Pins the surfaces a mounted scene is showing until the returned release
+   * runs. Without this, a working set larger than the LRU limit thrashes: each
+   * bake evicts a visible body, which is re-queued on the next request pass
+   * and briefly flashes textured before being evicted again.
+   */
+  retain(uses: readonly CatalogSurfaceUse[], renderer?: WebGLRenderer | null): () => void {
+    const releaseCatalog = this.catalog.retain(uses, renderer);
+    const keys = new Set<string>();
+    for (const use of uses) {
+      if (resolvePlanetSurfaceSource(use.body, use.tier)?.kind === 'catalog') continue;
+      const request = resolvePlanetSurface(use.body, this.effectiveTier(use.tier, renderer));
+      if (request) keys.add(request.key);
+    }
+    const id = Symbol('planet-surface-consumer');
+    this.leases.set(id, keys);
+    return () => {
+      this.leases.delete(id);
+      releaseCatalog();
+      // Deferred: an effect re-run releases before it re-retains, and trimming
+      // in that gap would evict the very surfaces about to be pinned again.
+      this.schedule(() => {
+        const evicted = this.evict('l0') + this.evict('l1');
+        if (evicted > 0) this.readySignal.set(new Map(this.entries));
+      });
+    };
+  }
+
   /** Test and teardown hook; disposes every resident texture. */
   clear(): void {
     this.catalog.clear();
@@ -206,6 +238,7 @@ export class PlanetTextureCache {
     this.queued.clear();
     this.failed.clear();
     this.reportedFallbacks.clear();
+    this.leases.clear();
     this.readySignal.set(new Map());
     this.enqueuedCount.set(0);
     this.settledCount.set(0);
@@ -315,20 +348,29 @@ export class PlanetTextureCache {
     }
   }
 
-  private evict(tier: PlanetLodTier): void {
+  /** Returns how many entries were disposed. */
+  private evict(tier: PlanetLodTier): number {
     const limit = limitForTier(tier);
+    const pinned = new Set<string>();
+    for (const keys of this.leases.values()) {
+      for (const key of keys) pinned.add(key);
+    }
     const keysForTier = [...this.entries.keys()].filter((key) => keyTier(key) === tier);
 
     let excess = keysForTier.length - limit;
+    let evictedCount = 0;
     for (const key of keysForTier) {
       if (excess <= 0) break;
+      if (pinned.has(key)) continue;
       const evicted = this.entries.get(key);
       if (evicted) {
         evicted.dispose();
         this.entries.delete(key);
+        evictedCount += 1;
       }
       excess -= 1;
     }
+    return evictedCount;
   }
 }
 

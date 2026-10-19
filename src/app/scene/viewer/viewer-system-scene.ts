@@ -1425,7 +1425,7 @@ export class ViewerSystemScene {
       const renderer = this.store.gl();
       this.planetTextures.catalog.quality();
       const release = untracked(() => {
-        const release = this.planetTextures.catalog.retain(
+        const release = this.planetTextures.retain(
           bodies.map((body) => ({ body, tier: 'l0' })),
           renderer,
         );

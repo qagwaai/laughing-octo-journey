@@ -184,7 +184,8 @@ not release the separate Sol imagery pilot's final acceptance hold.
   retain a dedicated icy-moon/rocky-moon generator or the existing terran generator.
 - [Texture cache](../src/app/scene/planet/planet-texture-cache.ts):
   shared overview/detail facade for procedural scheduling and
-  [catalog texture ownership](../src/app/scene/planet/catalog-surface-cache.ts).
+  [catalog texture ownership](../src/app/scene/planet/catalog-surface-cache.ts);
+  scene leases pin both procedural and catalog surfaces against eviction.
 - [LOD presets](../src/app/model/planet/planet-texture.ts):
   current procedural overview is 256 x 128; detail is 2048 x 1024.
 - [Bake result](../src/app/scene/planet/planet-bake.ts):
@@ -2230,6 +2231,17 @@ bytes, and are separate from the unchanged procedural cache limits.
   transport may finish after navigation: it is not a network-abort promise.
   Regular image textures can upload into a new renderer; unlike procedural GPU
   render targets, they do not contain dead cross-context render-target handles.
+- Scenes lease through the facade's `retain`, which also pins the procedural
+  keys they display. Procedural LRU eviction (64 L0 / 3 L1 entries) skips
+  leased keys, so a system with more generated bodies than the L0 limit
+  (Sol has 88) keeps every visible surface rather than thrashing. Before this,
+  zooming re-queued evicted moons such as Phobos and Deimos, which flashed
+  textured for one frame before reverting to the untextured flat material.
+  Release trims back to the limit on the next scheduler tick so an effect
+  re-run's release/re-retain gap cannot evict surfaces about to be re-pinned.
+  Leased L0 surfaces cost about 171 KiB each (about 15 MiB for Sol); a byte
+  budget, a cap for very large systems and WebGL context-loss recovery remain
+  follow-up work.
   Repeated renderer uploads can have driver-specific allocations; the estimates
   are not measured aggregate GPU memory across simultaneously live contexts.
 - Detail failure retains a valid preview/low surface, logs the failure and
