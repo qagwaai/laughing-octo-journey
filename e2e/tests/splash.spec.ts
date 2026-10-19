@@ -301,48 +301,74 @@ test('orbits with the mouse, then resumes cinematic drift from the selected angl
   await expect(overlay).toHaveAttribute('data-state', 'ready');
 });
 
-test('orbits by touch on a mobile viewport without enabling automatic reduced-motion drift', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(pinnedSplash('/splash(left:intro)'));
-  const overlay = page.locator('app-splash-overlay section');
-  await expect(overlay).toHaveAttribute('data-state', 'ready');
-  const bounds = await page.locator('ngt-canvas canvas').first().boundingBox();
-  expect(bounds).not.toBeNull();
-  const x = Math.round(bounds!.x + bounds!.width / 2);
-  const y = Math.round(bounds!.y + bounds!.height / 2);
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [{ x, y, id: 1 }],
-  });
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchMove',
-    touchPoints: [{ x: x + 75, y: y - 30, id: 1 }],
-  });
-  await expect(overlay).toHaveAttribute('data-motion', 'orbit');
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await expect(overlay).toHaveAttribute('data-motion', 'still', { timeout: 5500 });
+test.describe('Mobile splash gestures', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  const beforePinch = await page.locator('ngt-canvas canvas').first().screenshot();
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchStart',
-    touchPoints: [
-      { x: x - 25, y, id: 1 },
-      { x: x + 25, y, id: 2 },
-    ],
+  test('orbits by touch on a mobile viewport without enabling automatic reduced-motion drift', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(pinnedSplash('/splash(left:intro)'));
+    const overlay = page.locator('app-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready');
+    await expect(overlay).toHaveAttribute('data-motion', 'still');
+    await page.getByRole('button', { name: 'Show all right', exact: true }).tap();
+    const canvas = page.locator('ngt-canvas canvas').first();
+    const bounds = await canvas.boundingBox();
+    expect(bounds).not.toBeNull();
+    const x = Math.round(bounds!.x + bounds!.width / 2);
+    // Keep both gestures above the body/cloud controls and away from the splitter.
+    const y = Math.round(bounds!.y + bounds!.height / 4);
+    expect(
+      await canvas.evaluate(
+        (element, points) => points.every((point) => document.elementFromPoint(point.x, point.y) === element),
+        [
+          { x, y },
+          { x: x + 75, y: y - 30 },
+          { x: x - 25, y },
+          { x: x + 25, y },
+          { x: x - 65, y },
+          { x: x + 65, y },
+        ],
+      ),
+    ).toBe(true);
+    const beforeOrbit = await canvas.screenshot();
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ x, y, id: 1 }],
+      });
+      await expect(overlay).toHaveAttribute('data-motion', 'orbit');
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: x + 75, y: y - 30, id: 1 }],
+      });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(overlay).toHaveAttribute('data-motion', 'still', { timeout: 5500 });
+      expect(await canvas.screenshot()).not.toEqual(beforeOrbit);
+
+      const beforePinch = await canvas.screenshot();
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [
+          { x: x - 25, y, id: 1 },
+          { x: x + 25, y, id: 2 },
+        ],
+      });
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          { x: x - 65, y, id: 1 },
+          { x: x + 65, y, id: 2 },
+        ],
+      });
+      await expect(overlay).toHaveAttribute('data-motion', 'orbit');
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(overlay).toHaveAttribute('data-motion', 'still', { timeout: 5500 });
+      expect(await canvas.screenshot()).not.toEqual(beforePinch);
+    } finally {
+      await cdp.detach();
+    }
   });
-  await cdp.send('Input.dispatchTouchEvent', {
-    type: 'touchMove',
-    touchPoints: [
-      { x: x - 65, y, id: 1 },
-      { x: x + 65, y, id: 2 },
-    ],
-  });
-  await expect(overlay).toHaveAttribute('data-motion', 'orbit');
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  expect(await page.locator('ngt-canvas canvas').first().screenshot()).not.toEqual(beforePinch);
-  await cdp.detach();
 });
 
 test('keeps a chosen static view when a pending asset request fails later', async ({ page }) => {
