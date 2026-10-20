@@ -285,6 +285,27 @@ or omissions. No application code, timeout, retry policy, or behavioral assertio
 changed. No new full suite was started. Focused passes do not qualify the revised
 partition or resolve the original full-suite splash startup observation.
 
+Focused GitHub validation on
+`db34a5a5eea7e80906ed316082e2bfbffaaffa53` also passed:
+
+| GitHub execution | Workers | Passed | Failed | Playwright wall time |
+| ---------------- | ------: | -----: | -----: | -------------------: |
+| [Isolated touch cases, run 39432274406](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39432274406) | 1 | 3 | 0 | 1.2 min |
+| [Remainder sample/regressions, run 39432273702](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39432273702) | 2 | 9 | 0 | 2.7 min |
+
+Both used the temporary Ubuntu 22 runner, the same pinned backend, zero retries,
+and retained failure traces. Commands (using `$remainder` defined above):
+
+```powershell
+gh workflow run e2e-playwright.yml --repo qagwaai/laughing-octo-journey --ref trial/e2e-two-workers -f workers=1 -f retries=0 -f backend_ref=13c1fd466f3e2ec602a5671d92df8be372491e75 -f 'test_grep=@single-worker'
+gh workflow run e2e-playwright.yml --repo qagwaai/laughing-octo-journey --ref trial/e2e-two-workers -f workers=2 -f retries=0 -f backend_ref=13c1fd466f3e2ec602a5671d92df8be372491e75 -f "test_grep=$remainder"
+```
+
+Both commands passed. These were separate focused workflow runs on independent
+runners, not another full phased execution. Summaries and logs were archived
+outside the repository. Keep the default at one worker and do not count these
+focused checks toward full-suite qualification.
+
 ### Two-worker trial: 2026-10-19
 
 Decision: keep one worker as the default. The first full two-worker run failed
