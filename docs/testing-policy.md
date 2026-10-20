@@ -170,6 +170,50 @@ rather than silently ignored. Normal local and CI defaults remain unchanged.
 This hybrid trial does not qualify the entire suite for two-worker execution.
 Full local and GitHub phased validation is required before adopting it.
 
+#### First full phased comparison: 2026-10-20
+
+Frontend `49fc81ec8ebf876c4b7dee762980ce3169b5862d` was tested with
+`npm run e2e:phased` locally and the dispatch command above in GitHub.
+Both used zero retries, unchanged assertions/deadlines, and the verified
+273-execution partition. GitHub kept the approved temporary Ubuntu 22 runner
+and pinned backend SHA; the local backend revision remains unverified.
+
+| Environment | Phase | Passed | Failed | Skipped | Runner wall time |
+| ----------- | ----- | -----: | -----: | ------: | ---------------: |
+| Local | Isolated, one worker | 2 | 0 | 0 | 52.7 s |
+| Local | Remainder, two workers | 265 | 5 | 1 | 53.9 min |
+| GitHub | Isolated, one worker | 2 | 0 | 0 | 52.5 s |
+| GitHub | Remainder, two workers | 270 | 0 | 1 | 24.5 min |
+
+[GitHub run 39420300987](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39420300987)
+passed: **272 passed, 1 skipped**, 25.4 minutes including report merging.
+Local execution failed: **267 passed, 5 failed, 1 skipped**, 54.8 minutes
+including merging. Both report merges succeeded; the local command correctly
+returned exit code 1. No tests were left unrun. Separate phase JUnit/blob reports,
+merged JUnit, execution metadata, and local failure traces were archived outside
+the repository. The GitHub merged report also retained both setup executions.
+
+The isolated touch planet test passed in both environments. The five local
+failures were all in the two-worker remainder:
+
+- Splash homeworld initial navigation: the URL was still
+  `/?splashPlanet=nova-splash-homeworld` at the existing 4.5-second redirect
+  assertion.
+- Splash icy-moon selection without clouds/rig reload: exceeded the existing
+  60-second total test budget.
+- Standard station model close-up: status remained `loading` after returning
+  to the system viewer; the 30-second readiness assertion failed within the
+  120-second test budget, and context teardown also exceeded that budget.
+- Low station model close-up: exceeded the existing 120-second test budget.
+- Touch station close-up/back buttons: exceeded the existing 60-second budget.
+
+These observations are not a proven common root cause. The phased harness
+works and the initial isolated candidate passed, but isolating that test alone
+does not establish local reliability for the remainder. Do not broaden tags,
+weaken checks, raise deadlines, or repeat full trials without investigating
+these failures first. Keep one-worker defaults and the phased runner opt-in;
+the three-clean-full-runs-per-environment criterion remains unmet.
+
 ### Two-worker trial: 2026-10-19
 
 Decision: keep one worker as the default. The first full two-worker run failed
