@@ -203,6 +203,54 @@ backend revision pinned in GitHub, record each attempt independently, and do not
 count earlier partitions or focused passes toward that target. Worker defaults
 remain unchanged pending qualification and a separate adoption decision.
 
+##### Revised full qualification result
+
+Qualification on frontend `ccb473ae66bebd11f207b454934015e96ce83c5d`
+failed in both environments on attempt 1. Both drivers stopped; attempts 2
+and 3 were not started. No retry-recovered results were counted.
+
+| Environment | Isolated passed | Remainder passed | Failed | Skipped | Total runner wall time |
+| ----------- | --------------: | ---------------: | -----: | ------: | ---------------------: |
+| Local | 6 | 256 | 10 | 1 | 57.7 min |
+| [GitHub run 39437506109](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39437506109) | 6 | 263 | 3 | 1 | 32.1 min |
+
+All 273 executions were accounted for, including setup twice. Both report
+merges succeeded and both commands returned exit code 1. The isolated phase
+took 202.1 seconds locally and 141.5 seconds in GitHub. All three splash
+startup/redirect cases passed with their unchanged 4.5-second URL assertion.
+This clears that observed startup case for these runs, not overall reliability.
+
+GitHub remainder failures:
+
+- Catalogue gas-giant close-up: click exceeded the 60-second test budget.
+- Planet-details interaction/right-click exit: text assertion failed.
+- Flight movement along steered axes: coordinate expected `-0.3`, received `-1.4`.
+
+Local remainder failures:
+
+- Four planet-view cases: missing-size moon focus, planet right-click behavior,
+  planet-details interaction/right-click exit, and catalogue gas-giant close-up.
+- Flight Escape/pointer capture: `clock.pauseAt` rejected fast-forwarding into
+  the past.
+- Splash with third-party hosts blocked: model remained `loading`.
+- Rotate/zoom/pan after target flight: total test budget/teardown failure.
+- Small station selection/targeting: total test budget/teardown failure.
+- Canvas hover styling: hover exceeded the test budget.
+- Keyboard pane resizing/double-click reset: test failed.
+
+These are execution observations, not established common root causes.
+Traces, phase reports, merged JUnit, revision metadata, and logs were archived
+outside the repository. Do not broaden isolation tags or rerun full trials
+without investigating this expanded failure set first.
+
+[GitHub Unit Vitest run 39437506410](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39437506410)
+passed both the unit suite and phased-runner tests.
+[Security Hygiene run 39437513076](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39437513076)
+passed secret scanning, dependency audit, and lockfile reproducibility.
+These checks used the same frontend revision. The unenforced contract-artifact
+caveat above remains. Merge/adoption reliability is not qualified: retain the
+one-worker default and opt-in phased runner.
+
 #### First full phased comparison: 2026-10-20
 
 Frontend `49fc81ec8ebf876c4b7dee762980ce3169b5862d` was tested with
