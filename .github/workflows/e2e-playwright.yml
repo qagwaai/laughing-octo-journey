@@ -30,8 +30,9 @@ permissions:
 jobs:
   e2e:
     name: Playwright E2E Suite
-    # MongoDB 8.0 refuses the Linux 6.19+ kernel on the Ubuntu 26 image.
-    runs-on: ubuntu-24.04
+    # Temporary trial pin: MongoDB 8.0 refuses the new kernels on Ubuntu 24/26.
+    # Revisit before the Ubuntu 22 runner retirement (actions/runner-images#14254).
+    runs-on: ubuntu-22.04
 
     services:
       mongodb:

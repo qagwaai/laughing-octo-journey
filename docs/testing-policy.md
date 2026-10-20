@@ -365,9 +365,22 @@ The first focused GitHub dispatch on patch `3731c91`,
 [run 39415968495](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39415968495),
 did not execute any tests: MongoDB 8.0 refused startup, explicitly reporting a
 known incompatibility with Linux kernels 6.19 and newer. The runner also announced
-the `ubuntu-latest` migration to Ubuntu 26. The E2E workflow now pins
-`ubuntu-24.04` instead of accepting that runner-image migration. This is a
-validation-infrastructure fix, not a test pass or a change to worker defaults.
+the `ubuntu-latest` migration to Ubuntu 26. An attempted `ubuntu-24.04` pin also
+failed before checkout in
+[run 39416467746](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39416467746),
+with the same MongoDB kernel error. Pinning the OS release alone did not avoid
+the updated kernel.
+
+The user approved a temporary `ubuntu-22.04` trial-workflow pin to obtain CI
+evidence while keeping MongoDB 8.0 and the backend revision unchanged.
+The [published Ubuntu 22 runner inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md)
+reports kernel `6.8.0-1064-azure`, outside the incompatibility described in
+[MongoDB SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912).
+Ubuntu 22 runners are already in their
+[deprecation period](https://github.com/actions/runner-images/issues/14254);
+this is a temporary validation environment, not a long-term runner recommendation
+or a change to worker defaults. Remove the pin after an upstream-compatible
+runner/MongoDB combination is available, before that runner's retirement.
 
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
