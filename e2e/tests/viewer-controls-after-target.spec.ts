@@ -14,10 +14,11 @@ async function waitForFrameChange(options: {
   // a GPU dev machine, so this budget is environment-bound rather than arbitrary.
   const timeout = options.timeoutMs ?? 20_000;
   await options.runInteraction();
+  let nextFrame = options.baselineFrame;
   await expect
     .poll(
       async () => {
-        const nextFrame = await options.readFrame();
+        nextFrame = await options.readFrame();
         return nextFrame !== options.baselineFrame;
       },
       {
@@ -26,6 +27,7 @@ async function waitForFrameChange(options: {
       },
     )
     .toBe(true);
+  return nextFrame;
 }
 
 test.describe('Viewer controls after target completion', () => {
@@ -226,7 +228,7 @@ test.describe('Viewer controls after target completion', () => {
     await expect(targetEarthButton).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
 
-    await waitForFrameChange({
+    const initialFrame = await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.move(2, 2);
       },
@@ -235,7 +237,6 @@ test.describe('Viewer controls after target completion', () => {
       timeoutMs: 24_000,
     });
 
-    const initialFrame = await getCanvasFrameSignature(canvas);
     expect(initialFrame.length).toBeGreaterThan(500);
 
     const bounds = await canvas.boundingBox();
@@ -244,7 +245,7 @@ test.describe('Viewer controls after target completion', () => {
     const centerX = (bounds?.x ?? 0) + (bounds?.width ?? 0) / 2;
     const centerY = (bounds?.y ?? 0) + (bounds?.height ?? 0) / 2;
 
-    await waitForFrameChange({
+    const afterRotateFrame = await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.move(centerX, centerY);
         await page.mouse.down({ button: 'left' });
@@ -255,10 +256,9 @@ test.describe('Viewer controls after target completion', () => {
       baselineFrame: initialFrame,
     });
 
-    const afterRotateFrame = await getCanvasFrameSignature(canvas);
     expect(afterRotateFrame).not.toBe(initialFrame);
 
-    await waitForFrameChange({
+    const afterZoomFrame = await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.wheel(0, -800);
       },
@@ -266,12 +266,11 @@ test.describe('Viewer controls after target completion', () => {
       baselineFrame: afterRotateFrame,
     });
 
-    const afterZoomFrame = await getCanvasFrameSignature(canvas);
     expect(afterZoomFrame).not.toBe(afterRotateFrame);
 
     const panX = (bounds?.x ?? 0) + 24;
     const panY = (bounds?.y ?? 0) + 24;
-    await waitForFrameChange({
+    const afterPanFrame = await waitForFrameChange({
       runInteraction: async () => {
         await page.mouse.move(panX, panY);
         await page.mouse.down({ button: 'right' });
@@ -283,7 +282,6 @@ test.describe('Viewer controls after target completion', () => {
       baselineFrame: afterZoomFrame,
     });
 
-    const afterPanFrame = await getCanvasFrameSignature(canvas);
     expect(afterPanFrame).not.toBe(afterZoomFrame);
 
     await new ViewerPage(page).expectSceneLoaded();

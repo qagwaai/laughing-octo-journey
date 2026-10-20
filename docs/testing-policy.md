@@ -229,6 +229,129 @@ investigation; leaving it empty retains full-suite execution. Match the seven
 cases with the selector above. Focused green runs do not establish full-suite
 two-worker reliability.
 
+### Full-suite qualification after timing/focus fixes: 2026-10-19
+
+Qualification uses frontend `e344c5b7f8262c38f8b7aef5e049afd53f83c922`,
+two workers, zero retries, and retained failure traces. Each environment attempts
+up to three sequential full runs, stopping its sequence on the first failure.
+GitHub continues to pin backend `13c1fd466f3e2ec602a5671d92df8be372491e75`;
+the local backend revision remains unverified. Local execution reuses the running
+dev server. The Node/browser versions are unchanged from the earlier trial.
+
+| Execution                                                                                     | Passed | Failed | Skipped | Did not run | Playwright wall time |
+| --------------------------------------------------------------------------------------------- | -----: | -----: | ------: | ----------: | -------------------: |
+| Local attempt 1                                                                               |    257 |      6 |       1 |           8 |             46.9 min |
+| [GitHub attempt 1](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39346300884) |    271 |      0 |       1 |           0 |             27.0 min |
+| [GitHub attempt 2](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39349236233) |    269 |      2 |       1 |           0 |             29.4 min |
+
+Local execution:
+
+```powershell
+npm run e2e -- --workers=2 --retries=0 --trace=retain-on-failure --reporter=line,junit
+```
+
+The local run failed and its remaining qualification attempts were not started.
+JUnit, execution metadata, screenshots, and failure traces were archived outside
+the repository. The six observed failures were:
+
+- Two flight-position persistence cases timed out waiting for coordinates to
+  settle after releasing forward input. These failures precede their persistence
+  assertions; they do not establish lost backend coordinates.
+- The homeworld splash initial redirect again missed its unchanged threshold.
+- The post-target rotate/zoom/pan case exhausted its overall 60-second budget
+  while waiting for a rendered frame change.
+- The scavenger-pod asset case exhausted its test budget during shared-session
+  setup, still on the character list instead of game-main. It did not reach its
+  asset assertion.
+- The direct station close-up case did not show the expected market heading
+  within 15 seconds.
+
+Both GitHub runs selected all 272 tests with `--workers=2 --retries=0`
+and `--grep=.*`. Attempt 2 failed on the touch-accessible planet close-up's
+60-second test budget and the splash quality-switch check: low-tier readiness
+remained `loading` instead of `ready` at its 15-second assertion. The third
+GitHub attempt was not started. The failure traces, JUnit, and both GitHub
+summaries were archived outside the repository.
+
+Qualification failed in both environments. The three-clean-run requirement
+was not met, and the first green GitHub run does not override the later failure
+or failed local qualification. Keep the one-worker default; do not weaken
+assertions, extend timeouts, or add retries to qualify. The observations identify
+remaining investigation targets, not a proven common root cause.
+
+### Settling/readiness investigation: 2026-10-20
+
+Saved qualification traces and a fresh eight-case local reproduction identified
+avoidable harness work as well as a remaining two-worker capacity problem:
+
+- Flight coordinates had already stopped changing after key release. The failed
+  logout/login case obtained only two layout-dependent `innerText` samples before
+  its five-second settling deadline. Sampling now uses `textContent` in one browser
+  evaluation, retaining three equal samples, the existing polling intervals, the
+  movement requirement, and the five-second budget. Persistence assertions and
+  coordinate tolerances are unchanged.
+- The isolated ship asset test lived inside a serial suite whose `beforeAll`
+  opened another shared game/WebGL context. It now runs outside that suite, so
+  its isolated context does not coexist with an unused shared one. Other serial
+  tests retain their shared session and ordering.
+- The viewer gesture check now reuses the changed screenshot returned by each
+  successful frame poll rather than taking the same expensive screenshot again.
+  Each gesture still runs once and must change actual rendered pixels.
+- The tier-switch test now requests reduced motion, isolating asset switching
+  from unrelated continuous drift/cloud animation. Both real GLB tiers, still
+  image, diagnostics, and original readiness deadlines remain checked. Separate
+  splash motion/orbit tests are unchanged. The CI trace showed successful asset
+  responses, not a failed download; animation pressure is not proven to be its
+  only cause.
+- The root URL previously required a second, post-render navigation through a
+  primary intro component before reaching splash. It now redirects directly to
+  splash with the same left intro panel. A router regression also exposed that
+  the old static redirect discarded query parameters/fragments; the new URL-tree
+  redirect preserves them. Explicit `/intro` transitions retain their existing
+  post-render remount behavior.
+- The touch close-up CI trace showed lengthy ordinary actions (8.6 seconds for
+  the distance-view switch, 10.6 seconds for the back tap), exhausting the total
+  budget rather than establishing an incorrect target or intercepted tap.
+  A local trace spent 13.7 seconds on the distance switch. Removing that switch
+  is not valid: the target rows exist only in that mode. An intermediate
+  experiment confirmed this and was reverted. The touch test remains unchanged.
+- The station-heading failure did not recur in the final focused comparisons.
+  Its saved snapshot was still loading the system; later trace console evidence
+  reached the expected aborted model request. No deterministic session/contract
+  defect was established, so no speculative production session fix was made.
+
+The initial unchanged two-worker reproduction passed six tests and failed
+three (including setup in the total): flight settling, splash initial readiness,
+and the isolated ship asset test's overall budget. After the final patch, run
+the same eight cases in each environment with:
+
+```powershell
+$selector = 'opens the inspected planet with a tap|switches between the 154k|backend-persisted flight|keeps latest coordinates across repeated|nova-splash-homeworld|keeps rotate, zoom, and pan usable|rehydrates a direct close-up|viewer requests scavenger pod GLB'
+npm run e2e:spec -- --grep $selector --workers=1 --retries=0 --trace=retain-on-failure --reporter=line,junit
+npm run e2e:spec -- --grep $selector --workers=2 --retries=0 --trace=retain-on-failure --reporter=line,junit
+```
+
+Final local results, including authentication setup:
+
+| Workers | Passed | Failed | Playwright wall time |
+| ------- | -----: | -----: | -------------------: |
+| 1       |      9 |      0 |              3.5 min |
+| 2       |      8 |      1 |              3.1 min |
+
+The remaining failure is the unchanged touch planet close-up's 60-second test
+budget. The settling, redirect, tier-switch, viewer gesture, ship asset, and
+station rehydration cases passed in both final comparisons. This is evidence
+of improvement, not a clean two-worker qualification or proof that every
+load-sensitive failure is fixed. An intermediate repeated stress run also
+exhausted the repeated flight-navigation case's total budget after settling;
+do not equate fixing its sampling overhead with full-flow reliability.
+
+`npm run test:spec -- src\app\routed.routes.vitest.ts src\app\page\public\intro.vitest.ts`
+passed all 53 tests. `npm run build` and targeted ESLint on the changed route,
+route tests, and E2E specs passed. Traces/JUnit from both final comparisons were
+archived outside the repository. Keep the one-worker default and the existing
+timeouts/retry policy.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with

@@ -837,6 +837,7 @@ test('keeps the previous splash body when a picked body fails to load', async ({
 });
 
 test('switches between the 154k, 50k and still-image tiers on demand', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(pinnedSplash('/splash(left:intro)'));
   const overlay = page.locator('app-splash-overlay section');
   const diagnostics = page.getByLabel('3D model diagnostics');

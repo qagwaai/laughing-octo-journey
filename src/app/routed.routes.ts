@@ -293,7 +293,15 @@ const rightOutletRoutes: Routes = [
 const routes: Routes = [
   ...primaryRoutes,
   ...leftOutletRoutes,
-  { path: '', redirectTo: '/intro(left:intro)', pathMatch: 'full' },
+  {
+    path: '',
+    redirectTo: ({ queryParams, fragment }) =>
+      inject(Router).createUrlTree([{ outlets: { primary: ['splash'], left: ['intro'] } }], {
+        queryParams,
+        fragment: fragment ?? undefined,
+      }),
+    pathMatch: 'full',
+  },
   ...rightOutletRoutes,
 ];
 

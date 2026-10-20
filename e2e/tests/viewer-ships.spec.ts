@@ -118,6 +118,32 @@ test('left-click targets a rendered ship and synchronizes its list button', asyn
   await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
 });
 
+test('viewer requests scavenger pod GLB asset when rendering ship meshes', async ({ page }) => {
+  const mock = await setupIsolatedViewerShipsSession(page);
+  const isolatedGameShell = new GameShellPage(page);
+  const isolatedViewerPage = new ViewerPage(page);
+
+  const glbResponsePromise = page.waitForResponse(
+    (response) => response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
+  );
+
+  mock.on('solar-system-get-request', () => ({
+    event: 'solar-system-get-response',
+    data: makeSolarSystemGetResponse(),
+  }));
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
+    data: makeShipListResponse([ACTIVE_SHIP]),
+  }));
+
+  await isolatedGameShell.openViewer();
+  await isolatedViewerPage.selectSystem('Sol');
+  await isolatedViewerPage.expectSceneLoaded();
+
+  const glbResponse = await glbResponsePromise;
+  expect(glbResponse.ok()).toBeTruthy();
+});
+
 test.describe.serial('Viewer — Character Ships', () => {
   test.beforeAll(async ({ browser }) => {
     sharedSession = await setupSharedViewerShipsSession(browser);
@@ -157,32 +183,6 @@ test.describe.serial('Viewer — Character Ships', () => {
 
     const shipsPage = new ViewerShipsPage(sharedPage);
     await shipsPage.assertInactiveShipSwatchColor('#3b82f6');
-  });
-
-  test('viewer requests scavenger pod GLB asset when rendering ship meshes', async ({ page }) => {
-    const mock = await setupIsolatedViewerShipsSession(page);
-    const isolatedGameShell = new GameShellPage(page);
-    const isolatedViewerPage = new ViewerPage(page);
-
-    const glbResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/models/ships/scavenger-pod.glb') && response.request().method() === 'GET',
-    );
-
-    mock.on('solar-system-get-request', () => ({
-      event: 'solar-system-get-response',
-      data: makeSolarSystemGetResponse(),
-    }));
-    mock.on('ship-list-by-owner-request', () => ({
-      event: 'ship-list-by-owner-response',
-      data: makeShipListResponse([ACTIVE_SHIP]),
-    }));
-
-    await isolatedGameShell.openViewer();
-    await isolatedViewerPage.selectSystem('Sol');
-    await isolatedViewerPage.expectSceneLoaded();
-
-    const glbResponse = await glbResponsePromise;
-    expect(glbResponse.ok()).toBeTruthy();
   });
 
   test('scene renders without error when ships are present in current solar system', async () => {

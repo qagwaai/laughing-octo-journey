@@ -18,7 +18,7 @@ const debugDrawer = (page: Page) => page.getByRole('dialog', { name: 'Ship scene
 const COORDS_PATTERN = /COORD KM\s*\/\/\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/;
 
 async function readCoords(page: Page): Promise<{ x: number; y: number; z: number } | null> {
-  const text = (await debugDrawer(page).innerText()).trim();
+  const text = (await debugDrawer(page).textContent()) ?? '';
   const match = text.match(COORDS_PATTERN);
   if (!match) {
     return null;
@@ -90,47 +90,38 @@ async function moveForwardWithPilotControls(
     throw new Error('Expected flight movement to change coordinates.');
   }
 
-  let settledCoords: { x: number; y: number; z: number } | null = null;
-  let previousCoords: { x: number; y: number; z: number } | null = null;
-  let stableReadCount = 0;
-  await expect
-    .poll(
-      async () => {
-        const coords = await readCoords(page);
-        if (!coords) {
-          return false;
-        }
-
-        const movedFromStart =
-          coords.x !== coordsBeforeMove.x || coords.y !== coordsBeforeMove.y || coords.z !== coordsBeforeMove.z;
-        if (!movedFromStart) {
-          return false;
-        }
-
-        if (
-          previousCoords &&
-          coords.x === previousCoords.x &&
-          coords.y === previousCoords.y &&
-          coords.z === previousCoords.z
-        ) {
-          stableReadCount += 1;
+  // Sample in the browser: three driver round trips can exhaust the settling
+  // budget under software WebGL even when the displayed coordinates are stable.
+  return debugDrawer(page).evaluate(
+    async (drawer, { before, pattern }) => {
+      const deadline = performance.now() + 5_000;
+      const coordsPattern = new RegExp(pattern);
+      const intervals = [100, 250, 500, 1_000];
+      let sampleIndex = 0;
+      let previous: { x: number; y: number; z: number } | null = null;
+      let stableReadCount = 0;
+      while (performance.now() < deadline) {
+        const match = drawer.textContent?.match(coordsPattern);
+        if (match) {
+          const coords = { x: Number(match[1]), y: Number(match[2]), z: Number(match[3]) };
+          const moved = coords.x !== before.x || coords.y !== before.y || coords.z !== before.z;
+          stableReadCount =
+            moved && previous && coords.x === previous.x && coords.y === previous.y && coords.z === previous.z
+              ? stableReadCount + 1
+              : 0;
+          previous = coords;
+          if (stableReadCount >= 2) return coords;
         } else {
+          previous = null;
           stableReadCount = 0;
         }
-
-        previousCoords = coords;
-        if (stableReadCount < 2) {
-          return false;
-        }
-
-        settledCoords = coords;
-        return true;
-      },
-      { timeout: 5_000 },
-    )
-    .toBe(true);
-
-  return settledCoords ?? movedCoords;
+        const interval = intervals[Math.min(sampleIndex++, intervals.length - 1)];
+        await new Promise<void>((resolve) => setTimeout(resolve, interval));
+      }
+      throw new Error(`Flight coordinates did not settle within 5000ms: ${JSON.stringify(previous)}`);
+    },
+    { before: coordsBeforeMove, pattern: COORDS_PATTERN.source },
+  );
 }
 
 test.describe('Ship Exterior - flight position persistence on re-entry', () => {

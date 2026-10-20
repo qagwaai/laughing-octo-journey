@@ -10,14 +10,30 @@ class RouteStub {}
 describe('routed.routes', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('redirects the empty path to the public intro entry point', () => {
+  it('redirects the empty path directly to the splash with the public intro panel', () => {
     const rootRoute = routes.find((route) => route.path === '');
 
     expect(rootRoute).toEqual({
       path: '',
-      redirectTo: '/intro(left:intro)',
+      redirectTo: expect.any(Function),
       pathMatch: 'full',
     });
+  });
+  it('preserves the splash selection and fragment on the root redirect', async () => {
+    const rootRoute = routes.find((route) => route.path === '');
+    if (!rootRoute) throw new Error('Missing root redirect.');
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          rootRoute,
+          { path: 'splash', component: RouteStub },
+          { path: 'intro', outlet: 'left', component: RouteStub },
+        ]),
+      ],
+    });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/?splashPlanet=nova-splash-homeworld#preview');
+    expect(router.url).toBe('/splash(left:intro)?splashPlanet=nova-splash-homeworld#preview');
   });
   it.each(['/knot', '/knot(left:intro//right:login)'])(
     'redirects %s without losing named outlets, query parameters, or fragment',
