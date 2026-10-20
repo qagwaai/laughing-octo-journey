@@ -352,6 +352,23 @@ route tests, and E2E specs passed. Traces/JUnit from both final comparisons were
 archived outside the repository. Keep the one-worker default and the existing
 timeouts/retry policy.
 
+The complete affected ship specs also passed all 17 tests at two workers:
+
+```powershell
+npm run e2e:spec -- viewer-ships.spec.ts ship-exterior-flight-position-persistence.spec.ts --workers=2 --retries=0 --trace=retain-on-failure
+```
+
+That 2.7-minute run includes every shared-session ship case and all three
+flight-persistence flows.
+
+The first focused GitHub dispatch on patch `3731c91`,
+[run 39415968495](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39415968495),
+did not execute any tests: MongoDB 8.0 refused startup, explicitly reporting a
+known incompatibility with Linux kernels 6.19 and newer. The runner also announced
+the `ubuntu-latest` migration to Ubuntu 26. The E2E workflow now pins
+`ubuntu-24.04` instead of accepting that runner-image migration. This is a
+validation-infrastructure fix, not a test pass or a change to worker defaults.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with

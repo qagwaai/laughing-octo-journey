@@ -30,7 +30,8 @@ permissions:
 jobs:
   e2e:
     name: Playwright E2E Suite
-    runs-on: ubuntu-latest
+    # MongoDB 8.0 refuses the Linux 6.19+ kernel on the Ubuntu 26 image.
+    runs-on: ubuntu-24.04
 
     services:
       mongodb:
