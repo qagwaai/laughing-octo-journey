@@ -382,6 +382,22 @@ this is a temporary validation environment, not a long-term runner recommendatio
 or a change to worker defaults. Remove the pin after an upstream-compatible
 runner/MongoDB combination is available, before that runner's retirement.
 
+With that approved pin, [GitHub run 39417151229](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39417151229)
+passed all nine focused tests, including setup, in 2.7 minutes on
+`f02cdc3d01565f14c5ad9fd339180650f2b89b29`. The execution log confirms
+`ubuntu-22.04`, two workers, zero retries, and the eight-case selector above.
+MongoDB initialized successfully; the backend remained pinned to
+`13c1fd466f3e2ec602a5671d92df8be372491e75`. Dispatch command:
+
+```powershell
+gh workflow run e2e-playwright.yml --repo qagwaai/laughing-octo-journey --ref trial/e2e-two-workers -f workers=2 -f retries=0 -f backend_ref=13c1fd466f3e2ec602a5671d92df8be372491e75 -f "test_grep=$selector"
+```
+
+Result: passed. The summary was archived outside the repository. This focused
+pass uses a different runner image than the earlier full-suite trials and does
+not resolve the remaining local two-worker touch timeout. No further full suite
+was run, and the three-clean-full-runs-per-environment qualification remains unmet.
+
 The `--enable-unsafe-swiftshader` flag opts the test browser into software WebGL;
 use this harness for trusted application/test content, not general web browsing.
 GitHub Actions installs the lockfile-selected Playwright Chromium with
