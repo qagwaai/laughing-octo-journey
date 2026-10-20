@@ -106,7 +106,9 @@ test.describe('Planet details zoom pattern', () => {
   test.describe('Touch-accessible planet close-ups', () => {
     test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
 
-    test('opens the inspected planet with a tap and returns with the visible back button', async ({ page }) => {
+    test('opens the inspected planet with a tap and returns with the visible back button', {
+      tag: '@single-worker',
+    }, async ({ page }) => {
       await setupPlanetViewZoomViewer(page);
       const viewer = new ViewerPage(page);
       await viewer.switchToDistanceView();

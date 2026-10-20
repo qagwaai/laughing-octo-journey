@@ -10,6 +10,10 @@ on:
         type: choice
         options: ['1', '2']
         default: '1'
+      phased:
+        description: Full phased trial (tagged tests alone, then remaining tests with two workers; zero retries)
+        type: boolean
+        default: false
       retries:
         description: Retries per failed test (use 0 for reliability trials)
         type: choice
@@ -120,7 +124,17 @@ jobs:
           TRIAL_WORKERS: ${{ inputs.workers || '1' }}
           TRIAL_RETRIES: ${{ inputs.retries || '1' }}
           TEST_GREP: ${{ inputs.test_grep || '.*' }}
-        run: npm run e2e -- --workers="$TRIAL_WORKERS" --retries="$TRIAL_RETRIES" --grep="$TEST_GREP" --trace=retain-on-failure --reporter=html,junit
+          TRIAL_PHASED: ${{ inputs.phased || 'false' }}
+        run: |
+          if [ "$TRIAL_PHASED" = "true" ]; then
+            if [ "$TEST_GREP" != ".*" ]; then
+              echo "Phased trials run the full partition; leave test_grep empty." >&2
+              exit 1
+            fi
+            npm run e2e:phased
+          else
+            npm run e2e -- --workers="$TRIAL_WORKERS" --retries="$TRIAL_RETRIES" --grep="$TEST_GREP" --trace=retain-on-failure --reporter=html,junit
+          fi
 
       - name: Generate E2E summary artifact
         if: always()

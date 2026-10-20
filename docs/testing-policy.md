@@ -121,6 +121,55 @@ backend revisions, Node/browser versions, total wall time, failures, and skips.
 Compare at least three full runs per environment before considering a default
 change. Do not increase timeouts or count retry-recovered tests as clean trials.
 
+### Opt-in phased worker trial
+
+The phased runner isolates tests tagged `@single-worker` before starting the
+remaining suite with two workers. Only the touch-accessible planet close-up is
+initially tagged. This is suite-level isolation, unlike a serial describe or a
+one-worker project that can still compete with another project.
+
+```powershell
+npm run e2e:phased -- --list
+npm run test:e2e:phased
+npm run e2e:phased
+```
+
+The first command lists both partitions without executing tests. The second
+checks sequencing and failure propagation, including a real synthetic
+Playwright failure followed by a successful second phase and merged reports.
+The full trial always uses zero retries and retained failure traces:
+
+1. `--grep=@single-worker --workers=1`
+2. `--grep-invert=@single-worker --workers=2`
+
+Each Playwright process exits before the next starts. Authentication setup runs
+normally in both invocations. The verified partition contains 2 executions in
+the first phase and 271 in the second: 271 distinct application tests, plus
+setup twice, for 273 executions rather than 272. No application tests overlap
+or are omitted; the existing skipped test remains in the second phase.
+
+Both phases run even if the first reports test failures. Any failed phase or
+report merge makes the command fail. Interrupted/failed child startup or missing
+blob reports are explicit errors. Each trial retains its separate artifact,
+JUnit, and blob trees under `test-results/phased/run-*`; the latest completed
+trial's phase exit codes and wall times are in
+`test-results/phased/execution.json`. Merged HTML and JUnit retain the normal
+`playwright-report` and `test-results/playwright-junit.xml` locations for CI.
+The merged execution count includes both setups. Use the execution metadata,
+not the sum of JUnit suite durations, for wall-clock comparisons.
+
+The same runner is available through the workflow's opt-in `phased` input:
+
+```powershell
+gh workflow run e2e-playwright.yml --repo qagwaai/laughing-octo-journey --ref trial/e2e-two-workers -f phased=true -f backend_ref=13c1fd466f3e2ec602a5671d92df8be372491e75
+```
+
+Phased mode fixes workers to 1 then 2 and retries to 0 regardless of the ordinary
+worker/retry inputs. Leave `test_grep` empty; a conflicting selector is rejected
+rather than silently ignored. Normal local and CI defaults remain unchanged.
+This hybrid trial does not qualify the entire suite for two-worker execution.
+Full local and GitHub phased validation is required before adopting it.
+
 ### Two-worker trial: 2026-10-19
 
 Decision: keep one worker as the default. The first full two-worker run failed
