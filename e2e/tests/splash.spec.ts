@@ -19,7 +19,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const bodyId of [SPLASH_PLANET_BODY_ID, 'nova-splash-giant-05', 'nova-splash-star-g']) {
-  test(`shows the scene immediately, loads one real tier, and retains intro controls (${bodyId})`, async ({ page }) => {
+  test(`shows the scene immediately, loads one real tier, and retains intro controls (${bodyId})`, {
+    tag: '@single-worker',
+  }, async ({ page }) => {
     const assets: string[] = [];
     const requests: string[] = [];
     const errors: string[] = [];

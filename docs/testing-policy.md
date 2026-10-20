@@ -125,7 +125,8 @@ change. Do not increase timeouts or count retry-recovered tests as clean trials.
 
 The phased runner isolates tests tagged `@single-worker` before starting the
 remaining suite with two workers. The touch-accessible planet and station
-close-ups are tagged. This is suite-level isolation, unlike a serial describe or a
+close-ups and all three splash startup/redirect variants are tagged. This is
+suite-level isolation, unlike a serial describe or a
 one-worker project that can still compete with another project.
 
 ```powershell
@@ -143,8 +144,8 @@ The full trial always uses zero retries and retained failure traces:
 2. `--grep-invert=@single-worker --workers=2`
 
 Each Playwright process exits before the next starts. Authentication setup runs
-normally in both invocations. The verified partition contains 3 executions in
-the first phase and 270 in the second: 271 distinct application tests, plus
+normally in both invocations. The verified partition contains 6 executions in
+the first phase and 267 in the second: 271 distinct application tests, plus
 setup twice, for 273 executions rather than 272. No application tests overlap
 or are omitted; the existing skipped test remains in the second phase.
 
@@ -169,6 +170,38 @@ worker/retry inputs. Leave `test_grep` empty; a conflicting selector is rejected
 rather than silently ignored. Normal local and CI defaults remain unchanged.
 This hybrid trial does not qualify the entire suite for two-worker execution.
 Full local and GitHub phased validation is required before adopting it.
+
+#### Merge-preparation gates: 2026-10-20
+
+All three parameterized splash startup/redirect cases (homeworld, gas giant,
+star) now run in the isolated phase, in addition to both touch close-up cases.
+The root redirect's 4.5-second assertion, real asset checks, and all other
+deadlines remain unchanged. This isolates the startup requirement rather than
+relaxing it. Earlier trial tables below describe their original partitions.
+
+Before full qualification, `npm run verify:quick` (lint plus app/spec type checks),
+`npm run build`, `npm run test:vitest` (2,531 tests across 203 files), and
+`npm run test:e2e:phased` (four tests) passed. The Unit Vitest workflow now
+also runs the phased-runner tests so that failure propagation/report merging
+remain checked on pull requests.
+
+`npm audit --audit-level=high` initially failed on transitive
+`http-cache-semantics` 4.2.0. A targeted `npm update http-cache-semantics
+--package-lock-only --ignore-scripts` updated only that dependency to compatible
+4.3.0; the audit then reported zero vulnerabilities. No override or new direct
+dependency was added.
+
+`npm run contract:check:stage3` exited zero but explicitly skipped enforcement:
+its required frontend inventory and backend artifact are absent. This is not
+proof of contract compatibility. No socket contract changes are part of this
+trial, and missing contract artifacts must not be fabricated to manufacture a
+green check.
+
+The revised qualification target is up to three sequential full phased runs
+per environment, stopping each environment on its first failed run. Keep the
+backend revision pinned in GitHub, record each attempt independently, and do not
+count earlier partitions or focused passes toward that target. Worker defaults
+remain unchanged pending qualification and a separate adoption decision.
 
 #### First full phased comparison: 2026-10-20
 

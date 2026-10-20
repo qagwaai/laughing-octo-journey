@@ -27,3 +27,6 @@ jobs:
 
       - name: Run Vitest unit suite
         run: npm run test:vitest
+
+      - name: Validate phased E2E runner
+        run: npm run test:e2e:phased
