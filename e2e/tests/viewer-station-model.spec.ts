@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import type { MarketSummary } from '../../src/app/model/market-list';
 import type { ViewerBody } from '../../src/app/model/solar-system-get';
-import { setupViewerSceneTest, solarSystemGetResponse } from '../fixtures/viewer-scene-rendering-scenario';
+import { setupViewerSceneSession, solarSystemGetResponse } from '../fixtures/viewer-scene-rendering-scenario';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
@@ -36,7 +36,7 @@ function stationMarket(body: ViewerBody): MarketSummary {
 }
 
 async function openSystem(page: Page, bodies: ViewerBody[] = [], station = marsStation) {
-  const { mock } = await setupViewerSceneTest(page);
+  const { mock } = await setupViewerSceneSession(page);
   mock.on('solar-system-get-request', () => ({
     event: 'solar-system-get-response',
     data: solarSystemGetResponse(bodies),
@@ -302,7 +302,7 @@ test.describe('Station-specific viewer models', () => {
   test('rehydrates a direct close-up from its market identifier, reports load failures, and rejects unknown stations', async ({
     page,
   }) => {
-    const { mock } = await setupViewerSceneTest(page);
+    const { mock } = await setupViewerSceneSession(page);
     const market = stationMarket(marsStation);
     mock.on('solar-system-get-request', () => ({
       event: 'solar-system-get-response',
@@ -333,7 +333,9 @@ test.describe('Station-specific viewer models', () => {
 test.describe('Touch-accessible station close-ups', () => {
   test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
 
-  test('opens and leaves the station close-up using visible buttons', async ({ page }) => {
+  test('opens and leaves the station close-up using visible buttons', {
+    tag: '@single-worker',
+  }, async ({ page }) => {
     await openSystem(page);
     await page.locator('tr', { hasText: 'Mars Orbital Market' }).locator('button.details-target-btn').tap();
     await expect(page.getByTestId('viewer-info-panel').getByRole('button', { name: 'Open close-up' })).toHaveCount(0);

@@ -692,7 +692,7 @@ async function expectSplashBodySettled(page: import('@playwright/test').Page): P
 }
 
 for (const kind of ['icy-moon', 'rocky-moon'] as const) {
-  test(`selects ${kind} without Terran clouds or reloading the rig`, async ({ page }, testInfo) => {
+  test(`selects ${kind} without Terran clouds or reloading the rig`, async ({ page }) => {
     const bodyId = `nova-splash-${kind}-01`;
     const errors: string[] = [];
     const glbs: string[] = [];
@@ -734,7 +734,6 @@ for (const kind of ['icy-moon', 'rocky-moon'] as const) {
         }, bodyId),
       )
       .toMatchObject({ map: true, normal: hasNormal, material: true, children: 0 });
-    await page.screenshot({ path: testInfo.outputPath(`${kind}-splash.png`) });
     expect(glbs).toHaveLength(1);
     expect(errors).toEqual([]);
   });

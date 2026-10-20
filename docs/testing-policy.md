@@ -124,8 +124,8 @@ change. Do not increase timeouts or count retry-recovered tests as clean trials.
 ### Opt-in phased worker trial
 
 The phased runner isolates tests tagged `@single-worker` before starting the
-remaining suite with two workers. Only the touch-accessible planet close-up is
-initially tagged. This is suite-level isolation, unlike a serial describe or a
+remaining suite with two workers. The touch-accessible planet and station
+close-ups are tagged. This is suite-level isolation, unlike a serial describe or a
 one-worker project that can still compete with another project.
 
 ```powershell
@@ -143,8 +143,8 @@ The full trial always uses zero retries and retained failure traces:
 2. `--grep-invert=@single-worker --workers=2`
 
 Each Playwright process exits before the next starts. Authentication setup runs
-normally in both invocations. The verified partition contains 2 executions in
-the first phase and 271 in the second: 271 distinct application tests, plus
+normally in both invocations. The verified partition contains 3 executions in
+the first phase and 270 in the second: 271 distinct application tests, plus
 setup twice, for 273 executions rather than 272. No application tests overlap
 or are omitted; the existing skipped test remains in the second phase.
 
@@ -213,6 +213,77 @@ does not establish local reliability for the remainder. Do not broaden tags,
 weaken checks, raise deadlines, or repeat full trials without investigating
 these failures first. Keep one-worker defaults and the phased runner opt-in;
 the three-clean-full-runs-per-environment criterion remains unmet.
+
+#### Investigating the phased remainder failures: 2026-10-20
+
+The five archived failure traces distinguish avoidable test work from remaining
+load-sensitive behavior:
+
+- The icy-moon test reached its material/texture, body identity, and cloud
+  assertions successfully. Its diagnostic screenshot then took 22.3 seconds,
+  pushing the test past 60 seconds (context/page setup had taken 17.6 seconds).
+  Remove the non-asserting screenshot from both moon-selection variants; all
+  rendered-scene, material, request-count, and error assertions remain intact.
+  Playwright still captures screenshots on failures.
+- Station tests used a fixture that waited for `TARGET IRON` in the unrelated
+  game scene before opening the viewer. Their traces include the exterior
+  ship's `Jaxs_Ship_texture.glb` and repeated station GLB/decoder loads across
+  system/close-up/return navigation. Extract the authenticated joined-session
+  setup so station tests can navigate through the real Viewer menu as soon as
+  the join route is ready, without waiting for mission/ship rendering. Other
+  fixture consumers retain their existing Game Main and TARGET IRON waits.
+  This avoids an irrelevant readiness dependency, not all game-scene startup.
+- A direct full-page navigation to Viewer was tried and rejected: Viewer
+  requires player navigation state, and that experiment produced `missing-session`.
+  The retained change uses the real join/menu flow and preserves that state.
+- Standard station loading remained `loading` on return in the original trace,
+  with successful GLB responses but lengthy model/decoder work. Low-quality
+  station checks reached the return readiness assertion successfully before
+  their total budget expired. No deterministic model-load error or invalid
+  geometry was established. A fresh unpatched two-worker reproduction failed
+  both tiers again, including context/trace teardown errors.
+- The touch station test still exceeded its unchanged 60-second budget after
+  the setup change, waiting for close-up model readiness; its inspect tap took
+  13.1 seconds. All station tests passed in the one-worker control. It now joins
+  the touch planet test in the opt-in isolated phase via `@single-worker`;
+  the standard/low station tests remain in the two-worker remainder.
+- The root splash trace eventually reached the correct destination URL, but
+  not within the 4.5-second assertion. Its failure snapshot showed only the
+  pane splitter, not a ready intro. No new route logic defect was established.
+  This deadline remains unchanged and the case passes focused checks, but its
+  full-suite failure is still an unresolved load-sensitive observation.
+
+Local comparison commands, all with zero retries and retained failure traces:
+
+```powershell
+$selector = 'nova-splash-homeworld|selects icy-moon without|uses the (standard|low) model only|opens and leaves the station close-up'
+npm run e2e:spec -- --grep $selector --workers=2 --retries=0 --trace=retain-on-failure --reporter=line,junit
+$control = 'nova-splash-homeworld|selects (icy|rocky)-moon without|Station-specific viewer models|Touch-accessible station close-ups'
+npm run e2e:spec -- --grep $control --workers=1 --retries=0 --trace=retain-on-failure --reporter=line,junit
+$remainder = 'nova-splash-homeworld|selects (icy|rocky)-moon without|uses the (standard|low) model only|renders viewer scene after selecting|left-dragging a body rotates|loads only the exact approved previews'
+npm run e2e:spec -- --grep '@single-worker' --workers=1 --retries=0 --trace=retain-on-failure --reporter=line,junit
+npm run e2e:spec -- --grep $remainder --workers=2 --retries=0 --trace=retain-on-failure --reporter=line,junit
+```
+
+| Local execution | Passed | Failed | Playwright wall time |
+| --------------- | -----: | -----: | -------------------: |
+| Unpatched five-case reproduction (plus setup) | 4 | 2 | 5.9 min |
+| Patched six-case two-worker comparison (adds rocky moon, before station isolation) | 6 | 1 | 2.8 min |
+| Patched one-worker control (all station tests and three splash cases) | 10 | 0 | 3.9 min |
+| Final isolated touch cases (plus setup) | 3 | 0 | 1.2 min |
+| Final two-worker remainder sample and three fixture-consumer regressions (plus setup) | 9 | 0 | 3.3 min |
+
+The intermediate failure was touch station close-up readiness. The rejected
+direct-navigation experiment failed all three selected station cases at system
+selection; those results are not qualification evidence. Logs/JUnit and failure
+traces from the investigation are retained outside the repository.
+
+Targeted ESLint and `npm run test:e2e:phased` passed (four Vitest harness tests).
+A fresh JSON listing verifies 3 isolated executions and 270 remainder executions,
+with 271 unique application tests, setup twice, and no application-test overlap
+or omissions. No application code, timeout, retry policy, or behavioral assertion
+changed. No new full suite was started. Focused passes do not qualify the revised
+partition or resolve the original full-suite splash startup observation.
 
 ### Two-worker trial: 2026-10-19
 

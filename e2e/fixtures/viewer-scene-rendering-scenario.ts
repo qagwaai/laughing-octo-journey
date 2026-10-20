@@ -213,20 +213,24 @@ function registerViewerSceneSessionHandlers(mock: SocketIOMock, ownerShips: any[
   });
 }
 
-export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
+export async function setupViewerSceneSession(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
   const mock = new SocketIOMock(page);
-  const gameShell = new GameShellPage(page);
   await mock.setup();
 
   registerViewerSceneSessionHandlers(mock, ownerShips);
   await loginViaUI(page, mock);
+  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
-  await gameShell.joinGame();
+  await new GameShellPage(page).joinGame();
   await expect(page).toHaveURL(/left:game-main/, { timeout: 15_000 });
+
+  return { mock };
+}
+
+export async function setupViewerSceneTest(page: Page, ownerShips: any[] = [ACTIVE_SHIP]) {
+  const { mock } = await setupViewerSceneSession(page, ownerShips);
   await expect(page.getByRole('heading', { name: 'Game Main' })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: 'TARGET IRON' })).toBeVisible({ timeout: 10_000 });
-
-  registerViewerSolarSystemList(mock, { solarSystems: [SOL_SUMMARY] });
 
   return { mock };
 }
