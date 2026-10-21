@@ -83,6 +83,24 @@ Stateful gameplay governance for SW-13 uses an automated gate:
 - Hooked into: pree2e and pree2e:spec
 - Rule: Any stateful gameplay e2e spec that touches Ship Hangar surfaces must include a deterministic readiness assertion through the sw13.v1 contract.
 
+## Temporary E2E runner pin
+
+The Playwright workflow temporarily uses `ubuntu-22.04` with its existing
+`mongo:8.0` service. Current Ubuntu 24/26 runner images cause MongoDB to reject
+Linux kernels 6.19 and newer before checkout
+([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912)).
+An Ubuntu 24.04 pin also failed
+([run 39416467746](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39416467746));
+Ubuntu 22.04 allowed MongoDB startup and nine focused E2E tests to pass
+([run 39417151229](https://github.com/qagwaai/laughing-octo-journey/actions/runs/39417151229)).
+That focused evidence is not a full-suite qualification.
+
+This infrastructure-only pin does not change workers, retries, test selection,
+backend revision, or MongoDB version. Remove it when an upstream-compatible
+runner/MongoDB combination is verified, before Ubuntu 22 runner retirement on
+April 17, 2027
+([actions/runner-images#14254](https://github.com/actions/runner-images/issues/14254)).
+
 ## Current Practical Baseline
 
 For major feature areas in this repository, the pragmatic target is:
