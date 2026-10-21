@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { selectRenderQuality } from './render-quality';
-import { selectMiningQuality } from './mining-splash-state';
+import { selectSplashQuality } from './splash-state';
 
 describe('shared render quality policy', () => {
   it.each([
@@ -12,10 +12,10 @@ describe('shared render quality policy', () => {
     { width: 1440, cores: 8, saveData: true, expected: 'low' },
   ])('selects $expected for width=$width cores=$cores saveData=$saveData', ({ width, cores, saveData, expected }) => {
     expect(selectRenderQuality(width, cores, saveData)).toBe(expected);
-    expect(selectMiningQuality(width, cores, saveData)).toBe(expected);
+    expect(selectSplashQuality(width, cores, saveData)).toBe(expected);
   });
 
   it('preserves the splash selector as the same pure function', () => {
-    expect(selectMiningQuality).toBe(selectRenderQuality);
+    expect(selectSplashQuality).toBe(selectRenderQuality);
   });
 });

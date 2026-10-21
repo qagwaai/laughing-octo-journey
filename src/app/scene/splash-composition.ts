@@ -18,9 +18,9 @@ import {
   Texture,
   Vector3,
 } from 'three';
-import type { MiningQuality } from './mining-splash-state';
+import type { SplashQuality } from './splash-state';
 
-export function disposeMiningObject(root: Object3D): void {
+export function disposeSplashObject(root: Object3D): void {
   const geometries = new Set<BufferGeometry>();
   const materials = new Set<Material>();
   const textures = new Set<Texture>();
@@ -44,35 +44,35 @@ export function disposeMiningObject(root: Object3D): void {
 }
 
 /** Splash placement for the hero planet, shared by terran and gas giant renders. */
-export const MINING_PLANET_POSITION = new Vector3(-2.8, -0.8, -6);
-export const MINING_PLANET_ROLL = -0.3;
+export const SPLASH_PLANET_POSITION = new Vector3(-2.8, -0.8, -6);
+export const SPLASH_PLANET_ROLL = -0.3;
 /** Includes the terran cloud shell, the outermost spherical surface in the splash. */
-export const MINING_BODY_EXCLUSION_RADIUS = 4 * 1.012;
-export const MINING_DEBRIS_CLEARANCE = 0.25;
-export const MINING_CAMERA_DIRECTION = new Vector3(2.7, 2, 3.8).normalize();
-export const MINING_BODY_DISTANCE_SCALE = 4;
+export const SPLASH_BODY_EXCLUSION_RADIUS = 4 * 1.012;
+export const SPLASH_DEBRIS_CLEARANCE = 0.25;
+export const SPLASH_CAMERA_DIRECTION = new Vector3(2.7, 2, 3.8).normalize();
+export const SPLASH_BODY_DISTANCE_SCALE = 4;
 
 /** Perspective-preserving depth separation, anchored to the default view rather than manual orbit. */
-export function placeMiningCelestialBody(body: Object3D, referenceCameraPosition: Vector3): void {
-  body.position.copy(MINING_PLANET_POSITION).sub(referenceCameraPosition).multiplyScalar(MINING_BODY_DISTANCE_SCALE);
+export function placeSplashCelestialBody(body: Object3D, referenceCameraPosition: Vector3): void {
+  body.position.copy(SPLASH_PLANET_POSITION).sub(referenceCameraPosition).multiplyScalar(SPLASH_BODY_DISTANCE_SCALE);
   body.position.add(referenceCameraPosition);
-  body.scale.setScalar(MINING_BODY_DISTANCE_SCALE);
+  body.scale.setScalar(SPLASH_BODY_DISTANCE_SCALE);
 }
 
-export function createMiningBackdrop(
-  quality: MiningQuality,
+export function createSplashBackdrop(
+  quality: SplashQuality,
   albedo: Texture,
   normalMap?: Texture | null,
   materialMap?: Texture | null,
   cloudLayer?: Mesh,
 ): Group {
-  const planet = createMiningPlanetMesh(albedo, normalMap, materialMap);
+  const planet = createSplashPlanetMesh(albedo, normalMap, materialMap);
   if (cloudLayer) planet.add(cloudLayer);
-  return createMiningBackdropAround(quality, planet);
+  return createSplashBackdropAround(quality, planet);
 }
 
 /** The radius-4 textured sphere shared by procedural and catalog splash bodies. */
-export function createMiningPlanetMesh(
+export function createSplashPlanetMesh(
   albedo: Texture,
   normalMap?: Texture | null,
   materialMap?: Texture | null,
@@ -93,7 +93,7 @@ export function createMiningPlanetMesh(
 }
 
 /** Builds lights, stars and debris, then places `planet` at the splash focus. */
-export function createMiningBackdropAround(quality: MiningQuality, planet: Object3D): Group {
+export function createSplashBackdropAround(quality: SplashQuality, planet: Object3D): Group {
   const group = new Group();
   const fill = new HemisphereLight('#9cbbe7', '#211208', 2.5);
   group.add(fill);
@@ -148,19 +148,19 @@ export function createMiningBackdropAround(quality: MiningQuality, planet: Objec
     const size = 0.03 + random() * 0.2;
     position.set(Math.cos(angle) * radius, Math.sin(angle) * radius * 0.65, -2 - random() * 6);
     scale.set(size, size * 0.75, size * 1.2);
-    offset.subVectors(position, MINING_PLANET_POSITION);
+    offset.subVectors(position, SPLASH_PLANET_POSITION);
     const minimumDistance =
-      MINING_BODY_EXCLUSION_RADIUS + rockRadius * Math.max(scale.x, scale.y, scale.z) + MINING_DEBRIS_CLEARANCE;
+      SPLASH_BODY_EXCLUSION_RADIUS + rockRadius * Math.max(scale.x, scale.y, scale.z) + SPLASH_DEBRIS_CLEARANCE;
     if (offset.length() < minimumDistance) {
       if (offset.lengthSq() === 0) offset.set(0, 0, 1);
-      position.copy(MINING_PLANET_POSITION).add(offset.setLength(minimumDistance));
+      position.copy(SPLASH_PLANET_POSITION).add(offset.setLength(minimumDistance));
     }
     matrix.compose(position, new Quaternion().setFromAxisAngle(new Vector3(1, 1, 0).normalize(), angle), scale);
     rocks.setMatrixAt(i, matrix);
   }
   group.add(rocks);
-  planet.position.copy(MINING_PLANET_POSITION);
-  planet.rotation.z = MINING_PLANET_ROLL;
+  planet.position.copy(SPLASH_PLANET_POSITION);
+  planet.rotation.z = SPLASH_PLANET_ROLL;
   group.add(planet);
   return group;
 }

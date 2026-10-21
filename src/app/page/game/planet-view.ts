@@ -292,12 +292,14 @@ export default class PlanetViewPage {
       return;
     }
 
-    this.router.navigate([{ outlets: { right: ['viewer-scene', solarSystemId] } }], {
+    void this.router.navigate([{ outlets: { right: ['viewer-scene', solarSystemId] } }], {
       preserveFragment: true,
       state: {
         playerName: this.playerName(),
         solarSystem: this.solarSystem(),
       },
-    });
+    }).then((navigated) => {
+      if (!navigated) appLogger.warn('Planet return navigation was cancelled.', { solarSystemId });
+    }).catch((error: unknown) => appLogger.error('Planet return navigation failed.', error));
   }
 }

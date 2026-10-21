@@ -503,6 +503,7 @@ test.describe('Viewer — Scene Rendering', () => {
     await navigateToSystemScene(page, mock, bodies);
     await new ViewerPage(page).expectSceneLoaded();
     await expect(page.getByTestId('viewer-distance-mode')).toContainText('Proportional distances');
+    await page.getByTestId('viewer-distance-mode').locator('summary').click();
     await page.getByTestId('viewer-distance-toggle').click();
     await expect(page.getByTestId('viewer-distance-mode')).toContainText('Compressed overview');
     await expect.poll(() => page.evaluate(() => {
@@ -768,16 +769,8 @@ test.describe('Viewer — Scene Rendering', () => {
       data: loginResponse,
     }));
 
-    const socketConnectedInApp = page
-      .waitForEvent('console', {
-        predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-        timeout: 10_000,
-      })
-      .catch(() => null);
-
     await page.goto('/(left:login)?locale=it');
     await mock.connected;
-    await socketConnectedInApp;
 
     await page.locator('#playerName').fill(TEST_PLAYER);
     await page.locator('#password').fill('testpassword123');

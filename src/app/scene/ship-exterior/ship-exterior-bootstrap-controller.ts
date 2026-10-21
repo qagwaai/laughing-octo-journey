@@ -100,9 +100,6 @@ export class ShipExteriorBootstrapController {
 
     const sweepSignature = `${solarSystemId}|${center.x},${center.y},${center.z}|${detectionRangeKm}`;
     if (this.pendingLocalSweepSignature === sweepSignature) {
-      appLogger.info('ShipExterior local bodies sweep already in flight; coalescing duplicate request.', {
-        sweepSignature,
-      });
       return;
     }
 
@@ -140,11 +137,6 @@ export class ShipExteriorBootstrapController {
           bodies,
           center,
           detectionRangeKm,
-        });
-        appLogger.info('ShipExterior local bodies sweep complete.', {
-          contacts: bodies.length,
-          detectionRangeKm,
-          centerKm: center,
         });
       },
     );
@@ -235,12 +227,6 @@ export class ShipExteriorBootstrapController {
                 existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
               },
             });
-            appLogger.info('ColdBootScan (in-progress) requested resumed asteroid seeding.', {
-              existing: cbResponse.success
-                ? (cbResponse.celestialBodies ?? []).filter((body) => body.state !== 'destroyed').length
-                : 0,
-              centerKm: center,
-            });
           },
         );
       },
@@ -254,7 +240,6 @@ export class ShipExteriorBootstrapController {
 
     if (!playerName || !characterId || !sessionKey) {
       this.deps.emitColdBootAsteroidSeedIntent({ kind: 'fallback' });
-      appLogger.info('ColdBootScan requested fallback asteroid seeding.');
       return;
     }
 
@@ -304,9 +289,6 @@ export class ShipExteriorBootstrapController {
             center,
             launchSeedHint: this.deps.getLaunchSeedHint(),
           },
-        });
-        appLogger.info('ColdBootScan requested starter-ship asteroid seeding.', {
-          centerKm: center,
         });
       },
     );

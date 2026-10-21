@@ -280,16 +280,8 @@ test.describe('Viewer — Solar System List', () => {
       data: loginResponse,
     }));
 
-    const socketConnectedInApp = page
-      .waitForEvent('console', {
-        predicate: (msg) => msg.type() === 'log' && msg.text().includes('Socket connected:'),
-        timeout: 10_000,
-      })
-      .catch(() => null);
-
     await page.goto('/(left:login)?locale=it');
     await mock.connected;
-    await socketConnectedInApp;
 
     await loginPage.playerNameInput.fill(TEST_PLAYER);
     await loginPage.passwordInput.fill('testpassword123');

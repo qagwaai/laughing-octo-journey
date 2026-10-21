@@ -22,8 +22,8 @@ import {
 import type { GasGiantHandle } from './gas-giant/gas-giant';
 import type { GasGiantPaletteChoice, GasGiantRingChoice } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant } from './gas-giant/splash-gas-giant';
-import { createMiningPlanetMesh, disposeMiningObject } from './mining-splash-composition';
-import type { MiningQuality } from './mining-splash-state';
+import { createSplashPlanetMesh, disposeSplashObject } from './splash-composition';
+import type { SplashQuality } from './splash-state';
 import { type CatalogPlanetSurfaceResult, loadCatalogSurface } from './planet/catalog-surface-loader';
 import { createTitanHazeTexture, resolveVenusAtmosphereUrl } from './planet/planet-atmosphere';
 import { createPlanetCloudStormMaterial, type PlanetCloudStormMaterial } from './planet/planet-cloud-storms';
@@ -39,7 +39,7 @@ const SPLASH_BODY_RADIUS = 4;
 const CLOUD_SHELL_SCALE = 1.012;
 
 /** A snapshot of the overlay settings a new body is built with. */
-export interface MiningSplashBodySettings {
+export interface SplashBodySettings {
   cloudsEnabled: boolean;
   cloudStyle: PlanetCloudStyle;
   cloudCoverage: number;
@@ -51,14 +51,14 @@ export interface MiningSplashBodySettings {
   flareActivity: number;
 }
 
-export interface MiningSplashBodyOptions {
-  quality: MiningQuality;
+export interface SplashBodyOptions {
+  quality: SplashQuality;
   renderer?: WebGLRenderer | null;
-  settings: MiningSplashBodySettings;
+  settings: SplashBodySettings;
 }
 
-/** Mutable so the knot's settings effects can rebuild giants, stars and cloud layers in place. */
-export interface MiningSplashBody {
+/** Mutable so the splash's settings effects can rebuild giants, stars and cloud layers in place. */
+export interface SplashBody {
   readonly entry: SplashPlanetEntry;
   object: Object3D;
   giant?: GasGiantHandle;
@@ -72,10 +72,10 @@ export interface MiningSplashBody {
   dispose(): void;
 }
 
-export async function createMiningSplashBody(
+export async function createSplashBody(
   entry: SplashPlanetEntry,
-  options: MiningSplashBodyOptions,
-): Promise<MiningSplashBody> {
+  options: SplashBodyOptions,
+): Promise<SplashBody> {
   const { quality, settings } = options;
   if (entry.kind === 'gas-giant') {
     const appearance = resolveSplashAppearance(entry);
@@ -88,7 +88,7 @@ export async function createMiningSplashBody(
       rings: settings.giantRings,
       stormActivity: settings.stormActivity,
     });
-    const body: MiningSplashBody = {
+    const body: SplashBody = {
       entry,
       object: giant.group,
       giant,
@@ -107,7 +107,7 @@ export async function createMiningSplashBody(
       quality,
       flareActivity: settings.flareActivity,
     });
-    const body: MiningSplashBody = {
+    const body: SplashBody = {
       entry,
       object: star.group,
       star,
@@ -124,20 +124,20 @@ export async function createMiningSplashBody(
   const appearance = resolveSplashAppearance(entry);
   if (!appearance.valid) throw new Error('Splash demo has no valid surface archetype.');
   const bake = bakeSplashPlanet(quality, options.renderer, entry.id, appearance.input.surfaceArchetype);
-  const mesh = createMiningPlanetMesh(bake.albedo, bake.normal, bake.material);
+  const mesh = createSplashPlanetMesh(bake.albedo, bake.normal, bake.material);
   if (entry.kind === 'icy-moon' || entry.kind === 'rocky-moon') {
     mesh.name = entry.id;
     return plainBody(entry, mesh, () => bake.dispose());
   }
-  // disposeMiningObject only releases the texture; the GPU bake also owns a render target.
+  // disposeSplashObject only releases the texture; the GPU bake also owns a render target.
   return withClouds(entry, mesh, options, () => bake.dispose());
 }
 
-async function createSolBody(entry: SplashPlanetEntry, options: MiningSplashBodyOptions): Promise<MiningSplashBody> {
+async function createSolBody(entry: SplashPlanetEntry, options: SplashBodyOptions): Promise<SplashBody> {
   const key = entry.solKey;
   if (key === 'venus' || key === 'titan') {
     const texture = key === 'venus' ? await loadVenusTexture() : createTitanTexture(options.quality);
-    const mesh = createMiningPlanetMesh(texture);
+    const mesh = createSplashPlanetMesh(texture);
     mesh.name = `sol-${key}`;
     return plainBody(entry, mesh);
   }
@@ -153,20 +153,20 @@ async function createSolBody(entry: SplashPlanetEntry, options: MiningSplashBody
     variant: 'low',
     estimatedBytes: 0,
   });
-  const mesh = createMiningPlanetMesh(surface.albedo, surface.normal);
+  const mesh = createSplashPlanetMesh(surface.albedo, surface.normal);
   mesh.name = `sol-${key}`;
   if ('volcanism' in asset && asset.volcanism === 'io') mesh.add(createIoVolcanicCueGroup(options.quality));
   if (solBodyHasClouds(key)) return withClouds(entry, mesh, options, () => surface.dispose());
   return plainBody(entry, mesh, () => surface.dispose());
 }
 
-function plainBody(entry: SplashPlanetEntry, mesh: Object3D, release?: () => void): MiningSplashBody {
+function plainBody(entry: SplashPlanetEntry, mesh: Object3D, release?: () => void): SplashBody {
   return {
     entry,
     object: mesh,
     dispose: () => {
       mesh.removeFromParent();
-      disposeMiningObject(mesh);
+      disposeSplashObject(mesh);
       release?.();
     },
   };
@@ -175,9 +175,9 @@ function plainBody(entry: SplashPlanetEntry, mesh: Object3D, release?: () => voi
 function withClouds(
   entry: SplashPlanetEntry,
   mesh: Mesh,
-  { quality, settings }: MiningSplashBodyOptions,
+  { quality, settings }: SplashBodyOptions,
   release: () => void,
-): MiningSplashBody {
+): SplashBody {
   const clouds = createPlanetCloudTexture(
     entry.id,
     quality === 'standard' ? 512 : 256,
@@ -190,7 +190,7 @@ function withClouds(
   const cloudMesh = new Mesh(new SphereGeometry(SPLASH_BODY_RADIUS * CLOUD_SHELL_SCALE, 64, 48), cloudStorm.material);
   cloudMesh.visible = settings.cloudsEnabled;
   mesh.add(cloudMesh);
-  const body: MiningSplashBody = {
+  const body: SplashBody = {
     entry,
     object: mesh,
     clouds,
@@ -202,7 +202,7 @@ function withClouds(
       // The style effect may have replaced the cloud layer, so release the current one explicitly.
       body.cloudMesh?.material.dispose();
       body.clouds?.texture.dispose();
-      disposeMiningObject(mesh);
+      disposeSplashObject(mesh);
       release();
     },
   };
@@ -218,12 +218,12 @@ async function loadVenusTexture(): Promise<Texture> {
   return texture;
 }
 
-function createTitanTexture(quality: MiningQuality): Texture {
+function createTitanTexture(quality: SplashQuality): Texture {
   return quality === 'standard' ? createTitanHazeTexture(512, 256) : createTitanHazeTexture(256, 128);
 }
 
 /** Imperative twin of PlanetVolcanismLayer for the splash, which has no Angular Three template. */
-export function createIoVolcanicCueGroup(quality: MiningQuality): Group {
+export function createIoVolcanicCueGroup(quality: SplashQuality): Group {
   const group = new Group();
   group.name = 'Io volcanic cues';
   for (const cue of createIoVolcanicCues(SPLASH_BODY_RADIUS, quality === 'standard' ? 'detail' : 'overview')) {

@@ -513,7 +513,7 @@ export class PlanetViewScene {
           ...(solidSelected ? [{ body: solidSelected, tier: 'l1' as const }] : []),
           ...moons.map((body) => ({ body, tier: 'l0' as const })),
         ];
-        const release = this.planetTextures.catalog.retain(uses, renderer);
+        const release = this.planetTextures.retain(uses, renderer);
         if (solidSelected) this.planetTextures.request(solidSelected, 'l1', renderer);
         this.planetTextures.requestMany(moons, 'l0', renderer);
         return release;

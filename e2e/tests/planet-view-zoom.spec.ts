@@ -1,82 +1,95 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { setupPlanetViewZoomViewer } from '../fixtures/planet-view-zoom-scenario';
 import { PlanetViewPage } from '../page-objects/planet-view.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
-async function enterPlanetViewViaSceneComponent(page: Page, bodyId = 'earth'): Promise<void> {
+async function enterPlanetViewViaInspector(page: Page, bodyId = 'earth'): Promise<void> {
   const viewerPage = new ViewerPage(page);
   await viewerPage.expectSceneLoaded();
-
-  await page.waitForFunction((targetId) => {
-    const ngApi = (
-      window as Window & {
-        ng?: { getComponent?: (node: Element) => unknown };
-      }
-    ).ng;
-    const host = document.querySelector('app-viewer-scene-page');
-    if (!ngApi?.getComponent || !host) {
-      return false;
-    }
-
-    const component = ngApi.getComponent(host) as {
-      bodies?: () => Array<{ id: string }>;
-      onPlanetViewRequest?: (body: unknown) => void;
-      solarSystemId?: () => string | null;
-      isPlanetTransitioning?: () => boolean;
-    };
-
-    if (
-      typeof component?.bodies !== 'function' ||
-      typeof component?.onPlanetViewRequest !== 'function' ||
-      typeof component?.solarSystemId !== 'function' ||
-      typeof component?.isPlanetTransitioning !== 'function'
-    ) {
-      return false;
-    }
-
-    return (
-      component.solarSystemId() === 'sol' &&
-      !component.isPlanetTransitioning() &&
-      component.bodies().some((body) => body.id === targetId)
-    );
-  }, bodyId);
-
-  await page.evaluate((targetId) => {
-    const ngApi = (
-      window as Window & {
-        ng?: { getComponent?: (node: Element) => unknown };
-      }
-    ).ng;
-    const host = document.querySelector('app-viewer-scene-page');
-    if (!ngApi?.getComponent || !host) {
-      throw new Error('viewer scene component not available');
-    }
-
-    const component = ngApi.getComponent(host) as {
-      bodies: () => Array<{ id: string }>;
-      onPlanetViewRequest: (body: unknown) => void;
-      isPlanetTransitioning: () => boolean;
-    };
-
-    const target = component.bodies().find((body) => body.id === targetId);
-    if (!target) {
-      throw new Error(`${targetId} body not found`);
-    }
-
-    component.onPlanetViewRequest(target);
-    if (!component.isPlanetTransitioning()) {
-      throw new Error('planet transition was not started');
-    }
-  }, bodyId);
+  await viewerPage.switchToDistanceView();
+  const name = bodyId === 'jupiter' ? 'Jupiter' : 'Earth';
+  await page.locator('tr', { hasText: name }).locator('button.details-target-btn').click();
+  await page.getByTestId('viewer-inspect-target').click();
+  await page.getByTestId('viewer-inspector-closeup').click();
 
   await expect(page).toHaveURL(new RegExp(`right:planet-view/sol/${bodyId}`));
   await expect(new PlanetViewPage(page).header).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Planet details zoom pattern', () => {
+  for (const mode of ['viewer', 'planet-view'] as const) {
+    test(`supports standard vertical slider interaction in ${mode}`, async ({ page }) => {
+      const deprecations: string[] = [];
+      page.on('console', (message) => {
+        if (message.text().includes('slider-vertical')) deprecations.push(message.text());
+      });
+
+      // Exercise the production CSS without starting the unrelated WebGL scenes.
+      const component = mode === 'viewer' ? 'viewer-scene' : 'planet-view';
+      const css = await readFile(resolve('src', 'app', 'page', 'game', `${component}.css`), 'utf8');
+      await page.setContent(`
+        <style>${css}</style>
+        <div class="${component}-zoom">
+          <input type="range" min="0" max="100" step="1" aria-label="Zoom level">
+        </div>
+      `);
+
+      const slider = page.getByRole('slider');
+      await expect(slider).toBeVisible();
+      await expect(slider).toHaveCSS('writing-mode', 'vertical-lr');
+      await expect(slider).toHaveCSS('direction', 'rtl');
+
+      await slider.focus();
+      await slider.press('Home');
+      await expect(slider).toHaveValue('0');
+      await slider.press('ArrowUp');
+      await expect(slider).toHaveValue('1');
+      await slider.press('ArrowDown');
+      await expect(slider).toHaveValue('0');
+      await slider.press('End');
+      await expect(slider).toHaveValue('100');
+
+      const bounds = await slider.boundingBox();
+      if (!bounds) throw new Error('Zoom slider is missing.');
+      expect(bounds.height).toBeGreaterThan(bounds.width);
+      const x = bounds.x + bounds.width / 2;
+      const top = bounds.y + 10;
+      const bottom = bounds.y + bounds.height - 10;
+      await page.mouse.move(x, top);
+      await page.mouse.down();
+      await page.mouse.move(x, bottom, { steps: 5 });
+      await page.mouse.up();
+      await expect.poll(async () => Number(await slider.inputValue())).toBeLessThan(10);
+      await page.mouse.move(x, bottom);
+      await page.mouse.down();
+      await page.mouse.move(x, top, { steps: 5 });
+      await page.mouse.up();
+      await expect.poll(async () => Number(await slider.inputValue())).toBeGreaterThan(90);
+      expect(deprecations).toEqual([]);
+    });
+  }
+
+  test('does not enter close-up on a planet right-click', async ({ page }) => {
+    await setupPlanetViewZoomViewer(page);
+    const viewer = new ViewerPage(page);
+    await viewer.switchToDistanceView();
+    await page.locator('tr', { hasText: 'Earth' }).locator('button.details-target-btn').click();
+    await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
+    const bounds = await viewer.sceneCanvas.boundingBox();
+    if (!bounds) throw new Error('Viewer canvas is missing.');
+    await page.clock.install();
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, { button: 'right' });
+    await page.clock.fastForward(1000);
+    await viewer.expectSceneRoute();
+    await page.getByTestId('viewer-inspect-target').click();
+    await expect(page.getByRole('button', { name: 'Open close-up', exact: true })).toBeVisible();
+  });
+
   test('supports focusing moons even when size metadata is missing', async ({ page }) => {
     await setupPlanetViewZoomViewer(page);
-    await enterPlanetViewViaSceneComponent(page);
+    await enterPlanetViewViaInspector(page);
     const planetViewPage = new PlanetViewPage(page);
 
     const focusMoonAlpha = planetViewPage.focusMoonButton('Moon Alpha');
@@ -90,9 +103,32 @@ test.describe('Planet details zoom pattern', () => {
     await expect(planetViewPage.panel).toContainText('— km');
   });
 
+  test.describe('Touch-accessible planet close-ups', () => {
+    test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
+
+    test('opens the inspected planet with a tap and returns with the visible back button', async ({ page }) => {
+      await setupPlanetViewZoomViewer(page);
+      const viewer = new ViewerPage(page);
+      await viewer.switchToDistanceView();
+      await page.locator('tr', { hasText: 'Earth' }).locator('button.details-target-btn').tap();
+      await page.getByTestId('viewer-inspect-target').tap();
+      // Changing the target must not change the inspector's action.
+      await page.locator('tr', { hasText: 'Jupiter' }).locator('button.details-target-btn').tap();
+      const open = page.getByRole('button', { name: 'Open close-up', exact: true });
+      await expect(open).toBeVisible();
+      await open.tap();
+      await expect(page).toHaveURL(/right:planet-view\/sol\/earth/);
+      await expect(new PlanetViewPage(page).header).toContainText('Earth');
+      const back = page.getByRole('button', { name: 'Back to system viewer' });
+      await expect(back).toBeVisible();
+      await back.tap();
+      await viewer.expectSceneRoute();
+    });
+  });
+
   test('preserves planet details interaction and right-click exit flow', async ({ page }) => {
     await setupPlanetViewZoomViewer(page);
-    await enterPlanetViewViaSceneComponent(page);
+    await enterPlanetViewViaInspector(page);
     const planetViewPage = new PlanetViewPage(page);
 
     await expect(planetViewPage.header).toContainText('Earth');
@@ -123,7 +159,7 @@ test.describe('Planet details zoom pattern', () => {
     });
 
     await setupPlanetViewZoomViewer(page);
-    await enterPlanetViewViaSceneComponent(page, 'jupiter');
+    await enterPlanetViewViaInspector(page, 'jupiter');
     const planetViewPage = new PlanetViewPage(page);
     await expect(planetViewPage.header).toContainText('Jupiter');
     await expect(planetViewPage.focusMoonButton('Io')).toBeVisible({ timeout: 10_000 });
@@ -133,8 +169,7 @@ test.describe('Planet details zoom pattern', () => {
         const ngApi = (window as Window & { ng?: { getComponent?: (node: Element) => unknown } }).ng;
         for (const canvas of Array.from(document.querySelectorAll('ngt-canvas'))) {
           const component = ngApi?.getComponent?.(canvas) as
-            | { store?: { snapshot?: { scene?: import('three').Scene } } }
-            | undefined;
+            { store?: { snapshot?: { scene?: import('three').Scene } } } | undefined;
           const scene = component?.store?.snapshot?.scene;
           let giant: { bodyId: string } | null = null;
           let ioRadius: number | null = null;
@@ -174,8 +209,7 @@ test.describe('Planet details zoom pattern', () => {
         const giants: string[] = [];
         for (const canvas of Array.from(document.querySelectorAll('ngt-canvas'))) {
           const component = ngApi?.getComponent?.(canvas) as
-            | { store?: { snapshot?: { scene?: import('three').Scene } } }
-            | undefined;
+            { store?: { snapshot?: { scene?: import('three').Scene } } } | undefined;
           component?.store?.snapshot?.scene?.traverse((object) => {
             const data = object.userData?.['gasGiant'] as { bodyId: string } | undefined;
             if (data) giants.push(data.bodyId);

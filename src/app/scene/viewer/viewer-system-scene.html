@@ -51,6 +51,7 @@
   [name]="body.displayName"
   (pointerover)="onBodyPointerOver(body.source)"
   (pointerout)="onBodyPointerOut(body.id)"
+  (click)="onTargetClick($event, body.id)"
   input
 >
   <ngt-sphere-geometry *args="[body.radius, 48, 48]" />
@@ -73,7 +74,7 @@
   }
 </ngt-mesh>
 } @for (ship of renderedShips(); track ship.id) {
-<ngt-group [position]="ship.position" [name]="ship.displayName">
+<ngt-group [position]="ship.position" [name]="ship.displayName" (click)="onTargetClick($event, ship.id)" input>
   <app-viewer-ship-mesh
     [model]="ship.model"
     [color]="ship.color"
@@ -84,9 +85,9 @@
 } @for (body of nonStars(); track body.id) {
 <ngt-group
   [position]="body.position"
-  (pointerover)="onBodyPointerOver(body.source)"
+  (pointerover)="onBodyPointerOver(body.source, $event)"
   (pointerout)="onBodyPointerOut(body.id)"
-  (pointerdown)="onBodyPointerDown($event, body.source)"
+  (click)="onTargetClick($event, body.id)"
   input
 >
   @if (isStationBody(body.source)) {
@@ -94,7 +95,16 @@
     <ngt-sphere-geometry *args="[resolveStationPickRadius(body), 16, 12]" />
     <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
   </ngt-mesh>
-  }
+  } @if (hasDedicatedStationModel(body.source)) {
+  <app-station-model
+    [bodyId]="body.id"
+    [quality]="stationModelQuality()"
+    [radius]="body.radius * stationMeshScale"
+    [attempt]="stationModelAttempt()"
+    [highlight]="hoveredBodyId() === body.id ? '#8f0000' : targetedBodyId() === body.id ? '#92400e' : null"
+    (statusChange)="stationModelStatusChange.emit($event)"
+  />
+  } @else {
   <ngt-mesh [name]="body.displayName" [scale]="body.geometryScale" [rotation]="body.geometryRotation">
     @if (body.geometryKind === 'box') {
     <ngt-box-geometry *args="[body.radius * 2, body.radius * 2, body.radius * 2]" />
@@ -161,5 +171,6 @@
     <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
     } } }
   </ngt-mesh>
+  }
 </ngt-group>
 }

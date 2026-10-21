@@ -1,7 +1,7 @@
 import { Color, Vector3 } from 'three';
 import { deriveGasGiantProfile } from '../../model/planet/gas-giant-profile';
 import type { SurfaceArchetype } from '../../model/celestial-classification';
-import type { MiningQuality } from '../mining-splash-state';
+import type { SplashQuality } from '../splash-state';
 import { createGasGiant, type GasGiantHandle } from './gas-giant';
 import { toProfileOverrides, type GasGiantPaletteChoice, type GasGiantRingChoice } from './gas-giant-settings';
 
@@ -15,7 +15,7 @@ const SPLASH_RING_LIGHT = new Color('#fff2e0').multiplyScalar(2.2);
 export interface SplashGasGiantOptions {
   bodyId: string;
   surfaceArchetype?: Extract<SurfaceArchetype, 'gas-giant' | 'ice-giant'>;
-  quality: MiningQuality;
+  quality: SplashQuality;
   palette: GasGiantPaletteChoice;
   rings: GasGiantRingChoice;
   stormActivity: number;

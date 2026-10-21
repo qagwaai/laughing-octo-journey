@@ -8,14 +8,14 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
 import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
-import { createMiningSplashBody, type MiningSplashBody, type MiningSplashBodySettings } from './mining-splash-body';
+import { createSplashBody, type SplashBody, type SplashBodySettings } from './splash-body';
 import {
-  createMiningBackdropAround,
-  disposeMiningObject,
-  MINING_CAMERA_DIRECTION,
-  placeMiningCelestialBody,
-} from './mining-splash-composition';
-import { MiningSplashState } from './mining-splash-state';
+  createSplashBackdropAround,
+  disposeSplashObject,
+  SPLASH_CAMERA_DIRECTION,
+  placeSplashCelestialBody,
+} from './splash-composition';
+import { SplashState } from './splash-state';
 import { createPlanetCloudStormMaterial } from './planet/planet-cloud-storms';
 import { CLOUD_DRIFT_RADIANS_PER_SECOND, createPlanetCloudTexture, PlanetCloudSettings } from './planet/planet-clouds';
 import { resolveSplashAppearance, type SplashPlanetEntry } from './planet/splash-planet-rotation';
@@ -23,14 +23,14 @@ import { createSplashStar, replaceSplashStar } from './star/splash-star';
 import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 
 @Component({
-  selector: 'app-knot',
+  selector: 'app-splash-scene',
   template: '',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class Knot {
+export default class SplashScene {
   private static readonly ORBIT_RESUME_DELAY_MS = 3000;
   private readonly store = injectStore({ optional: true });
-  private readonly state = inject(MiningSplashState);
+  private readonly state = inject(SplashState);
   private readonly visibility = inject(SceneVisibilityService);
   private readonly cloudSettings = inject(PlanetCloudSettings);
   private readonly gasGiantSettings = inject(GasGiantSettings);
@@ -40,7 +40,7 @@ export default class Knot {
     const store = this.store;
     if (!store) {
       // The unsupported-WebGL fallback route is deliberately outside the canvas.
-      if (this.state.supported()) this.state.fail(new Error('Mining splash requires the shared canvas.'));
+      if (this.state.supported()) this.state.fail(new Error('Splash requires the shared canvas.'));
       return;
     }
     const { scene, camera, gl, invalidate } = store.snapshot;
@@ -59,10 +59,10 @@ export default class Knot {
     let orbitResumeTimer: ReturnType<typeof setTimeout> | null = null;
     /** Holds the splash placement; bodies sit at its origin so they can be swapped in place. */
     let bodySlot: Group | undefined;
-    let body: MiningSplashBody | undefined;
+    let body: SplashBody | undefined;
     let swapToken = 0;
     const sceneLoaded = signal(0);
-    const cameraDirection = MINING_CAMERA_DIRECTION.clone();
+    const cameraDirection = SPLASH_CAMERA_DIRECTION.clone();
     const referenceCameraPosition = new Vector3();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
@@ -90,7 +90,7 @@ export default class Knot {
       orbitResumeTimer = setTimeout(() => {
         orbitResumeTimer = null;
         if (this.state.status() === 'ready') this.state.orbitPaused.set(false);
-      }, Knot.ORBIT_RESUME_DELAY_MS);
+      }, SplashScene.ORBIT_RESUME_DELAY_MS);
     };
     const onOrbitChange = () => invalidate();
     controls.addEventListener('start', onOrbitStart);
@@ -113,7 +113,7 @@ export default class Knot {
       }
       previousFraming = framing;
       referenceCameraPosition.copy(cameraDirection).multiplyScalar(framing);
-      if (bodySlot) placeMiningCelestialBody(bodySlot, referenceCameraPosition);
+      if (bodySlot) placeSplashCelestialBody(bodySlot, referenceCameraPosition);
       if (this.state.reducedMotion()) {
         orbitCenter.copy(camera.position);
         elapsed = 0;
@@ -189,7 +189,7 @@ export default class Knot {
       invalidate();
     });
     /** Current overlay settings; `seeded` drops per-body overrides so a newly picked body shows its own look. */
-    const bodySettings = (entry: SplashPlanetEntry, seeded: boolean): MiningSplashBodySettings =>
+    const bodySettings = (entry: SplashPlanetEntry, seeded: boolean): SplashBodySettings =>
       untracked(() => ({
         cloudsEnabled: this.cloudSettings.enabled(),
         cloudStyle: this.cloudSettings.style(),
@@ -218,7 +218,7 @@ export default class Knot {
         const displayed = body.entry;
         const token = ++swapToken;
         this.state.bodySwapping.set(true);
-        createMiningSplashBody(entry, {
+        createSplashBody(entry, {
           quality: this.state.quality(),
           renderer: gl,
           settings: bodySettings(entry, true),
@@ -259,16 +259,16 @@ export default class Knot {
       let cancelled = false;
       let model: Group | undefined;
       let backdrop: Group | undefined;
-      let loadedBody: MiningSplashBody | undefined;
+      let loadedBody: SplashBody | undefined;
       const quality = this.state.quality();
-      const version = quality === 'standard' ? 'b4eaa6b9' : '9b277b11';
+      const modelUrl = this.state.modelAsset().url;
       const entry = untracked(() => this.state.planet());
       void Promise.allSettled([
-        loader.loadAsync(`models/asteroid-mining-rig.${quality}.glb?v=${version}`),
-        createMiningSplashBody(entry, { quality, renderer: gl, settings: bodySettings(entry, false) }),
+        loader.loadAsync(modelUrl),
+        createSplashBody(entry, { quality, renderer: gl, settings: bodySettings(entry, false) }),
       ]).then(([rig, created]) => {
         if (cancelled || rig.status === 'rejected' || created.status === 'rejected') {
-          if (rig.status === 'fulfilled') disposeMiningObject(rig.value.scene);
+          if (rig.status === 'fulfilled') disposeSplashObject(rig.value.scene);
           if (created.status === 'fulfilled') created.value.dispose();
           if (cancelled) return;
           this.state.fail(rig.status === 'rejected' ? rig.reason : (created as PromiseRejectedResult).reason);
@@ -279,8 +279,8 @@ export default class Knot {
           loadedBody = created.value;
           const slot = new Group();
           slot.add(loadedBody.object);
-          backdrop = createMiningBackdropAround(quality, slot);
-          placeMiningCelestialBody(slot, referenceCameraPosition);
+          backdrop = createSplashBackdropAround(quality, slot);
+          placeSplashCelestialBody(slot, referenceCameraPosition);
           root.add(backdrop);
           const bounds = new Box3().setFromObject(model);
           const size = bounds.getSize(new Vector3());
@@ -304,7 +304,7 @@ export default class Knot {
         swapToken++;
         if (model) {
           model.parent?.removeFromParent();
-          disposeMiningObject(model);
+          disposeSplashObject(model);
           model = undefined;
         }
         // The body owns its GPU resources (bakes, catalog textures, shaders); release it before the backdrop.
@@ -314,7 +314,7 @@ export default class Knot {
         bodySlot = undefined;
         if (backdrop) {
           backdrop.removeFromParent();
-          disposeMiningObject(backdrop);
+          disposeSplashObject(backdrop);
           backdrop = undefined;
         }
         untracked(() => this.state.bodySwapping.set(false));
