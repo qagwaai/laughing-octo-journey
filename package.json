@@ -37,11 +37,11 @@
     "e2e:readiness:check": "node scripts/check-stateful-readiness-gate.mjs",
     "sw13:adoption:check": "node scripts/check-sw13-governance-adoption-gate.mjs",
     "e2e:auth-route": "playwright test e2e/tests/login.spec.ts e2e/tests/registration.spec.ts e2e/tests/registration-auto-login-failure.spec.ts e2e/tests/locale-auth-flow.spec.ts e2e/tests/cold-boot-auth-redirect.spec.ts --reporter=line",
-    "e2e:3d": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/mining-splash.spec.ts --reporter=line",
+    "e2e:3d": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/splash.spec.ts --reporter=line",
     "e2e:stateful": "playwright test e2e/tests/character-*.spec.ts e2e/tests/first-target-*.spec.ts e2e/tests/guarded-left-menu-pin-cycle.spec.ts e2e/tests/cold-boot-refresh-context.spec.ts e2e/tests/locale-opening-mission-flow.spec.ts e2e/tests/login-after-first-target-completed.spec.ts e2e/tests/market-hub-*.spec.ts e2e/tests/mission-board.spec.ts e2e/tests/print-queue.spec.ts e2e/tests/repair-retrofit.spec.ts --reporter=line",
     "e2e:auth-route:ui": "playwright test e2e/tests/login.spec.ts e2e/tests/registration.spec.ts e2e/tests/registration-auto-login-failure.spec.ts e2e/tests/locale-auth-flow.spec.ts --reporter=line --ui",
-    "e2e:3d:headed": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/mining-splash.spec.ts --reporter=line --headed",
-    "e2e:3d:ui": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/mining-splash.spec.ts --reporter=line --ui",
+    "e2e:3d:headed": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/splash.spec.ts --reporter=line --headed",
+    "e2e:3d:ui": "playwright test e2e/tests/viewer*.spec.ts e2e/tests/planet-view-zoom.spec.ts e2e/tests/ship-exterior-*.spec.ts e2e/tests/splash.spec.ts --reporter=line --ui",
     "e2e:stateful:ui": "playwright test e2e/tests/character-*.spec.ts e2e/tests/first-target-*.spec.ts e2e/tests/guarded-left-menu-pin-cycle.spec.ts e2e/tests/locale-opening-mission-flow.spec.ts e2e/tests/login-after-first-target-completed.spec.ts e2e/tests/market-hub-*.spec.ts e2e/tests/mission-board.spec.ts e2e/tests/print-queue.spec.ts e2e/tests/repair-retrofit.spec.ts --reporter=line --ui",
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
@@ -113,12 +113,12 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.6.1",
+    "@types/node": "^26.6.5",
     "@types/three": "^0.182.0",
     "@typescript-eslint/eslint-plugin": "^8.71.2",
     "@typescript-eslint/parser": "^8.71.0",
     "@vitest/coverage-v8": "^4.1.8",
-    "eslint": "^10.11.0",
+    "eslint": "^10.12.0",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.28",
     "prettier": "^3.8.3",
@@ -129,8 +129,11 @@
     "vitest": "^4.1.8"
   },
   "overrides": {
+    "@angular/cli": {
+      "@modelcontextprotocol/sdk": "1.32.0"
+    },
     "piscina": "5.3.2",
-    "vite": "7.3.6"
+    "vite": "7.3.7"
   },
   "prettier": {
     "printWidth": 120,

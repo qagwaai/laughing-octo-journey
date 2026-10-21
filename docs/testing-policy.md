@@ -147,9 +147,16 @@ one large jump would not represent the same animation time. Advance a frame
 after pointer events so Angular can publish the orbit state while timers are
 paused. Do not translate a motion assertion into a minimum wall-clock FPS.
 
+Mobile splash gesture checks use a touch-enabled mobile context, maximize the
+scene with the visible pane control, and hit-test gesture coordinates against
+the canvas before sending touch input. The full canvas bounding box also extends
+behind the pane splitter and overlay controls, so its center is not necessarily
+an interactive scene point. Keep orbit/pinch visual-change checks and verify
+that reduced motion returns to the still state after each gesture.
+
 Validation on 2026-10-09:
 
-- `npm run e2e:spec -- mining-splash.spec.ts viewer-planet-surfaces.spec.ts --workers=1 --retries=0`
+- `npm run e2e:spec -- splash.spec.ts viewer-planet-surfaces.spec.ts --workers=1 --retries=0`
   passed all 34 tests including setup under headless SwiftShader (8.4 minutes).
   The earlier combined run passed 33 and exposed the near-future `pauseAt`
   timestamp race; the fixed-origin deadline resolves that test-harness error.

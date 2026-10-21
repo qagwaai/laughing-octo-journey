@@ -22,11 +22,11 @@ export default class IntroPage {
     }
     // Allow the shared canvas to remount after leaving the bare ship scene.
     void this.router
-      .navigate([{ outlets: { primary: ['knot'] } }], {
+      .navigate([{ outlets: { primary: ['splash'] } }], {
         preserveFragment: true,
         replaceUrl: true,
       })
-      .catch((error: unknown) => appLogger.error('Could not open the mining splash scene.', error));
+      .catch((error: unknown) => appLogger.error('Could not open the splash scene.', error));
   });
 
   /**

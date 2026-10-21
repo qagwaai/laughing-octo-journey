@@ -6,6 +6,7 @@ import type { ResolvablePlanetBody } from './planet-surface-resolver';
 import { isTexturableBody, resolvePlanetSurface, resolvePlanetSurfaceSource } from './planet-surface-resolver';
 import {
   PLANET_CACHE_BAKE_FN,
+  PLANET_CACHE_L0_LIMIT,
   PLANET_CACHE_L1_LIMIT,
   PLANET_CACHE_SCHEDULER,
   PlanetTextureCache,
@@ -338,6 +339,36 @@ describe('planet texture cache', () => {
 
     expect(disposed).toEqual(['p2:l1']);
     expect(cache.get(makeBody('p1'), 'l1')).not.toBeNull();
+  });
+
+  it('keeps a retained working set larger than the L0 limit resident without thrashing', () => {
+    const { cache, scheduler, disposed, bake } = setup();
+    const renderer = gpuRenderer();
+    const moons = Array.from({ length: PLANET_CACHE_L0_LIMIT + 24 }, (_, index) => makeBody(`m${index}`, 'moon'));
+    const uses = moons.map((body) => ({ body, tier: 'l0' as const }));
+
+    const release = cache.retain(uses, renderer);
+    cache.requestMany(moons, 'l0', renderer);
+    scheduler.flush();
+
+    expect(disposed).toEqual([]);
+    expect(moons.every((body) => cache.get(body, 'l0') !== null)).toBe(true);
+
+    // An effect re-run releases before re-retaining; the gap must not evict.
+    release();
+    const releaseAgain = cache.retain(uses, renderer);
+    cache.requestMany(moons, 'l0', renderer);
+    scheduler.flush();
+
+    expect(disposed).toEqual([]);
+    expect(bake).toHaveBeenCalledTimes(moons.length);
+
+    // Once nothing holds them, the limit applies again.
+    releaseAgain();
+    scheduler.flush();
+    expect(disposed).toHaveLength(24);
+    expect(cache.get(moons[0], 'l0')).toBeNull();
+    expect(cache.get(moons.at(-1), 'l0')).not.toBeNull();
   });
 
   it('does not evict L0 entries when L1 is under pressure', () => {

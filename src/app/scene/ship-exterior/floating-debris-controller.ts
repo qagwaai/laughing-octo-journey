@@ -165,7 +165,6 @@ export class FloatingDebrisController {
     this.deps.stateService.upsertLocal([tractorBeam]);
     this.publishItems();
     this.hasSeededColdBoot = true;
-    appLogger.info('FloatingDebrisController seeded cold-boot Tractor Beam', { id: tractorBeam.id });
   }
 
   private publishItems(): void {

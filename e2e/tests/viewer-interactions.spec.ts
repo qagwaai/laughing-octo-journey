@@ -1,14 +1,15 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { Camera, Object3D } from 'three';
+import type { ViewerBody } from '../../src/app/model/solar-system-get';
 import { setupViewerInteractionTest, SOL_SUMMARY } from '../fixtures/viewer-interactions-scenario';
+import {
+  setupViewerSceneTest,
+  SOL_SYSTEM_BODIES,
+  solarSystemGetResponse,
+} from '../fixtures/viewer-scene-rendering-scenario';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
-import type { Camera, Object3D } from 'three';
-import {
-  setupViewerSceneTest,
-  solarSystemGetResponse,
-  SOL_SYSTEM_BODIES,
-} from '../fixtures/viewer-scene-rendering-scenario';
 
 async function navigateToScene(page: Page) {
   const gameShell = new GameShellPage(page);
@@ -33,6 +34,78 @@ async function navigateToScene(page: Page) {
 test.describe('Viewer — Interaction Behaviors', () => {
   test.describe.configure({ timeout: 60_000 });
 
+  for (const bodyType of ['star', 'planet', 'moon', 'asteroid', 'station']) {
+    test(`left-click targets a ${bodyType} and synchronizes the body list`, async ({ page }) => {
+      const { mock } = await setupViewerSceneTest(page);
+      const source: ViewerBody | undefined =
+        bodyType === 'asteroid'
+          ? {
+              id: 'click-asteroid',
+              displayName: 'Click Asteroid',
+              bodyType: 'asteroid',
+              surfaceArchetype: 'asteroid',
+              state: 'unscanned',
+              spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 0, z: 0 }, epochMs: 0 },
+            }
+          : SOL_SYSTEM_BODIES.find((body) => body.bodyType === bodyType);
+      if (!source) throw new Error(`Missing ${bodyType} fixture`);
+      const selected = { ...source, spatial: { ...source.spatial, positionKm: { x: 0, y: 0, z: 0 } } };
+      mock.on('solar-system-get-request', () => ({
+        event: 'solar-system-get-response',
+        data: solarSystemGetResponse([selected]),
+      }));
+      await navigateToScene(page);
+      const viewer = new ViewerPage(page);
+      await viewer.expectSceneLoaded();
+      await viewer.switchToDistanceView();
+      const button = page.locator('tr', { hasText: selected.displayName }).locator('button.details-target-btn');
+      await expect(button).toHaveAttribute('aria-pressed', 'false');
+      const canvas = viewer.sceneCanvas;
+      const bounds = await canvas.boundingBox();
+      if (!bounds) throw new Error('Viewer canvas has no bounds');
+      const x = bounds.x + bounds.width / 2;
+      const y = bounds.y + bounds.height / 2;
+      await page.mouse.move(x, y);
+      await expect(page.getByTestId('viewer-body-label')).toContainText(selected.displayName);
+      await page.mouse.click(x, y);
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByTestId('viewer-body-label')).toContainText('Targeted');
+      await expect(page.getByTestId('viewer-body-inspector')).toHaveCount(0);
+      await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
+      await page.mouse.click(x, y);
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
+      await page.mouse.click(bounds.x + bounds.width - 100, bounds.y + 180);
+      await expect(button).toHaveAttribute('aria-pressed', 'true');
+    });
+  }
+
+  test('left-dragging a body rotates the scene without targeting it', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+    const source = SOL_SYSTEM_BODIES.find((body) => body.id === 'earth');
+    if (!source) throw new Error('Missing Earth fixture');
+    mock.on('solar-system-get-request', () => ({
+      event: 'solar-system-get-response',
+      data: solarSystemGetResponse([{ ...source, spatial: { ...source.spatial, positionKm: { x: 0, y: 0, z: 0 } } }]),
+    }));
+    await navigateToScene(page);
+    const viewer = new ViewerPage(page);
+    await viewer.expectSceneLoaded();
+    await viewer.switchToDistanceView();
+    const bounds = await viewer.sceneCanvas.boundingBox();
+    if (!bounds) throw new Error('Viewer canvas has no bounds');
+    const x = bounds.x + bounds.width / 2;
+    const y = bounds.y + bounds.height / 2;
+    await page.mouse.move(x, y);
+    await expect(page.getByTestId('viewer-body-label')).toContainText('Earth');
+    await page.mouse.down();
+    await page.mouse.move(x + 30, y + 10, { steps: 8 });
+    await page.mouse.up();
+    await expect(page.locator('tr', { hasText: 'Earth' }).locator('button.details-target-btn')).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
   test('keeps the 5% station mesh selectable from the body list and targetable', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
     mock.on('solar-system-get-request', () => ({
@@ -46,21 +119,24 @@ test.describe('Viewer — Interaction Behaviors', () => {
     const target = page.locator('tr', { hasText: 'Sol Market Alpha' }).locator('button.details-target-btn');
     await expect(target).toBeVisible();
 
-    const readStation = () => page.evaluate(() => {
-      const canvas = document.querySelector('ngt-canvas');
-      if (!canvas) return null;
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
-      const snapshot = (ng.getComponent(canvas) as {
-        store: { snapshot: { scene: Object3D | null; camera: Camera } };
-      }).store.snapshot;
-      let station: Object3D | undefined;
-      snapshot.scene?.traverse((object) => {
-        if (object.name === 'Sol Market Alpha' && object.type === 'Mesh') station = object;
+    const readStation = () =>
+      page.evaluate(() => {
+        const canvas = document.querySelector('ngt-canvas');
+        if (!canvas) return null;
+        const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+        const snapshot = (
+          ng.getComponent(canvas) as {
+            store: { snapshot: { scene: Object3D | null; camera: Camera } };
+          }
+        ).store.snapshot;
+        let station: Object3D | undefined;
+        snapshot.scene?.traverse((object) => {
+          if (object.name === 'Sol Market Alpha' && object.type === 'Mesh') station = object;
+        });
+        if (!station) return null;
+        const screen = station.getWorldPosition(station.position.clone()).project(snapshot.camera);
+        return { scale: station.scale.toArray(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
       });
-      if (!station) return null;
-      const screen = station.getWorldPosition(station.position.clone()).project(snapshot.camera);
-      return { scale: station.scale.toArray(), centered: Math.hypot(screen.x, screen.y) < 0.02 };
-    });
     await expect.poll(async () => (await readStation())?.scale).toEqual([1.65 * 0.05, 0.82 * 0.05, 1.65 * 0.05]);
     await target.click();
     await expect(target).toHaveAttribute('aria-pressed', 'true');
