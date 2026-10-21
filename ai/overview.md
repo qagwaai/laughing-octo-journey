@@ -5,7 +5,7 @@
 - **Package Name:** `ngt-template`
 - **Repository:** `laughing-octo-journey` (GitHub workspace)
 - **Version:** 0.0.0
-- **Node Runtime:** Node 20.19.x, npm 10.9.x
+- **Node Runtime:** Node 24.22.0 (Node 24 LTS), npm 11.18.0
 
 ## What It Is
 

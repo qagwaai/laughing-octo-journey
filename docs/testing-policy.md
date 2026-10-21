@@ -83,6 +83,16 @@ Stateful gameplay governance for SW-13 uses an automated gate:
 - Hooked into: pree2e and pree2e:spec
 - Rule: Any stateful gameplay e2e spec that touches Ship Hangar surfaces must include a deterministic readiness assertion through the sw13.v1 contract.
 
+## Runtime baseline
+
+Use Node 24 LTS (`24.22.0` in `.nvmrc`) and npm `11.18.0` as declared in
+`package.json`. CI reads the shared Node pin and installs the declared npm version.
+The E2E job uses this frontend toolchain for both frontend and backend installation
+and execution; the backend runtime is therefore covered by full E2E qualification.
+Angular 21, TypeScript 5.9, Vitest 4, and its matching coverage provider remain
+unchanged. Moving to Vitest 5 is a separate migration with Angular builder and
+Angular Three compatibility prerequisites.
+
 ## Temporary E2E runner pin
 
 The Playwright workflow temporarily uses `ubuntu-22.04` with its existing
