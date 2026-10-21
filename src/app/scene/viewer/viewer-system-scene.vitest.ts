@@ -708,6 +708,26 @@ describe('resolveTargetScenePosition', () => {
 });
 
 describe('viewer-system-scene helper math', () => {
+  it.each(['compressed', 'proportional'] as const)('frames only dedicated station targets at model scale in %s mode', (mode) => {
+    const station: ViewerBody = { ...marketStation, id: 'sol-mars-orbit' };
+    const bodies = [planet, station];
+    const standard = resolveViewerSceneCameraDistanceRange(bodies, mode);
+    const targeted = resolveViewerSceneCameraDistanceRange(bodies, mode, [], station.id);
+    const rendered = mapBodiesToRendered(bodies, 0, station.id, [], mode).find((body) => body.id === station.id)!;
+    const visualRadius = rendered.radius * VIEWER_STATION_MESH_SCALE;
+    expect(targeted.min).toBeGreaterThan(Math.max(visualRadius * 4, 0.04));
+    expect(targeted.min / visualRadius).toBeLessThan(8);
+    expect(targeted.min).toBeLessThan(standard.min);
+    expect(targeted.max).toBe(standard.max);
+    expect(resolveZoomDistance(0, bodies, mode, [], station.id)).toBe(targeted.min);
+    for (const zoom of [0, 25, 100]) {
+      expect(resolveZoomPercent(resolveZoomDistance(zoom, bodies, mode, [], station.id), bodies, mode, [], station.id))
+        .toBeCloseTo(zoom, 6);
+    }
+    expect(resolveViewerSceneCameraDistanceRange(bodies, mode, [], planet.id)).toEqual(standard);
+    expect(resolveViewerSceneCameraDistanceRange([marketStation], mode, [], marketStation.id).min).toBe(0.5);
+  });
+
   it('degToRad returns 0 for invalid input and converts finite degrees', () => {
     expect(degToRad(undefined)).toBe(0);
     expect(degToRad(Number.NaN)).toBe(0);

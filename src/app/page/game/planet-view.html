@@ -1,4 +1,7 @@
 <div class="planet-view-host" (contextmenu)="onHostContextMenu($event)">
+  <button type="button" class="planet-view-back" data-testid="planet-view-back" (click)="exitToViewer()">
+    {{ t.game.viewer.closeupBack }}
+  </button>
   @if (isLoading()) {
   <p class="planet-view-status" data-testid="planet-view-loading">{{ t.game.viewer.sceneLoadingStatus }}</p>
   } @else if (sceneError()) {

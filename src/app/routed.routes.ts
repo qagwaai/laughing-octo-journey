@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { PRIMARY_OUTLET, Router, Routes, UrlSegment } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
 
 const primaryRoutes: Routes = [
@@ -13,8 +14,21 @@ const primaryRoutes: Routes = [
     loadComponent: () => import('./page/public/intro'),
   },
   {
+    path: 'splash',
+    loadComponent: () => import('./scene/splash-scene'),
+  },
+  {
     path: 'knot',
-    loadComponent: () => import('./scene/knot'),
+    pathMatch: 'full',
+    redirectTo: () => {
+      const router = inject(Router);
+      const navigation = router.currentNavigation();
+      if (!navigation) throw new Error('Legacy splash redirect requires an active navigation.');
+      const target = router.parseUrl(router.serializeUrl(navigation.extractedUrl));
+      const primary = target.root.children[PRIMARY_OUTLET];
+      primary.segments[0] = new UrlSegment('splash', primary.segments[0].parameters);
+      return target;
+    },
   },
   {
     path: 'scene-graph',
@@ -192,7 +206,7 @@ const rightOutletRoutes: Routes = [
   // still-visible primary scene. These panes are deliberate exceptions:
   //   - `opening-cold-boot-scan`   – scripted, pointer-events-none
   //   - `character-bust-preview`   – a structural half of the character-setup form, not an overlay
-  //   - `viewer-scene`,`planet-view` – full-pane scenes (`position: absolute; inset: 0` with an
+  //   - `viewer-scene`,`planet-view`,`station-view` – full-pane scenes (`position: absolute; inset: 0` with an
   //     opaque background) that fully occlude the primary scene. There is no card to "close", and
   //     they form a drill-down chain (viewer -> viewer-scene -> planet-view) with its own "up"
   //     navigation, which a close button would bypass.
@@ -248,6 +262,12 @@ const rightOutletRoutes: Routes = [
     path: 'viewer-scene/:solarSystemId',
     outlet: 'right',
     loadComponent: () => import('./page/game/viewer-scene'),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'station-view/:solarSystemId/:bodyId',
+    outlet: 'right',
+    loadComponent: () => import('./page/game/station-view'),
     canActivate: [authGuard],
   },
   {

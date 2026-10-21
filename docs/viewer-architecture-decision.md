@@ -4,6 +4,40 @@
 
 Accepted (initial MVP).
 
+### Station models and close-up navigation: accepted 2026-10-18
+
+User visual confirmation is complete for this session's station-viewer and
+close-up navigation changes. Final decisions:
+
+- Resolve models by exact station ID and expected system, never by name, host
+  planet, or station family. Initially only `sol-mars-orbit` is registered;
+  future IDs may explicitly share model assets.
+- Reuse the accepted splash station assets (149,944/74,984 triangles), shared
+  decoders, and existing viewer quality policy. Do not deploy the source GLB or
+  retired 500k/250k station variants.
+- Preserve Forge snapshots and trajectories. Model normalization, enlarged-body
+  clearance, and target-camera framing are presentation-only adjustments.
+- Keep generic stations unchanged. For registered models, show explicit
+  loading/error/retry state without substituting generic visible geometry.
+- Use model-scale target framing, precise flight settling, host-outward camera
+  approach, and unobstructed overlays so targeting reveals the station.
+- Use one accessible close-up path: **Target -> Inspect target -> Open close-up**.
+  Place the styled button below the inspected body's name in the inspector
+  header, for planets, moons, and registered stations. Inspection remains
+  independent of subsequent hover or target changes.
+- Remove planet right-click entry and the duplicate station overlay action.
+  Both close-up pages provide a visible, touch-sized **Back to system viewer**
+  button, including loading/error states. Planet right-click exit remains an
+  optional desktop shortcut, not a required interaction.
+- Keep the full-pane authenticated close-up route pattern, localized English
+  and Italian controls, and explicit ownership/disposal of loaded models.
+
+Visual sign-off does not imply measured cold-cache loading or hardware
+performance acceptance, or physical iPad/Safari certification. Automated touch
+coverage uses Chromium emulation. Forge Lagrange-point station seeding remains
+a separate future placement investigation with clearance/stability validation;
+no backend placement changes were made in this session.
+
 ## Context
 
 The game world has historically rendered only the Sol system through hand-crafted
@@ -33,7 +67,42 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
   etc.) must be route-loaded indirectly through such a wrapper. Loading a
   scene component directly produces NG0201.
 
+### Viewer overlays
+
+- A single scrollable bottom-left information panel contains the hovered/targeted
+  body summary, focus status, and a compact two-column legend (one column on narrow
+  screens). The legend is expanded initially and can be collapsed.
+- Distance mode controls, the full illustrative-orbit disclaimer, and terrain/
+  atmosphere sources are separate keyboard-accessible disclosures, closed initially.
+  The current distance mode remains visible in its disclosure heading.
+- Surface generation progress, texture loading failures, and retry actions appear
+  in the panel outside the disclosures, so they are not hidden by collapsed notes.
+  Scrolling the panel does not zoom the scene.
+- The right-hand scale slider remains independent. Development-only Viewer QA
+  controls are collapsed inside the panel; their defaults and URL overrides are
+  unchanged. Planetary Lens retains its existing surface-status overlay layout.
+- Hover shows identity and available radius, diameter, and semi-major-axis facts
+  in the compact panel, not a full detail popup. An explicit "Inspect target"
+  button opens a persistent inspector for the navigation target. Inspection does
+  not change targeting, and subsequent hover/target changes do not replace the
+  inspected body until the button is used again.
+- The inspector reserves a 20rem column beside the canvas. In scene panes at most
+  700px wide it reserves the bottom 40% instead, without overlapping the canvas.
+  Physical, Orbit, Position, gate approach, and developer render information use
+  expandable sections. Physical, Orbit, and Position are expanded by default.
+  The header/close action stays visible while details scroll;
+  inspector scrolling does not zoom the scene. Closing preserves the target.
+  While inspecting, the compact Viewer panel's height is capped below the canvas
+  center so it cannot obscure a centered target; its contents remain scrollable.
+
 ### Menu placement & gating
+
+- A short left-click (at most two pixels of pointer travel) on a rendered body
+  or ship uses the same shared target state and camera flight as the list's Target
+  button. The nearest clicked object's handler stops propagation to bodies behind
+  it. Camera drags, non-left clicks, and empty-space clicks do not select or clear
+  targets. Clicking the current target is a no-op. Both panes reflect the shared
+  selection, and an open inspector retains its inspected body.
 
 - The Viewer entry is inserted in `GuardedLeftMenu.menuItems` immediately
   after the Mission Board entry, with icon code `VW`.
@@ -58,6 +127,110 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
   `<app-viewer-system-scene>` via inputs.
 
 ### Scene rendering
+
+#### Station-specific models
+
+[`station-model-assets.ts`](../src/app/scene/station/station-model-assets.ts)
+maps exact station IDs to model definitions. Initially only `sol-mars-orbit`
+in system `sol` uses the Mars station GLB. Selection requires a station body
+and the registered system; names, host planets, and descriptor families do not
+select models. Other stations retain the generic renderer. Add future station
+IDs explicitly to this registry; entries may reuse the same asset definition.
+Market discovery preserves `MarketSummary.marketId` as `ViewerBody.id`, so this
+uses the existing OpenAPI contract without adding messaging fields.
+
+The splash and viewer share the accepted 149,944/74,984-triangle asset pair.
+The viewer follows its existing `CatalogSurfaceCache` device/Save-Data quality
+policy, rather than introducing another quality selector. Only the selected
+tier loads, with Meshopt and self-hosted KTX2 decoders. Models are centered and
+normalized at runtime, preserving the station's mapped position and existing
+5%-scale convention and invisible picking sphere. Hover and target highlights
+apply to the loaded model. Loading and failures do not display replacement
+generic geometry; localized status and retry remain available in the panel.
+Each renderer owns and disposes its model, including late asynchronous results.
+
+Target flights for dedicated station models use a model-scale zoom floor and
+near clipping plane, and approach an anchored station from outside its host.
+The endpoint uses the final zoom's display-only host clearance and settles
+exactly, avoiding frame-dependent residual offsets. Generic station geometry
+profiles do not determine GLB bounds or picking clearance. Station hover stops
+hits propagating to the planet behind it, and the scrollable information panel
+stays below the centered model, including with the inspector open. Canonical
+positions, planetary/moon geometry, and generic-body zoom limits are unchanged.
+
+Future Forge placement consideration: automatically seed suitable stations near
+host-system Lagrange points rather than on orbits that visually intersect moons.
+This requires a backend placement decision and validation of station/moon
+clearance; Lagrange-point selection alone should not be assumed to guarantee
+separation or stability. The viewer should continue consuming Forge's
+authoritative station snapshots and trajectories, not inventing canonical
+positions to compensate. This is a follow-up consideration, not part of the
+current rendering or targeting changes.
+
+Target-framing follow-up validation:
+
+- `npm run test:spec -- src/app/scene/viewer/viewer-system-scene.vitest.ts src/app/page/game/viewer-scene.vitest.ts`:
+  75 tests passed, including station-specific zoom mapping and unchanged generic limits.
+- `npm run e2e:spec -- e2e/tests/viewer-station-model.spec.ts e2e/tests/viewer-controls-after-target.spec.ts e2e/tests/viewer-interactions.spec.ts --workers=1`:
+  25 passed; one planet-orbit test failed before scene entry when the cold-boot
+  route replaced its navigation. All station tests and post-target control tests passed.
+- `npm run e2e:spec -- e2e/tests/viewer-interactions.spec.ts --grep "displays planet orbital elements correctly" --workers=1`:
+  2 passed, including setup, on the isolated rerun.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`: passed.
+
+Target a body, then choose **Inspect target**. The inspector header offers a
+clearly styled, touch-sized **Open close-up** button for planets, moons, and
+registered stations. The action follows the inspected body even when the target
+changes; stars, asteroids, and unregistered stations have no close-up action.
+The viewer overlay no longer duplicates the station action, and right-clicking
+a planet no longer opens a close-up, leaving the desktop orbit/pan controls
+available. Both close-up pages have a visible **Back to system viewer** button,
+including during loading or failure, so touch devices need no secondary mouse
+button to enter or leave. Planet close-ups retain their optional right-click
+exit shortcut, but it is not required or promoted as the primary return path.
+
+Inspector-action validation:
+
+- `npm run test:spec -- src/app/page/game/viewer-scene.vitest.ts src/app/scene/viewer/viewer-system-scene.vitest.ts src/app/page/game/station-view.vitest.ts`:
+  83 passed, including supported-body eligibility and navigation from the
+  inspected body independently of later targeting.
+- `npm run e2e:spec -- e2e/tests/planet-view-zoom.spec.ts e2e/tests/viewer-station-model.spec.ts --workers=1`:
+  13 passed, including setup, both station tiers, inspector entry, removal of
+  planet right-click entry, planet/moon interactions, and touch-emulated
+  tap-to-open/tap-to-return flows for planets and stations. This is Chromium
+  touch emulation, not physical iPad/Safari certification.
+- `npm run e2e:spec -- e2e/tests/viewer-controls-after-target.spec.ts --workers=1`:
+  5 passed, including setup, inspector docking, and desktop orbit/zoom/pan.
+- `npm run build`, `npm run typecheck`, `npm run lint`, and `git diff --check`:
+  passed after the UI changes.
+
+The authenticated
+right-outlet route `station-view/:solarSystemId/:bodyId` owns a dedicated canvas
+and reuses the same model and quality policy with inspection lighting. Drag to
+orbit and scroll to zoom; there is no automatic rotation. **Back to system**
+returns to the system viewer. Direct entry discovers stations through the
+existing system/market requests and explicitly reports missing or unsupported
+station IDs. This full-pane route follows the existing opaque close-up pattern.
+
+Coverage includes exact identity selection, normalization, resource ownership,
+late results, market discovery, both real GLB triangle counts, hover/picking,
+generic-station preservation, loading/failure/retry, close-up orbit/zoom, and
+return navigation. User visual acceptance was confirmed on 2026-10-18;
+cold-cache hardware performance profiling remains outstanding and separate
+from these correctness tests.
+
+Implementation validation:
+
+- Focused Vitest regression run: 118 tests passed across 8 files (station
+  renderer/close-up, shared assets, viewer facade/page/scene, splash state, routes).
+- `npm run e2e:spec -- e2e/tests/viewer-station-model.spec.ts e2e/tests/viewer-interactions.spec.ts --grep "Station-specific|station|inspector" --workers=1`:
+  7 passed, including authentication setup.
+- `npm run e2e:spec -- e2e/tests/splash.spec.ts --grep "station|foreground" --workers=1`:
+  3 passed, including authentication setup.
+- `npm run typecheck`, `npm run lint`, `npm run build`, and `git diff --check`:
+  passed. Targeted Prettier checks passed.
+- Production output contains only the accepted 150k/75k station GLBs and poster,
+  not the source or retired station variants.
 
 - Stars: rendered with `MeshBasicMaterial` (self-lit) sized by
   `sqrt(luminositySolar)` and clamped to a small visible band.

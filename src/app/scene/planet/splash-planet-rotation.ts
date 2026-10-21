@@ -1,5 +1,5 @@
 /**
- * Which procedural planet the mining splash shows.
+ * Which procedural planet the splash shows.
  *
  * Each visit picks one entry from `SPLASH_PLANET_ROTATION`; the generator
  * derives the whole surface from that id, so editing the list is all it takes

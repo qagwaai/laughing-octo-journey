@@ -45,13 +45,26 @@ describe('SocketService', () => {
   });
 
   describe('connect', () => {
-    it('should warn if already connected', () => {
+    it('should quietly skip connecting if already connected', () => {
+      const debugSpy = vi.spyOn(console, 'debug');
       // Mock socket connection
       service['socket'] = { connected: true, disconnect: () => {} } as any;
       service.connect('http://localhost:3000');
 
       // Verify socket is still the same (not reconnected)
       expect(service.getSocket()).toBeTruthy();
+      expect(debugSpy).not.toHaveBeenCalled();
+    });
+
+    it('should quietly skip connecting if a connection is already in progress', () => {
+      const debugSpy = vi.spyOn(console, 'debug');
+      const connect = vi.fn();
+      replaceSocket({ connected: false, active: true, connect, disconnect: () => {} });
+
+      service.connect('http://localhost:3000');
+
+      expect(connect).not.toHaveBeenCalled();
+      expect(debugSpy).not.toHaveBeenCalled();
     });
 
     it('should accept custom options', () => {

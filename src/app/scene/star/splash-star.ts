@@ -1,6 +1,6 @@
 import { Color, PointLight } from 'three';
 import { deriveStarProfile } from '../../model/star/star-profile';
-import type { MiningQuality } from '../mining-splash-state';
+import type { SplashQuality } from '../splash-state';
 import { linearStarColor } from './star-photosphere-material';
 import { createStar, type StarHandle } from './star';
 
@@ -11,7 +11,7 @@ const SPLASH_STAR_LIGHT_INTENSITY = 2.4;
 export interface SplashStarOptions {
   bodyId: string;
   spectralClass: string | null;
-  quality: MiningQuality;
+  quality: SplashQuality;
   flareActivity: number;
 }
 

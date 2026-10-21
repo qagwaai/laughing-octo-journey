@@ -29,7 +29,7 @@ for (const mobile of [false, true]) {
 
     test.beforeEach(async ({ page }) => {
       await new SocketIOMock(page).setup();
-      await page.goto('/knot(left:login)');
+      await page.goto('/splash(left:login)');
       await expect(page.getByRole('separator')).toBeVisible();
     });
 

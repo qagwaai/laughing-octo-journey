@@ -21,7 +21,9 @@ The [catalog cache](../src/app/scene/planet/catalog-surface-cache.ts) loads only
 previews for overview/companion moons and one selected detail tier for the
 focused body. It uses leased ownership, late-completion disposal, inactive-only
 LRU eviction and estimated-byte admission at 96 MiB standard / 32 MiB low,
-separate from procedural limits. Image textures can reupload across renderer
+separate from procedural limits. Procedural limits apply only to unleased
+entries: surfaces a mounted scene is showing are pinned, so large systems do
+not evict their own visible bodies. Image textures can reupload across renderer
 contexts; GPU procedural render-target handles still require owner changes.
 The catalog estimates are not measured driver or multi-context GPU allocations.
 
@@ -54,8 +56,8 @@ This section records the situation that motivated the work; the files named here
 
 - `src/app/component/earth-textures.ts` exported two remote URLs (`Albedo.jpg`, `Bump.jpg`) pointing at a third-party GitHub repository.
 - `src/app/component/earth.ts` consumed both through an injected `TEXTURE_RESOURCE_FN`, which `src/app/component/earth.vitest.ts` already replaced in tests. This indirection was a usable seam for swapping in a generated source.
-- [knot.ts](../src/app/scene/knot.ts) loads the albedo separately with a bare `TextureLoader`, then downsizes the 8192 x 4096 source to 2048 x 1024 (standard) or 1024 x 512 (low) on a canvas before GPU upload, and passes the result to [createMiningBackdrop](../src/app/scene/mining-splash-composition.ts). The splash uses albedo only; it does not request the bump map.
-- [mining-splash.vitest.ts](../src/app/scene/mining-splash.vitest.ts) asserts the albedo URL ends in `/Albedo.jpg`. This assertion encodes the remote dependency and must change.
+- [splash-scene.ts](../src/app/scene/splash-scene.ts) loads the albedo separately with a bare `TextureLoader`, then downsizes the 8192 x 4096 source to 2048 x 1024 (standard) or 1024 x 512 (low) on a canvas before GPU upload, and passes the result to [createSplashBackdrop](../src/app/scene/splash-composition.ts). The splash uses albedo only; it does not request the bump map.
+- [splash.vitest.ts](../src/app/scene/splash.vitest.ts) asserts the albedo URL ends in `/Albedo.jpg`. This assertion encodes the remote dependency and must change.
 - [solar-system-get.ts](../src/app/model/solar-system-get.ts) already carries `ViewerBodyVisualization.textureKey` and `ViewerBody.planetType`. Both are currently inert: `textureKey` is written as `null` at every producer, and `planetType` is only rendered as text in the viewer detail pane.
 
 Prior context on the splash asset policy, including the outstanding provenance and attribution concern for the borrowed imagery, is recorded in [splash1-2026-09-27.md](./splash1-2026-09-27.md).
@@ -98,7 +100,7 @@ One GLSL planet shader, evaluated as 3D noise in object space, rendered into a `
 
 ### Dual path: CPU canonical, GPU for speed
 
-An earlier draft of this document treated "bakes need a WebGL context that Vitest cannot provide" as an accepted risk. That was reconsidered, because [mining-splash.spec.ts](../e2e/tests/mining-splash.spec.ts) proves Playwright already exercises real WebGL2 in CI: it waits for `data-state="ready"`, which requires an actual render, and diffs canvas screenshots. CI has no GPU, so Chromium falls back to SwiftShader software rendering, which still provides WebGL2.
+An earlier draft of this document treated "bakes need a WebGL context that Vitest cannot provide" as an accepted risk. That was reconsidered, because [splash.spec.ts](../e2e/tests/splash.spec.ts) proves Playwright already exercises real WebGL2 in CI: it waits for `data-state="ready"`, which requires an actual render, and diffs canvas screenshots. CI has no GPU, so Chromium falls back to SwiftShader software rendering, which still provides WebGL2.
 
 The testability question is therefore not GPU versus CPU, but which test tier covers which path:
 
@@ -224,9 +226,9 @@ The splash now renders a fully generated world and reaches no third-party host.
 
 - `earth-textures.ts`, `earth.ts`, and `earth.vitest.ts` were deleted. Investigation found the `Earth` component was dead code: no template anywhere referenced `<app-earth>`, and only its own spec imported it. Rather than retrofit a dead component, its useful shape was rebuilt as the reusable [planet.ts](../src/app/component/planet.ts) (`app-planet`), covered by [planet.vitest.ts](../src/app/component/planet.vitest.ts).
 - [splash-planet.ts](../src/app/scene/planet/splash-planet.ts) holds the splash body id and per-quality presets. `SPLASH_PLANET_CPU_PRESET` is deliberately only 256x128: a bake with no renderer available runs on the main thread, so the fallback drops to a cheap size rather than blocking first paint for seconds.
-- [knot.ts](../src/app/scene/knot.ts) no longer constructs a `TextureLoader` or downsizes through a canvas; it awaits the GLB and calls `bakeSplashPlanet(quality, gl)`. `planet?.dispose()` appears in both the failure and cleanup paths because `disposeMiningObject` releases the texture but not the render target.
-- [createMiningBackdrop](../src/app/scene/mining-splash-composition.ts) now also accepts an optional `normalMap`, which the standard quality tier supplies.
-- [mining-splash.spec.ts](../e2e/tests/mining-splash.spec.ts) dropped its `**/Albedo.jpg` route and now asserts the splash issues zero cross-origin requests, plus a test that loads the scene with every third-party host aborted.
+- [splash-scene.ts](../src/app/scene/splash-scene.ts) no longer constructs a `TextureLoader` or downsizes through a canvas; it awaits the GLB and calls `bakeSplashPlanet(quality, gl)`. `planet?.dispose()` appears in both the failure and cleanup paths because `disposeSplashObject` releases the texture but not the render target.
+- [createSplashBackdrop](../src/app/scene/splash-composition.ts) now also accepts an optional `normalMap`, which the standard quality tier supplies.
+- [splash.spec.ts](../e2e/tests/splash.spec.ts) dropped its `**/Albedo.jpg` route and now asserts the splash issues zero cross-origin requests, plus a test that loads the scene with every third-party host aborted.
 - The splash planet now rotates. [splash-planet-rotation.ts](../src/app/scene/planet/splash-planet-rotation.ts) holds `SPLASH_PLANET_ROTATION`, a plain list of 25 body ids (not curated for looks; edit freely). `MiningSplashState.planetBodyId` picks one per page load, so retries keep the same world, and the overlay exposes it as `data-planet`. `?splashPlanet=<id>` pins any id, listed or not; the splash e2e specs pin `nova-splash-homeworld` for repeatability. Future archetypes can extend the entries into `{ bodyId, archetype }` pairs.
 
 Terran clouds are now a separate, slowly rotating cloud shell above each generated globe in the splash, system viewer, and planet detail view. [planet-clouds.ts](../src/app/scene/planet/planet-clouds.ts) generates a deterministic mask from the body id and updates coverage without regenerating the noise or the planet surface. The shared visual drift rate is approximately one revolution per ten minutes of rendered time, independent of planet diameter; this is a visual choice rather than a physical atmospheric model. The splash overlay exposes a clouds checkbox and a 0-100% coverage slider; the shared in-memory settings follow the user between views but are not a Forge contract or persisted server data. Use `?splashPlanet=<id>` to pin the world while comparing settings. Reduced-motion mode stops cloud drift.
@@ -253,7 +255,7 @@ The first live run of the splash showed a dark, featureless sphere even though e
 
 Both shaders failed to compile, `drawElements` was a no-op, and the bake returned the cleared render target. The parity spec did not catch it because it compiles the shader sources through raw WebGL2 by design — that is what lets it drive the exact production shader without three.js, but it also means it validates the GLSL and not the way three.js delivers it.
 
-The fix: the sources no longer carry a `#version` directive. The material sets `glslVersion: GLSL3` and lets three emit it, while the parity spec prepends `PLANET_SHADER_VERSION_DIRECTIVE` itself. The guard against recurrence is a new test in [mining-splash.spec.ts](../e2e/tests/mining-splash.spec.ts) that drives the real bake path and fails on any shader-compile or `INVALID_OPERATION` console output. That guard was confirmed to fail when the defect is reintroduced.
+The fix: the sources no longer carry a `#version` directive. The material sets `glslVersion: GLSL3` and lets three emit it, while the parity spec prepends `PLANET_SHADER_VERSION_DIRECTIVE` itself. The guard against recurrence is a new test in [splash.spec.ts](../e2e/tests/splash.spec.ts) that drives the real bake path and fails on any shader-compile or `INVALID_OPERATION` console output. That guard was confirmed to fail when the defect is reintroduced.
 
 The generalizable point: a test that isolates a component for determinism cannot also be the test that proves integration. Both are needed.
 
@@ -335,7 +337,7 @@ The map is baked only at L1 (`includeMaterial`), since the system view renders b
 Two wiring notes:
 
 - Material scalars **multiply** their maps in three.js, so `roughness` and `metalness` must both be 1 for the texture to drive the result. With no map present that would render the body fully metallic and black, so every binding guards with an explicit fallback.
-- The splash planet is built imperatively in `mining-splash-composition.ts`, not through the `Planet` component, and had `roughness: 1, metalness: 0` hard-coded. Wiring the map through the component alone changed nothing on screen; this is exactly the class of defect that a green test suite hides and a browser reveals in seconds.
+- The splash planet is built imperatively in `splash-composition.ts`, not through the `Planet` component, and had `roughness: 1, metalness: 0` hard-coded. Wiring the map through the component alone changed nothing on screen; this is exactly the class of defect that a green test suite hides and a browser reveals in seconds.
 
 Coverage: the GLSL material path is now parity-tested against the CPU reference in `planet-bake-parity.spec.ts`, `planetMaterial` has unit tests for water-versus-land roughness and channel clamping, and a unit test pins the splash backdrop's map wiring so it cannot silently revert.
 
@@ -379,7 +381,7 @@ Module layout (`src/app/scene/gas-giant/`), each piece unit-tested on its own:
   - uniform tints are authored in sRGB and **must be linearised** (`vortexTint`), or the red spot renders pale;
   - albedo is scaled by `GAS_GIANT_ALBEDO_SCALE` so the giant does not blow out under star light.
 - `gas-giant-rings.ts` and `gas-giant-shadow-glsl.ts`: an annulus shader that takes the planet's shadow, and analytic moon and ring shadows on the planet. There are at most four moon shadow casters.
-- `gas-giant.ts`: the `createGasGiant` factory, which owns the group and the uniforms. Call `dispose()` explicitly; `disposeMiningObject` does not free uniform textures.
+- `gas-giant.ts`: the `createGasGiant` factory, which owns the group and the uniforms. Call `dispose()` explicitly; `disposeSplashObject` does not free uniform textures.
 - `gas-giant-body.ts`: the `<app-gas-giant>` angular-three wrapper. It rebuilds the giant only when the profile, radius or texture size change. Light, moons, storms and highlight are uniform updates. Animation pauses under reduced motion and on hidden tabs.
 
 Scale (`viewer/planet-view-scale.ts`): the terran planet view sizes moons with a cube-root rule. That would make Io look half Jupiter's size, so giants use their own rules:
@@ -444,7 +446,7 @@ Stage 1 and 2 commands:
 
 ```bash
 npm run test:spec -- src/app/model/planet/planet-generation.vitest.ts src/app/scene/planet/planet-bake.vitest.ts src/app/component/planet.vitest.ts
-npx playwright test e2e/tests/planet-bake-parity.spec.ts e2e/tests/mining-splash.spec.ts --reporter=line
+npx playwright test e2e/tests/planet-bake-parity.spec.ts e2e/tests/splash.spec.ts --reporter=line
 npm run build
 npm run test:ci
 ```
@@ -488,7 +490,7 @@ npm run typecheck      # clean
 npm run test:ci        # 2255 tests / 173 files; coverage 80.96 / 70.68 / 81.76 / 80.97
 npx playwright test e2e/tests/viewer-planet-surfaces.spec.ts e2e/tests/planet-view-zoom.spec.ts \
   e2e/tests/viewer-scene-rendering.spec.ts e2e/tests/planet-bake-parity.spec.ts \
-  e2e/tests/mining-splash.spec.ts --reporter=line   # 40 passed
+  e2e/tests/splash.spec.ts --reporter=line   # 40 passed
 ```
 
 At that earlier handoff, two unrelated issues were deliberately left alone: a
@@ -517,7 +519,7 @@ Automated checks pass:
 - `npm run lint` — passed.
 - `npm run build` — passed, including Angular template and E2E partition
   validation.
-- `npx playwright test e2e/tests/mining-splash.spec.ts e2e/tests/viewer-planet-surfaces.spec.ts e2e/tests/viewer-scene-rendering.spec.ts --reporter=line`
+- `npx playwright test e2e/tests/splash.spec.ts e2e/tests/viewer-planet-surfaces.spec.ts e2e/tests/viewer-scene-rendering.spec.ts --reporter=line`
   — 44 passed.
 
 These checks validate fixture-driven flows, not the live authenticated Forge
@@ -586,7 +588,7 @@ Additional planet-name markers remain deferred.
 
 #### Snapshot/display-basis validation and user handoff (2026-10-04)
 
-- `npm run test:spec -- src\app\scene\viewer\viewer-formatters.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\viewer\star-lighting.vitest.ts src\app\scene\mining-splash.vitest.ts`
+- `npm run test:spec -- src\app\scene\viewer\viewer-formatters.vitest.ts src\app\scene\viewer\viewer-system-scene.vitest.ts src\app\scene\viewer\planet-view-scene.zoom.vitest.ts src\app\scene\viewer\star-lighting.vitest.ts src\app\scene\splash.vitest.ts`
   — 109 passed across five files.
 - `npm run test:spec -- src\app\services\ship-flight-position-persistence.service.vitest.ts src\app\scene\ship-exterior\asteroid-persistence.service.vitest.ts`
   — nine passed; canonical write behavior preserved.

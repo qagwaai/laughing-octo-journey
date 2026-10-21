@@ -72,6 +72,52 @@ async function navigateToScene(
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
+test('left-click targets a rendered ship and synchronizes its list button', async ({ page }) => {
+  const mock = await setupIsolatedViewerShipsSession(page);
+  const gameShell = new GameShellPage(page);
+  const viewer = new ViewerPage(page);
+  const ship = {
+    ...ACTIVE_SHIP,
+    spatial: { ...ACTIVE_SHIP.spatial, positionKm: { x: -100_000_000, y: 0, z: -100_000_000 } },
+  };
+  mock.on('solar-system-get-request', () => ({
+    event: 'solar-system-get-response',
+    data: makeSolarSystemGetResponse(),
+  }));
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
+    data: makeShipListResponse([ship]),
+  }));
+  await gameShell.openViewer();
+  await viewer.selectSystem('Sol');
+  await viewer.expectSceneLoaded();
+  await viewer.switchToDistanceView();
+  const button = page.locator('tr', { hasText: ship.name }).locator('button.details-target-btn');
+  await expect(button).toHaveAttribute('aria-pressed', 'false');
+  const readPoint = () =>
+    page.evaluate((name) => {
+      const canvas = document.querySelector('ngt-canvas');
+      if (!canvas) throw new Error('Viewer canvas is missing');
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const snapshot = (
+        ng.getComponent(canvas) as {
+          store: { snapshot: { scene: import('three').Object3D; camera: import('three').Camera } };
+        }
+      ).store.snapshot;
+      const object = snapshot.scene.getObjectByName(name)?.getObjectByName('pod-hull-core');
+      if (!object) return null;
+      const screen = object.getWorldPosition(object.position.clone()).project(snapshot.camera);
+      const bounds = canvas.getBoundingClientRect();
+      return { x: bounds.x + ((screen.x + 1) / 2) * bounds.width, y: bounds.y + ((1 - screen.y) / 2) * bounds.height };
+    }, ship.name);
+  await expect.poll(async () => Boolean(await readPoint())).toBe(true);
+  const point = await readPoint();
+  if (!point) throw new Error('Ship hull is missing from the scene');
+  await page.mouse.click(point.x, point.y);
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
+});
+
 test.describe.serial('Viewer — Character Ships', () => {
   test.beforeAll(async ({ browser }) => {
     sharedSession = await setupSharedViewerShipsSession(browser);

@@ -3,7 +3,7 @@ import { locale } from '../i18n/locale';
 import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
 import { resolveSpectralClass } from '../model/star/star-profile';
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
-import { MiningSplashState, type MiningQuality } from './mining-splash-state';
+import { SplashState, type SplashQuality } from './splash-state';
 import { PlanetCloudSettings } from './planet/planet-clouds';
 import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import {
@@ -19,46 +19,55 @@ import {
 import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 
 @Component({
-  selector: 'app-mining-splash-overlay',
+  selector: 'app-splash-overlay',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section
       class="splash"
       [attr.data-state]="state.status()"
+      [attr.data-market]="state.marketId"
+      [attr.data-model]="state.foreground()"
       [attr.data-quality]="state.quality()"
+      [attr.data-triangles]="state.triangleCount()"
       [attr.data-planet]="state.planetBodyId()"
       [attr.data-planet-kind]="state.planetKind()"
       [attr.data-motion]="state.orbitPaused() ? 'orbit' : state.moving() ? 'drift' : 'still'"
-      [attr.aria-label]="t.public.mining.title"
+      [attr.aria-label]="splashTitle()"
     >
       <div class="diagnostic" aria-label="3D model diagnostics">
-        {{ state.quality() === 'standard' ? t.public.mining.standardTier : t.public.mining.lowTier }}
+        {{ tierLabel() }}
         ·
         @if (state.status() === 'ready' && state.loadDurationMs() !== null) {
-          {{ t.public.mining.loadTime }} {{ (state.loadDurationMs()! / 1000).toFixed(2) }} s
+          {{ t.public.splash.loadTime }} {{ (state.loadDurationMs()! / 1000).toFixed(2) }} s
         } @else if (state.status() === 'loading') {
-          {{ t.public.mining.loadingTier }}
+          {{ t.public.splash.loadingTier }}
         } @else {
-          {{ t.public.mining.staticTier }}
+          {{ t.public.splash.staticTier }}
         }
-        · {{ t.public.mining.planetLabel }} {{ state.planetBodyId() }}
+        · {{ t.public.splash.planetLabel }} {{ state.planetBodyId() }}
       </div>
       @if (state.status() !== 'ready') {
-        <img class="poster" src="models/mining-splash-poster.webp?v=32a3639e" alt="" fetchpriority="high" />
+        <img
+          class="poster"
+          [class.station-poster]="state.stationSplash()"
+          [src]="state.posterUrl()"
+          alt=""
+          fetchpriority="high"
+        />
         <div class="status" role="status" aria-live="polite">
           @if (state.status() === 'loading') {
-            <p>{{ t.public.mining.loading }}</p>
+            <p>{{ loadingMessage() }}</p>
             <progress
               max="100"
               [value]="state.loading.active() ? state.loading.progress() : null"
-              [attr.aria-label]="t.public.mining.loading"
+              [attr.aria-label]="t.public.splash.loading"
             ></progress>
-            <p class="hint">{{ t.public.mining.progressHint }}</p>
-            <button type="button" (click)="state.useStatic()">{{ t.public.mining.staticAction }}</button>
+            <p class="hint">{{ t.public.splash.progressHint }}</p>
+            <button type="button" (click)="state.useStatic()">{{ t.public.splash.staticAction }}</button>
           } @else {
-            <p>{{ state.status() === 'error' ? t.public.mining.error : t.public.mining.static }}</p>
+            <p>{{ state.status() === 'error' ? t.public.splash.error : t.public.splash.static }}</p>
             @if (state.supported() && !state.contextLost()) {
-              <button type="button" (click)="state.retry()">{{ t.public.mining.retry }}</button>
+              <button type="button" (click)="state.retry()">{{ t.public.splash.retry }}</button>
               <button type="button" class="tier-switch" (click)="state.switchQuality(otherQuality())">
                 {{ switchLabel() }}
               </button>
@@ -68,52 +77,57 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
       } @else {
         <div class="cloud-controls" (pointerdown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()">
           <div class="body-picker" data-testid="splash-body-picker">
-            <label for="splash-body-category">{{ t.public.mining.bodyCategoryLabel }}</label>
-            <select id="splash-body-category" [value]="state.pickerCategory()" (change)="onCategory($event)">
+            <label for="splash-foreground">{{ t.public.splash.foregroundLabel }}</label>
+            <select id="splash-foreground" [value]="state.foreground()" (change)="onForeground($event)">
+              <option value="asteroid-mining-rig">{{ t.public.splash.foregroundMiningRig }}</option>
+              <option value="station">{{ t.public.splash.station.title }}</option>
+            </select>
+            <label for="splash-body-category">{{ t.public.splash.bodyCategoryLabel }}</label>
+            <select id="splash-body-category" (change)="onCategory($event)">
               @for (category of categories; track category) {
-                <option [value]="category">{{ categoryLabel(category) }}</option>
+                <option [value]="category" [selected]="state.pickerCategory() === category">{{ categoryLabel(category) }}</option>
               }
             </select>
             @if (state.pickerCategory() !== 'random') {
-              <label for="splash-body">{{ t.public.mining.bodyLabel }}</label>
-              <select id="splash-body" [value]="state.pickerBody()" (change)="onBody($event)">
-                <option value="random">{{ t.public.mining.bodyRandom }}</option>
+              <label for="splash-body">{{ t.public.splash.bodyLabel }}</label>
+              <select id="splash-body" (change)="onBody($event)">
+                <option value="random" [selected]="state.pickerBody() === 'random'">{{ t.public.splash.bodyRandom }}</option>
                 @for (entry of categoryEntries(); track entry.id) {
-                  <option [value]="entry.id">{{ bodyLabel(entry) }}</option>
+                  <option [value]="entry.id" [selected]="state.pickerBody() === entry.id">{{ bodyLabel(entry) }}</option>
                 }
               </select>
             }
             <button type="button" class="shuffle" [disabled]="state.bodySwapping()" (click)="state.reroll()">
-              {{ t.public.mining.bodyShuffle }}
+              {{ t.public.splash.bodyShuffle }}
             </button>
             <p class="current-body" data-testid="splash-current-body" aria-live="polite">
-              {{ t.public.mining.bodyCurrent }}: {{ bodyLabel(state.planet()) }}
+              {{ t.public.splash.bodyCurrent }}: {{ bodyLabel(state.planet()) }}
               @if (state.bodySwapping()) {
-                <span class="swapping">? {{ t.public.mining.bodyLoading }}</span>
+                <span class="swapping">? {{ t.public.splash.bodyLoading }}</span>
               }
             </p>
             @if (state.bodySwapError()) {
               <p class="swap-error" role="alert" data-testid="splash-body-error">
-                {{ t.public.mining.bodyLoadError }}
+                {{ t.public.splash.bodyLoadError }}
               </p>
             }
           </div>
           @if (state.planetKind() === 'gas-giant') {
-            <label for="splash-giant-palette">{{ t.public.mining.gasGiantPaletteLabel }}</label>
+            <label for="splash-giant-palette">{{ t.public.splash.gasGiantPaletteLabel }}</label>
             <select id="splash-giant-palette" [value]="giants.palette()" (change)="onGiantPalette($event)">
-              <option value="seeded">{{ t.public.mining.gasGiantPaletteSeeded }}</option>
-              <option value="jovian">{{ t.public.mining.gasGiantPaletteJovian }}</option>
-              <option value="saturnian">{{ t.public.mining.gasGiantPaletteSaturnian }}</option>
-              <option value="ice">{{ t.public.mining.gasGiantPaletteIce }}</option>
+              <option value="seeded">{{ t.public.splash.gasGiantPaletteSeeded }}</option>
+              <option value="jovian">{{ t.public.splash.gasGiantPaletteJovian }}</option>
+              <option value="saturnian">{{ t.public.splash.gasGiantPaletteSaturnian }}</option>
+              <option value="ice">{{ t.public.splash.gasGiantPaletteIce }}</option>
             </select>
-            <label for="splash-giant-rings">{{ t.public.mining.gasGiantRingsLabel }}</label>
+            <label for="splash-giant-rings">{{ t.public.splash.gasGiantRingsLabel }}</label>
             <select id="splash-giant-rings" [value]="giants.rings()" (change)="onGiantRings($event)">
-              <option value="seeded">{{ t.public.mining.gasGiantRingsSeeded }}</option>
-              <option value="on">{{ t.public.mining.gasGiantRingsOn }}</option>
-              <option value="off">{{ t.public.mining.gasGiantRingsOff }}</option>
+              <option value="seeded">{{ t.public.splash.gasGiantRingsSeeded }}</option>
+              <option value="on">{{ t.public.splash.gasGiantRingsOn }}</option>
+              <option value="off">{{ t.public.splash.gasGiantRingsOff }}</option>
             </select>
             <label for="splash-storm-activity">
-              {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
+              {{ t.public.splash.stormActivityLabel }}: {{ clouds.stormActivity() }}%
             </label>
             <input
               id="splash-storm-activity"
@@ -126,17 +140,17 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
             />
           } @else if (state.planetKind() === 'star') {
             <p class="star-class" data-testid="splash-star-class">
-              {{ t.public.mining.starSpectralClassLabel }}: {{ starClassLabel() }}
+              {{ t.public.splash.starSpectralClassLabel }}: {{ starClassLabel() }}
             </p>
-            <label for="splash-star-spectral-class">{{ t.public.mining.starClassSelectLabel }}</label>
+            <label for="splash-star-spectral-class">{{ t.public.splash.starClassSelectLabel }}</label>
             <select id="splash-star-spectral-class" [value]="stars.spectralClass()" (change)="onStarClass($event)">
-              <option value="seeded">{{ t.public.mining.starClassSeeded }}</option>
+              <option value="seeded">{{ t.public.splash.starClassSeeded }}</option>
               @for (spectralClass of starClasses; track spectralClass) {
                 <option [value]="spectralClass">{{ spectralClass }}</option>
               }
             </select>
             <label for="splash-flare-activity">
-              {{ t.public.mining.starFlareActivityLabel }}: {{ stars.flareActivity() }}%
+              {{ t.public.splash.starFlareActivityLabel }}: {{ stars.flareActivity() }}%
             </label>
             <input
               id="splash-flare-activity"
@@ -150,20 +164,20 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
           } @else if (state.planetKind() === 'terran' || hasSolClouds()) {
             <label class="cloud-toggle">
               <input type="checkbox" [checked]="clouds.enabled()" (change)="onCloudToggle($event)" />
-              {{ t.public.mining.cloudsLabel }}
+              {{ t.public.splash.cloudsLabel }}
             </label>
-            <label for="splash-cloud-style">{{ t.public.mining.cloudStyleLabel }}</label>
+            <label for="splash-cloud-style">{{ t.public.splash.cloudStyleLabel }}</label>
             <select
               id="splash-cloud-style"
               [value]="clouds.style()"
               [disabled]="!clouds.enabled()"
               (change)="onCloudStyle($event)"
             >
-              <option value="thin">{{ t.public.mining.thinCloudsLabel }}</option>
-              <option value="thick">{{ t.public.mining.thickCloudsLabel }}</option>
+              <option value="thin">{{ t.public.splash.thinCloudsLabel }}</option>
+              <option value="thick">{{ t.public.splash.thickCloudsLabel }}</option>
             </select>
             <label for="splash-cloud-coverage">
-              {{ t.public.mining.cloudCoverageLabel }}: {{ clouds.coverage() }}%
+              {{ t.public.splash.cloudCoverageLabel }}: {{ clouds.coverage() }}%
             </label>
             <input
               id="splash-cloud-coverage"
@@ -176,7 +190,7 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
               (input)="onCloudCoverage($event)"
             />
             <label for="splash-storm-activity">
-              {{ t.public.mining.stormActivityLabel }}: {{ clouds.stormActivity() }}%
+              {{ t.public.splash.stormActivityLabel }}: {{ clouds.stormActivity() }}%
             </label>
             <input
               id="splash-storm-activity"
@@ -190,19 +204,19 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
             />
           }
           @if (solCredit(); as credit) {
-            <p class="credit" data-testid="splash-body-credit">{{ t.public.mining.bodyCreditLabel }}: {{ credit }}</p>
+            <p class="credit" data-testid="splash-body-credit">{{ t.public.splash.bodyCreditLabel }}: {{ credit }}</p>
           }
         </div>
         <div class="caption">
           <span>
-            {{ t.public.mining.title }}
-            <small>{{ t.public.mining.orbitHint }}</small>
+            {{ splashTitle() }}
+            <small>{{ t.public.splash.orbitHint }}</small>
           </span>
           <span class="actions">
             <button type="button" class="tier-switch" (click)="state.switchQuality(otherQuality())">
               {{ switchLabel() }}
             </button>
-            <button type="button" (click)="state.useStatic()">{{ t.public.mining.staticAction }}</button>
+            <button type="button" (click)="state.useStatic()">{{ t.public.splash.staticAction }}</button>
           </span>
         </div>
       }
@@ -221,11 +235,18 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
       height: 100%;
       color: #edf4ff;
     }
+    .splash[data-model='station'][data-state='static'] {
+      background: #040914;
+    }
     .poster {
       width: 100%;
       height: 100%;
       object-fit: cover;
       background: #050b16;
+    }
+    .poster.station-poster {
+      object-fit: contain;
+      background: transparent;
     }
     .diagnostic {
       position: absolute;
@@ -381,8 +402,8 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
     }
   `,
 })
-export class MiningSplashOverlay {
-  protected readonly state = inject(MiningSplashState);
+export class SplashOverlay {
+  protected readonly state = inject(SplashState);
   protected readonly clouds = inject(PlanetCloudSettings);
   protected readonly giants = inject(GasGiantSettings);
   protected readonly stars = inject(StarSettings);
@@ -393,6 +414,21 @@ export class MiningSplashOverlay {
         .label,
   );
   protected readonly t = locale;
+  protected readonly splashTitle = computed(() =>
+    this.state.stationSplash() ? this.t.public.splash.station.title : this.t.public.splash.title,
+  );
+  protected readonly loadingMessage = computed(() =>
+    this.state.stationSplash() ? this.t.public.splash.station.loading : this.t.public.splash.loading,
+  );
+  protected readonly tierLabel = computed(() => {
+    if (this.state.stationSplash()) {
+      return this.t.public.splash.station.tier.replace(
+        '{triangles}',
+        this.state.triangleCount().toLocaleString(),
+      );
+    }
+    return this.state.quality() === 'standard' ? this.t.public.splash.standardTier : this.t.public.splash.lowTier;
+  });
   protected readonly categories = SPLASH_PICKER_CATEGORIES;
   protected readonly categoryEntries = computed(() => splashEntriesForCategory(this.state.pickerCategory()));
   protected readonly hasSolClouds = computed(() => {
@@ -408,11 +444,11 @@ export class MiningSplashOverlay {
   });
 
   protected categoryLabel(category: SplashPickerCategory): string {
-    return this.t.public.mining.bodyCategories[category];
+    return this.t.public.splash.bodyCategories[category];
   }
 
   protected bodyLabel(entry: SplashPlanetEntry): string {
-    const labels = this.t.public.mining;
+    const labels = this.t.public.splash;
     if (entry.kind === 'sol' && entry.solKey) return labels.solBodies[entry.solKey];
     if (entry.kind === 'star') return `${labels.bodyStar} ${entry.spectralClass ?? entry.id}`;
     const number = /(\d+)$/.exec(entry.id)?.[1];
@@ -421,6 +457,14 @@ export class MiningSplashOverlay {
     if (entry.kind === 'rocky-moon') return number ? `${labels.bodyRockyMoon} ${number}` : entry.id;
     if (entry.id === SPLASH_PLANET_BODY_ID) return labels.bodyHomeworld;
     return number ? `${labels.bodyWorld} ${number}` : entry.id;
+  }
+
+  protected onForeground(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const value = target.value;
+    if (value !== 'asteroid-mining-rig' && value !== 'station') throw new Error(`Unknown splash foreground: ${value}`);
+    this.state.chooseForeground(value);
   }
 
   protected onCategory(event: Event): void {
@@ -487,10 +531,12 @@ export class MiningSplashOverlay {
     if (target.value !== 'thin' && target.value !== 'thick') throw new Error(`Unknown cloud style: ${target.value}`);
     this.clouds.style.set(target.value);
   }
-  protected readonly otherQuality = computed<MiningQuality>(() =>
+  protected readonly otherQuality = computed<SplashQuality>(() =>
     this.state.quality() === 'standard' ? 'low' : 'standard',
   );
-  protected readonly switchLabel = computed(() =>
-    this.otherQuality() === 'standard' ? this.t.public.mining.switchToStandard : this.t.public.mining.switchToLow,
-  );
+  protected readonly switchLabel = computed(() => {
+    const quality = this.otherQuality();
+    const label = quality === 'standard' ? this.t.public.splash.switchToStandard : this.t.public.splash.switchToLow;
+    return label.replace('{triangles}', this.state.assetForQuality(quality).triangleCount.toLocaleString());
+  });
 }
