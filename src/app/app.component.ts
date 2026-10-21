@@ -19,8 +19,8 @@ import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-gu
 import { locale } from './i18n/locale';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { RoutedScene } from './routed-scene';
-import { MiningSplashOverlay } from './scene/mining-splash-overlay';
-import { MiningSplashState } from './scene/mining-splash-state';
+import { SplashOverlay } from './scene/splash-overlay';
+import { SplashState } from './scene/splash-state';
 import { PlanetCloudSettings } from './scene/planet/planet-clouds';
 import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
 import { OpeningAudioService } from './services';
@@ -115,7 +115,7 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
     LeftPaneMissionGuidanceOverlay,
     ShipExteriorHudOverlayComponent,
     RouterOutlet,
-    MiningSplashOverlay,
+    SplashOverlay,
   ],
 })
 export class AppComponent implements AfterViewInit, OnDestroy {
@@ -162,16 +162,16 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected lookHintOpacity = signal(0);
   protected readonly canvasCameraOptions = { position: [5, 5, 5] as [number, number, number] };
   protected readonly canvasLookAt = [0, 0, 0] as [number, number, number];
-  protected readonly miningSplash = inject(MiningSplashState);
+  protected readonly splash = inject(SplashState);
   private readonly cloudSettings = inject(PlanetCloudSettings);
-  protected readonly miningSplashActive = computed(() => /(?:^|\/)(?:intro|knot)(?:\(|$)/.test(this.currentUrl()));
+  protected readonly splashActive = computed(() => /(?:^|\/)(?:intro|splash)(?:\(|\?|$)/.test(this.currentUrl()));
   protected readonly canvasFrameloop = computed(() =>
-    this.miningSplashActive()
+    this.splashActive()
       ? !this.sceneVisibility.isSceneHidden() &&
-        (this.miningSplash.moving() ||
-          (this.miningSplash.status() === 'ready' &&
-            !this.miningSplash.reducedMotion() &&
-            !this.miningSplash.documentHidden() &&
+        (this.splash.moving() ||
+          (this.splash.status() === 'ready' &&
+            !this.splash.reducedMotion() &&
+            !this.splash.documentHidden() &&
             this.cloudSettings.enabled() &&
             this.cloudSettings.coverage() > 0))
         ? 'always'
@@ -179,7 +179,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       : this.sceneVisibility.sceneFrameloop(),
   );
   protected readonly canvasDpr = computed<[number, number]>(() =>
-    this.miningSplashActive() ? [1, this.miningSplash.quality() === 'low' ? 1 : 1.5] : [1, 2],
+    this.splashActive() ? [1, this.splash.quality() === 'low' ? 1 : 1.5] : [1, 2],
   );
 
   protected currentUrl = toSignal(

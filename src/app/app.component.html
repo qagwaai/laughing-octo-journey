@@ -90,7 +90,7 @@
       <div class="absolute inset-0 z-0">
         <router-outlet />
       </div>
-    } @else if (miningSplashActive() && !miningSplash.supported()) {
+    } @else if (splashActive() && !splash.supported()) {
       <router-outlet />
     } @else {
       <ngt-canvas
@@ -98,7 +98,7 @@
         class="relative z-0"
         [stats]="persistentStatsOptions"
         [frameloop]="canvasFrameloop()"
-        [shadows]="!miningSplashActive()"
+        [shadows]="!splashActive()"
         [dpr]="canvasDpr()"
         [camera]="canvasCameraOptions"
         [lookAt]="canvasLookAt"
@@ -108,8 +108,8 @@
       </ngt-canvas>
     }
 
-    @if (miningSplashActive()) {
-      <app-mining-splash-overlay />
+    @if (splashActive()) {
+      <app-splash-overlay />
     }
 
     <div

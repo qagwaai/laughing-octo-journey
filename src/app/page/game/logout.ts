@@ -66,7 +66,7 @@ export default class LogoutPage {
    * Leaves the active game session view and returns to character list.
    * Uses 'intro' as the primary route to avoid NgtStore injection errors
    * that occur when transitioning directly from ship-exterior-view to the
-   * knot scene (the ngt-canvas hasn't remounted before knot is instantiated).
+   * splash scene (the ngt-canvas hasn't remounted before splash is instantiated).
    */
   async navigateToCharacterList(): Promise<void> {
     if (this.isLoggingOut()) {

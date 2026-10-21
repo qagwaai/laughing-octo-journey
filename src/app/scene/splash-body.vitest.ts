@@ -1,6 +1,6 @@
 import { DataTexture, Group, type Mesh } from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { createIoVolcanicCueGroup, createMiningSplashBody, type MiningSplashBodySettings } from './mining-splash-body';
+import { createIoVolcanicCueGroup, createSplashBody, type SplashBodySettings } from './splash-body';
 import { SPLASH_PLANET_ROTATION } from './planet/splash-planet-rotation';
 
 const release = vi.fn();
@@ -13,7 +13,7 @@ vi.mock('./planet/catalog-surface-loader', () => ({
   loadCatalogSurface: (...args: unknown[]) => loadCatalogSurface(...(args as [])),
 }));
 
-const settings: MiningSplashBodySettings = {
+const settings: SplashBodySettings = {
   cloudsEnabled: true,
   cloudStyle: 'thin',
   cloudCoverage: 50,
@@ -25,11 +25,11 @@ const settings: MiningSplashBodySettings = {
 };
 const entry = (id: string) => SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === id)!;
 
-describe('createMiningSplashBody', () => {
+describe('createSplashBody', () => {
   it.each(['icy-moon', 'rocky-moon'] as const)(
     'builds %s without clouds and releases its mesh and baked maps',
     async (kind) => {
-      const body = await createMiningSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });
+      const body = await createSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });
       const slot = new Group();
       slot.add(body.object);
       expect(body.object.name).toBe(`nova-splash-${kind}-01`);
@@ -45,7 +45,7 @@ describe('createMiningSplashBody', () => {
 
   it('builds catalog Sol bodies from the low variant and releases them on dispose', async () => {
     const slot = new Group();
-    const body = await createMiningSplashBody(entry('sol-mars'), { quality: 'low', settings });
+    const body = await createSplashBody(entry('sol-mars'), { quality: 'low', settings });
     slot.add(body.object);
     expect(loadCatalogSurface).toHaveBeenCalledWith(expect.objectContaining({ variant: 'low', bodyId: 'sol-mars' }));
     expect(body.object.name).toBe('sol-mars');
@@ -56,24 +56,24 @@ describe('createMiningSplashBody', () => {
   });
 
   it('adds a cloud shell to Earth only', async () => {
-    const earth = await createMiningSplashBody(entry('sol-earth'), { quality: 'low', settings });
+    const earth = await createSplashBody(entry('sol-earth'), { quality: 'low', settings });
     expect(earth.cloudMesh?.visible).toBe(true);
     expect(earth.cloudStyle).toBe('thin');
     earth.dispose();
   });
 
   it('adds volcanic cues to Io', async () => {
-    const io = await createMiningSplashBody(entry('sol-io'), { quality: 'low', settings });
+    const io = await createSplashBody(entry('sol-io'), { quality: 'low', settings });
     expect(io.object.getObjectByName('Io volcanic cues')).toBeDefined();
     io.dispose();
   });
 
   it('builds stars and giants with the provided overrides', async () => {
-    const star = await createMiningSplashBody(entry('nova-splash-star-m'), { quality: 'low', settings });
+    const star = await createSplashBody(entry('nova-splash-star-m'), { quality: 'low', settings });
     expect(star.star).toBeDefined();
     expect(star.starClass).toBe('G2V');
     star.dispose();
-    const giant = await createMiningSplashBody(entry('nova-splash-giant-01'), { quality: 'low', settings });
+    const giant = await createSplashBody(entry('nova-splash-giant-01'), { quality: 'low', settings });
     expect(giant.giant).toBeDefined();
     expect(giant.giantLook).toBe('seeded|seeded');
     giant.dispose();

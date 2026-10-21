@@ -85,12 +85,10 @@ export class SocketService {
    */
   connect(url: string, options?: any): void {
     if (this.socket?.connected) {
-      appLogger.debug('Socket connect skipped: already connected');
       return;
     }
 
     if (this.socket?.active) {
-      appLogger.debug('Socket connect skipped: connection already in progress');
       return;
     }
 
@@ -565,7 +563,6 @@ export class SocketService {
     this.socket.on('connect', () => {
       this.isConnected.set(true);
       this.connectionError.set(null);
-      appLogger.log('Socket connected:', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason: string) => {

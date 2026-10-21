@@ -460,7 +460,7 @@ export default class CharacterSetupPage implements OnDestroy {
 
   navigateToCharacterList(): void {
     const playerName = this.playerName() || this.characterForm.value.characterName || '';
-    this.router.navigate([{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }], {
+    this.router.navigate([{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }], {
       preserveFragment: true,
       state: { playerName },
     });

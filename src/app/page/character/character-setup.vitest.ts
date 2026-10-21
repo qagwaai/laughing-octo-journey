@@ -188,7 +188,7 @@ function setup(options: {
   const navigationState: SetupState = options.setupState ?? { playerName: 'Pioneer' };
 
   const mockRouter = {
-    url: '/knot(left:character-setup)',
+    url: '/splash(left:character-setup)',
     getCurrentNavigation: () => ({ extras: { state: navigationState } }),
     navigate: vi.fn(),
   };
@@ -494,7 +494,7 @@ describe('CharacterSetupPage', () => {
       expect(component['successMessage']()).toBe("Character 'Nova-Prime' updated.");
       expect(component['errorMessage']()).toBeNull();
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Pioneer' },
@@ -618,7 +618,7 @@ describe('CharacterSetupPage', () => {
       expect(component['successMessage']()).toBe("Character 'Nova-Prime' created.");
       expect(component['errorMessage']()).toBeNull();
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Pioneer' },
@@ -649,7 +649,7 @@ describe('CharacterSetupPage', () => {
       await fixture.whenStable();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Pioneer' },
@@ -833,7 +833,7 @@ describe('CharacterSetupPage', () => {
       component.navigateToCharacterList();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Pioneer' },
@@ -848,7 +848,7 @@ describe('CharacterSetupPage', () => {
       component.navigateToCharacterList();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Nova' },
@@ -1001,7 +1001,7 @@ describe('CharacterSetupPage', () => {
       await fixture.whenStable();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
-        [{ outlets: { primary: ['knot'], left: ['character-list'], right: null } }],
+        [{ outlets: { primary: ['splash'], left: ['character-list'], right: null } }],
         {
           preserveFragment: true,
           state: { playerName: 'Pioneer' },

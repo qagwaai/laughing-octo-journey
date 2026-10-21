@@ -4,7 +4,7 @@
  * Both the system view and the detail view need this, and both drive it from
  * the same cache, so it owns its own state rather than being wired up twice.
  */
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ExternalAnchorsComponent } from '../../component/external-anchors';
 import { locale } from '../../i18n/locale';
 import type { CatalogTextureVariant } from './catalog-surface-loader';
@@ -15,6 +15,7 @@ import { PlanetTextureCache } from './planet-texture-cache';
   selector: 'app-planet-surface-progress',
   imports: [ExternalAnchorsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { '[class.surface-progress-embedded]': 'embedded()' },
   template: `
     @if (baking()) {
       <div
@@ -172,10 +173,39 @@ import { PlanetTextureCache } from './planet-texture-cache';
       p {
         margin: 0.4rem 0;
       }
+
+      :host(.surface-progress-embedded) {
+        display: block;
+      }
+      :host(.surface-progress-embedded) .surface-progress,
+      :host(.surface-progress-embedded) .surface-notices {
+        position: static;
+        transform: none;
+        max-width: none;
+        max-height: none;
+        overflow: visible;
+        margin-top: 0.5rem;
+      }
+      :host(.surface-progress-embedded) .surface-notices {
+        margin-top: 0;
+      }
+      :host(.surface-progress-embedded) .surface-notice--sources {
+        padding: 0.45rem 0;
+        border: 0;
+        border-top: 1px solid rgba(162, 210, 255, 0.18);
+        border-radius: 0;
+        background: transparent;
+        font-size: inherit;
+      }
+      summary:focus-visible {
+        outline: 2px solid #eff7ff;
+        outline-offset: 2px;
+      }
     `,
   ],
 })
 export class PlanetSurfaceProgress {
+  readonly embedded = input(false);
   protected readonly t = locale;
   protected readonly planetTextures = inject(PlanetTextureCache);
 

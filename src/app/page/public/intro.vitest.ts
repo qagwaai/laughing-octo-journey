@@ -278,18 +278,18 @@ describe('IntroPage Logic', () => {
       });
     });
 
-    it('should show knot after the first render without a five-second timer', () => {
+    it('should show splash after the first render without a five-second timer', () => {
       vi.useFakeTimers();
       const { mockRouter } = setup();
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['knot'] } }], {
+      expect(mockRouter.navigate).toHaveBeenCalledWith([{ outlets: { primary: ['splash'] } }], {
         preserveFragment: true,
         replaceUrl: true,
       });
       expect(vi.getTimerCount()).toBe(0);
     });
 
-    it('should not start auto knot redirect in the left outlet', () => {
+    it('should not start auto splash redirect in the left outlet', () => {
       vi.useFakeTimers();
       const { mockRouter } = setup('left');
 

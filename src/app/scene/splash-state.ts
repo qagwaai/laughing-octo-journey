@@ -10,14 +10,33 @@ import {
   type SplashPlanetEntry,
   type SplashPlanetKind,
 } from './planet/splash-planet-rotation';
-import { selectRenderQuality as selectMiningQuality, type RenderQuality } from './render-quality';
+import { selectRenderQuality as selectSplashQuality, type RenderQuality } from './render-quality';
+import {
+  initialStationSplashPlanet,
+  isStationSplashMarket,
+  STATION_SPLASH_ASSETS,
+  STATION_SPLASH_MARKET_ID,
+  STATION_SPLASH_POSTER_URL,
+} from './station-splash-assets';
 
-export type MiningQuality = RenderQuality;
+export type SplashQuality = RenderQuality;
+export type SplashForeground = 'asteroid-mining-rig' | 'station';
 
-export { selectMiningQuality };
+export { selectSplashQuality };
 
 @Injectable({ providedIn: 'root' })
-export class MiningSplashState {
+export class SplashState {
+  private readonly initialSearch = window.location.search;
+  readonly marketId = isStationSplashMarket(this.initialSearch) ? STATION_SPLASH_MARKET_ID : null;
+  readonly foreground = signal<SplashForeground>(
+    this.marketId === STATION_SPLASH_MARKET_ID ? 'station' : 'asteroid-mining-rig',
+  );
+  readonly stationSplash = computed(() => this.foreground() === 'station');
+  readonly modelAsset = computed(() => this.assetForQuality(this.quality()));
+  readonly triangleCount = computed(() => this.modelAsset().triangleCount);
+  readonly posterUrl = computed(() =>
+    this.stationSplash() ? STATION_SPLASH_POSTER_URL : 'models/mining-splash-poster.webp?v=32a3639e',
+  );
   readonly loading = progress();
   readonly status = signal<'loading' | 'ready' | 'error' | 'static'>('loading');
   readonly loadDurationMs = signal<number | null>(null);
@@ -25,11 +44,13 @@ export class MiningSplashState {
   readonly reducedMotion = signal(false);
   readonly documentHidden = signal(false);
   readonly orbitPaused = signal(false);
-  readonly quality = signal<MiningQuality>('low');
+  readonly quality = signal<SplashQuality>('low');
   readonly supported = signal(true);
   readonly contextLost = signal(false);
   /** Chosen randomly per page load (or pinned); the overlay picker may replace it for the session. */
-  readonly planet = signal<SplashPlanetEntry>(selectSplashPlanet(window.location.search));
+  readonly planet = signal<SplashPlanetEntry>(
+    initialStationSplashPlanet(this.initialSearch) ?? selectSplashPlanet(this.initialSearch),
+  );
   readonly planetBodyId = computed(() => this.planet().id);
   readonly planetKind = computed<SplashPlanetKind>(() => this.planet().kind);
   readonly appearance = computed(() => resolveSplashAppearance(this.planet()));
@@ -64,7 +85,7 @@ export class MiningSplashState {
     const connection: unknown = Reflect.get(navigator, 'connection');
     const saveData =
       typeof connection === 'object' && connection !== null && 'saveData' in connection && connection.saveData === true;
-    this.quality.set(selectMiningQuality(window.innerWidth, navigator.hardwareConcurrency || 4, saveData));
+    this.quality.set(selectSplashQuality(window.innerWidth, navigator.hardwareConcurrency || 4, saveData));
     try {
       const canvas = document.createElement('canvas');
       const context = typeof WebGL2RenderingContext !== 'undefined' ? canvas.getContext('webgl2') : null;
@@ -72,13 +93,22 @@ export class MiningSplashState {
       context?.getExtension('WEBGL_lose_context')?.loseContext();
       if (!context) {
         this.status.set('static');
-        appLogger.warn('Mining splash: WebGL2 unavailable; showing static artwork.');
+        appLogger.warn('Splash: WebGL2 unavailable; showing static artwork.');
       }
     } catch (error) {
       this.supported.set(false);
       this.status.set('static');
-      appLogger.warn('Mining splash: WebGL2 initialization failed; showing static artwork.', error);
+      appLogger.warn('Splash: WebGL2 initialization failed; showing static artwork.', error);
     }
+  }
+
+  assetForQuality(quality: SplashQuality): { readonly url: string; readonly triangleCount: number } {
+    return this.stationSplash()
+      ? STATION_SPLASH_ASSETS[quality]
+      : {
+          url: `models/asteroid-mining-rig.${quality}.glb?v=${quality === 'standard' ? 'b4eaa6b9' : '9b277b11'}`,
+          triangleCount: quality === 'standard' ? 154_757 : 50_239,
+        };
   }
 
   retry(): void {
@@ -88,8 +118,8 @@ export class MiningSplashState {
     this.attempt.update((attempt) => attempt + 1);
   }
 
-  /** Loads the given triangle tier; the Knot load effect tracks `quality` and swaps the model. */
-  switchQuality(quality: MiningQuality): void {
+  /** Loads the given triangle tier; the SplashScene load effect tracks `quality` and swaps the model. */
+  switchQuality(quality: SplashQuality): void {
     if (!this.supported() || this.contextLost() || quality === this.quality()) return;
     this.quality.set(quality);
     if (this.status() !== 'ready') this.retry();
@@ -97,6 +127,10 @@ export class MiningSplashState {
 
   useStatic(): void {
     this.status.set('static');
+  }
+
+  chooseForeground(foreground: SplashForeground): void {
+    this.foreground.set(foreground);
   }
 
   /** Switching category draws a random body from it. */
@@ -132,7 +166,7 @@ export class MiningSplashState {
 
   /** A picked body failed to load; the scene keeps showing `displayed`. */
   rejectPlanet(displayed: SplashPlanetEntry, failed: SplashPlanetEntry, error: unknown): void {
-    appLogger.error(`Mining splash could not load ${failed.id}; keeping ${displayed.id}.`, error);
+    appLogger.error(`Splash could not load ${failed.id}; keeping ${displayed.id}.`, error);
     this.bodySwapError.set(failed.id);
     this.planet.set(displayed);
     const category = this.pickerCategory();
@@ -141,7 +175,7 @@ export class MiningSplashState {
   }
 
   fail(error: unknown): void {
-    appLogger.error('Mining splash could not be rendered.', error);
+    appLogger.error('Splash could not be rendered.', error);
     this.status.set('error');
   }
 }
