@@ -51,6 +51,10 @@ jobs:
             frontend/package-lock.json
             server/package-lock.json
 
+      - name: Use frontend pinned npm
+        working-directory: frontend
+        run: npm install --global "$(node -p "require('./package.json').packageManager")"
+
       # ── Install dependencies ─────────────────────────────────────────────────
       - name: Install frontend dependencies
         working-directory: frontend

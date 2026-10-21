@@ -38,6 +38,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Use pinned npm
+        run: npm install --global "$(node -p "require('./package.json').packageManager")"
+
       - name: Verify lockfile exists
         run: test -f package-lock.json
 
