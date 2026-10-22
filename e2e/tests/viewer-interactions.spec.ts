@@ -34,6 +34,45 @@ async function navigateToScene(page: Page) {
 test.describe('Viewer — Interaction Behaviors', () => {
   test.describe.configure({ timeout: 60_000 });
 
+  for (const [bodyType, label, surfaceArchetype] of [
+    ['dwarf-planet', 'Dwarf Planet', 'icy-moon'],
+    ['tno', 'Trans-Neptunian object', 'icy-moon'],
+    ['comet', 'Comet', 'asteroid'],
+  ] as const) {
+    test(`groups, inspects, and opens the existing close-up for a ${bodyType}`, async ({ page }) => {
+      const { mock } = await setupViewerSceneTest(page);
+      const selected: ViewerBody = {
+        id: `test-${bodyType}`,
+        bodyType,
+        surfaceArchetype,
+        state: 'unscanned',
+        displayName: `Test ${bodyType}`,
+        spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 2e8, y: 0, z: 0 }, epochMs: 0 },
+      };
+      mock.on('solar-system-get-request', () => ({
+        event: 'solar-system-get-response',
+        data: solarSystemGetResponse([selected]),
+      }));
+      await navigateToScene(page);
+      await new ViewerPage(page).expectSceneLoaded();
+      for (const groupLabel of ['Dwarf Planet', 'Trans-Neptunian object', 'Comet']) {
+        await expect(page.getByRole('button', { name: `${groupLabel} ${groupLabel === label ? 1 : 0}` })).toBeVisible();
+      }
+      await page.getByRole('button', { name: `${label} 1` }).click();
+      await page.getByTestId(`details-table-${bodyType}`).getByRole('button', { name: 'Target', exact: true }).click();
+      await expect(page.getByTestId('viewer-body-label')).toContainText(selected.displayName);
+      await page.getByTestId('viewer-inspect-target').click();
+      await expect(page.getByTestId('viewer-body-inspector')).toContainText(selected.displayName);
+      await page.getByTestId('viewer-inspector-closeup').click();
+      await expect(page).toHaveURL(new RegExp(`right:planet-view/sol/${selected.id}`));
+      await expect(page.getByTestId('planet-view-header')).toContainText(selected.displayName);
+      await expect(page.getByTestId('planet-view-error')).toHaveCount(0);
+      await page.getByTestId('planet-view-back').click();
+      await expect(page).toHaveURL(/right:viewer-scene\/sol/);
+      await new ViewerPage(page).expectSceneLoaded();
+    });
+  }
+
   for (const bodyType of ['star', 'planet', 'moon', 'asteroid', 'station']) {
     test(`left-click targets a ${bodyType} and synchronizes the body list`, async ({ page }) => {
       const { mock } = await setupViewerSceneTest(page);

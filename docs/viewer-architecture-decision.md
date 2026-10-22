@@ -38,6 +38,76 @@ coverage uses Chromium emulation. Forge Lagrange-point station seeding remains
 a separate future placement investigation with clearance/stability validation;
 no backend placement changes were made in this session.
 
+### Additional Forge body types: accepted 2026-10-22
+
+User visual validation is complete and accepted.
+
+#### Findings and implemented behavior
+
+- Group by Type uses Star -> Planet -> Dwarf Planet -> Moon -> Asteroid ->
+  Trans-Neptunian object -> Comet -> Station -> Ships ordering. The three new
+  groups remain visible with zero counts, even in an empty system.
+- Forge already supplied these bodies: the fixed group allowlist hid them while
+  Sort by Distance retained them. The live Sol snapshot contained five dwarf
+  planets and three TNOs; no comet was present.
+- All three types use the existing Target -> Inspect target -> Open close-up
+  flow and existing body renderers, without new rendering effects. Existing
+  planet, moon, and registered-station close-up behavior is preserved.
+- Group names are localized in English and Italian. Sort by Distance retains
+  its existing rows and sorting behavior; empty distance views retain their
+  empty-state message.
+- Classification comes directly from Forge's `bodyType`; Nova does not infer
+  TNO status from names, orbital distances, or a presumed extrasolar Neptune.
+- No Forge contract, payload, canonical classification, or renderer changes
+  were required.
+
+#### Validation evidence
+
+- `npm run build`: passed, including Angular template compilation and the E2E
+  partition gate.
+- `npm run typecheck`: passed for application and Vitest TypeScript.
+- `npm run test:spec -- src\app\page\game\solar-system-details.vitest.ts src\app\page\game\viewer-scene.vitest.ts`:
+  passed, 44 tests. Coverage includes group order, zero-count groups in empty
+  systems, group targeting, Italian labels, inspection, and close-up routing.
+- `npx playwright test viewer-interactions.spec.ts --grep "groups, inspects, and opens" --project=chromium --reporter=line`:
+  passed, three body-type navigation tests plus authentication setup. Each body
+  type is selected from its group, inspected, opened in the existing close-up,
+  and returned to the system viewer.
+- Focused ESLint on changed TypeScript, focused Prettier checks, and
+  `git diff --check`: passed.
+- Live Sol validation confirmed Dwarf Planet 5, Trans-Neptunian object 3, and
+  Comet 0 groups. Pluto opened in close-up with five moons and no page error.
+  The user subsequently completed visual validation.
+
+Automated browser checks use Chromium software WebGL. This acceptance does not
+establish cold-cache performance, large-population scalability, or physical
+mobile-device certification. A missing Playwright Chromium installation was
+restored before the successful browser run; no dependency-manifest changes
+were made for this feature.
+
+#### Deferred work and classification guidance
+
+- Duplicate Sun counting remains deliberately unchanged. The details list
+  concatenates `stars` and `bodies`, so the Sun can appear twice; handle canonical
+  ID deduplication and conflicting-record validation separately.
+- Physical-fact presentation remains unchanged. Some catalog radius and mass
+  values exist but are not displayed by the current field bindings; reuse the
+  existing physical-catalog resolution helpers in a separate change.
+- All seven current canonical Forge types now have list groups: `star`,
+  `planet`, `dwarf-planet`, `moon`, `asteroid`, `tno`, and `comet`. Future contract
+  additions still require explicit frontend review.
+- "Trans-Neptunian" is Neptune-relative terminology. A general extrasolar
+  outer-system population needs an agreed Forge classification, not a Nova
+  distance heuristic.
+- Keep scientific type, orbital relationships, and surface appearance separate.
+  Jupiter remains a `planet` with a `gas-giant` surface archetype, not a brown
+  dwarf. Rogue planets, interstellar objects, and nested/binary relationships
+  should not automatically become new top-level groups.
+- New stellar subtypes, ring/belt populations, and large-system rendering
+  optimizations were discussed as future considerations, not implemented or
+  accepted scope. Measure performance before introducing LOD or instancing;
+  list discoverability should remain independent of rendering detail.
+
 ## Context
 
 The game world has historically rendered only the Sol system through hand-crafted

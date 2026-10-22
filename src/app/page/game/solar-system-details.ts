@@ -25,7 +25,8 @@ interface SolarSystemDetailsNavigationState {
   solarSystem?: SolarSystemSummary;
 }
 
-const TYPE_GROUP_ORDER = ['star', 'planet', 'moon', 'asteroid', 'station', 'ship'];
+const TYPE_GROUP_ORDER = ['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'tno', 'comet', 'station', 'ship'];
+const ALWAYS_VISIBLE_TYPES = new Set(['dwarf-planet', 'tno', 'comet']);
 
 @Component({
   selector: 'app-solar-system-details-page',
@@ -93,10 +94,16 @@ export default class SolarSystemDetailsPage {
       if (!groupMap.has(type)) groupMap.set(type, []);
       groupMap.get(type)!.push(row);
     }
-    return TYPE_GROUP_ORDER.filter((type) => groupMap.has(type)).map((type) => ({
+    const labels: Record<string, string> = {
+      'dwarf-planet': this.t.game.viewer.detailsSectionDwarfPlanet,
+      tno: this.t.game.viewer.detailsSectionTno,
+      comet: this.t.game.viewer.detailsSectionComet,
+      ship: this.t.game.viewer.detailsSectionShips,
+    };
+    return TYPE_GROUP_ORDER.filter((type) => groupMap.has(type) || ALWAYS_VISIBLE_TYPES.has(type)).map((type) => ({
       type,
-      label: type === 'ship' ? this.t.game.viewer.detailsSectionShips : this.capitalize(type),
-      rows: groupMap.get(type)!,
+      label: labels[type] ?? this.capitalize(type),
+      rows: groupMap.get(type) ?? [],
     }));
   });
 

@@ -886,6 +886,9 @@ export const en = {
       detailsColumnStatus: 'Status',
       detailsActiveShipBadge: 'Active',
       detailsSectionShips: 'Ships',
+      detailsSectionDwarfPlanet: 'Dwarf Planet',
+      detailsSectionTno: 'Trans-Neptunian object',
+      detailsSectionComet: 'Comet',
     },
   },
 

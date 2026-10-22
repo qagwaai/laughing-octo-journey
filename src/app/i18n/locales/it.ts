@@ -709,6 +709,9 @@ export const it: DeepPartial<EnLocale> = {
       detailsColumnStatus: 'Stato',
       detailsActiveShipBadge: 'Attiva',
       detailsSectionShips: 'Navi',
+      detailsSectionDwarfPlanet: 'Pianeta nano',
+      detailsSectionTno: 'Oggetto transnettuniano',
+      detailsSectionComet: 'Cometa',
     },
     shipViewSpecs: {
       title: 'Specifiche nave',

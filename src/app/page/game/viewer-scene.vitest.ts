@@ -59,6 +59,35 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  it.each(['dwarf-planet', 'tno', 'comet'] as const)(
+    'inspects a %s and opens its existing body close-up',
+    async (bodyType) => {
+      vi.useFakeTimers();
+      try {
+        const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+        const body = {
+          id: `test-${bodyType}`,
+          bodyType,
+          displayName: `Test ${bodyType}`,
+          spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+        };
+        component['bodies'].set([body]);
+        component['onTargetBodyRequest'](body.id);
+        component['inspectTarget']();
+        expect(component['inspectedBody']()).toBe(body);
+        expect(component['canOpenCloseup'](body)).toBe(true);
+        component['openInspectedCloseup'](body);
+        await vi.advanceTimersByTimeAsync(150);
+        expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
+          [{ outlets: { right: ['planet-view', 'sol', body.id] } }],
+          expect.anything(),
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
   it('offers close-ups only for planets, moons, and registered stations and opens the inspected body', async () => {
     vi.useFakeTimers();
     try {

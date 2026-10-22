@@ -424,13 +424,17 @@ export default class ViewerScenePage implements OnDestroy {
   }
 
   protected canOpenCloseup(body: ViewerBody): boolean {
-    return body.bodyType === 'planet' || body.bodyType === 'moon' || hasDedicatedStationModel(body);
+    return this.canOpenBodyCloseup(body) || hasDedicatedStationModel(body);
+  }
+
+  private canOpenBodyCloseup(body: ViewerBody): boolean {
+    return ['planet', 'moon', 'dwarf-planet', 'tno', 'comet'].includes(body.bodyType);
   }
 
   protected openInspectedCloseup(body: ViewerBody): void {
     if (hasDedicatedStationModel(body)) {
       this.openStationView(body);
-    } else if (body.bodyType === 'planet' || body.bodyType === 'moon') {
+    } else if (this.canOpenBodyCloseup(body)) {
       this.onPlanetViewRequest(body);
     }
   }

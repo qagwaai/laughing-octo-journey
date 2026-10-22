@@ -17,7 +17,7 @@
     <section class="ops-card">
       <div class="details-section-header-row">
         <h2>{{ t.game.viewer.detailsSectionTitle }}</h2>
-        @if (hasRows()) {
+        @if (hasRows() || (!isLoading() && !loadError())) {
         <div class="details-view-toggle" role="group" aria-label="View mode">
           <button
             type="button"
@@ -45,7 +45,7 @@
       <p data-testid="details-loading">{{ t.game.viewer.detailsLoadingStatus }}</p>
       } @else if (loadError()) {
       <p role="alert" data-testid="details-error">{{ loadError() }}</p>
-      } @else if (!hasRows()) {
+      } @else if (!hasRows() && viewMode() === 'distance') {
       <p data-testid="details-empty">{{ t.game.viewer.detailsEmptyStatus }}</p>
       } @else if (viewMode() === 'type') {
 
