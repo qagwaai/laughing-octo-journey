@@ -1,0 +1,76 @@
+.ops-page-container {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: rgba(20, 33, 56, 0.9);
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  color: #e8f2ff;
+}
+
+.page-main {
+  min-width: 0;
+}
+
+.public-settings {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.back-button {
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  border-radius: 7px;
+  color: #b4cfff;
+  cursor: pointer;
+}
+
+.back-button:hover,
+.back-button:focus-visible {
+  background: rgba(140, 190, 255, 0.15);
+}
+
+.subtitle,
+.ops-card p {
+  color: #b4cfff;
+}
+
+.ops-card {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border-radius: 8px;
+  background: rgba(30, 49, 84, 0.55);
+  border: 1px solid rgba(140, 190, 255, 0.25);
+}
+
+.ops-card h2 {
+  margin: 0 0 1rem;
+}
+
+.setting-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.setting-option input {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  accent-color: #60a5fa;
+}
+
+.setting-option input:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+@media (max-width: 900px) {
+  .ops-page-container {
+    grid-template-columns: 1fr;
+  }
+}

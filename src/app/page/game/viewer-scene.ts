@@ -36,7 +36,6 @@ import type { StationModelStatus } from '../../scene/station/station-model';
 import { hasDedicatedStationModel } from '../../scene/station/station-model-assets';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
-import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
@@ -199,7 +198,6 @@ export default class ViewerScenePage implements OnDestroy {
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
   private socketService = inject(SocketService);
-  private renderStats = inject(RenderStatsService);
 
   private navigationState: ViewerSceneNavigationState = resolveNavigationState<ViewerSceneNavigationState>(this.router);
 

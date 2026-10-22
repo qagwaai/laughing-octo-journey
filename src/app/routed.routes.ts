@@ -188,6 +188,11 @@ const leftOutletRoutes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'settings',
+    outlet: 'left',
+    loadComponent: () => import('./page/game/settings'),
+  },
+  {
     path: 'logout',
     outlet: 'left',
     loadComponent: () => import('./page/game/logout'),

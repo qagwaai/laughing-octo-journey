@@ -18,7 +18,7 @@
     (contextmenu)="framePointerHandlers.contextmenu($event)"
     (wheel)="framePointerHandlers.wheel()"
   >
-    <ngt-canvas class="bust-viewer__canvas" shadows [camera]="cameraOptions()">
+    <ngt-canvas class="bust-viewer__canvas" [stats]="persistentStatsOptions" shadows [camera]="cameraOptions()">
       <ng-container *canvasContent>
         <ngts-orbit-controls [options]="orbitOptions()" />
 

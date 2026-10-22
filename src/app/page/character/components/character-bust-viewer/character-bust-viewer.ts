@@ -3,6 +3,8 @@ import {
   Component,
   computed,
   CUSTOM_ELEMENTS_SCHEMA,
+  ElementRef,
+  inject,
   input,
   signal,
   viewChild,
@@ -10,6 +12,7 @@ import {
 import type { Triplet } from '@pmndrs/cannon-worker-api/dist/types';
 import { NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
+import { NgtsStats } from 'angular-three-soba/stats';
 import { NgtCanvas } from 'angular-three/dom';
 import * as THREE from 'three';
 import { locale } from '../../../../i18n/locale';
@@ -353,10 +356,11 @@ export function resolveBustRenderProfile(descriptor: BustDescriptorInput): BustR
   templateUrl: './character-bust-viewer.html',
   styleUrls: ['./character-bust-viewer.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, NgtArgs, NgtsOrbitControls],
+  imports: [NgtCanvas, NgtArgs, NgtsOrbitControls, NgtsStats],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class CharacterBustViewerComponent {
+  protected readonly persistentStatsOptions = { parent: inject(ElementRef), domClass: 'stats' };
   protected readonly t = locale;
   protected readonly modelRoot = CHARACTER_BUST_MODEL_ROOT;
   protected readonly cameraPresets = BUST_CAMERA_PRESETS;

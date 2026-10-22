@@ -20,6 +20,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import Stats from 'stats-gl';
 import { AsteroidScanDetailPanel } from '../../component/asteroid-scan-detail-panel';
 import { locale } from '../../i18n/locale';
 import { GENERIC_EXPLORATION_MISSION_ID } from '../../mission/generic-exploration-ship-exterior-mission';
@@ -49,6 +50,7 @@ import { FloatingDebrisStateService } from '../../services/floating-debris-state
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { MissionProgressFacade } from '../../services/mission-progression-facade.service';
+import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
 import type { ShipExteriorMissionStateContext } from '../../services/ship-exterior-mission-state.service';
 import { ShipExteriorMissionStateService } from '../../services/ship-exterior-mission-state.service';
@@ -125,6 +127,23 @@ type ShipExteriorScanDetail =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ShipExteriorBareSceneComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly renderStats = inject(RenderStatsService);
+  private readonly statsHost = inject<ElementRef<HTMLElement>>(ElementRef);
+  private performanceStats: Stats | null = null;
+  private readonly performanceStatsEffect = effect((onCleanup) => {
+    if (!this.renderStats.enabled()) return;
+
+    const stats = new Stats({ trackGPU: false });
+    stats.dom.classList.add('stats');
+    this.statsHost.nativeElement.appendChild(stats.dom);
+    this.performanceStats = stats;
+    onCleanup(() => {
+      this.performanceStats = null;
+      stats.dom.remove();
+      stats.dispose();
+    });
+  });
+
   protected readonly showDebugButton = isDevMode();
   protected readonly t = locale.shipExterior.debugDrawer;
   protected readonly emptyStateText = locale.shipExterior.emptyState;
@@ -1321,7 +1340,11 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const loop = () => {
       this.registry.enforceActivePauseInvariants();
       const active = this.registry.getActiveContext();
+      const stats = active && !active.isPaused() ? this.performanceStats : null;
+      stats?.begin();
       active?.renderFrame();
+      stats?.end();
+      stats?.update();
       if (active) {
         this.bumpRuntimeRevisionThrottled();
       }

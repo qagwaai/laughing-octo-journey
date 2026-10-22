@@ -10,6 +10,32 @@
     [attr.aria-hidden]="leftPanelWidth() === 0 ? 'true' : null"
     #leftPanel
   >
+    @if (publicSettingsVisible()) {
+      <div class="pointer-events-none sticky top-2 z-30 flex h-0 justify-end pr-2">
+        <button
+          type="button"
+          class="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-800/80 hover:text-slate-100 focus-visible:outline-2 focus-visible:outline-blue-400"
+          [attr.aria-label]="t.game.settings.title"
+          [title]="t.game.settings.title"
+          (click)="openPublicSettings()"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <path
+              d="m9 3-.6 2.4-2 .9L4.2 5.6 2 9.4l1.8 1.7v1.8L2 14.6l2.2 3.8 2.2-.7 2 .9L9 21h6l.6-2.4 2-.9 2.2.7 2.2-3.8-1.8-1.7v-1.8L22 9.4l-2.2-3.8-2.2.7-2-.9L15 3Z"
+            />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        </button>
+      </div>
+    }
     <router-outlet name="left" />
     <app-left-pane-mission-guidance-overlay />
   </div>

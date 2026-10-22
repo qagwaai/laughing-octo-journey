@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { locale } from '../i18n/locale';
 import { PlayerCharacterSummary } from '../model/character-list';
 import { FIRST_TARGET_MISSION_ID } from '../model/mission.locale';
 import { LeftPanelNavigationContextService } from '../services/left-panel-navigation-context.service';
@@ -65,6 +66,7 @@ export class GuardedLeftMenu implements OnChanges {
     { route: 'repair-retrofit', label: 'Repair & Retrofit', icon: 'RR' },
     { route: 'market-hub', label: 'Market Hub', icon: 'MH' },
     { route: 'fabrication-lab', label: 'Fabrication Lab', icon: 'FL' },
+    { route: 'settings', label: locale.game.settings.title, icon: 'gear' },
     { route: 'logout', label: 'Logout', icon: 'LO', logout: true },
   ];
   protected readonly menuMode = this.leftPanelContext.menuMode;

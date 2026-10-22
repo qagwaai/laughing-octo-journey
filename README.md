@@ -17,6 +17,19 @@ This is a template to get started with Angular Three.
 - Run `npm start` to start the development server.
 - Run `npm run start:host` to bind the development server to all network interfaces, then open `http://<your-computer's-LAN-IP>:4200` from another device on the same network. Allow port 4200 through your firewall if needed; this does not expose the app to the public internet.
 
+### Game settings
+
+Open **Settings** (the gear icon immediately above **Logout**) in the operations
+menu. Settings opens only in the left pane, leaving the current 3D scene in place.
+Public pages also have a small gear at the upper-right of the left pane, available
+without logging in. Public Settings includes a Back button instead of the game menu.
+**Show 3d performance graphs** toggles graphs across all 3D scenes immediately.
+It defaults to off, remains in effect while navigating and logging in, and resets
+on logout or page refresh. The preference is not stored.
+
+See [Game settings implementation and validation](docs/game-settings-2026-10-22.md)
+for the final behavior, implementation details, and session validation evidence.
+
 ### Pane splitter
 
 The divider has three stacked icon buttons: **Show all left**, **Reset split to

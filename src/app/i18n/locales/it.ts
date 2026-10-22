@@ -303,6 +303,15 @@ export const it: DeepPartial<EnLocale> = {
       openLabel: 'Apri',
       dismissAriaLabel: 'Nascondi suggerimento navigazione missione',
     },
+    settings: {
+      title: 'Impostazioni',
+      subtitle: 'Impostazioni di gioco per la sessione corrente.',
+      backLabel: 'Indietro',
+      performanceTitle: 'Prestazioni',
+      showPerformanceGraphs: 'Mostra i grafici delle prestazioni 3D',
+      performanceDescription:
+        'Mostra i grafici delle prestazioni in tutte le scene 3D. La scelta resta attiva dopo l\'accesso, ma non viene salvata e si disattiva quando esci o ricarichi la pagina.',
+    },
     logout: {
       title: 'Disconnessione',
       subtitle: 'Esci dalla sessione autenticata corrente.',

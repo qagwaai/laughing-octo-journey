@@ -1,0 +1,32 @@
+<div class="ops-page-container" [class.public-settings]="publicView">
+  @if (!publicView) {
+  <app-guarded-left-menu [playerName]="playerName" [joinCharacter]="joinCharacter" />
+  }
+  <div class="page-main">
+    <div class="page-header">
+      <div>
+        <h1>{{ t.title }}</h1>
+        <p class="subtitle">{{ t.subtitle }}</p>
+      </div>
+      @if (publicView) {
+      <button type="button" class="back-button" (click)="backToPublicPage()">{{ t.backLabel }}</button>
+      } @else {
+      <app-character-ship-badge [playerName]="playerName" [joinCharacter]="joinCharacter" />
+      }
+    </div>
+    <section class="ops-card" aria-labelledby="settings-performance-title">
+      <h2 id="settings-performance-title">{{ t.performanceTitle }}</h2>
+      <label class="setting-option">
+        <input
+          #performanceGraphs
+          type="checkbox"
+          [checked]="renderStats.enabled()"
+          (change)="renderStats.setEnabled(performanceGraphs.checked)"
+          aria-describedby="settings-performance-description"
+        />
+        <span>{{ t.showPerformanceGraphs }}</span>
+      </label>
+      <p id="settings-performance-description">{{ t.performanceDescription }}</p>
+    </section>
+  </div>
+</div>

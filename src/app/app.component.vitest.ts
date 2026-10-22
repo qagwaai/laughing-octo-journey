@@ -78,19 +78,34 @@ describe('AppComponent (Vitest)', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should toggle stats visibility in onStatsChange', () => {
-    const { component } = setup();
+  it('offers the public gear only on public left-pane routes', () => {
+    const { component, fixture, routerEvents$ } = setup();
+    for (const [url, visible] of [
+      ['/splash(left:intro)', true],
+      ['/splash(left:login)', true],
+      ['/splash(left:registration)', true],
+      ['/splash(left:settings)', false],
+      ['/splash(left:game-main)', false],
+      ['/ship-exterior-view(left:game-main)', false],
+    ] as const) {
+      routerEvents$.next(new NavigationEnd(1, url, url));
+      fixture.detectChanges();
+      expect(component['publicSettingsVisible']()).toBe(visible);
+    }
+  });
+
+  it('should react to the shared performance setting without navigation', () => {
+    const { fixture, host } = setup();
     const renderStats = TestBed.inject(RenderStatsService);
-    const statsElement = (component as any).host.nativeElement.querySelector('.stats') as HTMLElement;
 
     expect(renderStats.enabled()).toBe(false);
-    expect(statsElement.style.display).toBe('none');
-    (component as any).onStatsChange(false);
-    expect(renderStats.enabled()).toBe(false);
-    expect(statsElement.style.display).toBe('none');
-    (component as any).onStatsChange(true);
-    expect(renderStats.enabled()).toBe(true);
-    expect(statsElement.style.display).toBe('block');
+    expect(host.classList.contains('show-render-stats')).toBe(false);
+    renderStats.setEnabled(true);
+    fixture.detectChanges();
+    expect(host.classList.contains('show-render-stats')).toBe(true);
+    renderStats.setEnabled(false);
+    fixture.detectChanges();
+    expect(host.classList.contains('show-render-stats')).toBe(false);
   });
 
   it('should enter and exit resizing mode', () => {

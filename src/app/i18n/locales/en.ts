@@ -358,6 +358,16 @@ export const en = {
         'Scan telemetry is active in the right panel. Use the operations menu to open profile, hangar, and market modules while keeping the scan feed live.',
     },
 
+    settings: {
+      title: 'Settings',
+      subtitle: 'Game settings for your current session.',
+      backLabel: 'Back',
+      performanceTitle: 'Performance',
+      showPerformanceGraphs: 'Show 3d performance graphs',
+      performanceDescription:
+        'Show performance graphs across all 3D scenes. Your choice stays active through login but is not saved and turns off when you log out or refresh the page.',
+    },
+
     logout: {
       title: 'Logout',
       subtitle: 'Exit your current authenticated session.',

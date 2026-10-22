@@ -35,21 +35,12 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  host: { class: 'block h-dvh w-full' },
+  host: { class: 'block h-dvh w-full', '[class.show-render-stats]': 'stats()' },
   styles: `
     :host {
       display: block;
       height: 100vh;
       width: 100vw;
-      & .stats {
-        display: none;
-        position: static !important;
-
-        & canvas {
-          margin-top: 0 !important;
-        }
-      }
-
       .split-layout {
         --splitter-width: 32px;
       }
@@ -137,6 +128,12 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   protected dividerRef = viewChild.required<ElementRef<HTMLElement>>('divider');
   protected color = signal('#ff0000');
   protected stats = this.renderStats.enabled;
+  protected readonly publicSettingsVisible = computed(() => {
+    const url = this.currentUrl();
+    const leftRoute = /(?:\(|\/\/)left:([^/)?#]+)/.exec(url)?.[1];
+    const route = leftRoute ?? /^\/([^/(?#]+)/.exec(url)?.[1];
+    return ['intro', 'splash', 'login', 'registration', 'menu', 'controls'].includes(route ?? '');
+  });
   protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats pointer-events-none' };
   protected readonly shipExteriorHudFacade = createShipExteriorViewFacade(
     () => this.shipExteriorViewHost.source() ?? undefined,
@@ -210,7 +207,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
   private activePointerId: number | null = null;
   private lookHintTimerId: number | null = null;
   private splitTransitionTimerId: number | null = null;
-  private statsSyncTimerId: number | null = null;
   private navigationSubscription: Subscription;
   private readonly onStartScanningListener = () => this.animateSplitToStartScanningLayout();
 
@@ -253,7 +249,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       .subscribe((url) => {
         const isColdBootPrimary = url.includes('opening-cold-boot') && !url.includes('right:');
         this.configureColdBootLookHint(isColdBootPrimary);
-        this.scheduleStatsVisibilitySync();
       });
   }
 
@@ -271,6 +266,14 @@ export class AppComponent implements AfterViewInit, OnDestroy {
       outlets['left'] = [leftRoute];
     }
     this.router.navigate([{ outlets }], { preserveFragment: true });
+  }
+
+  protected openPublicSettings(): void {
+    this.router.navigate([{ outlets: { left: ['settings'] } }], {
+      preserveFragment: true,
+      queryParamsHandling: 'preserve',
+      state: { settingsReturnUrl: this.router.url },
+    });
   }
 
   /**
@@ -291,7 +294,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     }
 
     window.addEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
-    this.onStatsChange(this.stats());
   }
 
   reset() {
@@ -302,29 +304,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
 
   dismissContractVarianceToast(): void {
     this.contractVarianceNotifier.dismissActiveToast();
-  }
-
-  onStatsChange(value: boolean) {
-    this.renderStats.setEnabled(value);
-    this.applyStatsVisibility(value);
-  }
-
-  private applyStatsVisibility(value: boolean): void {
-    const statsElements = this.host.nativeElement.querySelectorAll<HTMLElement>('.stats');
-    statsElements.forEach((element: HTMLElement) => {
-      element.style.display = value ? 'block' : 'none';
-    });
-  }
-
-  private scheduleStatsVisibilitySync(): void {
-    if (this.statsSyncTimerId !== null) {
-      window.clearTimeout(this.statsSyncTimerId);
-    }
-
-    this.statsSyncTimerId = window.setTimeout(() => {
-      this.applyStatsVisibility(this.stats());
-      this.statsSyncTimerId = null;
-    }, 0);
   }
 
   onAudioHooksChange(value: boolean) {
@@ -412,10 +391,6 @@ export class AppComponent implements AfterViewInit, OnDestroy {
     window.removeEventListener(START_SCANNING_UI_EVENT, this.onStartScanningListener);
     this.clearSplitTransitionTimer();
     this.clearLookHintTimer();
-    if (this.statsSyncTimerId !== null) {
-      clearTimeout(this.statsSyncTimerId);
-      this.statsSyncTimerId = null;
-    }
     this.navigationSubscription.unsubscribe();
   }
 

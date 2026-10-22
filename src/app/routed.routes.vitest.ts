@@ -10,6 +10,13 @@ class RouteStub {}
 describe('routed.routes', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('exposes Settings in the left outlet without requiring authentication', () => {
+    const settingsRoutes = routes.filter((route) => route.path === 'settings');
+    expect(settingsRoutes).toHaveLength(1);
+    expect(settingsRoutes[0].outlet).toBe('left');
+    expect(settingsRoutes[0].canActivate).toBeUndefined();
+  });
+
   it('redirects the empty path to the public intro entry point', () => {
     const rootRoute = routes.find((route) => route.path === '');
 

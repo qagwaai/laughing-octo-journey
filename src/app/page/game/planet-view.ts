@@ -17,7 +17,6 @@ import { validateCanonicalBodyCollection } from '../../model/celestial-classific
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
 import { PlanetViewScene } from '../../scene/viewer/planet-view-scene';
-import { RenderStatsService } from '../../services/render-stats.service';
 import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { resolveNavigationState } from '../navigation-state';
@@ -44,7 +43,6 @@ export default class PlanetViewPage {
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
-  private renderStats = inject(RenderStatsService);
 
   private navigationState: PlanetViewNavigationState = resolveNavigationState<PlanetViewNavigationState>(this.router);
 

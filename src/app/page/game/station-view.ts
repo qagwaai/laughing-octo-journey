@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, ElementRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgtCanvas } from 'angular-three/dom';
+import { NgtsStats } from 'angular-three-soba/stats';
 import { locale } from '../../i18n/locale';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -35,7 +36,7 @@ interface StationViewNavigationState {
       @if (sceneError()) {
         <p role="alert" data-testid="station-view-error">{{ sceneError() }}</p>
       } @else if (selectedBody(); as body) {
-        <ngt-canvas [camera]="{ position: [3.5, 2.6, 5], fov: 48 }" [lookAt]="[0, 0, 0]">
+        <ngt-canvas [stats]="persistentStatsOptions" [camera]="{ position: [3.5, 2.6, 5], fov: 48 }" [lookAt]="[0, 0, 0]">
           <app-station-view-scene
             *canvasContent
             [bodyId]="body.id"
@@ -124,10 +125,11 @@ interface StationViewNavigationState {
       color: #ffb4a8;
     }
   `,
-  imports: [NgtCanvas, StationViewScene],
+  imports: [NgtCanvas, NgtsStats, StationViewScene],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class StationViewPage {
+  protected readonly persistentStatsOptions = { parent: inject(ElementRef), domClass: 'stats' };
   protected readonly t = locale;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

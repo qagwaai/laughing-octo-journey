@@ -2,6 +2,24 @@
 
 @source '../src/**/*.{html,ts}';
 
+/* stats-gl creates these nodes outside Angular's style encapsulation. */
+app-root .stats {
+  display: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 100;
+  pointer-events: none !important;
+}
+
+app-root.show-render-stats .stats {
+  display: block !important;
+}
+
+app-root.show-render-stats:has(.split-layout .stats) > .stats {
+  display: none !important;
+}
+
 /* ── Character avatar icon (upper-right of page headers) ── */
 .page-header {
   display: flex;

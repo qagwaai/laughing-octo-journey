@@ -23,12 +23,21 @@
     (click)="navigateLeft(item.route)"
     [class.logout]="item.logout"
     [class.is-guided-target]="isGuidanceActiveForItem(item.route)"
-    [class.is-disabled]="disableNonLogout && !item.logout"
-    [disabled]="disableNonLogout && !item.logout"
+    [class.is-disabled]="disableNonLogout && !item.logout && item.route !== 'settings'"
+    [disabled]="disableNonLogout && !item.logout && item.route !== 'settings'"
     [attr.aria-label]="item.label"
     [attr.title]="isExpanded() ? null : item.label"
   >
-    <span class="menu-icon" aria-hidden="true">{{ item.icon }}</span>
+    <span class="menu-icon" aria-hidden="true">
+      @if (item.icon === 'gear') {
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path
+          d="m9 3-.6 2.4-2 .9L4.2 5.6 2 9.4l1.8 1.7v1.8L2 14.6l2.2 3.8 2.2-.7 2 .9L9 21h6l.6-2.4 2-.9 2.2.7 2.2-3.8-1.8-1.7v-1.8L22 9.4l-2.2-3.8-2.2.7-2-.9L15 3Z"
+        />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      } @else { {{ item.icon }} }
+    </span>
     <span class="menu-label">{{ item.label }}</span>
     @if (isGuidanceActiveForItem(item.route)) {
     <span class="menu-badge" aria-hidden="true">NEXT</span>
