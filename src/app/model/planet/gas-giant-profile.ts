@@ -10,6 +10,7 @@
  * is 0 at the south pole and 1 at the north pole, matching three.js sphere UVs.
  */
 import { createSeededRng, fnv1a32 } from './planet-seed';
+import { canonicalSaturnProfile, SATURN_BODY_ID, SATURN_RENDERER_VERSION } from './saturn-profile';
 
 export const GAS_GIANT_GENERATOR_VERSION = 'gas-giant-v2';
 
@@ -62,6 +63,8 @@ export interface GasGiantRingGap {
 export type GasGiantRingStyle = 'broad' | 'narrow' | 'faint';
 
 export interface GasGiantRingProfile {
+  radialSamples?: number;
+  regions?: readonly { inner: number; outer: number; opticalDepth: number }[];
   style: GasGiantRingStyle;
   /** Inner and outer edges in planet radii. */
   innerRadius: number;
@@ -75,6 +78,8 @@ export interface GasGiantRingProfile {
 }
 
 export interface GasGiantProfile {
+  canonical?: 'saturn';
+  polarRadiusRatio?: number;
   bodyId: string;
   seed: number;
   palette: GasGiantPalette;
@@ -336,8 +341,11 @@ function buildRings(palette: GasGiantPalette, spec: PaletteSpec, random: () => n
 const profileCache = new Map<string, GasGiantProfile>();
 
 export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfileOverrides = {}): GasGiantProfile {
+  const saturn = bodyId === SATURN_BODY_ID;
+  if (saturn) overrides = { palette: 'saturnian', rings: true, surfaceArchetype: 'gas-giant' };
   const surfaceArchetype = overrides.surfaceArchetype ?? 'gas-giant';
-  const cacheKey = `${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${bodyId}|${overrides.palette ?? '*'}|${overrides.rings ?? '*'}`;
+  const version = saturn ? SATURN_RENDERER_VERSION : GAS_GIANT_GENERATOR_VERSION;
+  const cacheKey = `${version}|${surfaceArchetype}|${bodyId}|${overrides.palette ?? '*'}|${overrides.rings ?? '*'}`;
   const cached = profileCache.get(cacheKey);
   if (cached) return cached;
 
@@ -371,8 +379,9 @@ export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfile
     swirls: buildSwirls(stream('swirls')),
     rings: hasRings ? buildRings(palette, spec, stream('rings'), seed) : null,
   };
-  profileCache.set(cacheKey, profile);
-  return profile;
+  const resolved = saturn ? canonicalSaturnProfile(profile) : profile;
+  profileCache.set(cacheKey, resolved);
+  return resolved;
 }
 
 /** Index of the band containing `latitude`, clamped to the poles. */

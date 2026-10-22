@@ -153,7 +153,7 @@ export default class SplashScene {
       const palette = this.gasGiantSettings.palette();
       const rings = this.gasGiantSettings.rings();
       const stormActivity = this.cloudSettings.stormActivity();
-      if (body?.giant && body.giantLook !== `${palette}|${rings}`) {
+      if (body?.giant && body.entry.id !== 'sol-saturn' && body.giantLook !== `${palette}|${rings}`) {
         const quality = untracked(() => this.state.quality());
         const archetype = resolveSplashAppearance(body.entry);
         const next = createSplashGasGiant({

@@ -27,7 +27,7 @@ describe('selectSplashPlanetBodyId', () => {
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'terran')).toHaveLength(25);
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'gas-giant')).toHaveLength(10);
     expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'star')).toHaveLength(14);
-    expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'sol')).toHaveLength(6);
+    expect(SPLASH_PLANET_ROTATION.filter((entry) => entry.kind === 'sol')).toHaveLength(7);
     expect(new Set(ids).size).toBe(ids.length);
   });
 

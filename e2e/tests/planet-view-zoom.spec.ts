@@ -9,7 +9,7 @@ async function enterPlanetViewViaInspector(page: Page, bodyId = 'earth'): Promis
   const viewerPage = new ViewerPage(page);
   await viewerPage.expectSceneLoaded();
   await viewerPage.switchToDistanceView();
-  const name = bodyId === 'jupiter' ? 'Jupiter' : 'Earth';
+  const name = bodyId === 'sol-saturn' ? 'Saturn' : bodyId === 'jupiter' ? 'Jupiter' : 'Earth';
   await page.locator('tr', { hasText: name }).locator('button.details-target-btn').click();
   await page.getByTestId('viewer-inspect-target').click();
   await page.getByTestId('viewer-inspector-closeup').click();
@@ -19,6 +19,60 @@ async function enterPlanetViewViaInspector(page: Page, bodyId = 'earth'): Promis
 }
 
 test.describe('Planet details zoom pattern', () => {
+  test('renders canonical sol-saturn in the system and focused views without shader errors', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (/THREE\.WebGLProgram|shader error|INVALID_OPERATION/i.test(message.text())) errors.push(message.text());
+    });
+    await setupPlanetViewZoomViewer(page, [
+      {
+        id: 'sol-saturn',
+        bodyType: 'planet',
+        surfaceArchetype: 'gas-giant',
+        displayName: 'Saturn',
+        state: 'unscanned',
+        spatial: {
+          solarSystemId: 'sol',
+          frame: 'barycentric',
+          positionKm: { x: 1_426_984_169, y: 0, z: 0 },
+          epochMs: 1715000000000,
+        },
+        physicalCatalog: { radiusKm: 60_268 },
+      },
+    ]);
+    const readSaturn = () =>
+      page.evaluate(() => {
+        const ng = (window as Window & { ng?: { getComponent(node: Element): unknown } }).ng;
+        for (const canvas of document.querySelectorAll('ngt-canvas')) {
+          const component = ng?.getComponent(canvas) as
+            { store?: { snapshot?: { scene?: import('three').Scene } } } | undefined;
+          let state: { palette: string; rings: boolean; polarRatio: number; tilt: number } | null = null;
+          component?.store?.snapshot?.scene?.traverse((object) => {
+            const data = object.userData['gasGiant'] as { bodyId: string; palette: string; rings: boolean } | undefined;
+            if (data?.bodyId === 'sol-saturn') {
+              const planet = object.getObjectByName('gas-giant-planet')!;
+              state = {
+                palette: data.palette,
+                rings: data.rings,
+                polarRatio: planet.scale.y,
+                tilt: planet.parent!.rotation.x,
+              };
+            }
+          });
+          if (state) return state;
+        }
+        return null;
+      });
+    await new ViewerPage(page).expectSceneLoaded();
+    await expect.poll(readSaturn).toMatchObject({ palette: 'saturnian', rings: true });
+    expect((await readSaturn())?.polarRatio).toBeCloseTo(54_364 / 60_268, 6);
+    await enterPlanetViewViaInspector(page, 'sol-saturn');
+    await expect(new PlanetViewPage(page).header).toContainText('Saturn');
+    await expect.poll(readSaturn).toMatchObject({ palette: 'saturnian', rings: true });
+    expect((await readSaturn())?.tilt).toBeCloseTo((26.73 * Math.PI) / 180, 6);
+    expect(errors).toEqual([]);
+  });
   for (const mode of ['viewer', 'planet-view'] as const) {
     test(`supports standard vertical slider interaction in ${mode}`, async ({ page }) => {
       const deprecations: string[] = [];

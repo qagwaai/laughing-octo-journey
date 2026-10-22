@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { locale } from '../i18n/locale';
+import { ExternalAnchorsComponent } from '../component/external-anchors';
+import { SATURN_REFERENCE_LINKS } from '../model/planet/saturn-profile';
 import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
 import { resolveSpectralClass } from '../model/star/star-profile';
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
@@ -20,6 +22,7 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
 
 @Component({
   selector: 'app-splash-overlay',
+  imports: [ExternalAnchorsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section
@@ -205,6 +208,9 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
           }
           @if (solCredit(); as credit) {
             <p class="credit" data-testid="splash-body-credit">{{ t.public.splash.bodyCreditLabel }}: {{ credit }}</p>
+          }
+          @if (state.planetBodyId() === 'sol-saturn') {
+            <app-external-anchors [anchors]="saturnSources" layout="stack" />
           }
         </div>
         <div class="caption">
@@ -430,6 +436,9 @@ export class SplashOverlay {
     return this.state.quality() === 'standard' ? this.t.public.splash.standardTier : this.t.public.splash.lowTier;
   });
   protected readonly categories = SPLASH_PICKER_CATEGORIES;
+  protected readonly saturnSources = SATURN_REFERENCE_LINKS.map((link) => ({
+    ...link, ariaLabel: link.text, showOrb: false,
+  }));
   protected readonly categoryEntries = computed(() => splashEntriesForCategory(this.state.pickerCategory()));
   protected readonly hasSolClouds = computed(() => {
     const entry = this.state.planet();
@@ -440,6 +449,7 @@ export class SplashOverlay {
     if (entry.kind !== 'sol' || !entry.solKey) return null;
     if (entry.solKey === 'venus') return this.t.game.viewer.venusAtmosphereCredit;
     if (entry.solKey === 'titan') return this.t.game.viewer.titanAtmosphereCredit;
+    if (entry.solKey === 'saturn') return this.t.game.viewer.saturnAppearanceCredit;
     return resolveCatalogPlanetSurfaceAsset({ namespace: 'sol', key: entry.solKey })?.credit ?? null;
   });
 

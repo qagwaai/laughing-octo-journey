@@ -366,7 +366,11 @@ Two wiring notes worth keeping:
 
 ### Gas giants (implemented)
 
-Gas giants are a separate render path, not another terran archetype. There is no planet class in `openapi.yaml`, so classification is client-side: `isGasGiantBody` treats a catalogue radius of at least 15,000 km as a giant. `?gasGiants=all|none` overrides this so any fixture can be previewed either way.
+Gas giants are a separate render path, not another terran archetype.
+`isGasGiantBody` requires `bodyType: planet` and the canonical
+`surfaceArchetype: gas-giant|ice-giant`; catalog radius does not select the
+renderer. The legacy `?gasGiants=all|none` parameter is still parsed but no
+longer overrides this classification.
 
 Module layout (`src/app/scene/gas-giant/`), each piece unit-tested on its own:
 
@@ -397,6 +401,117 @@ Splash: 10 seeded giants join the splash rotation and have their own overlay con
 System view: sphere planets that classify as giants render through the same `<app-gas-giant>`. They use a 512×256 band bake and are built at unit radius inside a group scaled to the body's scene radius, so zooming never re-bakes. The brightest star lights them, their moons are passed as shadow casters, and they skip the L0 terrain bake.
 
 Follow-ups: moons' own orbital motion does not yet move their shadows.
+
+#### Canonical Saturn (2026-10-22)
+
+**Session closeout:** The user accepted the current Saturn appearance on
+2026-10-22 ("absolutely stunning") and requested documentation preparation for
+closing the session. No further visual changes were requested. This records
+acceptance of the delivered appearance, not exhaustive device certification,
+ephemeris accuracy, or release of the separate Earth/Luna/Mars catalog pilot's
+final Stellar Viewer acceptance hold. No additional Saturn appearance work is
+scheduled at closeout; representative hardware/network profiling remains open.
+The assistant has not committed or pushed these changes; the user will do so.
+The user-owned hot-reload server at `http://localhost:4200` was reused and left
+running. Task-generated browser scratch files were removed.
+
+The exact body ID `sol-saturn` now selects `sol-saturn-v1` through the shared
+gas-giant factory in the Stellar Viewer system scene, focused detail view, and
+splash. Names, ID substrings, and catalog radius do not select this appearance.
+Canonical body classification still requires the server's valid
+`planet`/`gas-giant` pair; this feature does not conceal invalid contract data.
+Other giants retain their existing seeded profiles and controls. Saturn ignores
+generic palette, rings, and storm overrides.
+
+The [Saturn profile](../src/app/model/planet/saturn-profile.ts) uses these
+verified references:
+
+- [NASA Saturn facts](https://science.nasa.gov/saturn/facts/): subdued yellow,
+  brown, and gray bands, 26.73-degree tilt, and north-polar hexagon.
+- [NASA Saturn fact sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/saturnfact.html):
+  equatorial/polar radii of 60,268/54,364 km.
+- [NASA PDS ring table](https://pds-rings.seti.org/saturn/saturn_rings_table.html):
+  D/C/B/A/F ring boundaries, Cassini Division, Colombo/Maxwell/Encke/Keeler gaps,
+  and representative optical-depth ranges. Boundaries are distances from the
+  planet center, not altitudes above the cloud deck. At the B-ring boundary,
+  the table gives overlapping rounded values; this model consistently uses
+  117,500 km for both the outer B ring and inner Cassini Division.
+
+The implementation is reference-informed procedural artwork, **not observed
+imagery**, a dated Cassini reconstruction, or a scientific radiative-transfer
+model. No external imagery, third-party assets, dependencies, or remote runtime
+requests were added. Source links and localized explanation are available in
+Viewer sources and the splash. Fine ringlets, colors, optical-depth modulation,
+and the north-polar jet/eye are authored approximations. The hexagon has a
+six-sided boundary near 78 N; southern atmosphere does not acquire a matching
+hexagon. North is the positive local spin axis. Pole orientation follows the
+existing renderer frame, not IAU pole coordinates or season-specific ephemerides.
+E/G/Phoebe rings, transient spokes, ring thickness, and individual ring particles
+are out of scope.
+
+Saturn's cloud deck is oblate; the analytic planet shadow uses the matching
+ellipsoid. Ring opacity depends on view angle; ring-shadow transmission depends
+on light incidence. Generic giants retain their previous opacity/shadow behavior.
+The shared focused-view camera already includes ring extent. The splash uses a
+smaller Saturn globe so the outer F ring has the usual backdrop's radius,
+without changing other bodies, the camera, exposure, or the mining rig.
+Saturn is selectable under Sol, URL-pinnable with
+`/splash(left:intro)?splashPlanet=sol-saturn`, and part of random startup rotation.
+
+Resource envelope (not representative-hardware performance certification):
+
+| Context         | Cloud texture | Sphere segments | Sphere + rings triangles |
+| --------------- | ------------- | --------------- | ------------------------ |
+| Viewer overview | 512 x 256     | 96 x 64         | 12,480                   |
+| Viewer detail   | 2048 x 1024   | 96 x 64         | 12,480                   |
+| Splash standard | 1024 x 512    | 96 x 64         | 12,480                   |
+| Splash low      | 512 x 256     | 64 x 40         | 5,376                    |
+
+Saturn adds two meshes/materials (planet and double-sided transparent ring
+annulus; the latter may use two GPU draws). Each owns a cloud map, a 256 x 1
+flow lookup, and an 8192-sample radial ring lookup packed into 1024 x 8 texels.
+Packing avoids requiring an 8192-pixel maximum texture dimension; manual radial
+interpolation also avoids bleeding across packed rows. The lookup resolves the
+35 km Keeler gap without widening it artificially, though it may be subpixel on
+screen. Estimated RGBA8 cloud allocation including mipmaps is 0.67/2.67/10.67
+MiB at 512/1024/2048 width; ring/flow maps add about 33 KiB without mipmaps.
+No source images or generated texture files are deployed. Textures/geometries
+are disposed on replacement, and existing reduced-motion/hidden-tab behavior
+is retained. Cold-cache transfer and frame timing depend on the shared splash
+model, viewport/DPR and hardware; representative hardware/network profiling
+remains pending. The user's appearance acceptance is recorded above.
+
+Validation: focused Vitest coverage checks exact identity and override immunity,
+dimensions, measured ring boundaries/density/gaps, sixfold polar symmetry,
+disposal, splash registration and both splash tiers. Deterministic Playwright
+coverage inspects the live Saturn in Viewer overview/detail, splash quality and
+body swaps, and checks shader errors alongside existing generic-giant flows.
+Angular compilation and app/spec typechecking are required after changes.
+
+Implementation checks passed: 148 tests in 11 focused Vitest suites (bounded to
+two workers), six Playwright checks including authentication setup, production
+Angular build, app/spec typecheck, targeted ESLint and whitespace validation.
+An initial unbounded Vitest run exhausted worker memory; the bounded rerun
+passed. Interactive inspection of the running splash found no console errors
+or third-party resource requests. In the local Windows Chromium session at
+2298 x 1522 CSS pixels and DPR 1.25, a 90-frame, unthrottled sample reported
+16.7 ms median and 16.9 ms p95 frame intervals. The complete splash reported
+five render calls and 174,037 triangles, including the mining rig and debris;
+these are whole-scene counts, not Saturn-only costs or a cross-device guarantee.
+
+Reproducible validation commands and final results:
+
+- `npm run test:spec -- saturn.vitest.ts gas-giant-profile.vitest.ts gas-giant-classifier.vitest.ts gas-giant.vitest.ts gas-giant-bands.vitest.ts splash-planet-rotation.vitest.ts splash-body.vitest.ts splash-state.vitest.ts splash.vitest.ts planet-view-scene.zoom.vitest.ts viewer-system-scene.vitest.ts --maxWorkers=2`:
+  passed, 148 tests across 11 files.
+- `npx playwright test planet-view-zoom.spec.ts splash.spec.ts --grep "canonical sol-saturn|pinned gas giant|catalogue gas giant|catalogue gas giants" --project=chromium --reporter=line`:
+  passed, six checks including authentication setup. The Saturn splash check
+  covers quality switching and three Mars/Saturn replacement cycles; Viewer
+  checks inspect the live scene in overview and focused detail.
+- `npm run build`: passed, including Angular template compilation.
+- `npm run typecheck`: passed for app and spec types.
+- Targeted ESLint on changed TypeScript, targeted Prettier checks, and
+  `git diff --check`: passed. The full repository test suite and full lint suite
+  were not run; no such coverage is claimed.
 
 ### Stars (implemented)
 

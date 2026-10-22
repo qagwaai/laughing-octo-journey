@@ -63,6 +63,11 @@ export function createGasGiant(profile: GasGiantProfile, options: CreateGasGiant
   const flowTexture = createGasGiantFlowTexture(profile);
   const ringTexture = profile.rings ? createGasGiantRingTexture(profile.rings) : null;
   const shadows = createGasGiantShadowUniforms(ringTexture);
+  if (ringTexture) {
+    shadows.ggRingMapSize.value.set(ringTexture.image.width, ringTexture.image.height);
+    shadows.ggRingMapSamples.value = profile.rings?.radialSamples ?? ringTexture.image.width;
+  }
+  shadows.ggRingOpticalDepth.value = profile.canonical === 'saturn' ? 1 : 0;
   shadows.ggLightDirection.value.set(3, 4, 4).normalize();
   const atmosphere = createGasGiantMaterial({ profile, bandTexture, flowTexture, shadows });
 
@@ -78,6 +83,7 @@ export function createGasGiant(profile: GasGiantProfile, options: CreateGasGiant
     atmosphere.material,
   );
   planet.name = 'gas-giant-planet';
+  planet.scale.y = profile.polarRadiusRatio ?? 1;
   tilt.add(planet);
 
   let rings: Mesh | null = null;
@@ -98,6 +104,7 @@ export function createGasGiant(profile: GasGiantProfile, options: CreateGasGiant
     planet.getWorldScale(worldScale);
     const scale = worldScale.x;
     shadows.ggPlanetRadius.value = radius * scale;
+    shadows.ggPlanetPolarRatio.value = profile.polarRadiusRatio ?? 1;
     shadows.ggRingNormal.value.set(0, 1, 0).transformDirection(planet.matrixWorld);
     if (profile.rings) {
       shadows.ggRingInner.value = profile.rings.innerRadius * radius * scale;
@@ -129,6 +136,7 @@ export function createGasGiant(profile: GasGiantProfile, options: CreateGasGiant
       ovalDrift.forEach((drift, index) => wrap(uniforms.ovalShapes.value[index], drift, step));
     },
     setStormActivity(percent: number): void {
+      if (profile.canonical === 'saturn') return;
       uniforms.vortexScale.value = gasGiantVortexScale(percent);
       uniforms.swirlActivity.value = stormRadiusScale(percent);
     },

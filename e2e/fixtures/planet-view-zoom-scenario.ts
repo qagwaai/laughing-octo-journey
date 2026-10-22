@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import type { ViewerBody } from '../../src/app/model/solar-system-get';
 import { TEST_PLAYER } from '../helpers/auth-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
@@ -224,7 +225,10 @@ const SOL_SYSTEM_BODIES = [
   },
 ];
 
-export async function setupPlanetViewZoomViewer(page: Page): Promise<void> {
+export async function setupPlanetViewZoomViewer(
+  page: Page,
+  additionalBodies: readonly ViewerBody[] = [],
+): Promise<void> {
   const mock = new SocketIOMock(page);
   const gameShell = new GameShellPage(page);
   const viewerPage = new ViewerPage(page);
@@ -270,7 +274,7 @@ export async function setupPlanetViewZoomViewer(page: Page): Promise<void> {
       playerName: TEST_PLAYER,
       solarSystemId: 'sol',
       solarSystem: SOL_SUMMARY,
-      bodies: SOL_SYSTEM_BODIES,
+      bodies: [...SOL_SYSTEM_BODIES, ...additionalBodies],
     },
   }));
 

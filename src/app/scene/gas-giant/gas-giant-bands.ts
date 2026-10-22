@@ -33,6 +33,7 @@ export interface GasGiantBandSize {
 }
 
 const BAND_EDGE_SOFTNESS = 0.14;
+const SATURN_POLAR_TINT: GasGiantRgb = [0.24, 0.32, 0.29];
 
 function mixInto(target: number[], from: GasGiantRgb, to: GasGiantRgb, t: number): void {
   target[0] = from[0] + (to[0] - from[0]) * t;
@@ -61,6 +62,18 @@ function edgeProximity(bands: readonly GasGiantBand[], latitude: number): number
   const half = (band.end - band.start) / 2;
   const fromEdge = Math.min(latitude - band.start, band.end - latitude);
   return 1 - Math.max(0, Math.min(1, fromEdge / Math.max(half, 1e-6)));
+}
+
+/** Authored north-polar jet near 78 N, with a six-sided boundary and a dark polar eye. */
+export function saturnPolarWeight(latitude: number, longitude: number): number {
+  if (latitude < 1.2) return 0;
+  const sector = (((longitude % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3)) - Math.PI / 6;
+  const radius = Math.cos(latitude);
+  const boundary = (Math.cos((78 * Math.PI) / 180) * Math.cos(Math.PI / 6)) / Math.cos(sector);
+  const jet = Math.exp(-Math.pow((radius - boundary) / 0.009, 2));
+  const interior = 1 - smoothstep(boundary - 0.018, boundary + 0.008, radius);
+  const eye = 1 - smoothstep(0.012, 0.043, radius);
+  return Math.min(1, jet * 0.42 + interior * 0.18 + eye * 0.55);
 }
 
 export function rasterizeGasGiantBands(profile: GasGiantProfile, { width, height }: GasGiantBandSize): Uint8Array {
@@ -97,12 +110,20 @@ export function rasterizeGasGiantBands(profile: GasGiantProfile, { width, height
       sampleBandColor(bands, Math.max(-Math.PI / 2, Math.min(Math.PI / 2, warped)), color);
       const streak = fbm3(dx * 1.6, dy * 70, dz * 1.6, streakSeed, 3) - 0.5;
       const filament = fbm3(dx * 5, dy * 40, dz * 5, streakSeed ^ 0x9e3779b9, 2) - 0.5;
-      const shade = 1 + streak * 0.32 + eddy * 0.18 * turbulence + filament * 0.3 * beltWeight * turbulence;
+      const shade =
+        1 +
+        streak * (profile.canonical === 'saturn' ? 0.12 : 0.32) +
+        eddy * 0.18 * turbulence +
+        filament * 0.3 * beltWeight * turbulence;
+      const polarJet =
+        profile.canonical === 'saturn' ? saturnPolarWeight(latitude, ((x + 0.5) / width - 0.5) * Math.PI * 2) : 0;
       const index = (y * width + x) * 4;
       for (let channel = 0; channel < 3; channel++) {
         const value = color[channel] * shade;
         const hazed = value + (polarColor[channel] - value) * polar;
-        pixels[index + channel] = Math.max(0, Math.min(255, Math.round(hazed * 255)));
+        const polarTint = SATURN_POLAR_TINT[channel];
+        const resolved = hazed + (polarTint - hazed) * polarJet;
+        pixels[index + channel] = Math.max(0, Math.min(255, Math.round(resolved * 255)));
       }
       pixels[index + 3] = 255;
     }

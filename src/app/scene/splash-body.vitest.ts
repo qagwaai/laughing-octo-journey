@@ -26,6 +26,21 @@ const settings: SplashBodySettings = {
 const entry = (id: string) => SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === id)!;
 
 describe('createSplashBody', () => {
+  it('routes Sol Saturn through its canonical giant instead of the rocky catalog', async () => {
+    const calls = loadCatalogSurface.mock.calls.length;
+    const body = await createSplashBody(entry('sol-saturn'), {
+      quality: 'low', settings: { ...settings, giantPalette: 'jovian', giantRings: 'off' },
+    });
+    expect(body.giant?.group.userData['gasGiant']).toEqual({
+      bodyId: 'sol-saturn', palette: 'saturnian', rings: true,
+    });
+    expect(loadCatalogSurface.mock.calls).toHaveLength(calls);
+    expect(body.cloudMesh).toBeUndefined();
+    const slot = new Group();
+    slot.add(body.object);
+    body.dispose();
+    expect(slot.children).toHaveLength(0);
+  });
   it.each(['icy-moon', 'rocky-moon'] as const)(
     'builds %s without clouds and releases its mesh and baked maps',
     async (kind) => {

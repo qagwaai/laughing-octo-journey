@@ -480,10 +480,7 @@ test('loads the market-specific station pair and its isolated static fallback', 
   await page.getByRole('button', { name: 'Use still image' }).click();
   await expect(overlay).toHaveAttribute('data-state', 'static');
   await expect(overlay).toHaveCSS('background-color', 'rgb(4, 9, 20)');
-  await expect(page.locator('app-splash-overlay img')).toHaveAttribute(
-    'src',
-    /sol-mars-orbit-station-poster\.webp/,
-  );
+  await expect(page.locator('app-splash-overlay img')).toHaveAttribute('src', /sol-mars-orbit-station-poster\.webp/);
 });
 
 for (const path of ['/knot', '/knot(left:intro)']) {
@@ -519,6 +516,36 @@ async function readSplashGasGiant(page: import('@playwright/test').Page): Promis
     return found;
   });
 }
+
+test('renders canonical sol-saturn, selects it in Sol, and survives quality and body swaps', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (/THREE\.WebGLProgram|shader error|INVALID_OPERATION/i.test(message.text())) errors.push(message.text());
+  });
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash(left:intro)', 'sol-saturn'));
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'sol');
+  const canonical = { bodyId: 'sol-saturn', palette: 'saturnian', rings: true };
+  await expect.poll(() => readSplashGasGiant(page)).toEqual(canonical);
+  await expect(page.getByRole('combobox', { name: 'Giant palette' })).toHaveCount(0);
+  await expect(page.getByTestId('splash-body-credit')).toContainText('NASA');
+  await page.getByRole('button', { name: /Load (Low|Standard)/ }).click();
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect.poll(() => readSplashGasGiant(page)).toEqual(canonical);
+  await page.getByRole('combobox', { name: 'Body type' }).selectOption('sol');
+  for (let swap = 0; swap < 3; swap++) {
+    await page.locator('#splash-body').selectOption('sol-mars');
+    await expect(overlay).toHaveAttribute('data-planet', 'sol-mars');
+    await expect.poll(() => readSplashGasGiant(page)).toBeNull();
+    await page.locator('#splash-body').selectOption('sol-saturn');
+    await expect.poll(() => readSplashGasGiant(page)).toEqual(canonical);
+  }
+  expect(errors).toEqual([]);
+});
 
 test('renders a pinned gas giant with its own controls and no shader errors', async ({ page }) => {
   const consoleErrors: string[] = [];

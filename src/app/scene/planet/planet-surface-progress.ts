@@ -7,6 +7,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { ExternalAnchorsComponent } from '../../component/external-anchors';
 import { locale } from '../../i18n/locale';
+import { SATURN_REFERENCE_LINKS } from '../../model/planet/saturn-profile';
 import type { CatalogTextureVariant } from './catalog-surface-loader';
 import type { CatalogPlanetSurfaceAsset } from './planet-surface-catalog';
 import { PlanetTextureCache } from './planet-texture-cache';
@@ -212,6 +213,13 @@ export class PlanetSurfaceProgress {
   protected readonly baking = this.planetTextures.isBaking;
   protected readonly percent = computed(() => Math.round(this.planetTextures.progress() * 100));
   protected readonly atmosphereSources = computed(() => [
+    {
+      bodyId: 'sol-saturn',
+      bodyName: this.t.public.splash.solBodies.saturn,
+      credit: this.t.game.viewer.saturnAppearanceCredit,
+      notes: this.t.game.viewer.saturnAppearanceNotes,
+      links: SATURN_REFERENCE_LINKS.map((link) => ({ ...link, ariaLabel: link.text, showOrb: false })),
+    },
     {
       bodyId: 'venus',
       bodyName: 'Venus',

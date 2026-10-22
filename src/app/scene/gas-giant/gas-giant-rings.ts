@@ -13,7 +13,11 @@ import {
 } from 'three';
 import type { GasGiantRingProfile } from '../../model/planet/gas-giant-profile';
 import { createSeededRng } from '../../model/planet/planet-seed';
-import { GAS_GIANT_PLANET_SHADOW_GLSL, type GasGiantShadowUniforms } from './gas-giant-shadow-glsl';
+import {
+  GAS_GIANT_PLANET_SHADOW_GLSL,
+  GAS_GIANT_RING_SAMPLE_GLSL,
+  type GasGiantShadowUniforms,
+} from './gas-giant-shadow-glsl';
 
 export const GAS_GIANT_RING_SAMPLES = 512;
 
@@ -38,7 +42,10 @@ function valueNoise1d(random: () => number, cells: number): (t: number) => numbe
  * Radial ring density in [0, 1] for each sample from inner (0) to outer (1)
  * edge: layered ringlets, seeded gaps, and soft edges.
  */
-export function computeRingDensity(ring: GasGiantRingProfile, samples = GAS_GIANT_RING_SAMPLES): Float32Array {
+export function computeRingDensity(
+  ring: GasGiantRingProfile,
+  samples = ring.radialSamples ?? GAS_GIANT_RING_SAMPLES,
+): Float32Array {
   const random = createSeededRng(ring.seed);
   const broad = valueNoise1d(random, 6);
   const ringlets = valueNoise1d(random, 48);
@@ -50,7 +57,11 @@ export function computeRingDensity(ring: GasGiantRingProfile, samples = GAS_GIAN
       ring.style === 'narrow'
         ? 0.35 + 0.65 * Math.pow(ringlets(t), 2.2)
         : 0.25 + 0.45 * broad(t) + 0.2 * ringlets(t) + 0.1 * fine(t);
-    if (ring.style === 'broad') value *= 0.55 + 0.45 * smoothstep(0, 0.35, t);
+    if (ring.regions) {
+      const region = ring.regions.find((region) => t >= region.inner && t <= region.outer);
+      const opticalDepth = region?.opticalDepth ?? 0;
+      value = 1 - Math.exp(-opticalDepth * (0.75 + 0.5 * value));
+    } else if (ring.style === 'broad') value *= 0.55 + 0.45 * smoothstep(0, 0.35, t);
     for (const gap of ring.gaps) {
       const half = gap.width / 2;
       value *= smoothstep(half * 0.6, half * 1.2, Math.abs(t - gap.center));
@@ -61,10 +72,12 @@ export function computeRingDensity(ring: GasGiantRingProfile, samples = GAS_GIAN
   return density;
 }
 
-/** 512x1 radial texture; alpha carries the ring's optical depth, rgb its tint. */
+/** Alpha stores normal-incidence opacity. Long radial profiles are packed into short rows. */
 export function createGasGiantRingTexture(ring: GasGiantRingProfile): DataTexture {
   const density = computeRingDensity(ring);
-  const data = new Uint8Array(density.length * 4);
+  const width = Math.min(1024, density.length);
+  const height = Math.ceil(density.length / width);
+  const data = new Uint8Array(width * height * 4);
   for (let index = 0; index < density.length; index++) {
     const shade = 0.75 + 0.35 * density[index];
     const offset = index * 4;
@@ -73,7 +86,7 @@ export function createGasGiantRingTexture(ring: GasGiantRingProfile): DataTextur
     data[offset + 2] = Math.round(Math.min(1, ring.color[2] * shade) * 255);
     data[offset + 3] = Math.round(density[index] * ring.opacity * 255);
   }
-  const texture = new DataTexture(data, density.length, 1, RGBAFormat, UnsignedByteType);
+  const texture = new DataTexture(data, width, height, RGBAFormat, UnsignedByteType);
   texture.colorSpace = SRGBColorSpace;
   texture.wrapS = ClampToEdgeWrapping;
   texture.wrapT = ClampToEdgeWrapping;
@@ -126,10 +139,12 @@ const RING_FRAGMENT_GLSL = `
 uniform vec3 ggLightDirection;
 uniform vec3 ggPlanetCenter;
 uniform float ggPlanetRadius;
+uniform float ggPlanetPolarRatio;
+uniform float ggRingOpticalDepth;
 uniform vec3 ggRingNormal;
 uniform float ggRingInner;
 uniform float ggRingOuter;
-uniform sampler2D ggRingMap;
+${GAS_GIANT_RING_SAMPLE_GLSL}
 uniform vec3 ringLightColor;
 uniform float ringHighlight;
 varying vec3 vRingWorldPosition;
@@ -139,7 +154,7 @@ void main() {
   float r = length(vRingWorldPosition - ggPlanetCenter);
   float t = (r - ggRingInner) / max(ggRingOuter - ggRingInner, 1e-5);
   if (t < 0.0 || t > 1.0) discard;
-  vec4 ring = texture2D(ggRingMap, vec2(t, 0.5));
+  vec4 ring = ggSampleRing(t);
   if (ring.a < 0.004) discard;
   vec3 toCamera = normalize(cameraPosition - vRingWorldPosition);
   float lightSide = dot(ggRingNormal, ggLightDirection);
@@ -149,7 +164,9 @@ void main() {
   float incidence = 0.35 + 0.65 * abs(lightSide);
   float lit = ggPlanetShadow(vRingWorldPosition) * transmitted * incidence;
   vec3 color = ring.rgb * ringLightColor * (0.08 + lit) + ringHighlight * vec3(0.08, 0.1, 0.12);
-  gl_FragColor = vec4(color, ring.a);
+  float pathLength = 1.0 / max(abs(viewSide), 0.08);
+  float alpha = 1.0 - pow(1.0 - ring.a, pathLength);
+  gl_FragColor = vec4(color, ggRingOpticalDepth > 0.5 ? alpha : ring.a);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }

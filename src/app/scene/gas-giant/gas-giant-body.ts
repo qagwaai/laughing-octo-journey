@@ -1,11 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  CUSTOM_ELEMENTS_SCHEMA,
-  effect,
-  input,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, CUSTOM_ELEMENTS_SCHEMA, effect, input, signal } from '@angular/core';
 import { beforeRender, NgtArgs } from 'angular-three';
 import { Color, Vector3 } from 'three';
 import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
@@ -41,7 +34,7 @@ const RING_LIGHT_GAIN = 1.8;
 export class GasGiantBody {
   readonly profile = input.required<GasGiantProfile>();
   readonly radius = input(1);
-  readonly textureSize = input<GasGiantBandSize>({ width: 1024, height: 512 });
+  readonly textureSize = input<GasGiantBandSize>();
   /** Light source position in the parent frame; the giant is lit from there. */
   readonly lightPosition = input<readonly [number, number, number] | null>(null);
   readonly lightColor = input<string | null>(null);
@@ -56,9 +49,12 @@ export class GasGiantBody {
 
   constructor() {
     effect((onCleanup) => {
-      const giant = createGasGiant(this.profile(), {
+      const profile = this.profile();
+      const giant = createGasGiant(profile, {
         radius: this.radius(),
-        textureSize: this.textureSize(),
+        textureSize:
+          this.textureSize() ??
+          (profile.canonical === 'saturn' ? { width: 2048, height: 1024 } : { width: 1024, height: 512 }),
       });
       this.handle.set(giant);
       onCleanup(() => giant.dispose());

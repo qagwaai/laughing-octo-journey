@@ -96,6 +96,7 @@ export const it: DeepPartial<EnLocale> = {
         io: 'Io',
         venus: 'Venere',
         titan: 'Titano',
+        saturn: 'Saturno',
       },
       loading: "Preparazione dell'avamposto minerario...",
       progressHint: 'Il progresso include modelli e texture. Il primo fotogramma potrebbe richiedere un momento.',
@@ -634,6 +635,8 @@ export const it: DeepPartial<EnLocale> = {
         'Mosaico USGS a colori unito Galileo/Voyager: rapporti cromatici Galileo sovrapposti a immagini monocromatiche a risoluzione superiore. Illuminazione di epoche diverse, copertura irregolare e lacune polari interpolate; non e un’osservazione a colori naturali uniforme. I punti caldi statici e i brevi pennacchi, creati dal progetto, sono illustrativi e non indicano attivita attuale. Non e fornita alcuna mappa normale o del rilievo.',
       atmosphereSourcesTitle: 'Fonti dell’aspetto atmosferico',
       venusAtmosphereCredit: 'Texture Solar System Scope, CC BY 4.0.',
+      saturnAppearanceCredit: 'Aspetto di Saturno creato dal progetto sulla base dei dati di riferimento NASA e NASA PDS.',
+      saturnAppearanceNotes: 'Atmosfera ed esagono polare nord illustrativi; confini degli anelli misurati con profondità ottiche rappresentative. Non rappresenta una specifica osservazione o un orientamento del polo calcolato dalle effemeridi.',
       venusAtmosphereNotes:
         'Texture stilizzata di nubi in luce visibile. I JPEG originali sono usati senza modifiche; 2K nella panoramica e 4K nel dettaglio. La fonte non identifica i dati NASA derivati per ciascun file.',
       titanAtmosphereCredit: 'Foschia statica originale generata dal progetto; non viene usata alcuna texture esterna.',

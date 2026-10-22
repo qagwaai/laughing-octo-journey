@@ -1,6 +1,6 @@
 import { Color, Vector3 } from 'three';
-import { deriveGasGiantProfile } from '../../model/planet/gas-giant-profile';
 import type { SurfaceArchetype } from '../../model/celestial-classification';
+import { deriveGasGiantProfile } from '../../model/planet/gas-giant-profile';
 import type { SplashQuality } from '../splash-state';
 import { createGasGiant, type GasGiantHandle } from './gas-giant';
 import { toProfileOverrides, type GasGiantPaletteChoice, type GasGiantRingChoice } from './gas-giant-settings';
@@ -30,7 +30,10 @@ export function createSplashGasGiant(options: SplashGasGiantOptions): GasGiantHa
   const profile = deriveGasGiantProfile(options.bodyId, profileOverrides);
   const standard = options.quality === 'standard';
   const giant = createGasGiant(profile, {
-    radius: SPLASH_GAS_GIANT_RADIUS,
+    radius:
+      profile.canonical === 'saturn'
+        ? SPLASH_GAS_GIANT_RADIUS / (profile.rings?.outerRadius ?? 1)
+        : SPLASH_GAS_GIANT_RADIUS,
     textureSize: standard ? { width: 1024, height: 512 } : { width: 512, height: 256 },
     widthSegments: standard ? 96 : 64,
     heightSegments: standard ? 64 : 40,

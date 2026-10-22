@@ -1,4 +1,4 @@
-import { Vector3, Vector4, type Texture } from 'three';
+import { Vector2, Vector3, Vector4, type Texture } from 'three';
 
 /** Maximum moons that can cast shadows on the giant in a single frame. */
 export const GAS_GIANT_MAX_MOON_SHADOWS = 4;
@@ -12,6 +12,10 @@ export interface GasGiantShadowUniforms {
   ggLightDirection: { value: Vector3 };
   ggPlanetCenter: { value: Vector3 };
   ggPlanetRadius: { value: number };
+  ggPlanetPolarRatio: { value: number };
+  ggRingOpticalDepth: { value: number };
+  ggRingMapSize: { value: Vector2 };
+  ggRingMapSamples: { value: number };
   ggRingNormal: { value: Vector3 };
   ggRingInner: { value: number };
   ggRingOuter: { value: number };
@@ -26,6 +30,10 @@ export function createGasGiantShadowUniforms(ringMap: Texture | null): GasGiantS
     ggLightDirection: { value: new Vector3(0, 0, 1) },
     ggPlanetCenter: { value: new Vector3() },
     ggPlanetRadius: { value: 1 },
+    ggPlanetPolarRatio: { value: 1 },
+    ggRingOpticalDepth: { value: 0 },
+    ggRingMapSize: { value: new Vector2(512, 1) },
+    ggRingMapSamples: { value: 512 },
     ggRingNormal: { value: new Vector3(0, 1, 0) },
     ggRingInner: { value: 0 },
     ggRingOuter: { value: 0 },
@@ -36,6 +44,22 @@ export function createGasGiantShadowUniforms(ringMap: Texture | null): GasGiantS
   };
 }
 
+export const GAS_GIANT_RING_SAMPLE_GLSL = `
+uniform sampler2D ggRingMap;
+uniform vec2 ggRingMapSize;
+uniform float ggRingMapSamples;
+vec2 ggRingTexel(float index) {
+  return (vec2(mod(index, ggRingMapSize.x), floor(index / ggRingMapSize.x)) + 0.5) / ggRingMapSize;
+}
+vec4 ggSampleRing(float t) {
+  if (ggRingMapSize.y < 1.5) return texture2D(ggRingMap, vec2(t, 0.5));
+  float index = clamp(t * ggRingMapSamples - 0.5, 0.0, ggRingMapSamples - 1.0);
+  float low = floor(index);
+  return mix(texture2D(ggRingMap, ggRingTexel(low)),
+    texture2D(ggRingMap, ggRingTexel(min(low + 1.0, ggRingMapSamples - 1.0))), fract(index));
+}
+`;
+
 /** Ring and moon shadows cast onto the planet surface. */
 export const GAS_GIANT_SHADOW_GLSL = `
 uniform vec3 ggLightDirection;
@@ -44,8 +68,9 @@ uniform float ggPlanetRadius;
 uniform vec3 ggRingNormal;
 uniform float ggRingInner;
 uniform float ggRingOuter;
-uniform sampler2D ggRingMap;
+${GAS_GIANT_RING_SAMPLE_GLSL}
 uniform float ggHasRings;
+uniform float ggRingOpticalDepth;
 uniform vec4 ggMoons[${GAS_GIANT_MAX_MOON_SHADOWS}];
 uniform int ggMoonCount;
 
@@ -58,8 +83,9 @@ float ggShadowFactor(vec3 worldPosition) {
       if (t > 0.0) {
         float r = length(worldPosition + ggLightDirection * t - ggPlanetCenter);
         if (r > ggRingInner && r < ggRingOuter) {
-          float ringAlpha = texture2D(ggRingMap, vec2((r - ggRingInner) / (ggRingOuter - ggRingInner), 0.5)).a;
-          shadow *= 1.0 - 0.85 * ringAlpha;
+          float ringAlpha = ggSampleRing((r - ggRingInner) / (ggRingOuter - ggRingInner)).a;
+          float transmission = pow(1.0 - ringAlpha, 1.0 / max(abs(facing), 0.08));
+          shadow *= ggRingOpticalDepth > 0.5 ? 0.15 + 0.85 * transmission : 1.0 - 0.85 * ringAlpha;
         }
       }
     }
@@ -81,9 +107,15 @@ float ggShadowFactor(vec3 worldPosition) {
 export const GAS_GIANT_PLANET_SHADOW_GLSL = `
 float ggPlanetShadow(vec3 worldPosition) {
   vec3 toCenter = ggPlanetCenter - worldPosition;
-  float along = dot(toCenter, ggLightDirection);
+  float flattening = 1.0 / (ggPlanetPolarRatio * ggPlanetPolarRatio) - 1.0;
+  float rayAxis = dot(ggLightDirection, ggRingNormal);
+  float centerAxis = dot(toCenter, ggRingNormal);
+  float rayLengthSq = 1.0 + flattening * rayAxis * rayAxis;
+  float along = (dot(toCenter, ggLightDirection) + flattening * centerAxis * rayAxis) / rayLengthSq;
   if (along <= 0.0) return 1.0;
-  float miss = length(toCenter - ggLightDirection * along);
+  vec3 closest = toCenter - ggLightDirection * along;
+  float axis = dot(closest, ggRingNormal);
+  float miss = sqrt(dot(closest, closest) + flattening * axis * axis);
   return mix(0.06, 1.0, smoothstep(ggPlanetRadius * 0.97, ggPlanetRadius * 1.02, miss));
 }
 `;

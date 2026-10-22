@@ -77,7 +77,7 @@ export async function createSplashBody(
   options: SplashBodyOptions,
 ): Promise<SplashBody> {
   const { quality, settings } = options;
-  if (entry.kind === 'gas-giant') {
+  if (entry.kind === 'gas-giant' || entry.id === 'sol-saturn') {
     const appearance = resolveSplashAppearance(entry);
     const giant = createSplashGasGiant({
       bodyId: entry.id,

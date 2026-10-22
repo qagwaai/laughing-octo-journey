@@ -5,6 +5,24 @@ Status: Stages 0-4 are complete for the active pilot. The Io source, derivative,
 
 ## Goal and approved decisions
 
+### Saturn renderer closeout (2026-10-22)
+
+Saturn now has an exact-ID `sol-saturn` appearance shared by Viewer overview,
+focused detail, and splash. The user accepted its delivered appearance on
+2026-10-22. This is a separate reference-informed procedural renderer, not a new
+observed surface-map entry in the Earth/Luna/Mars/Io texture pilot. Existing
+catalog imagery, normal maps, source archives, and their acceptance gates were
+not changed. The earlier statement below that gas giants retain their existing
+renderers describes the original texture-pilot scope; Saturn is now an explicit
+canonical exception built on the shared gas-giant infrastructure.
+
+The [Saturn closeout](./procedural-planets-2026-09-28.md#canonical-saturn-2026-10-22)
+records references, rendering details, measured-versus-authored limitations,
+validation evidence, and remaining hardware/network profiling. Saturn's
+appearance acceptance does not release this texture pilot's separate final
+Stellar Viewer acceptance hold. The user will commit and push the session's
+changes; neither operation was performed by the assistant.
+
 ### Restart handoff (2026-10-12)
 
 - Accepted limited reviews: sampled fine registration; Luna/Mars polar

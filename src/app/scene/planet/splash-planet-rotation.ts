@@ -29,7 +29,7 @@ export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 export type SplashPlanetKind = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'sol';
 
 /** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
-export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan'] as const;
+export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan', 'saturn'] as const;
 export type SplashSolKey = (typeof SPLASH_SOL_KEYS)[number];
 
 /** Sol bodies with a terran-style cloud shell; Earth's catalog albedo is cloud-free. */
@@ -52,7 +52,7 @@ export function resolveSplashAppearance(entry: SplashPlanetEntry) {
   const surfaceArchetype: SurfaceArchetype =
     entry.kind === 'star'
       ? 'star'
-      : entry.kind === 'gas-giant'
+      : entry.kind === 'gas-giant' || entry.id === 'sol-saturn'
         ? 'gas-giant'
         : entry.kind === 'icy-moon' || entry.kind === 'rocky-moon'
           ? entry.kind
