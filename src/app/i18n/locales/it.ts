@@ -36,6 +36,12 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   public: {
+    intro: {
+      attributionTitle: 'Ispirazione progettuale',
+      attributionBody:
+        'I nostri concetti di calcolo orbitale, in particolare il legame tra calcolo continuo e capacità dei radiatori, sono stati ispirati da questo articolo di JinV+:',
+      attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
+    },
     splash: {
       title: 'Avamposto minerario su asteroide',
       orbitHint: 'Trascina o scorri per ruotare · Rotella o pizzica per ingrandire',

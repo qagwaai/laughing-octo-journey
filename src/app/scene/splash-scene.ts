@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { beforeRender, injectStore } from 'angular-three';
 import { Box3, Color, Group, PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -8,17 +17,18 @@ import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
 import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
+import { createPlanetCloudStormMaterial } from './planet/planet-cloud-storms';
+import { CLOUD_DRIFT_RADIANS_PER_SECOND, createPlanetCloudTexture, PlanetCloudSettings } from './planet/planet-clouds';
+import { resolveSplashAppearance, type SplashPlanetEntry } from './planet/splash-planet-rotation';
 import { createSplashBody, type SplashBody, type SplashBodySettings } from './splash-body';
 import {
   createSplashBackdropAround,
   disposeSplashObject,
-  SPLASH_CAMERA_DIRECTION,
   placeSplashCelestialBody,
+  SPLASH_CAMERA_DIRECTION,
+  STATION_SPLASH_CAMERA_DIRECTION,
 } from './splash-composition';
 import { SplashState } from './splash-state';
-import { createPlanetCloudStormMaterial } from './planet/planet-cloud-storms';
-import { CLOUD_DRIFT_RADIANS_PER_SECOND, createPlanetCloudTexture, PlanetCloudSettings } from './planet/planet-clouds';
-import { resolveSplashAppearance, type SplashPlanetEntry } from './planet/splash-planet-rotation';
 import { createSplashStar, replaceSplashStar } from './star/splash-star';
 import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
 
@@ -56,13 +66,14 @@ export default class SplashScene {
     let elapsed = 0;
     let framing = 1;
     let previousFraming: number | null = null;
+    let previousStationSplash: boolean | null = null;
     let orbitResumeTimer: ReturnType<typeof setTimeout> | null = null;
     /** Holds the splash placement; bodies sit at its origin so they can be swapped in place. */
     let bodySlot: Group | undefined;
     let body: SplashBody | undefined;
     let swapToken = 0;
     const sceneLoaded = signal(0);
-    const cameraDirection = SPLASH_CAMERA_DIRECTION.clone();
+    const cameraDirection = new Vector3();
     const referenceCameraPosition = new Vector3();
     const orbitCenter = cameraDirection.clone();
     const controls = new OrbitControls(camera, gl.domElement);
@@ -98,12 +109,14 @@ export default class SplashScene {
     controls.addEventListener('change', onOrbitChange);
     effect(() => {
       const size = store.size();
+      const stationSplash = this.state.stationSplash();
+      cameraDirection.copy(stationSplash ? STATION_SPLASH_CAMERA_DIRECTION : SPLASH_CAMERA_DIRECTION);
       const aspect = Math.max(0.15, size.width / Math.max(1, size.height));
       const fov = camera instanceof PerspectiveCamera ? (camera.fov * Math.PI) / 180 : Math.PI / 4;
-      framing = 1.35 / Math.tan(fov / 2) / Math.min(1, aspect);
+      framing = (1.35 / Math.tan(fov / 2) / Math.min(1, aspect)) * (stationSplash ? 1.25 : 1);
       controls.minDistance = framing * 0.65;
       controls.maxDistance = framing * 1.8;
-      if (previousFraming === null) {
+      if (previousFraming === null || previousStationSplash !== stationSplash) {
         orbitCenter.copy(cameraDirection).multiplyScalar(framing);
         setCamera(0);
       } else if (framing !== previousFraming) {
@@ -112,6 +125,7 @@ export default class SplashScene {
         camera.position.multiplyScalar(ratio);
       }
       previousFraming = framing;
+      previousStationSplash = stationSplash;
       referenceCameraPosition.copy(cameraDirection).multiplyScalar(framing);
       if (bodySlot) placeSplashCelestialBody(bodySlot, referenceCameraPosition);
       if (this.state.reducedMotion()) {

@@ -153,6 +153,10 @@ export const en = {
         'Upon reaching Level 50, you will unlock the blueprint for The Hive-Mind. This is not just a ship or a building; it is a capital asset that links every ship, relay, and refinery in your empire into a single, sentient network.',
       endgameBody3:
         "With the Warp Drive online and the Quantum Matrix processing billions of calculations per second, you will no longer be a mere pilot in the belt—you will be the intelligence that commands the stars. The galaxy is a resource; it's time to harvest it.",
+      attributionTitle: 'Design inspiration',
+      attributionBody:
+        'Our orbital-compute concepts, especially the link between sustained compute and radiator capacity, were informed by this article by JinV+:',
+      attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
       quote: 'The stars are not just lights in the sky; they are the fuel for the next evolution.',
       registerLink: 'New Users Register here',
       loginLink: 'Existing Users Login here',

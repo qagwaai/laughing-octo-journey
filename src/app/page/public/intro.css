@@ -57,7 +57,8 @@ blockquote {
 }
 
 .register-link a,
-.register-link-text {
+.register-link-text,
+.source-attribution-link {
   color: #a78bfa;
   text-decoration: underline;
   cursor: pointer;
@@ -65,6 +66,8 @@ blockquote {
 }
 
 .register-link a:hover,
-.register-link-text:hover {
+.register-link-text:hover,
+.source-attribution-link:hover,
+.source-attribution-link:focus-visible {
   color: #c4b5fd;
 }

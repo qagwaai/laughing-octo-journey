@@ -431,19 +431,17 @@ test('switches foreground models while preserving the selected background body',
   await expect(foreground).toHaveValue('station');
   const initialQuality = await overlay.getAttribute('data-quality');
   const initialCandidate = initialQuality === 'standard' ? '150k' : '75k';
-  expect(requestedAssets.at(-1)).toContain(`sol-mars-orbit-station-${initialCandidate}.glb`);
+  expect(requestedAssets.at(-1)).toContain(`sol-mars-station-${initialCandidate}.glb`);
   await expect(overlay).toHaveAttribute('data-planet', 'sol-earth');
   await expect(page.getByRole('combobox', { name: 'Body type', exact: true })).toHaveValue('sol');
   await expect(page.getByRole('combobox', { name: 'Body', exact: true })).toHaveValue('sol-earth');
 
-  const nextTriangles = initialQuality === 'standard' ? '74,984' : '149,944';
+  const nextTriangles = initialQuality === 'standard' ? '74,695' : '139,330';
   const nextTier = initialQuality === 'standard' ? 'Low' : 'Standard';
   await page.getByRole('button', { name: `Load ${nextTier} (${nextTriangles} triangles)`, exact: true }).click();
   await expect(overlay).toHaveAttribute('data-triangles', nextTriangles.replace(',', ''));
   await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
-  expect(requestedAssets.at(-1)).toContain(
-    `sol-mars-orbit-station-${initialQuality === 'standard' ? '75k' : '150k'}.glb`,
-  );
+  expect(requestedAssets.at(-1)).toContain(`sol-mars-station-${initialQuality === 'standard' ? '75k' : '150k'}.glb`);
   const finalQuality = initialQuality === 'standard' ? 'low' : 'standard';
 
   await foreground.selectOption('asteroid-mining-rig');
@@ -472,15 +470,15 @@ test('loads the market-specific station pair and its isolated static fallback', 
   await expect(overlay.locator('img')).toHaveCount(0);
   const quality = await overlay.getAttribute('data-quality');
   const initialCandidate = quality === 'standard' ? '150k' : '75k';
-  const initialTriangles = quality === 'standard' ? '149944' : '74984';
+  const initialTriangles = quality === 'standard' ? '139330' : '74695';
   await expect(overlay).toHaveAttribute('data-triangles', initialTriangles);
-  expect(requestedAssets.some((url) => url.includes(`sol-mars-orbit-station-${initialCandidate}.glb?v=`))).toBe(true);
-  expect(requestedAssets.some((url) => /sol-mars-orbit-station-poster\.webp\?v=/.test(url))).toBe(true);
+  expect(requestedAssets.some((url) => url.includes(`sol-mars-station-${initialCandidate}.glb?v=`))).toBe(true);
+  expect(requestedAssets.some((url) => /sol-mars-station-poster\.webp\?v=/.test(url))).toBe(true);
 
   await page.getByRole('button', { name: 'Use still image' }).click();
   await expect(overlay).toHaveAttribute('data-state', 'static');
   await expect(overlay).toHaveCSS('background-color', 'rgb(4, 9, 20)');
-  await expect(page.locator('app-splash-overlay img')).toHaveAttribute('src', /sol-mars-orbit-station-poster\.webp/);
+  await expect(page.locator('app-splash-overlay img')).toHaveAttribute('src', /sol-mars-station-poster\.webp/);
 });
 
 for (const path of ['/knot', '/knot(left:intro)']) {

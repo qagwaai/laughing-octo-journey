@@ -51,8 +51,8 @@ describe('station identity catalog', () => {
 
   it('shares the accepted standard/low assets with the splash', () => {
     expect(STATION_MODELS['sol-mars-orbit']?.assets).toBe(MARS_STATION_ASSETS);
-    expect(MARS_STATION_ASSETS.standard.triangleCount).toBe(149_944);
-    expect(MARS_STATION_ASSETS.low.triangleCount).toBe(74_984);
+    expect(MARS_STATION_ASSETS.standard.triangleCount).toBe(139_330);
+    expect(MARS_STATION_ASSETS.low.triangleCount).toBe(74_695);
   });
 });
 

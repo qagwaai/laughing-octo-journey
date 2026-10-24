@@ -218,7 +218,7 @@ test.describe('Station-specific viewer models', () => {
         .poll(() => readScene(page))
         .toMatchObject({
           models: 1,
-          triangles: quality === 'standard' ? 149944 : 74984,
+          triangles: quality === 'standard' ? 139330 : 74695,
           genericPresent: true,
           marsGenericPresent: false,
         });
@@ -254,7 +254,7 @@ test.describe('Station-specific viewer models', () => {
       await expect(closeup).toHaveAttribute('data-quality', quality);
       await expect
         .poll(() => readScene(page))
-        .toMatchObject({ models: 1, triangles: quality === 'standard' ? 149944 : 74984 });
+        .toMatchObject({ models: 1, triangles: quality === 'standard' ? 139330 : 74695 });
       const before = (await readScene(page)).camera;
       const canvas = page.locator('app-station-view-page canvas').first();
       const box = await canvas.boundingBox();
@@ -282,7 +282,7 @@ test.describe('Station-specific viewer models', () => {
     const pending = new Promise<void>((resolve) => {
       releaseRequest = resolve;
     });
-    await page.route('**/models/sol-mars-orbit-station-*.glb*', async (route) => {
+    await page.route('**/models/sol-mars-station-*.glb*', async (route) => {
       await pending;
       await route.abort('failed');
     });
@@ -293,7 +293,7 @@ test.describe('Station-specific viewer models', () => {
     await expect(page.getByTestId('viewer-station-status')).toHaveAttribute('data-state', 'error', { timeout: 30_000 });
     await expect(page.getByRole('alert')).toContainText('The station model could not be loaded.');
     expect(await readScene(page)).toMatchObject({ models: 0, marsGenericPresent: false, genericPresent: true });
-    await page.unroute('**/models/sol-mars-orbit-station-*.glb*');
+    await page.unroute('**/models/sol-mars-station-*.glb*');
     await page.getByRole('button', { name: 'Retry station model' }).click();
     await expect(page.getByTestId('viewer-station-status')).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
     await expect.poll(() => readScene(page)).toMatchObject({ models: 1, genericPresent: true });
@@ -312,13 +312,13 @@ test.describe('Station-specific viewer models', () => {
       event: 'market-list-by-location-response',
       data: { success: true, markets: [market] },
     }));
-    await page.route('**/models/sol-mars-orbit-station-*.glb*', (route) => route.abort('failed'));
+    await page.route('**/models/sol-mars-station-*.glb*', (route) => route.abort('failed'));
     await page.goto('/splash(left:viewer//right:station-view/sol/sol-mars-orbit)');
     await expect(page.getByRole('heading', { name: 'Mars Orbital Market' })).toBeVisible();
     const status = page.getByTestId('station-view-status');
     await expect(status).toHaveAttribute('data-state', 'error', { timeout: 30_000 });
     expect((await readScene(page)).models).toBe(0);
-    await page.unroute('**/models/sol-mars-orbit-station-*.glb*');
+    await page.unroute('**/models/sol-mars-station-*.glb*');
     await page.getByRole('button', { name: 'Retry station model' }).click();
     await expect(status).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
     await expect.poll(async () => (await readScene(page)).models).toBe(1);

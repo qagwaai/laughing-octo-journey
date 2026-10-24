@@ -50,6 +50,8 @@ export const SPLASH_PLANET_ROLL = -0.3;
 export const SPLASH_BODY_EXCLUSION_RADIUS = 4 * 1.012;
 export const SPLASH_DEBRIS_CLEARANCE = 0.25;
 export const SPLASH_CAMERA_DIRECTION = new Vector3(2.7, 2, 3.8).normalize();
+/** View the station from its docking end so the sun-shade sits behind the compute core. */
+export const STATION_SPLASH_CAMERA_DIRECTION = new Vector3(2.7, 2, -3.8).normalize();
 export const SPLASH_BODY_DISTANCE_SCALE = 4;
 
 /** Perspective-preserving depth separation, anchored to the default view rather than manual orbit. */
