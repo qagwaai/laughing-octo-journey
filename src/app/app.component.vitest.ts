@@ -5,6 +5,8 @@ import { Subject } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AppComponent } from './app.component';
+import { PlanetCloudSettings } from './scene/planet/planet-clouds';
+import { SplashState } from './scene/splash-state';
 import { OpeningAudioService } from './services';
 import { RenderStatsService } from './services/render-stats.service';
 import { SceneVisibilityService } from './services/scene-visibility.service';
@@ -76,6 +78,33 @@ describe('AppComponent (Vitest)', () => {
   it('should create the real component', () => {
     const { component } = setup();
     expect(component).toBeTruthy();
+  });
+
+  it('keeps the habitat spinning while camera drift and clouds are paused, but idles when hidden or static', () => {
+    const { component } = setup();
+    const splash = TestBed.inject(SplashState);
+    const visibility = TestBed.inject(SceneVisibilityService);
+    TestBed.inject(PlanetCloudSettings).enabled.set(false);
+    splash.foreground.set('station');
+    splash.status.set('ready');
+    splash.reducedMotion.set(false);
+    splash.documentHidden.set(false);
+    splash.orbitPaused.set(true);
+    expect(component['canvasFrameloop']()).toBe('always');
+    visibility.setRightOutletActive(true);
+    expect(component['canvasFrameloop']()).toBe('demand');
+    visibility.setRightOutletActive(false);
+    splash.reducedMotion.set(true);
+    expect(component['canvasFrameloop']()).toBe('demand');
+    splash.reducedMotion.set(false);
+    splash.documentHidden.set(true);
+    expect(component['canvasFrameloop']()).toBe('demand');
+    splash.documentHidden.set(false);
+    splash.status.set('static');
+    expect(component['canvasFrameloop']()).toBe('demand');
+    splash.status.set('ready');
+    splash.foreground.set('asteroid-mining-rig');
+    expect(component['canvasFrameloop']()).toBe('demand');
   });
 
   it('offers the public gear only on public left-pane routes', () => {

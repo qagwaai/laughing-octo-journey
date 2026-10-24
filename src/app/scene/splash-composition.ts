@@ -56,7 +56,11 @@ export const SPLASH_BODY_DISTANCE_SCALE = 4;
 
 /** Perspective-preserving depth separation, anchored to the default view rather than manual orbit. */
 export function placeSplashCelestialBody(body: Object3D, referenceCameraPosition: Vector3): void {
-  body.position.copy(SPLASH_PLANET_POSITION).sub(referenceCameraPosition).multiplyScalar(SPLASH_BODY_DISTANCE_SCALE);
+  const origin = new Vector3();
+  const defaultViewInverse = new Matrix4().lookAt(SPLASH_CAMERA_DIRECTION, origin, Object3D.DEFAULT_UP).invert();
+  const referenceView = new Matrix4().lookAt(referenceCameraPosition, origin, Object3D.DEFAULT_UP);
+  body.position.copy(SPLASH_PLANET_POSITION).applyMatrix4(defaultViewInverse).applyMatrix4(referenceView);
+  body.position.sub(referenceCameraPosition).multiplyScalar(SPLASH_BODY_DISTANCE_SCALE);
   body.position.add(referenceCameraPosition);
   body.scale.setScalar(SPLASH_BODY_DISTANCE_SCALE);
 }

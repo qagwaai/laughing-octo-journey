@@ -31,6 +31,7 @@ import {
 import { SplashState } from './splash-state';
 import { createSplashStar, replaceSplashStar } from './star/splash-star';
 import { resolveStarSpectralClassChoice, StarSettings } from './star/star-settings';
+import { createStationHabitatRotation } from './station/station-habitat-rotation';
 
 @Component({
   selector: 'app-splash-scene',
@@ -71,6 +72,7 @@ export default class SplashScene {
     /** Holds the splash placement; bodies sit at its origin so they can be swapped in place. */
     let bodySlot: Group | undefined;
     let body: SplashBody | undefined;
+    let rotateHabitat: ReturnType<typeof createStationHabitatRotation> | undefined;
     let swapToken = 0;
     const sceneLoaded = signal(0);
     const cameraDirection = new Vector3();
@@ -276,6 +278,7 @@ export default class SplashScene {
       let loadedBody: SplashBody | undefined;
       const quality = this.state.quality();
       const modelUrl = this.state.modelAsset().url;
+      const stationSplash = this.state.stationSplash();
       const entry = untracked(() => this.state.planet());
       void Promise.allSettled([
         loader.loadAsync(modelUrl),
@@ -291,6 +294,7 @@ export default class SplashScene {
         try {
           model = rig.value.scene;
           loadedBody = created.value;
+          rotateHabitat = stationSplash ? createStationHabitatRotation(model) : undefined;
           const slot = new Group();
           slot.add(loadedBody.object);
           backdrop = createSplashBackdropAround(quality, slot);
@@ -316,6 +320,7 @@ export default class SplashScene {
       });
       const release = () => {
         swapToken++;
+        rotateHabitat = undefined;
         if (model) {
           model.parent?.removeFromParent();
           disposeSplashObject(model);
@@ -340,7 +345,24 @@ export default class SplashScene {
         release();
       });
     });
+    effect(() => {
+      if (
+        this.state.status() !== 'ready' ||
+        this.state.reducedMotion() ||
+        this.state.documentHidden() ||
+        this.visibility.isSceneHidden()
+      ) {
+        rotateHabitat?.(0, false);
+      }
+    });
     beforeRender(({ delta }) => {
+      rotateHabitat?.(
+        delta,
+        this.state.status() === 'ready' &&
+          !this.state.reducedMotion() &&
+          !this.state.documentHidden() &&
+          !this.visibility.isSceneHidden(),
+      );
       const cloudMesh = body?.cloudMesh;
       if (
         cloudMesh &&

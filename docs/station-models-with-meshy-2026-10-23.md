@@ -421,7 +421,8 @@ Runtime copies are in `station-mars\runtime\`.
 - Update `MARS_STATION_ASSETS` and `MARS_STATION_POSTER_URL` in [station-model-assets.ts](../src/app/scene/station/station-model-assets.ts) (single URL per tier, `?v=` = SHA-256 prefix). Both the splash and the Stellar viewer resolve through this one definition.
 - Update the expectations in `station-splash-assets.vitest.ts`, `splash-state.vitest.ts`, `station-model.vitest.ts`, `e2e/tests/splash.spec.ts` and `e2e/tests/viewer-station-model.spec.ts`.
 - **Splash framing (2026-10-24):** the station splash uses a docking-end camera angle so the sun-shade sits behind the compute core, and increases camera distance by 25% to keep the full station in view. The GLB is unchanged. A browser review confirmed that the docking head, core, radiator wings, sun-shade, and all outer slip frames are visible. The slip frames are intentionally detached from the station; this preserves the original safe, tow-in harbor concept. Review capture: `C:\Development\Assets\laughing-octo-journey\station-mars\runtime\review-app-station-docking-view.png`. The screenshot used `/splash?market=sol-mars-orbit`, which has no left outlet content; it does not represent the full intro layout.
-- Follow-up (separate change): rotate the `HabitatRing` node at runtime, respecting reduced motion and scene visibility.
+- **Planet framing correction (2026-10-24):** the docking-end camera exposed a world-space placement assumption: Mars remained positioned for the original mining-rig camera and was outside the station view. Celestial-body placement now maps the original composition into the reference camera's coordinate frame before applying depth separation. This restores Mars behind the station without moving the station, changing its lighting, or making the planet follow manual orbit controls. The original mining-rig view is preserved. Projection regression tests cover portrait and wide aspect ratios; the station Playwright test checks that Mars is in view and its surface is behind the station. A browser screenshot confirmed Mars is visibly rendered.
+- **Habitat rotation (2026-10-24):** the `HabitatRing` node rotates once every 60 seconds in both the station viewer (including close-up) and station splash. Only the ring rotates, about its exported local Y axle through the spine; the GLBs remain unchanged. Rotation pauses for reduced motion, hidden documents, and hidden scene objects; the splash also pauses behind right-outlet overlays. Viewer canvases belong to the right outlet, so they are not gated by the shared background-scene visibility flag. Rotation uses elapsed frame time even at low frame rates, but skips the first frame after loading or resuming so suspended time cannot cause a jump. Static artwork stays unchanged.
 - Runtime radiator heat: clone the hot-radiator material per `RadiatorHot_NN` node and drive its emissive intensity from gameplay (compute load, coolant-loop failure, damage). By default, inner panels near the core run hotter than outer panels. The baked in-panel gradient stays as the base pattern.
 - Validation for the framing change:
   - `npm run test:spec -- src/app/scene/splash.vitest.ts` — passed, 22 tests
@@ -429,6 +430,16 @@ Runtime copies are in `station-mars\runtime\`.
   - `npm run typecheck` — passed
   - `npm run build` — passed
   - Cold-cache load timing on the iPad tier remains to be measured per [testing-policy.md](testing-policy.md).
+- Validation for habitat rotation:
+  - `npm run test:spec -- src/app/app.component.vitest.ts src/app/scene/station/station-habitat-rotation.vitest.ts src/app/scene/station/station-model.vitest.ts src/app/scene/splash.vitest.ts` — passed, 55 tests. Includes 60-second revolutions at 1–120 fps, axis/pivot preservation, pause/resume, tier replacement, cleanup, and shared-canvas idle policy.
+  - `npx playwright test splash.spec.ts viewer-station-model.spec.ts -g "loads the market-specific station pair|Station-specific viewer models|Touch-accessible station close-ups" --workers=1 --reporter=line` — passed, 8 tests including setup. Real GLBs in both tiers render and rotate in the system viewer and close-up; the station splash also rotates. Browser checks compare angular movement with elapsed time, verify stationary station parts, and exercise reduced motion and document visibility.
+  - An initial parallel Playwright run failed the anchored-market camera-zoom assertion; that test passed in isolation and in the final single-worker run. Camera behavior was not changed in this implementation.
+  - `npm run build` and `npm run typecheck` — passed.
+  - Changed-file ESLint and Prettier checks — passed.
+- Validation for the planet framing correction:
+  - `npm run test:spec -- src/app/scene/splash.vitest.ts` — passed, 25 tests.
+  - `npx playwright test splash.spec.ts -g "loads the market-specific station pair" --workers=1 --reporter=line` — passed, 2 tests including setup.
+  - `npm run build` — passed; changed-file ESLint and Prettier checks — passed.
 
 ## Checklist
 

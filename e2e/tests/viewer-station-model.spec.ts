@@ -3,6 +3,7 @@ import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three
 import type { MarketSummary } from '../../src/app/model/market-list';
 import type { ViewerBody } from '../../src/app/model/solar-system-get';
 import { setupViewerSceneTest, solarSystemGetResponse } from '../fixtures/viewer-scene-rendering-scenario';
+import { expectStationHabitatMotion } from '../helpers/station-habitat-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
 import { ViewerPage } from '../page-objects/viewer.page';
 
@@ -224,6 +225,7 @@ test.describe('Station-specific viewer models', () => {
         });
       expect(requests).toHaveLength(1);
       expect(requests[0]).toContain(quality === 'standard' ? 'station-150k.glb' : 'station-75k.glb');
+      await expectStationHabitatMotion(page, 'app-viewer-scene-page ngt-canvas');
 
       const otherTarget = page.locator('tr', { hasText: 'Other Mars Station' }).locator('button.details-target-btn');
       await otherTarget.click();
@@ -255,6 +257,7 @@ test.describe('Station-specific viewer models', () => {
       await expect
         .poll(() => readScene(page))
         .toMatchObject({ models: 1, triangles: quality === 'standard' ? 139330 : 74695 });
+      await expectStationHabitatMotion(page, 'app-station-view-page ngt-canvas');
       const before = (await readScene(page)).camera;
       const canvas = page.locator('app-station-view-page canvas').first();
       const box = await canvas.boundingBox();

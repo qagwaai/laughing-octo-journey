@@ -12,22 +12,54 @@ import {
 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_GAS_GIANT_RADIUS } from './gas-giant/splash-gas-giant';
+import { selectSplashPlanetPreset, SPLASH_PLANET_CPU_PRESET, SPLASH_PLANET_PRESETS } from './planet/splash-planet';
 import {
   createSplashBackdrop,
   createSplashBackdropAround,
   disposeSplashObject,
+  placeSplashCelestialBody,
   SPLASH_BODY_DISTANCE_SCALE,
   SPLASH_BODY_EXCLUSION_RADIUS,
   SPLASH_CAMERA_DIRECTION,
   SPLASH_DEBRIS_CLEARANCE,
   SPLASH_PLANET_POSITION,
-  placeSplashCelestialBody,
+  STATION_SPLASH_CAMERA_DIRECTION,
 } from './splash-composition';
 import { selectSplashQuality } from './splash-state';
-import { selectSplashPlanetPreset, SPLASH_PLANET_CPU_PRESET, SPLASH_PLANET_PRESETS } from './planet/splash-planet';
 import { SPLASH_STAR_RADIUS } from './star/splash-star';
 
 describe('Splash asset policy', () => {
+  it.each([0.45, 0.75, 1.8])(
+    'keeps the planet visible behind the docking-end station camera at aspect %s',
+    (aspect) => {
+      const distance = (1.35 / Math.tan((75 * Math.PI) / 360) / Math.min(1, aspect)) * 1.25;
+      const projections = [SPLASH_CAMERA_DIRECTION, STATION_SPLASH_CAMERA_DIRECTION].map((direction) => {
+        const camera = new PerspectiveCamera(75, aspect, 0.1, 1000);
+        camera.position.copy(direction).multiplyScalar(distance);
+        camera.lookAt(0, 0, 0);
+        camera.updateMatrixWorld();
+        const body = new Group();
+        placeSplashCelestialBody(body, camera.position);
+        const center = body.position.clone().project(camera);
+        expect(Math.abs(center.x)).toBeLessThan(1);
+        expect(Math.abs(center.y)).toBeLessThan(1);
+        expect(center.z).toBeGreaterThan(-1);
+        expect(center.z).toBeLessThan(1);
+        const nearestDepth = body.position.dot(direction) + SPLASH_BODY_EXCLUSION_RADIUS * SPLASH_BODY_DISTANCE_SCALE;
+        expect(nearestDepth).toBeLessThan(-1);
+        const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const edge = body.position
+          .clone()
+          .addScaledVector(right, 4 * SPLASH_BODY_DISTANCE_SCALE)
+          .project(camera);
+        return { center, radius: edge.x - center.x };
+      });
+      expect(projections[1].center.x).toBeCloseTo(projections[0].center.x, 10);
+      expect(projections[1].center.y).toBeCloseTo(projections[0].center.y, 10);
+      expect(projections[1].radius).toBeCloseTo(projections[0].radius, 10);
+    },
+  );
+
   it('uses standard quality only on sufficiently wide, capable devices', () => {
     expect(selectSplashQuality(1440, 8, false)).toBe('standard');
     expect(selectSplashQuality(390, 8, false)).toBe('low');

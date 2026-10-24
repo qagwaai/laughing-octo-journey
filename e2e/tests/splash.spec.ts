@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
-import type { Mesh, MeshStandardMaterial, Scene } from 'three';
+import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import {
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_QUERY_PARAM,
   SPLASH_PLANET_ROTATION,
 } from '../../src/app/scene/planet/splash-planet-rotation';
 import { SocketIOMock } from '../fixtures/socket-mock';
+import { expectStationHabitatMotion } from '../helpers/station-habitat-helper';
 
 /** Pins the rotating splash planet so runs stay repeatable. */
 function pinnedSplash(path: string, bodyId = SPLASH_PLANET_BODY_ID): string {
@@ -474,6 +475,35 @@ test('loads the market-specific station pair and its isolated static fallback', 
   await expect(overlay).toHaveAttribute('data-triangles', initialTriangles);
   expect(requestedAssets.some((url) => url.includes(`sol-mars-station-${initialCandidate}.glb?v=`))).toBe(true);
   expect(requestedAssets.some((url) => /sol-mars-station-poster\.webp\?v=/.test(url))).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const canvas = document.querySelector('app-root ngt-canvas');
+        if (!canvas) throw new Error('Splash canvas is missing.');
+        const api = (window as Window & { ng: { getComponent: (element: Element) => unknown } }).ng;
+        const component = api.getComponent(canvas) as {
+          store: { snapshot: { scene: Scene; camera: PerspectiveCamera } };
+        };
+        const { scene, camera } = component.store.snapshot;
+        const planet = scene.getObjectByName('sol-mars') as Mesh | undefined;
+        const ring = scene.getObjectByName('HabitatRing');
+        if (!planet || !ring) throw new Error('Mars or the station is missing.');
+        const center = planet.getWorldPosition(planet.position.clone());
+        const projected = center.clone().project(camera);
+        planet.geometry.computeBoundingSphere();
+        const scale = planet.getWorldScale(planet.scale.clone());
+        const radius = planet.geometry.boundingSphere!.radius * Math.max(scale.x, scale.y, scale.z);
+        const forward = camera.getWorldDirection(camera.position.clone());
+        const planetDepth = center.sub(camera.position).dot(forward);
+        const stationDepth = ring.getWorldPosition(ring.position.clone()).sub(camera.position).dot(forward);
+        return {
+          planetInView: Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1 && projected.z > -1 && projected.z < 1,
+          planetBehindStation: planetDepth - radius > stationDepth,
+        };
+      }),
+    )
+    .toEqual({ planetInView: true, planetBehindStation: true });
+  await expectStationHabitatMotion(page, 'app-root ngt-canvas');
 
   await page.getByRole('button', { name: 'Use still image' }).click();
   await expect(overlay).toHaveAttribute('data-state', 'static');
