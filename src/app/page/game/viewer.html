@@ -22,9 +22,9 @@
       <p role="alert" data-testid="viewer-error">{{ listError() }}</p>
       } @else if (!hasResults()) {
       <p data-testid="viewer-empty">{{ t.game.viewer.listEmptyStatus }}</p>
-      } @else {
+      }
       <ul class="solar-system-list" aria-label="Solar systems" data-testid="viewer-system-list">
-        @for (system of solarSystems(); track system.id) {
+        @for (system of displayedSolarSystems(); track system.id) {
         <li
           class="solar-system-item"
           [class.solar-system-item--selected]="selectedSystemId() === system.id"
@@ -32,6 +32,9 @@
         >
           <button type="button" class="solar-system-item__button" (click)="selectSystem(system)">
             <span class="solar-system-item__name">{{ system.displayName }}</span>
+            @if (system.id === 'cygnus-x1') {
+            <span class="solar-system-item__meta">{{ t.game.viewer.cygnusX1CatalogNote }}</span>
+            }
             <span class="solar-system-item__meta">
               <span>
                 <strong>{{ t.game.viewer.distanceParsecLabel }}</strong>
@@ -68,7 +71,6 @@
         </li>
         }
       </ul>
-      }
     </section>
   </div>
 </div>

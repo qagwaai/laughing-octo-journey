@@ -90,7 +90,13 @@
   (click)="onTargetClick($event, body.id)"
   input
 >
-  @if (isStationBody(body.source)) {
+  @if (isCygnusX1BlackHole(body.source)) {
+  <ngt-mesh>
+    <ngt-sphere-geometry *args="[resolveBlackHolePickRadius(body), 24, 16]" />
+    <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
+  </ngt-mesh>
+  <app-viewer-black-hole-renderer (rendererError)="blackHoleRendererError.emit()" />
+  } @else { @if (isStationBody(body.source)) {
   <ngt-mesh>
     <ngt-sphere-geometry *args="[resolveStationPickRadius(body), 16, 12]" />
     <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
@@ -171,6 +177,6 @@
     <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
     } } }
   </ngt-mesh>
-  }
+  } }
 </ngt-group>
 }

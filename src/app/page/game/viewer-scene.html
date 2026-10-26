@@ -20,6 +20,7 @@
           [activeShipId]="sceneInputs().activeShipId ?? null"
           [stationModelAttempt]="stationModelAttempt()"
           (stationModelStatusChange)="stationModelStatus.set($event)"
+          (blackHoleRendererError)="onBlackHoleRendererError()"
           (hoveredBodyChange)="onHoveredBodyChange($event)"
           (focusedPlanetChange)="onFocusedPlanetChange($event)"
           (zoomLevelChange)="onZoomChange($event)"
@@ -35,7 +36,11 @@
         (wheel)="$event.stopPropagation()"
       >
         <h2 class="viewer-info-panel__title">{{ t.game.viewer.infoPanelTitle }}</h2>
-        @if (stationModelStatus(); as modelStatus) {
+        @if (hasCygnusX1BlackHole()) {
+        <p data-testid="viewer-black-hole-layout-note">{{ t.game.viewer.cygnusX1VisualizationNote }}</p>
+        } @if (blackHoleRendererError()) {
+        <p role="alert" data-testid="viewer-black-hole-renderer-error">{{ t.game.viewer.blackHoleHdrUnsupported }}</p>
+        } @if (stationModelStatus(); as modelStatus) {
         <p
           data-testid="viewer-station-status"
           [attr.data-state]="modelStatus.state"
@@ -276,8 +281,71 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Mass (Solar)</span>
-            <span class="viewer-detail-pane__value">{{ body.massSolar ?? '—' }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ body.massSolar ?? body.physicalCatalog?.massSolar ?? '—' }}
+            </span>
           </div>
+          @if (body.physicalCatalog?.massUncertaintySolar != null) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">Mass uncertainty (Solar)</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.massUncertaintySolar }}</span>
+          </div>
+          } @if (body.physicalCatalog?.meanRadiusKm != null) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionRadiusLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.meanRadiusKm }}</span>
+          </div>
+          } @if (body.physicalCatalog?.meanTemperatureK != null) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionTemperatureLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.meanTemperatureK }}</span>
+          </div>
+          } @if (body.blackHoleProperties; as blackHole) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleMassLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ blackHole.massSolar }} ± {{ blackHole.massUncertaintySolar ?? t.game.viewer.blackHoleUnknownValue }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleDistanceLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ blackHole.distanceParsec ?? t.game.viewer.blackHoleUnknownValue }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHolePeriodLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ blackHole.orbitalPeriodDays ?? t.game.viewer.blackHoleUnknownValue }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleSchwarzschildLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ blackHole.schwarzschildReferenceRadiusKm }}</span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleHorizonLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ blackHole.eventHorizonRadiusKm ?? t.game.viewer.blackHoleUnknownValue }}
+            </span>
+          </div>
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleDiskLabel }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ blackHole.visualAccretionDiskOuterRadiusKm ?? t.game.viewer.blackHoleUnknownValue }}
+            </span>
+          </div>
+          <p>{{ t.game.viewer.blackHoleReferenceDisclaimer }}</p>
+          @if (blackHole.sourceReferences?.length) {
+          <details class="viewer-inspector-section" data-testid="viewer-inspector-black-hole-sources">
+            <summary>{{ t.game.viewer.blackHoleSourcesLabel }}</summary>
+            <ul>
+              @for (reference of blackHole.sourceReferences; track reference) {
+              <li>{{ reference }}</li>
+              }
+            </ul>
+          </details>
+          } }
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Planet Type</span>
             <span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span>

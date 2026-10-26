@@ -25,7 +25,18 @@ interface SolarSystemDetailsNavigationState {
   solarSystem?: SolarSystemSummary;
 }
 
-const TYPE_GROUP_ORDER = ['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'tno', 'comet', 'station', 'ship'];
+const TYPE_GROUP_ORDER = [
+  'star',
+  'planet',
+  'dwarf-planet',
+  'moon',
+  'asteroid',
+  'black-hole',
+  'tno',
+  'comet',
+  'station',
+  'ship',
+];
 const ALWAYS_VISIBLE_TYPES = new Set(['dwarf-planet', 'tno', 'comet']);
 
 @Component({
@@ -96,6 +107,7 @@ export default class SolarSystemDetailsPage {
     }
     const labels: Record<string, string> = {
       'dwarf-planet': this.t.game.viewer.detailsSectionDwarfPlanet,
+      'black-hole': this.t.game.viewer.detailsSectionBlackHole,
       tno: this.t.game.viewer.detailsSectionTno,
       comet: this.t.game.viewer.detailsSectionComet,
       ship: this.t.game.viewer.detailsSectionShips,

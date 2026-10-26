@@ -26,6 +26,7 @@ import {
   disposeSplashObject,
   placeSplashCelestialBody,
   SPLASH_CAMERA_DIRECTION,
+  SPLASH_PLANET_ROLL,
   STATION_SPLASH_CAMERA_DIRECTION,
 } from './splash-composition';
 import { SplashState } from './splash-state';
@@ -72,9 +73,31 @@ export default class SplashScene {
     /** Holds the splash placement; bodies sit at its origin so they can be swapped in place. */
     let bodySlot: Group | undefined;
     let body: SplashBody | undefined;
+    let foregroundModel: Group | undefined;
+    let bodyBackdrop: Group | undefined;
+    const updateBodyPresentation = () => {
+      if (!bodySlot || !body) return;
+      const blackHole = !!body.blackHole;
+      if (foregroundModel) foregroundModel.visible = !blackHole;
+      for (const child of bodyBackdrop?.children ?? []) {
+        if (child !== bodySlot) child.visible = !blackHole;
+      }
+      if (blackHole) {
+        bodySlot.position.set(0, 0, 0);
+        bodySlot.rotation.set(0, 0, 0);
+        bodySlot.scale.setScalar(framing * 0.075);
+      } else {
+        bodySlot.rotation.set(0, 0, SPLASH_PLANET_ROLL);
+        placeSplashCelestialBody(bodySlot, referenceCameraPosition);
+      }
+    };
     let rotateHabitat: ReturnType<typeof createStationHabitatRotation> | undefined;
     let swapToken = 0;
     const sceneLoaded = signal(0);
+    effect(() => {
+      this.state.stellarWind();
+      invalidate();
+    });
     const cameraDirection = new Vector3();
     const referenceCameraPosition = new Vector3();
     const orbitCenter = cameraDirection.clone();
@@ -129,7 +152,7 @@ export default class SplashScene {
       previousFraming = framing;
       previousStationSplash = stationSplash;
       referenceCameraPosition.copy(cameraDirection).multiplyScalar(framing);
-      if (bodySlot) placeSplashCelestialBody(bodySlot, referenceCameraPosition);
+      updateBodyPresentation();
       if (this.state.reducedMotion()) {
         orbitCenter.copy(camera.position);
         elapsed = 0;
@@ -247,6 +270,7 @@ export default class SplashScene {
             body?.dispose();
             body = next;
             slot.add(next.object);
+            updateBodyPresentation();
             // The new body was built seeded; aligning the controls keeps the effects from rebuilding it.
             this.starSettings.spectralClass.set('seeded');
             this.gasGiantSettings.palette.set('seeded');
@@ -310,6 +334,9 @@ export default class SplashScene {
           root.add(wrapper);
           bodySlot = slot;
           body = loadedBody;
+          foregroundModel = wrapper;
+          bodyBackdrop = backdrop;
+          updateBodyPresentation();
           pendingFrames = 2;
           sceneLoaded.update((value) => value + 1);
           invalidate();
@@ -331,6 +358,8 @@ export default class SplashScene {
         loadedBody = undefined;
         body = undefined;
         bodySlot = undefined;
+        foregroundModel = undefined;
+        bodyBackdrop = undefined;
         if (backdrop) {
           backdrop.removeFromParent();
           disposeSplashObject(backdrop);
@@ -393,6 +422,21 @@ export default class SplashScene {
         elapsed += Math.min(delta, 0.05);
         setCamera(elapsed);
         controls.update();
+      }
+      if (
+        body?.blackHole &&
+        (this.state.status() === 'ready' || this.state.status() === 'loading') &&
+        !this.visibility.isSceneHidden() &&
+        !this.state.documentHidden()
+      ) {
+        try {
+          body.blackHole.setWindEnabled(this.state.stellarWind());
+          if (this.state.status() === 'ready' && !this.state.reducedMotion()) body.blackHole.advance(delta);
+          body.blackHole.render(gl, camera);
+        } catch (error: unknown) {
+          pendingFrames = 0;
+          this.state.fail(error);
+        }
       }
     });
     const lost = (event: Event) => {

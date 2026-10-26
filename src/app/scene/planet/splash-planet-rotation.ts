@@ -18,6 +18,7 @@ import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 import type { SurfaceArchetype } from '../../model/celestial-classification';
 import { fnv1a32 } from '../../model/planet/planet-seed';
 import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
+import { CYGNUS_X1 } from '../../model/black-hole/cygnus-x1';
 
 /** The original fixed splash planet; also the pinned default for tests. */
 export const SPLASH_PLANET_BODY_ID = 'nova-splash-homeworld';
@@ -26,7 +27,7 @@ export const SPLASH_PLANET_QUERY_PARAM = 'splashPlanet';
 export const SPLASH_KIND_QUERY_PARAM = 'splashKind';
 export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 
-export type SplashPlanetKind = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'sol';
+export type SplashPlanetKind = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'sol' | 'black-hole';
 
 /** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
 export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan', 'saturn'] as const;
@@ -47,6 +48,9 @@ export interface SplashPlanetEntry {
 }
 
 export function resolveSplashAppearance(entry: SplashPlanetEntry) {
+  if (entry.kind === 'black-hole') {
+    return { valid: false as const, reason: 'Local black-hole prototype has no canonical Forge classification.' };
+  }
   const isMoon = entry.kind === 'icy-moon' || entry.kind === 'rocky-moon';
   const bodyType = entry.kind === 'star' ? 'star' : isMoon ? 'moon' : 'planet';
   const surfaceArchetype: SurfaceArchetype =
@@ -127,9 +131,10 @@ export const SPLASH_SELECTABLE_BODIES: readonly SplashPlanetEntry[] = [
   ...SPLASH_PLANET_ROTATION,
   ...SPLASH_ICY_MOONS,
   ...SPLASH_ROCKY_MOONS,
+  { id: CYGNUS_X1.id, kind: 'black-hole' },
 ];
 
-/** 'random' retains the original rotation; procedural moons are explicitly selectable. */
+/** 'random' retains the original rotation; moons and the black-hole prototype are opt-in. */
 export const SPLASH_PICKER_CATEGORIES = [
   'random',
   'terran',
@@ -138,6 +143,7 @@ export const SPLASH_PICKER_CATEGORIES = [
   'gas-giant',
   'star',
   'sol',
+  'black-hole',
 ] as const;
 export type SplashPickerCategory = (typeof SPLASH_PICKER_CATEGORIES)[number];
 
@@ -151,6 +157,9 @@ export function splashEntriesForCategory(
 ): readonly SplashPlanetEntry[] {
   if (category === 'icy-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ICY_MOONS;
   if (category === 'rocky-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ROCKY_MOONS;
+  if (category === 'black-hole' && rotation === SPLASH_PLANET_ROTATION) {
+    return SPLASH_SELECTABLE_BODIES.filter((entry) => entry.kind === 'black-hole');
+  }
   return category === 'random' ? rotation : rotation.filter((entry) => entry.kind === category);
 }
 
@@ -199,6 +208,7 @@ export function selectSplashPlanet(
       rotation.find((entry) => entry.id === pinned) ??
       SPLASH_ICY_MOONS.find((entry) => entry.id === pinned) ??
       SPLASH_ROCKY_MOONS.find((entry) => entry.id === pinned);
+    if (pinned === CYGNUS_X1.id) return { id: CYGNUS_X1.id, kind: 'black-hole' };
     if (listed) return listed;
     const kind = readPinnedKind(params);
     if (kind === 'star') return { id: pinned, kind, spectralClass: readPinnedSpectralClass(params, pinned) };

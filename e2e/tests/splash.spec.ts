@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
+import type { BufferGeometry, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, ShaderMaterial } from 'three';
 import {
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_QUERY_PARAM,
@@ -91,11 +91,308 @@ test('bakes the planet shader through three.js without GPU compile errors', asyn
   page.on('console', (message) => {
     if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
   });
+
   await page.goto(pinnedSplash('/splash(left:intro)'));
   await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
   expect(
     consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
   ).toEqual([]);
+});
+
+test('renders the opt-in Cygnus X-1 prototype and swaps back without shader errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (/Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(message.text())) errors.push(message.text());
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'black-hole');
+  await expect(page.getByTestId('splash-black-hole-note')).toContainText('Schwarzschild');
+  await expect(page.getByLabel('3D model diagnostics')).toContainText('Black-hole ray pass');
+  const canvas = page.locator('ngt-canvas canvas').first();
+  const blackHoleImage = await canvas.screenshot();
+  const colors = await page.evaluate(async (png) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+    const sample = document.createElement('canvas');
+    sample.width = image.width;
+    sample.height = image.height;
+    const context = sample.getContext('2d');
+    if (!context) throw new Error('Image sampling context unavailable.');
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(0, 0, image.width, image.height).data;
+    let warm = 0;
+    let blue = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i],
+        g = pixels[i + 1],
+        b = pixels[i + 2];
+      if (r > 70 && r > b * 1.5 && g > 30) warm++;
+      if (b > 100 && b > r * 1.25 && g > 50) blue++;
+    }
+    return { warm, blue };
+  }, blackHoleImage.toString('base64'));
+  expect(colors.warm).toBeGreaterThan(200);
+  expect(colors.blue).toBeGreaterThan(10);
+  expect(await canvas.screenshot()).toEqual(blackHoleImage);
+  await page.getByRole('combobox', { name: 'Body type' }).selectOption('sol');
+  await page.getByRole('combobox', { name: 'Body', exact: true }).selectOption('sol-mars');
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-mars');
+  await expect(page.getByTestId('splash-current-body')).not.toContainText('loading');
+  expect(await canvas.screenshot()).not.toEqual(blackHoleImage);
+  await page.getByRole('combobox', { name: 'Body type' }).selectOption('black-hole');
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'black-hole');
+  await expect(page.getByTestId('splash-current-body')).not.toContainText('loading');
+  await expect(page.locator('app-login-page')).toBeVisible();
+  const nextQuality = (await overlay.getAttribute('data-quality')) === 'standard' ? 'low' : 'standard';
+  await page
+    .getByRole('button', { name: nextQuality === 'low' ? 'Load Low ray pass' : 'Load Standard ray pass' })
+    .click();
+  await expect(overlay).toHaveAttribute('data-quality', nextQuality);
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(page.getByLabel('3D model diagnostics')).toContainText(
+    nextQuality === 'low' ? '320 x 267' : '640 x 533',
+  );
+  expect(errors).toEqual([]);
+});
+
+test('keeps the Cygnus companion photosphere luminous across small camera orbits', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  const canvas = page.locator('ngt-canvas canvas').first();
+  for (const angle of [0, 0.18, 0.18, -0.54]) {
+    const center = await page.evaluate((angle) => {
+      const ng = Reflect.get(window, 'ng') as { getComponent: (element: Element | null) => unknown };
+      const component = ng.getComponent(document.querySelector('ngt-canvas')) as {
+        store: { snapshot: { scene: Scene; camera: PerspectiveCamera; invalidate: () => void } };
+      };
+      const { scene, camera, invalidate } = component.store.snapshot;
+      const companion = scene.getObjectByName('cygnus-x1-companion');
+      if (!companion) throw new Error('Companion missing.');
+      camera.position.applyAxisAngle(camera.up.clone().set(0, 1, 0), angle);
+      camera.lookAt(0, 0, 0);
+      camera.updateMatrixWorld();
+      scene.updateMatrixWorld(true);
+      const projected = companion.getWorldPosition(companion.position.clone()).project(camera);
+      invalidate();
+      return { x: (projected.x + 1) / 2, y: (1 - projected.y) / 2 };
+    }, angle);
+    expect(center.x).toBeGreaterThan(0);
+    expect(center.x).toBeLessThan(1);
+    const png = await canvas.screenshot({ style: 'app-splash-overlay { visibility: hidden !important; }' });
+    const brightness = await page.evaluate(async ({ png, center }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${png}`;
+      await image.decode();
+      const sample = document.createElement('canvas');
+      sample.width = image.width;
+      sample.height = image.height;
+      const context = sample.getContext('2d');
+      if (!context) throw new Error('Photosphere pixel sampling unavailable.');
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(Math.round(center.x * image.width) - 2, Math.round(center.y * image.height) - 2, 5, 5).data;
+      let blue = 0;
+      for (let i = 2; i < pixels.length; i += 4) blue += pixels[i];
+      return blue / 25;
+    }, { png: png.toString('base64'), center });
+    expect(brightness).toBeGreaterThan(100);
+  }
+});
+
+test('toggles companion wind without changing the disk and freezes it for reduced motion', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (/Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(message.text())) errors.push(message.text());
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  const toggle = page.getByRole('checkbox', { name: 'Stellar wind (cinematic)' });
+  await expect(toggle).not.toBeChecked();
+  const canvas = page.locator('ngt-canvas canvas').first();
+  const capture = () => canvas.screenshot({ style: 'app-splash-overlay { visibility: hidden !important; }' });
+  const without = await capture();
+  await toggle.check();
+  await expect.poll(capture).not.toEqual(without);
+  const withWind = await capture();
+  expect(await capture()).toEqual(withWind);
+  const difference = await page.evaluate(async ([before, after]) => {
+    const images = await Promise.all([before, after].map(async (png) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${png}`;
+      await image.decode();
+      const sample = document.createElement('canvas');
+      sample.width = image.width;
+      sample.height = image.height;
+      const context = sample.getContext('2d');
+      if (!context) throw new Error('Wind pixel sampling unavailable.');
+      context.drawImage(image, 0, 0);
+      return { pixels: context.getImageData(0, 0, image.width, image.height).data, width: image.width, height: image.height };
+    }));
+    const [a, b] = images;
+    let changed = 0, minX = a.width, minY = a.height, maxX = 0, maxY = 0;
+    for (let i = 0; i < a.pixels.length; i += 4) {
+      if (a.pixels[i] === b.pixels[i] && a.pixels[i + 1] === b.pixels[i + 1] && a.pixels[i + 2] === b.pixels[i + 2]) continue;
+      const x = (i / 4) % a.width, y = Math.floor(i / 4 / a.width);
+      changed++;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    return { changed, fraction: changed / (a.width * a.height), widthFraction: (maxX - minX) / a.width, heightFraction: (maxY - minY) / a.height };
+  }, [without.toString('base64'), withWind.toString('base64')]);
+  expect(difference.changed).toBeGreaterThan(10);
+  expect(difference.fraction).toBeLessThan(0.01);
+  expect(difference.widthFraction).toBeLessThan(0.25);
+  expect(difference.heightFraction).toBeLessThan(0.25);
+  await toggle.uncheck();
+  await expect.poll(capture).toEqual(without);
+  await toggle.check();
+  const nextQuality = (await overlay.getAttribute('data-quality')) === 'standard' ? 'low' : 'standard';
+  await page.getByRole('button', { name: nextQuality === 'low' ? 'Load Low ray pass' : 'Load Standard ray pass' }).click();
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await expect(toggle).toBeChecked();
+  const nextTier = await capture();
+  await toggle.uncheck();
+  await expect.poll(capture).not.toEqual(nextTier);
+  const windTime = () => page.evaluate(() => {
+    const ng = Reflect.get(window, 'ng') as { getComponent: (element: Element | null) => unknown };
+    const component = ng.getComponent(document.querySelector('ngt-canvas')) as {
+      store: { snapshot: { scene: Scene } };
+    };
+    const wind = component.store.snapshot.scene.getObjectByName('cygnus-x1-stellar-wind') as Mesh<BufferGeometry, ShaderMaterial> | undefined;
+    if (!wind) throw new Error('Companion wind missing.');
+    return Number(wind.material.uniforms['uTime'].value);
+  });
+  const frozenTime = await windTime();
+  await toggle.check();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect.poll(windTime).toBeGreaterThan(frozenTime + 0.1);
+  await page.getByRole('combobox', { name: 'Body type', exact: true }).selectOption('sol');
+  await expect(toggle).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('hides foreground choices for Cygnus X-1 and restores the selected model for other bodies', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  const foreground = page.getByRole('combobox', { name: 'Foreground', exact: true });
+  await expect(foreground).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Body type', exact: true }).selectOption('sol');
+  await expect(foreground).toBeVisible();
+  await foreground.selectOption('station');
+  await expect(overlay).toHaveAttribute('data-state', 'ready');
+  await page.getByRole('combobox', { name: 'Body type', exact: true }).selectOption('black-hole');
+  await expect(foreground).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Body type', exact: true }).selectOption('sol');
+  await expect(foreground).toHaveValue('station');
+  await expect(page.locator('app-login-page')).toBeVisible();
+});
+
+test('reports missing HDR support for the Cygnus X-1 prototype without blocking login', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = WebGL2RenderingContext.prototype.getExtension;
+    WebGL2RenderingContext.prototype.getExtension = function (name: string) {
+      return name === 'EXT_color_buffer_float' ? null : original.call(this, name);
+    };
+  });
+  await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'error');
+  await expect(page.locator('app-login-page')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Load 3D scene' })).toBeVisible();
+});
+
+test('keeps splash starfield pixels across the left and right sky after orbit and resize', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(pinnedSplash('/splash', 'nova-splash-homeworld'));
+  await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+  for (const [width, height, station] of [
+    [1200, 800, false],
+    [600, 900, true],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    if (station) {
+      await page.getByRole('combobox', { name: 'Foreground', exact: true }).selectOption('station');
+      await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'ready');
+    }
+    await page.evaluate(() => {
+      const ng = Reflect.get(window, 'ng') as { getComponent: (element: Element | null) => unknown };
+      const component = ng.getComponent(document.querySelector('ngt-canvas')) as {
+        store: { snapshot: { scene: Scene; invalidate: () => void } };
+      };
+      const { scene, invalidate } = component.store.snapshot;
+      const field = scene.getObjectByName('splash-starfield');
+      if (!field) throw new Error('Splash starfield missing.');
+      // Isolate the sky to measure coverage without counting foreground pixels or occlusion.
+      scene.traverse((object) => {
+        if (Reflect.get(object, 'isMesh') || Reflect.get(object, 'isPoints')) object.visible = object === field;
+      });
+      invalidate();
+    });
+    const canvas = page.locator('ngt-canvas canvas').first();
+    for (let orbit = 0; orbit < 2; orbit++) {
+      if (orbit) {
+        const box = await canvas.boundingBox();
+        if (!box) throw new Error('Splash canvas missing.');
+        await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.35);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.45, { steps: 8 });
+        await page.mouse.up();
+      }
+      const png = await canvas.screenshot({ style: 'app-splash-overlay { visibility: hidden !important; }' });
+      const canvasBounds = await canvas.boundingBox();
+      const skyBounds = await page.locator('app-splash-overlay section').boundingBox();
+      if (!canvasBounds || !skyBounds) throw new Error('Splash sky bounds unavailable.');
+      const quadrants = await page.evaluate(
+        async ({ base64, canvasBounds, skyBounds }) => {
+          const image = new Image();
+          image.src = `data:image/png;base64,${base64}`;
+          await image.decode();
+          const sample = document.createElement('canvas');
+          const scale = image.width / canvasBounds.width;
+          sample.width = Math.round(skyBounds.width * scale);
+          sample.height = Math.round(skyBounds.height * scale);
+          const context = sample.getContext('2d');
+          if (!context) throw new Error('Starfield pixel sampling unavailable.');
+          context.drawImage(
+            image,
+            (skyBounds.x - canvasBounds.x) * scale,
+            (skyBounds.y - canvasBounds.y) * scale,
+            sample.width,
+            sample.height,
+            0,
+            0,
+            sample.width,
+            sample.height,
+          );
+          const data = context.getImageData(0, 0, sample.width, sample.height).data;
+          const counts = [0, 0, 0, 0];
+          for (let y = 0; y < sample.height; y++) {
+            for (let x = 0; x < sample.width; x++) {
+              const index = (y * sample.width + x) * 4;
+              if (data[index] > 70 && data[index + 1] > 70 && data[index + 2] > 70) {
+                counts[(x >= sample.width / 2 ? 1 : 0) + (y >= sample.height / 2 ? 2 : 0)]++;
+              }
+            }
+          }
+          return counts;
+        },
+        { base64: png.toString('base64'), canvasBounds, skyBounds },
+      );
+      expect(Math.min(...quadrants)).toBeGreaterThan(25);
+      expect(Math.max(...quadrants) / Math.min(...quadrants)).toBeLessThan(2.5);
+    }
+  }
 });
 
 test('renders repeatable terran clouds and updates them with the splash controls', async ({ page }) => {

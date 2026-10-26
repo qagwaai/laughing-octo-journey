@@ -53,6 +53,10 @@ export type PlanetSurfaceSourceRequest =
  */
 export function isTexturableBody(body: ResolvablePlanetBody | null | undefined): boolean {
   if (!body?.surfaceArchetype) return false;
+  // Black holes have no planetary surface. This applies to every identity:
+  // exact supported profiles use a ray pass; unknown identities stay generic
+  // geometry, never a terran bake masquerading as a black-hole surface.
+  if (body.bodyType === 'black-hole' || body.surfaceArchetype === 'black-hole') return false;
   const resolution = resolveCelestialAppearance({
     source: 'canonical',
     bodyId: body.id,

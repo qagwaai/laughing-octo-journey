@@ -25,6 +25,18 @@ describe('SplashState body picker', () => {
     expect(state.pickerBody()).toBe('nova-splash-star-g');
   });
 
+  it('selects the black-hole prototype without inventing a canonical surface archetype', () => {
+    expect(state.stellarWind()).toBe(false);
+    state.stellarWind.set(true);
+    state.chooseCategory('black-hole');
+    expect(state.planetBodyId()).toBe('demo-cygnus-x1');
+    expect(state.planetKind()).toBe('black-hole');
+    expect(state.planetSurfaceArchetype()).toBeNull();
+    state.chooseBody('sol-mars');
+    expect(state.planetSurfaceArchetype()).toBe('rocky');
+    expect(state.stellarWind()).toBe(true);
+  });
+
   it('switches foreground assets and diagnostics without changing the chosen body or quality', () => {
     state.supported.set(true);
     state.status.set('ready');

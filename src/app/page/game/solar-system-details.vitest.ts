@@ -20,20 +20,22 @@ function body(bodyType: CanonicalViewerBody['bodyType'], index: number): Canonic
     surfaceArchetype:
       bodyType === 'star'
         ? 'star'
-        : bodyType === 'comet' || bodyType === 'asteroid'
-          ? 'asteroid'
-          : bodyType === 'moon'
-            ? 'rocky-moon'
-            : bodyType === 'tno'
-              ? 'icy-moon'
-              : 'rocky',
+        : bodyType === 'black-hole'
+          ? 'black-hole'
+          : bodyType === 'comet' || bodyType === 'asteroid'
+            ? 'asteroid'
+            : bodyType === 'moon'
+              ? 'rocky-moon'
+              : bodyType === 'tno'
+                ? 'icy-moon'
+                : 'rocky',
     state: 'unscanned',
     displayName: `Body ${index}`,
     spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: index, y: 0, z: 0 }, epochMs: 0 },
   };
 }
 
-function setup(bodies: CanonicalViewerBody[] = []) {
+function setup(bodies: CanonicalViewerBody[] = [], stars: CanonicalViewerBody[] = []) {
   TestBed.configureTestingModule({
     imports: [SolarSystemDetailsPage],
     providers: [
@@ -47,7 +49,7 @@ function setup(bodies: CanonicalViewerBody[] = []) {
               message: '',
               correlationId: 'details-test',
               requestIdentity: { operation: 'solar-system-get', entityType: 'sol', containerId: 'sol' },
-              stars: [],
+              stars,
               bodies,
             }),
           ),
@@ -77,7 +79,7 @@ describe('SolarSystemDetailsPage body groups', () => {
   afterEach(() => setActiveLocaleCode('en'));
 
   it('includes every canonical type in the requested order and preserves distance-view rows', () => {
-    const bodies = (['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'tno', 'comet'] as const).map(
+    const bodies = (['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'black-hole', 'tno', 'comet'] as const).map(
       (type, index) => body(type, index),
     );
     const { component } = setup(bodies);
@@ -126,11 +128,23 @@ describe('SolarSystemDetailsPage body groups', () => {
 
   it('localizes the new group names in Italian', () => {
     setActiveLocaleCode('it');
-    const { component } = setup();
-    expect(component['typeGroups']().map((group) => group.label)).toEqual([
-      'Pianeta nano',
-      'Oggetto transnettuniano',
-      'Cometa',
-    ]);
+    const { component } = setup([body('black-hole', 1)]);
+    expect(component['typeGroups']().find((group) => group.type === 'black-hole')?.label).toBe('Buchi neri');
+  });
+
+  it('deduplicates a companion listed in both stars and bodies while retaining the black-hole row', () => {
+    const star = body('star', 1);
+    const blackHole = body('black-hole', 2);
+    const { component } = setup([blackHole, star], [star]);
+    expect(
+      component['typeGroups']()
+        .find((group) => group.type === 'star')
+        ?.rows.map((row) => row.id),
+    ).toEqual([star.id]);
+    expect(
+      component['typeGroups']()
+        .find((group) => group.type === 'black-hole')
+        ?.rows.map((row) => row.id),
+    ).toEqual([blackHole.id]);
   });
 });

@@ -4,6 +4,84 @@
 
 Accepted (initial MVP).
 
+### Cygnus X-1 black-hole rendering: accepted 2026-10-25
+
+The user accepted the Stellar Viewer result after removal of the splash-specific
+rectangular sky backdrop. The user will commit and push the session changes.
+
+#### Identity, discovery and grouping
+
+- Renderer selection requires exact `catalogIdentity` pairs and compatible
+  canonical classification: `cygnus-x1/black-hole` with black-hole body type and
+  surface archetype; `cygnus-x1/hd226868` with star type and archetype.
+  Entity IDs, display names, texture hints and HYG/HIP/HD numbers are not aliases.
+- Forge system ID is `cygnus-x1`; entity IDs are `cygnus-x1-black-hole` and
+  `cygnus-x1-hd226868`. HYG 97987 / HIP 98298 / HD 226868 refer to the companion,
+  not a separate black-hole catalog record.
+- A local catalog entry keeps the system selectable without enlarging the
+  distance-limited list request. The existing authenticated system-get flow
+  requests it; Forge owns on-demand availability/seeding.
+- Group by Type adds localized **Black holes** when bodies of that type exist.
+  The order is Star, Planet, Dwarf Planet, Moon, Asteroid, Black holes,
+  Trans-Neptunian object, Comet, Station and Ships.
+- Viewer and details deduplicate shared `stars`/`bodies` entries by entity ID.
+  This supersedes the earlier decision below to defer duplicate Sun handling.
+  It does not introduce a general conflicting-record reconciliation policy.
+
+#### Rendering, coordinates and physical meaning
+
+- [Identity and layout selection](../src/app/scene/viewer/cygnus-x1-viewer-profile.ts)
+  and the [Angular renderer](../src/app/scene/viewer/viewer-black-hole-renderer.ts)
+  reuse the shared bounded ray core, not the splash companion composition.
+- The viewer uses a 320 x 267 HDR pass with 256 integration steps. Lifecycle
+  ownership includes disposal and renderer-state restoration; reduced motion
+  freezes animation. Unsupported HDR produces a logged, visible notice.
+- Escaped rays are transparent in the viewer; disk emission and the opaque
+  shadow composite into the host scene without a rectangular procedural sky.
+  The splash retains its procedural sky. This does not lens other viewer
+  objects, and the Schwarzschild approximation omits the actual system's spin.
+- Both live canonical positions are authored zero-origin barycentric snapshots.
+  Only when both exact identity matches have those placeholders does the viewer
+  stage them at separate display positions. Canonical spatial data stays intact,
+  and a visible notice states that spacing is not measured or an orbital phase.
+  Parent hierarchy and inclination alone do not establish an orbit.
+- The 62.6 km Schwarzschild reference is not a measured horizon or disk radius.
+  Unknown horizon/disk radii and system coordinates stay unknown; source distance
+  remains distinct from system registry distance. Display size is authored.
+- All black-hole classifications bypass planetary terrain generation/cache
+  retention. Unsupported identities remain selectable generic geometry rather
+  than receiving Cygnus imagery or a terran bake.
+- No new travel routes, gates, close-up page or physical binary simulation.
+
+#### Validation and remaining handoff
+
+Production build, app/spec typecheck, targeted lint/format, focused unit suites
+and mocked Chromium Viewer flows passed. The final shared-core regression ran:
+
+- `npm run test:spec -- src\app\scene\black-hole\black-hole.vitest.ts`:
+  **passed, 11 tests**.
+- `npx playwright test viewer-list.spec.ts splash.spec.ts --grep 'on-demand Cygnus|renders the opt-in Cygnus' --project=chromium --no-deps --reporter=line --workers=1`:
+  **passed, 2 tests**. Contrasting-background pixels verify transparent
+  surroundings and an opaque shadow; the splash renderer still works.
+- `npm run build` and `npm run typecheck`: **passed**.
+
+Authenticated live reads confirmed both canonical bodies, companion-only
+`stars`, exact identities/classifications, stable repeat-read snapshots, and
+celestial list limits 1/2 returning one/two bodies respectively. Live UI re-entry
+after the terrain-cache correction had no false terran warning or renderer error.
+First-time insertion was not proven, and no backend records were reset.
+
+Live GET omits the optional separation, eccentricity and inclination fields,
+and omits `orbitalElements` instead of explicitly returning null. The client
+does not synthesize them. The companion's physical radius/temperature and
+black-hole source references were present. See
+[full live findings and source references](./splash1-2026-09-27.md#authenticated-live-handoff-verification-2026-10-25).
+
+Visual acceptance is not full-suite regression, representative hardware
+performance, leak-profile or physical Safari/iPad certification. The splash
+overlay limitation and other deferred scientific work are recorded in the
+[session closeout](./splash1-2026-09-27.md#cygnus-x-1-session-closeout-2026-10-25).
+
 ### Station models and close-up navigation: accepted 2026-10-18
 
 User visual confirmation is complete for this session's station-viewer and

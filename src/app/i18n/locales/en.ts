@@ -78,6 +78,7 @@ export const en = {
         'gas-giant': 'Gas giants',
         star: 'Suns',
         sol: 'Sol system',
+        'black-hole': 'Black holes (prototype)',
       },
       bodyLabel: 'Body',
       bodyRandom: 'Random',
@@ -92,6 +93,14 @@ export const en = {
       bodyIcyMoon: 'Icy moon',
       bodyRockyMoon: 'Rocky moon',
       bodyStar: 'Sun',
+      bodyBlackHole: 'Cygnus X-1 (cinematic prototype)',
+      blackHoleTier: 'Black-hole ray pass ({width} x {height}, {steps} steps)',
+      blackHoleSwitchToStandard: 'Load Standard ray pass',
+      blackHoleSwitchToLow: 'Load Low ray pass',
+      stellarWindLabel: 'Stellar wind (cinematic)',
+      stellarWindNote: 'Faint companion wind only; illustrative glow and speed, not visible-plasma simulation or a transfer stream.',
+      blackHoleNote:
+        'Local visual study, not a travel destination. Foreground models are not shown in this view. Non-rotating Schwarzschild lensing; Cygnus X-1 spins. Disk color, companion framing and animation speed are artistic, not a to-scale or naked-eye view.',
       solBodies: {
         earth: 'Earth',
         luna: 'Moon (Luna)',
@@ -157,6 +166,16 @@ export const en = {
       attributionBody:
         'Our orbital-compute concepts, especially the link between sustained compute and radiator capacity, were informed by this article by JinV+:',
       attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
+      scientificAttributionTitle: 'Astronomical references',
+      scientificAttributionBody:
+        'Our Cygnus X-1 research and concept studies draw on the following catalog and scientific publications. These references inform the design; they do not imply endorsement by their authors.',
+      hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (catalog identification)',
+      cygnusDynamicsAttributionSource:
+        'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masses, distance and orbital parameters)',
+      cygnusReviewAttributionSource:
+        'Jiachen Jiang (2024) - Fifty Years After the Discovery of the First Stellar-Mass Black Hole: A Review of Cyg X-1 (stellar-wind accretion and X-ray physics)',
+      scientificVisualizationNote:
+        'Black-hole concept art is an artistic visualization, not an observational image or a to-scale reconstruction. Gas visibility, color and camera framing may be enhanced for readability.',
       quote: 'The stars are not just lights in the sky; they are the fuel for the next evolution.',
       registerLink: 'New Users Register here',
       loginLink: 'Existing Users Login here',
@@ -783,6 +802,12 @@ export const en = {
       subtitle: 'Browse curated and HYG-sourced star systems and inspect their celestial bodies.',
       sectionTitle: 'Known Systems',
       sectionDescription: 'Select a system to render it in the 3D viewer.',
+      cygnusX1CatalogNote: 'Catalog entry · seeded when selected',
+      cygnusX1VisualizationNote:
+        'Display-only layout: both catalog positions are authored system-origin placeholders, not measured component coordinates or an orbital phase. The Schwarzschild ray-tracing view is illustrative; Cygnus X-1 rotates.',
+      blackHoleHdrUnsupported: 'Black-hole rendering unavailable: this device does not support HDR color targets.',
+      blackHoleReferenceDisclaimer:
+        'Schwarzschild radius is a non-rotating reference value, not a measured event-horizon or accretion-disk boundary.',
       listLoadingStatus: 'Loading systems...',
       listEmptyStatus: 'No solar systems available.',
       listErrorPrefix: 'Failed to load solar systems:',
@@ -904,8 +929,19 @@ export const en = {
       detailsActiveShipBadge: 'Active',
       detailsSectionShips: 'Ships',
       detailsSectionDwarfPlanet: 'Dwarf Planet',
+      detailsSectionBlackHole: 'Black holes',
       detailsSectionTno: 'Trans-Neptunian object',
       detailsSectionComet: 'Comet',
+      blackHoleMassLabel: 'Catalog mass (solar)',
+      blackHoleDistanceLabel: 'Catalog distance (pc)',
+      blackHolePeriodLabel: 'Binary period (days)',
+      blackHoleSchwarzschildLabel: 'Schwarzschild reference radius (km)',
+      blackHoleHorizonLabel: 'Event-horizon radius (km)',
+      blackHoleDiskLabel: 'Visual disk outer radius (km)',
+      blackHoleCompanionRadiusLabel: 'Companion mean radius (km)',
+      blackHoleCompanionTemperatureLabel: 'Companion mean temperature (K)',
+      blackHoleSourcesLabel: 'Source references',
+      blackHoleUnknownValue: 'Unknown',
     },
   },
 

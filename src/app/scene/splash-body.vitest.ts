@@ -26,6 +26,18 @@ const settings: SplashBodySettings = {
 const entry = (id: string) => SPLASH_PLANET_ROTATION.find((candidate) => candidate.id === id)!;
 
 describe('createSplashBody', () => {
+  it('builds the opt-in black-hole renderer without catalog textures or a forged canonical appearance', async () => {
+    const calls = loadCatalogSurface.mock.calls.length;
+    const body = await createSplashBody({ id: 'demo-cygnus-x1', kind: 'black-hole' }, { quality: 'low', settings });
+    expect(body.blackHole).toBeDefined();
+    expect(body.star).toBeUndefined();
+    expect(body.cloudMesh).toBeUndefined();
+    expect(loadCatalogSurface.mock.calls).toHaveLength(calls);
+    const slot = new Group();
+    slot.add(body.object);
+    body.dispose();
+    expect(slot.children).toHaveLength(0);
+  });
   it('routes Sol Saturn through its canonical giant instead of the rocky catalog', async () => {
     const calls = loadCatalogSurface.mock.calls.length;
     const body = await createSplashBody(entry('sol-saturn'), {

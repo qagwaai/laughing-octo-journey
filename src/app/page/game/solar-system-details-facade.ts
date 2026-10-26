@@ -1,7 +1,7 @@
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
-import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
+import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
@@ -79,7 +79,7 @@ export class SolarSystemDetailsFacade {
 
         this.deps.setSolarSystem(response.solarSystem ?? null);
 
-        const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
+        const allBodies = mergeUniqueViewerBodies([...(response.stars ?? []), ...(response.bodies ?? [])]);
         const bodyRows = this.bodiesToRows(allBodies);
         bodyRows.sort((a, b) => sortOrder(a.bodyType) - sortOrder(b.bodyType));
         this.deps.setBodyRows(bodyRows);
@@ -134,20 +134,18 @@ export class SolarSystemDetailsFacade {
       if (!response.success) {
         return;
       }
-      const marketRows = (response.markets ?? []).map(
-        (m: MarketSummary): DetailsRow => ({
-          id: m.marketId,
-          displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
-          bodyType: 'station',
-          diameterM: null,
-          semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
-          isShip: false,
-          isActiveShip: false,
-          shipModel: null,
-          shipTier: null,
-          shipStatus: null,
-        }),
-      );
+      const marketRows = (response.markets ?? []).map((m: MarketSummary): DetailsRow => ({
+        id: m.marketId,
+        displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
+        bodyType: 'station',
+        diameterM: null,
+        semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
+        isShip: false,
+        isActiveShip: false,
+        shipModel: null,
+        shipTier: null,
+        shipStatus: null,
+      }));
       const merged = [...existingRows, ...marketRows];
       merged.sort((a, b) => sortOrder(a.bodyType) - sortOrder(b.bodyType));
       this.deps.setBodyRows(merged);
