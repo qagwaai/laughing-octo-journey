@@ -44,6 +44,7 @@ export const it: DeepPartial<EnLocale> = {
       scientificAttributionTitle: 'Riferimenti astronomici',
       scientificAttributionBody:
         'La nostra ricerca e gli studi visivi su Cygnus X-1 si basano sul seguente catalogo e sulle seguenti pubblicazioni scientifiche. Questi riferimenti orientano il progetto, senza implicare il sostegno dei loro autori.',
+      catalogAttributionTitle: 'Fonti e limitazioni del catalogo del sistema solare',
       hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (identificazione nel catalogo)',
       cygnusDynamicsAttributionSource:
         'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masse, distanza e parametri orbitali)',
@@ -651,6 +652,19 @@ export const it: DeepPartial<EnLocale> = {
         'Superficie del catalogo non disponibile. Le immagini caricate vengono mantenute; altrimenti viene mostrato un segnaposto neutro:',
       surfaceCatalogRetry: 'Riprova il caricamento delle texture',
       surfaceCatalogSources: 'Fonti del terreno e limitazioni',
+      catalogSourcesTitle: 'Fonti del catalogo e limitazioni',
+      catalogSourcesScope:
+        'Il catalogo dei test prestazionali include comete, pianeti, lune, pianeti nani e oggetti transnettuniani; esclude asteroidi e visitatori interstellari. Non tutti i corpi del catalogo hanno un modello 3D.',
+      catalogSourcesEd138:
+        '2026 ED138 è un candidato pianeta nano, non un pianeta nano ufficialmente riconosciuto. Il diametro riportato di 600–1.500 km è una stima, non una misurazione precisa.',
+      catalogSourcesS2009S1: 'S/2009 S 1 usa elementi orbitali approssimativi a scopo di visualizzazione.',
+      catalogSourcesCometElements: 'Elementi cometari del Minor Planet Center',
+      catalogSourcesCometFormat: 'Documentazione sul formato orbitale cometario del Minor Planet Center',
+      catalogSourcesSatelliteElements: 'Tabella JPL degli elementi medi dei satelliti',
+      catalogSourcesSatelliteDiscoveries: 'Tabella JPL delle scoperte dei satelliti',
+      catalogSourcesEd138Database: 'NASA/JPL Small-Body Database: 2026 ED138',
+      catalogSourcesMpcAcknowledgment:
+        "This research has made use of data and/or services provided by the International Astronomical Union's Minor Planet Center.",
       surfaceCatalogPreview: 'Anteprima',
       surfaceCatalogLow: 'Dettaglio 2K',
       surfaceCatalogStandard: 'Dettaglio 4K',

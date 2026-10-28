@@ -169,6 +169,7 @@ export const en = {
       scientificAttributionTitle: 'Astronomical references',
       scientificAttributionBody:
         'Our Cygnus X-1 research and concept studies draw on the following catalog and scientific publications. These references inform the design; they do not imply endorsement by their authors.',
+      catalogAttributionTitle: 'Solar-system catalog sources and limitations',
       hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (catalog identification)',
       cygnusDynamicsAttributionSource:
         'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masses, distance and orbital parameters)',
@@ -827,6 +828,19 @@ export const en = {
         'Catalog surface unavailable. Retaining loaded imagery; otherwise showing a neutral placeholder:',
       surfaceCatalogRetry: 'Retry texture loading',
       surfaceCatalogSources: 'Terrain sources and limitations',
+      catalogSourcesTitle: 'Catalog sources and limitations',
+      catalogSourcesScope:
+        'The performance-test catalog includes comets, planets, moons, dwarf planets, and trans-Neptunian objects; it excludes asteroids and interstellar visitors. Not every catalog body has a 3D model.',
+      catalogSourcesEd138:
+        '2026 ED138 is a dwarf-planet candidate, not an officially recognized dwarf planet. Its reported 600–1,500 km diameter is an estimate, not a precise measurement.',
+      catalogSourcesS2009S1: 'S/2009 S 1 uses approximate orbital elements for visualization.',
+      catalogSourcesCometElements: 'Minor Planet Center comet elements',
+      catalogSourcesCometFormat: 'Minor Planet Center comet orbit format documentation',
+      catalogSourcesSatelliteElements: 'JPL satellite mean-elements table',
+      catalogSourcesSatelliteDiscoveries: 'JPL satellite discovery table',
+      catalogSourcesEd138Database: 'NASA/JPL Small-Body Database: 2026 ED138',
+      catalogSourcesMpcAcknowledgment:
+        "This research has made use of data and/or services provided by the International Astronomical Union's Minor Planet Center.",
       surfaceCatalogPreview: 'Preview',
       surfaceCatalogLow: '2K detail',
       surfaceCatalogStandard: '4K detail',

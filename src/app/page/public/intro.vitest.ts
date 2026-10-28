@@ -81,6 +81,30 @@ describe('IntroPage Logic', () => {
       expect(root.querySelector('[aria-labelledby="scientific-attribution-title"]')).not.toBeNull();
     });
 
+    it('credits the Viewer solar-system catalog and displays the exact MPC acknowledgment', () => {
+      const { component, fixture } = setup('left');
+      const root: HTMLElement = fixture.nativeElement;
+      const catalog = root.querySelector('[aria-labelledby="catalog-attribution-title"]') as HTMLElement;
+      const acknowledgment = component['t'].game.viewer.catalogSourcesMpcAcknowledgment;
+      const sourceUrls = [
+        'https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt',
+        'https://docs.minorplanetcenter.net/mpc-ops-docs/orbits/comet-orbit-format/',
+        'https://ssd.jpl.nasa.gov/sats/elem/',
+        'https://ssd.jpl.nasa.gov/sats/discovery.html',
+        'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138',
+      ];
+
+      expect(catalog).not.toBeNull();
+      expect(catalog.textContent).toContain(acknowledgment);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesScope);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesEd138);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesS2009S1);
+
+      const links = Array.from(catalog.querySelectorAll('a'));
+      expect(links.map((link) => link.href)).toEqual(sourceUrls);
+      expect(links.every((link) => link.target === '_blank' && link.rel === 'noopener noreferrer')).toBe(true);
+    });
+
     it('should distinguish artistic black-hole concepts from observational imagery', () => {
       const { component, fixture } = setup('left');
       expect(fixture.nativeElement.textContent).toContain(component['t'].public.intro.scientificVisualizationNote);
