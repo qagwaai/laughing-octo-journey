@@ -469,6 +469,50 @@ test.describe('Viewer — Scene Rendering', () => {
     expect(overGateEnvelope.reason).toContain('gate descriptor entries exceed max 3');
   });
 
+  test('filters discovered groups with asteroids opt-in and resets preferences on reload', async ({ page }) => {
+    const { mock } = await setupViewerSceneTest(page);
+    const asteroid = {
+      ...SOL_SYSTEM_BODIES[1],
+      id: 'filter-asteroid',
+      bodyType: 'asteroid',
+      surfaceArchetype: 'asteroid',
+      displayName: 'Filter Asteroid',
+    };
+    await navigateToSystemScene(page, mock, [...SOL_SYSTEM_BODIES, asteroid]);
+    await new ViewerPage(page).expectSceneLoaded();
+    const asteroids = page.getByRole('checkbox', { name: 'asteroids', exact: true });
+    const planets = page.getByRole('checkbox', { name: 'planets', exact: true });
+    const ships = page.getByRole('checkbox', { name: 'ships', exact: true });
+    const renderedBodyNames = () => page.evaluate(() => {
+      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
+      if (!canvas) return [];
+      const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot.scene;
+      const names: string[] = [];
+      scene?.traverse((object) => { if (object.type === 'Mesh') names.push(object.name); });
+      return names;
+    });
+    await expect(asteroids).toBeVisible();
+    await expect(asteroids).not.toBeChecked();
+    await expect(planets).toBeChecked();
+    await expect(ships).toBeChecked();
+    await expect.poll(renderedBodyNames).toContain('Earth');
+    await expect.poll(renderedBodyNames).not.toContain('Filter Asteroid');
+    await asteroids.check();
+    await expect.poll(renderedBodyNames).toContain('Filter Asteroid');
+    await planets.uncheck();
+    await expect(planets).toBeVisible();
+    await expect.poll(renderedBodyNames).not.toContain('Earth');
+    await asteroids.uncheck();
+    await expect.poll(renderedBodyNames).not.toContain('Filter Asteroid');
+    await asteroids.check();
+    await page.reload();
+    await expect(asteroids).not.toBeChecked();
+    await expect(planets).toBeChecked();
+    await expect.poll(renderedBodyNames).toContain('Earth');
+    await expect.poll(renderedBodyNames).not.toContain('Filter Asteroid');
+  });
+
   test('renders viewer scene after selecting a solar system', async ({ page }) => {
     const { mock } = await setupViewerSceneTest(page);
 

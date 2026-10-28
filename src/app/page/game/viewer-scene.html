@@ -87,6 +87,21 @@
         </div>
         }
 
+        <fieldset class="viewer-item-groups viewer-info-panel__section" data-testid="viewer-item-groups">
+          <legend>{{ t.game.viewer.itemGroupsTitle }}</legend>
+          @for (group of itemGroups(); track group) {
+          <label>
+            <input
+              type="checkbox"
+              [attr.data-testid]="'viewer-group-' + group"
+              [checked]="isGroupIncluded(group)"
+              (change)="setGroupIncluded(group, $any($event.target).checked)"
+            />
+            {{ group }}
+          </label>
+          }
+        </fieldset>
+
         <details class="viewer-legend viewer-info-panel__section" data-testid="viewer-legend" open>
           <summary>{{ t.game.viewer.legendTitle }}</summary>
           <div class="viewer-legend__keys">

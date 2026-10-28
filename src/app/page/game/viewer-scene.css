@@ -81,6 +81,18 @@
   color: #8bacd8;
 }
 
+.viewer-item-groups {
+  margin: 0;
+  border: 0;
+}
+
+.viewer-item-groups label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.65rem;
+}
+
 .viewer-scene-layout--inspecting .viewer-info-panel {
   max-height: calc(50% - 2rem);
 }

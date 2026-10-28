@@ -701,6 +701,7 @@ export const it: DeepPartial<EnLocale> = {
       planetViewNoMoonsLabel: 'Nessuna luna collegata a questo corpo.',
       legendTitle: 'Legenda',
       infoPanelTitle: 'Visualizzatore',
+      itemGroupsTitle: 'Gruppi di oggetti visibili',
       inspectTargetLabel: 'Ispeziona bersaglio',
       openCloseup: 'Apri primo piano',
       stationViewTitle: 'Vista ravvicinata della stazione',

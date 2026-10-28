@@ -877,6 +877,7 @@ export const en = {
       planetViewNoMoonsLabel: 'No moons linked to this body.',
       legendTitle: 'Legend',
       infoPanelTitle: 'Viewer',
+      itemGroupsTitle: 'Visible item groups',
       inspectTargetLabel: 'Inspect target',
       openCloseup: 'Open close-up',
       stationViewTitle: 'Station close-up',
