@@ -59,7 +59,16 @@ test.describe('Viewer — Interaction Behaviors', () => {
         await expect(page.getByRole('button', { name: `${groupLabel} ${groupLabel === label ? 1 : 0}` })).toBeVisible();
       }
       await page.getByRole('button', { name: `${label} 1` }).click();
-      await page.getByTestId(`details-table-${bodyType}`).getByRole('button', { name: 'Target', exact: true }).click();
+      const targetButton = page
+        .getByTestId(`details-table-${bodyType}`)
+        .getByRole('button', { name: 'Target', exact: true });
+      if (bodyType === 'comet') {
+        await expect(page.getByTestId('viewer-group-comet')).not.toBeChecked();
+        await expect(targetButton).toBeDisabled();
+        await page.getByTestId('viewer-group-comet').check();
+      }
+      await expect(targetButton).toBeEnabled();
+      await targetButton.click();
       await expect(page.getByTestId('viewer-body-label')).toContainText(selected.displayName);
       await page.getByTestId('viewer-inspect-target').click();
       await expect(page.getByTestId('viewer-body-inspector')).toContainText(selected.displayName);
@@ -98,14 +107,19 @@ test.describe('Viewer — Interaction Behaviors', () => {
       await viewer.expectSceneLoaded();
       await viewer.switchToDistanceView();
       const button = page.locator('tr', { hasText: selected.displayName }).locator('button.details-target-btn');
+      if (bodyType === 'asteroid') {
+        await expect(page.getByTestId('viewer-group-asteroids')).not.toBeChecked();
+        await expect(button).toBeDisabled();
+        await page.getByTestId('viewer-group-asteroids').check();
+      }
+      await expect(button).toBeEnabled();
       const targetBracketCount = () =>
         page.evaluate(() => {
           const canvas = document.querySelector('ngt-canvas');
           if (!canvas) return 0;
           const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
-          const scene = (
-            ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }
-          ).store.snapshot.scene;
+          const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot
+            .scene;
           let count = 0;
           scene?.traverse((object) => {
             if (object.name === 'viewer-target-bracket') count++;

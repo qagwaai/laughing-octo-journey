@@ -178,6 +178,7 @@ async function renderedSurface(page: import('@playwright/test').Page, name: stri
       color: material.color.getHexString(),
       emissive: material.emissive.getHexString(),
       emissiveIntensity: material.emissiveIntensity,
+      hasTargetBracket: !!component.store.snapshot.scene?.getObjectByName('viewer-target-bracket'),
       source:
         typeof albedoImage === 'object' &&
         albedoImage !== null &&
@@ -366,13 +367,18 @@ test.describe('viewer catalog planet surfaces', () => {
     await navigateToSystemScene(page, mock, catalogBodies());
 
     await expect.poll(async () => (await renderedSurface(page, 'Earth'))?.albedoWidth).toBe(512);
-    expect(await renderedSurface(page, 'Earth')).toMatchObject({ color: 'ffffff', emissive: '000000' });
+    expect(await renderedSurface(page, 'Earth')).toMatchObject({
+      color: 'ffffff',
+      emissive: '000000',
+      hasTargetBracket: false,
+    });
     await setSystemBodyTarget(page, 'earth');
     await expect
       .poll(async () => renderedSurface(page, 'Earth'))
       .toMatchObject({
         color: 'ffffff',
-        emissive: '92400e',
+        emissive: '000000',
+        hasTargetBracket: true,
       });
     await expect(page.getByTestId('viewer-body-label')).toContainText('Earth');
     await expect(page.getByTestId('viewer-body-label')).toContainText('Targeted');
@@ -382,6 +388,7 @@ test.describe('viewer catalog planet surfaces', () => {
       .toMatchObject({
         color: 'ffffff',
         emissive: '000000',
+        hasTargetBracket: false,
       });
     await expect(page.getByTestId('viewer-body-label')).toHaveCount(0);
 
