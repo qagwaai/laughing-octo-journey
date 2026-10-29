@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Color, Mesh, PerspectiveCamera, Scene } from 'three';
 import { SocketIOMock } from '../fixtures/socket-mock';
 import {
   ACTIVE_SHIP,
@@ -29,7 +30,9 @@ test.describe('Viewer — Solar System List', () => {
 
     // Verify all systems are displayed
     const items = page.locator('.solar-system-item');
-    await expect(items).toHaveCount(3);
+    await expect(items).toHaveCount(4);
+    await expect(viewerPage.systemItemById('cygnus-x1')).toContainText('Cygnus X-1');
+    await expect(viewerPage.systemItemById('cygnus-x1')).toContainText('seeded when selected');
 
     // Verify Sol system displays (use specific span selector to avoid ambiguity)
     const solNameSpan = page.locator('.solar-system-item__name:has-text("Sol")');
@@ -124,20 +127,163 @@ test.describe('Viewer — Solar System List', () => {
     resolveResponse();
   });
 
-  test('displays empty state when no systems are returned', async ({ page }) => {
+  test('keeps the catalog Cygnus X-1 entry available when the distance-limited list is empty', async ({ page }) => {
     await setupViewerListTest(page, []);
     const gameShell = new GameShellPage(page);
     const viewerPage = new ViewerPage(page);
 
     await gameShell.openViewer();
 
-    const emptyState = viewerPage.emptyState;
-    await expect(emptyState).toBeVisible();
-    // Match actual i18n string
-    await expect(emptyState).toContainText('No solar systems available.');
-
     const systemList = viewerPage.systemList;
-    await expect(systemList).not.toBeVisible();
+    await expect(systemList).toBeVisible();
+    await expect(viewerPage.systemItemById('cygnus-x1')).toBeVisible();
+    await expect(viewerPage.emptyState).toHaveCount(0);
+  });
+
+  test('requests the on-demand Cygnus system and renders its black-hole group with one companion', async ({ page }) => {
+    const { mock } = await setupViewerListTest(page, []);
+    const requestedSystemIds: string[] = [];
+    const blackHole = {
+      id: 'cygnus-x1-black-hole',
+      catalogId: 'cygnus-x1-black-hole',
+      catalogIdentity: { namespace: 'cygnus-x1', key: 'black-hole' },
+      bodyType: 'black-hole',
+      surfaceArchetype: 'black-hole',
+      displayName: 'Cygnus X-1',
+      parentBodyId: null,
+      orbitalElements: null,
+      spatial: {
+        solarSystemId: 'cygnus-x1',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: 0 },
+        epochMs: 1_761_408_000_000,
+      },
+      state: 'active',
+      composition: { material: 'black-hole', rarity: 'Common', textureColor: '#111827' },
+      blackHoleProperties: {
+        massSolar: 21.2,
+        massUncertaintySolar: 2.2,
+        distanceParsec: 2220,
+        distanceUncertaintyParsec: 180,
+        orbitalPeriodDays: 5.599829,
+        relativeBinarySemimajorAxisAU: 0.244,
+        eccentricity: 0.0189,
+        inclinationDeg: 27.51,
+        schwarzschildReferenceRadiusKm: 62.6,
+        eventHorizonRadiusKm: null,
+        visualAccretionDiskOuterRadiusKm: null,
+        sourceReferences: [
+          'Miller-Jones et al. 2021, Science 372, 1046, doi:10.1126/science.abb3363',
+          'Orosz et al. 2011, ApJ 742, 84, doi:10.1088/0004-637X/742/2/84',
+          'arXiv:2411.12507, wind-fed accretion context',
+        ],
+      },
+    };
+    const companion = {
+      id: 'cygnus-x1-hd226868',
+      catalogId: 'cygnus-x1-hd226868',
+      catalogIdentity: { namespace: 'cygnus-x1', key: 'hd226868' },
+      bodyType: 'star',
+      surfaceArchetype: 'star',
+      displayName: 'HD 226868',
+      hygId: '97987',
+      spectralClass: null,
+      luminositySolar: null,
+      physicalCatalog: {
+        massSolar: 40.6,
+        massUncertaintySolar: 7.7,
+        meanRadiusKm: 15514110,
+        meanTemperatureK: 31138,
+      },
+      parentBodyId: null,
+      orbitalElements: null,
+      spatial: {
+        solarSystemId: 'cygnus-x1',
+        frame: 'barycentric',
+        positionKm: { x: 0, y: 0, z: 0 },
+        epochMs: 1_761_408_000_000,
+      },
+      state: 'active',
+      composition: { material: 'stellar plasma', rarity: 'Common', textureColor: '#fff2c0' },
+    };
+    mock.on('solar-system-get-request', (request) => {
+      requestedSystemIds.push(String((request as { solarSystemId?: unknown }).solarSystemId));
+      return {
+        event: 'solar-system-get-response',
+        data: {
+          success: true,
+          message: 'ok',
+          solarSystem: {
+            id: 'cygnus-x1',
+            displayName: 'Cygnus X-1',
+            source: 'curated',
+            positionPc: null,
+            distanceParsec: null,
+          },
+          stars: [companion],
+          bodies: [blackHole, companion],
+        },
+      };
+    });
+
+    await new GameShellPage(page).openViewer();
+    const viewerPage = new ViewerPage(page);
+    await viewerPage.systemItemById('cygnus-x1').getByRole('button').click();
+
+    await expect(page).toHaveURL(/right:viewer-scene\/cygnus-x1/);
+    await page.locator('.details-type-header').filter({ hasText: 'Star' }).click();
+    await page.locator('.details-type-header').filter({ hasText: 'Black holes' }).click();
+    await expect(page.getByTestId('details-table-black-hole')).toContainText('Cygnus X-1');
+    await expect(page.getByTestId('details-table-star').locator('tbody tr')).toHaveCount(1);
+    await expect(page.getByTestId('details-table-black-hole').locator('tbody tr')).toHaveCount(1);
+    await expect(page.getByTestId('viewer-black-hole-layout-note')).toBeVisible();
+    await expect.poll(() => requestedSystemIds.length).toBeGreaterThanOrEqual(2);
+    expect(requestedSystemIds).toEqual(['cygnus-x1', 'cygnus-x1']);
+    await expect(page.locator('app-viewer-scene-page ngt-canvas canvas')).toBeVisible();
+    const samplePoints = await page.evaluate(() => {
+      const ng = Reflect.get(window, 'ng') as { getComponent: (element: Element | null) => unknown };
+      const component = ng.getComponent(document.querySelector('app-viewer-scene-page ngt-canvas')) as {
+        store: { snapshot: { scene: Scene; camera: PerspectiveCamera; invalidate: () => void } };
+      };
+      const { scene, camera, invalidate } = component.store.snapshot;
+      const display = scene.getObjectByName('black-hole-image') as Mesh | undefined;
+      if (!display) throw new Error('Viewer black-hole image unavailable.');
+      display.scale.setScalar(6);
+      scene.traverse(object => {
+        if (Reflect.get(object, 'isMesh')) object.visible = object === display;
+      });
+      (scene.background as Color).setRGB(0.1, 0.3, 0.5);
+      scene.updateMatrixWorld(true);
+      const project = (x: number, y: number) => {
+        const point = display.localToWorld(display.position.clone().set(x, y, 0)).project(camera);
+        return { x: (point.x + 1) / 2, y: (1 - point.y) / 2 };
+      };
+      invalidate();
+      return { corner: project(-4.2, -3.5), shadow: project(0, 0), outside: project(-8, -6) };
+    });
+    const png = await page.locator('app-viewer-scene-page ngt-canvas canvas').screenshot({
+      style: 'app-viewer-scene-page { visibility: hidden; } app-viewer-scene-page canvas { visibility: visible; }',
+    });
+    const samples = await page.evaluate(async ({ png, samplePoints }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${png}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Background pixel sampler unavailable.');
+      context.drawImage(image, 0, 0);
+      const at = (point: { x: number; y: number }) => Array.from(context.getImageData(
+        Math.round(point.x * image.width), Math.round(point.y * image.height), 1, 1,
+      ).data).slice(0, 3);
+      return {
+        corner: at(samplePoints.corner), shadow: at(samplePoints.shadow), outside: at(samplePoints.outside),
+      };
+    }, { png: png.toString('base64'), samplePoints });
+    expect(samples.corner).toEqual(samples.outside);
+    expect(Math.max(...samples.outside)).toBeGreaterThan(50);
+    expect(Math.max(...samples.shadow)).toBeLessThan(10);
   });
 
   test('displays error when system list request fails', async ({ page }) => {
@@ -205,7 +351,8 @@ test.describe('Viewer — Solar System List', () => {
     await expect(errorState).toContainText('Database connection error');
 
     const systemList = viewerPage.systemList;
-    await expect(systemList).not.toBeVisible();
+    await expect(systemList).toBeVisible();
+    await expect(viewerPage.systemItemById('cygnus-x1')).toBeVisible();
   });
 
   test('navigates to scene view when system is selected', async ({ page }) => {

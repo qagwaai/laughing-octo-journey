@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import type { Object3D } from 'three';
 import {
   ACTIVE_SHIP,
   INACTIVE_SHIP,
@@ -275,6 +276,23 @@ test.describe.serial('Viewer — Character Ships', () => {
     await expect(targetShipButton).toBeVisible({ timeout: 10_000 });
     await targetShipButton.click();
     await expect(targetShipButton).toHaveAttribute('aria-pressed', 'true');
+    await expect
+      .poll(() =>
+        sharedPage.evaluate(() => {
+          const canvas = document.querySelector('ngt-canvas');
+          if (!canvas) return 0;
+          const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+          const scene = (
+            ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }
+          ).store.snapshot.scene;
+          let count = 0;
+          scene?.traverse((object) => {
+            if (object.name === 'viewer-target-bracket') count++;
+          });
+          return count;
+        }),
+      )
+      .toBe(0);
 
     // Wait until the rendered frame changes instead of relying on a fixed delay.
     await expect

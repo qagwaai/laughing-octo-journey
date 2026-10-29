@@ -8,11 +8,21 @@ export const SURFACE_ARCHETYPES = [
   'rocky-moon',
   'icy-moon',
   'asteroid',
+  'black-hole',
 ] as const;
 
 export type SurfaceArchetype = (typeof SURFACE_ARCHETYPES)[number];
 
-export const CELESTIAL_BODY_TYPES = ['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'tno', 'comet'] as const;
+export const CELESTIAL_BODY_TYPES = [
+  'star',
+  'planet',
+  'dwarf-planet',
+  'moon',
+  'asteroid',
+  'tno',
+  'comet',
+  'black-hole',
+] as const;
 
 export type CanonicalBodyType = (typeof CELESTIAL_BODY_TYPES)[number];
 
@@ -22,6 +32,7 @@ const COMPATIBLE_ARCHETYPES: Readonly<Record<CanonicalBodyType, readonly Surface
   'dwarf-planet': ['rocky', 'icy-moon'],
   moon: ['rocky-moon', 'icy-moon', 'lava'],
   asteroid: ['asteroid'],
+  'black-hole': ['black-hole'],
   tno: ['icy-moon'],
   comet: ['asteroid'],
 };

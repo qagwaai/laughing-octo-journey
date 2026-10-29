@@ -247,25 +247,71 @@
   text-transform: capitalize;
 }
 
-.details-col-action {
-  text-align: right;
-  white-space: nowrap;
+.details-name-target {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.details-name-target__label {
+  min-width: 0;
+  margin-inline-start: 0.5rem;
+}
+
+.details-target-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.details-target-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 /* ── Target button ─────────────────────────────────────────────────────── */
 
 .details-target-btn {
+  box-sizing: border-box;
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
   background: rgba(30, 50, 90, 0.8);
   border: 1px solid rgba(140, 190, 255, 0.35);
   color: #b4cfff;
   border-radius: 4px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.78rem;
+  padding: 0.25rem;
   cursor: pointer;
   transition:
     background 120ms,
     border-color 120ms,
     color 120ms;
+}
+
+.details-target-btn svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.details-target-tooltip:focus-visible {
+  outline: 2px solid #b4cfff;
+  outline-offset: 3px;
+}
+
+.details-target-btn:focus-visible {
+  outline: 2px solid #b4cfff;
+  outline-offset: 2px;
+}
+
+.details-target-btn:disabled:hover {
+  background: rgba(30, 50, 90, 0.8);
+  border-color: rgba(140, 190, 255, 0.35);
+  color: #b4cfff;
 }
 
 .details-target-btn:hover {
@@ -375,39 +421,4 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: #b4cfff;
-}
-
-.details-col-action {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.details-target-btn {
-  background: rgba(30, 50, 90, 0.8);
-  border: 1px solid rgba(140, 190, 255, 0.35);
-  color: #b4cfff;
-  border-radius: 4px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition:
-    background 120ms,
-    border-color 120ms,
-    color 120ms;
-}
-
-.details-target-btn:hover {
-  background: rgba(50, 80, 140, 0.9);
-  border-color: rgba(140, 190, 255, 0.7);
-  color: #e8f2ff;
-}
-
-.details-target-btn--active {
-  background: rgba(146, 64, 14, 0.5);
-  border-color: #f59e0b;
-  color: #fcd34d;
-}
-
-.details-target-btn--active:hover {
-  background: rgba(180, 90, 20, 0.6);
 }

@@ -64,13 +64,14 @@
       [widthSegments]="48"
       [heightSegments]="32"
       [flareActivity]="starFlareActivity()"
-      [highlightColor]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : null"
+      [highlightColor]="hoveredBodyId() === body.id ? '#ff3b30' : null"
     />
   </ngt-group>
   } @else {
-  <ngt-mesh-basic-material
-    [color]="hoveredBodyId() === body.id ? '#ff3b30' : targetedBodyId() === body.id ? '#f59e0b' : body.color"
-  />
+  <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : body.color" />
+  }
+  @if (targetedBodyId() === body.id) {
+  <app-viewer-target-bracket [radius]="body.radius" />
   }
 </ngt-mesh>
 } @for (ship of renderedShips(); track ship.id) {
@@ -90,7 +91,13 @@
   (click)="onTargetClick($event, body.id)"
   input
 >
-  @if (isStationBody(body.source)) {
+  @if (isCygnusX1BlackHole(body.source)) {
+  <ngt-mesh>
+    <ngt-sphere-geometry *args="[resolveBlackHolePickRadius(body), 24, 16]" />
+    <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
+  </ngt-mesh>
+  <app-viewer-black-hole-renderer (rendererError)="blackHoleRendererError.emit()" />
+  } @else { @if (isStationBody(body.source)) {
   <ngt-mesh>
     <ngt-sphere-geometry *args="[resolveStationPickRadius(body), 16, 12]" />
     <ngt-mesh-basic-material [colorWrite]="false" [depthWrite]="false" />
@@ -101,7 +108,7 @@
     [quality]="stationModelQuality()"
     [radius]="body.radius * stationMeshScale"
     [attempt]="stationModelAttempt()"
-    [highlight]="hoveredBodyId() === body.id ? '#8f0000' : targetedBodyId() === body.id ? '#92400e' : null"
+    [highlight]="hoveredBodyId() === body.id ? '#8f0000' : null"
     (statusChange)="stationModelStatusChange.emit($event)"
   />
   } @else {
@@ -134,7 +141,7 @@
         [lightPosition]="primaryStarLight()?.position ?? null"
         [lightColor]="primaryStarLight()?.color ?? null"
         [moons]="giantMoons().get(body.id) ?? []"
-        [highlighted]="hoveredBodyId() === body.id || targetedBodyId() === body.id"
+        [highlighted]="hoveredBodyId() === body.id"
       />
     </ngt-group>
     } @else {
@@ -144,13 +151,7 @@
       [color]="resolveSurfaceColor(body)"
       [roughness]="body.materialRoughness"
       [metalness]="body.materialMetalness"
-      [emissive]="
-      hoveredBodyId() === body.id
-        ? '#8f0000'
-        : targetedBodyId() === body.id
-          ? '#92400e'
-          : isCatalogSurface(body.source) ? '#000000' : body.materialEmissive
-    "
+      [emissive]="hoveredBodyId() === body.id ? '#8f0000' : isCatalogSurface(body.source) ? '#000000' : body.materialEmissive"
       [emissiveIntensity]="
       hoveredBodyId() === body.id
         ? 0.4
@@ -171,6 +172,11 @@
     <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
     } } }
   </ngt-mesh>
+  } }
+  @if (targetedBodyId() === body.id) {
+  <app-viewer-target-bracket
+    [radius]="targetBracketRadius(body)"
+  />
   }
 </ngt-group>
 }

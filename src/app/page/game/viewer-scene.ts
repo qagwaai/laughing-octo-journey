@@ -23,6 +23,9 @@ import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
+import type { StationModelStatus } from '../../scene/station/station-model';
+import { hasDedicatedStationModel } from '../../scene/station/station-model-assets';
+import { isCygnusX1BlackHole } from '../../scene/viewer/cygnus-x1-viewer-profile';
 import {
   resolveDescriptorRenderProfile,
   resolveGateApproachMetadata,
@@ -30,10 +33,9 @@ import {
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
 import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
+import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
-import type { StationModelStatus } from '../../scene/station/station-model';
-import { hasDedicatedStationModel } from '../../scene/station/station-model-assets';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
@@ -41,6 +43,7 @@ import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
+import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
 
@@ -209,21 +212,22 @@ export default class ViewerScenePage implements OnDestroy {
   protected hoveredBody = signal<ViewerBody | null>(null);
   protected readonly targetBody = computed(() => {
     const id = this.viewerTargetService.targetBodyId();
-    return this.effectiveSceneBodies().find((body) => body.id === id) ?? null;
+    return this.visibleSceneBodies().find((body) => body.id === id) ?? null;
   });
   protected readonly inspectedBodyId = signal<string | null>(null);
   protected readonly inspectedBody = computed(
-    () => this.effectiveSceneBodies().find((body) => body.id === this.inspectedBodyId()) ?? null,
+    () => this.visibleSceneBodies().find((body) => body.id === this.inspectedBodyId()) ?? null,
   );
   protected focusedPlanet = signal<ViewerBody | null>(null);
   protected readonly labeledBody = computed<ViewerBody | null>(() => {
     const hovered = this.hoveredBody();
-    if (hovered) return hovered;
+    if (hovered && this.visibleSceneBodies().some((body) => body.id === hovered.id)) return hovered;
     const targetId = this.viewerTargetService.targetBodyId();
-    return targetId ? (this.effectiveSceneBodies().find((body) => body.id === targetId) ?? null) : null;
+    return targetId ? (this.visibleSceneBodies().find((body) => body.id === targetId) ?? null) : null;
   });
   protected isLoading = signal(false);
   protected sceneError = signal<string | null>(null);
+  protected blackHoleRendererError = signal(false);
   protected isPlanetTransitioning = signal(false);
   protected readonly stationModelStatus = signal<StationModelStatus | null>(null);
   protected readonly stationModelAttempt = signal(0);
@@ -236,12 +240,15 @@ export default class ViewerScenePage implements OnDestroy {
   protected openStationView(body: ViewerBody): void {
     const solarSystemId = this.solarSystemId();
     if (!solarSystemId || !hasDedicatedStationModel(body)) return;
-    void this.router.navigate([{ outlets: { right: ['station-view', solarSystemId, body.id] } }], {
-      preserveFragment: true,
-      state: { playerName: this.playerName(), solarSystem: this.solarSystem(), bodies: this.bodies() },
-    }).then((navigated) => {
-      if (!navigated) appLogger.warn('Station view navigation was cancelled.', { bodyId: body.id });
-    }).catch((error: unknown) => appLogger.error('Station view navigation failed.', { bodyId: body.id, error }));
+    void this.router
+      .navigate([{ outlets: { right: ['station-view', solarSystemId, body.id] } }], {
+        preserveFragment: true,
+        state: { playerName: this.playerName(), solarSystem: this.solarSystem(), bodies: this.bodies() },
+      })
+      .then((navigated) => {
+        if (!navigated) appLogger.warn('Station view navigation was cancelled.', { bodyId: body.id });
+      })
+      .catch((error: unknown) => appLogger.error('Station view navigation failed.', { bodyId: body.id, error }));
   }
   protected zoomLevel = signal<number>(100);
   protected distanceMode = signal<ViewerDistanceMode>('proportional');
@@ -260,12 +267,14 @@ export default class ViewerScenePage implements OnDestroy {
   protected readonly persistentStatsOptions = { parent: this.host, domClass: 'stats' };
 
   protected hasSystem = computed(() => this.solarSystemId() !== null);
+  protected readonly hasCygnusX1BlackHole = computed(() => this.visibleSceneBodies().some(isCygnusX1BlackHole));
 
   /** True when at least one ship in the active list has missing/invalid spatial state. */
-  protected hasUnknownSpatialShip = computed<boolean>(() => this.ships().some((s) => !isValidShipSpatial(s.spatial)));
+  protected hasUnknownSpatialShip = computed<boolean>(() => this.visibleSceneShips().some((s) => !isValidShipSpatial(s.spatial)));
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
+  private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
 
   protected readonly effectiveSceneBodies = computed<ViewerBody[]>(() => {
     if (!(this.viewerQaEnabled() && this.forceHeroMode())) {
@@ -282,6 +291,36 @@ export default class ViewerScenePage implements OnDestroy {
 
     return this.ships().map((ship) => toForceHeroShip(ship));
   });
+
+  protected readonly itemGroups = computed(() => {
+    const groups = new Set(['asteroids', ...this.bodies().map(viewerBodyGroup)]);
+    if (this.ships().length) groups.add('ships');
+    return [...groups].sort();
+  });
+  protected readonly visibleSceneBodies = computed(() =>
+    this.effectiveSceneBodies().filter((body) => this.isGroupIncluded(viewerBodyGroup(body))),
+  );
+  protected readonly visibleSceneShips = computed(() =>
+    this.isGroupIncluded('ships') ? this.effectiveSceneShips() : [],
+  );
+
+  protected isGroupIncluded(group: string): boolean {
+    return this.viewerGroupVisibility.isGroupIncluded(group);
+  }
+
+  protected setGroupIncluded(group: string, included: boolean): void {
+    this.viewerGroupVisibility.setGroupIncluded(group, included);
+    if (included) return;
+    const hovered = this.hoveredBody();
+    if (hovered && viewerBodyGroup(hovered) === group) this.hoveredBody.set(null);
+    const focused = this.focusedPlanet();
+    if (focused && viewerBodyGroup(focused) === group) this.focusedPlanet.set(null);
+    if (!this.targetBody() && !this.visibleSceneShips().some((ship) => ship.id === this.viewerTargetService.targetBodyId())) {
+      this.viewerTargetService.clearTarget();
+      this.stationModelStatus.set(null);
+    }
+    if (!this.inspectedBody()) this.inspectedBodyId.set(null);
+  }
 
   private readonly viewerDataFacade = new ViewerDataFacade({
     solarSystemService: this.solarSystemService,
@@ -302,14 +341,19 @@ export default class ViewerScenePage implements OnDestroy {
       this.hoveredBody.set(null);
       this.focusedPlanet.set(null);
       this.stationModelStatus.set(null);
+      this.blackHoleRendererError.set(false);
     },
   });
 
+  protected onBlackHoleRendererError(): void {
+    this.blackHoleRendererError.set(true);
+  }
+
   protected sceneInputs = computed<ViewerSystemSceneInputs>(() => ({
-    bodies: this.effectiveSceneBodies(),
+    bodies: this.visibleSceneBodies(),
     summary: this.solarSystem(),
     targetBodyId: this.viewerTargetService.targetBodyId(),
-    ships: this.effectiveSceneShips(),
+    ships: this.visibleSceneShips(),
     activeShipId: this.sessionService.activeShip()?.id ?? null,
   }));
 

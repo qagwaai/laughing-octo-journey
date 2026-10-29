@@ -98,7 +98,22 @@ test.describe('Viewer — Interaction Behaviors', () => {
       await viewer.expectSceneLoaded();
       await viewer.switchToDistanceView();
       const button = page.locator('tr', { hasText: selected.displayName }).locator('button.details-target-btn');
+      const targetBracketCount = () =>
+        page.evaluate(() => {
+          const canvas = document.querySelector('ngt-canvas');
+          if (!canvas) return 0;
+          const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+          const scene = (
+            ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }
+          ).store.snapshot.scene;
+          let count = 0;
+          scene?.traverse((object) => {
+            if (object.name === 'viewer-target-bracket') count++;
+          });
+          return count;
+        });
       await expect(button).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(targetBracketCount).toBe(0);
       const canvas = viewer.sceneCanvas;
       const bounds = await canvas.boundingBox();
       if (!bounds) throw new Error('Viewer canvas has no bounds');
@@ -108,6 +123,7 @@ test.describe('Viewer — Interaction Behaviors', () => {
       await expect(page.getByTestId('viewer-body-label')).toContainText(selected.displayName);
       await page.mouse.click(x, y);
       await expect(button).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(targetBracketCount).toBe(1);
       await expect(page.getByTestId('viewer-body-label')).toContainText('Targeted');
       await expect(page.getByTestId('viewer-body-inspector')).toHaveCount(0);
       await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');

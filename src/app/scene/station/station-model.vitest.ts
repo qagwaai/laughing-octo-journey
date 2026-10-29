@@ -29,6 +29,9 @@ function model() {
   const mesh = new Mesh(new BoxGeometry(4, 2, 1), new MeshStandardMaterial());
   mesh.position.set(5, 3, 2);
   root.add(mesh);
+  const ring = new Group();
+  ring.name = 'HabitatRing';
+  root.add(ring);
   return { root, mesh };
 }
 
@@ -51,8 +54,8 @@ describe('station identity catalog', () => {
 
   it('shares the accepted standard/low assets with the splash', () => {
     expect(STATION_MODELS['sol-mars-orbit']?.assets).toBe(MARS_STATION_ASSETS);
-    expect(MARS_STATION_ASSETS.standard.triangleCount).toBe(149_944);
-    expect(MARS_STATION_ASSETS.low.triangleCount).toBe(74_984);
+    expect(MARS_STATION_ASSETS.standard.triangleCount).toBe(139_330);
+    expect(MARS_STATION_ASSETS.low.triangleCount).toBe(74_695);
   });
 });
 
@@ -74,10 +77,16 @@ describe('station model ownership and loading', () => {
   function setup() {
     const load = vi.fn<typeof loadStationModel>();
     const invalidate = vi.fn();
+    let render: (state: { delta: number }) => void = () => undefined;
+    const unsubscribe = vi.fn();
+    const subscribe = vi.fn((callback: typeof render) => {
+      render = callback;
+      return unsubscribe;
+    });
     TestBed.configureTestingModule({
       imports: [StationModel],
       providers: [
-        { provide: NGT_STORE, useValue: { snapshot: { gl: {}, invalidate } } },
+        { provide: NGT_STORE, useValue: { snapshot: { gl: {}, invalidate, internal: { subscribe } } } },
         { provide: STATION_MODEL_LOAD, useValue: load },
       ],
     }).overrideComponent(StationModel, { set: { template: '' } });
@@ -86,7 +95,7 @@ describe('station model ownership and loading', () => {
     fixture.componentRef.setInput('quality', 'standard');
     const statuses: string[] = [];
     fixture.componentInstance.statusChange.subscribe((status) => statuses.push(status.state));
-    return { fixture, load, statuses };
+    return { fixture, load, statuses, frame: (delta: number) => render({ delta }), unsubscribe };
   }
 
   it('loads one tier, restores highlight materials, and disposes the owned model on teardown', async () => {
@@ -158,5 +167,54 @@ describe('station model ownership and loading', () => {
       MARS_STATION_ASSETS.standard.url,
       MARS_STATION_ASSETS.low.url,
     ]);
+  });
+
+  it('animates only the current ring, pauses for hidden documents, and unregisters on teardown', async () => {
+    const { fixture, load, frame, unsubscribe } = setup();
+    const removeListener = vi.spyOn(document, 'removeEventListener');
+    const first = model();
+    const next = model();
+    const firstRing = first.root.getObjectByName('HabitatRing')!;
+    const nextRing = next.root.getObjectByName('HabitatRing')!;
+    load.mockResolvedValueOnce(first.root).mockResolvedValueOnce(next.root);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    frame(0);
+    frame(0.02);
+    expect(firstRing.rotation.y).toBeCloseTo((Math.PI * 2 * 0.02) / 60);
+    const paused = firstRing.quaternion.clone();
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    frame(0.02);
+    expect(firstRing.quaternion.toArray()).toEqual(paused.toArray());
+    hidden.mockRestore();
+    fixture.componentRef.setInput('quality', 'low');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    frame(0);
+    frame(0.02);
+    expect(firstRing.quaternion.toArray()).toEqual(paused.toArray());
+    expect(nextRing.rotation.y).toBeCloseTo((Math.PI * 2 * 0.02) / 60);
+    fixture.destroy();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+    expect(removeListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+    const stopped = nextRing.quaternion.clone();
+    frame(0.02);
+    expect(nextRing.quaternion.toArray()).toEqual(stopped.toArray());
+  });
+
+  it('disposes and reports a model missing the habitat ring', async () => {
+    const { fixture, load, statuses } = setup();
+    const { root, mesh } = model();
+    root.getObjectByName('HabitatRing')!.removeFromParent();
+    const dispose = vi.spyOn(mesh.geometry, 'dispose');
+    vi.spyOn(appLogger, 'error').mockImplementation(() => undefined);
+    load.mockResolvedValue(root);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(statuses).toEqual(['loading', 'error']);
+    expect(appLogger.error).toHaveBeenCalled();
+    expect(dispose).toHaveBeenCalledOnce();
+    fixture.destroy();
+    expect(dispose).toHaveBeenCalledOnce();
   });
 });
