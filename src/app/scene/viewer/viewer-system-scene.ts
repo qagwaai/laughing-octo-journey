@@ -29,13 +29,14 @@ import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-set
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
+import { isTexturableBody, resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { StarBody } from '../star/star-body';
 import { StarSettings } from '../star/star-settings';
 import { StationModel, type StationModelStatus } from '../station/station-model';
 import { hasDedicatedStationModel } from '../station/station-model-assets';
+import { isCygnusX1BlackHole, resolveCygnusX1PresentationLayout } from './cygnus-x1-viewer-profile';
 import {
   deriveViewerStarProfile,
   resolveStarFillColor,
@@ -45,6 +46,8 @@ import {
   type StarLightInput,
   VIEWER_SCENE_STAR_LIGHT_INTENSITY,
 } from './star-lighting';
+import { ViewerBlackHoleRenderer } from './viewer-black-hole-renderer';
+import { ViewerTargetBracket } from './viewer-target-bracket';
 import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
@@ -752,9 +755,7 @@ export function resolveViewerSceneCameraDistanceRange(
         (body) => body.id === targetBodyId && hasDedicatedStationModel(body.source),
       )
     : undefined;
-  const minDistance = station
-    ? Math.max(0.05, resolveBodyVisualRadius(station) * 6)
-    : VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
+  const minDistance = station ? Math.max(0.05, resolveBodyVisualRadius(station) * 6) : VIEWER_CAMERA_DISTANCE_MIN_FLOOR;
 
   let maxDistance =
     mode === 'proportional'
@@ -1030,6 +1031,8 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     GasGiantBody,
     StarBody,
     StationModel,
+    ViewerBlackHoleRenderer,
+    ViewerTargetBracket,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1069,14 +1072,22 @@ export class ViewerSystemScene {
   @Output() zoomLevelChange = new EventEmitter<number>();
   @Output() targetBodyRequest = new EventEmitter<string>();
   @Output() stationModelStatusChange = new EventEmitter<StationModelStatus>();
+  @Output() blackHoleRendererError = new EventEmitter<void>();
   stationModelAttempt = input(0);
   protected readonly hasDedicatedStationModel = hasDedicatedStationModel;
   protected readonly stationModelQuality = computed(() => this.planetTextures.catalog.quality());
   protected readonly stationMeshScale = VIEWER_STATION_MESH_SCALE;
 
-  protected readonly rendered = computed<RenderedBody[]>(() =>
-    mapBodiesToRendered(this.bodies(), this.zoomLevel(), this.targetBodyId(), this.ships(), this.distanceMode()),
-  );
+  protected readonly rendered = computed<RenderedBody[]>(() => {
+    const bodies = this.bodies();
+    const layout = resolveCygnusX1PresentationLayout(bodies);
+    return mapBodiesToRendered(bodies, this.zoomLevel(), this.targetBodyId(), this.ships(), this.distanceMode()).map(
+      (body) => {
+        const position = layout.get(body.source);
+        return position ? { ...body, position } : body;
+      },
+    );
+  });
 
   protected readonly renderedShips = computed<RenderedShip[]>(() =>
     mapShipsToRendered(this.ships(), this.activeShipId(), this.distanceMode()),
@@ -1214,7 +1225,7 @@ export class ViewerSystemScene {
     const surfaces = new Map<string, Texture>();
     const giants = this.giantProfiles();
     for (const body of this.rendered()) {
-      if (giants.has(body.id) || resolveDedicatedAtmosphere(body.source)) continue;
+      if (!isTexturableBody(body.source) || giants.has(body.id) || resolveDedicatedAtmosphere(body.source)) continue;
       const baked = this.planetTextures.get(body.source, 'l0', this.store.snapshot.gl);
       if (baked) {
         surfaces.set(body.id, baked.albedo);
@@ -1231,22 +1242,24 @@ export class ViewerSystemScene {
     return allNonStars.filter((body) => focusIds.has(body.id));
   });
 
-  /**
-   * Hover and target highlights win; otherwise a textured body renders white
-   * because three multiplies `map` by `color`, and the baked albedo already
-   * carries the body's colour. Untextured bodies keep their flat tint.
-   */
+  /** Hover tint is retained; otherwise textured bodies render their baked albedo without tinting. */
   protected resolveSurfaceColor(body: RenderedBody): string {
     if (resolvePlanetSurfaceSource(body.source, 'l0')?.kind === 'catalog') {
       return this.bodySurfaces().has(body.id) ? '#ffffff' : '#555b65';
     }
     if (this.hoveredBodyId() === body.id) return '#ff3b30';
-    if (this.targetedBodyId() === body.id) return '#f59e0b';
     return this.bodySurfaces().has(body.id) ? '#ffffff' : body.materialColor;
   }
 
   protected isCatalogSurface(body: ViewerBody): boolean {
     return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
+  }
+
+  protected targetBracketRadius(body: RenderedBody): number {
+    const scale = hasDedicatedStationModel(body.source)
+      ? this.stationMeshScale
+      : Math.max(...body.geometryScale.map(Math.abs));
+    return body.radius * scale;
   }
 
   protected dedicatedAtmosphere(body: ViewerBody) {
@@ -1255,6 +1268,14 @@ export class ViewerSystemScene {
 
   protected isStationBody(body: ViewerBody): boolean {
     return isStationBody(body);
+  }
+
+  protected isCygnusX1BlackHole(body: ViewerBody): boolean {
+    return isCygnusX1BlackHole(body);
+  }
+
+  protected resolveBlackHolePickRadius(body: RenderedBody): number {
+    return Math.max(body.radius, 0.18);
   }
 
   protected resolveStationPickRadius(body: RenderedBody): number {
@@ -1421,7 +1442,9 @@ export class ViewerSystemScene {
     // are shaded procedurally and never need a terrain bake.
     effect((onCleanup) => {
       const giants = this.giantProfiles();
-      const bodies = this.bodies().filter((body) => !giants.has(body.id) && !resolveDedicatedAtmosphere(body));
+      const bodies = this.bodies().filter(
+        (body) => isTexturableBody(body) && !giants.has(body.id) && !resolveDedicatedAtmosphere(body),
+      );
       const renderer = this.store.gl();
       this.planetTextures.catalog.quality();
       const release = untracked(() => {
@@ -1815,5 +1838,4 @@ export class ViewerSystemScene {
     controls.target.copy(this.persistentLookTarget);
     controls.update();
   }
-
 }

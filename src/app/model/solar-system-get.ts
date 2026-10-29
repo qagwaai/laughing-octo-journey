@@ -26,6 +26,8 @@ export interface ViewerBodyVisualization {
 }
 
 export interface ViewerBodyPhysicalCatalog {
+  massSolar?: number | null;
+  massUncertaintySolar?: number | null;
   massKg?: number | null;
   meanRadiusKm?: number | null;
   equatorialRadiusKm?: number | null;
@@ -37,6 +39,22 @@ export interface ViewerBodyPhysicalCatalog {
   surfaceGravityMps2?: number | null;
   meanTemperatureK?: number | null;
   compositionTags?: string[];
+}
+
+/** Source-preserving black-hole measurements; unknown horizons/extents stay null. */
+export interface ViewerBlackHoleProperties {
+  massSolar: number;
+  massUncertaintySolar?: number | null;
+  distanceParsec?: number | null;
+  distanceUncertaintyParsec?: number | null;
+  orbitalPeriodDays?: number | null;
+  relativeBinarySemimajorAxisAU?: number | null;
+  eccentricity?: number | null;
+  inclinationDeg?: number | null;
+  schwarzschildReferenceRadiusKm: number;
+  eventHorizonRadiusKm?: number | null;
+  visualAccretionDiskOuterRadiusKm?: number | null;
+  sourceReferences?: string[];
 }
 
 export interface ViewerBodyOrbitalElements {
@@ -94,6 +112,7 @@ export interface ViewerBody {
   composition?: AsteroidMaterialProfile | null;
   orbitalElements?: CanonicalViewerBodyOrbitalElements | null;
   catalogIdentity?: CatalogIdentity | null;
+  blackHoleProperties?: ViewerBlackHoleProperties | null;
   surfaceArchetype?: SurfaceArchetype | null;
   state?: 'unscanned' | 'active' | 'destroyed';
   planetType?: string | null;
@@ -141,4 +160,16 @@ export interface SolarSystemGetResponse {
   stars?: CanonicalViewerBody[];
   bodies: CanonicalViewerBody[];
   requestId?: string;
+}
+
+/** `stars` may repeat star records also present in `bodies`; preserve one record per entity ID. */
+export function mergeUniqueViewerBodies(bodies: readonly ViewerBody[]): ViewerBody[] {
+  const unique: ViewerBody[] = [];
+  const seen = new Set<string>();
+  for (const body of bodies) {
+    if (seen.has(body.id)) continue;
+    seen.add(body.id);
+    unique.push(body);
+  }
+  return unique;
 }

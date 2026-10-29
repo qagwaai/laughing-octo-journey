@@ -91,6 +91,57 @@ import { PlanetTextureCache } from './planet-texture-cache';
           }
           <p>{{ t.game.viewer.surfaceCatalogPendingReview }}</p>
         </details>
+        @if (embedded()) {
+          <details
+            class="surface-notice surface-notice--sources surface-notice--catalog"
+            data-testid="viewer-catalog-sources"
+          >
+            <summary>{{ t.game.viewer.catalogSourcesTitle }}</summary>
+            <p>{{ t.game.viewer.catalogSourcesScope }}</p>
+            <p>{{ t.game.viewer.catalogSourcesEd138 }}</p>
+            <p>{{ t.game.viewer.catalogSourcesS2009S1 }}</p>
+            <ul class="surface-source-links">
+              <li>
+                <a
+                  href="https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ t.game.viewer.catalogSourcesCometElements }}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://docs.minorplanetcenter.net/mpc-ops-docs/orbits/comet-orbit-format/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ t.game.viewer.catalogSourcesCometFormat }}
+                </a>
+              </li>
+              <li>
+                <a href="https://ssd.jpl.nasa.gov/sats/elem/" target="_blank" rel="noopener noreferrer">
+                  {{ t.game.viewer.catalogSourcesSatelliteElements }}
+                </a>
+              </li>
+              <li>
+                <a href="https://ssd.jpl.nasa.gov/sats/discovery.html" target="_blank" rel="noopener noreferrer">
+                  {{ t.game.viewer.catalogSourcesSatelliteDiscoveries }}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{ t.game.viewer.catalogSourcesEd138Database }}
+                </a>
+              </li>
+            </ul>
+            <p>{{ t.game.viewer.catalogSourcesMpcAcknowledgment }}</p>
+          </details>
+        }
       </div>
     }
   `,
@@ -170,6 +221,25 @@ import { PlanetTextureCache } from './planet-texture-cache';
       }
       .surface-variant {
         margin-left: 0.5rem;
+      }
+      .surface-source-links {
+        margin: 0.4rem 0;
+        padding-left: 1.25rem;
+      }
+      .surface-source-links a {
+        color: #b9dafc;
+      }
+      .surface-source-links a:focus-visible {
+        outline: 2px solid #eff7ff;
+        outline-offset: 2px;
+      }
+      :host(.surface-progress-embedded) .surface-notice--catalog {
+        padding: 0.45rem 0;
+        border: 0;
+        border-top: 1px solid rgba(162, 210, 255, 0.18);
+        border-radius: 0;
+        background: transparent;
+        font-size: inherit;
       }
       p {
         margin: 0.4rem 0;

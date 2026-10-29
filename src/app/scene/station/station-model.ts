@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   CUSTOM_ELEMENTS_SCHEMA,
+  DestroyRef,
   effect,
   inject,
   InjectionToken,
@@ -10,11 +11,12 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { injectStore, NgtArgs } from 'angular-three';
+import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { Color, Mesh, MeshStandardMaterial, type Group } from 'three';
 import { appLogger } from '../../services/logger';
 import type { RenderQuality } from '../render-quality';
 import { disposeSplashObject } from '../splash-composition';
+import { createStationHabitatRotation } from './station-habitat-rotation';
 import { STATION_MODELS } from './station-model-assets';
 import { loadStationModel } from './station-model-loader';
 
@@ -45,6 +47,7 @@ export const STATION_MODEL_LOAD = new InjectionToken('STATION_MODEL_LOAD', {
 export class StationModel {
   private readonly store = injectStore();
   private readonly load = inject(STATION_MODEL_LOAD);
+  private readonly reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   readonly bodyId = input.required<string>();
   readonly quality = input.required<RenderQuality>();
   readonly radius = input(1);
@@ -59,6 +62,17 @@ export class StationModel {
   });
 
   constructor() {
+    let rotateHabitat: ReturnType<typeof createStationHabitatRotation> | undefined;
+    const pauseHabitat = () => rotateHabitat?.(0, false);
+    document.addEventListener('visibilitychange', pauseHabitat);
+    this.reducedMotion?.addEventListener('change', pauseHabitat);
+    inject(DestroyRef).onDestroy(() => {
+      document.removeEventListener('visibilitychange', pauseHabitat);
+      this.reducedMotion?.removeEventListener('change', pauseHabitat);
+    });
+    beforeRender(({ delta }) => {
+      rotateHabitat?.(delta, !this.reducedMotion?.matches && !document.hidden);
+    });
     effect((onCleanup) => {
       const quality = this.quality();
       const bodyId = this.bodyId();
@@ -69,26 +83,30 @@ export class StationModel {
       let owned: Group | null = null;
       this.model.set(null);
       this.statusChange.emit({ bodyId, quality, state: 'loading' });
-      void this.load(asset.url, gl).then(
-        (model) => {
+      void this.load(asset.url, gl)
+        .then((model) => {
           if (cancelled) {
             disposeSplashObject(model);
             return;
           }
           owned = model;
+          rotateHabitat = createStationHabitatRotation(model);
           this.model.set(model);
           this.statusChange.emit({ bodyId, quality, state: 'ready' });
           invalidate();
-        },
-        (error: unknown) => {
+        })
+        .catch((error: unknown) => {
           if (cancelled) return;
+          if (owned) disposeSplashObject(owned);
+          owned = null;
+          rotateHabitat = undefined;
           appLogger.error('Station model could not be loaded.', { bodyId, quality, error });
           this.statusChange.emit({ bodyId, quality, state: 'error' });
           invalidate();
-        },
-      );
+        });
       onCleanup(() => {
         cancelled = true;
+        rotateHabitat = undefined;
         this.model.set(null);
         if (owned) disposeSplashObject(owned);
       });

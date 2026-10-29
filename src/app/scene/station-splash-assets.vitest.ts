@@ -21,12 +21,12 @@ describe('station splash asset selection', () => {
   it('only exposes the accepted standard and low assets', () => {
     expect(Object.keys(STATION_SPLASH_ASSETS)).toEqual(['standard', 'low']);
     expect(STATION_SPLASH_ASSETS.standard).toEqual({
-      triangleCount: 149_944,
-      url: 'models/sol-mars-orbit-station-150k.glb?v=ffbe3535',
+      triangleCount: 139_330,
+      url: 'models/sol-mars-station-150k.glb?v=0a9ed223',
     });
     expect(STATION_SPLASH_ASSETS.low).toEqual({
-      triangleCount: 74_984,
-      url: 'models/sol-mars-orbit-station-75k.glb?v=e6a443e4',
+      triangleCount: 74_695,
+      url: 'models/sol-mars-station-75k.glb?v=8f0a0e9c',
     });
   });
 });

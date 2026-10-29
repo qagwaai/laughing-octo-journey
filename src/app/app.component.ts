@@ -19,10 +19,10 @@ import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-gu
 import { locale } from './i18n/locale';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { RoutedScene } from './routed-scene';
-import { SplashOverlay } from './scene/splash-overlay';
-import { SplashState } from './scene/splash-state';
 import { PlanetCloudSettings } from './scene/planet/planet-clouds';
 import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
+import { SplashOverlay } from './scene/splash-overlay';
+import { SplashState } from './scene/splash-state';
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
@@ -41,46 +41,47 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
       display: block;
       height: 100vh;
       width: 100vw;
-      .split-layout {
-        --splitter-width: 32px;
-      }
+    }
 
-      .splitter {
-        width: var(--splitter-width);
-        flex: none;
-        user-select: none;
-      }
+    :host .split-layout {
+      --splitter-width: 32px;
+    }
 
-      .splitter-drag {
-        touch-action: none;
-      }
+    :host .splitter {
+      width: var(--splitter-width);
+      flex: none;
+      user-select: none;
+    }
 
-      .splitter-controls {
-        position: absolute;
-        top: 8px;
-        left: 2px;
-        right: 2px;
-        z-index: 20;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
+    :host .splitter-drag {
+      touch-action: none;
+    }
 
-      .splitter-controls button {
-        width: 100%;
-        aspect-ratio: 1;
-        touch-action: manipulation;
-      }
+    :host .splitter-controls {
+      position: absolute;
+      top: 8px;
+      left: 2px;
+      right: 2px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
 
-      @media (any-pointer: coarse), (max-width: 640px) {
-        .split-layout {
-          --splitter-width: 48px;
-        }
-      }
+    :host .splitter-controls button {
+      width: 100%;
+      aspect-ratio: 1;
+      touch-action: manipulation;
+    }
 
-      &.resizing {
-        user-select: none;
+    @media (any-pointer: coarse), (max-width: 640px) {
+      :host .split-layout {
+        --splitter-width: 48px;
       }
+    }
+
+    :host.resizing {
+      user-select: none;
     }
 
     .cold-boot-scan-host {
@@ -169,8 +170,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           (this.splash.status() === 'ready' &&
             !this.splash.reducedMotion() &&
             !this.splash.documentHidden() &&
-            this.cloudSettings.enabled() &&
-            this.cloudSettings.coverage() > 0))
+            (this.splash.stationSplash() || (this.cloudSettings.enabled() && this.cloudSettings.coverage() > 0))))
         ? 'always'
         : 'demand'
       : this.sceneVisibility.sceneFrameloop(),

@@ -6,28 +6,107 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  Points,
+  PointsMaterial,
   SphereGeometry,
   Texture,
   Vector3,
 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_GAS_GIANT_RADIUS } from './gas-giant/splash-gas-giant';
+import { selectSplashPlanetPreset, SPLASH_PLANET_CPU_PRESET, SPLASH_PLANET_PRESETS } from './planet/splash-planet';
 import {
   createSplashBackdrop,
   createSplashBackdropAround,
   disposeSplashObject,
+  placeSplashCelestialBody,
   SPLASH_BODY_DISTANCE_SCALE,
   SPLASH_BODY_EXCLUSION_RADIUS,
   SPLASH_CAMERA_DIRECTION,
   SPLASH_DEBRIS_CLEARANCE,
   SPLASH_PLANET_POSITION,
-  placeSplashCelestialBody,
+  SPLASH_STARFIELD_COUNT,
+  SPLASH_STARFIELD_RADIUS,
+  STATION_SPLASH_CAMERA_DIRECTION,
 } from './splash-composition';
 import { selectSplashQuality } from './splash-state';
-import { selectSplashPlanetPreset, SPLASH_PLANET_CPU_PRESET, SPLASH_PLANET_PRESETS } from './planet/splash-planet';
 import { SPLASH_STAR_RADIUS } from './star/splash-star';
 
 describe('Splash asset policy', () => {
+  it.each([0.45, 0.75, 1.8, 2.4])(
+    'covers every screen quadrant across splash/station cameras and orbit at aspect %s',
+    (aspect) => {
+      const backdrop = createSplashBackdropAround('low', new Group());
+      const field = backdrop.getObjectByName('splash-starfield');
+      expect(field).toBeInstanceOf(Points);
+      if (!(field instanceof Points) || !(field.material instanceof PointsMaterial)) {
+        throw new Error('Splash starfield is missing.');
+      }
+      const positions = field.geometry.getAttribute('position');
+      expect(positions.count).toBe(SPLASH_STARFIELD_COUNT);
+      expect(field.material.sizeAttenuation).toBe(false);
+      expect(field.material.depthWrite).toBe(false);
+      expect(field.material.depthTest).toBe(true);
+      const point = new Vector3();
+      for (let i = 0; i < positions.count; i++) {
+        expect(point.fromBufferAttribute(positions, i).length()).toBeCloseTo(SPLASH_STARFIELD_RADIUS, 3);
+      }
+      const directions = [
+        SPLASH_CAMERA_DIRECTION, STATION_SPLASH_CAMERA_DIRECTION,
+        new Vector3(-1, 0.3, 0.5).normalize(), new Vector3(0.2, -0.8, -1).normalize(),
+      ];
+      for (const direction of directions) {
+        for (const distance of [1.75, 12]) {
+          const camera = new PerspectiveCamera(75, aspect, 0.1, 1000);
+          camera.position.copy(direction).multiplyScalar(distance);
+          camera.lookAt(0, 0, 0);
+          camera.updateMatrixWorld();
+          const quadrants = [0, 0, 0, 0];
+          for (let i = 0; i < positions.count; i++) {
+            point.fromBufferAttribute(positions, i).project(camera);
+            if (Math.abs(point.x) < 1 && Math.abs(point.y) < 1 && point.z > -1 && point.z < 1) {
+              quadrants[(point.x > 0 ? 1 : 0) + (point.y > 0 ? 2 : 0)]++;
+            }
+          }
+          expect(Math.min(...quadrants)).toBeGreaterThan(25);
+          expect(Math.max(...quadrants) / Math.min(...quadrants)).toBeLessThan(2);
+        }
+      }
+      disposeSplashObject(backdrop);
+    },
+  );
+
+  it.each([0.45, 0.75, 1.8])(
+    'keeps the planet visible behind the docking-end station camera at aspect %s',
+    (aspect) => {
+      const distance = (1.35 / Math.tan((75 * Math.PI) / 360) / Math.min(1, aspect)) * 1.25;
+      const projections = [SPLASH_CAMERA_DIRECTION, STATION_SPLASH_CAMERA_DIRECTION].map((direction) => {
+        const camera = new PerspectiveCamera(75, aspect, 0.1, 1000);
+        camera.position.copy(direction).multiplyScalar(distance);
+        camera.lookAt(0, 0, 0);
+        camera.updateMatrixWorld();
+        const body = new Group();
+        placeSplashCelestialBody(body, camera.position);
+        const center = body.position.clone().project(camera);
+        expect(Math.abs(center.x)).toBeLessThan(1);
+        expect(Math.abs(center.y)).toBeLessThan(1);
+        expect(center.z).toBeGreaterThan(-1);
+        expect(center.z).toBeLessThan(1);
+        const nearestDepth = body.position.dot(direction) + SPLASH_BODY_EXCLUSION_RADIUS * SPLASH_BODY_DISTANCE_SCALE;
+        expect(nearestDepth).toBeLessThan(-1);
+        const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+        const edge = body.position
+          .clone()
+          .addScaledVector(right, 4 * SPLASH_BODY_DISTANCE_SCALE)
+          .project(camera);
+        return { center, radius: edge.x - center.x };
+      });
+      expect(projections[1].center.x).toBeCloseTo(projections[0].center.x, 10);
+      expect(projections[1].center.y).toBeCloseTo(projections[0].center.y, 10);
+      expect(projections[1].radius).toBeCloseTo(projections[0].radius, 10);
+    },
+  );
+
   it('uses standard quality only on sufficiently wide, capable devices', () => {
     expect(selectSplashQuality(1440, 8, false)).toBe('standard');
     expect(selectSplashQuality(390, 8, false)).toBe('low');
@@ -114,12 +193,43 @@ describe('Splash asset policy', () => {
       second.children.map((object) => object.position.toArray()),
     );
     expect(first.children).toHaveLength(7);
+    const firstStars = first.getObjectByName('splash-starfield');
+    const secondStars = second.getObjectByName('splash-starfield');
+    if (!(firstStars instanceof Points) || !(secondStars instanceof Points)) {
+      throw new Error('Splash starfield missing.');
+    }
+    expect(Array.from(firstStars.geometry.getAttribute('position').array)).toEqual(
+      Array.from(secondStars.geometry.getAttribute('position').array),
+    );
+    const colors = firstStars.geometry.getAttribute('color');
+    expect(Array.from(colors.array)).toEqual(Array.from(secondStars.geometry.getAttribute('color').array));
+    const brightness = Array.from({ length: colors.count }, (_, i) => colors.getZ(i));
+    expect(Math.max(...brightness) / Math.min(...brightness)).toBeGreaterThan(3.5);
+    const hues = new Set<string>();
+    let warm = 0;
+    let cool = 0;
+    for (let i = 0; i < colors.count; i++) {
+      const red = colors.getX(i), green = colors.getY(i), blue = colors.getZ(i);
+      const maximum = Math.max(red, green, blue);
+      hues.add([red, green, blue].map((channel) => (channel / maximum).toFixed(3)).join(','));
+      if (red > blue * 1.1) warm++;
+      if (blue > red * 1.1) cool++;
+      expect(Math.min(red, green, blue)).toBeGreaterThan(0);
+      expect(maximum).toBeLessThanOrEqual(1);
+    }
+    expect(hues.size).toBe(6);
+    expect(warm).toBeGreaterThan(500);
+    expect(cool).toBeGreaterThan(500);
+    const releaseStars = vi.spyOn(firstStars.geometry, 'dispose');
+    const releaseStarMaterial = vi.spyOn(firstStars.material, 'dispose');
     const firstRocks = first.children.find((object): object is InstancedMesh => object instanceof InstancedMesh)!;
     const secondRocks = second.children.find((object): object is InstancedMesh => object instanceof InstancedMesh)!;
     expect(firstRocks.count).toBe(quality === 'standard' ? 85 : 35);
     expect(Array.from(firstRocks.instanceMatrix.array)).toEqual(Array.from(secondRocks.instanceMatrix.array));
     disposeSplashObject(first);
     disposeSplashObject(second);
+    expect(releaseStars).toHaveBeenCalledOnce();
+    expect(releaseStarMaterial).toHaveBeenCalledOnce();
   });
 
   describe.each(['standard', 'low'] as const)('%s debris clearance', (quality) => {

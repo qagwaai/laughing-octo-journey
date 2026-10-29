@@ -32,6 +32,7 @@ export class SplashState {
     this.marketId === STATION_SPLASH_MARKET_ID ? 'station' : 'asteroid-mining-rig',
   );
   readonly stationSplash = computed(() => this.foreground() === 'station');
+  readonly stellarWind = signal(false);
   readonly modelAsset = computed(() => this.assetForQuality(this.quality()));
   readonly triangleCount = computed(() => this.modelAsset().triangleCount);
   readonly posterUrl = computed(() =>

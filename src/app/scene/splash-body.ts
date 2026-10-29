@@ -33,6 +33,7 @@ import { createIoVolcanicCues } from './planet/planet-volcanism-layer';
 import { bakeSplashPlanet } from './planet/splash-planet';
 import { resolveSplashAppearance, solBodyHasClouds, type SplashPlanetEntry } from './planet/splash-planet-rotation';
 import { createSplashStar } from './star/splash-star';
+import { createSplashBlackHole, type SplashBlackHoleHandle } from './black-hole/splash-black-hole';
 import type { StarHandle } from './star/star';
 
 const SPLASH_BODY_RADIUS = 4;
@@ -64,6 +65,7 @@ export interface SplashBody {
   giant?: GasGiantHandle;
   giantLook?: string;
   star?: StarHandle;
+  blackHole?: SplashBlackHoleHandle;
   starClass?: string | null;
   clouds?: PlanetCloudTexture;
   cloudStorm?: PlanetCloudStormMaterial;
@@ -77,6 +79,10 @@ export async function createSplashBody(
   options: SplashBodyOptions,
 ): Promise<SplashBody> {
   const { quality, settings } = options;
+  if (entry.kind === 'black-hole') {
+    const blackHole = createSplashBlackHole(quality);
+    return { entry, object: blackHole.group, blackHole, dispose: () => blackHole.dispose() };
+  }
   if (entry.kind === 'gas-giant' || entry.id === 'sol-saturn') {
     const appearance = resolveSplashAppearance(entry);
     const giant = createSplashGasGiant({

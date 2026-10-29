@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { locale } from '../i18n/locale';
 import { ExternalAnchorsComponent } from '../component/external-anchors';
 import { SATURN_REFERENCE_LINKS } from '../model/planet/saturn-profile';
+import { BLACK_HOLE_SPLASH_QUALITY, CYGNUS_X1_REFERENCES } from '../model/black-hole/cygnus-x1';
 import { GAS_GIANT_PALETTES, type GasGiantPalette } from '../model/planet/gas-giant-profile';
 import { resolveSpectralClass } from '../model/star/star-profile';
 import { GasGiantSettings, type GasGiantPaletteChoice } from './gas-giant/gas-giant-settings';
@@ -80,11 +81,13 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
       } @else {
         <div class="cloud-controls" (pointerdown)="$event.stopPropagation()" (wheel)="$event.stopPropagation()">
           <div class="body-picker" data-testid="splash-body-picker">
+            @if (state.planetKind() !== 'black-hole') {
             <label for="splash-foreground">{{ t.public.splash.foregroundLabel }}</label>
             <select id="splash-foreground" [value]="state.foreground()" (change)="onForeground($event)">
               <option value="asteroid-mining-rig">{{ t.public.splash.foregroundMiningRig }}</option>
               <option value="station">{{ t.public.splash.station.title }}</option>
             </select>
+            }
             <label for="splash-body-category">{{ t.public.splash.bodyCategoryLabel }}</label>
             <select id="splash-body-category" (change)="onCategory($event)">
               @for (category of categories; track category) {
@@ -211,6 +214,15 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
           }
           @if (state.planetBodyId() === 'sol-saturn') {
             <app-external-anchors [anchors]="saturnSources" layout="stack" />
+          }
+          @if (state.planetKind() === 'black-hole') {
+            <label class="cloud-toggle">
+              <input type="checkbox" [checked]="state.stellarWind()" (change)="onStellarWind($event)" />
+              {{ t.public.splash.stellarWindLabel }}
+            </label>
+            <p class="credit">{{ t.public.splash.stellarWindNote }}</p>
+            <p class="credit" data-testid="splash-black-hole-note">{{ t.public.splash.blackHoleNote }}</p>
+            <app-external-anchors [anchors]="blackHoleSources" layout="stack" />
           }
         </div>
         <div class="caption">
@@ -421,12 +433,21 @@ export class SplashOverlay {
   );
   protected readonly t = locale;
   protected readonly splashTitle = computed(() =>
-    this.state.stationSplash() ? this.t.public.splash.station.title : this.t.public.splash.title,
+    this.state.planetKind() === 'black-hole'
+      ? this.t.public.splash.bodyBlackHole
+      : this.state.stationSplash() ? this.t.public.splash.station.title : this.t.public.splash.title,
   );
   protected readonly loadingMessage = computed(() =>
     this.state.stationSplash() ? this.t.public.splash.station.loading : this.t.public.splash.loading,
   );
   protected readonly tierLabel = computed(() => {
+    if (this.state.planetKind() === 'black-hole') {
+      const budget = BLACK_HOLE_SPLASH_QUALITY[this.state.quality()];
+      return this.t.public.splash.blackHoleTier
+        .replace('{width}', String(budget.resolution))
+        .replace('{height}', String(Math.round(budget.resolution * 5 / 6)))
+        .replace('{steps}', String(budget.traceSteps));
+    }
     if (this.state.stationSplash()) {
       return this.t.public.splash.station.tier.replace(
         '{triangles}',
@@ -436,6 +457,9 @@ export class SplashOverlay {
     return this.state.quality() === 'standard' ? this.t.public.splash.standardTier : this.t.public.splash.lowTier;
   });
   protected readonly categories = SPLASH_PICKER_CATEGORIES;
+  protected readonly blackHoleSources = CYGNUS_X1_REFERENCES.map((link) => ({
+    ...link, ariaLabel: link.text, showOrb: false,
+  }));
   protected readonly saturnSources = SATURN_REFERENCE_LINKS.map((link) => ({
     ...link, ariaLabel: link.text, showOrb: false,
   }));
@@ -459,6 +483,7 @@ export class SplashOverlay {
 
   protected bodyLabel(entry: SplashPlanetEntry): string {
     const labels = this.t.public.splash;
+    if (entry.kind === 'black-hole') return labels.bodyBlackHole;
     if (entry.kind === 'sol' && entry.solKey) return labels.solBodies[entry.solKey];
     if (entry.kind === 'star') return `${labels.bodyStar} ${entry.spectralClass ?? entry.id}`;
     const number = /(\d+)$/.exec(entry.id)?.[1];
@@ -475,6 +500,11 @@ export class SplashOverlay {
     const value = target.value;
     if (value !== 'asteroid-mining-rig' && value !== 'station') throw new Error(`Unknown splash foreground: ${value}`);
     this.state.chooseForeground(value);
+  }
+
+  protected onStellarWind(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLInputElement) this.state.stellarWind.set(target.checked);
   }
 
   protected onCategory(event: Event): void {
@@ -546,6 +576,11 @@ export class SplashOverlay {
   );
   protected readonly switchLabel = computed(() => {
     const quality = this.otherQuality();
+    if (this.state.planetKind() === 'black-hole') {
+      return quality === 'standard'
+        ? this.t.public.splash.blackHoleSwitchToStandard
+        : this.t.public.splash.blackHoleSwitchToLow;
+    }
     const label = quality === 'standard' ? this.t.public.splash.switchToStandard : this.t.public.splash.switchToLow;
     return label.replace('{triangles}', this.state.assetForQuality(quality).triangleCount.toLocaleString());
   });
