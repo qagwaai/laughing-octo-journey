@@ -41,46 +41,47 @@ const START_SCANNING_UI_EVENT = 'cold-boot:start-scanning';
       display: block;
       height: 100vh;
       width: 100vw;
-      .split-layout {
-        --splitter-width: 32px;
-      }
+    }
 
-      .splitter {
-        width: var(--splitter-width);
-        flex: none;
-        user-select: none;
-      }
+    :host .split-layout {
+      --splitter-width: 32px;
+    }
 
-      .splitter-drag {
-        touch-action: none;
-      }
+    :host .splitter {
+      width: var(--splitter-width);
+      flex: none;
+      user-select: none;
+    }
 
-      .splitter-controls {
-        position: absolute;
-        top: 8px;
-        left: 2px;
-        right: 2px;
-        z-index: 20;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
+    :host .splitter-drag {
+      touch-action: none;
+    }
 
-      .splitter-controls button {
-        width: 100%;
-        aspect-ratio: 1;
-        touch-action: manipulation;
-      }
+    :host .splitter-controls {
+      position: absolute;
+      top: 8px;
+      left: 2px;
+      right: 2px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
 
-      @media (any-pointer: coarse), (max-width: 640px) {
-        .split-layout {
-          --splitter-width: 48px;
-        }
-      }
+    :host .splitter-controls button {
+      width: 100%;
+      aspect-ratio: 1;
+      touch-action: manipulation;
+    }
 
-      &.resizing {
-        user-select: none;
+    @media (any-pointer: coarse), (max-width: 640px) {
+      :host .split-layout {
+        --splitter-width: 48px;
       }
+    }
+
+    :host.resizing {
+      user-select: none;
     }
 
     .cold-boot-scan-host {
