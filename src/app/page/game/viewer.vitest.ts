@@ -62,7 +62,7 @@ describe('ViewerPage', () => {
 
     expect(socketService.emittedEvents[0]?.event).toBe(SOLAR_SYSTEM_LIST_REQUEST_EVENT);
     expect(socketService.emittedEvents[0]?.data).toEqual(
-      expect.objectContaining({ playerName: 'Pioneer', sessionKey: 'test-session-key' }),
+      expect.objectContaining({ playerName: 'Pioneer', sessionKey: 'test-session-key', limit: 50 }),
     );
   });
 
@@ -173,7 +173,6 @@ describe('ViewerPage', () => {
       sessionService,
       navigationState: { playerName: 'Pioneer' },
     });
-
     const system = { id: 'sol', displayName: 'Sol', source: 'curated' as const };
     component['selectSystem'](system);
 
@@ -183,6 +182,29 @@ describe('ViewerPage', () => {
     const args = mockRouter.navigate.mock.calls.at(-1)!;
     expect(args[0]).toEqual([{ outlets: { left: ['solar-system-details', 'sol'], right: ['viewer-scene', 'sol'] } }]);
     expect(args[1].state).toEqual(expect.objectContaining({ solarSystem: system, playerName: 'Pioneer' }));
+  });
+
+  it('keeps Cygnus X-1 selectable outside the limited distance-filtered list and requests its exact system id', () => {
+    const { component, mockRouter } = setup({
+      socketService,
+      sessionService,
+      navigationState: { playerName: 'Pioneer' },
+    });
+    const cygnus = component['displayedSolarSystems']().find((system) => system.id === 'cygnus-x1');
+    expect(cygnus).toMatchObject({
+      id: 'cygnus-x1',
+      displayName: 'Cygnus X-1',
+      distanceParsec: null,
+      positionPc: null,
+    });
+    component['selectSystem'](cygnus!);
+    expect(component['selectedSystemId']()).toBe('cygnus-x1');
+    expect(mockRouter.navigate.mock.calls.at(-1)?.[0]).toEqual([
+      { outlets: { left: ['solar-system-details', 'cygnus-x1'], right: ['viewer-scene', 'cygnus-x1'] } },
+    ]);
+    const listRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_LIST_REQUEST_EVENT)
+      ?.data as { limit?: number; maxDistanceParsec?: number };
+    expect(listRequest).toEqual(expect.objectContaining({ limit: 50, maxDistanceParsec: 50 }));
   });
 
   it('formats non-finite and finite distances', () => {

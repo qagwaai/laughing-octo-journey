@@ -61,6 +61,56 @@ describe('IntroPage Logic', () => {
   });
 
   describe('Template content', () => {
+    it('should credit the astronomical catalog and Cygnus X-1 research with safe external links', () => {
+      const { fixture } = setup('left');
+      const root: HTMLElement = fixture.nativeElement;
+      const sources = [
+        ['https://codeberg.org/astronexus/hyg', 'Astronexus'],
+        ['https://creativecommons.org/licenses/by-sa/4.0/', 'CC BY-SA 4.0'],
+        ['https://arxiv.org/abs/2102.09091', 'Miller-Jones'],
+        ['https://arxiv.org/abs/2411.12507', 'Jiachen Jiang'],
+      ];
+
+      for (const [href, author] of sources) {
+        const link = root.querySelector<HTMLAnchorElement>(`a[href="${href}"]`);
+        expect(link?.textContent).toContain(author);
+        expect(link?.target).toBe('_blank');
+        expect(link?.relList.contains('noopener')).toBe(true);
+        expect(link?.relList.contains('noreferrer')).toBe(true);
+      }
+      expect(root.querySelector('[aria-labelledby="scientific-attribution-title"]')).not.toBeNull();
+    });
+
+    it('credits the Viewer solar-system catalog and displays the exact MPC acknowledgment', () => {
+      const { component, fixture } = setup('left');
+      const root: HTMLElement = fixture.nativeElement;
+      const catalog = root.querySelector('[aria-labelledby="catalog-attribution-title"]') as HTMLElement;
+      const acknowledgment = component['t'].game.viewer.catalogSourcesMpcAcknowledgment;
+      const sourceUrls = [
+        'https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt',
+        'https://docs.minorplanetcenter.net/mpc-ops-docs/orbits/comet-orbit-format/',
+        'https://ssd.jpl.nasa.gov/sats/elem/',
+        'https://ssd.jpl.nasa.gov/sats/discovery.html',
+        'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138',
+      ];
+
+      expect(catalog).not.toBeNull();
+      expect(catalog.textContent).toContain(acknowledgment);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesScope);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesEd138);
+      expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesS2009S1);
+
+      const links = Array.from(catalog.querySelectorAll('a'));
+      expect(links.map((link) => link.href)).toEqual(sourceUrls);
+      expect(links.every((link) => link.target === '_blank' && link.rel === 'noopener noreferrer')).toBe(true);
+    });
+
+    it('should distinguish artistic black-hole concepts from observational imagery', () => {
+      const { component, fixture } = setup('left');
+      expect(fixture.nativeElement.textContent).toContain(component['t'].public.intro.scientificVisualizationNote);
+      expect(fixture.nativeElement.textContent).toContain(component['t'].public.intro.scientificAttributionBody);
+    });
+
     it('should have methods to support template rendering', () => {
       const { component } = setup();
       expect(typeof component.navigateToRegistration).toBe('function');

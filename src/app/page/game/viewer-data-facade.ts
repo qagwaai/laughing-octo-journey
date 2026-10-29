@@ -1,3 +1,4 @@
+import { validateCanonicalBodyCollection } from '../../model/celestial-classification';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { coerceExternalObjectDescriptor, type ExternalObjectDomain } from '../../model/external-object-descriptor';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
@@ -5,8 +6,7 @@ import { isValidShipSpatial } from '../../model/math/spatial';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { ShipUpsertRequest, ShipUpsertResponse } from '../../model/ship-upsert';
-import type { SolarSystemGetResponse, ViewerBody } from '../../model/solar-system-get';
-import { validateCanonicalBodyCollection } from '../../model/celestial-classification';
+import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { validateSw13M4DescriptorEnvelope } from '../../scene/viewer/viewer-performance-guardrails';
 import { appLogger } from '../../services/logger';
@@ -101,7 +101,7 @@ export class ViewerDataFacade {
           this.deps.setSceneError(`viewer-scene-error celestial-body-contract ${canonicalError}`);
           return;
         }
-        const dedupedBodies = this.mergeUniqueBodies(allBodies);
+        const dedupedBodies = mergeUniqueViewerBodies(allBodies);
         const descriptorSanitization = this.sanitizeBodiesForDescriptorContract(dedupedBodies);
         if (!descriptorSanitization.success) {
           this.deps.setBodies([]);
@@ -121,19 +121,6 @@ export class ViewerDataFacade {
 
   dispose(): void {
     this.disposed = true;
-  }
-
-  private mergeUniqueBodies(bodies: ViewerBody[]): ViewerBody[] {
-    const dedupedBodies: ViewerBody[] = [];
-    const seenBodyIds = new Set<string>();
-    for (const body of bodies) {
-      if (seenBodyIds.has(body.id)) {
-        continue;
-      }
-      seenBodyIds.add(body.id);
-      dedupedBodies.push(body);
-    }
-    return dedupedBodies;
   }
 
   private sanitizeBodiesForDescriptorContract(
@@ -235,7 +222,7 @@ export class ViewerDataFacade {
         return;
       }
 
-      const mergedBodies = this.mergeUniqueBodies([...this.deps.getBodies(), ...marketStations]);
+      const mergedBodies = mergeUniqueViewerBodies([...this.deps.getBodies(), ...marketStations]);
       this.deps.setBodies(mergedBodies);
       this.deps.onBodiesResolved?.(null);
     });

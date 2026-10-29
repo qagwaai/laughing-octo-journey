@@ -19,10 +19,10 @@ import { LeftPaneMissionGuidanceOverlay } from './component/left-pane-mission-gu
 import { locale } from './i18n/locale';
 import ShipExteriorHudOverlayComponent from './page/opening/ship-exterior-hud-overlay';
 import { RoutedScene } from './routed-scene';
-import { SplashOverlay } from './scene/splash-overlay';
-import { SplashState } from './scene/splash-state';
 import { PlanetCloudSettings } from './scene/planet/planet-clouds';
 import { createShipExteriorViewFacade } from './scene/ship-exterior/ship-exterior-view-facade';
+import { SplashOverlay } from './scene/splash-overlay';
+import { SplashState } from './scene/splash-state';
 import { OpeningAudioService } from './services';
 import { ContractVarianceNotifierService } from './services/contract-variance-notifier.service';
 import { appLogger } from './services/logger';
@@ -169,8 +169,7 @@ export class AppComponent implements AfterViewInit, OnDestroy {
           (this.splash.status() === 'ready' &&
             !this.splash.reducedMotion() &&
             !this.splash.documentHidden() &&
-            this.cloudSettings.enabled() &&
-            this.cloudSettings.coverage() > 0))
+            (this.splash.stationSplash() || (this.cloudSettings.enabled() && this.cloudSettings.coverage() > 0))))
         ? 'always'
         : 'demand'
       : this.sceneVisibility.sceneFrameloop(),

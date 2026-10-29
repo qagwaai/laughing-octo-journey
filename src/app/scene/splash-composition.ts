@@ -1,6 +1,7 @@
 import {
   BufferAttribute,
   BufferGeometry,
+  Color,
   DirectionalLight,
   Group,
   HemisphereLight,
@@ -19,6 +20,8 @@ import {
   Vector3,
 } from 'three';
 import type { SplashQuality } from './splash-state';
+import { STAR_CLASS_TRAITS } from '../model/star/star-class-traits';
+import { fnv1a32 } from '../model/planet/planet-seed';
 
 export function disposeSplashObject(root: Object3D): void {
   const geometries = new Set<BufferGeometry>();
@@ -50,11 +53,19 @@ export const SPLASH_PLANET_ROLL = -0.3;
 export const SPLASH_BODY_EXCLUSION_RADIUS = 4 * 1.012;
 export const SPLASH_DEBRIS_CLEARANCE = 0.25;
 export const SPLASH_CAMERA_DIRECTION = new Vector3(2.7, 2, 3.8).normalize();
+/** View the station from its docking end so the sun-shade sits behind the compute core. */
+export const STATION_SPLASH_CAMERA_DIRECTION = new Vector3(2.7, 2, -3.8).normalize();
 export const SPLASH_BODY_DISTANCE_SCALE = 4;
+export const SPLASH_STARFIELD_COUNT = 6000;
+export const SPLASH_STARFIELD_RADIUS = 300;
 
 /** Perspective-preserving depth separation, anchored to the default view rather than manual orbit. */
 export function placeSplashCelestialBody(body: Object3D, referenceCameraPosition: Vector3): void {
-  body.position.copy(SPLASH_PLANET_POSITION).sub(referenceCameraPosition).multiplyScalar(SPLASH_BODY_DISTANCE_SCALE);
+  const origin = new Vector3();
+  const defaultViewInverse = new Matrix4().lookAt(SPLASH_CAMERA_DIRECTION, origin, Object3D.DEFAULT_UP).invert();
+  const referenceView = new Matrix4().lookAt(referenceCameraPosition, origin, Object3D.DEFAULT_UP);
+  body.position.copy(SPLASH_PLANET_POSITION).applyMatrix4(defaultViewInverse).applyMatrix4(referenceView);
+  body.position.sub(referenceCameraPosition).multiplyScalar(SPLASH_BODY_DISTANCE_SCALE);
   body.position.add(referenceCameraPosition);
   body.scale.setScalar(SPLASH_BODY_DISTANCE_SCALE);
 }
@@ -111,15 +122,35 @@ export function createSplashBackdropAround(quality: SplashQuality, planet: Objec
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
-  const stars = new Float32Array(750 * 3);
-  for (let i = 0; i < stars.length; i += 3) {
-    stars[i] = (random() - 0.5) * 65;
-    stars[i + 1] = (random() - 0.5) * 55;
-    stars[i + 2] = -10 - random() * 20;
+  const stars = new Float32Array(SPLASH_STARFIELD_COUNT * 3);
+  const starColors = new Float32Array(SPLASH_STARFIELD_COUNT * 3);
+  const white = new Color('#ffffff');
+  const starPalette = (['B', 'A', 'F', 'F', 'G', 'K', 'M'] as const).map((letter) =>
+    new Color(STAR_CLASS_TRAITS[letter].representativeColor).lerp(white, 0.35),
+  );
+  for (let i = 0; i < SPLASH_STARFIELD_COUNT; i++) {
+    const y = random() * 2 - 1;
+    const ringRadius = Math.sqrt(1 - y * y);
+    const angle = random() * Math.PI * 2;
+    stars[i * 3] = Math.cos(angle) * ringRadius * SPLASH_STARFIELD_RADIUS;
+    stars[i * 3 + 1] = y * SPLASH_STARFIELD_RADIUS;
+    stars[i * 3 + 2] = Math.sin(angle) * ringRadius * SPLASH_STARFIELD_RADIUS;
+    const brightness = 0.25 + 0.75 * random() ** 2;
+    const tint = starPalette[fnv1a32(`splash-star-color|${i}`) % starPalette.length];
+    starColors[i * 3] = tint.r * brightness;
+    starColors[i * 3 + 1] = tint.g * brightness;
+    starColors[i * 3 + 2] = tint.b * brightness;
   }
   const starGeometry = new BufferGeometry();
   starGeometry.setAttribute('position', new BufferAttribute(stars, 3));
-  group.add(new Points(starGeometry, new PointsMaterial({ color: '#c8dcff', size: 0.045, sizeAttenuation: true })));
+  starGeometry.setAttribute('color', new BufferAttribute(starColors, 3));
+  const starfield = new Points(
+    starGeometry,
+    new PointsMaterial({ vertexColors: true, size: 1.25, sizeAttenuation: false, depthWrite: false }),
+  );
+  starfield.name = 'splash-starfield';
+  starfield.raycast = () => undefined;
+  group.add(starfield);
   const count = quality === 'standard' ? 85 : 35;
   const rockGeometry = new IcosahedronGeometry(1, 1);
   const positions = rockGeometry.getAttribute('position');
