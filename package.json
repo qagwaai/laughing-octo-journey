@@ -106,8 +106,8 @@
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "^2.6.0",
     "@analogjs/vitest-angular": "^2.7.2",
-    "@angular/build": "21.2.24",
-    "@angular/cli": "21.2.26",
+    "@angular/build": "21.2.29",
+    "@angular/cli": "21.2.29",
     "@angular/compiler-cli": "21.2.25",
     "@angular/localize": "21.2.25",
     "@eslint/js": "^10.0.1",
@@ -129,10 +129,6 @@
     "vitest": "^4.1.12"
   },
   "overrides": {
-    "@angular/cli": {
-      "@modelcontextprotocol/sdk": "1.32.0"
-    },
-    "piscina": "5.3.2",
     "vite": "7.3.7"
   },
   "prettier": {

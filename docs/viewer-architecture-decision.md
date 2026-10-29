@@ -4,6 +4,132 @@
 
 Accepted (initial MVP).
 
+### Forge-scale group visibility and target indicators: implemented 2026-10-29
+
+The Stellar Viewer now supports per-group visual inclusion controls and a
+distinct target indicator for celestial bodies.
+
+#### Group visibility and details targeting
+
+- Group controls are discovered from the full Forge body/ship data, not from
+  already-filtered scene inputs, so a group remains selectable while hidden.
+  The Asteroids control is always present, including when the response has no
+  asteroid records.
+- `asteroids` and `comet` default to excluded; other groups default to included.
+  Selection state is shared between the Viewer and the Solar System Details
+  pane and resets on a full page reload.
+- The Details pane disables the Target button for objects in excluded groups.
+  Its localized tooltip names the group and tells the user to enable it in the
+  Viewer. The guard also prevents targeting through the component method.
+- Compact target icons appear before object names in grouped, distance-sorted,
+  and ship rows. Buttons retain an accessible Target name and hover/focus
+  guidance.
+
+#### Target appearance and rendering cost
+
+- A targeted celestial body keeps its regular material color and receives a
+  red, four-corner bracket. The existing hover color treatment is unchanged.
+  Ships retain their existing target styling.
+- The bracket is one merged mesh, mounted only for the currently targeted
+  celestial body. It faces the camera, scales with the displayed body size, and
+  uses a red material without depth testing so the indicator stays legible.
+- Group filters reduce scene-rendered bodies, but do not filter the Forge
+  response or reduce its transfer/deserialization cost: the full data remains
+  available so users can turn groups back on. This change is not a measured
+  performance acceptance for a roughly 5,100-object Sol payload, nor does it
+  bound future gameplay-created objects. Profile payload handling and
+  large-population rendering separately before claiming those costs are solved.
+
+#### Validation
+
+- `npm run test:spec -- src/app/scene/viewer/viewer-target-bracket.vitest.ts src/app/scene/viewer/viewer-system-scene.vitest.ts`:
+  passed, 42 tests.
+- `npx playwright test e2e/tests/viewer-interactions.spec.ts e2e/tests/viewer-ships.spec.ts --grep "left-click targets a planet|target button flies camera to selected ship row target" --reporter=line`:
+  passed, including auth setup; confirms celestial brackets appear on target and
+  ship targeting does not add a celestial bracket.
+- `npm run typecheck`: passed.
+- `npm run build`: passed, including Angular template compilation and the E2E
+  partition gate.
+- Targeted ESLint and `git diff --check`: passed.
+
+### Cygnus X-1 black-hole rendering: accepted 2026-10-25
+
+The user accepted the Stellar Viewer result after removal of the splash-specific
+rectangular sky backdrop. The user will commit and push the session changes.
+
+#### Identity, discovery and grouping
+
+- Renderer selection requires exact `catalogIdentity` pairs and compatible
+  canonical classification: `cygnus-x1/black-hole` with black-hole body type and
+  surface archetype; `cygnus-x1/hd226868` with star type and archetype.
+  Entity IDs, display names, texture hints and HYG/HIP/HD numbers are not aliases.
+- Forge system ID is `cygnus-x1`; entity IDs are `cygnus-x1-black-hole` and
+  `cygnus-x1-hd226868`. HYG 97987 / HIP 98298 / HD 226868 refer to the companion,
+  not a separate black-hole catalog record.
+- A local catalog entry keeps the system selectable without enlarging the
+  distance-limited list request. The existing authenticated system-get flow
+  requests it; Forge owns on-demand availability/seeding.
+- Group by Type adds localized **Black holes** when bodies of that type exist.
+  The order is Star, Planet, Dwarf Planet, Moon, Asteroid, Black holes,
+  Trans-Neptunian object, Comet, Station and Ships.
+- Viewer and details deduplicate shared `stars`/`bodies` entries by entity ID.
+  This supersedes the earlier decision below to defer duplicate Sun handling.
+  It does not introduce a general conflicting-record reconciliation policy.
+
+#### Rendering, coordinates and physical meaning
+
+- [Identity and layout selection](../src/app/scene/viewer/cygnus-x1-viewer-profile.ts)
+  and the [Angular renderer](../src/app/scene/viewer/viewer-black-hole-renderer.ts)
+  reuse the shared bounded ray core, not the splash companion composition.
+- The viewer uses a 320 x 267 HDR pass with 256 integration steps. Lifecycle
+  ownership includes disposal and renderer-state restoration; reduced motion
+  freezes animation. Unsupported HDR produces a logged, visible notice.
+- Escaped rays are transparent in the viewer; disk emission and the opaque
+  shadow composite into the host scene without a rectangular procedural sky.
+  The splash retains its procedural sky. This does not lens other viewer
+  objects, and the Schwarzschild approximation omits the actual system's spin.
+- Both live canonical positions are authored zero-origin barycentric snapshots.
+  Only when both exact identity matches have those placeholders does the viewer
+  stage them at separate display positions. Canonical spatial data stays intact,
+  and a visible notice states that spacing is not measured or an orbital phase.
+  Parent hierarchy and inclination alone do not establish an orbit.
+- The 62.6 km Schwarzschild reference is not a measured horizon or disk radius.
+  Unknown horizon/disk radii and system coordinates stay unknown; source distance
+  remains distinct from system registry distance. Display size is authored.
+- All black-hole classifications bypass planetary terrain generation/cache
+  retention. Unsupported identities remain selectable generic geometry rather
+  than receiving Cygnus imagery or a terran bake.
+- No new travel routes, gates, close-up page or physical binary simulation.
+
+#### Validation and remaining handoff
+
+Production build, app/spec typecheck, targeted lint/format, focused unit suites
+and mocked Chromium Viewer flows passed. The final shared-core regression ran:
+
+- `npm run test:spec -- src\app\scene\black-hole\black-hole.vitest.ts`:
+  **passed, 11 tests**.
+- `npx playwright test viewer-list.spec.ts splash.spec.ts --grep 'on-demand Cygnus|renders the opt-in Cygnus' --project=chromium --no-deps --reporter=line --workers=1`:
+  **passed, 2 tests**. Contrasting-background pixels verify transparent
+  surroundings and an opaque shadow; the splash renderer still works.
+- `npm run build` and `npm run typecheck`: **passed**.
+
+Authenticated live reads confirmed both canonical bodies, companion-only
+`stars`, exact identities/classifications, stable repeat-read snapshots, and
+celestial list limits 1/2 returning one/two bodies respectively. Live UI re-entry
+after the terrain-cache correction had no false terran warning or renderer error.
+First-time insertion was not proven, and no backend records were reset.
+
+Live GET omits the optional separation, eccentricity and inclination fields,
+and omits `orbitalElements` instead of explicitly returning null. The client
+does not synthesize them. The companion's physical radius/temperature and
+black-hole source references were present. See
+[full live findings and source references](./splash1-2026-09-27.md#authenticated-live-handoff-verification-2026-10-25).
+
+Visual acceptance is not full-suite regression, representative hardware
+performance, leak-profile or physical Safari/iPad certification. The splash
+overlay limitation and other deferred scientific work are recorded in the
+[session closeout](./splash1-2026-09-27.md#cygnus-x-1-session-closeout-2026-10-25).
+
 ### Station models and close-up navigation: accepted 2026-10-18
 
 User visual confirmation is complete for this session's station-viewer and
@@ -145,6 +271,12 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
 - Distance mode controls, the full illustrative-orbit disclaimer, and terrain/
   atmosphere sources are separate keyboard-accessible disclosures, closed initially.
   The current distance mode remains visible in its disclosure heading.
+- The embedded Viewer also provides a closed-by-default **Catalog sources and
+  limitations** disclosure beside terrain sources. Its catalog scope, caveats,
+  source links, and exact Minor Planet Center acknowledgment are repeated in the
+  public intro page's astronomical attribution section. Keep those statements
+  aligned through the shared locale strings; do not add fixed catalog totals or
+  refresh dates, and do not imply that every catalog body has a 3D model.
 - Surface generation progress, texture loading failures, and retry actions appear
   in the panel outside the disclosures, so they are not hidden by collapsed notes.
   Scrolling the panel does not zoom the scene.

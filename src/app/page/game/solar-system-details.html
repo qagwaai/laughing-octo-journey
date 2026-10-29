@@ -74,7 +74,6 @@
                 <th>{{ t.game.viewer.detailsColumnName }}</th>
                 <th>{{ t.game.viewer.detailsColumnModelTier }}</th>
                 <th>{{ t.game.viewer.detailsColumnStatus }}</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -84,25 +83,40 @@
                 [class.details-row--active-ship]="row.isActiveShip"
               >
                 <td class="details-col-name">
-                  {{ row.displayName }} @if (row.isActiveShip) {
-                  <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
-                  }
+                  <span class="details-name-target">
+                    <span
+                      class="details-target-tooltip"
+                      [attr.title]="targetTooltip(row)"
+                      [attr.tabindex]="!isTargetEnabled(row) ? 0 : null"
+                    >
+                      <button
+                        type="button"
+                        class="details-target-btn"
+                        [class.details-target-btn--active]="activeTargetId() === row.id"
+                        [disabled]="!isTargetEnabled(row)"
+                        [attr.aria-label]="t.game.viewer.detailsTargetButton"
+                        [attr.title]="targetTooltip(row)"
+                        (click)="targetBody(row.id)"
+                        [attr.aria-pressed]="activeTargetId() === row.id"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <circle cx="12" cy="12" r="7.5" />
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" />
+                        </svg>
+                      </button>
+                    </span>
+                    <span class="details-name-target__label">
+                      {{ row.displayName }} @if (row.isActiveShip) {
+                      <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
+                      }
+                    </span>
+                  </span>
                 </td>
                 <td class="details-col-ship-model">
                   {{ row.shipModel ?? '—' }} @if (row.shipTier !== null) { T{{ row.shipTier }} }
                 </td>
                 <td class="details-col-ship-status">{{ row.shipStatus ?? '—' }}</td>
-                <td class="details-col-action">
-                  <button
-                    type="button"
-                    class="details-target-btn"
-                    [class.details-target-btn--active]="activeTargetId() === row.id"
-                    (click)="targetBody(row.id)"
-                    [attr.aria-pressed]="activeTargetId() === row.id"
-                  >
-                    {{ t.game.viewer.detailsTargetButton }}
-                  </button>
-                </td>
               </tr>
               }
             </tbody>
@@ -115,26 +129,40 @@
                 <th>{{ t.game.viewer.detailsColumnName }}</th>
                 <th class="details-col-num">{{ t.game.viewer.detailsColumnDiameter }}</th>
                 <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbitKm }}</th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               @for (row of group.rows; track row.id) {
               <tr [class.details-row--targeted]="activeTargetId() === row.id">
-                <td class="details-col-name">{{ row.displayName }}</td>
+                <td class="details-col-name">
+                  <span class="details-name-target">
+                    <span
+                      class="details-target-tooltip"
+                      [attr.title]="targetTooltip(row)"
+                      [attr.tabindex]="!isTargetEnabled(row) ? 0 : null"
+                    >
+                      <button
+                        type="button"
+                        class="details-target-btn"
+                        [class.details-target-btn--active]="activeTargetId() === row.id"
+                        [disabled]="!isTargetEnabled(row)"
+                        [attr.aria-label]="t.game.viewer.detailsTargetButton"
+                        [attr.title]="targetTooltip(row)"
+                        (click)="targetBody(row.id)"
+                        [attr.aria-pressed]="activeTargetId() === row.id"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                          <circle cx="12" cy="12" r="7.5" />
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" />
+                        </svg>
+                      </button>
+                    </span>
+                    <span class="details-name-target__label">{{ row.displayName }}</span>
+                  </span>
+                </td>
                 <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
                 <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
-                <td class="details-col-action">
-                  <button
-                    type="button"
-                    class="details-target-btn"
-                    [class.details-target-btn--active]="activeTargetId() === row.id"
-                    (click)="targetBody(row.id)"
-                    [attr.aria-pressed]="activeTargetId() === row.id"
-                  >
-                    {{ t.game.viewer.detailsTargetButton }}
-                  </button>
-                </td>
               </tr>
               }
             </tbody>
@@ -153,7 +181,6 @@
               <th>{{ t.game.viewer.detailsColumnName }}</th>
               <th>{{ t.game.viewer.detailsColumnType }}</th>
               <th class="details-col-num">{{ t.game.viewer.detailsColumnOrbitKm }}</th>
-              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -163,23 +190,38 @@
               [class.details-row--active-ship]="row.isActiveShip"
             >
               <td class="details-col-name">
-                {{ row.displayName }} @if (row.isActiveShip) {
-                <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
-                }
+                <span class="details-name-target">
+                  <span
+                    class="details-target-tooltip"
+                    [attr.title]="targetTooltip(row)"
+                    [attr.tabindex]="!isTargetEnabled(row) ? 0 : null"
+                  >
+                    <button
+                      type="button"
+                      class="details-target-btn"
+                      [class.details-target-btn--active]="activeTargetId() === row.id"
+                      [disabled]="!isTargetEnabled(row)"
+                      [attr.aria-label]="t.game.viewer.detailsTargetButton"
+                      [attr.title]="targetTooltip(row)"
+                      (click)="targetBody(row.id)"
+                      [attr.aria-pressed]="activeTargetId() === row.id"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <circle cx="12" cy="12" r="7.5" />
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" />
+                      </svg>
+                    </button>
+                  </span>
+                  <span class="details-name-target__label">
+                    {{ row.displayName }} @if (row.isActiveShip) {
+                    <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
+                    }
+                  </span>
+                </span>
               </td>
               <td class="details-col-type">{{ row.bodyType }}</td>
               <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
-              <td class="details-col-action">
-                <button
-                  type="button"
-                  class="details-target-btn"
-                  [class.details-target-btn--active]="activeTargetId() === row.id"
-                  (click)="targetBody(row.id)"
-                  [attr.aria-pressed]="activeTargetId() === row.id"
-                >
-                  {{ t.game.viewer.detailsTargetButton }}
-                </button>
-              </td>
             </tr>
             }
           </tbody>

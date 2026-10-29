@@ -25,6 +25,18 @@ describe('SplashState body picker', () => {
     expect(state.pickerBody()).toBe('nova-splash-star-g');
   });
 
+  it('selects the black-hole prototype without inventing a canonical surface archetype', () => {
+    expect(state.stellarWind()).toBe(false);
+    state.stellarWind.set(true);
+    state.chooseCategory('black-hole');
+    expect(state.planetBodyId()).toBe('demo-cygnus-x1');
+    expect(state.planetKind()).toBe('black-hole');
+    expect(state.planetSurfaceArchetype()).toBeNull();
+    state.chooseBody('sol-mars');
+    expect(state.planetSurfaceArchetype()).toBe('rocky');
+    expect(state.stellarWind()).toBe(true);
+  });
+
   it('switches foreground assets and diagnostics without changing the chosen body or quality', () => {
     state.supported.set(true);
     state.status.set('ready');
@@ -34,15 +46,15 @@ describe('SplashState body picker', () => {
     state.quality.set('standard');
     state.chooseForeground('station');
     expect(state.stationSplash()).toBe(true);
-    expect(state.triangleCount()).toBe(149_944);
-    expect(state.modelAsset().url).toContain('sol-mars-orbit-station-150k.glb');
-    expect(state.posterUrl()).toContain('sol-mars-orbit-station-poster.webp');
+    expect(state.triangleCount()).toBe(139_330);
+    expect(state.modelAsset().url).toContain('sol-mars-station-150k.glb');
+    expect(state.posterUrl()).toContain('sol-mars-station-poster.webp');
     expect(state.planet()).toBe(planet);
     expect(state.pickerCategory()).toBe('sol');
     expect(state.pickerBody()).toBe('sol-earth');
     state.switchQuality('low');
-    expect(state.triangleCount()).toBe(74_984);
-    expect(state.modelAsset().url).toContain('sol-mars-orbit-station-75k.glb');
+    expect(state.triangleCount()).toBe(74_695);
+    expect(state.modelAsset().url).toContain('sol-mars-station-75k.glb');
     state.chooseForeground('asteroid-mining-rig');
     expect(state.stationSplash()).toBe(false);
     expect(state.quality()).toBe('low');

@@ -36,6 +36,23 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   public: {
+    intro: {
+      attributionTitle: 'Ispirazione progettuale',
+      attributionBody:
+        'I nostri concetti di calcolo orbitale, in particolare il legame tra calcolo continuo e capacità dei radiatori, sono stati ispirati da questo articolo di JinV+:',
+      attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
+      scientificAttributionTitle: 'Riferimenti astronomici',
+      scientificAttributionBody:
+        'La nostra ricerca e gli studi visivi su Cygnus X-1 si basano sul seguente catalogo e sulle seguenti pubblicazioni scientifiche. Questi riferimenti orientano il progetto, senza implicare il sostegno dei loro autori.',
+      catalogAttributionTitle: 'Fonti e limitazioni del catalogo del sistema solare',
+      hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (identificazione nel catalogo)',
+      cygnusDynamicsAttributionSource:
+        'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masse, distanza e parametri orbitali)',
+      cygnusReviewAttributionSource:
+        'Jiachen Jiang (2024) - Fifty Years After the Discovery of the First Stellar-Mass Black Hole: A Review of Cyg X-1 (accrescimento dal vento stellare e fisica dei raggi X)',
+      scientificVisualizationNote:
+        "Le immagini concettuali dei buchi neri sono visualizzazioni artistiche, non immagini osservative o ricostruzioni in scala. La visibilità del gas, il colore e l'inquadratura possono essere accentuati per facilitarne la lettura.",
+    },
     splash: {
       title: 'Avamposto minerario su asteroide',
       orbitHint: 'Trascina o scorri per ruotare · Rotella o pizzica per ingrandire',
@@ -75,6 +92,7 @@ export const it: DeepPartial<EnLocale> = {
         'gas-giant': 'Giganti gassosi',
         star: 'Soli',
         sol: 'Sistema solare',
+        'black-hole': 'Buchi neri (prototipo)',
       },
       bodyLabel: 'Corpo',
       bodyRandom: 'Casuale',
@@ -89,6 +107,14 @@ export const it: DeepPartial<EnLocale> = {
       bodyIcyMoon: 'Luna ghiacciata',
       bodyRockyMoon: 'Luna rocciosa',
       bodyStar: 'Sole',
+      bodyBlackHole: 'Cygnus X-1 (prototipo cinematografico)',
+      blackHoleTier: 'Passaggio raggi del buco nero ({width} x {height}, {steps} passi)',
+      blackHoleSwitchToStandard: 'Carica raggi standard',
+      blackHoleSwitchToLow: 'Carica raggi leggeri',
+      stellarWindLabel: 'Vento stellare (cinematografico)',
+      stellarWindNote: 'Solo un tenue vento della compagna; bagliore e velocità illustrativi, non una simulazione del plasma visibile o un flusso di trasferimento.',
+      blackHoleNote:
+        'Studio visivo locale, non una destinazione di viaggio. I modelli in primo piano non vengono mostrati in questa vista. Lente di Schwarzschild non rotante; Cygnus X-1 ruota. Colore del disco, inquadratura della compagna e velocità di animazione sono scelte artistiche, non una vista in scala o a occhio nudo.',
       solBodies: {
         earth: 'Terra',
         luna: 'Luna',
@@ -601,6 +627,12 @@ export const it: DeepPartial<EnLocale> = {
       subtitle: 'Esplora i sistemi stellari curati e dal database HYG e ispeziona i loro corpi celesti.',
       sectionTitle: 'Sistemi conosciuti',
       sectionDescription: 'Seleziona un sistema per visualizzarlo nel visualizzatore 3D.',
+      cygnusX1CatalogNote: 'Voce di catalogo · generata alla selezione',
+      cygnusX1VisualizationNote:
+        'Layout solo visivo: entrambe le posizioni di catalogo sono segnaposto al centro del sistema, non coordinate misurate dei componenti né una fase orbitale. La vista con raggi di Schwarzschild è illustrativa; Cygnus X-1 ruota.',
+      blackHoleHdrUnsupported: 'Rendering del buco nero non disponibile: il dispositivo non supporta target colore HDR.',
+      blackHoleReferenceDisclaimer:
+        'Il raggio di Schwarzschild è un valore di riferimento non rotante, non un confine misurato dell’orizzonte degli eventi o del disco di accrescimento.',
       listLoadingStatus: 'Caricamento sistemi...',
       listEmptyStatus: 'Nessun sistema solare disponibile.',
       listErrorPrefix: 'Caricamento sistemi solari fallito:',
@@ -620,6 +652,19 @@ export const it: DeepPartial<EnLocale> = {
         'Superficie del catalogo non disponibile. Le immagini caricate vengono mantenute; altrimenti viene mostrato un segnaposto neutro:',
       surfaceCatalogRetry: 'Riprova il caricamento delle texture',
       surfaceCatalogSources: 'Fonti del terreno e limitazioni',
+      catalogSourcesTitle: 'Fonti del catalogo e limitazioni',
+      catalogSourcesScope:
+        'Il catalogo dei test prestazionali include comete, pianeti, lune, pianeti nani e oggetti transnettuniani; esclude asteroidi e visitatori interstellari. Non tutti i corpi del catalogo hanno un modello 3D.',
+      catalogSourcesEd138:
+        '2026 ED138 è un candidato pianeta nano, non un pianeta nano ufficialmente riconosciuto. Il diametro riportato di 600–1.500 km è una stima, non una misurazione precisa.',
+      catalogSourcesS2009S1: 'S/2009 S 1 usa elementi orbitali approssimativi a scopo di visualizzazione.',
+      catalogSourcesCometElements: 'Elementi cometari del Minor Planet Center',
+      catalogSourcesCometFormat: 'Documentazione sul formato orbitale cometario del Minor Planet Center',
+      catalogSourcesSatelliteElements: 'Tabella JPL degli elementi medi dei satelliti',
+      catalogSourcesSatelliteDiscoveries: 'Tabella JPL delle scoperte dei satelliti',
+      catalogSourcesEd138Database: 'NASA/JPL Small-Body Database: 2026 ED138',
+      catalogSourcesMpcAcknowledgment:
+        "This research has made use of data and/or services provided by the International Astronomical Union's Minor Planet Center.",
       surfaceCatalogPreview: 'Anteprima',
       surfaceCatalogLow: 'Dettaglio 2K',
       surfaceCatalogStandard: 'Dettaglio 4K',
@@ -656,6 +701,7 @@ export const it: DeepPartial<EnLocale> = {
       planetViewNoMoonsLabel: 'Nessuna luna collegata a questo corpo.',
       legendTitle: 'Legenda',
       infoPanelTitle: 'Visualizzatore',
+      itemGroupsTitle: 'Gruppi di oggetti visibili',
       inspectTargetLabel: 'Ispeziona bersaglio',
       openCloseup: 'Apri primo piano',
       stationViewTitle: 'Vista ravvicinata della stazione',
@@ -709,6 +755,8 @@ export const it: DeepPartial<EnLocale> = {
       detailsEmptyStatus: 'Nessun corpo trovato per questo sistema.',
       detailsErrorPrefix: 'Caricamento corpi fallito:',
       detailsTargetButton: 'Punta',
+      detailsTargetTooltip: 'Punta questo oggetto nel visualizzatore.',
+      detailsTargetDisabledTooltip: 'Attiva il gruppo {group} nel visualizzatore per puntare questo oggetto.',
       bodyTargetedLabel: 'Puntato',
       detailsColumnName: 'Nome',
       detailsColumnType: 'Tipo',
@@ -722,8 +770,19 @@ export const it: DeepPartial<EnLocale> = {
       detailsActiveShipBadge: 'Attiva',
       detailsSectionShips: 'Navi',
       detailsSectionDwarfPlanet: 'Pianeta nano',
+      detailsSectionBlackHole: 'Buchi neri',
       detailsSectionTno: 'Oggetto transnettuniano',
       detailsSectionComet: 'Cometa',
+      blackHoleMassLabel: 'Massa catalogata (solare)',
+      blackHoleDistanceLabel: 'Distanza catalogata (pc)',
+      blackHolePeriodLabel: 'Periodo binario (giorni)',
+      blackHoleSchwarzschildLabel: 'Raggio di riferimento di Schwarzschild (km)',
+      blackHoleHorizonLabel: "Raggio dell'orizzonte degli eventi (km)",
+      blackHoleDiskLabel: 'Raggio esterno visivo del disco (km)',
+      blackHoleCompanionRadiusLabel: 'Raggio medio della compagna (km)',
+      blackHoleCompanionTemperatureLabel: 'Temperatura media della compagna (K)',
+      blackHoleSourcesLabel: 'Riferimenti delle fonti',
+      blackHoleUnknownValue: 'Sconosciuto',
     },
     shipViewSpecs: {
       title: 'Specifiche nave',

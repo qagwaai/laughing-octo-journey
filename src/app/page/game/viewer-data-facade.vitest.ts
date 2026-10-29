@@ -62,6 +62,68 @@ function stationBody(id: string, solarSystemId = 'sol'): ViewerBody {
   };
 }
 
+function cygnusBlackHole(): ViewerBody {
+  return {
+    id: 'cygnus-x1-black-hole',
+    catalogIdentity: { namespace: 'cygnus-x1', key: 'black-hole' },
+    bodyType: 'black-hole',
+    surfaceArchetype: 'black-hole',
+    displayName: 'Cygnus X-1',
+    state: 'active',
+    composition: { material: 'black-hole', rarity: 'Common', textureColor: '#111827' },
+    spatial: {
+      solarSystemId: 'cygnus-x1',
+      frame: 'barycentric',
+      positionKm: { x: 0, y: 0, z: 0 },
+      epochMs: 1_761_408_000_000,
+    },
+    orbitalElements: null,
+    blackHoleProperties: {
+      massSolar: 21.2,
+      massUncertaintySolar: 2.2,
+      distanceParsec: 2220,
+      distanceUncertaintyParsec: 180,
+      orbitalPeriodDays: 5.599829,
+      relativeBinarySemimajorAxisAU: 0.244,
+      eccentricity: 0.0189,
+      inclinationDeg: 27.51,
+      schwarzschildReferenceRadiusKm: 62.6,
+      eventHorizonRadiusKm: null,
+      visualAccretionDiskOuterRadiusKm: null,
+      sourceReferences: [
+        'Miller-Jones et al. 2021, Science 372, 1046, doi:10.1126/science.abb3363',
+        'Orosz et al. 2011, ApJ 742, 84, doi:10.1088/0004-637X/742/2/84',
+        'arXiv:2411.12507, wind-fed accretion context',
+      ],
+    },
+  };
+}
+
+function cygnusCompanion(): ViewerBody {
+  return {
+    id: 'cygnus-x1-hd226868',
+    catalogIdentity: { namespace: 'cygnus-x1', key: 'hd226868' },
+    bodyType: 'star',
+    surfaceArchetype: 'star',
+    displayName: 'HD 226868',
+    state: 'active',
+    composition: { material: 'stellar plasma', rarity: 'Common', textureColor: '#fff2c0' },
+    spatial: {
+      solarSystemId: 'cygnus-x1',
+      frame: 'barycentric',
+      positionKm: { x: 0, y: 0, z: 0 },
+      epochMs: 1_761_408_000_000,
+    },
+    orbitalElements: null,
+    physicalCatalog: {
+      massSolar: 40.6,
+      massUncertaintySolar: 7.7,
+      meanRadiusKm: 15_514_110,
+      meanTemperatureK: 31_138,
+    },
+  };
+}
+
 function asteroidBodyWithDescriptor(id: string): ViewerBody {
   return {
     id,
@@ -265,6 +327,50 @@ describe('ViewerDataFacade', () => {
     expect(state.bodies.map((body) => body.id)).toEqual(['sol-star', 'station-a']);
     expect(state.ships).toEqual([]);
     expect(services.shipService.listShipsByOwner).not.toHaveBeenCalled();
+  });
+
+  it('requests Cygnus X-1 by system id and merges the companion star with the black hole once', () => {
+    const { facade, state, services } = createHarness();
+    state.currentSolarSystemId = 'cygnus-x1';
+    state.activeCharacterId = null;
+    const blackHole = cygnusBlackHole();
+    const companion = cygnusCompanion();
+    services.solarSystemService.getSolarSystem.mockImplementation(
+      (request: { solarSystemId: string }, cb: (response: any) => void) => {
+        expect(request.solarSystemId).toBe('cygnus-x1');
+        cb({
+          success: true,
+          solarSystem: {
+            id: 'cygnus-x1',
+            displayName: 'Cygnus X-1',
+            source: 'curated',
+            distanceParsec: null,
+            positionPc: null,
+          },
+          stars: [companion],
+          bodies: [blackHole, companion],
+        });
+      },
+    );
+
+    facade.loadSystem('cygnus-x1');
+
+    expect(state.sceneError).toBeNull();
+    expect(state.bodies.map((body) => body.id)).toEqual(['cygnus-x1-hd226868', 'cygnus-x1-black-hole']);
+    expect(state.bodies.filter((body) => body.catalogIdentity?.namespace === 'cygnus-x1')).toHaveLength(2);
+    expect(
+      state.bodies.find((body) => body.bodyType === 'black-hole')?.blackHoleProperties?.eventHorizonRadiusKm,
+    ).toBeNull();
+    expect(state.bodies.find((body) => body.bodyType === 'black-hole')?.spatial.positionKm).toEqual({
+      x: 0,
+      y: 0,
+      z: 0,
+    });
+    expect(state.bodies.find((body) => body.bodyType === 'star')?.physicalCatalog?.meanRadiusKm).toBe(15_514_110);
+    expect(services.solarSystemService.getSolarSystem).toHaveBeenCalledWith(
+      expect.objectContaining({ solarSystemId: 'cygnus-x1' }),
+      expect.any(Function),
+    );
   });
 
   it('rejects payloads with invalid SW-13 descriptors', () => {

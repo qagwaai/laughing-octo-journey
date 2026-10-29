@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
 import { locale } from '../../i18n/locale';
+import { CYGNUS_X1_SYSTEM_SELECTION } from '../../model/black-hole/cygnus-x1-system';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemListResponse, SolarSystemSummary } from '../../model/solar-system-list';
 import { SessionService } from '../../services/session.service';
@@ -51,7 +52,13 @@ export default class ViewerPage {
   protected listError = signal<string | null>(null);
   protected selectedSystemId = signal<string | null>(null);
 
-  protected readonly hasResults = computed(() => this.solarSystems().length > 0);
+  protected readonly displayedSolarSystems = computed(() => {
+    const systems = this.solarSystems();
+    const cygnusX1 =
+      systems.find((system) => system.id === CYGNUS_X1_SYSTEM_SELECTION.id) ?? CYGNUS_X1_SYSTEM_SELECTION;
+    return [cygnusX1, ...systems.filter((system) => system.id !== CYGNUS_X1_SYSTEM_SELECTION.id)];
+  });
+  protected readonly hasResults = computed(() => this.displayedSolarSystems().length > 0);
 
   /**
    * Future: replace with character/entitlement-based unlock check. Returns true
@@ -116,7 +123,7 @@ export default class ViewerPage {
     );
   }
 
-  protected formatDistance(parsecs: number | undefined): string {
+  protected formatDistance(parsecs: number | null | undefined): string {
     if (typeof parsecs !== 'number' || !Number.isFinite(parsecs)) {
       return '—';
     }
