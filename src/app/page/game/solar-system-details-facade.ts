@@ -3,6 +3,7 @@ import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
+import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
@@ -11,6 +12,7 @@ export interface DetailsRow {
   id: string;
   displayName: string;
   bodyType: string;
+  viewerGroup: string;
   diameterM: number | null;
   semiMajorAxisKm: number | null;
   isShip: boolean;
@@ -95,6 +97,7 @@ export class SolarSystemDetailsFacade {
       id: b.id,
       displayName: b.displayName,
       bodyType: typeof b.bodyType === 'string' && b.bodyType.trim() ? b.bodyType : 'unknown',
+      viewerGroup: viewerBodyGroup(b),
       diameterM: b.physicalCatalog?.estimatedDiameterM ?? null,
       semiMajorAxisKm: b.orbitalElements?.semiMajorAxisKm ?? null,
       isShip: false,
@@ -138,6 +141,7 @@ export class SolarSystemDetailsFacade {
         id: m.marketId,
         displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
         bodyType: 'station',
+        viewerGroup: 'stations',
         diameterM: null,
         semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,
         isShip: false,
@@ -181,6 +185,7 @@ export class SolarSystemDetailsFacade {
           id: ship.id,
           displayName: ship.name,
           bodyType: 'ship',
+          viewerGroup: 'ships',
           diameterM: null,
           semiMajorAxisKm: null,
           isShip: true,

@@ -73,7 +73,7 @@ describe('ViewerScenePage', () => {
     { scenario: 'empty response', bodies: [] },
     { scenario: 'other discovered groups', bodies: filterBodies.filter((body) => body.bodyType !== 'asteroid') },
   ])(
-    'always renders an unchecked asteroid checkbox with $scenario',
+    'uses unchecked asteroid and comet defaults with $scenario',
     ({ bodies }) => {
       const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
       component['bodies'].set(bodies);
@@ -87,7 +87,13 @@ describe('ViewerScenePage', () => {
       expect(component['itemGroups']()).toEqual(
         bodies.length ? ['asteroids', 'comet', 'planets', 'stars'] : ['asteroids'],
       );
-      expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(bodies.map((body) => body.id));
+      if (bodies.some((body) => body.bodyType === 'comet')) {
+        const cometCheckbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="viewer-group-comet"]');
+        expect(cometCheckbox.checked).toBe(false);
+      }
+      expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(
+        bodies.filter((body) => body.bodyType !== 'comet' && body.bodyType !== 'asteroid').map((body) => body.id),
+      );
     },
   );
 
@@ -100,7 +106,13 @@ describe('ViewerScenePage', () => {
     expect(asteroidCheckbox).not.toBeNull();
     expect(asteroidCheckbox.checked).toBe(false);
     expect(component['itemGroups']()).toEqual(['asteroids', 'comet', 'planets', 'stars']);
-    expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(['sun', 'earth', 'comet']);
+    const cometCheckbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="viewer-group-comet"]');
+    expect(cometCheckbox).not.toBeNull();
+    expect(cometCheckbox.checked).toBe(false);
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(['sun', 'earth']);
+    cometCheckbox.click();
+    fixture.detectChanges();
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toContain('comet');
     asteroidCheckbox.click();
     fixture.detectChanges();
     expect(component['sceneInputs']().bodies.map((body) => body.id)).toContain('rock');
@@ -149,14 +161,16 @@ describe('ViewerScenePage', () => {
     expect(TestBed.inject(ViewerTargetService).targetBodyId()).toBeNull();
   });
 
-  it('resets filters to defaults when a fresh viewer is created', () => {
+  it('shares group visibility state across viewer instances', () => {
     const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    expect(component['isGroupIncluded']('comet')).toBe(false);
     component['setGroupIncluded']('asteroids', true);
     component['setGroupIncluded']('planets', false);
     fixture.destroy();
     const fresh = TestBed.createComponent(ViewerScenePage).componentInstance;
-    expect(fresh['isGroupIncluded']('asteroids')).toBe(false);
-    expect(fresh['isGroupIncluded']('planets')).toBe(true);
+    expect(fresh['isGroupIncluded']('asteroids')).toBe(true);
+    expect(fresh['isGroupIncluded']('comet')).toBe(false);
+    expect(fresh['isGroupIncluded']('planets')).toBe(false);
   });
 
   it('preserves selection and focus in groups that remain included', () => {
@@ -215,6 +229,7 @@ describe('ViewerScenePage', () => {
           spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
         };
         component['bodies'].set([body]);
+        if (bodyType === 'comet') component['setGroupIncluded']('comet', true);
         component['onTargetBodyRequest'](body.id);
         component['inspectTarget']();
         expect(component['inspectedBody']()).toBe(body);

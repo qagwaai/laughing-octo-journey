@@ -10,6 +10,7 @@ import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
+import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
 
@@ -60,6 +61,7 @@ export default class SolarSystemDetailsPage {
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
   private viewerTargetService = inject(ViewerTargetService);
+  private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
 
   private readonly detailsFacade = new SolarSystemDetailsFacade({
     solarSystemService: this.solarSystemService,
@@ -166,7 +168,21 @@ export default class SolarSystemDetailsPage {
   }
 
   protected targetBody(id: string): void {
+    const row = this.rows().find((candidate) => candidate.id === id);
+    if (!row || !this.isTargetEnabled(row)) return;
     this.viewerTargetService.target(id);
+  }
+
+  protected isTargetEnabled(row: DetailsRow): boolean {
+    return this.viewerGroupVisibility.isGroupIncluded(row.viewerGroup);
+  }
+
+  protected targetDisabledTooltip(row: DetailsRow): string {
+    return this.t.game.viewer.detailsTargetDisabledTooltip.replace('{group}', row.viewerGroup);
+  }
+
+  protected targetTooltip(row: DetailsRow): string {
+    return this.isTargetEnabled(row) ? this.t.game.viewer.detailsTargetTooltip : this.targetDisabledTooltip(row);
   }
 
   protected goBackToSystemList(): void {

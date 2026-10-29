@@ -4,6 +4,54 @@
 
 Accepted (initial MVP).
 
+### Forge-scale group visibility and target indicators: implemented 2026-10-29
+
+The Stellar Viewer now supports per-group visual inclusion controls and a
+distinct target indicator for celestial bodies.
+
+#### Group visibility and details targeting
+
+- Group controls are discovered from the full Forge body/ship data, not from
+  already-filtered scene inputs, so a group remains selectable while hidden.
+  The Asteroids control is always present, including when the response has no
+  asteroid records.
+- `asteroids` and `comet` default to excluded; other groups default to included.
+  Selection state is shared between the Viewer and the Solar System Details
+  pane and resets on a full page reload.
+- The Details pane disables the Target button for objects in excluded groups.
+  Its localized tooltip names the group and tells the user to enable it in the
+  Viewer. The guard also prevents targeting through the component method.
+- Compact target icons appear before object names in grouped, distance-sorted,
+  and ship rows. Buttons retain an accessible Target name and hover/focus
+  guidance.
+
+#### Target appearance and rendering cost
+
+- A targeted celestial body keeps its regular material color and receives a
+  red, four-corner bracket. The existing hover color treatment is unchanged.
+  Ships retain their existing target styling.
+- The bracket is one merged mesh, mounted only for the currently targeted
+  celestial body. It faces the camera, scales with the displayed body size, and
+  uses a red material without depth testing so the indicator stays legible.
+- Group filters reduce scene-rendered bodies, but do not filter the Forge
+  response or reduce its transfer/deserialization cost: the full data remains
+  available so users can turn groups back on. This change is not a measured
+  performance acceptance for a roughly 5,100-object Sol payload, nor does it
+  bound future gameplay-created objects. Profile payload handling and
+  large-population rendering separately before claiming those costs are solved.
+
+#### Validation
+
+- `npm run test:spec -- src/app/scene/viewer/viewer-target-bracket.vitest.ts src/app/scene/viewer/viewer-system-scene.vitest.ts`:
+  passed, 42 tests.
+- `npx playwright test e2e/tests/viewer-interactions.spec.ts e2e/tests/viewer-ships.spec.ts --grep "left-click targets a planet|target button flies camera to selected ship row target" --reporter=line`:
+  passed, including auth setup; confirms celestial brackets appear on target and
+  ship targeting does not add a celestial bracket.
+- `npm run typecheck`: passed.
+- `npm run build`: passed, including Angular template compilation and the E2E
+  partition gate.
+- Targeted ESLint and `git diff --check`: passed.
+
 ### Cygnus X-1 black-hole rendering: accepted 2026-10-25
 
 The user accepted the Stellar Viewer result after removal of the splash-specific

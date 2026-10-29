@@ -43,6 +43,7 @@ import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
+import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
 
@@ -273,6 +274,7 @@ export default class ViewerScenePage implements OnDestroy {
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
+  private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
 
   protected readonly effectiveSceneBodies = computed<ViewerBody[]>(() => {
     if (!(this.viewerQaEnabled() && this.forceHeroMode())) {
@@ -290,8 +292,6 @@ export default class ViewerScenePage implements OnDestroy {
     return this.ships().map((ship) => toForceHeroShip(ship));
   });
 
-  // Component-local preferences intentionally reset on a full page reload.
-  private readonly excludedGroups = signal<ReadonlySet<string>>(new Set(['asteroids']));
   protected readonly itemGroups = computed(() => {
     const groups = new Set(['asteroids', ...this.bodies().map(viewerBodyGroup)]);
     if (this.ships().length) groups.add('ships');
@@ -305,16 +305,11 @@ export default class ViewerScenePage implements OnDestroy {
   );
 
   protected isGroupIncluded(group: string): boolean {
-    return !this.excludedGroups().has(group);
+    return this.viewerGroupVisibility.isGroupIncluded(group);
   }
 
   protected setGroupIncluded(group: string, included: boolean): void {
-    this.excludedGroups.update((current) => {
-      const next = new Set(current);
-      if (included) next.delete(group);
-      else next.add(group);
-      return next;
-    });
+    this.viewerGroupVisibility.setGroupIncluded(group, included);
     if (included) return;
     const hovered = this.hoveredBody();
     if (hovered && viewerBodyGroup(hovered) === group) this.hoveredBody.set(null);

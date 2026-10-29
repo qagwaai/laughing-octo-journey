@@ -755,6 +755,8 @@ export const it: DeepPartial<EnLocale> = {
       detailsEmptyStatus: 'Nessun corpo trovato per questo sistema.',
       detailsErrorPrefix: 'Caricamento corpi fallito:',
       detailsTargetButton: 'Punta',
+      detailsTargetTooltip: 'Punta questo oggetto nel visualizzatore.',
+      detailsTargetDisabledTooltip: 'Attiva il gruppo {group} nel visualizzatore per puntare questo oggetto.',
       bodyTargetedLabel: 'Puntato',
       detailsColumnName: 'Nome',
       detailsColumnType: 'Tipo',

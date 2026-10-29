@@ -931,6 +931,8 @@ export const en = {
       detailsEmptyStatus: 'No bodies found for this system.',
       detailsErrorPrefix: 'Failed to load bodies:',
       detailsTargetButton: 'Target',
+      detailsTargetTooltip: 'Target this object in the Viewer.',
+      detailsTargetDisabledTooltip: 'Enable the {group} group in the Viewer to target this object.',
       bodyTargetedLabel: 'Targeted',
       detailsColumnName: 'Name',
       detailsColumnType: 'Type',

@@ -47,6 +47,7 @@ import {
   VIEWER_SCENE_STAR_LIGHT_INTENSITY,
 } from './star-lighting';
 import { ViewerBlackHoleRenderer } from './viewer-black-hole-renderer';
+import { ViewerTargetBracket } from './viewer-target-bracket';
 import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
@@ -1031,6 +1032,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     StarBody,
     StationModel,
     ViewerBlackHoleRenderer,
+    ViewerTargetBracket,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1240,22 +1242,24 @@ export class ViewerSystemScene {
     return allNonStars.filter((body) => focusIds.has(body.id));
   });
 
-  /**
-   * Hover and target highlights win; otherwise a textured body renders white
-   * because three multiplies `map` by `color`, and the baked albedo already
-   * carries the body's colour. Untextured bodies keep their flat tint.
-   */
+  /** Hover tint is retained; otherwise textured bodies render their baked albedo without tinting. */
   protected resolveSurfaceColor(body: RenderedBody): string {
     if (resolvePlanetSurfaceSource(body.source, 'l0')?.kind === 'catalog') {
       return this.bodySurfaces().has(body.id) ? '#ffffff' : '#555b65';
     }
     if (this.hoveredBodyId() === body.id) return '#ff3b30';
-    if (this.targetedBodyId() === body.id) return '#f59e0b';
     return this.bodySurfaces().has(body.id) ? '#ffffff' : body.materialColor;
   }
 
   protected isCatalogSurface(body: ViewerBody): boolean {
     return resolvePlanetSurfaceSource(body, 'l0')?.kind === 'catalog';
+  }
+
+  protected targetBracketRadius(body: RenderedBody): number {
+    const scale = hasDedicatedStationModel(body.source)
+      ? this.stationMeshScale
+      : Math.max(...body.geometryScale.map(Math.abs));
+    return body.radius * scale;
   }
 
   protected dedicatedAtmosphere(body: ViewerBody) {
