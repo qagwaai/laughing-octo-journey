@@ -72,6 +72,10 @@ successful (stale) bundle to new page loads. The error page auto-reloads every
 - `npm run e2e:spec -- e2e/tests/your.spec.ts` - Focused Playwright spec run
 - `npm run verify:quick` - Quick local gate (`lint + typecheck`)
 
+App-shell styles use flat, host-scoped CSS selectors so both browsers and
+Vitest's jsdom environment can parse them. The app-component regression suite
+checks for stylesheet parsing errors without suppressing jsdom diagnostics.
+
 ### Dependency Security
 
 Angular framework packages, `@angular/compiler-cli`, and `@angular/localize`

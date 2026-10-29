@@ -80,6 +80,31 @@ describe('AppComponent (Vitest)', () => {
     expect(component).toBeTruthy();
   });
 
+  it('parses the app-shell stylesheet without CSS errors and applies resizing styles', () => {
+    const { virtualConsole } = (globalThis as typeof globalThis & {
+      jsdom: {
+        virtualConsole: {
+          on(event: string, listener: (error: Error & { type?: string }) => void): void;
+          off(event: string, listener: (error: Error & { type?: string }) => void): void;
+        };
+      };
+    }).jsdom;
+    const cssErrors: Error[] = [];
+    const onError = (error: Error & { type?: string }) => {
+      if (error.type === 'css-parsing') cssErrors.push(error);
+    };
+    virtualConsole.on('jsdomError', onError);
+    try {
+      const { host } = setup();
+      expect(cssErrors).toEqual([]);
+      expect(getComputedStyle(host).display).toBe('block');
+      host.classList.add('resizing');
+      expect(getComputedStyle(host).userSelect).toBe('none');
+    } finally {
+      virtualConsole.off('jsdomError', onError);
+    }
+  });
+
   it('keeps the habitat spinning while camera drift and clouds are paused, but idles when hidden or static', () => {
     const { component } = setup();
     const splash = TestBed.inject(SplashState);
