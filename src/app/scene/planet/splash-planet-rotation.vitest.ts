@@ -54,6 +54,14 @@ describe('selectSplashPlanetBodyId', () => {
 });
 
 describe('selectSplashPlanet kinds', () => {
+  it('offers Cygnus X-1 only as an explicitly pinned or selected local prototype', () => {
+    const hole = { id: 'demo-cygnus-x1', kind: 'black-hole' };
+    expect(selectSplashPlanet('?splashPlanet=demo-cygnus-x1')).toEqual(hole);
+    expect(splashEntriesForCategory('black-hole')).toEqual([hole]);
+    expect(SPLASH_SELECTABLE_BODIES).toContainEqual(hole);
+    expect(SPLASH_PLANET_ROTATION).not.toContainEqual(hole);
+    expect(resolveSplashAppearance({ id: 'demo-cygnus-x1', kind: 'black-hole' }).valid).toBe(false);
+  });
   it('uses the declared kind for listed pins, even when splashKind disagrees', () => {
     expect(selectSplashPlanet('?splashPlanet=nova-splash-giant-03')).toEqual({
       id: 'nova-splash-giant-03',

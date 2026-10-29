@@ -83,15 +83,16 @@ Validate coordinated updates with `npm ci`, `npm run typecheck`, `npm run build`
 `npm run test:ci`, and `npm run e2e -- --reporter=line --workers=1 --retries=0`.
 
 CI installs the lockfile with `npm ci --ignore-scripts` and runs `npm audit --audit-level=high`.
-CLI `21.2.26` brings MCP SDK `1.31.0` for
-[GHSA-6qxp-vccf-f47h](https://github.com/advisories/GHSA-6qxp-vccf-f47h).
+CLI and build tooling are pinned to `21.2.29`, independently of the framework
+packages. CLI brings patched Zod `4.6.6` and MCP SDK `1.32.1`; build tooling
+brings Undici `7.30.1` and Piscina `5.3.2`. The old MCP SDK and Piscina overrides
+are no longer needed because the tooling requires patched versions directly.
 The lockfile also resolves `source-map-js` to `1.2.2` for
 [GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q);
 keep this transitive patch when regenerating the lockfile.
-The npm override for `piscina` pins the patched `5.3.2` release for
-[GHSA-67c8-pqhq-4rmx](https://github.com/advisories/GHSA-67c8-pqhq-4rmx) without downgrading Angular.
-Remove this override once `@angular/build` requires a patched Piscina release, then regenerate the lockfile
-and verify the audit and build. Avoid `npm audit fix --force`, which can select a breaking Angular downgrade.
+Refresh vulnerable transitive dependencies within their existing compatible
+ranges, then verify the audit and build. Avoid `npm audit fix --force`, which
+can select breaking Angular changes.
 
 ## E2E Testing Strategy
 

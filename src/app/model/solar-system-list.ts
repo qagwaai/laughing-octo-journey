@@ -27,8 +27,8 @@ export interface SolarSystemSummary {
   source: SolarSystemSource;
   isMultiStar?: boolean;
   starCount?: number;
-  distanceParsec?: number;
-  positionPc?: Triple;
+  distanceParsec?: number | null;
+  positionPc?: Triple | null;
   primaryStar?: SolarSystemPrimaryStarSummary;
   planetCount?: number;
   moonCount?: number;

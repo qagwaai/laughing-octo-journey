@@ -59,6 +59,163 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  const filterBodies = [
+    { id: 'sun', bodyType: 'star', displayName: 'Sun' },
+    { id: 'earth', bodyType: 'planet', displayName: 'Earth' },
+    { id: 'rock', bodyType: 'asteroid', displayName: 'Rock' },
+    { id: 'comet', bodyType: 'comet', displayName: 'Comet' },
+  ].map((body) => ({
+    ...body,
+    spatial: { solarSystemId: 'sol', frame: 'barycentric' as const, positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+  }));
+
+  it.each([
+    { scenario: 'empty response', bodies: [] },
+    { scenario: 'other discovered groups', bodies: filterBodies.filter((body) => body.bodyType !== 'asteroid') },
+  ])(
+    'uses unchecked asteroid and comet defaults with $scenario',
+    ({ bodies }) => {
+      const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+      component['bodies'].set(bodies);
+      component['ships'].set([]);
+      component['isLoading'].set(false);
+      fixture.detectChanges();
+      const checkboxes: NodeListOf<HTMLInputElement> =
+        fixture.nativeElement.querySelectorAll('[data-testid="viewer-group-asteroids"]');
+      expect(checkboxes).toHaveLength(1);
+      expect(checkboxes[0].checked).toBe(false);
+      expect(component['itemGroups']()).toEqual(
+        bodies.length ? ['asteroids', 'comet', 'planets', 'stars'] : ['asteroids'],
+      );
+      if (bodies.some((body) => body.bodyType === 'comet')) {
+        const cometCheckbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="viewer-group-comet"]');
+        expect(cometCheckbox.checked).toBe(false);
+      }
+      expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(
+        bodies.filter((body) => body.bodyType !== 'comet' && body.bodyType !== 'asteroid').map((body) => body.id),
+      );
+    },
+  );
+
+  it('discovers controls from unfiltered data and excludes asteroids until selected', () => {
+    const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    component['bodies'].set(filterBodies);
+    component['isLoading'].set(false);
+    fixture.detectChanges();
+    const asteroidCheckbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="viewer-group-asteroids"]');
+    expect(asteroidCheckbox).not.toBeNull();
+    expect(asteroidCheckbox.checked).toBe(false);
+    expect(component['itemGroups']()).toEqual(['asteroids', 'comet', 'planets', 'stars']);
+    const cometCheckbox: HTMLInputElement = fixture.nativeElement.querySelector('[data-testid="viewer-group-comet"]');
+    expect(cometCheckbox).not.toBeNull();
+    expect(cometCheckbox.checked).toBe(false);
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(['sun', 'earth']);
+    cometCheckbox.click();
+    fixture.detectChanges();
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toContain('comet');
+    asteroidCheckbox.click();
+    fixture.detectChanges();
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toContain('rock');
+    component['setGroupIncluded']('planets', false);
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).not.toContain('earth');
+    expect(component['itemGroups']()).toContain('planets');
+    expect(component['bodies']()).toBe(filterBodies);
+  });
+
+  it('discovers late-arriving groups and filters ships without affecting source data or QA modes', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    component['bodies'].set(filterBodies);
+    component['setGroupIncluded']('comet', false);
+    component['ships'].set([{
+      id: 'ship-1',
+      name: 'Scout',
+      model: 'scout',
+      tier: 1,
+      spatial: filterBodies[0].spatial,
+    }]);
+    component['bodies'].update((bodies) => [...bodies, { ...filterBodies[0], id: 'debris', bodyType: 'debris' }]);
+    expect(component['itemGroups']()).toContain('debris');
+    expect(component['itemGroups']()).toContain('ships');
+    expect(component['isGroupIncluded']('debris')).toBe(true);
+    component['setGroupIncluded']('ships', false);
+    component['forceHeroMode'].set(false);
+    expect(component['sceneInputs']().ships).toEqual([]);
+    expect(component['ships']()).toHaveLength(1);
+    expect(component['sceneInputs']().bodies.map((body) => body.id)).toEqual(['sun', 'earth', 'debris']);
+    component['setGroupIncluded']('ships', true);
+    expect(component['sceneInputs']().ships).toHaveLength(1);
+  });
+
+  it('clears hover, inspection, focus and target when their group is excluded', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    component['bodies'].set(filterBodies);
+    component['onTargetBodyRequest']('earth');
+    component['inspectTarget']();
+    component['onHoveredBodyChange'](filterBodies[1]);
+    component['onFocusedPlanetChange'](filterBodies[1]);
+    component['setGroupIncluded']('planets', false);
+    expect(component['targetBody']()).toBeNull();
+    expect(component['inspectedBody']()).toBeNull();
+    expect(component['labeledBody']()).toBeNull();
+    expect(component['focusedPlanet']()).toBeNull();
+    expect(TestBed.inject(ViewerTargetService).targetBodyId()).toBeNull();
+  });
+
+  it('shares group visibility state across viewer instances', () => {
+    const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    expect(component['isGroupIncluded']('comet')).toBe(false);
+    component['setGroupIncluded']('asteroids', true);
+    component['setGroupIncluded']('planets', false);
+    fixture.destroy();
+    const fresh = TestBed.createComponent(ViewerScenePage).componentInstance;
+    expect(fresh['isGroupIncluded']('asteroids')).toBe(true);
+    expect(fresh['isGroupIncluded']('comet')).toBe(false);
+    expect(fresh['isGroupIncluded']('planets')).toBe(false);
+  });
+
+  it('preserves selection and focus in groups that remain included', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    component['bodies'].set(filterBodies);
+    component['onTargetBodyRequest']('earth');
+    component['inspectTarget']();
+    component['onHoveredBodyChange'](filterBodies[1]);
+    component['onFocusedPlanetChange'](filterBodies[1]);
+    component['setGroupIncluded']('comet', false);
+    expect(component['targetBody']()?.id).toBe('earth');
+    expect(component['inspectedBody']()?.id).toBe('earth');
+    expect(component['labeledBody']()?.id).toBe('earth');
+    expect(component['focusedPlanet']()?.id).toBe('earth');
+  });
+
+  it('uses descriptor domains for dynamic groups and preserves their controls while excluded', () => {
+    const { component } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const gate = {
+      ...filterBodies[0],
+      id: 'gate',
+      bodyType: 'station',
+      externalObjectDescriptor: {
+        descriptorId: 'gate-descriptor',
+        schemaVersion: 'sw-13-m0-v1' as const,
+        domain: 'gates' as const,
+        objectFamily: 'ring-gate',
+        roleCue: 'navigation',
+        factionCue: 'neutral',
+        fallbackTier: 'hero' as const,
+        displayLabel: 'Gate',
+        silhouetteProfile: 'ring',
+        materialProfile: 'infrastructure',
+        emissiveProfile: 'navigation',
+      },
+    };
+    component['bodies'].set([gate]);
+    expect(component['itemGroups']()).toEqual(['asteroids', 'gates']);
+    component['setGroupIncluded']('gates', false);
+    expect(component['sceneInputs']().bodies).toEqual([]);
+    expect(component['itemGroups']()).toEqual(['asteroids', 'gates']);
+    component['setGroupIncluded']('gates', true);
+    expect(component['sceneInputs']().bodies[0].id).toBe('gate');
+  });
+
   it.each(['dwarf-planet', 'tno', 'comet'] as const)(
     'inspects a %s and opens its existing body close-up',
     async (bodyType) => {
@@ -72,6 +229,7 @@ describe('ViewerScenePage', () => {
           spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
         };
         component['bodies'].set([body]);
+        if (bodyType === 'comet') component['setGroupIncluded']('comet', true);
         component['onTargetBodyRequest'](body.id);
         component['inspectTarget']();
         expect(component['inspectedBody']()).toBe(body);
