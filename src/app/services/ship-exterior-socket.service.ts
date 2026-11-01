@@ -28,6 +28,7 @@ import {
   type ShipListByOwnerResponse,
 } from '../model/ship-list-by-owner';
 import { appLogger } from './logger';
+import { createUuidCorrelationId } from './socket-correlation';
 import { SocketService } from './socket.service';
 
 function createCorrelationId(operation: string): string {
@@ -586,7 +587,7 @@ export class ShipExteriorSocketService {
     request: CelestialBodyListRequest,
     onResponse: (response: CelestialBodyListResponse) => void,
   ): () => void {
-    const expectedCorrelationId = request.correlationId?.trim() || createCorrelationId('celestial-body-list');
+    const expectedCorrelationId = createUuidCorrelationId(request.correlationId);
     const expectedRequestIdentity =
       request.requestIdentity ?? this.buildDefaultCelestialBodyListRequestIdentity(request);
     const requestWithCorrelation: CelestialBodyListRequest = {

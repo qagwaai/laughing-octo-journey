@@ -35,8 +35,9 @@ All socket request/response pairs must satisfy:
 
 ### 3.1 Request Requirements
 
-Every socket request must include:
-- `correlationId`: string, required, UUID v4, generated client-side per request.
+Every socket request must follow its published request schema for correlation:
+- `correlationId`: include it when required by the schema and preserve its declared type, nullability, and format.
+- Generate a UUID when the schema declares `format: uuid`; otherwise retain the opaque correlation-ID behavior permitted by that schema.
 - `requestIdentity`: object, required, containing at minimum:
   - `operation`: string (for example "item-upsert")
   - `entityType`: string (for example itemType or equivalent domain key)
@@ -45,7 +46,7 @@ Every socket request must include:
 ### 3.2 Response Requirements
 
 Every socket response must echo:
-- `correlationId`: string, required, exact echo of request correlationId.
+- `correlationId`: follow the response schema and, when required, echo the exact request correlationId.
 - `requestIdentity`: object, required, echo of the full request identity block.
 
 ### 3.3 Client Demux Rule
@@ -95,12 +96,14 @@ SW-08 must treat the following as contract violations, same severity as shape mi
 CI checks must:
 1. Validate that request schema includes correlationId as required.
 2. Validate that response schema echoes correlationId as required.
-3. Include a concurrent-request fixture that fires overlapping operations and asserts each callback only consumes its own response.
+3. Enforce UUID format only on operations whose published schemas declare `format: uuid`; do not impose UUID-only values globally.
+4. Include a concurrent-request fixture that fires overlapping operations and asserts each callback only consumes its own response.
 
 ## 6. Test Requirements
 
 ### Unit tests
-- correlationId is required on outbound request, fails if missing.
+- Correlation IDs satisfy each operation's published schema, including UUID format where explicitly required.
+- Opaque correlation IDs remain supported where the published schema permits them.
 - Response with non-matching correlationId is dropped.
 - Response with matching correlationId is accepted and merged correctly.
 
@@ -117,7 +120,7 @@ CI checks must:
 ## 7. Implementation Checklist
 
 Backend (solid-train / Forge):
-- [x] Add correlationId (required, UUID v4) to ItemUpsertRequest schema.
+- [x] Add correlationId according to each request schema's declared type and format.
 - [x] Add correlationId echo + requestIdentity echo to ItemUpsertResponse schema.
 - [x] Update handler to echo correlationId and requestIdentity in every response path.
 - [x] Apply same pattern to item-remove, tractor-beam-activate, drone-launch.
@@ -125,7 +128,7 @@ Backend (solid-train / Forge):
 - [x] Update openapi.yaml with correlationId fields on all in-scope event pairs.
 
 Frontend (laughing-octo-journey / Nova):
-- [x] Generate correlationId (UUID v4) per request in socket call site.
+- [x] Generate correlation IDs according to the corresponding published request schema.
 - [x] Update ItemUpsertResponse consumer model to include correlationId.
 - [x] Add demux validation in socket.service.ts: reject responses with mismatched correlationId.
 - [x] Apply same demux pattern to item-remove, tractor-beam-activate, drone-launch.
@@ -150,7 +153,7 @@ QA:
 
 This specification becomes the canonical correlation contract for all new socket event pairs:
 1. Any new socket event pair must include correlationId by default.
-2. PR reviewer must confirm correlationId echo is present in both request and response schemas.
+2. PR reviewer must confirm correlationId presence, requiredness, format, nullability, and echo behavior against both request and response schemas.
 3. SW-08 rule catalog must include correlation echo as a standing required rule.
 4. Periodic audit: quarterly review of in-scope surface list for any newly added event pairs.
 
@@ -165,3 +168,4 @@ This specification becomes the canonical correlation contract for all new socket
 
 - 2026-05-25: Initial correlation contract specification created from item-upsert race condition root cause analysis.
 - 2026-05-25: Completion recorded. Nova and Forge confirmed SW-COR implementation complete; moved to maintenance mode.
+- 2026-11-01: Clarified that correlation ID format is operation-schema-specific; UUIDs are required only where explicitly declared.

@@ -323,6 +323,7 @@ describe('ShipExteriorSocketService', () => {
 
     const requestPayload = socketService.emittedEvents[0]?.payload as CelestialBodyListRequest;
     const correlationId = requestPayload.correlationId!;
+    expect(correlationId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
     const requestIdentity = requestPayload.requestIdentity!;
 
     const mismatchResponse: CelestialBodyListResponse = {

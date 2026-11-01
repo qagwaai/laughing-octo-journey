@@ -32,7 +32,7 @@ import {
   ShipUpsertResponse,
 } from '../model/ship-upsert';
 import { appLogger } from './logger';
-import { createCorrelationId } from './socket-correlation';
+import { createCorrelationId, createUuidCorrelationId } from './socket-correlation';
 import { emitSocketCorrelationWarning } from './socket-correlation-warning';
 import {
   buildDefaultCelestialBodyListRequestIdentity,
@@ -163,7 +163,7 @@ export class SocketService {
       return;
     }
 
-    const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-upsert');
+    const correlationId = createUuidCorrelationId(request.correlationId);
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyUpsertRequestIdentity(request);
     const domainKey = buildDomainPipelineKey({
       operation: requestIdentity.operation,
@@ -227,7 +227,7 @@ export class SocketService {
       return;
     }
 
-    const correlationId = request.correlationId?.trim() || createCorrelationId('celestial-body-list');
+    const correlationId = createUuidCorrelationId(request.correlationId);
     const requestIdentity = request.requestIdentity ?? buildDefaultCelestialBodyListRequestIdentity(request);
     const domainKey = buildDomainPipelineKey({
       operation: requestIdentity.operation,

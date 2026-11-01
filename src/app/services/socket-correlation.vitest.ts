@@ -1,5 +1,6 @@
 import {
   createCorrelationId,
+  createUuidCorrelationId,
   matchesBasicRequestIdentity,
   normalizeIdentityValue,
   type BasicRequestIdentity,
@@ -18,6 +19,16 @@ describe('socket-correlation helpers', () => {
     const second = createCorrelationId('mission-list');
 
     expect(first).not.toBe(second);
+  });
+
+  it('creates UUID-form correlation IDs and preserves valid supplied UUIDs', () => {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const generated = createUuidCorrelationId();
+    const supplied = '123e4567-e89b-42d3-a456-426614174000';
+
+    expect(generated).toMatch(uuidPattern);
+    expect(createUuidCorrelationId(` ${supplied} `)).toBe(supplied);
+    expect(createUuidCorrelationId('celestial-body-upsert:abc:random')).toMatch(uuidPattern);
   });
 
   it('normalizes identity values as trimmed lowercase strings', () => {

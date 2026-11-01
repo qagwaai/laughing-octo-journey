@@ -151,6 +151,7 @@ describe('CreditLedgerService', () => {
     );
 
     const emitted = socketService.emittedEvents[0];
+    expect(emitted.data.correlationId).toBe('strict-identity-check');
     const wrongCorrelationFailure = responseFor(emitted.data, {
       correlationId: 'other-correlation',
       success: false,
