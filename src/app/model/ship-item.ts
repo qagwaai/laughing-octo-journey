@@ -129,7 +129,11 @@ export function coerceShipItem(raw: unknown): ShipItem | null {
           velocityKmPerSec: { x: vel['x'] as number, y: vel['y'] as number, z: vel['z'] as number },
         };
         // Optional angular velocity
-        if (typeof m['angularVelocityRadPerSec'] === 'object') {
+        if (
+          m['angularVelocityRadPerSec'] !== null &&
+          typeof m['angularVelocityRadPerSec'] === 'object' &&
+          !Array.isArray(m['angularVelocityRadPerSec'])
+        ) {
           const angVel = m['angularVelocityRadPerSec'] as Record<string, unknown>;
           if (typeof angVel['x'] === 'number' && typeof angVel['y'] === 'number' && typeof angVel['z'] === 'number') {
             motion.angularVelocityRadPerSec = {

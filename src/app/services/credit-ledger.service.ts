@@ -28,12 +28,25 @@ function createLedgerCorrelationId(): string {
     : createCorrelationId('credit-ledger-list');
 }
 
-function buildDefaultCreditLedgerListRequestIdentity(request: CreditLedgerListRequest): CreditLedgerListRequestIdentity {
+function buildDefaultCreditLedgerListRequestIdentity(
+  request: CreditLedgerListRequest,
+): CreditLedgerListRequestIdentity {
   return {
     operation: 'credit-ledger-list',
     entityType: 'credit-ledger',
     containerId: request.characterId?.trim() || `player-${request.playerName.trim().toLowerCase()}`,
   };
+}
+
+function hasUsableRequestIdentity(identity: unknown): identity is CreditLedgerListRequestIdentity {
+  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) {
+    return false;
+  }
+
+  const candidate = identity as Record<string, unknown>;
+  return ['operation', 'entityType', 'containerId'].every(
+    (field) => typeof candidate[field] === 'string' && candidate[field].trim().length > 0,
+  );
 }
 
 @Injectable({ providedIn: 'root' })
@@ -62,10 +75,17 @@ export class CreditLedgerService {
     let unsubscribe: () => void = () => undefined;
     unsubscribe = this.socketService.on(CREDIT_LEDGER_LIST_RESPONSE_EVENT, (response: CreditLedgerListResponse) => {
       const responseCorrelationId = response?.correlationId?.trim() ?? '';
-      if (
-        responseCorrelationId !== expectedCorrelationId ||
-        !matchesBasicRequestIdentity(response.requestIdentity ?? undefined, expectedRequestIdentity)
-      ) {
+      const requestIdentity = response?.requestIdentity;
+      const matchesIdentity = matchesBasicRequestIdentity(
+        hasUsableRequestIdentity(requestIdentity) ? requestIdentity : undefined,
+        expectedRequestIdentity,
+      );
+      const correlatedMalformedFailure =
+        response?.success === false &&
+        !hasUsableRequestIdentity(requestIdentity) &&
+        responseCorrelationId === expectedCorrelationId;
+
+      if (responseCorrelationId !== expectedCorrelationId || (!matchesIdentity && !correlatedMalformedFailure)) {
         appLogger.warn(
           `[socket-correlation] Dropping unmatched credit-ledger-list response. responseCorrelationId=${response?.correlationId ?? 'missing'} expectedCorrelationId=${expectedCorrelationId}`,
         );

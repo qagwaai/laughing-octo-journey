@@ -1,4 +1,5 @@
 import { EXPENDABLE_DART_DRONE_DISPLAY_NAME, EXPENDABLE_DART_DRONE_ITEM_TYPE } from './expendable-dart-drone';
+import { coerceShipItem } from './ship-item';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -11,6 +12,47 @@ import {
   MAX_SHIP_TIER,
   MIN_SHIP_TIER,
 } from './ship-list';
+
+function rawShipItemWithAngularVelocity(angularVelocityRadPerSec: unknown) {
+  return {
+    id: 'item-1',
+    itemType: 'asteroid',
+    displayName: 'Asteroid',
+    spatial: {
+      solarSystemId: 'sol',
+      frame: 'barycentric',
+      positionKm: { x: 1, y: 2, z: 3 },
+      epochMs: 1,
+    },
+    motion: {
+      velocityKmPerSec: { x: 0, y: 0, z: 0 },
+      angularVelocityRadPerSec,
+    },
+  };
+}
+
+describe('coerceShipItem angular velocity', () => {
+  it('treats null angular velocity as absent', () => {
+    const result = coerceShipItem(rawShipItemWithAngularVelocity(null));
+
+    expect(result?.motion?.angularVelocityRadPerSec).toBeUndefined();
+  });
+
+  it('preserves a valid angular velocity vector', () => {
+    const angularVelocityRadPerSec = { x: 0.1, y: 0.2, z: 0.3 };
+    const result = coerceShipItem(rawShipItemWithAngularVelocity(angularVelocityRadPerSec));
+
+    expect(result?.motion?.angularVelocityRadPerSec).toEqual(angularVelocityRadPerSec);
+  });
+
+  it('omits malformed angular velocity vectors', () => {
+    for (const angularVelocityRadPerSec of ['invalid', [], { x: 0.1, y: 'invalid', z: 0.3 }]) {
+      const result = coerceShipItem(rawShipItemWithAngularVelocity(angularVelocityRadPerSec));
+
+      expect(result?.motion?.angularVelocityRadPerSec).toBeUndefined();
+    }
+  });
+});
 
 describe('ship-list inventory helpers', () => {
   it('coerces valid ShipItem objects and supported display-name strings in inventory', () => {

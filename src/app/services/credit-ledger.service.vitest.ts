@@ -104,6 +104,83 @@ describe('CreditLedgerService', () => {
     expect(socketService.listenerCount(CREDIT_LEDGER_LIST_RESPONSE_EVENT)).toBe(0);
   });
 
+  it('delivers failures by matching correlation ID when the echoed identity is unusable', () => {
+    for (const identity of [null, {}, { operation: '', entityType: '', containerId: '' }, undefined]) {
+      let received: CreditLedgerListResponse | undefined;
+      service.listCreditLedger(
+        {
+          playerName: 'Pioneer',
+          sessionKey: 's-1',
+          characterId: 'char-1',
+          correlationId: `malformed-identity-${String(identity)}`,
+        },
+        (response) => {
+          received = response;
+        },
+      );
+
+      const emitted = socketService.emittedEvents.at(-1)!;
+      const response = responseFor(emitted.data, {
+        success: false,
+        reason: 'invalid-request',
+        message: 'Invalid credit ledger request',
+      });
+      if (identity === undefined) {
+        delete (response as Partial<CreditLedgerListResponse>).requestIdentity;
+      } else {
+        Object.assign(response, { requestIdentity: identity });
+      }
+
+      socketService.trigger(CREDIT_LEDGER_LIST_RESPONSE_EVENT, response);
+      expect(received).toBe(response);
+    }
+  });
+
+  it('does not use correlation-only matching for successful or well-formed mismatched responses', () => {
+    let received: CreditLedgerListResponse | undefined;
+    service.listCreditLedger(
+      {
+        playerName: 'Pioneer',
+        sessionKey: 's-1',
+        characterId: 'char-1',
+        correlationId: 'strict-identity-check',
+      },
+      (response) => {
+        received = response;
+      },
+    );
+
+    const emitted = socketService.emittedEvents[0];
+    const wrongCorrelationFailure = responseFor(emitted.data, {
+      correlationId: 'other-correlation',
+      success: false,
+      reason: 'invalid-request',
+      message: 'Invalid credit ledger request',
+    });
+    Object.assign(wrongCorrelationFailure, { requestIdentity: null });
+    socketService.trigger(CREDIT_LEDGER_LIST_RESPONSE_EVENT, wrongCorrelationFailure);
+    expect(received).toBeUndefined();
+
+    const nullIdentitySuccess = responseFor(emitted.data);
+    Object.assign(nullIdentitySuccess, { requestIdentity: null });
+    socketService.trigger(CREDIT_LEDGER_LIST_RESPONSE_EVENT, nullIdentitySuccess);
+    expect(received).toBeUndefined();
+
+    socketService.trigger(
+      CREDIT_LEDGER_LIST_RESPONSE_EVENT,
+      responseFor(emitted.data, {
+        success: false,
+        reason: 'invalid-request',
+        message: 'Invalid credit ledger request',
+        requestIdentity: {
+          ...emitted.data.requestIdentity!,
+          containerId: 'another-character',
+        },
+      }),
+    );
+    expect(received).toBeUndefined();
+  });
+
   it('uses the player-wide containerId when characterId is absent', () => {
     service.listCreditLedger({ playerName: ' PilotOne ', sessionKey: 's-1' }, () => undefined);
     expect(socketService.emittedEvents[0].data.requestIdentity?.containerId).toBe('player-pilotone');
@@ -116,7 +193,14 @@ describe('CreditLedgerService', () => {
           CREDIT_LEDGER_LIST_RESPONSE_EVENT,
           responseFor(data, {
             entries: [
-              { id: 'credit-2', type: 'take', amount: 100, description: 'Buy', timestamp: '2026-05-05T01:00:00.000Z', referenceId: 'o-1' },
+              {
+                id: 'credit-2',
+                type: 'take',
+                amount: 100,
+                description: 'Buy',
+                timestamp: '2026-05-05T01:00:00.000Z',
+                referenceId: 'o-1',
+              },
             ],
             total: 40,
             balance: 9000,
@@ -152,7 +236,10 @@ describe('CreditLedgerService', () => {
   it('rejects with TimeoutError and detaches its listener when no response arrives', async () => {
     vi.useFakeTimers();
     try {
-      const promise = service.fetchCreditLedgerPage({ playerName: 'Pioneer', sessionKey: 's-1', characterId: 'c' }, 500);
+      const promise = service.fetchCreditLedgerPage(
+        { playerName: 'Pioneer', sessionKey: 's-1', characterId: 'c' },
+        500,
+      );
       const assertion = expect(promise).rejects.toMatchObject({ name: 'TimeoutError' });
       await vi.advanceTimersByTimeAsync(500);
       await assertion;
