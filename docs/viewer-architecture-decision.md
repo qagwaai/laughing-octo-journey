@@ -271,12 +271,12 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
 - Distance mode controls, the full illustrative-orbit disclaimer, and terrain/
   atmosphere sources are separate keyboard-accessible disclosures, closed initially.
   The current distance mode remains visible in its disclosure heading.
-- The embedded Viewer also provides a closed-by-default **Catalog sources and
-  limitations** disclosure beside terrain sources. Its catalog scope, caveats,
-  source links, and exact Minor Planet Center acknowledgment are repeated in the
-  public intro page's astronomical attribution section. Keep those statements
-  aligned through the shared locale strings; do not add fixed catalog totals or
-  refresh dates, and do not imply that every catalog body has a 3D model.
+- The public intro page contains the static, data-driven Sol and exoplanet
+  source credits in `page/public/astronomy-data-credits.ts`. The Stellar
+  Viewer's catalog-wide source and limitations disclosure remains deferred
+  until after the planned contract update; keep that work separate from the
+  intro-page attribution changes. Do not add fixed catalog totals or refresh
+  dates, and do not imply that every catalog body has a 3D model.
 - Surface generation progress, texture loading failures, and retry actions appear
   in the panel outside the disclosures, so they are not hidden by collapsed notes.
   Scrolling the panel does not zoom the scene.

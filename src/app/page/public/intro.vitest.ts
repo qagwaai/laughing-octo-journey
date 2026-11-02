@@ -61,6 +61,31 @@ describe('IntroPage Logic', () => {
   });
 
   describe('Template content', () => {
+    it('places accessible registration and login buttons directly beneath the welcome text', () => {
+      const { component, fixture, mockRouter } = setup('left');
+      const root: HTMLElement = fixture.nativeElement;
+      const welcome = root.querySelector('h2')!;
+      const welcomeBody = welcome.nextElementSibling!;
+      const actions = welcomeBody.nextElementSibling as HTMLElement;
+      const buttons = Array.from(actions.querySelectorAll('button'));
+
+      expect(actions.classList.contains('intro-actions')).toBe(true);
+      expect(buttons.map((button) => button.textContent?.trim())).toEqual([
+        component['t'].public.intro.registerLink,
+        component['t'].public.intro.loginLink,
+      ]);
+      expect(root.querySelectorAll('.register-link')).toHaveLength(0);
+
+      buttons[0].click();
+      expect(mockRouter.navigate).toHaveBeenNthCalledWith(1, [{ outlets: { left: ['registration'] } }], {
+        preserveFragment: true,
+      });
+      buttons[1].click();
+      expect(mockRouter.navigate).toHaveBeenNthCalledWith(2, [{ outlets: { left: ['login'] } }], {
+        preserveFragment: true,
+      });
+    });
+
     it('should credit the astronomical catalog and Cygnus X-1 research with safe external links', () => {
       const { fixture } = setup('left');
       const root: HTMLElement = fixture.nativeElement;
@@ -81,28 +106,55 @@ describe('IntroPage Logic', () => {
       expect(root.querySelector('[aria-labelledby="scientific-attribution-title"]')).not.toBeNull();
     });
 
-    it('credits the Viewer solar-system catalog and displays the exact MPC acknowledgment', () => {
+    it('shows the full static catalog citations with verbatim acknowledgments and safe source links', () => {
       const { component, fixture } = setup('left');
       const root: HTMLElement = fixture.nativeElement;
       const catalog = root.querySelector('[aria-labelledby="catalog-attribution-title"]') as HTMLElement;
-      const acknowledgment = component['t'].game.viewer.catalogSourcesMpcAcknowledgment;
-      const sourceUrls = [
-        'https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt',
-        'https://docs.minorplanetcenter.net/mpc-ops-docs/orbits/comet-orbit-format/',
-        'https://ssd.jpl.nasa.gov/sats/elem/',
-        'https://ssd.jpl.nasa.gov/sats/discovery.html',
-        'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138',
-      ];
+      const sourceIds = Array.from(catalog.querySelectorAll<HTMLElement>('[data-credit-id]')).map(
+        (credit) => credit.dataset['creditId'],
+      );
+      const mpcCredit = catalog.querySelector<HTMLElement>('[data-credit-id="S1"]');
+      const archiveCredit = catalog.querySelector<HTMLElement>('[data-credit-id="A1"]');
+      const gaiaCredit = catalog.querySelector<HTMLElement>('[data-credit-id="A5"]');
 
       expect(catalog).not.toBeNull();
-      expect(catalog.textContent).toContain(acknowledgment);
+      expect(sourceIds).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'A1', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8']);
+      expect(mpcCredit?.textContent).toContain(
+        "This research has made use of data and/or services provided by the International Astronomical Union's Minor Planet Center.",
+      );
+      expect(archiveCredit?.textContent).toContain(
+        'This research has made use of the NASA Exoplanet Archive, which is operated by the California Institute of Technology, under contract with the National Aeronautics and Space Administration under the Exoplanet Exploration Program.',
+      );
+      expect(gaiaCredit?.querySelector('p')?.textContent?.trim()).toBe(
+        'This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC, https://www.cosmos.esa.int/web/gaia/dpac/consortium). Funding for the DPAC has been provided by national institutions, in particular the institutions participating in the Gaia Multilateral Agreement.',
+      );
       expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesScope);
       expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesEd138);
       expect(catalog.textContent).toContain(component['t'].game.viewer.catalogSourcesS2009S1);
 
       const links = Array.from(catalog.querySelectorAll('a'));
-      expect(links.map((link) => link.href)).toEqual(sourceUrls);
       expect(links.every((link) => link.target === '_blank' && link.rel === 'noopener noreferrer')).toBe(true);
+      for (const href of [
+        'https://www.minorplanetcenter.net/',
+        'https://ssd.jpl.nasa.gov/sats/elem/',
+        'https://ssd.jpl.nasa.gov/sats/discovery.html',
+        'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138',
+        'https://ciclops.org/view_popup.php?id=5926.html',
+        'https://nssdc.gsfc.nasa.gov/planetary/factsheet/',
+        'https://creativecommons.org/licenses/by-sa/4.0/',
+        'https://exoplanetarchive.ipac.caltech.edu/',
+        'https://doi.org/10.3847/PSJ/ade3c2',
+        'https://codeberg.org/astronexus/athyg',
+        'https://www.cosmos.esa.int/gaia',
+        'https://www.cosmos.esa.int/web/gaia/dpac/consortium',
+      ]) {
+        expect(links.some((link) => link.href === href)).toBe(true);
+      }
+      expect(catalog.querySelector('[data-credit-id="A10"]')).toBeNull();
+      for (const id of ['S7', 'A3', 'A4']) {
+        const credit = catalog.querySelector(`[data-credit-id="${id}"]`);
+        expect(credit?.textContent).toContain('CC BY-SA 4.0');
+      }
     });
 
     it('should distinguish artistic black-hole concepts from observational imagery', () => {

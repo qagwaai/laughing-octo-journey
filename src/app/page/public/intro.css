@@ -56,8 +56,38 @@ blockquote {
   line-height: 1.6;
 }
 
-.register-link a,
-.register-link-text,
+.intro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.intro-action-button {
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 0.4rem;
+  background: rgba(167, 139, 250, 0.18);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
+}
+
+.intro-action-button:hover,
+.intro-action-button:focus-visible {
+  border-color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.38);
+}
+
+.intro-action-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
 .source-attribution-link {
   color: #a78bfa;
   text-decoration: underline;
@@ -65,8 +95,6 @@ blockquote {
   transition: color 0.2s;
 }
 
-.register-link a:hover,
-.register-link-text:hover,
 .source-attribution-link:hover,
 .source-attribution-link:focus-visible {
   color: #c4b5fd;

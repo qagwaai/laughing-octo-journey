@@ -168,8 +168,13 @@ export const en = {
       attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
       scientificAttributionTitle: 'Astronomical references',
       scientificAttributionBody:
-        'Our Cygnus X-1 research and concept studies draw on the following catalog and scientific publications. These references inform the design; they do not imply endorsement by their authors.',
+        'Our astronomical data and Cygnus X-1 research draw on the following catalog and scientific publications. These references inform the project; they do not imply endorsement by their authors.',
       catalogAttributionTitle: 'Solar-system catalog sources and limitations',
+      solarSystemCreditsTitle: 'Solar-system data credits',
+      exoplanetCreditsTitle: 'Exoplanet data credits',
+      secondaryExoplanetCreditsTitle: 'Additional stellar catalog references',
+      citationLabel: 'Citation:',
+      licenseLabel: 'License',
       hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (catalog identification)',
       cygnusDynamicsAttributionSource:
         'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masses, distance and orbital parameters)',

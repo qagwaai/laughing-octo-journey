@@ -43,8 +43,13 @@ export const it: DeepPartial<EnLocale> = {
       attributionSource: 'The 15-Minute Space TPU: Why Orbital Data Centers Are a Radiator Problem',
       scientificAttributionTitle: 'Riferimenti astronomici',
       scientificAttributionBody:
-        'La nostra ricerca e gli studi visivi su Cygnus X-1 si basano sul seguente catalogo e sulle seguenti pubblicazioni scientifiche. Questi riferimenti orientano il progetto, senza implicare il sostegno dei loro autori.',
+        'I nostri dati astronomici e la ricerca su Cygnus X-1 si basano sui seguenti cataloghi e sulle seguenti pubblicazioni scientifiche. Questi riferimenti orientano il progetto, senza implicare il sostegno dei loro autori.',
       catalogAttributionTitle: 'Fonti e limitazioni del catalogo del sistema solare',
+      solarSystemCreditsTitle: 'Crediti dei dati del sistema solare',
+      exoplanetCreditsTitle: 'Crediti dei dati sugli esopianeti',
+      secondaryExoplanetCreditsTitle: 'Riferimenti aggiuntivi ai cataloghi stellari',
+      citationLabel: 'Citazione:',
+      licenseLabel: 'Licenza',
       hygAttributionSource: 'Astronexus - HYG Star Database v4.4 (identificazione nel catalogo)',
       cygnusDynamicsAttributionSource:
         'Miller-Jones et al. (2021) - Cygnus X-1 contains a 21-solar mass black hole - implications for massive star winds (masse, distanza e parametri orbitali)',

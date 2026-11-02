@@ -2,6 +2,11 @@ import { afterNextRender, ChangeDetectionStrategy, Component, inject } from '@an
 import { ActivatedRoute, Router } from '@angular/router';
 import { locale } from '../../i18n/locale';
 import { appLogger } from '../../services/logger';
+import {
+  EXOPLANET_DATA_CREDITS,
+  SECONDARY_EXOPLANET_DATA_CREDITS,
+  SOLAR_SYSTEM_DATA_CREDITS,
+} from './astronomy-data-credits';
 
 @Component({
   selector: 'app-intro-page',
@@ -14,6 +19,9 @@ import { appLogger } from '../../services/logger';
  */
 export default class IntroPage {
   protected readonly t = locale;
+  protected readonly solarSystemDataCredits = SOLAR_SYSTEM_DATA_CREDITS;
+  protected readonly exoplanetDataCredits = EXOPLANET_DATA_CREDITS;
+  protected readonly secondaryExoplanetDataCredits = SECONDARY_EXOPLANET_DATA_CREDITS;
   private router = inject(Router);
   private activatedRoute = inject(ActivatedRoute);
   private readonly transition = afterNextRender(() => {

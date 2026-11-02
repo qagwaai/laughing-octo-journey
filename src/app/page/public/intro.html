@@ -2,6 +2,14 @@
   <h1>{{ t.public.intro.title }}</h1>
   <h2>{{ t.public.intro.welcome }}</h2>
   <p>{{ t.public.intro.welcomeBody }}</p>
+  <div class="intro-actions">
+    <button type="button" class="intro-action-button" (click)="navigateToRegistration()">
+      {{ t.public.intro.registerLink }}
+    </button>
+    <button type="button" class="intro-action-button" (click)="navigateToLogin()">
+      {{ t.public.intro.loginLink }}
+    </button>
+  </div>
   <br />
   <hr />
   <h3>{{ t.public.intro.coreGameplayTitle }}</h3>
@@ -74,25 +82,6 @@
       <li>
         <a
           class="source-attribution-link"
-          href="https://codeberg.org/astronexus/hyg"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {{ t.public.intro.hygAttributionSource }}
-        </a>
-        &mdash;
-        <a
-          class="source-attribution-link"
-          href="https://creativecommons.org/licenses/by-sa/4.0/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          CC BY-SA 4.0
-        </a>
-      </li>
-      <li>
-        <a
-          class="source-attribution-link"
           href="https://arxiv.org/abs/2102.09091"
           target="_blank"
           rel="noopener noreferrer"
@@ -115,68 +104,81 @@
       <h3 id="catalog-attribution-title">{{ t.public.intro.catalogAttributionTitle }}</h3>
       <p>{{ t.game.viewer.catalogSourcesScope }}</p>
       <p>{{ t.game.viewer.catalogSourcesEd138 }} {{ t.game.viewer.catalogSourcesS2009S1 }}</p>
+      <h4>{{ t.public.intro.solarSystemCreditsTitle }}</h4>
       <ul>
-        <li>
-          <a
-            class="source-attribution-link"
-            href="https://www.minorplanetcenter.net/iau/MPCORB/AllCometEls.txt"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ t.game.viewer.catalogSourcesCometElements }}
-          </a>
-          &mdash;
-          <a
-            class="source-attribution-link"
-            href="https://docs.minorplanetcenter.net/mpc-ops-docs/orbits/comet-orbit-format/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ t.game.viewer.catalogSourcesCometFormat }}
-          </a>
+        @for (credit of solarSystemDataCredits; track credit.id) {
+        <li [attr.data-credit-id]="credit.id">
+          <strong>{{ credit.source }}</strong>
+          <p>{{ credit.text }}</p>
+          @if (credit.links.length) {
+          <ul>
+            @for (link of credit.links; track link.url) {
+            <li>
+              <a class="source-attribution-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
+                {{ link.label }}
+              </a>
+            </li>
+            }
+          </ul>
+          } @if (credit.license; as license) {
+          <p>
+            {{ t.public.intro.licenseLabel }}:
+            <a class="source-attribution-link" [href]="license.url" target="_blank" rel="noopener noreferrer">
+              {{ license.name }}
+            </a>
+          </p>
+          }
         </li>
-        <li>
-          <a
-            class="source-attribution-link"
-            href="https://ssd.jpl.nasa.gov/sats/elem/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ t.game.viewer.catalogSourcesSatelliteElements }}
-          </a>
-          &mdash;
-          <a
-            class="source-attribution-link"
-            href="https://ssd.jpl.nasa.gov/sats/discovery.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ t.game.viewer.catalogSourcesSatelliteDiscoveries }}
-          </a>
-        </li>
-        <li>
-          <a
-            class="source-attribution-link"
-            href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=2026%20ED138"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ t.game.viewer.catalogSourcesEd138Database }}
-          </a>
-        </li>
+        }
       </ul>
-      <p>{{ t.game.viewer.catalogSourcesMpcAcknowledgment }}</p>
+      <h4>{{ t.public.intro.exoplanetCreditsTitle }}</h4>
+      <ul>
+        @for (credit of exoplanetDataCredits; track credit.id) {
+        <li [attr.data-credit-id]="credit.id">
+          <strong>{{ credit.source }}</strong>
+          <p>{{ credit.text }}</p>
+          @if (credit.citation) {
+          <p>
+            {{ t.public.intro.citationLabel }} {{ credit.citation }} @if (credit.citationLink; as citationLink) {
+            <a class="source-attribution-link" [href]="citationLink.url" target="_blank" rel="noopener noreferrer">
+              {{ citationLink.label }}
+            </a>
+            }
+          </p>
+          } @if (credit.links.length) {
+          <ul>
+            @for (link of credit.links; track link.url) {
+            <li>
+              <a class="source-attribution-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
+                {{ link.label }}
+              </a>
+            </li>
+            }
+          </ul>
+          } @if (credit.license; as license) {
+          <p>
+            {{ t.public.intro.licenseLabel }}:
+            <a class="source-attribution-link" [href]="license.url" target="_blank" rel="noopener noreferrer">
+              {{ license.name }}
+            </a>
+          </p>
+          }
+        </li>
+        }
+      </ul>
+      <h4>{{ t.public.intro.secondaryExoplanetCreditsTitle }}</h4>
+      <ul>
+        @for (credit of secondaryExoplanetDataCredits; track credit.id) {
+        <li [attr.data-credit-id]="credit.id">
+          <strong>{{ credit.source }}</strong>
+          — {{ credit.text }}
+        </li>
+        }
+      </ul>
     </section>
     <p>{{ t.public.intro.scientificVisualizationNote }}</p>
   </section>
   <br />
   <hr />
   <blockquote>"{{ t.public.intro.quote }}"</blockquote>
-  <br />
-  <p class="register-link">
-    <a (click)="navigateToRegistration()" class="register-link-text">{{ t.public.intro.registerLink }}</a>
-  </p>
-  <p class="register-link">
-    <a (click)="navigateToLogin()" class="register-link-text">{{ t.public.intro.loginLink }}</a>
-  </p>
 </div>
