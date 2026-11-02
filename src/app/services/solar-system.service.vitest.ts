@@ -70,7 +70,7 @@ describe('SolarSystemService', () => {
         requestIdentity: {
           operation: 'solar-system-list',
           entityType: 'all-sources',
-          containerId: 'pilot||||50',
+          containerId: 'pilot|||||||||50',
         },
       }),
     );

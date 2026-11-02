@@ -30,9 +30,10 @@ test.describe('Viewer — Solar System List', () => {
 
     // Verify all systems are displayed
     const items = page.locator('.solar-system-item');
-    await expect(items).toHaveCount(4);
-    await expect(viewerPage.systemItemById('cygnus-x1')).toContainText('Cygnus X-1');
-    await expect(viewerPage.systemItemById('cygnus-x1')).toContainText('seeded when selected');
+    await expect(items).toHaveCount(3);
+    await expect(viewerPage.systemItemById('cygnus-x1')).toHaveCount(0);
+    await expect(page.getByTestId('viewer-result-count')).toHaveText('3 of 3 systems');
+    await expect(page.getByTestId('viewer-load-more')).toHaveCount(0);
 
     // Verify Sol system displays (use specific span selector to avoid ambiguity)
     const solNameSpan = page.locator('.solar-system-item__name:has-text("Sol")');
@@ -127,21 +128,94 @@ test.describe('Viewer — Solar System List', () => {
     resolveResponse();
   });
 
-  test('keeps the catalog Cygnus X-1 entry available when the distance-limited list is empty', async ({ page }) => {
+  test('shows the empty state without injecting a local Cygnus X-1 entry', async ({ page }) => {
     await setupViewerListTest(page, []);
     const gameShell = new GameShellPage(page);
     const viewerPage = new ViewerPage(page);
 
     await gameShell.openViewer();
 
-    const systemList = viewerPage.systemList;
-    await expect(systemList).toBeVisible();
-    await expect(viewerPage.systemItemById('cygnus-x1')).toBeVisible();
-    await expect(viewerPage.emptyState).toHaveCount(0);
+    await expect(viewerPage.emptyState).toBeVisible();
+    await expect(viewerPage.systemItemById('cygnus-x1')).toHaveCount(0);
   });
 
-  test('requests the on-demand Cygnus system and renders its black-hole group with one companion', async ({ page }) => {
-    const { mock } = await setupViewerListTest(page, []);
+  test('pages with Load more and resets to offset 0 when a filter changes', async ({ page }) => {
+    const systems = Array.from({ length: 120 }, (_, index) => ({
+      id: `sys-${String(index).padStart(3, '0')}`,
+      displayName: `System ${String(index).padStart(3, '0')}`,
+      source: 'procedural',
+      distanceParsec: index / 10,
+    }));
+    const { mock } = await setupViewerListTest(page, systems);
+    const requests: Record<string, unknown>[] = [];
+    mock.on('solar-system-list-request', (request) => {
+      requests.push(request as Record<string, unknown>);
+      return { event: 'solar-system-list-response', data: solarSystemListResponse(systems) };
+    });
+
+    await new GameShellPage(page).openViewer();
+    const items = page.locator('.solar-system-item');
+    await expect(items).toHaveCount(50);
+    await expect(page.getByTestId('viewer-result-count')).toHaveText('50 of 120 systems');
+
+    await page.getByTestId('viewer-load-more').click();
+    await expect(items).toHaveCount(100);
+    await page.getByTestId('viewer-load-more').click();
+    await expect(items).toHaveCount(120);
+    await expect(page.getByTestId('viewer-load-more')).toHaveCount(0);
+    expect(requests.map((request) => request['offset'])).toEqual([0, 50, 100]);
+    expect(requests[0]).toEqual(expect.objectContaining({ limit: 50, maxDistanceParsec: 50, sort: 'distance' }));
+
+    await page.getByTestId('viewer-sort').selectOption('name');
+    await expect(items).toHaveCount(50);
+    expect(requests.at(-1)).toEqual(expect.objectContaining({ offset: 0, sort: 'name' }));
+  });
+
+  test('searches beyond the default distance band after the minimum length', async ({ page }) => {
+    const koi351 = {
+      id: 'exo-koi-351',
+      displayName: 'KOI-351',
+      catalogName: 'Kepler-90',
+      source: 'exoplanet-catalog',
+      distanceParsec: 848.2,
+      distanceApproximate: true,
+      planetCount: 8,
+    };
+    const { mock } = await setupViewerListTest(page, [SOL_SYSTEM]);
+    const requests: Record<string, unknown>[] = [];
+    mock.on('solar-system-list-request', (request) => {
+      const typed = request as Record<string, unknown>;
+      requests.push(typed);
+      return {
+        event: 'solar-system-list-response',
+        data: solarSystemListResponse(typed['search'] ? [koi351] : [SOL_SYSTEM]),
+      };
+    });
+
+    await new GameShellPage(page).openViewer();
+    await expect(page.locator('.solar-system-item')).toHaveCount(1);
+
+    const search = page.getByTestId('viewer-search');
+    await search.fill('KO');
+    await expect(page.getByTestId('viewer-search-hint')).toBeVisible();
+    await search.fill('KOI-351');
+    const koiItem = new ViewerPage(page).systemItemById('exo-koi-351');
+    await expect(koiItem).toContainText('Kepler-90');
+    await expect(koiItem).toContainText('\u2248848.20');
+    await expect(page.getByTestId('viewer-max-distance')).toBeDisabled();
+
+    const searchRequest = requests.at(-1)!;
+    expect(searchRequest).toEqual(expect.objectContaining({ search: 'KOI-351', offset: 0 }));
+    expect(searchRequest).not.toHaveProperty('maxDistanceParsec');
+    expect(requests.filter((request) => request['search'] === 'KO')).toHaveLength(0);
+  });
+
+  test('requests the server-listed Cygnus system and renders its black-hole group with one companion', async ({
+    page,
+  }) => {
+    const { mock } = await setupViewerListTest(page, [
+      { id: 'cygnus-x1', displayName: 'Cygnus X-1', source: 'curated', distanceParsec: null, positionPc: null },
+    ]);
     const requestedSystemIds: string[] = [];
     const blackHole = {
       id: 'cygnus-x1-black-hole',
@@ -349,10 +423,8 @@ test.describe('Viewer — Solar System List', () => {
     const errorState = page.locator('[data-testid="viewer-error"]');
     await expect(errorState).toBeVisible();
     await expect(errorState).toContainText('Database connection error');
-
-    const systemList = viewerPage.systemList;
-    await expect(systemList).toBeVisible();
-    await expect(viewerPage.systemItemById('cygnus-x1')).toBeVisible();
+    await expect(page.getByTestId('viewer-retry')).toBeVisible();
+    await expect(viewerPage.systemItemById('cygnus-x1')).toHaveCount(0);
   });
 
   test('navigates to scene view when system is selected', async ({ page }) => {

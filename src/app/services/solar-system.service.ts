@@ -22,7 +22,12 @@ function buildSolarSystemListLegacyKey(request: SolarSystemListRequest): string 
     normalizeIdentityValue(request.playerName),
     normalizeIdentityValue(request.source),
     normalizeIdentityValue(request.search),
+    String(request.minDistanceParsec ?? ''),
     String(request.maxDistanceParsec ?? ''),
+    String(request.minPlanetCount ?? ''),
+    normalizeIdentityValue(request.spectralClass),
+    normalizeIdentityValue(request.sort),
+    String(request.offset ?? ''),
     String(request.limit ?? ''),
   ].join('|');
 }
@@ -141,9 +146,13 @@ export class SolarSystemService {
   }
 
   /**
-   * Lists curated/procedural solar systems via `solar-system-list-request`.
+   * Lists curated/procedural/catalog solar systems via `solar-system-list-request`.
+   * Returns a cancel function so callers can drop superseded pages.
    */
-  listSolarSystems(request: SolarSystemListRequest, onResponse: (response: SolarSystemListResponse) => void): void {
+  listSolarSystems(
+    request: SolarSystemListRequest,
+    onResponse: (response: SolarSystemListResponse) => void,
+  ): () => void {
     const requestWithId: SolarSystemListRequest = {
       ...request,
       requestId: request.requestId ?? this.nextRequestId(),
@@ -197,6 +206,13 @@ export class SolarSystemService {
     });
 
     this.socketService.emit(SOLAR_SYSTEM_LIST_REQUEST_EVENT, requestWithCorrelation);
+    return () => {
+      if (handled) {
+        return;
+      }
+      handled = true;
+      unsubscribe();
+    };
   }
 
   /**

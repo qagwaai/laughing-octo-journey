@@ -1,12 +1,23 @@
-import { type CelestialBodyListItem, type CelestialBodyListRequest, type CelestialBodyListResponse } from '../../model/celestial-body-list';
+import {
+  type CelestialBodyListItem,
+  type CelestialBodyListRequest,
+  type CelestialBodyListResponse,
+} from '../../model/celestial-body-list';
 import { DEFAULT_SOLAR_SYSTEM_ID } from '../../model/celestial-body-upsert';
 import { DEFAULT_CLUSTER_SPREAD_KM } from '../../model/math/celestial-body-location';
 import type { Triple } from '../../model/shared/triple';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
+import { fetchAllPages, type FetchAllPagesOutcome } from '../../services/paged-list-traversal';
 import { SessionService } from '../../services/session.service';
 import { ShipExteriorSocketService } from '../../services/ship-exterior-socket.service';
 import { type ShipExteriorColdBootAsteroidSeedIntent } from './ship-exterior-cold-boot-asteroid-seed';
+
+/**
+ * The ship exterior needs every nearby body within a short loading window, so it walks
+ * up to 50 pages of 500 (25,000 bodies) before rendering a partial set with a warning.
+ */
+export const SHIP_EXTERIOR_CELESTIAL_BODY_MAX_PAGES = 50;
 
 interface ShipExteriorBootstrapControllerDeps {
   missionId: string;
@@ -115,23 +126,27 @@ export class ShipExteriorBootstrapController {
       states: ['unscanned', 'active'],
     };
 
-    this.unsubscribeLocalCelestialBodyListResponse = this.deps.socketService.listCelestialBodies(
+    this.unsubscribeLocalCelestialBodyListResponse = this.fetchAllCelestialBodies(
       request,
-      (response: CelestialBodyListResponse) => {
+      'ship-exterior.local-sweep',
+      (outcome) => {
         this.pendingLocalSweepSignature = null;
+        this.unsubscribeLocalCelestialBodyListResponse = undefined;
 
-        if (!response.success) {
+        if (outcome.status === 'failed') {
           this.deps.emitLocalCelestialBodies({
             status: 'unavailable',
             bodies: [],
             center,
             detectionRangeKm,
           });
-          appLogger.warn('ShipExterior local bodies sweep failed.', response.message);
+          appLogger.warn('ShipExterior local bodies sweep failed.', outcome.message);
           return;
         }
 
-        const bodies = (response.celestialBodies ?? []).filter((body) => body.state !== 'destroyed');
+        // A partial sweep (page cap or a later page failing) still renders what loaded;
+        // fetchAllPages has already logged the warning.
+        const bodies = outcome.items.filter((body) => body.state !== 'destroyed');
         this.deps.emitLocalCelestialBodies({
           status: bodies.length > 0 ? 'loaded' : 'empty',
           bodies,
@@ -139,6 +154,24 @@ export class ShipExteriorBootstrapController {
           detectionRangeKm,
         });
       },
+    );
+  }
+
+  private fetchAllCelestialBodies(
+    request: CelestialBodyListRequest,
+    label: string,
+    onDone: (outcome: FetchAllPagesOutcome<CelestialBodyListItem>) => void,
+  ): () => void {
+    return fetchAllPages<CelestialBodyListRequest, CelestialBodyListResponse, CelestialBodyListItem>(
+      (pageRequest, onResponse) => this.deps.socketService.listCelestialBodies(pageRequest, onResponse),
+      request,
+      {
+        label,
+        readItems: (response) => response.celestialBodies,
+        getId: (body) => body.id,
+        maxPages: SHIP_EXTERIOR_CELESTIAL_BODY_MAX_PAGES,
+      },
+      onDone,
     );
   }
 
@@ -209,9 +242,20 @@ export class ShipExteriorBootstrapController {
           createdByCharacterId: characterId,
           missionId: this.deps.missionId,
         };
-        this.unsubscribeCelestialBodyListResponse = this.deps.socketService.listCelestialBodies(
+        this.unsubscribeCelestialBodyListResponse = this.fetchAllCelestialBodies(
           cbRequest,
-          (cbResponse: CelestialBodyListResponse) => {
+          'ship-exterior.cold-boot-resume',
+          (outcome) => {
+            this.unsubscribeCelestialBodyListResponse = undefined;
+            // Seeding against a partial body list would duplicate asteroids that live on unread pages.
+            if (outcome.status !== 'complete') {
+              appLogger.warn('ColdBootScan (in-progress) skipped asteroid seeding: existing body list is incomplete.', {
+                status: outcome.status,
+                reason: outcome.reason,
+                loaded: outcome.items.length,
+              });
+              return;
+            }
             this.deps.emitColdBootAsteroidSeedIntent({
               kind: 'resume',
               actor: {
@@ -224,7 +268,7 @@ export class ShipExteriorBootstrapController {
                 characterId,
                 center,
                 launchSeedHint: this.deps.getLaunchSeedHint(),
-                existingBodies: cbResponse.success ? (cbResponse.celestialBodies ?? []) : [],
+                existingBodies: outcome.items,
               },
             });
           },

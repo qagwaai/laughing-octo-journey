@@ -25,6 +25,39 @@ function withRequestCorrelation(responseData: unknown, requestData: unknown): un
   return enriched;
 }
 
+const PAGED_LIST_ITEM_KEYS: Record<string, string> = {
+  'celestial-body-list-response': 'celestialBodies',
+  'solar-system-list-response': 'solarSystems',
+  'star-list-response': 'stars',
+};
+
+/**
+ * Emulates Forge offset paging for list fixtures that predate it: when a successful
+ * response omits `total`, the fixture array is treated as the full result set and
+ * sliced by the request's `offset`/`limit` (default 100, clamped to 500).
+ * Fixtures that set `total` themselves are passed through untouched.
+ */
+function withPagedListDefaults(responseEvent: string, responseData: unknown, requestData: unknown): unknown {
+  const itemsKey = PAGED_LIST_ITEM_KEYS[responseEvent];
+  if (!itemsKey || !isObject(responseData) || responseData['success'] !== true || responseData['total'] != null) {
+    return responseData;
+  }
+  const allItems = Array.isArray(responseData[itemsKey]) ? (responseData[itemsKey] as unknown[]) : [];
+  const request = isObject(requestData) ? requestData : {};
+  const offset = typeof request['offset'] === 'number' && request['offset'] >= 0 ? Math.floor(request['offset']) : 0;
+  const requestedLimit =
+    typeof request['limit'] === 'number' && request['limit'] >= 1 ? Math.floor(request['limit']) : 100;
+  const limit = Math.min(requestedLimit, 500);
+  return {
+    ...responseData,
+    [itemsKey]: allItems.slice(offset, offset + limit),
+    total: allItems.length,
+    offset,
+    limit,
+    hasMore: offset + limit < allItems.length,
+  };
+}
+
 function buildDefaultResponse(eventName: string, eventData: unknown): { event: string; data: unknown } | null {
   if (!isObject(eventData)) {
     return null;
@@ -253,7 +286,11 @@ export class SocketIOMock {
               if (handler) {
                 const response = handler(eventData);
                 if (response !== null) {
-                  const responseData = withRequestCorrelation(response.data, eventData);
+                  const responseData = withPagedListDefaults(
+                    response.event,
+                    withRequestCorrelation(response.data, eventData),
+                    eventData,
+                  );
                   if (this.debugEnabled) {
                     console.log(`[socket-mock] auto response: ${response.event}`);
                   }

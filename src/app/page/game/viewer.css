@@ -86,3 +86,76 @@
   color: #b4cfff;
   font-size: 0.9rem;
 }
+
+.viewer-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin: 0.75rem 0;
+}
+
+.viewer-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #b4cfff;
+  min-width: 7rem;
+}
+
+.viewer-filters__field--wide {
+  flex: 1 1 100%;
+}
+
+.viewer-filters__field input,
+.viewer-filters__field select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(140, 190, 255, 0.35);
+  background: rgba(8, 20, 40, 0.9);
+  color: #e8f2ff;
+  font: inherit;
+}
+
+.viewer-filters__field input:disabled {
+  opacity: 0.5;
+}
+
+.viewer-filters__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #b4cfff;
+}
+
+.viewer-filters__hint,
+.viewer-result-count {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b4cfff;
+}
+
+.solar-system-item__catalog {
+  font-size: 0.85rem;
+  color: #b4cfff;
+}
+
+.viewer-load-more,
+.viewer-retry {
+  margin-top: 0.75rem;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  border: 1px solid rgba(140, 190, 255, 0.45);
+  background: rgba(40, 64, 104, 0.85);
+  color: #e8f2ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.viewer-load-more:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

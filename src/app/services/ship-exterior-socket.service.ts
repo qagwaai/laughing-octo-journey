@@ -644,16 +644,25 @@ export class ShipExteriorSocketService {
           return;
         }
 
-        const bodyError = response.celestialBodies
-          .map((body) => validateCanonicalBodyClassification(body))
-          .find((reason) => reason !== null);
-        if (bodyError) {
-          appLogger.error('[celestial-body-contract]', bodyError);
-          unsubscribe();
+        unsubscribe();
+        if (!response.success || !Array.isArray(response.celestialBodies)) {
+          onResponse(response);
           return;
         }
-        unsubscribe();
-        onResponse(response);
+        // Drop contract-invalid bodies individually; rejecting the whole page would stall paging callers.
+        const validBodies = response.celestialBodies.filter((body) => {
+          const bodyError = validateCanonicalBodyClassification(body);
+          if (bodyError) {
+            appLogger.error('[celestial-body-contract] Skipping invalid celestial body.', bodyError);
+            return false;
+          }
+          return true;
+        });
+        onResponse(
+          validBodies.length === response.celestialBodies.length
+            ? response
+            : { ...response, celestialBodies: validBodies },
+        );
       },
     );
 

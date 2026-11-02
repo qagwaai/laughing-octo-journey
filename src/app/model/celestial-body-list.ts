@@ -1,6 +1,7 @@
 import { AsteroidMaterialProfile } from './asteroid-materials';
 import type { CatalogIdentity } from './catalog-identity';
 import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
+import type { PagedListResponseMetadata } from './paged-list';
 import type {
   CanonicalViewerBodyOrbitalElements,
   ViewerBodyPhysicalCatalog,
@@ -25,8 +26,10 @@ export interface CelestialBodyListRequest {
   correlationSource?: string;
   requestIdentity?: CelestialBodyListRequestIdentity;
   solarSystemId: string;
-  positionKm: Triple;
-  distanceKm: number;
+  /** Radius-query point; omit together with `distanceKm` for whole-system listing. */
+  positionKm?: Triple;
+  distanceKm?: number;
+  offset?: number;
   limit?: number;
   states?: Array<'unscanned' | 'active' | 'destroyed'>;
   createdByCharacterId?: string;
@@ -89,7 +92,7 @@ export interface CelestialBodyListItem {
   distanceKm?: number;
 }
 
-export interface CelestialBodyListResponse {
+export interface CelestialBodyListResponse extends PagedListResponseMetadata {
   success: boolean;
   message: string;
   correlationId: string;
