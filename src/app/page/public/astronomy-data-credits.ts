@@ -126,3 +126,17 @@ export const SECONDARY_EXOPLANET_DATA_CREDITS: readonly AstronomyDataCredit[] = 
     links: [],
   },
 ];
+
+/** A10 stays behind `environment.nameExoWorldsCreditEnabled` until the IAU reuse terms are confirmed. */
+export const NAME_EXOWORLDS_DATA_CREDIT: AstronomyDataCredit = {
+  id: 'A10',
+  source: 'IAU NameExoWorlds 2015',
+  text: 'Exoplanet names approved by the IAU through the NameExoWorlds contest (2015), nameexoworlds.iau.org.',
+  links: [],
+};
+
+export function secondaryExoplanetDataCredits(includeNameExoWorlds: boolean): readonly AstronomyDataCredit[] {
+  return includeNameExoWorlds
+    ? [...SECONDARY_EXOPLANET_DATA_CREDITS, NAME_EXOWORLDS_DATA_CREDIT]
+    : SECONDARY_EXOPLANET_DATA_CREDITS;
+}

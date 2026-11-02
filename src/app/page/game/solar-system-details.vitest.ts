@@ -84,23 +84,43 @@ describe('SolarSystemDetailsPage body groups', () => {
       (type, index) => body(type, index),
     );
     const { component } = setup(bodies);
-    expect(component['typeGroups']().map((group) => group.type)).toEqual(bodies.map((entry) => entry.bodyType));
+    expect(
+      component['typeGroups']()
+        .filter((group) => group.rows.length > 0)
+        .map((group) => group.type),
+    ).toEqual(bodies.map((entry) => (entry.bodyType === 'planet' ? 'planet-rocky' : entry.bodyType)));
     expect(new Set(component['typeGroups']().flatMap((group) => group.rows.map((row) => row.id)))).toEqual(
       new Set(component['sortedByDistance']().map((row) => row.id)),
     );
   });
 
-  it('renders the three empty groups at zero count even when the entire system is empty', () => {
+  it('renders every category at zero count even when the entire system is empty', () => {
     const { fixture, component } = setup();
     expect(component['typeGroups']().map((group) => [group.label, group.rows.length])).toEqual([
+      ['Star', 0],
+      ['Rocky planets', 0],
+      ['Super-Earths', 0],
+      ['Ocean worlds', 0],
+      ['Lava worlds', 0],
+      ['Sub-Neptunes', 0],
+      ['Hot Neptunes', 0],
+      ['Ice giants', 0],
+      ['Gas giants', 0],
+      ['Hot Jupiters', 0],
+      ['Super-Jupiters', 0],
       ['Dwarf Planet', 0],
+      ['Moon', 0],
+      ['Asteroid', 0],
+      ['Black holes', 0],
       ['Trans-Neptunian object', 0],
       ['Comet', 0],
+      ['Station', 0],
+      ['Ships', 0],
     ]);
     const element: HTMLElement = fixture.nativeElement;
     expect(
       Array.from(element.querySelectorAll('.details-type-header__count'), (node) => node.textContent?.trim()),
-    ).toEqual(['0', '0', '0']);
+    ).toEqual(Array(19).fill('0'));
     component['toggleSection']('comet');
     fixture.detectChanges();
     expect(element.querySelector('[data-testid="details-table-comet"] tbody')?.children.length).toBe(0);
@@ -109,7 +129,7 @@ describe('SolarSystemDetailsPage body groups', () => {
     expect(element.querySelector('[data-testid="details-empty"]')).not.toBeNull();
     component['setViewMode']('type');
     fixture.detectChanges();
-    expect(element.querySelectorAll('.details-type-header').length).toBe(3);
+    expect(element.querySelectorAll('.details-type-header').length).toBe(19);
   });
 
   it.each(['dwarf-planet', 'tno', 'comet'] as const)('targets a %s from its group', (type) => {
@@ -143,10 +163,10 @@ describe('SolarSystemDetailsPage body groups', () => {
       expect(button!.closest('.details-name-target')?.firstElementChild?.contains(button)).toBe(true);
     };
 
-    component['toggleSection']('planet');
+    component['toggleSection']('planet-rocky');
     fixture.detectChanges();
-    expectIconBeforeName('[data-testid="details-table-planet"] .details-target-btn');
-    expect(fixture.nativeElement.querySelector('[data-testid="details-table-planet"] .details-col-action')).toBeNull();
+    expectIconBeforeName('[data-testid="details-table-planet-rocky"] .details-target-btn');
+    expect(fixture.nativeElement.querySelector('[data-testid="details-table-planet-rocky"] .details-col-action')).toBeNull();
 
     component['setViewMode']('distance');
     fixture.detectChanges();
@@ -239,5 +259,66 @@ describe('SolarSystemDetailsPage body groups', () => {
         .find((group) => group.type === 'black-hole')
         ?.rows.map((row) => row.id),
     ).toEqual([blackHole.id]);
+  });
+});
+
+describe('SolarSystemDetailsPage planet-type sections', () => {
+  afterEach(() => setActiveLocaleCode('en'));
+
+  function planet(index: number, overrides: Partial<CanonicalViewerBody>): CanonicalViewerBody {
+    return { ...body('planet', index), ...overrides } as CanonicalViewerBody;
+  }
+
+  it('splits planets into per-type sections in archetype order, with untyped planets last', () => {
+    const { component } = setup([
+      planet(1, { planetType: 'hot-jupiter', surfaceArchetype: 'gas-giant' }),
+      planet(2, { surfaceArchetype: 'super-earth' }),
+      planet(3, { planetType: 'lava' }),
+      planet(4, { surfaceArchetype: 'unknown-archetype' as CanonicalViewerBody['surfaceArchetype'] }),
+      planet(5, { planetType: 'hot-jupiter' }),
+    ]);
+    const planetGroups = component['typeGroups']().filter(
+      (group) => group.type.startsWith('planet') && group.rows.length > 0,
+    );
+    expect(planetGroups.map((group) => [group.type, group.label, group.rows.map((row) => row.id)])).toEqual([
+      ['planet-super-earth', 'Super-Earths', ['body-2']],
+      ['planet-lava', 'Lava worlds', ['body-3']],
+      ['planet-hot-jupiter', 'Hot Jupiters', ['body-1', 'body-5']],
+      ['planet', 'Planet', ['body-4']],
+    ]);
+  });
+
+  it('marks approximate planet types as likely and names the type in the distance view', () => {
+    const { fixture, component } = setup([
+      planet(1, { planetType: 'sub-neptune', approximateFields: ['planetType'] }),
+      planet(2, { planetType: 'ice-giant' }),
+    ]);
+    component['toggleSection']('planet-sub-neptune');
+    component['toggleSection']('planet-ice-giant');
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    expect(
+      element.querySelector('[data-testid="details-table-planet-sub-neptune"] [data-testid="details-planet-type-likely"]')
+        ?.textContent,
+    ).toBe('(likely)');
+    expect(
+      element.querySelector('[data-testid="details-table-planet-ice-giant"] [data-testid="details-planet-type-likely"]'),
+    ).toBeNull();
+
+    component['setViewMode']('distance');
+    fixture.detectChanges();
+    expect(
+      Array.from(element.querySelectorAll('[data-testid="details-table"] .details-col-type'), (cell) =>
+        cell.textContent?.trim(),
+      ),
+    ).toEqual(['Sub-Neptune', 'Ice giant']);
+  });
+
+  it('localizes planet-type sections in Italian', () => {
+    setActiveLocaleCode('it');
+    const { component } = setup([planet(1, { planetType: 'hot-jupiter' })]);
+    expect(component['typeGroups']().find((group) => group.type === 'planet-hot-jupiter')?.label).toBe(
+      'Gioviani caldi',
+    );
   });
 });

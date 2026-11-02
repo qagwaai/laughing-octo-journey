@@ -106,6 +106,10 @@
   border-top: 1px solid rgba(162, 210, 255, 0.18);
 }
 
+.viewer-info-panel > .viewer-info-panel__section:last-child {
+  padding-bottom: 0;
+}
+
 .viewer-info-panel summary {
   cursor: pointer;
   color: #b9dafc;
@@ -118,6 +122,52 @@
 
 .viewer-info-panel p {
   margin: 0.5rem 0;
+}
+
+.viewer-info-panel__data-as-of {
+  color: #b3c6e0;
+}
+
+.viewer-about-data h3,
+.viewer-about-data h4 {
+  margin: 0.6rem 0 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8bacd8;
+}
+
+.viewer-about-data__limitations {
+  margin: 0.25rem 0;
+  padding-left: 1.1rem;
+}
+
+.viewer-about-data__estimated {
+  color: #b3c6e0;
+}
+
+.viewer-references {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.viewer-references li {
+  margin: 0.2rem 0;
+  overflow-wrap: anywhere;
+}
+
+.viewer-references a {
+  color: #9fd0ff;
+}
+
+.viewer-references__discovery {
+  margin-right: 0.35rem;
+  font-size: 0.8em;
+  text-transform: uppercase;
+}
+
+.viewer-references__toggle {
+  margin-top: 0.4rem;
 }
 
 .viewer-legend__keys {

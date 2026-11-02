@@ -163,6 +163,9 @@
                 <strong>{{ t.game.viewer.marketCountLabel }}</strong>
                 {{ system.marketCount !== undefined ? system.marketCount : '—' }}
               </span>
+              @if (snapshotDateOf(system); as date) {
+              <span data-testid="viewer-system-data-as-of">{{ t.game.viewer.dataAsOfLabel.replace('{date}', date) }}</span>
+              }
             </span>
           </button>
         </li>

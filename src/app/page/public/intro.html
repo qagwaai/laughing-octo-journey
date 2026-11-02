@@ -105,76 +105,11 @@
       <p>{{ t.game.viewer.catalogSourcesScope }}</p>
       <p>{{ t.game.viewer.catalogSourcesEd138 }} {{ t.game.viewer.catalogSourcesS2009S1 }}</p>
       <h4>{{ t.public.intro.solarSystemCreditsTitle }}</h4>
-      <ul>
-        @for (credit of solarSystemDataCredits; track credit.id) {
-        <li [attr.data-credit-id]="credit.id">
-          <strong>{{ credit.source }}</strong>
-          <p>{{ credit.text }}</p>
-          @if (credit.links.length) {
-          <ul>
-            @for (link of credit.links; track link.url) {
-            <li>
-              <a class="source-attribution-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
-                {{ link.label }}
-              </a>
-            </li>
-            }
-          </ul>
-          } @if (credit.license; as license) {
-          <p>
-            {{ t.public.intro.licenseLabel }}:
-            <a class="source-attribution-link" [href]="license.url" target="_blank" rel="noopener noreferrer">
-              {{ license.name }}
-            </a>
-          </p>
-          }
-        </li>
-        }
-      </ul>
+      <app-astronomy-credit-list [credits]="solarSystemDataCredits" />
       <h4>{{ t.public.intro.exoplanetCreditsTitle }}</h4>
-      <ul>
-        @for (credit of exoplanetDataCredits; track credit.id) {
-        <li [attr.data-credit-id]="credit.id">
-          <strong>{{ credit.source }}</strong>
-          <p>{{ credit.text }}</p>
-          @if (credit.citation) {
-          <p>
-            {{ t.public.intro.citationLabel }} {{ credit.citation }} @if (credit.citationLink; as citationLink) {
-            <a class="source-attribution-link" [href]="citationLink.url" target="_blank" rel="noopener noreferrer">
-              {{ citationLink.label }}
-            </a>
-            }
-          </p>
-          } @if (credit.links.length) {
-          <ul>
-            @for (link of credit.links; track link.url) {
-            <li>
-              <a class="source-attribution-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
-                {{ link.label }}
-              </a>
-            </li>
-            }
-          </ul>
-          } @if (credit.license; as license) {
-          <p>
-            {{ t.public.intro.licenseLabel }}:
-            <a class="source-attribution-link" [href]="license.url" target="_blank" rel="noopener noreferrer">
-              {{ license.name }}
-            </a>
-          </p>
-          }
-        </li>
-        }
-      </ul>
+      <app-astronomy-credit-list [credits]="exoplanetDataCredits" />
       <h4>{{ t.public.intro.secondaryExoplanetCreditsTitle }}</h4>
-      <ul>
-        @for (credit of secondaryExoplanetDataCredits; track credit.id) {
-        <li [attr.data-credit-id]="credit.id">
-          <strong>{{ credit.source }}</strong>
-          — {{ credit.text }}
-        </li>
-        }
-      </ul>
+      <app-astronomy-credit-list [credits]="secondaryExoplanetDataCredits" [secondary]="true" />
     </section>
     <p>{{ t.public.intro.scientificVisualizationNote }}</p>
   </section>

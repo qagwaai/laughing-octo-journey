@@ -204,6 +204,13 @@
 
 /* ── Active ship badge ─────────────────────────────────────────────────── */
 
+.details-likely-badge {
+  margin-left: 0.35rem;
+  font-size: 0.78em;
+  font-style: italic;
+  opacity: 0.75;
+}
+
 .details-active-badge {
   display: inline-block;
   margin-left: 0.4rem;

@@ -1,15 +1,18 @@
 import { afterNextRender, ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { locale } from '../../i18n/locale';
 import { appLogger } from '../../services/logger';
+import { AstronomyCreditList } from './astronomy-credit-list';
 import {
   EXOPLANET_DATA_CREDITS,
-  SECONDARY_EXOPLANET_DATA_CREDITS,
+  secondaryExoplanetDataCredits,
   SOLAR_SYSTEM_DATA_CREDITS,
 } from './astronomy-data-credits';
 
 @Component({
   selector: 'app-intro-page',
+  imports: [AstronomyCreditList],
   templateUrl: './intro.html',
   styleUrls: ['./intro.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -21,7 +24,9 @@ export default class IntroPage {
   protected readonly t = locale;
   protected readonly solarSystemDataCredits = SOLAR_SYSTEM_DATA_CREDITS;
   protected readonly exoplanetDataCredits = EXOPLANET_DATA_CREDITS;
-  protected readonly secondaryExoplanetDataCredits = SECONDARY_EXOPLANET_DATA_CREDITS;
+  protected readonly secondaryExoplanetDataCredits = secondaryExoplanetDataCredits(
+    environment.nameExoWorldsCreditEnabled,
+  );
   private router = inject(Router);
   private activatedRoute = inject(ActivatedRoute);
   private readonly transition = afterNextRender(() => {

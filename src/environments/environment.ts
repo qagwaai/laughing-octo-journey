@@ -20,4 +20,6 @@ export const environment = {
   viewerQaEnabledByDefault: true,
   viewerForceHeroByDefault: true,
   viewerShowEffectiveProfileByDefault: true,
+  /** A10 IAU NameExoWorlds credit; keep off until Forge confirms the IAU reuse terms. */
+  nameExoWorldsCreditEnabled: false,
 };

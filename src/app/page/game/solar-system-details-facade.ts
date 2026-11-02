@@ -1,4 +1,5 @@
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
+import { isCompatibleBodyClassification } from '../../model/celestial-classification';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
@@ -7,11 +8,16 @@ import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import { MarketService } from '../../services/market.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
+import { isLikelyBodyType } from './viewer-body-metadata';
 
 export interface DetailsRow {
   id: string;
   displayName: string;
   bodyType: string;
+  /** Planet archetype (e.g. hot-jupiter) for planets whose type is known; null/absent otherwise. */
+  planetType?: string | null;
+  /** True when Forge inferred the planet type rather than reading it from the catalog. */
+  planetTypeLikely?: boolean;
   viewerGroup: string;
   diameterM: number | null;
   semiMajorAxisKm: number | null;
@@ -54,6 +60,31 @@ function sortOrder(bodyType: string): number {
   return BODY_TYPE_SORT_ORDER[normalized] ?? 99;
 }
 
+/** Planet archetypes in the order their details sections appear (small/rocky to giant). */
+export const DETAILS_PLANET_TYPE_ORDER = [
+  'rocky',
+  'super-earth',
+  'ocean',
+  'lava',
+  'sub-neptune',
+  'hot-neptune',
+  'ice-giant',
+  'gas-giant',
+  'hot-jupiter',
+  'super-jupiter',
+] as const;
+
+/** Server `planetType` when it is a valid planet archetype, else a compatible `surfaceArchetype`, else null. */
+export function resolveDetailsPlanetType(
+  body: Pick<ViewerBody, 'bodyType' | 'planetType' | 'surfaceArchetype'>,
+): string | null {
+  if (body.bodyType !== 'planet') return null;
+  for (const candidate of [body.planetType, body.surfaceArchetype]) {
+    if (isCompatibleBodyClassification('planet', candidate)) return candidate as string;
+  }
+  return null;
+}
+
 export class SolarSystemDetailsFacade {
   constructor(private readonly deps: SolarSystemDetailsFacadeDeps) {}
 
@@ -93,19 +124,24 @@ export class SolarSystemDetailsFacade {
   }
 
   private bodiesToRows(bodies: ViewerBody[]): DetailsRow[] {
-    return bodies.map((b) => ({
-      id: b.id,
-      displayName: b.displayName,
-      bodyType: typeof b.bodyType === 'string' && b.bodyType.trim() ? b.bodyType : 'unknown',
-      viewerGroup: viewerBodyGroup(b),
-      diameterM: b.physicalCatalog?.estimatedDiameterM ?? null,
-      semiMajorAxisKm: b.orbitalElements?.semiMajorAxisKm ?? null,
-      isShip: false,
-      isActiveShip: false,
-      shipModel: null,
-      shipTier: null,
-      shipStatus: null,
-    }));
+    return bodies.map((b) => {
+      const planetType = resolveDetailsPlanetType(b);
+      return {
+        id: b.id,
+        displayName: b.displayName,
+        bodyType: typeof b.bodyType === 'string' && b.bodyType.trim() ? b.bodyType : 'unknown',
+        planetType,
+        planetTypeLikely: planetType !== null && isLikelyBodyType(b),
+        viewerGroup: viewerBodyGroup(b),
+        diameterM: b.physicalCatalog?.estimatedDiameterM ?? null,
+        semiMajorAxisKm: b.orbitalElements?.semiMajorAxisKm ?? null,
+        isShip: false,
+        isActiveShip: false,
+        shipModel: null,
+        shipTier: null,
+        shipStatus: null,
+      };
+    });
   }
 
   private hydrateMarkets(

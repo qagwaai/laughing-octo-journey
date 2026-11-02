@@ -6,4 +6,5 @@ export const environment = {
   viewerQaEnabledByDefault: false,
   viewerForceHeroByDefault: false,
   viewerShowEffectiveProfileByDefault: false,
+  nameExoWorldsCreditEnabled: false,
 };

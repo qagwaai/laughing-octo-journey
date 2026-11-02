@@ -210,6 +210,94 @@ test.describe('Viewer — Solar System List', () => {
     expect(requests.filter((request) => request['search'] === 'KO')).toHaveLength(0);
   });
 
+  test('shows contextual data credits, the snapshot date and discovery-first references', async ({
+    page,
+  }, testInfo) => {
+    const snapshotDate = '2026-11-01';
+    const cancri = {
+      id: 'exo-55-cnc',
+      displayName: '55 Cancri',
+      catalogName: '55 Cnc',
+      source: 'exoplanet-catalog',
+      distanceParsec: 12.59,
+      planetCount: 1,
+      catalogSnapshotDate: snapshotDate,
+    };
+    const spatial = {
+      solarSystemId: 'exo-55-cnc',
+      frame: 'barycentric',
+      positionKm: { x: 0, y: 0, z: 0 },
+      epochMs: 1_761_408_000_000,
+    };
+    const star = {
+      id: 'exo-star-55-cnc-a',
+      bodyType: 'star',
+      surfaceArchetype: 'star',
+      displayName: '55 Cnc A',
+      spectralClass: 'K0IV',
+      parentBodyId: null,
+      orbitalElements: null,
+      spatial,
+      state: 'active',
+      composition: { material: 'stellar plasma', rarity: 'Common', textureColor: '#ffd2a1' },
+    };
+    const planet = {
+      id: 'exo-55-cnc-b',
+      bodyType: 'planet',
+      planetType: 'hot-jupiter',
+      surfaceArchetype: 'gas-giant',
+      displayName: '55 Cnc b',
+      parentBodyId: 'exo-star-55-cnc-a',
+      orbitalElements: null,
+      spatial: { ...spatial, positionKm: { x: 1.7e7, y: 0, z: 0 } },
+      state: 'active',
+      composition: { material: 'hydrogen', rarity: 'Common', textureColor: '#d9b38c' },
+      discovery: {
+        references: [
+          { label: 'Butler et al. 1997', url: 'https://ui.adsabs.harvard.edu/abs/1997ApJ...474L.115B' },
+          ...Array.from({ length: 6 }, (_, i) => ({ label: `Follow-up ${i + 1}`, url: `https://example.org/${i}` })),
+        ],
+      },
+    };
+    const { mock } = await setupViewerListTest(page, [cancri]);
+    mock.on('solar-system-get-request', () => ({
+      event: 'solar-system-get-response',
+      data: { success: true, message: 'ok', solarSystem: cancri, stars: [star], bodies: [star, planet] },
+    }));
+
+    await new GameShellPage(page).openViewer();
+    const item = new ViewerPage(page).systemItemById('exo-55-cnc');
+    await expect(item.getByTestId('viewer-system-data-as-of')).toHaveText(`Data as of ${snapshotDate}`);
+    await item.getByRole('button').click();
+    await expect(page).toHaveURL(/right:viewer-scene\/exo-55-cnc/);
+
+    await expect(page.getByTestId('viewer-data-as-of')).toHaveText(`Data as of ${snapshotDate}`);
+    const about = page.getByTestId('viewer-about-data');
+    await expect(about).not.toHaveAttribute('open', '');
+    await expect(about).toHaveAttribute('data-credit-context', 'exoplanet');
+    await about.locator('summary').click();
+    await expect(about.locator('[data-credit-id="A1"]')).toBeVisible();
+    await expect(about.locator('[data-credit-id="A10"]')).toHaveCount(0);
+    await expect(about.locator('[data-credit-id="S1"]')).toHaveCount(0);
+    await expect(about.getByTestId('viewer-data-limitations').locator('li')).toHaveCount(7);
+    await page.getByTestId('viewer-info-panel').screenshot({ path: testInfo.outputPath('viewer-data-credits.png') });
+    await page
+      .locator('.details-type-header')
+      .filter({ has: page.locator('.details-type-header__label', { hasText: /^Hot Jupiters$/ }) })
+      .click();
+    await page.locator('tr', { hasText: '55 Cnc b' }).first().locator('button.details-target-btn').click();
+    await page.getByTestId('viewer-inspect-target').click();
+    const references = page.getByTestId('viewer-inspector-references');
+    await expect(references.locator('li')).toHaveCount(5);
+    const discovery = references.locator('li').first();
+    await expect(discovery).toHaveAttribute('data-reference-discovery', 'true');
+    await expect(discovery.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(discovery.getByRole('link')).toHaveAttribute('target', '_blank');
+    await references.getByTestId('viewer-references-toggle').click();
+    await expect(references.locator('li')).toHaveCount(7);
+    await page.getByTestId('viewer-body-inspector').screenshot({ path: testInfo.outputPath('viewer-references.png') });
+  });
+
   test('requests the server-listed Cygnus system and renders its black-hole group with one companion', async ({
     page,
   }) => {

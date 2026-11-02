@@ -2,7 +2,25 @@
 
 ## Status and decisions
 
-**Status:** G0 and Phase 1 complete and verified; Phase 2 next.
+**Status (handoff 2026-11-02):** G0 and Phases 1–3 complete, verified,
+committed and pushed to `main`. Remaining: Phase 4 (dedicated lava/ocean
+renderers) and the release gate. Work is moving to a faster machine; resume
+from "Resume here" below.
+
+### Resume here (next session)
+
+1. Pull `main` and check that the GitHub Actions run for the Phase 3 push is
+   green; fix any CI failures first.
+2. Start Phase 4 (see the Phase 4 section): build the lava renderer first.
+   Keep Earth on its current terran renderer. Ask the user about the
+   exoplanet `ocean` look before building it.
+3. Then run the release gate. Run sequentially: `npm run test:ci`, then the
+   combined Viewer e2e, then a live smoke check against `localhost:3000`.
+   Record the evidence in the log at the end of this document.
+
+Machine note: do not run Vitest and Playwright concurrently on slow
+machines; contention produces flaky failures. Use `--workers=1` for
+Playwright when in doubt.
 
 - [x] Review both supplied handoffs and the affected frontend entry points.
 - [x] Confirm delivery preference: one plan, separate phases, aiming for one implementation session.
@@ -10,7 +28,9 @@
 - [x] Confirm inclusion of remaining Viewer attribution work as a third phase.
 - [x] Check runtime OpenAPI availability using cache-busting.
 - [x] Complete the implementation contract-verification gate below.
-- [ ] Complete all three implementation phases and combined release verification.
+- [x] Complete all three implementation phases (Phases 1–3 committed).
+- [ ] Phase 4 (lava/ocean renderers, user follow-up).
+- [ ] Combined release verification.
 
 Recommendation: consume the changes in one coordinated change set against one
 Forge release. Paging and planet support overlap in models, Viewer selection,
@@ -232,28 +252,75 @@ rings/metadata are correct; 55 Cnc and KOI-351 render every expected unique body
 Depends on Phase 2 metadata plumbing. Reuse existing intro credits and avoid
 unrelated intro-page changes.
 
-- [ ] Add Viewer-accessible data credits and "About this data" presentation
+- [x] Add Viewer-accessible data credits and "About this data" presentation
       using existing records. Cover Sol S1-S7 and exoplanet A1-A8; preserve A1/A5
       acknowledgment wording, A3/A4 license links and change notices, and
       secondary A7/A8 placement.
-- [ ] Keep A10 behind a default-off flag until reuse terms are confirmed.
+- [x] Keep A10 behind a default-off flag until reuse terms are confirmed.
       Do not enable it as part of this migration.
-- [ ] Render per-planet references in server order, first entry marked
+- [x] Render per-planet references in server order, first entry marked
       "Discovery", collapse more than five behind "Show all", and hide the
       section when absent. Support safe absolute HTTP/HTTPS links with
       `target="_blank"` and `rel="noopener noreferrer"`; reject unsafe schemes
       explicitly. Labels remain literal text, never HTML.
-- [ ] Show "Data as of" from `catalogSnapshotDate` in system view/details only
+- [x] Show "Data as of" from `catalogSnapshotDate` in system view/details only
       when supplied; never hard-code a snapshot date or parse a date from prose.
-- [ ] Add Sol/exoplanet limitations and a shared estimated-value explanation.
+- [x] Add Sol/exoplanet limitations and a shared estimated-value explanation.
       Reuse Phase 2 markers rather than introducing competing semantics.
-- [ ] Localize new presentation in English and Italian; verify credit wording
+- [x] Localize new presentation in English and Italian; verify credit wording
       remains faithful to required acknowledgments.
-- [ ] Verify credits/reference tests and capture Viewer credits and planet
+- [x] Verify credits/reference tests and capture Viewer credits and planet
       references screenshots.
 
 Exit: credits, references, dates, and uncertainty disclosures meet the addendum
 without regressing completed intro credits.
+
+Implementation notes (Phase 3):
+
+- Credits live in a collapsed "About this data" section of the Viewer scene
+  info panel, rendered through the shared `AstronomyCreditList` component that
+  the intro page now also uses. Scope is contextual: Sol shows S1–S7 plus Sol
+  limitations; `exoplanet-catalog` systems show A1–A8 (A7/A8 secondary) plus
+  exoplanet limitations; other systems show HYG (S7) only.
+- A10 is gated by `environment.nameExoWorldsCreditEnabled` (default `false`).
+- Unsafe reference URLs render their label as plain text and log a warning.
+- "Data as of" appears in the scene info panel and on Viewer list rows when
+  `catalogSnapshotDate` is a valid `YYYY-MM-DD` string.
+- Star `approximate` exists only on star-list/star-get, which no UI consumes;
+  in `solar-system-get`, star estimates arrive via `approximateFields` and are
+  already disclosed by the Phase 2 `≈` markers.
+- Solar-system details (user follow-up): the single "Planet" section is
+  replaced by one section per planet type, in archetype order (rocky →
+  super-Jupiter). The type comes from a valid `planetType`, otherwise from a
+  planet-compatible `surfaceArchetype`. Untyped planets fall back to "Planet".
+  Approximate types show a "(likely)" badge, and the distance view names the
+  planet type. Labels are localized in en and it.
+- Every category section (stars, all ten planet types, dwarf planets, moons,
+  asteroids, black holes, TNOs, comets, stations, ships) renders for every
+  system, with a count of 0 when empty. The only exception is the untyped
+  "Planet" fallback, which appears only when it has rows. The star, planet,
+  moon, asteroid and station section labels are now localized.
+
+### Phase 4 - Dedicated lava and ocean renderers (user follow-up)
+
+The Phase 2 audit deferred these: `lava` and `ocean` still use the terran
+fallback and raise a `[celestial-appearance-fallback]` variance toast (for
+example `exo-hd-219134-b`). This phase starts after the Phase 3 commit.
+
+- [ ] Add a lava generator: dark basalt crust with glowing magma cracks and an
+      emissive night side. Include a CPU generator, a GLSL mirror, and CPU/GPU
+      parity tests (same pattern as `super-earth-surface.ts` and
+      `super-earth-shader.ts`).
+- [ ] Route `lava` to the new renderer in `celestial-appearance.ts`,
+      `planet-seed.ts`, `planet-texture.ts`, `planet-shader.ts`,
+      `planet-surface-resolver.ts` and `planet-bake.ts`. Bump the generator
+      version.
+- [ ] Ocean: keep Earth (Sol) on its current terran renderer, because Earth
+      is an ocean world. Decide whether exoplanet `ocean` bodies get a
+      dedicated look, or keep terran and stop treating the terran fallback as
+      a variance.
+- [ ] Add a splash picker entry for lava. Add unit tests and Viewer e2e
+      coverage, and confirm that no fallback toast appears for lava bodies.
 
 ## Verification matrix
 
@@ -320,7 +387,9 @@ Build is mandatory after template/type changes; TypeScript alone is insufficient
 If splitting sessions, stop at a verified phase checkpoint, update this document
 with changed files, exact evidence, blockers, and the next unchecked item.
 Prefer a second implementation session over dropping acceptance criteria.
-Local commits are made per verified phase; no push or deployment is requested.
+Commits are made per verified phase. Phases 1–3 were pushed to `main` on
+2026-11-02 (the user requested this so GitHub Actions validates in parallel);
+no deployment has been requested.
 
 Out of scope: Forge generator changes, cursor/snapshot protocols, total-count
 caching, Sol system-get slimming, sourced Sol rings/future ring bands, optional
@@ -337,6 +406,10 @@ atmospheric tails, and enabling A10 before approval.
 | 2026-11-02 | G0 | Cache-busted fetch of 26 contract files; live socket probe against localhost:3000 confirmed paging metadata, totals, and search targets. Schema gap: `discovery.references` only in upsert schema. | Phase 1. |
 | 2026-11-02 | Phase 1 | Shared `fetchAllPages` traversal, ship-exterior migration (fail-closed resume), Viewer paged discovery, mock paging emulation. `npm test` 214 files / 2639 tests passed; `npm run typecheck` and `npm run build` clean; changed-file eslint clean; Playwright `viewer-list`, `viewer-scene-rendering`, `ship-exterior-hangar-resume`, `cold-boot-asteroid-parity` passed. | Commit; begin Phase 2. |
 | 2026-11-02 | Phase 2 | Five new archetypes with recovery placeholders; super-earth baked surface; gas-giant variant shading; server rings (km → planet radii, `≈` disclosure); companion-star layout (incl. ~500,000 AU test); catalog inspector section with `≈` values and "likely" types; splash picker entries for all five kinds. `npm test` 219 files / 2700 tests passed; typecheck, build, changed-file eslint, `git diff --check` clean. Playwright: all `viewer-*` specs passed; 6 new splash variant specs passed. Pre-existing splash flakes under software WebGL (terran bake / intro redirect timeouts) reproduce on the stashed baseline. Live Forge: 55 Cnc and KOI-351 bodies pass recovery with zero rejections; `exo-55-cnc-b-c`/`-b-b` resolve host `exo-star-55-cnc-b`; `exo-koi-351-g` uses server rings; `exo-kepler-90-i` → super-earth. Deferred: lava/ocean keep terran fallback. | Commit; begin Phase 3. |
+| 2026-11-02 | Phase 3 | Shared `AstronomyCreditList` (intro + Viewer); collapsed "About this data" section with contextual credits (Sol S1–S7 / exoplanet A1–A8 with A7/A8 secondary / HYG S7), localized limitations and `≈` explanation; A10 behind `nameExoWorldsCreditEnabled=false`; inspector references in server order with Discovery badge, >5 collapse (resets per body), http(s)-only links with `target=_blank` + `rel="noopener noreferrer"`, unsafe URLs as plain text + warning; "Data as of" in scene panel and list rows from `catalogSnapshotDate` only. `npm test` 220 files / 2719 tests passed; typecheck, build, changed-file eslint, `git diff --check` clean. Playwright: all `viewer-*` specs 100/102 in the parallel run — `viewer-controls-after-target` layout invariant fixed by placing About after surface sources; `viewer-planet-surfaces` "bakes the detail view" was worker contention and passed serially; `viewer-list` + `viewer-controls-after-target` 15/15 after fixes. Screenshots: `viewer-data-credits.png`, `viewer-references.png` (session files). | Commit; release gate. |
+| 2026-11-02 | Phase 3 (details) | Solar-system details groups planets by type (`planet-<type>` sections, untyped → "Planet"), with a "(likely)" badge for approximate types and planet-type names in the distance view; en/it labels. Details vitest 13/13; `npm test` 2717/2722 in a parallel run under load, and all 4 failed files (110 tests) passed on rerun; typecheck, build, changed-file eslint clean. Playwright `viewer-list`, `viewer-controls-after-target`, `viewer-interactions` 33/34 in parallel, and the failed station-target case passed serially (6/6). | Commit; release gate. |
+| 2026-11-02 | Phase 3 (all categories) | Details page renders every category with a count of 0 when empty; the untyped "Planet" fallback renders only when it has rows. Lava/ocean renderer gap logged as Phase 4. Details vitest 13/13; typecheck, build and eslint clean; Playwright `viewer-interactions`, `viewer-list`, `viewer-controls-after-target` 34/34 (`--workers=1`, run separately from Vitest). | Commit Phase 3; then Phase 4. |
+| 2026-11-02 | Handoff | Phase 3 committed and pushed to `main` together with the Phase 1–2 commits; GitHub Actions validates the push. The session is ending on this machine because it is too slow; resume on a faster machine from "Resume here". | Verify CI; start Phase 4 (lava). |
 
 Add implementation rows here. For blockers, include the affected task, concrete
 failure or missing schema detail, owner/action needed, and re-verification result.

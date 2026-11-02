@@ -12,7 +12,7 @@ import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
-import { SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
+import { DETAILS_PLANET_TYPE_ORDER, SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
 
 interface TypeGroup {
   type: string;
@@ -28,6 +28,7 @@ interface SolarSystemDetailsNavigationState {
 
 const TYPE_GROUP_ORDER = [
   'star',
+  ...DETAILS_PLANET_TYPE_ORDER.map((planetType) => planetGroupKey(planetType)),
   'planet',
   'dwarf-planet',
   'moon',
@@ -38,7 +39,18 @@ const TYPE_GROUP_ORDER = [
   'station',
   'ship',
 ];
-const ALWAYS_VISIBLE_TYPES = new Set(['dwarf-planet', 'tno', 'comet']);
+/** Every category renders (count 0 when empty) except the untyped-planet fallback. */
+const HIDDEN_WHEN_EMPTY_TYPES = new Set(['planet']);
+
+/** Typed planets get their own section (e.g. `planet-hot-jupiter`); untyped planets stay in `planet`. */
+function planetGroupKey(planetType: string): string {
+  return `planet-${planetType}`;
+}
+
+function rowGroupKey(row: DetailsRow): string {
+  const type = row.bodyType.trim().toLowerCase();
+  return type === 'planet' && row.planetType ? planetGroupKey(row.planetType) : type;
+}
 
 @Component({
   selector: 'app-solar-system-details-page',
@@ -103,18 +115,27 @@ export default class SolarSystemDetailsPage {
     const allRows = this.rows();
     const groupMap = new Map<string, DetailsRow[]>();
     for (const row of allRows) {
-      const type = row.bodyType.trim().toLowerCase();
+      const type = rowGroupKey(row);
       if (!groupMap.has(type)) groupMap.set(type, []);
       groupMap.get(type)!.push(row);
     }
     const labels: Record<string, string> = {
+      star: this.t.game.viewer.detailsSectionStar,
+      planet: this.t.game.viewer.detailsSectionPlanet,
+      moon: this.t.game.viewer.detailsSectionMoon,
+      asteroid: this.t.game.viewer.detailsSectionAsteroid,
+      station: this.t.game.viewer.detailsSectionStation,
       'dwarf-planet': this.t.game.viewer.detailsSectionDwarfPlanet,
       'black-hole': this.t.game.viewer.detailsSectionBlackHole,
       tno: this.t.game.viewer.detailsSectionTno,
       comet: this.t.game.viewer.detailsSectionComet,
       ship: this.t.game.viewer.detailsSectionShips,
     };
-    return TYPE_GROUP_ORDER.filter((type) => groupMap.has(type) || ALWAYS_VISIBLE_TYPES.has(type)).map((type) => ({
+    const planetTypeLabels: Record<string, string> = this.t.game.viewer.detailsSectionPlanetTypes;
+    for (const planetType of DETAILS_PLANET_TYPE_ORDER) {
+      labels[planetGroupKey(planetType)] = planetTypeLabels[planetType];
+    }
+    return TYPE_GROUP_ORDER.filter((type) => groupMap.has(type) || !HIDDEN_WHEN_EMPTY_TYPES.has(type)).map((type) => ({
       type,
       label: labels[type] ?? this.capitalize(type),
       rows: groupMap.get(type) ?? [],
@@ -132,6 +153,12 @@ export default class SolarSystemDetailsPage {
 
   private capitalize(s: string): string {
     return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
+  }
+
+  /** Distance-view type: the planet archetype name for typed planets, otherwise the raw body type. */
+  protected rowTypeLabel(row: DetailsRow): string {
+    const names: Record<string, string> = this.t.game.viewer.detailsPlanetTypeNames;
+    return (row.planetType && names[row.planetType]) || row.bodyType;
   }
 
   ngOnInit(): void {

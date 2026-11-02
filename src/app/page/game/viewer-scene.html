@@ -36,6 +36,11 @@
         (wheel)="$event.stopPropagation()"
       >
         <h2 class="viewer-info-panel__title">{{ t.game.viewer.infoPanelTitle }}</h2>
+        @if (snapshotDate(); as date) {
+        <p class="viewer-info-panel__data-as-of" data-testid="viewer-data-as-of">
+          {{ t.game.viewer.dataAsOfLabel.replace('{date}', date) }}
+        </p>
+        }
         @if (hasCygnusX1BlackHole()) {
         <p data-testid="viewer-black-hole-layout-note">{{ t.game.viewer.cygnusX1VisualizationNote }}</p>
         } @if (blackHoleRendererError()) {
@@ -163,6 +168,37 @@
         </details>
 
         <app-planet-surface-progress [embedded]="true" />
+
+        @if (dataCredits(); as credits) {
+        <details
+          class="viewer-about-data viewer-info-panel__section"
+          data-testid="viewer-about-data"
+          [attr.data-credit-context]="credits.context"
+        >
+          <summary>{{ t.game.viewer.aboutDataTitle }}</summary>
+          <h3>{{ t.game.viewer.dataCreditsTitle }}</h3>
+          <app-astronomy-credit-list [credits]="credits.primary" data-testid="viewer-data-credits" />
+          @if (credits.secondary.length) {
+          <h4>{{ t.public.intro.secondaryExoplanetCreditsTitle }}</h4>
+          <app-astronomy-credit-list
+            [credits]="credits.secondary"
+            [secondary]="true"
+            data-testid="viewer-secondary-data-credits"
+          />
+          } @if (credits.context !== 'stellar') {
+          <h3>{{ t.game.viewer.dataLimitationsTitle }}</h3>
+          <ul class="viewer-about-data__limitations" data-testid="viewer-data-limitations">
+            @for (limitation of credits.context === 'sol' ? t.game.viewer.solDataLimitations :
+            t.game.viewer.exoplanetDataLimitations; track $index) {
+            <li>{{ limitation }}</li>
+            }
+          </ul>
+          }
+          <p class="viewer-about-data__estimated" data-testid="viewer-estimated-explanation">
+            {{ t.game.viewer.estimatedValueExplanation }}
+          </p>
+        </details>
+        }
 
         @if (isDevBuild) {
         <details class="viewer-qa-panel viewer-info-panel__section" data-testid="viewer-qa-panel">
@@ -298,6 +334,37 @@
           <p class="viewer-detail-pane__note" data-testid="viewer-inspector-approximate-note">
             {{ t.game.viewer.approximateValuesNote }}
           </p>
+          }
+        </details>
+        } @if (inspectedReferences().length) {
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-references" open>
+          <summary>{{ t.game.viewer.referencesTitle }}</summary>
+          <ol class="viewer-references">
+            @for (reference of visibleReferences(); track $index) {
+            <li [attr.data-reference-discovery]="reference.discovery ? 'true' : null">
+              @if (reference.discovery) {
+              <span class="viewer-detail-pane__badge viewer-references__discovery">
+                {{ t.game.viewer.referenceDiscoveryLabel }}
+              </span>
+              } @if (reference.url; as url) {
+              <a [href]="url" target="_blank" rel="noopener noreferrer">{{ reference.label }}</a>
+              } @else {
+              <span data-testid="viewer-reference-unlinked">{{ reference.label }}</span>
+              }
+            </li>
+            }
+          </ol>
+          @if (inspectedReferences().length > referenceCollapseLimit) {
+          <button
+            type="button"
+            class="viewer-references__toggle"
+            data-testid="viewer-references-toggle"
+            [attr.aria-expanded]="referencesExpanded()"
+            (click)="toggleReferences()"
+          >
+            {{ referencesExpanded() ? t.game.viewer.referencesShowFewer :
+            t.game.viewer.referencesShowAll.replace('{count}', '' + inspectedReferences().length) }}
+          </button>
           }
         </details>
         }

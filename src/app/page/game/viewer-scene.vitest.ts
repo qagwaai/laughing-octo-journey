@@ -19,6 +19,9 @@ import { SocketService } from '../../services/socket.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import ViewerScenePage from './viewer-scene';
 
+// Built at runtime so lint's no-script-url rule does not flag the fixture itself.
+const SCRIPT_URL = ['javascript', 'alert(1)'].join(':');
+
 function setup(navigationState?: Record<string, unknown>, queryParams?: Record<string, string>) {
   const socketService: MockSocketService = createMockSocketService();
   const sessionService: MockSessionService = createMockSessionService('test-session-key');
@@ -1053,5 +1056,98 @@ describe('ViewerScenePage', () => {
     expect(component['isPlanetTransitioning']()).toBe(false);
     expect((router as unknown as { navigate: ReturnType<typeof vi.fn> }).navigate).not.toHaveBeenCalled();
     vi.useRealTimers();
+  });
+
+  describe('data attribution', () => {
+    const spatial = {
+      solarSystemId: 'exo-55-cnc',
+      frame: 'barycentric' as const,
+      positionKm: { x: 1, y: 0, z: 0 },
+      epochMs: 0,
+    };
+    const exoSystem = {
+      id: 'exo-55-cnc',
+      displayName: '55 Cancri',
+      source: 'exoplanet-catalog' as const,
+      catalogSnapshotDate: '2026-11-01',
+    };
+    const references = Array.from({ length: 7 }, (_, i) => ({
+      label: i === 3 ? '<b>Unsafe</b>' : `Ref ${i}`,
+      url: i === 3 ? SCRIPT_URL : `https://example.org/${i}`,
+    }));
+
+    function setupSystem(solarSystem: Record<string, unknown>) {
+      const result = setup({ playerName: 'Pioneer', solarSystemId: solarSystem['id'], solarSystem });
+      result.component['bodies'].set([
+        { id: 'exo-55-cnc-b', bodyType: 'planet', displayName: '55 Cnc b', spatial, discovery: { references } },
+        { id: 'exo-55-cnc-c', bodyType: 'planet', displayName: '55 Cnc c', spatial },
+      ] as never);
+      result.component['isLoading'].set(false);
+      result.fixture.detectChanges();
+      return result;
+    }
+
+    const query = (fixture: { nativeElement: HTMLElement }, testId: string) =>
+      fixture.nativeElement.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+
+    it('shows exoplanet credits, limitations and the snapshot date in a collapsed About section', () => {
+      const { fixture } = setupSystem(exoSystem);
+      expect(query(fixture, 'viewer-data-as-of')?.textContent).toContain('2026-11-01');
+      const about = query(fixture, 'viewer-about-data') as HTMLDetailsElement;
+      expect(about.open).toBe(false);
+      expect(about.dataset['creditContext']).toBe('exoplanet');
+      const creditIds = Array.from(about.querySelectorAll('[data-credit-id]')).map((el) =>
+        el.getAttribute('data-credit-id'),
+      );
+      expect(creditIds).toEqual(expect.arrayContaining(['A1', 'A8']));
+      expect(creditIds).not.toContain('A10');
+      expect(creditIds).not.toContain('S1');
+      expect(query(fixture, 'viewer-data-limitations')?.querySelectorAll('li')).toHaveLength(7);
+      expect(query(fixture, 'viewer-estimated-explanation')).not.toBeNull();
+    });
+
+    it('shows Sol credits without a snapshot date when the server sends none', () => {
+      const { fixture } = setupSystem({ id: 'sol', displayName: 'Sol', source: 'curated' });
+      expect(query(fixture, 'viewer-data-as-of')).toBeNull();
+      const about = query(fixture, 'viewer-about-data') as HTMLElement;
+      expect(about.dataset['creditContext']).toBe('sol');
+      expect(about.querySelector('[data-credit-id="S1"]')).not.toBeNull();
+      expect(about.querySelector('[data-credit-id="A1"]')).toBeNull();
+    });
+
+    it('renders discovery-first references safely and collapses long lists', () => {
+      const warn = vi.spyOn(appLogger, 'warn').mockImplementation(() => undefined);
+      const { component, fixture } = setupSystem(exoSystem);
+      component['inspectedBodyId'].set('exo-55-cnc-b');
+      fixture.detectChanges();
+
+      const section = query(fixture, 'viewer-inspector-references') as HTMLElement;
+      expect(section).not.toBeNull();
+      let items = section.querySelectorAll('li');
+      expect(items).toHaveLength(5);
+      expect(items[0].getAttribute('data-reference-discovery')).toBe('true');
+      const firstLink = items[0].querySelector('a') as HTMLAnchorElement;
+      expect(firstLink.getAttribute('href')).toBe('https://example.org/0');
+      expect(firstLink.getAttribute('target')).toBe('_blank');
+      expect(firstLink.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(items[3].querySelector('a')).toBeNull();
+      expect(items[3].querySelector('b')).toBeNull();
+      expect(items[3].textContent).toContain('<b>Unsafe</b>');
+      expect(warn).toHaveBeenCalled();
+
+      const toggle = query(fixture, 'viewer-references-toggle') as HTMLButtonElement;
+      expect(toggle.textContent).toContain('7');
+      toggle.click();
+      fixture.detectChanges();
+      items = section.querySelectorAll('li');
+      expect(items).toHaveLength(7);
+
+      component['inspectedBodyId'].set('exo-55-cnc-c');
+      fixture.detectChanges();
+      expect(query(fixture, 'viewer-inspector-references')).toBeNull();
+      component['inspectedBodyId'].set('exo-55-cnc-b');
+      fixture.detectChanges();
+      expect(query(fixture, 'viewer-inspector-references')?.querySelectorAll('li')).toHaveLength(5);
+    });
   });
 });

@@ -158,7 +158,11 @@
                         </svg>
                       </button>
                     </span>
-                    <span class="details-name-target__label">{{ row.displayName }}</span>
+                    <span class="details-name-target__label">
+                      {{ row.displayName }} @if (row.planetTypeLikely) {
+                      <span class="details-likely-badge" data-testid="details-planet-type-likely">({{ t.game.viewer.catalogTypeLikely }})</span>
+                      }
+                    </span>
                   </span>
                 </td>
                 <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
@@ -216,11 +220,13 @@
                   <span class="details-name-target__label">
                     {{ row.displayName }} @if (row.isActiveShip) {
                     <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
+                    } @if (row.planetTypeLikely) {
+                    <span class="details-likely-badge">({{ t.game.viewer.catalogTypeLikely }})</span>
                     }
                   </span>
                 </span>
               </td>
-              <td class="details-col-type">{{ row.bodyType }}</td>
+              <td class="details-col-type">{{ rowTypeLabel(row) }}</td>
               <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
             </tr>
             }

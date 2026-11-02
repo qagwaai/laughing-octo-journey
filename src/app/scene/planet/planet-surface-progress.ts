@@ -259,6 +259,7 @@ import { PlanetTextureCache } from './planet-texture-cache';
       }
       :host(.surface-progress-embedded) .surface-notices {
         margin-top: 0;
+        gap: 0;
       }
       :host(.surface-progress-embedded) .surface-notice--sources {
         padding: 0.45rem 0;

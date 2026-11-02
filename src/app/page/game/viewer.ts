@@ -17,6 +17,7 @@ import { SessionService } from '../../services/session.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { resolveNavigationState } from '../navigation-state';
+import { catalogSnapshotDate } from './viewer-data-attribution';
 
 interface ViewerNavigationState {
   playerName?: string;
@@ -219,6 +220,10 @@ export default class ViewerPage implements OnInit, OnDestroy {
         },
       },
     );
+  }
+
+  protected snapshotDateOf(system: SolarSystemSummary): string | null {
+    return catalogSnapshotDate(system);
   }
 
   protected formatDistance(parsecs: number | null | undefined, approximate?: boolean): string {

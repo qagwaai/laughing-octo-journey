@@ -323,6 +323,24 @@ describe('ViewerPage', () => {
       const { component } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
       expect(component['formatDistance'](848.25, true)).toBe('≈848.25');
     });
+
+    it('shows the catalog snapshot date only on rows that carry one', () => {
+      const { fixture } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
+      respond(listRequests()[0], {
+        solarSystems: [
+          { ...system('exo-55-cnc'), source: 'exoplanet-catalog', catalogSnapshotDate: '2026-11-01' },
+          system('sol'),
+        ],
+        total: 2,
+        offset: 0,
+        limit: 50,
+        hasMore: false,
+      });
+      fixture.detectChanges();
+      const dates = fixture.nativeElement.querySelectorAll('[data-testid="viewer-system-data-as-of"]');
+      expect(dates).toHaveLength(1);
+      expect(dates[0].textContent).toContain('Data as of 2026-11-01');
+    });
   });
 
   it('formats non-finite and finite distances', () => {

@@ -3,10 +3,12 @@ import {
   Component,
   computed,
   CUSTOM_ELEMENTS_SCHEMA,
+  effect,
   ElementRef,
   inject,
   OnDestroy,
   signal,
+  untracked,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgtsStats } from 'angular-three-soba/stats';
@@ -46,6 +48,14 @@ import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
+import { AstronomyCreditList } from '../public/astronomy-credit-list';
+import {
+  catalogSnapshotDate,
+  REFERENCE_COLLAPSE_LIMIT,
+  resolveViewerDataCredits,
+  viewerBodyReferences,
+  visibleBodyReferences,
+} from './viewer-data-attribution';
 import {
   APPROXIMATE_PREFIX,
   approximatePrefix,
@@ -190,7 +200,7 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
   templateUrl: './viewer-scene.html',
   styleUrls: ['./viewer-scene.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgtCanvas, NgtsStats, ViewerSystemScene, PlanetSurfaceProgress],
+  imports: [NgtCanvas, NgtsStats, ViewerSystemScene, PlanetSurfaceProgress, AstronomyCreditList],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 /**
@@ -226,6 +236,24 @@ export default class ViewerScenePage implements OnDestroy {
   protected readonly inspectedBodyId = signal<string | null>(null);
   protected readonly inspectedBody = computed(
     () => this.visibleSceneBodies().find((body) => body.id === this.inspectedBodyId()) ?? null,
+  );
+  protected readonly dataCredits = computed(() =>
+    resolveViewerDataCredits(this.solarSystem(), environment.nameExoWorldsCreditEnabled),
+  );
+  protected readonly snapshotDate = computed(() => catalogSnapshotDate(this.solarSystem()));
+  protected readonly referenceCollapseLimit = REFERENCE_COLLAPSE_LIMIT;
+  protected readonly inspectedReferences = computed(() => {
+    const body = this.inspectedBody();
+    return body ? viewerBodyReferences(body) : [];
+  });
+  /** Collapses again whenever the inspected body changes. */
+  protected readonly referencesExpanded = signal(false);
+  private readonly collapseReferencesOnBodyChange = effect(() => {
+    this.inspectedBodyId();
+    untracked(() => this.referencesExpanded.set(false));
+  });
+  protected readonly visibleReferences = computed(() =>
+    visibleBodyReferences(this.inspectedReferences(), this.referencesExpanded()),
   );
   protected focusedPlanet = signal<ViewerBody | null>(null);
   protected readonly labeledBody = computed<ViewerBody | null>(() => {
@@ -591,6 +619,10 @@ export default class ViewerScenePage implements OnDestroy {
 
   protected approximateTitle(body: ViewerBody, path: string): string | null {
     return isApproximateField(body, path) ? this.t.game.viewer.approximateValueTooltip : null;
+  }
+
+  protected toggleReferences(): void {
+    this.referencesExpanded.update((expanded) => !expanded);
   }
 
   protected onViewerQaToggle(event: Event): void {
