@@ -8,6 +8,7 @@
 import { ICY_MOON_GENERATOR_VERSION } from './icy-moon-surface';
 import { calibrateContinents } from './planet-surface';
 import { ROCKY_MOON_GENERATOR_VERSION } from './rocky-moon-surface';
+import { SUPER_EARTH_GENERATOR_VERSION } from './super-earth-surface';
 
 export const PLANET_GENERATOR_VERSION = 'terran-v2';
 
@@ -17,7 +18,7 @@ export const PLANET_GENERATOR_VERSION = 'terran-v2';
  */
 const climateCache = new Map<string, PlanetClimate>();
 
-export type PlanetArchetype = 'terran' | 'icy-moon' | 'rocky-moon';
+export type PlanetArchetype = 'terran' | 'icy-moon' | 'rocky-moon' | 'super-earth';
 
 export interface PlanetClimate {
   archetype: PlanetArchetype;
@@ -76,6 +77,7 @@ export function derivePlanetClimate(
     terran: PLANET_GENERATOR_VERSION,
     'icy-moon': ICY_MOON_GENERATOR_VERSION,
     'rocky-moon': ROCKY_MOON_GENERATOR_VERSION,
+    'super-earth': SUPER_EARTH_GENERATOR_VERSION,
   }[archetype];
   const cacheKey = `${version}|${surfaceArchetype}|${archetype}|${bodyId}`;
   const cached = climateCache.get(cacheKey);

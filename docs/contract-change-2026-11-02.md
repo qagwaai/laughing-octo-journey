@@ -186,16 +186,16 @@ without mixing filter generations.
 Depends on G0 and the Phase 1 shared model checkpoint. Complete Phase 1 before
 combined user-flow validation.
 
-- [ ] Add `super-earth`, `sub-neptune`, `hot-neptune`, `hot-jupiter`, and
+- [x] Add `super-earth`, `sub-neptune`, `hot-neptune`, `hot-jupiter`, and
       `super-jupiter` to canonical classification and compatible planet values.
-- [ ] Carry schema-confirmed rings, approximation paths, catalog identifiers,
+- [x] Carry schema-confirmed rings, approximation paths, catalog identifiers,
       names/source, star identity, companion counts, discovery/status/disputed
       metadata, references, and snapshot dates through models and adapters for
       both system-get and body-list projections.
-- [ ] Key catalog stars by `starId`, not nullable/optional `hygId`; preserve
+- [x] Key catalog stars by `starId`, not nullable/optional `hygId`; preserve
       distinct body entity IDs and accept empty summary HYG echoes.
       Preserve existing deduplication of stars repeated in `stars` and `bodies`.
-- [ ] Add an explicit render-boundary placeholder for unknown archetypes and
+- [x] Add an explicit render-boundary placeholder for unknown archetypes and
       log body ID/reason. Keep known siblings renderable. Preserve canonical
       validation for missing identity, invalid coordinates/state, conflicting
       records, and other structural failures; unsafe records must receive
@@ -205,20 +205,24 @@ combined user-flow validation.
       of the ten planet archetypes a distinct look at system-view zoom, including
       existing lava/ocean paths that currently fall back. Do not recreate
       Forge's scientific classification from mass/radius/temperature.
-- [ ] Add optional annular rings using centre-relative radii, equatorial tilt,
+      _Partial:_ the five new types have dedicated renderers (super-earth baked
+      surface; four gas-giant shader variants with haze/day-glow/night-glow/
+      uniform-glow). **Deferred:** `lava` and `ocean` still use the terran
+      fallback renderer (pre-existing behaviour, out of this change set).
+- [x] Add optional annular rings using centre-relative radii, equatorial tilt,
       tint, opacity, and the same body scale. Apply axial tilt once; tolerate
       unknown ring fields and dispose resources. No rings when absent.
-- [ ] Resolve companion-star parenting through `parentBodyId`; show
+- [x] Resolve companion-star parenting through `parentBodyId`; show
       circumbinary names via `circumbinaryStarIds` and disclose approximate
       anchoring. Test camera/orbit robustness at roughly 500,000 AU separation.
-- [ ] Show catalog name only when different, approximate stars/distances and
+- [x] Show catalog name only when different, approximate stars/distances and
       listed planet fields only, "likely" inferred types, disputed flags, and
       procedural-ring disclosure. Define consistent parent-path handling for
       entries such as `orbit`, alongside dotted leaf paths.
-- [ ] Preserve catalog text as plain text and original catalog measurements.
+- [x] Preserve catalog text as plain text and original catalog measurements.
       Support moon-free catalog systems without assuming every system has moons.
-- [ ] Localize new UI/accessible labels in English and Italian.
-- [ ] Verify phase tests and record checkpoint evidence.
+- [x] Localize new UI/accessible labels in English and Italian.
+- [x] Verify phase tests and record checkpoint evidence.
 
 Exit: all ten planet types render distinctly; unknown types degrade explicitly;
 rings/metadata are correct; 55 Cnc and KOI-351 render every expected unique body.
@@ -332,6 +336,7 @@ atmospheric tails, and enabling A10 before approval.
 
 | 2026-11-02 | G0 | Cache-busted fetch of 26 contract files; live socket probe against localhost:3000 confirmed paging metadata, totals, and search targets. Schema gap: `discovery.references` only in upsert schema. | Phase 1. |
 | 2026-11-02 | Phase 1 | Shared `fetchAllPages` traversal, ship-exterior migration (fail-closed resume), Viewer paged discovery, mock paging emulation. `npm test` 214 files / 2639 tests passed; `npm run typecheck` and `npm run build` clean; changed-file eslint clean; Playwright `viewer-list`, `viewer-scene-rendering`, `ship-exterior-hangar-resume`, `cold-boot-asteroid-parity` passed. | Commit; begin Phase 2. |
+| 2026-11-02 | Phase 2 | Five new archetypes with recovery placeholders; super-earth baked surface; gas-giant variant shading; server rings (km → planet radii, `≈` disclosure); companion-star layout (incl. ~500,000 AU test); catalog inspector section with `≈` values and "likely" types; splash picker entries for all five kinds. `npm test` 219 files / 2700 tests passed; typecheck, build, changed-file eslint, `git diff --check` clean. Playwright: all `viewer-*` specs passed; 6 new splash variant specs passed. Pre-existing splash flakes under software WebGL (terran bake / intro redirect timeouts) reproduce on the stashed baseline. Live Forge: 55 Cnc and KOI-351 bodies pass recovery with zero rejections; `exo-55-cnc-b-c`/`-b-b` resolve host `exo-star-55-cnc-b`; `exo-koi-351-g` uses server rings; `exo-kepler-90-i` → super-earth. Deferred: lava/ocean keep terran fallback. | Commit; begin Phase 3. |
 
 Add implementation rows here. For blockers, include the affected task, concrete
 failure or missing schema detail, owner/action needed, and re-verification result.

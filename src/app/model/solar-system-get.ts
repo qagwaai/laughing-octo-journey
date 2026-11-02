@@ -119,6 +119,44 @@ export interface ViewerBody {
   spectralClass?: string | null;
   luminositySolar?: number | null;
   massSolar?: number | null;
+  /** Producer catalog, e.g. `exoplanet-catalog`; omitted for curated/procedural bodies. */
+  catalogSource?: string | null;
+  catalogIds?: Record<string, string> | null;
+  /** Scientific designation; shown as a secondary label when it differs from displayName. */
+  catalogName?: string | null;
+  /** Dotted paths (`physical.*`, `orbit.*`, `atmosphere`, `surfaceArchetype`, ...) of estimated values. */
+  approximateFields?: string[];
+  rings?: ViewerBodyRings | null;
+  status?: string;
+  controversial?: boolean;
+  circumbinary?: boolean;
+  circumbinaryStarIds?: string[];
+  systemRole?: string | null;
+  discovery?: ViewerBodyDiscovery | null;
+  /** Client-side marker: body failed contract validation and renders as a neutral placeholder. */
+  placeholder?: boolean;
+}
+
+/** Ring radii are measured from the planet centre in the planet's equatorial plane. */
+export interface ViewerBodyRings {
+  innerRadiusKm: number;
+  outerRadiusKm: number;
+  tiltDeg: number;
+  colorHex: string;
+  opacity: number;
+  approximate: boolean;
+}
+
+export interface ViewerBodyDiscoveryReference {
+  label?: string | null;
+  url?: string | null;
+}
+
+export interface ViewerBodyDiscovery {
+  discoveredBy?: string | null;
+  discoveredYear?: number | null;
+  discoveryNotes?: string | null;
+  references?: ViewerBodyDiscoveryReference[];
 }
 
 export interface CanonicalViewerBody extends ViewerBody {

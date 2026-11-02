@@ -235,6 +235,9 @@
             {{ body.displayName }}
             <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
           </h2>
+          @if (secondaryCatalogName(body); as catalogName) {
+          <span class="viewer-detail-pane__catalog-name" data-testid="viewer-inspector-catalog-name">{{ catalogName }}</span>
+          }
           @if (canOpenCloseup(body)) {
           <button
             type="button"
@@ -255,6 +258,49 @@
           <span class="viewer-detail-pane__label">ID</span>
           <span class="viewer-detail-pane__value">{{ body.id }}</span>
         </div>
+        @if (hasCatalogMetadata(body)) {
+        <details class="viewer-inspector-section" data-testid="viewer-inspector-catalog" open>
+          <summary>{{ t.game.viewer.catalogSectionTitle }}</summary>
+          @if (body.surfaceArchetype) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.catalogTypeLabel }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              data-testid="viewer-inspector-catalog-type"
+              [attr.title]="isLikelyBodyType(body) ? t.game.viewer.approximateValueTooltip : null"
+            >
+              {{ body.surfaceArchetype }}@if (isLikelyBodyType(body)) { ({{ t.game.viewer.catalogTypeLikely }})}
+            </span>
+          </div>
+          } @if (body.status) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.catalogStatusLabel }}</span>
+            <span class="viewer-detail-pane__value">{{ body.status }}</span>
+          </div>
+          } @if (body.controversial) {
+          <p class="viewer-detail-pane__badge" data-testid="viewer-inspector-disputed">
+            {{ t.game.viewer.catalogDisputedLabel }}
+          </p>
+          } @if (body.circumbinary) {
+          <p class="viewer-detail-pane__badge" data-testid="viewer-inspector-circumbinary">
+            {{ t.game.viewer.catalogCircumbinaryLabel }}
+          </p>
+          } @if (body.rings; as rings) {
+          <div class="viewer-detail-pane__row">
+            <span class="viewer-detail-pane__label">{{ t.game.viewer.catalogRingsLabel }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              data-testid="viewer-inspector-rings"
+              [attr.title]="areRingsApproximate(body) ? t.game.viewer.catalogRingsEstimated : null"
+            >{{ areRingsApproximate(body) ? approximateMark : '' }}{{ rings.innerRadiusKm }}–{{ rings.outerRadiusKm }} km</span>
+          </div>
+          } @if (body.approximateFields?.length) {
+          <p class="viewer-detail-pane__note" data-testid="viewer-inspector-approximate-note">
+            {{ t.game.viewer.approximateValuesNote }}
+          </p>
+          }
+        </details>
+        }
         @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
         <details class="viewer-inspector-section" data-testid="viewer-inspector-render">
           <summary>{{ t.game.viewer.inspectorRenderTitle }}</summary>
@@ -308,12 +354,18 @@
           } @if (body.physicalCatalog?.meanRadiusKm != null) {
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionRadiusLabel }}</span>
-            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.meanRadiusKm }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="approximateTitle(body, 'physical.meanRadiusKm')"
+            >{{ approximatePrefix(body, 'physical.meanRadiusKm') }}{{ body.physicalCatalog?.meanRadiusKm }}</span>
           </div>
           } @if (body.physicalCatalog?.meanTemperatureK != null) {
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionTemperatureLabel }}</span>
-            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.meanTemperatureK }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="approximateTitle(body, 'physical.meanTemperatureK')"
+            >{{ approximatePrefix(body, 'physical.meanTemperatureK') }}{{ body.physicalCatalog?.meanTemperatureK }}</span>
           </div>
           } @if (body.blackHoleProperties; as blackHole) {
           <div class="viewer-detail-pane__row">
@@ -363,7 +415,10 @@
           } }
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Planet Type</span>
-            <span class="viewer-detail-pane__value">{{ body.planetType ?? '—' }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="isLikelyBodyType(body) ? t.game.viewer.approximateValueTooltip : null"
+            >{{ body.planetType ?? '—' }}@if (body.planetType && isLikelyBodyType(body)) { ({{ t.game.viewer.catalogTypeLikely }})}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Color</span>
@@ -394,33 +449,33 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.semiMajorAxisKm')">{{ approximatePrefix(body, 'orbit.semiMajorAxisKm') }}{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Eccentricity</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.eccentricity')">{{ approximatePrefix(body, 'orbit.eccentricity') }}{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Inclination (deg)</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.inclinationDeg')">{{ approximatePrefix(body, 'orbit.inclinationDeg') }}{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span>
-            <span class="viewer-detail-pane__value">
-              {{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.longitudeOfAscendingNodeDeg')">
+              {{ approximatePrefix(body, 'orbit.longitudeOfAscendingNodeDeg') }}{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}
             </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.argumentOfPeriapsisDeg')">{{ approximatePrefix(body, 'orbit.argumentOfPeriapsisDeg') }}{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.meanAnomalyAtEpochDeg')">{{ approximatePrefix(body, 'orbit.meanAnomalyAtEpochDeg') }}{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Orbital Period (s)</span>
-            <span class="viewer-detail-pane__value">{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.orbitalPeriodSec')">{{ approximatePrefix(body, 'orbit.orbitalPeriodSec') }}{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Epoch</span>

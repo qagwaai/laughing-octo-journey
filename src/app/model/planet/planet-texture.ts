@@ -9,11 +9,13 @@ import { clamp01 } from './planet-noise';
 import type { PlanetClimate } from './planet-seed';
 import { directionFromEquirect, planetAlbedo, planetElevation, planetMaterial } from './planet-surface';
 import { rockyMoonAlbedo, rockyMoonElevation, rockyMoonMaterial } from './rocky-moon-surface';
+import { superEarthAlbedo, superEarthElevation, superEarthMaterial } from './super-earth-surface';
 
 const SURFACE_MODELS = {
   terran: { elevation: planetElevation, albedo: planetAlbedo, material: planetMaterial },
   'icy-moon': { elevation: icyMoonElevation, albedo: icyMoonAlbedo, material: icyMoonMaterial },
   'rocky-moon': { elevation: rockyMoonElevation, albedo: rockyMoonAlbedo, material: rockyMoonMaterial },
+  'super-earth': { elevation: superEarthElevation, albedo: superEarthAlbedo, material: superEarthMaterial },
 };
 
 export type PlanetLodTier = 'l0' | 'l1';

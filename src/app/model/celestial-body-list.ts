@@ -4,7 +4,9 @@ import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classifica
 import type { PagedListResponseMetadata } from './paged-list';
 import type {
   CanonicalViewerBodyOrbitalElements,
+  ViewerBodyDiscovery,
   ViewerBodyPhysicalCatalog,
+  ViewerBodyRings,
   ViewerBodyVisualization,
 } from './solar-system-get';
 import { MotionState, ObservabilityState, PhysicalState, SpatialState } from './spatial';
@@ -57,11 +59,7 @@ export interface CelestialBodyListItem {
     surfacePressurePa?: number | null;
     primaryComponents?: string[];
   } | null;
-  discovery?: {
-    discoveredBy?: string | null;
-    discoveredYear?: number | null;
-    discoveryNotes?: string | null;
-  } | null;
+  discovery?: ViewerBodyDiscovery | null;
   magnitudes?: {
     absoluteMagnitudeH?: number | null;
     apparentMagnitudeMin?: number | null;
@@ -90,6 +88,16 @@ export interface CelestialBodyListItem {
   }>;
   /** Computed distance from the search origin, in kilometres. */
   distanceKm?: number;
+  catalogSource?: string | null;
+  catalogIds?: Record<string, string> | null;
+  catalogName?: string | null;
+  approximateFields?: string[];
+  rings?: ViewerBodyRings | null;
+  status?: string;
+  controversial?: boolean;
+  circumbinary?: boolean;
+  circumbinaryStarIds?: string[];
+  systemRole?: string | null;
 }
 
 export interface CelestialBodyListResponse extends PagedListResponseMetadata {

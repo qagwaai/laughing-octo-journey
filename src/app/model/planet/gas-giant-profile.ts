@@ -14,7 +14,28 @@ import { canonicalSaturnProfile, SATURN_BODY_ID, SATURN_RENDERER_VERSION } from 
 
 export const GAS_GIANT_GENERATOR_VERSION = 'gas-giant-v2';
 
-export type GasGiantPalette = 'jovian' | 'saturnian' | 'ice';
+/** Server planet classes that render through the gas-giant pipeline with their own look. */
+export type GasGiantTypeVariant = 'sub-neptune' | 'hot-neptune' | 'hot-jupiter' | 'super-jupiter';
+export const GAS_GIANT_TYPE_VARIANTS: readonly GasGiantTypeVariant[] = [
+  'sub-neptune',
+  'hot-neptune',
+  'hot-jupiter',
+  'super-jupiter',
+];
+export type GasGiantVariant = 'classic' | GasGiantTypeVariant;
+export type GasGiantSurfaceArchetype = 'gas-giant' | 'ice-giant' | GasGiantTypeVariant;
+
+export function isGasGiantTypeVariant(value: unknown): value is GasGiantTypeVariant {
+  return typeof value === 'string' && GAS_GIANT_TYPE_VARIANTS.includes(value as GasGiantTypeVariant);
+}
+
+/** Hot planets (Teq >= 1000 K) never carry rings: they would sublimate. */
+export function isHotGasGiantVariant(variant: GasGiantVariant): boolean {
+  return variant === 'hot-neptune' || variant === 'hot-jupiter';
+}
+
+export type GasGiantPalette = 'jovian' | 'saturnian' | 'ice' | GasGiantTypeVariant;
+/** Seeded/dev-selectable classic palettes; type palettes are chosen by surfaceArchetype only. */
 export const GAS_GIANT_PALETTES: readonly GasGiantPalette[] = ['jovian', 'saturnian', 'ice'];
 
 export type GasGiantRgb = readonly [number, number, number];
@@ -96,12 +117,29 @@ export interface GasGiantProfile {
   ovals: readonly GasGiantVortex[];
   swirls: readonly GasGiantSwirl[];
   rings: GasGiantRingProfile | null;
+  /** Shader look; `classic` for gas/ice giants, otherwise the server planet class. */
+  variant: GasGiantVariant;
+  /** Equilibrium temperature used for thermal glow on hot variants; null when unknown. */
+  meanTemperatureK: number | null;
+}
+
+/** Server-authored ring geometry, already converted to planet radii. */
+export interface GasGiantRingGeometryOverride {
+  innerRadius: number;
+  outerRadius: number;
+  color: GasGiantRgb;
+  opacity: number;
 }
 
 export interface GasGiantProfileOverrides {
   palette?: GasGiantPalette;
   rings?: boolean;
-  surfaceArchetype?: 'gas-giant' | 'ice-giant';
+  surfaceArchetype?: GasGiantSurfaceArchetype;
+  /** Replaces seeded ring radii/colour/opacity; implies rings unless the variant is hot. */
+  ringGeometry?: GasGiantRingGeometryOverride;
+  /** Replaces the seeded axial tilt (the ring plane follows it). */
+  axialTiltDeg?: number;
+  meanTemperatureK?: number | null;
 }
 
 /** Maximum vortices the shader accepts; the profile never exceeds it. */
@@ -169,6 +207,70 @@ const PALETTES: Readonly<Record<GasGiantPalette, PaletteSpec>> = {
     ovalCount: [1, 3],
     ringChance: 0.45,
     ringStyle: 'narrow',
+  },
+  // Hazy, low-contrast mini-Neptunes (#8fb8c9).
+  'sub-neptune': {
+    zone: [0.66, 0.8, 0.85],
+    belt: [0.53, 0.69, 0.77],
+    altBelt: [0.58, 0.73, 0.8],
+    polar: [0.64, 0.76, 0.82],
+    bandCount: [4, 7],
+    jitter: 0.03,
+    turbulence: [0.1, 0.25],
+    anticycloneChance: 0.15,
+    anticycloneColor: [0.42, 0.58, 0.68],
+    ovalColor: [0.85, 0.92, 0.95],
+    ovalCount: [0, 1],
+    ringChance: 0.2,
+    ringStyle: 'faint',
+  },
+  // Irradiated Neptunes: tan haze with a bright day side (#c9a27f).
+  'hot-neptune': {
+    zone: [0.86, 0.72, 0.58],
+    belt: [0.7, 0.53, 0.39],
+    altBelt: [0.75, 0.58, 0.44],
+    polar: [0.62, 0.52, 0.45],
+    bandCount: [5, 8],
+    jitter: 0.04,
+    turbulence: [0.25, 0.45],
+    anticycloneChance: 0.2,
+    anticycloneColor: [0.92, 0.8, 0.62],
+    ovalColor: [0.95, 0.88, 0.75],
+    ovalCount: [0, 2],
+    ringChance: 0,
+    ringStyle: 'faint',
+  },
+  // Tidally locked roasters: dark rust belts and hot zones (#b5523b).
+  'hot-jupiter': {
+    zone: [0.8, 0.45, 0.31],
+    belt: [0.55, 0.22, 0.16],
+    altBelt: [0.62, 0.27, 0.19],
+    polar: [0.38, 0.2, 0.17],
+    bandCount: [8, 12],
+    jitter: 0.06,
+    turbulence: [0.5, 0.85],
+    anticycloneChance: 0.5,
+    anticycloneColor: [0.95, 0.62, 0.3],
+    ovalColor: [0.98, 0.78, 0.5],
+    ovalCount: [1, 3],
+    ringChance: 0,
+    ringStyle: 'faint',
+  },
+  // Massive, high-gravity giants: many compressed bands (#a8785a).
+  'super-jupiter': {
+    zone: [0.8, 0.66, 0.52],
+    belt: [0.55, 0.37, 0.26],
+    altBelt: [0.48, 0.32, 0.23],
+    polar: [0.45, 0.38, 0.34],
+    bandCount: [18, 26],
+    jitter: 0.05,
+    turbulence: [0.55, 0.9],
+    anticycloneChance: 0.7,
+    anticycloneColor: [0.72, 0.33, 0.2],
+    ovalColor: [0.95, 0.9, 0.82],
+    ovalCount: [2, 5],
+    ringChance: 0.3,
+    ringStyle: 'broad',
   },
 };
 
@@ -249,10 +351,11 @@ function resolveBandFlow(
   random: () => number,
 ): number {
   const absLatitude = Math.abs(latitude);
-  if (palette === 'ice') {
+  if (palette === 'ice' || palette === 'sub-neptune' || palette === 'hot-neptune') {
     return Math.max(-1, Math.min(1, -Math.cos(latitude * 2.2) * 0.8 + (random() - 0.5) * 0.15));
   }
-  const equatorial = Math.max(0, 1 - absLatitude / 0.3) * (palette === 'saturnian' ? 1 : 0.7);
+  const equatorial =
+    Math.max(0, 1 - absLatitude / 0.3) * (palette === 'saturnian' || palette === 'hot-jupiter' ? 1 : 0.7);
   const alternating = (kind === 'zone' ? 0.35 : -0.35) * Math.cos(absLatitude);
   return Math.max(-1, Math.min(1, equatorial + alternating + (random() - 0.5) * 0.12));
 }
@@ -326,6 +429,10 @@ function buildRings(palette: GasGiantPalette, spec: PaletteSpec, random: () => n
     jovian: [0.62, 0.52, 0.43],
     saturnian: [0.86, 0.79, 0.65],
     ice: [0.5, 0.52, 0.56],
+    'sub-neptune': [0.62, 0.7, 0.74],
+    'hot-neptune': [0.6, 0.55, 0.5],
+    'hot-jupiter': [0.55, 0.4, 0.35],
+    'super-jupiter': [0.7, 0.6, 0.5],
   };
   return {
     style,
@@ -344,27 +451,62 @@ export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfile
   const saturn = bodyId === SATURN_BODY_ID;
   if (saturn) overrides = { palette: 'saturnian', rings: true, surfaceArchetype: 'gas-giant' };
   const surfaceArchetype = overrides.surfaceArchetype ?? 'gas-giant';
+  const variant: GasGiantVariant = isGasGiantTypeVariant(surfaceArchetype) ? surfaceArchetype : 'classic';
+  const hot = isHotGasGiantVariant(variant);
   const version = saturn ? SATURN_RENDERER_VERSION : GAS_GIANT_GENERATOR_VERSION;
-  const cacheKey = `${version}|${surfaceArchetype}|${bodyId}|${overrides.palette ?? '*'}|${overrides.rings ?? '*'}`;
+  const ringGeometry = overrides.ringGeometry;
+  const meanTemperatureK =
+    typeof overrides.meanTemperatureK === 'number' && Number.isFinite(overrides.meanTemperatureK)
+      ? overrides.meanTemperatureK
+      : null;
+  const cacheKey = [
+    version,
+    surfaceArchetype,
+    bodyId,
+    overrides.palette ?? '*',
+    overrides.rings ?? '*',
+    ringGeometry
+      ? `${ringGeometry.innerRadius},${ringGeometry.outerRadius},${ringGeometry.color.join(',')},${ringGeometry.opacity}`
+      : '*',
+    overrides.axialTiltDeg ?? '*',
+    meanTemperatureK ?? '*',
+  ].join('|');
   const cached = profileCache.get(cacheKey);
   if (cached) return cached;
 
   const seed = fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${bodyId}`);
   const random = createSeededRng(seed);
   const paletteRoll = random();
-  const seededPalette: GasGiantPalette = paletteRoll < 0.4 ? 'jovian' : paletteRoll < 0.72 ? 'saturnian' : 'ice';
-  const palette = overrides.palette ?? seededPalette;
+  const seededPalette: GasGiantPalette =
+    variant !== 'classic' ? variant : paletteRoll < 0.4 ? 'jovian' : paletteRoll < 0.72 ? 'saturnian' : 'ice';
+  const palette = variant !== 'classic' ? variant : (overrides.palette ?? seededPalette);
   const spec = PALETTES[palette];
   const ringRoll = random();
-  const hasRings = overrides.rings ?? ringRoll < spec.ringChance;
+  const hasRings = !hot && (overrides.rings ?? (ringGeometry ? true : ringRoll < spec.ringChance));
 
   // Each feature draws from its own stream so overriding one choice never reshuffles the others.
   const stream = (name: string) =>
     createSeededRng(fnv1a32(`${GAS_GIANT_GENERATOR_VERSION}|${surfaceArchetype}|${name}|${bodyId}`));
   const shape = stream('shape');
-  const axialTilt = round6(lerp(0.03, palette === 'ice' ? 0.5 : 0.48, shape()));
+  const seededTilt = lerp(0.03, palette === 'ice' ? 0.5 : 0.48, shape());
+  const axialTilt = round6(
+    typeof overrides.axialTiltDeg === 'number' && Number.isFinite(overrides.axialTiltDeg)
+      ? (overrides.axialTiltDeg * Math.PI) / 180
+      : seededTilt,
+  );
   const turbulence = round6(lerp(spec.turbulence[0], spec.turbulence[1], shape()));
   const anticyclone = buildAnticyclone(spec, stream('anticyclone'));
+  const seededRings = hasRings ? buildRings(palette, spec, stream('rings'), seed) : null;
+  const rings =
+    seededRings && ringGeometry
+      ? {
+          ...seededRings,
+          innerRadius: round6(ringGeometry.innerRadius),
+          outerRadius: round6(ringGeometry.outerRadius),
+          color: ringGeometry.color.map((channel) => round6(clamp01(channel))) as unknown as GasGiantRgb,
+          opacity: round6(clamp01(ringGeometry.opacity)),
+        }
+      : seededRings;
 
   const profile: GasGiantProfile = {
     bodyId,
@@ -377,7 +519,9 @@ export function deriveGasGiantProfile(bodyId: string, overrides: GasGiantProfile
     anticyclone,
     ovals: buildOvals(spec, stream('ovals'), anticyclone !== null),
     swirls: buildSwirls(stream('swirls')),
-    rings: hasRings ? buildRings(palette, spec, stream('rings'), seed) : null,
+    rings,
+    variant,
+    meanTemperatureK,
   };
   const resolved = saturn ? canonicalSaturnProfile(profile) : profile;
   profileCache.set(cacheKey, resolved);

@@ -3,12 +3,15 @@ import { deriveGasGiantProfile, GAS_GIANT_PALETTES } from '../../model/planet/ga
 import { STELLAR_CLASS_LETTERS } from '../../model/star/spectral-class';
 import { resolveSpectralClass } from '../../model/star/star-profile';
 import {
+  isSplashGiantVariantKind,
   isSplashPickerCategory,
   pickRandomSplashPlanet,
   resolveSplashAppearance,
   selectSplashPlanet,
   selectSplashPlanetBodyId,
   solBodyHasClouds,
+  SPLASH_EXOPLANET_KINDS,
+  SPLASH_EXOPLANETS,
   SPLASH_ICY_MOONS,
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_ROTATION,
@@ -117,6 +120,30 @@ describe('selectSplashPlanet stars', () => {
 });
 
 describe('splash body picker', () => {
+  it.each(SPLASH_EXOPLANET_KINDS)('offers %s demos explicitly through the shared renderer path', (kind) => {
+    const entries = splashEntriesForCategory(kind);
+    expect(entries).toHaveLength(4);
+    expect(entries.every((entry) => entry.kind === kind)).toBe(true);
+    expect(entries[0].id).toBe(`nova-splash-${kind}-01`);
+    expect(isSplashPickerCategory(kind)).toBe(true);
+    expect(SPLASH_PLANET_ROTATION.some((entry) => entry.kind === kind)).toBe(false);
+    expect(SPLASH_EXOPLANETS).toEqual(expect.arrayContaining([...entries]));
+    expect(selectSplashPlanet(`?splashPlanet=${entries[1].id}`)).toEqual(entries[1]);
+    expect(selectSplashPlanet(`?splashPlanet=preview-${kind}&splashKind=${kind}`)).toEqual({
+      id: `preview-${kind}`,
+      kind,
+    });
+    expect(resolveSplashAppearance(entries[0])).toMatchObject({
+      valid: true,
+      input: {
+        bodyType: 'planet',
+        surfaceArchetype: kind,
+        renderer: kind === 'super-earth' ? 'super-earth' : 'gas-giant',
+      },
+    });
+    expect(isSplashGiantVariantKind(kind)).toBe(kind !== 'super-earth');
+  });
+
   it('offers rocky moons explicitly with deterministic pins and an unchanged random pool', () => {
     expect(splashEntriesForCategory('rocky-moon')).toBe(SPLASH_ROCKY_MOONS);
     expect(SPLASH_ROCKY_MOONS).toHaveLength(6);

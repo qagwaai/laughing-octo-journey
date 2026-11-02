@@ -4,6 +4,11 @@ export const SURFACE_ARCHETYPES = [
   'ocean',
   'gas-giant',
   'ice-giant',
+  'super-earth',
+  'sub-neptune',
+  'hot-neptune',
+  'hot-jupiter',
+  'super-jupiter',
   'star',
   'rocky-moon',
   'icy-moon',
@@ -28,7 +33,18 @@ export type CanonicalBodyType = (typeof CELESTIAL_BODY_TYPES)[number];
 
 const COMPATIBLE_ARCHETYPES: Readonly<Record<CanonicalBodyType, readonly SurfaceArchetype[]>> = {
   star: ['star'],
-  planet: ['rocky', 'lava', 'ocean', 'gas-giant', 'ice-giant'],
+  planet: [
+    'rocky',
+    'lava',
+    'ocean',
+    'gas-giant',
+    'ice-giant',
+    'super-earth',
+    'sub-neptune',
+    'hot-neptune',
+    'hot-jupiter',
+    'super-jupiter',
+  ],
   'dwarf-planet': ['rocky', 'icy-moon'],
   moon: ['rocky-moon', 'icy-moon', 'lava'],
   asteroid: ['asteroid'],
@@ -154,27 +170,111 @@ export function validateCanonicalBodyCollection(bodies: readonly unknown[]): str
   for (const body of bodies) {
     const invalid = validateCanonicalBodyClassification(body);
     if (invalid) return invalid;
-    const record = body as Record<string, unknown>;
-    const id = record['id'] as string;
-    const previous = seen.get(id);
-    if (!previous) {
-      seen.set(id, record);
+    const conflict = recordCanonicalBody(seen, body as Record<string, unknown>);
+    if (conflict) return conflict;
+  }
+  return null;
+}
+
+export interface CanonicalBodyRejection {
+  id: string | null;
+  reason: string;
+}
+
+export interface CanonicalBodyRecovery<T> {
+  /** Valid bodies plus neutral placeholders (flagged `placeholder: true`) for invalid ones. */
+  bodies: T[];
+  rejected: CanonicalBodyRejection[];
+  /** Conflicting duplicate IDs remain fatal: the data source is inconsistent. */
+  conflict: string | null;
+}
+
+export const PLACEHOLDER_BODY_COLOR = '#8a8f98';
+
+/**
+ * Per-body variant of {@link validateCanonicalBodyCollection}: a single unknown or
+ * invalid body no longer fails the whole system. Bodies with a usable id and
+ * position are kept as neutral placeholders; the rest are dropped.
+ */
+export function recoverCanonicalBodyCollection<T extends { id: string }>(
+  bodies: readonly unknown[],
+): CanonicalBodyRecovery<T> {
+  const seen = new Map<string, Record<string, unknown>>();
+  const result: T[] = [];
+  const rejected: CanonicalBodyRejection[] = [];
+  for (const body of bodies) {
+    const invalid = validateCanonicalBodyClassification(body);
+    if (!invalid) {
+      const conflict = recordCanonicalBody(seen, body as Record<string, unknown>);
+      if (conflict) return { bodies: [], rejected, conflict };
+      result.push(body as T);
       continue;
     }
-    const position = (value: Record<string, unknown>) => {
-      const spatial = value['spatial'] as Record<string, unknown> | undefined;
-      const point = spatial?.['positionKm'] as Record<string, unknown> | undefined;
-      return [point?.['x'], point?.['y'], point?.['z']];
-    };
-    if (
-      previous['bodyType'] !== record['bodyType'] ||
-      previous['surfaceArchetype'] !== record['surfaceArchetype'] ||
-      (previous['spectralClass'] ?? null) !== (record['spectralClass'] ?? null) ||
-      (previous['luminositySolar'] ?? null) !== (record['luminositySolar'] ?? null) ||
-      JSON.stringify(position(previous)) !== JSON.stringify(position(record))
-    ) {
-      return `conflicting canonical records share body ID ${id}`;
+    const placeholder = toPlaceholderBody(body);
+    rejected.push({ id: placeholder?.id ?? readBodyId(body), reason: invalid });
+    if (placeholder && !result.some((existing) => existing.id === placeholder.id)) {
+      result.push(placeholder as unknown as T);
     }
+  }
+  return { bodies: result, rejected, conflict: null };
+}
+
+function readBodyId(body: unknown): string | null {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;
+  const id = (body as Record<string, unknown>)['id'];
+  return typeof id === 'string' && id.trim().length > 0 ? id : null;
+}
+
+function toPlaceholderBody(body: unknown): (Record<string, unknown> & { id: string }) | null {
+  const id = readBodyId(body);
+  if (!id) return null;
+  const record = body as Record<string, unknown>;
+  const spatial = record['spatial'] as Record<string, unknown> | null | undefined;
+  const point = spatial && typeof spatial === 'object' ? (spatial['positionKm'] as Record<string, unknown>) : null;
+  if (
+    !point ||
+    typeof point !== 'object' ||
+    !['x', 'y', 'z'].every((axis) => typeof point[axis] === 'number' && Number.isFinite(point[axis]))
+  ) {
+    return null;
+  }
+  const bodyType = typeof record['bodyType'] === 'string' && record['bodyType'] !== 'star' ? record['bodyType'] : 'planet';
+  const displayName = typeof record['displayName'] === 'string' && record['displayName'] ? record['displayName'] : id;
+  return {
+    id,
+    bodyType,
+    displayName,
+    parentBodyId: typeof record['parentBodyId'] === 'string' ? record['parentBodyId'] : null,
+    spatial: { ...spatial, positionKm: { x: point['x'], y: point['y'], z: point['z'] } },
+    physicalCatalog: record['physicalCatalog'] ?? null,
+    physical: record['physical'] ?? null,
+    surfaceArchetype: null,
+    state: 'active',
+    visualization: { colorHex: PLACEHOLDER_BODY_COLOR },
+    placeholder: true,
+  };
+}
+
+function recordCanonicalBody(seen: Map<string, Record<string, unknown>>, record: Record<string, unknown>): string | null {
+  const id = record['id'] as string;
+  const previous = seen.get(id);
+  if (!previous) {
+    seen.set(id, record);
+    return null;
+  }
+  const position = (value: Record<string, unknown>) => {
+    const spatial = value['spatial'] as Record<string, unknown> | undefined;
+    const point = spatial?.['positionKm'] as Record<string, unknown> | undefined;
+    return [point?.['x'], point?.['y'], point?.['z']];
+  };
+  if (
+    previous['bodyType'] !== record['bodyType'] ||
+    previous['surfaceArchetype'] !== record['surfaceArchetype'] ||
+    (previous['spectralClass'] ?? null) !== (record['spectralClass'] ?? null) ||
+    (previous['luminositySolar'] ?? null) !== (record['luminositySolar'] ?? null) ||
+    JSON.stringify(position(previous)) !== JSON.stringify(position(record))
+  ) {
+    return `conflicting canonical records share body ID ${id}`;
   }
   return null;
 }

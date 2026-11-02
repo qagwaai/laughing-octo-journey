@@ -290,3 +290,21 @@ export function resolveScenePositionFromSpatialKm(
 
   return [+(dx * scaled).toFixed(3), +(dy * scaled).toFixed(3), +(dz * scaled).toFixed(3)];
 }
+
+/**
+ * Returns the companion star a planet orbits when its `parentBodyId` names a star
+ * that is displaced from the system origin (e.g. 55 Cnc B). Such planets are laid
+ * out and given orbit rings relative to that star rather than the barycentre.
+ */
+export function resolveCompanionStarHost(
+  body: ViewerBody,
+  byId: ReadonlyMap<string, ViewerBody>,
+): ViewerBody | null {
+  if (body.bodyType !== 'planet' || body.orbitalElements?.anchorBodyId) return null;
+  const parentId = body.parentBodyId;
+  if (!parentId) return null;
+  const parent = byId.get(parentId);
+  if (!parent || !isStarBody(parent)) return null;
+  const { x, y, z } = parent.spatial.positionKm;
+  return Math.hypot(x, y, z) > 0 ? parent : null;
+}

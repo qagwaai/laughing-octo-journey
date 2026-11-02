@@ -1,7 +1,7 @@
 import { Color, Vector3 } from 'three';
-import type { SurfaceArchetype } from '../../model/celestial-classification';
-import { deriveGasGiantProfile } from '../../model/planet/gas-giant-profile';
+import type { GasGiantSurfaceArchetype } from '../../model/planet/gas-giant-profile';
 import type { SplashQuality } from '../splash-state';
+import { deriveBodyGasGiantProfile } from './body-giant-profile';
 import { createGasGiant, type GasGiantHandle } from './gas-giant';
 import { toProfileOverrides, type GasGiantPaletteChoice, type GasGiantRingChoice } from './gas-giant-settings';
 
@@ -14,7 +14,7 @@ const SPLASH_RING_LIGHT = new Color('#fff2e0').multiplyScalar(2.2);
 
 export interface SplashGasGiantOptions {
   bodyId: string;
-  surfaceArchetype?: Extract<SurfaceArchetype, 'gas-giant' | 'ice-giant'>;
+  surfaceArchetype?: GasGiantSurfaceArchetype;
   quality: SplashQuality;
   palette: GasGiantPaletteChoice;
   rings: GasGiantRingChoice;
@@ -22,12 +22,10 @@ export interface SplashGasGiantOptions {
 }
 
 export function createSplashGasGiant(options: SplashGasGiantOptions): GasGiantHandle {
-  const profileOverrides = {
-    ...toProfileOverrides(options.palette, options.rings),
-    ...(options.surfaceArchetype ? { surfaceArchetype: options.surfaceArchetype } : {}),
-    ...(options.surfaceArchetype === 'ice-giant' ? { palette: 'ice' as const } : {}),
-  };
-  const profile = deriveGasGiantProfile(options.bodyId, profileOverrides);
+  const profile = deriveBodyGasGiantProfile(
+    { id: options.bodyId, surfaceArchetype: options.surfaceArchetype ?? 'gas-giant' },
+    toProfileOverrides(options.palette, options.rings),
+  );
   const standard = options.quality === 'standard';
   const giant = createGasGiant(profile, {
     radius:

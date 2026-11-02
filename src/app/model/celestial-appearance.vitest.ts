@@ -8,6 +8,11 @@ const cases: Array<[CanonicalBodyType, SurfaceArchetype, string, string | undefi
   ['planet', 'ocean', 'terran', 'ocean'],
   ['planet', 'gas-giant', 'gas-giant', undefined],
   ['planet', 'ice-giant', 'gas-giant', undefined],
+  ['planet', 'super-earth', 'super-earth', undefined],
+  ['planet', 'sub-neptune', 'gas-giant', undefined],
+  ['planet', 'hot-neptune', 'gas-giant', undefined],
+  ['planet', 'hot-jupiter', 'gas-giant', undefined],
+  ['planet', 'super-jupiter', 'gas-giant', undefined],
   ['star', 'star', 'star', undefined],
   ['moon', 'rocky-moon', 'rocky-moon', undefined],
   ['moon', 'icy-moon', 'icy-moon', undefined],
@@ -46,6 +51,15 @@ describe('canonical celestial appearance resolver', () => {
       input: { source: 'demo', renderer: 'gas-giant', gasGiantPalette: 'ice' },
     });
   });
+
+  it.each(['sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter'] as const)(
+    'gives %s its own gas-giant palette',
+    (surfaceArchetype) => {
+      expect(
+        resolveCelestialAppearance({ source: 'canonical', bodyId: 'exo', bodyType: 'planet', surfaceArchetype }),
+      ).toMatchObject({ valid: true, input: { renderer: 'gas-giant', gasGiantPalette: surfaceArchetype } });
+    },
+  );
 
   it('rejects invalid classifications instead of applying a fallback', () => {
     expect(

@@ -32,7 +32,42 @@ import {
   resolveViewerDisplayVector,
   resolveOrbitRotationEuler,
   resolveScenePositionFromSpatialKm,
+  resolveCompanionStarHost,
 } from './viewer-formatters';
+
+describe('resolveCompanionStarHost', () => {
+  const primary = {
+    id: 'exo-star-55-cnc',
+    bodyType: 'star',
+    surfaceArchetype: 'star',
+    spatial: { positionKm: { x: 0, y: 0, z: 0 } },
+  } as ViewerBody;
+  const companion = {
+    ...primary,
+    id: 'exo-star-55-cnc-b',
+    spatial: { positionKm: { x: 1.6e11, y: 0, z: 0 } },
+  } as ViewerBody;
+  const planetOf = (parentBodyId: string, anchorBodyId: string | null = null) =>
+    ({
+      id: `planet-of-${parentBodyId}`,
+      bodyType: 'planet',
+      parentBodyId,
+      spatial: { positionKm: { x: 1, y: 0, z: 0 } },
+      orbitalElements: { anchorBodyId },
+    }) as unknown as ViewerBody;
+  const byId = new Map([primary, companion].map((body) => [body.id, body]));
+
+  it('returns an off-origin parent star for unanchored planets', () => {
+    expect(resolveCompanionStarHost(planetOf(companion.id), byId)).toBe(companion);
+  });
+
+  it('ignores primaries at the origin, anchored orbits, missing parents and non-planets', () => {
+    expect(resolveCompanionStarHost(planetOf(primary.id), byId)).toBeNull();
+    expect(resolveCompanionStarHost(planetOf(companion.id, companion.id), byId)).toBeNull();
+    expect(resolveCompanionStarHost(planetOf('missing'), byId)).toBeNull();
+    expect(resolveCompanionStarHost({ ...planetOf(companion.id), bodyType: 'moon' } as ViewerBody, byId)).toBeNull();
+  });
+});
 
 describe('Viewer display coordinate boundary', () => {
   it('preserves distance ratios and relative offsets in proportional mode without minimum radii', () => {

@@ -1,12 +1,14 @@
 import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classification';
 import { isCompatibleBodyClassification } from './celestial-classification';
-import { GAS_GIANT_GENERATOR_VERSION } from './planet/gas-giant-profile';
+import { GAS_GIANT_GENERATOR_VERSION, isGasGiantTypeVariant, type GasGiantPalette } from './planet/gas-giant-profile';
 import { ICY_MOON_GENERATOR_VERSION } from './planet/icy-moon-surface';
 import { PLANET_GENERATOR_VERSION } from './planet/planet-seed';
 import { ROCKY_MOON_GENERATOR_VERSION } from './planet/rocky-moon-surface';
+import { SUPER_EARTH_GENERATOR_VERSION } from './planet/super-earth-surface';
 import { STAR_GENERATOR_VERSION } from './star/star-profile';
 
-export type AppearanceRenderer = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'asteroid';
+export type AppearanceRenderer =
+  'terran' | 'icy-moon' | 'rocky-moon' | 'super-earth' | 'gas-giant' | 'star' | 'asteroid';
 export const ASTEROID_GENERATOR_VERSION = 'asteroid-v2';
 
 export interface CelestialAppearanceInput {
@@ -16,7 +18,7 @@ export interface CelestialAppearanceInput {
   surfaceArchetype: SurfaceArchetype;
   generatorVersion: string;
   renderer: AppearanceRenderer;
-  gasGiantPalette?: 'jovian' | 'ice';
+  gasGiantPalette?: Exclude<GasGiantPalette, 'saturnian'>;
   fallbackReason?: string;
 }
 
@@ -27,6 +29,7 @@ const GENERATOR_VERSIONS: Readonly<Record<AppearanceRenderer, string>> = {
   terran: PLANET_GENERATOR_VERSION,
   'icy-moon': ICY_MOON_GENERATOR_VERSION,
   'rocky-moon': ROCKY_MOON_GENERATOR_VERSION,
+  'super-earth': SUPER_EARTH_GENERATOR_VERSION,
   'gas-giant': GAS_GIANT_GENERATOR_VERSION,
   star: STAR_GENERATOR_VERSION,
   asteroid: ASTEROID_GENERATOR_VERSION,
@@ -71,15 +74,25 @@ export function resolveCelestialAppearance(input: {
       input: { ...classified, generatorVersion: GENERATOR_VERSIONS.asteroid, renderer: 'asteroid' },
     };
   }
-  if (surfaceArchetype === 'gas-giant' || surfaceArchetype === 'ice-giant') {
+  if (surfaceArchetype === 'gas-giant' || surfaceArchetype === 'ice-giant' || isGasGiantTypeVariant(surfaceArchetype)) {
     return {
       valid: true,
       input: {
         ...classified,
         generatorVersion: GENERATOR_VERSIONS['gas-giant'],
         renderer: 'gas-giant',
-        gasGiantPalette: surfaceArchetype === 'ice-giant' ? 'ice' : 'jovian',
+        gasGiantPalette: isGasGiantTypeVariant(surfaceArchetype)
+          ? surfaceArchetype
+          : surfaceArchetype === 'ice-giant'
+            ? 'ice'
+            : 'jovian',
       },
+    };
+  }
+  if (surfaceArchetype === 'super-earth') {
+    return {
+      valid: true,
+      input: { ...classified, generatorVersion: GENERATOR_VERSIONS['super-earth'], renderer: 'super-earth' },
     };
   }
   if (surfaceArchetype === 'icy-moon' || surfaceArchetype === 'rocky-moon') {

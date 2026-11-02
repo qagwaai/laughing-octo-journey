@@ -127,6 +127,7 @@ function renderPlanetPass(
       uMode: { value: values.uMode },
       uIcyMoon: { value: values.uIcyMoon },
       uRockyMoon: { value: values.uRockyMoon },
+      uSuperEarth: { value: values.uSuperEarth },
       uTexel: { value: [values.uTexel[0], values.uTexel[1]] },
     },
   });
@@ -220,7 +221,9 @@ export function bakePlanetTextures(options: PlanetBakeOptions): PlanetBakeResult
   const preset = options.preset ?? PLANET_LOD[options.tier ?? 'l0'];
   const archetype =
     options.archetype ??
-    (options.surfaceArchetype === 'icy-moon' || options.surfaceArchetype === 'rocky-moon'
+    (options.surfaceArchetype === 'icy-moon' ||
+    options.surfaceArchetype === 'rocky-moon' ||
+    options.surfaceArchetype === 'super-earth'
       ? options.surfaceArchetype
       : 'terran');
   const climate = derivePlanetClimate(options.bodyId, archetype, options.surfaceArchetype);

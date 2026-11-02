@@ -10,6 +10,8 @@ import { SplashState, type SplashQuality } from './splash-state';
 import { PlanetCloudSettings } from './planet/planet-clouds';
 import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import {
+  isSplashExoplanetKind,
+  isSplashGiantVariantKind,
   isSplashPickerCategory,
   solBodyHasClouds,
   SPLASH_PICKER_CATEGORIES,
@@ -118,14 +120,16 @@ import { isStarSpectralClassChoice, resolveStarSpectralClassChoice, StarSettings
               </p>
             }
           </div>
-          @if (state.planetKind() === 'gas-giant') {
-            <label for="splash-giant-palette">{{ t.public.splash.gasGiantPaletteLabel }}</label>
-            <select id="splash-giant-palette" [value]="giants.palette()" (change)="onGiantPalette($event)">
-              <option value="seeded">{{ t.public.splash.gasGiantPaletteSeeded }}</option>
-              <option value="jovian">{{ t.public.splash.gasGiantPaletteJovian }}</option>
-              <option value="saturnian">{{ t.public.splash.gasGiantPaletteSaturnian }}</option>
-              <option value="ice">{{ t.public.splash.gasGiantPaletteIce }}</option>
-            </select>
+          @if (showsGiantControls()) {
+            @if (state.planetKind() === 'gas-giant') {
+              <label for="splash-giant-palette">{{ t.public.splash.gasGiantPaletteLabel }}</label>
+              <select id="splash-giant-palette" [value]="giants.palette()" (change)="onGiantPalette($event)">
+                <option value="seeded">{{ t.public.splash.gasGiantPaletteSeeded }}</option>
+                <option value="jovian">{{ t.public.splash.gasGiantPaletteJovian }}</option>
+                <option value="saturnian">{{ t.public.splash.gasGiantPaletteSaturnian }}</option>
+                <option value="ice">{{ t.public.splash.gasGiantPaletteIce }}</option>
+              </select>
+            }
             <label for="splash-giant-rings">{{ t.public.splash.gasGiantRingsLabel }}</label>
             <select id="splash-giant-rings" [value]="giants.rings()" (change)="onGiantRings($event)">
               <option value="seeded">{{ t.public.splash.gasGiantRingsSeeded }}</option>
@@ -464,6 +468,10 @@ export class SplashOverlay {
     ...link, ariaLabel: link.text, showOrb: false,
   }));
   protected readonly categoryEntries = computed(() => splashEntriesForCategory(this.state.pickerCategory()));
+  protected readonly showsGiantControls = computed(() => {
+    const kind = this.state.planetKind();
+    return kind === 'gas-giant' || isSplashGiantVariantKind(kind);
+  });
   protected readonly hasSolClouds = computed(() => {
     const entry = this.state.planet();
     return entry.kind === 'sol' && solBodyHasClouds(entry.solKey);
@@ -490,6 +498,10 @@ export class SplashOverlay {
     if (entry.kind === 'gas-giant') return number ? `${labels.bodyGiant} ${number}` : entry.id;
     if (entry.kind === 'icy-moon') return number ? `${labels.bodyIcyMoon} ${number}` : entry.id;
     if (entry.kind === 'rocky-moon') return number ? `${labels.bodyRockyMoon} ${number}` : entry.id;
+    if (isSplashExoplanetKind(entry.kind)) {
+      const label = labels.bodyExoplanetKinds[entry.kind];
+      return number ? `${label} ${number}` : entry.id;
+    }
     if (entry.id === SPLASH_PLANET_BODY_ID) return labels.bodyHomeworld;
     return number ? `${labels.bodyWorld} ${number}` : entry.id;
   }

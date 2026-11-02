@@ -15,6 +15,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { SceneVisibilityService } from '../services/scene-visibility.service';
+import { isGasGiantSurfaceArchetype } from './gas-giant/body-giant-profile';
 import { GasGiantSettings } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant, replaceSplashGasGiant } from './gas-giant/splash-gas-giant';
 import { createPlanetCloudStormMaterial } from './planet/planet-cloud-storms';
@@ -198,7 +199,9 @@ export default class SplashScene {
         const next = createSplashGasGiant({
           bodyId: body.entry.id,
           surfaceArchetype:
-            archetype.valid && archetype.input.surfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
+            archetype.valid && isGasGiantSurfaceArchetype(archetype.input.surfaceArchetype)
+              ? archetype.input.surfaceArchetype
+              : 'gas-giant',
           quality,
           palette,
           rings,

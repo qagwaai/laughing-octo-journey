@@ -33,16 +33,16 @@ export function resolveCatalogRadiusKm(body: GasGiantClassifiableBody | null | u
 }
 
 /** Only planets can be giants; moons, stars and stations never are. */
+const GIANT_ARCHETYPES = new Set(['gas-giant', 'ice-giant', 'sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter']);
+
 export function isGasGiantBody(
   body: GasGiantClassifiableBody | null | undefined,
   mode: GasGiantClassificationMode = 'auto',
 ): boolean {
   void mode;
-  return (
-    body?.bodyType?.trim().toLowerCase() === 'planet' &&
-    (body.surfaceArchetype === 'gas-giant' || body.surfaceArchetype === 'ice-giant')
-  );
+  return body?.bodyType?.trim().toLowerCase() === 'planet' && GIANT_ARCHETYPES.has(body.surfaceArchetype ?? '');
 }
+
 
 export function parseGasGiantClassificationMode(search: string): GasGiantClassificationMode {
   const value = new URLSearchParams(search).get(GAS_GIANT_QUERY_PARAM)?.trim().toLowerCase();

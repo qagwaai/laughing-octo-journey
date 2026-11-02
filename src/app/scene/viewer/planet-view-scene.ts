@@ -17,7 +17,8 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { Vector3 } from 'three';
 import { resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { resolveCatalogRadiusKm } from '../../model/physical-catalog';
-import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import { deriveBodyGasGiantProfile } from '../gas-giant/body-giant-profile';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { StarProfile } from '../../model/star/star-profile';
 import { GasGiantBody } from '../gas-giant/gas-giant-body';
@@ -27,7 +28,7 @@ import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
+import { proceduralSurfaceHasClouds, resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { StarBody } from '../star/star-body';
@@ -352,7 +353,7 @@ export class PlanetViewScene {
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog'
       ? selection.request.asset.clouds
-      : body.surfaceArchetype !== 'icy-moon' && body.surfaceArchetype !== 'rocky-moon';
+      : proceduralSurfaceHasClouds(body.surfaceArchetype);
   }
 
   protected hasIoVolcanism(body: ViewerBody): boolean {
@@ -381,13 +382,8 @@ export class PlanetViewScene {
       surfaceArchetype: selected.surfaceArchetype,
     });
     if (!appearance.valid || appearance.input.renderer !== 'gas-giant') return null;
-    const surfaceArchetype = appearance.input.surfaceArchetype as 'gas-giant' | 'ice-giant';
     const overrides = toProfileOverrides(this.gasGiants.palette(), this.gasGiants.rings());
-    return deriveGasGiantProfile(selected.id, {
-      ...overrides,
-      surfaceArchetype,
-      ...(surfaceArchetype === 'ice-giant' ? { palette: 'ice' } : {}),
-    });
+    return deriveBodyGasGiantProfile(selected, overrides);
   });
 
   /** Moon shadow casters for the giant's shader. */

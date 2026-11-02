@@ -909,6 +909,41 @@ test('renders a pinned gas giant with its own controls and no shader errors', as
   ).toEqual([]);
 });
 
+for (const kind of ['sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter'] as const) {
+  test(`renders the ${kind} demo as a giant variant without shader errors`, async ({ page }) => {
+    const consoleErrors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(pinnedSplash('/splash(left:intro)', `nova-splash-${kind}-01`));
+    const overlay = page.locator('app-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await expect(overlay).toHaveAttribute('data-planet-kind', kind);
+    await expect(page.getByRole('combobox', { name: 'Giant palette' })).toHaveCount(0);
+    await expect(page.getByRole('slider', { name: /Storm activity/ })).toBeVisible();
+    await expect.poll(() => readSplashGasGiant(page)).toMatchObject({ bodyId: `nova-splash-${kind}-01`, palette: kind });
+    expect(
+      consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
+    ).toEqual([]);
+  });
+}
+
+test('renders the super-earth demo through the baked surface without clouds or shader errors', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') consoleErrors.push(message.text());
+  });
+  await page.goto(pinnedSplash('/splash(left:intro)', 'nova-splash-super-earth-01'));
+  const overlay = page.locator('app-splash-overlay section');
+  await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  await expect(overlay).toHaveAttribute('data-planet-kind', 'super-earth');
+  await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+  expect(
+    consoleErrors.filter((text) => /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text)),
+  ).toEqual([]);
+});
+
 test('previews an unlisted body as a gas giant with splashKind', async ({ page }) => {
   await page.goto(`${pinnedSplash('/splash(left:intro)', 'preview-me')}&splashKind=gas-giant`);
   const overlay = page.locator('app-splash-overlay section');

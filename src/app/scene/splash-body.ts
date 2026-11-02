@@ -20,6 +20,7 @@ import {
   type WebGLRenderer,
 } from 'three';
 import type { GasGiantHandle } from './gas-giant/gas-giant';
+import { isGasGiantSurfaceArchetype } from './gas-giant/body-giant-profile';
 import type { GasGiantPaletteChoice, GasGiantRingChoice } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant } from './gas-giant/splash-gas-giant';
 import { createSplashPlanetMesh, disposeSplashObject } from './splash-composition';
@@ -31,7 +32,12 @@ import { createPlanetCloudTexture, type PlanetCloudStyle, type PlanetCloudTextur
 import { resolveCatalogPlanetSurfaceAsset } from './planet/planet-surface-catalog';
 import { createIoVolcanicCues } from './planet/planet-volcanism-layer';
 import { bakeSplashPlanet } from './planet/splash-planet';
-import { resolveSplashAppearance, solBodyHasClouds, type SplashPlanetEntry } from './planet/splash-planet-rotation';
+import {
+  isSplashGiantVariantKind,
+  resolveSplashAppearance,
+  solBodyHasClouds,
+  type SplashPlanetEntry,
+} from './planet/splash-planet-rotation';
 import { createSplashStar } from './star/splash-star';
 import { createSplashBlackHole, type SplashBlackHoleHandle } from './black-hole/splash-black-hole';
 import type { StarHandle } from './star/star';
@@ -83,12 +89,14 @@ export async function createSplashBody(
     const blackHole = createSplashBlackHole(quality);
     return { entry, object: blackHole.group, blackHole, dispose: () => blackHole.dispose() };
   }
-  if (entry.kind === 'gas-giant' || entry.id === 'sol-saturn') {
+  if (entry.kind === 'gas-giant' || entry.id === 'sol-saturn' || isSplashGiantVariantKind(entry.kind)) {
     const appearance = resolveSplashAppearance(entry);
     const giant = createSplashGasGiant({
       bodyId: entry.id,
       surfaceArchetype:
-        appearance.valid && appearance.input.surfaceArchetype === 'ice-giant' ? 'ice-giant' : 'gas-giant',
+        appearance.valid && isGasGiantSurfaceArchetype(appearance.input.surfaceArchetype)
+          ? appearance.input.surfaceArchetype
+          : 'gas-giant',
       quality,
       palette: settings.giantPalette,
       rings: settings.giantRings,
@@ -131,7 +139,7 @@ export async function createSplashBody(
   if (!appearance.valid) throw new Error('Splash demo has no valid surface archetype.');
   const bake = bakeSplashPlanet(quality, options.renderer, entry.id, appearance.input.surfaceArchetype);
   const mesh = createSplashPlanetMesh(bake.albedo, bake.normal, bake.material);
-  if (entry.kind === 'icy-moon' || entry.kind === 'rocky-moon') {
+  if (entry.kind === 'icy-moon' || entry.kind === 'rocky-moon' || entry.kind === 'super-earth') {
     mesh.name = entry.id;
     return plainBody(entry, mesh, () => bake.dispose());
   }

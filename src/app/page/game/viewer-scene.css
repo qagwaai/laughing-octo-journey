@@ -294,6 +294,23 @@
   color: #b3c6e0;
 }
 
+.viewer-detail-pane__catalog-name {
+  display: block;
+  font-size: 0.85em;
+  color: #b3c6e0;
+}
+
+.viewer-detail-pane__badge {
+  margin: 0.25rem 0;
+  color: #ffd27a;
+}
+
+.viewer-detail-pane__note {
+  margin: 0.25rem 0;
+  font-size: 0.85em;
+  color: #b3c6e0;
+}
+
 .viewer-detail-pane__row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

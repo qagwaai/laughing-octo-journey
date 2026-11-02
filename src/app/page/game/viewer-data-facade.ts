@@ -1,4 +1,4 @@
-import { validateCanonicalBodyCollection } from '../../model/celestial-classification';
+import { recoverCanonicalBodyCollection } from '../../model/celestial-classification';
 import { generateDeterministicStarterShipUpdate } from '../../model/domain/starter-ship';
 import { coerceExternalObjectDescriptor, type ExternalObjectDomain } from '../../model/external-object-descriptor';
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
@@ -93,15 +93,18 @@ export class ViewerDataFacade {
 
         this.deps.setSolarSystem(response.solarSystem ?? null);
         const allBodies = [...(response.stars ?? []), ...(response.bodies ?? [])];
-        const canonicalError = validateCanonicalBodyCollection(allBodies);
-        if (canonicalError) {
-          appLogger.error('[celestial-body-contract]', canonicalError);
+        const recovery = recoverCanonicalBodyCollection<ViewerBody>(allBodies);
+        if (recovery.conflict) {
+          appLogger.error('[celestial-body-contract]', recovery.conflict);
           this.deps.setBodies([]);
           this.deps.setShips([]);
-          this.deps.setSceneError(`viewer-scene-error celestial-body-contract ${canonicalError}`);
+          this.deps.setSceneError(`viewer-scene-error celestial-body-contract ${recovery.conflict}`);
           return;
         }
-        const dedupedBodies = mergeUniqueViewerBodies(allBodies);
+        for (const rejection of recovery.rejected) {
+          appLogger.warn('[celestial-body-contract] rendering placeholder for invalid body', rejection);
+        }
+        const dedupedBodies = mergeUniqueViewerBodies(recovery.bodies);
         const descriptorSanitization = this.sanitizeBodiesForDescriptorContract(dedupedBodies);
         if (!descriptorSanitization.success) {
           this.deps.setBodies([]);

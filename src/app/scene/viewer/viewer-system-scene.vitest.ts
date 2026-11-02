@@ -341,6 +341,55 @@ describe('ViewerSystemScene mapBodiesToRendered', () => {
     expect(ordered.find((body) => body.id === companion.id)?.position[0]).toBeLessThan(0);
     expect(mapBodiesToRendered([moon])[0].position).toEqual(resolveScenePositionFromSpatialKm(moon.spatial.positionKm));
   });
+  it('lays out planets of a distant companion star around that star, not the system origin', () => {
+    const companion: ViewerBody = {
+      ...star,
+      id: 'exo-star-55-cnc-b',
+      parentBodyId: star.id,
+      spatial: { ...star.spatial, positionKm: { x: 1.6e11, y: 0, z: 0 } },
+    };
+    const companionPlanet: ViewerBody = {
+      ...planet,
+      id: 'exo-55-cnc-b-c',
+      parentBodyId: companion.id,
+      spatial: { ...planet.spatial, positionKm: { x: 1.6e11 + 1.5e7, y: 0, z: 0 } },
+      orbitalElements: planet.orbitalElements ? { ...planet.orbitalElements, anchorBodyId: null } : undefined,
+    };
+    const rendered = mapBodiesToRendered([star, companion, companionPlanet]);
+    const host = rendered.find((body) => body.id === companion.id)!;
+    const child = rendered.find((body) => body.id === companionPlanet.id)!;
+    const direct = resolveScenePositionFromSpatialKm(companionPlanet.spatial.positionKm);
+    expect(child.position[0]).toBeGreaterThan(host.position[0]);
+    expect(child.position).not.toEqual(direct);
+    expect(child.position[0] - host.position[0]).toBeCloseTo(
+      resolveScenePositionFromSpatialKm({ x: 1.5e7, y: 0, z: 0 })[0],
+      2,
+    );
+  });
+  it('keeps companion layout finite and host-relative at roughly 500,000 AU separation', () => {
+    const separationKm = 500_000 * 149_597_870.7;
+    const companion: ViewerBody = {
+      ...star,
+      id: 'far-companion-star',
+      parentBodyId: star.id,
+      spatial: { ...star.spatial, positionKm: { x: separationKm, y: 0, z: -separationKm / 3 } },
+    };
+    const companionPlanet: ViewerBody = {
+      ...planet,
+      id: 'far-companion-planet',
+      parentBodyId: companion.id,
+      spatial: { ...planet.spatial, positionKm: { x: separationKm + 1.5e7, y: 0, z: -separationKm / 3 } },
+      orbitalElements: planet.orbitalElements ? { ...planet.orbitalElements, anchorBodyId: null } : undefined,
+    };
+    const rendered = mapBodiesToRendered([star, companion, companionPlanet]);
+    const host = rendered.find((body) => body.id === companion.id)!;
+    const child = rendered.find((body) => body.id === companionPlanet.id)!;
+    for (const value of [...host.position, ...child.position]) expect(Number.isFinite(value)).toBe(true);
+    expect(child.position[0] - host.position[0]).toBeCloseTo(
+      resolveScenePositionFromSpatialKm({ x: 1.5e7, y: 0, z: 0 })[0],
+      2,
+    );
+  });
   it('expands only overlapping anchored moons and stations while preserving direction in both modes', () => {
     const host: ViewerBody = {
       ...planet,

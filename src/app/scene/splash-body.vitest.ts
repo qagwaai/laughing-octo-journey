@@ -53,7 +53,7 @@ describe('createSplashBody', () => {
     body.dispose();
     expect(slot.children).toHaveLength(0);
   });
-  it.each(['icy-moon', 'rocky-moon'] as const)(
+  it.each(['icy-moon', 'rocky-moon', 'super-earth'] as const)(
     'builds %s without clouds and releases its mesh and baked maps',
     async (kind) => {
       const body = await createSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });
@@ -105,6 +105,20 @@ describe('createSplashBody', () => {
     expect(giant.giantLook).toBe('seeded|seeded');
     giant.dispose();
   });
+
+  it.each(['sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter'] as const)(
+    'builds %s demos as giants with their own palette',
+    async (kind) => {
+      const body = await createSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });
+      expect(body.giant).toBeDefined();
+      expect(body.cloudMesh).toBeUndefined();
+      expect(body.giant?.group.userData['gasGiant']).toMatchObject({ palette: kind });
+      if (kind === 'hot-neptune' || kind === 'hot-jupiter') {
+        expect(body.giant?.group.userData['gasGiant']).toMatchObject({ rings: false });
+      }
+      body.dispose();
+    },
+  );
 });
 
 describe('createIoVolcanicCueGroup', () => {

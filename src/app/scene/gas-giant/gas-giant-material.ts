@@ -23,6 +23,91 @@ import { GAS_GIANT_SHADOW_GLSL, type GasGiantShadowUniforms } from './gas-giant-
 
 export const GAS_GIANT_MATERIAL_CACHE_KEY = 'gas-giant-atmosphere-v1';
 
+/** Assumed equilibrium temperature for a hot variant with no catalog value. */
+export const HOT_GIANT_DEFAULT_TEMPERATURE_K = 1500;
+/** Super-Jupiters only glow when they are hot enough to emit visibly. */
+export const SUPER_JUPITER_GLOW_MIN_TEMPERATURE_K = 1000;
+
+export type GasGiantVariantDefine =
+  | 'GG_VARIANT_HAZE'
+  | 'GG_VARIANT_DAYGLOW'
+  | 'GG_VARIANT_NIGHTGLOW'
+  | 'GG_VARIANT_UNIFORMGLOW';
+
+/** Per-type look on top of the shared banded atmosphere. Colours are linear RGB. */
+export interface GasGiantVariantShading {
+  defines: readonly GasGiantVariantDefine[];
+  hazeColor: readonly [number, number, number];
+  hazeStrength: number;
+  glowColor: readonly [number, number, number];
+  glowStrength: number;
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+/** Rough blackbody tint (linear) for 1000-3000 K: deep red to orange-white. */
+export function thermalGlowColor(temperatureK: number): readonly [number, number, number] {
+  const t = clamp01((temperatureK - 1000) / 2000);
+  const lerp = (a: number, b: number, c: number) =>
+    t < 0.5 ? a + (b - a) * (t / 0.5) : b + (c - b) * ((t - 0.5) / 0.5);
+  return [lerp(0.6, 1, 1), lerp(0.1, 0.35, 0.6), lerp(0.02, 0.08, 0.3)];
+}
+
+/** Glow strength grows from 0.15 at 1000 K to 0.6 at 2500 K and above. */
+export function thermalGlowStrength(temperatureK: number): number {
+  return 0.15 + 0.45 * clamp01((temperatureK - 1000) / 1500);
+}
+
+export function resolveGasGiantVariantShading(
+  profile: Pick<GasGiantProfile, 'variant' | 'meanTemperatureK'>,
+): GasGiantVariantShading {
+  const none: GasGiantVariantShading = {
+    defines: [],
+    hazeColor: [0, 0, 0],
+    hazeStrength: 0,
+    glowColor: [0, 0, 0],
+    glowStrength: 0,
+  };
+  const temperature = profile.meanTemperatureK ?? HOT_GIANT_DEFAULT_TEMPERATURE_K;
+  switch (profile.variant) {
+    case 'sub-neptune':
+      return { ...none, defines: ['GG_VARIANT_HAZE'], hazeColor: [0.62, 0.74, 0.82], hazeStrength: 0.55 };
+    case 'hot-neptune':
+      return {
+        defines: ['GG_VARIANT_HAZE', 'GG_VARIANT_DAYGLOW'],
+        hazeColor: [0.78, 0.7, 0.6],
+        hazeStrength: 0.3,
+        glowColor: thermalGlowColor(temperature),
+        glowStrength: thermalGlowStrength(temperature) * 0.6,
+      };
+    case 'hot-jupiter':
+      return {
+        ...none,
+        defines: ['GG_VARIANT_NIGHTGLOW'],
+        glowColor: thermalGlowColor(temperature),
+        glowStrength: thermalGlowStrength(temperature),
+      };
+    case 'super-jupiter':
+      if (profile.meanTemperatureK === null || profile.meanTemperatureK < SUPER_JUPITER_GLOW_MIN_TEMPERATURE_K) {
+        return none;
+      }
+      return {
+        ...none,
+        defines: ['GG_VARIANT_UNIFORMGLOW'],
+        glowColor: thermalGlowColor(profile.meanTemperatureK),
+        glowStrength: thermalGlowStrength(profile.meanTemperatureK) * 0.5,
+      };
+    default:
+      return none;
+  }
+}
+
+export function gasGiantMaterialCacheKey(shading: GasGiantVariantShading): string {
+  return shading.defines.length ? `${GAS_GIANT_MATERIAL_CACHE_KEY}|${shading.defines.join(',')}` : GAS_GIANT_MATERIAL_CACHE_KEY;
+}
+
 /** Seconds per flow-map cycle; two phases half a cycle apart are crossfaded. */
 export const GAS_GIANT_FLOW_PERIOD_SECONDS = 24;
 /** Maximum band shift in `u` across one flow cycle at full jet speed. */
@@ -113,6 +198,8 @@ export function createGasGiantMaterial(options: GasGiantMaterialOptions): GasGia
     roughness: 0.92,
     metalness: 0,
   });
+  const shading = resolveGasGiantVariantShading(profile);
+  material.defines = Object.fromEntries(shading.defines.map((define) => [define, '']));
   material.onBeforeCompile = (shader) => {
     if (!shader.fragmentShader.includes('#include <map_fragment>')) {
       throw new Error('Gas giant shader requires the three.js map_fragment chunk.');
@@ -133,6 +220,10 @@ export function createGasGiantMaterial(options: GasGiantMaterialOptions): GasGia
       ggSwirlB: { value: swirls[1] ?? new Vector4() },
       ggSwirlTime: uniforms.swirlTime,
       ggSwirlActivity: uniforms.swirlActivity,
+      ggHazeColor: { value: new Vector3(...shading.hazeColor) },
+      ggHazeStrength: { value: shading.hazeStrength },
+      ggGlowColor: { value: new Vector3(...shading.glowColor) },
+      ggGlowStrength: { value: shading.glowStrength },
       ...shadows,
     });
 
@@ -148,12 +239,16 @@ export function createGasGiantMaterial(options: GasGiantMaterialOptions): GasGia
         '#include <map_pars_fragment>',
         `#include <map_pars_fragment>
 ${GAS_GIANT_ATMOSPHERE_PARS_GLSL}
-${GAS_GIANT_SHADOW_GLSL}`,
+${GAS_GIANT_SHADOW_GLSL}
+${GAS_GIANT_VARIANT_GLSL}`,
       )
       .replace(
         '#include <map_fragment>',
         `#ifdef USE_MAP
           diffuseColor *= ggAtmosphereColor(vMapUv);
+        #endif
+        #ifdef GG_VARIANT_HAZE
+          diffuseColor.rgb = ggApplyHaze(diffuseColor.rgb);
         #endif`,
       )
       .replace(
@@ -161,10 +256,11 @@ ${GAS_GIANT_SHADOW_GLSL}`,
         `#include <lights_fragment_end>
         float ggShadow = ggShadowFactor(vGgWorldPosition);
         reflectedLight.directDiffuse *= ggShadow;
-        reflectedLight.directSpecular *= ggShadow;`,
+        reflectedLight.directSpecular *= ggShadow;
+        totalEmissiveRadiance += ggVariantGlow();`,
       );
   };
-  material.customProgramCacheKey = () => GAS_GIANT_MATERIAL_CACHE_KEY;
+  material.customProgramCacheKey = () => gasGiantMaterialCacheKey(shading);
   return { material, uniforms };
 }
 
@@ -236,6 +332,41 @@ vec4 ggAtmosphereColor(vec2 uv) {
   color = swirlStormSample(map, uv, ggSwirlA, color, ggSwirlTime, ggSwirlActivity, 0.12);
   color = swirlStormSample(map, uv, ggSwirlB, color, ggSwirlTime, ggSwirlActivity, 0.12);
   return color;
+}
+`;
+
+/** Haze and thermal glow per type; needs the shadow uniforms (light direction, planet centre). */
+const GAS_GIANT_VARIANT_GLSL = `
+uniform vec3 ggHazeColor;
+uniform float ggHazeStrength;
+uniform vec3 ggGlowColor;
+uniform float ggGlowStrength;
+
+vec3 ggSurfaceNormal() {
+  return normalize(vGgWorldPosition - ggPlanetCenter);
+}
+
+// Muted bands overall, thicker toward the limb.
+vec3 ggApplyHaze(vec3 color) {
+  vec3 viewDir = normalize(cameraPosition - vGgWorldPosition);
+  float rim = 1.0 - max(dot(ggSurfaceNormal(), viewDir), 0.0);
+  float amount = ggHazeStrength * (0.45 + 0.55 * rim * rim);
+  float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+  vec3 muted = mix(color, vec3(luminance), 0.5);
+  return mix(muted, ggHazeColor * max(luminance, 0.35) * 1.4, clamp(amount, 0.0, 1.0));
+}
+
+vec3 ggVariantGlow() {
+  float facing = dot(ggSurfaceNormal(), normalize(ggLightDirection));
+  #if defined(GG_VARIANT_NIGHTGLOW)
+    return ggGlowColor * ggGlowStrength * (1.0 - smoothstep(-0.15, 0.25, facing));
+  #elif defined(GG_VARIANT_DAYGLOW)
+    return ggGlowColor * ggGlowStrength * smoothstep(0.0, 1.0, facing);
+  #elif defined(GG_VARIANT_UNIFORMGLOW)
+    return ggGlowColor * ggGlowStrength;
+  #else
+    return vec3(0.0);
+  #endif
 }
 `;
 

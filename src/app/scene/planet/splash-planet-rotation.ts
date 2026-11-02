@@ -7,7 +7,8 @@
  *
  * `?splashPlanet=<id>` pins the planet for screenshots, e2e tests and previews.
  * Any id is accepted, so unlisted seeds can be previewed before adding them.
- * ?splashKind=gas-giant|star|icy-moon|rocky-moon picks the kind for an unlisted id, and
+ * ?splashKind=gas-giant|star|icy-moon|rocky-moon|super-earth|sub-neptune|hot-neptune|hot-jupiter|super-jupiter
+ * picks the kind for an unlisted id, and
  * ?splashSpectralClass=<class> sets an unlisted star's class.
  *
  * Sol bodies (`sol-earth`, `sol-mars`, ...) render approved catalog imagery and
@@ -27,7 +28,28 @@ export const SPLASH_PLANET_QUERY_PARAM = 'splashPlanet';
 export const SPLASH_KIND_QUERY_PARAM = 'splashKind';
 export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 
-export type SplashPlanetKind = 'terran' | 'icy-moon' | 'rocky-moon' | 'gas-giant' | 'star' | 'sol' | 'black-hole';
+/** Catalog exoplanet types; opt-in demos that render through the same path as server bodies. */
+export const SPLASH_EXOPLANET_KINDS = ['super-earth', 'sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter'] as const;
+export type SplashExoplanetKind = (typeof SPLASH_EXOPLANET_KINDS)[number];
+
+export function isSplashExoplanetKind(value: unknown): value is SplashExoplanetKind {
+  return (SPLASH_EXOPLANET_KINDS as readonly unknown[]).includes(value);
+}
+
+/** Exoplanet kinds rendered by the gas-giant pipeline. */
+export function isSplashGiantVariantKind(value: unknown): value is Exclude<SplashExoplanetKind, 'super-earth'> {
+  return isSplashExoplanetKind(value) && value !== 'super-earth';
+}
+
+export type SplashPlanetKind =
+  | 'terran'
+  | 'icy-moon'
+  | 'rocky-moon'
+  | 'gas-giant'
+  | 'star'
+  | 'sol'
+  | 'black-hole'
+  | SplashExoplanetKind;
 
 /** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
 export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan', 'saturn'] as const;
@@ -58,7 +80,7 @@ export function resolveSplashAppearance(entry: SplashPlanetEntry) {
       ? 'star'
       : entry.kind === 'gas-giant' || entry.id === 'sol-saturn'
         ? 'gas-giant'
-        : entry.kind === 'icy-moon' || entry.kind === 'rocky-moon'
+        : entry.kind === 'icy-moon' || entry.kind === 'rocky-moon' || isSplashExoplanetKind(entry.kind)
           ? entry.kind
           : 'rocky';
   return resolveCelestialAppearance({
@@ -127,20 +149,31 @@ export const SPLASH_ROCKY_MOONS: readonly SplashPlanetEntry[] = Array.from({ len
   id: `nova-splash-rocky-moon-${String(index + 1).padStart(2, '0')}`,
   kind: 'rocky-moon',
 }));
-export const SPLASH_SELECTABLE_BODIES: readonly SplashPlanetEntry[] = [
-  ...SPLASH_PLANET_ROTATION,
+export const SPLASH_EXOPLANETS: readonly SplashPlanetEntry[] = SPLASH_EXOPLANET_KINDS.flatMap((kind) =>
+  Array.from({ length: 4 }, (_, index) => ({
+    id: `nova-splash-${kind}-${String(index + 1).padStart(2, '0')}`,
+    kind,
+  })),
+);
+const SPLASH_OPT_IN_BODIES: readonly SplashPlanetEntry[] = [
   ...SPLASH_ICY_MOONS,
   ...SPLASH_ROCKY_MOONS,
+  ...SPLASH_EXOPLANETS,
+];
+export const SPLASH_SELECTABLE_BODIES: readonly SplashPlanetEntry[] = [
+  ...SPLASH_PLANET_ROTATION,
+  ...SPLASH_OPT_IN_BODIES,
   { id: CYGNUS_X1.id, kind: 'black-hole' },
 ];
 
-/** 'random' retains the original rotation; moons and the black-hole prototype are opt-in. */
+/** 'random' retains the original rotation; moons, exoplanet types and the black-hole prototype are opt-in. */
 export const SPLASH_PICKER_CATEGORIES = [
   'random',
   'terran',
   'icy-moon',
   'rocky-moon',
   'gas-giant',
+  ...SPLASH_EXOPLANET_KINDS,
   'star',
   'sol',
   'black-hole',
@@ -157,6 +190,9 @@ export function splashEntriesForCategory(
 ): readonly SplashPlanetEntry[] {
   if (category === 'icy-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ICY_MOONS;
   if (category === 'rocky-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ROCKY_MOONS;
+  if (isSplashExoplanetKind(category) && rotation === SPLASH_PLANET_ROTATION) {
+    return SPLASH_EXOPLANETS.filter((entry) => entry.kind === category);
+  }
   if (category === 'black-hole' && rotation === SPLASH_PLANET_ROTATION) {
     return SPLASH_SELECTABLE_BODIES.filter((entry) => entry.kind === 'black-hole');
   }
@@ -181,7 +217,13 @@ export function pickRandomSplashPlanet(
 
 function readPinnedKind(params: URLSearchParams): SplashPlanetKind {
   const kind = params.get(SPLASH_KIND_QUERY_PARAM)?.trim().toLowerCase();
-  return kind === 'gas-giant' || kind === 'star' || kind === 'icy-moon' || kind === 'rocky-moon' ? kind : 'terran';
+  return kind === 'gas-giant' ||
+    kind === 'star' ||
+    kind === 'icy-moon' ||
+    kind === 'rocky-moon' ||
+    isSplashExoplanetKind(kind)
+    ? kind
+    : 'terran';
 }
 
 /** An unlisted star uses ?splashSpectralClass, or a class seeded from its id. */
@@ -205,9 +247,7 @@ export function selectSplashPlanet(
   const pinned = readPinnedBodyId(params);
   if (pinned) {
     const listed =
-      rotation.find((entry) => entry.id === pinned) ??
-      SPLASH_ICY_MOONS.find((entry) => entry.id === pinned) ??
-      SPLASH_ROCKY_MOONS.find((entry) => entry.id === pinned);
+      rotation.find((entry) => entry.id === pinned) ?? SPLASH_OPT_IN_BODIES.find((entry) => entry.id === pinned);
     if (pinned === CYGNUS_X1.id) return { id: CYGNUS_X1.id, kind: 'black-hole' };
     if (listed) return listed;
     const kind = readPinnedKind(params);

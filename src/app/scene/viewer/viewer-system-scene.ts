@@ -17,7 +17,8 @@ import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { BufferGeometry, Color, IcosahedronGeometry, type Texture, Vector3 } from 'three';
 import { ASTEROID_GENERATOR_VERSION, resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { isValidShipSpatial } from '../../model/math/spatial';
-import { deriveGasGiantProfile, type GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
+import { deriveBodyGasGiantProfile } from '../gas-giant/body-giant-profile';
 import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -29,7 +30,11 @@ import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-set
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import { isTexturableBody, resolvePlanetSurfaceSource } from '../planet/planet-surface-resolver';
+import {
+  isTexturableBody,
+  proceduralSurfaceHasClouds,
+  resolvePlanetSurfaceSource,
+} from '../planet/planet-surface-resolver';
 import { PlanetTextureCache } from '../planet/planet-texture-cache';
 import { PlanetVolcanismLayer } from '../planet/planet-volcanism-layer';
 import { StarBody } from '../star/star-body';
@@ -46,6 +51,7 @@ import {
   type StarLightInput,
   VIEWER_SCENE_STAR_LIGHT_INTENSITY,
 } from './star-lighting';
+import { PLACEHOLDER_BODY_COLOR } from '../../model/celestial-classification';
 import { ViewerBlackHoleRenderer } from './viewer-black-hole-renderer';
 import { ViewerTargetBracket } from './viewer-target-bracket';
 import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
@@ -59,6 +65,7 @@ import {
   resolveBodyColor,
   resolveBodyScenePosition,
   resolveBodySceneRadius,
+  resolveCompanionStarHost,
   resolveOrbitColor,
   resolveOrbitRotationEuler,
   resolveSceneDistanceFromKm,
@@ -275,6 +282,25 @@ function resolveAnchoredBodyOverlaps(bodies: RenderedBody[]): RenderedBody[] {
   });
 }
 
+function resolveCompanionRelativeScenePosition(
+  body: ViewerBody,
+  host: ViewerBody,
+  mode: ViewerDistanceMode,
+): [number, number, number] {
+  const hostPosition = resolveBodyScenePosition(host, mode);
+  const bodyKm = body.spatial.positionKm;
+  const hostKm = host.spatial.positionKm;
+  const relative = resolveScenePositionFromSpatialKm(
+    { x: bodyKm.x - hostKm.x, y: bodyKm.y - hostKm.y, z: bodyKm.z - hostKm.z },
+    mode,
+  );
+  return [
+    +(hostPosition[0] + relative[0]).toFixed(3),
+    +(hostPosition[1] + relative[1]).toFixed(3),
+    +(hostPosition[2] + relative[2]).toFixed(3),
+  ];
+}
+
 function resolveRenderedExtent(rendered: RenderedBody[]): number {
   let maxExtent = 0;
   for (const body of rendered) {
@@ -286,6 +312,9 @@ function resolveRenderedExtent(rendered: RenderedBody[]): number {
 }
 
 function resolveDefaultMaterialColor(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.placeholder) {
+    return PLACEHOLDER_BODY_COLOR;
+  }
   if (body.bodyType === 'planet') {
     return '#ffffff';
   }
@@ -299,6 +328,9 @@ function resolveDefaultMaterialColor(body: ViewerBody, isGate: boolean, isMarket
 }
 
 function resolveDefaultMaterialEmissive(body: ViewerBody, isGate: boolean, isMarketStation: boolean): string {
+  if (body.placeholder) {
+    return '#000000';
+  }
   if (body.bodyType === 'planet') {
     return '#aab8d0';
   }
@@ -818,8 +850,12 @@ export function mapBodiesToRendered(
   ships: ShipSummary[] = [],
   mode: ViewerDistanceMode = 'compressed',
 ): RenderedBody[] {
+  const bodiesById = new Map(bodies.map((body) => [body.id, body]));
   const rendered = bodies.map((body) => {
-    const position = resolveBodyScenePosition(body, mode);
+    const companionHost = resolveCompanionStarHost(body, bodiesById);
+    const position = companionHost
+      ? resolveCompanionRelativeScenePosition(body, companionHost, mode)
+      : resolveBodyScenePosition(body, mode);
 
     const isGate = isGateBody(body);
     const isMarketStation = isMarketStationBody(body);
@@ -1177,15 +1213,7 @@ export class ViewerSystemScene {
         appearance.input.renderer === 'gas-giant' &&
         isGasGiantBody(body.source, mode)
       ) {
-        const surfaceArchetype = appearance.input.surfaceArchetype as 'gas-giant' | 'ice-giant';
-        profiles.set(
-          body.id,
-          deriveGasGiantProfile(body.id, {
-            ...overrides,
-            surfaceArchetype,
-            ...(surfaceArchetype === 'ice-giant' ? { palette: 'ice' } : {}),
-          }),
-        );
+        profiles.set(body.id, deriveBodyGasGiantProfile(body.source, overrides));
       }
     }
     return profiles;
@@ -1287,7 +1315,7 @@ export class ViewerSystemScene {
     const selection = resolvePlanetSurfaceSource(body, 'l0');
     return selection?.kind === 'catalog'
       ? selection.request.asset.clouds
-      : body.surfaceArchetype !== 'icy-moon' && body.surfaceArchetype !== 'rocky-moon';
+      : proceduralSurfaceHasClouds(body.surfaceArchetype);
   }
 
   protected hasIoVolcanism(body: ViewerBody): boolean {
@@ -1326,6 +1354,7 @@ export class ViewerSystemScene {
 
   protected readonly orbitEllipses = computed<OrbitEllipse[]>(() => {
     const byId = new Map<string, RenderedBody>(this.rendered().map((body) => [body.id, body]));
+    const sourceById = new Map(this.rendered().map((body) => [body.id, body.source]));
     const hoveredId = this.hoveredBodyId();
     const focusedPlanetId = this.focusedPlanetId();
     const focusIds = this.focusedBodyIds();
@@ -1389,7 +1418,11 @@ export class ViewerSystemScene {
               +(radiusX * Math.sqrt(1 - eccentricity * eccentricity)).toFixed(3),
             );
 
-        const anchorPosition = anchorId && byId.has(anchorId) ? byId.get(anchorId)!.position : [0, 0, 0];
+        const companionHostId = isAnchoredOrbit
+          ? null
+          : (resolveCompanionStarHost(body.source, sourceById)?.id ?? null);
+        const centerId = anchorId || companionHostId;
+        const anchorPosition = centerId && byId.has(centerId) ? byId.get(centerId)!.position : [0, 0, 0];
         const anchorBody = anchorId ? byId.get(anchorId) : undefined;
         if (body.hostOverlapAdjusted && anchorBody) {
           const minimumVisibleOrbit =

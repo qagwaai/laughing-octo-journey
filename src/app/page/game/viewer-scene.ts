@@ -46,6 +46,15 @@ import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
+import {
+  APPROXIMATE_PREFIX,
+  approximatePrefix,
+  areRingsApproximate,
+  hasCatalogMetadata,
+  isApproximateField,
+  isLikelyBodyType,
+  secondaryCatalogName,
+} from './viewer-body-metadata';
 
 interface ViewerSceneNavigationState {
   playerName?: string;
@@ -570,6 +579,18 @@ export default class ViewerScenePage implements OnDestroy {
 
   protected resolveBodyRenderProfile(body: ViewerBody): DescriptorRenderProfile | null {
     return resolveDescriptorRenderProfile(body.externalObjectDescriptor);
+  }
+
+  protected readonly approximatePrefix = approximatePrefix;
+  protected readonly approximateMark = APPROXIMATE_PREFIX;
+  protected readonly areRingsApproximate = areRingsApproximate;
+  protected readonly isApproximateField = isApproximateField;
+  protected readonly isLikelyBodyType = isLikelyBodyType;
+  protected readonly secondaryCatalogName = secondaryCatalogName;
+  protected readonly hasCatalogMetadata = hasCatalogMetadata;
+
+  protected approximateTitle(body: ViewerBody, path: string): string | null {
+    return isApproximateField(body, path) ? this.t.game.viewer.approximateValueTooltip : null;
   }
 
   protected onViewerQaToggle(event: Event): void {
