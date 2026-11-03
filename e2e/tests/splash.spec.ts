@@ -944,24 +944,34 @@ test('renders the super-earth demo through the baked surface without clouds or s
   ).toEqual([]);
 });
 
-for (const kind of ['lava', 'ocean'] as const) {
-  test(`renders the ${kind} demo through its dedicated baked surface`, async ({ page }, testInfo) => {
+for (const { kind, quality, cores, width } of [
+  { kind: 'lava', quality: 'low', cores: 4, width: 1024 },
+  { kind: 'lava', quality: 'standard', cores: 8, width: 2048 },
+  { kind: 'ocean', quality: 'low', cores: 4, width: 1024 },
+  { kind: 'ocean', quality: 'standard', cores: 8, width: 2048 },
+] as const) {
+  test(`renders the ${kind} demo through its dedicated baked surface at ${quality} quality`, async ({ page }, testInfo) => {
     const problems: string[] = [];
     page.on('console', (message) => {
       if (message.type() === 'error' || message.type() === 'warning') problems.push(message.text());
     });
     page.on('pageerror', (error) => problems.push(error.message));
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.addInitScript((hardwareConcurrency) => {
+      Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => hardwareConcurrency });
+    }, cores);
     const bodyId = `nova-splash-${kind}-01`;
     await page.goto(pinnedSplash('/splash(left:intro)', bodyId));
     const overlay = page.locator('app-splash-overlay section');
     await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await expect(overlay).toHaveAttribute('data-quality', quality);
     await expect(overlay).toHaveAttribute('data-planet-kind', kind);
     await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
     await expect
       .poll(() => readSplashPlanetSurface(page, bodyId))
       .toMatchObject({
-        albedoWidth: 2048,
-        emissiveWidth: kind === 'lava' ? 2048 : null,
+        albedoWidth: width,
+        emissiveWidth: kind === 'lava' ? width : null,
         childCount: 0,
       });
     await page.screenshot({ path: testInfo.outputPath(`${kind}-splash.png`) });
@@ -1122,6 +1132,7 @@ async function expectSplashBodySettled(page: import('@playwright/test').Page): P
         const id = (await overlay.getAttribute('data-planet')) ?? '';
         const names = await readSplashBodyNames(page);
         settled = id;
+        if (id === 'sol-saturn') return names.length === 1 && names[0] === 'gas-giant';
         if (id.startsWith('sol-')) return names.length === 1 && names[0] === id;
         if (id.includes('-icy-moon-') || id.includes('-rocky-moon-')) return names.length === 1 && names[0] === id;
         if (id.includes('-star-')) return names.length === 1 && names[0] === 'star';
@@ -1249,9 +1260,13 @@ test('swaps the splash body in place from the overlay picker without reloading t
   await expect.poll(() => readSplashBodyNames(page), { timeout: 30_000 }).toEqual(['sol-earth']);
   await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toBeVisible();
 
+  await body.selectOption('sol-saturn');
+  await expect(overlay).toHaveAttribute('data-planet', 'sol-saturn');
+  expect(await expectSplashBodySettled(page)).toBe('sol-saturn');
+
   await page.getByRole('button', { name: 'Shuffle' }).click();
   await expect(overlay).toHaveAttribute('data-planet-kind', 'sol');
-  await expect(overlay).not.toHaveAttribute('data-planet', 'sol-earth');
+  await expect(overlay).not.toHaveAttribute('data-planet', 'sol-saturn');
   expect(await expectSplashBodySettled(page)).toMatch(/^sol-/);
   await expect(page.getByTestId('splash-body-error')).toHaveCount(0);
 

@@ -13,6 +13,10 @@ completed visual validation of the lava/ocean appearances and confirmed they
 look good. Combined Viewer E2E, live smoke, and CI confirmation remain
 separate release checks; see the contract tracker.
 
+Splash lava/ocean E2E checks pin both hardware-selected quality tiers and verify
+1024px low / 2048px standard albedo maps (and lava emissive maps). They must not
+assume the CI runner selects standard quality.
+
 ## Goal
 
 ### Sol catalog integration update (2026-10-08)
