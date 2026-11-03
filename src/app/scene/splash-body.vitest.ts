@@ -53,7 +53,7 @@ describe('createSplashBody', () => {
     body.dispose();
     expect(slot.children).toHaveLength(0);
   });
-  it.each(['icy-moon', 'rocky-moon', 'super-earth'] as const)(
+  it.each(['icy-moon', 'rocky-moon', 'super-earth', 'lava', 'ocean'] as const)(
     'builds %s without clouds and releases its mesh and baked maps',
     async (kind) => {
       const body = await createSplashBody({ id: `nova-splash-${kind}-01`, kind }, { quality: 'low', settings });

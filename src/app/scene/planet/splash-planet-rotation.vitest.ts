@@ -12,6 +12,8 @@ import {
   solBodyHasClouds,
   SPLASH_EXOPLANET_KINDS,
   SPLASH_EXOPLANETS,
+  SPLASH_DEDICATED_SURFACE_KINDS,
+  SPLASH_DEDICATED_SURFACES,
   SPLASH_ICY_MOONS,
   SPLASH_PLANET_BODY_ID,
   SPLASH_PLANET_ROTATION,
@@ -142,6 +144,28 @@ describe('splash body picker', () => {
       },
     });
     expect(isSplashGiantVariantKind(kind)).toBe(kind !== 'super-earth');
+  });
+
+  it.each(SPLASH_DEDICATED_SURFACE_KINDS)('offers %s demos through the dedicated surface renderer', (kind) => {
+    const entries = splashEntriesForCategory(kind);
+    expect(entries).toHaveLength(4);
+    expect(entries.every((entry) => entry.kind === kind)).toBe(true);
+    expect(isSplashPickerCategory(kind)).toBe(true);
+    expect(SPLASH_PLANET_ROTATION.some((entry) => entry.kind === kind)).toBe(false);
+    expect(SPLASH_DEDICATED_SURFACES).toEqual(expect.arrayContaining([...entries]));
+    expect(selectSplashPlanet(`?splashPlanet=preview-${kind}&splashKind=${kind}`)).toEqual({
+      id: `preview-${kind}`,
+      kind,
+    });
+    expect(resolveSplashAppearance(entries[0])).toMatchObject({
+      valid: true,
+      input: {
+        bodyType: 'planet',
+        surfaceArchetype: kind,
+        renderer: kind,
+        generatorVersion: `${kind}-v1`,
+      },
+    });
   });
 
   it('offers rocky moons explicitly with deterministic pins and an unchanged random pool', () => {

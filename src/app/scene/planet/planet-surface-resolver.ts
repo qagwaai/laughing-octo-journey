@@ -68,7 +68,9 @@ export function isTexturableBody(body: ResolvablePlanetBody | null | undefined):
     (resolution.input.renderer === 'terran' ||
       resolution.input.renderer === 'icy-moon' ||
       resolution.input.renderer === 'rocky-moon' ||
-      resolution.input.renderer === 'super-earth')
+      resolution.input.renderer === 'super-earth' ||
+      resolution.input.renderer === 'lava' ||
+      resolution.input.renderer === 'ocean')
   );
 }
 
@@ -80,14 +82,22 @@ export function isTexturableBody(body: ResolvablePlanetBody | null | undefined):
 export function resolvePlanetArchetype(body: ResolvablePlanetBody): PlanetArchetype {
   return body.surfaceArchetype === 'icy-moon' ||
     body.surfaceArchetype === 'rocky-moon' ||
-    body.surfaceArchetype === 'super-earth'
+    body.surfaceArchetype === 'super-earth' ||
+    body.surfaceArchetype === 'lava' ||
+    body.surfaceArchetype === 'ocean'
     ? body.surfaceArchetype
     : 'terran';
 }
 
-/** Airless moons and cloud-free super-earths skip the procedural cloud deck. */
+/** Dedicated lava/ocean surfaces and airless moons skip the procedural cloud deck. */
 export function proceduralSurfaceHasClouds(surfaceArchetype: SurfaceArchetype | null | undefined): boolean {
-  return surfaceArchetype !== 'icy-moon' && surfaceArchetype !== 'rocky-moon' && surfaceArchetype !== 'super-earth';
+  return (
+    surfaceArchetype !== 'icy-moon' &&
+    surfaceArchetype !== 'rocky-moon' &&
+    surfaceArchetype !== 'super-earth' &&
+    surfaceArchetype !== 'lava' &&
+    surfaceArchetype !== 'ocean'
+  );
 }
 
 export function resolvePlanetSurface(
@@ -110,7 +120,9 @@ export function resolvePlanetSurface(
     (resolved.input.renderer !== 'terran' &&
       resolved.input.renderer !== 'icy-moon' &&
       resolved.input.renderer !== 'rocky-moon' &&
-      resolved.input.renderer !== 'super-earth')
+      resolved.input.renderer !== 'super-earth' &&
+      resolved.input.renderer !== 'lava' &&
+      resolved.input.renderer !== 'ocean')
   )
     return null;
 

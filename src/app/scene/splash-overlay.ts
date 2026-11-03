@@ -498,6 +498,10 @@ export class SplashOverlay {
     if (entry.kind === 'gas-giant') return number ? `${labels.bodyGiant} ${number}` : entry.id;
     if (entry.kind === 'icy-moon') return number ? `${labels.bodyIcyMoon} ${number}` : entry.id;
     if (entry.kind === 'rocky-moon') return number ? `${labels.bodyRockyMoon} ${number}` : entry.id;
+    if (entry.kind === 'lava' || entry.kind === 'ocean') {
+      const label = labels.bodyExoplanetKinds[entry.kind];
+      return number ? `${label} ${number}` : entry.id;
+    }
     if (isSplashExoplanetKind(entry.kind)) {
       const label = labels.bodyExoplanetKinds[entry.kind];
       return number ? `${label} ${number}` : entry.id;

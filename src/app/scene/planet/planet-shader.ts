@@ -23,6 +23,8 @@ import {
   WATER_ROUGHNESS,
 } from '../../model/planet/planet-surface';
 import { ICY_MOON_SURFACE_GLSL } from './icy-moon-shader';
+import { LAVA_SURFACE_GLSL } from './lava-shader';
+import { OCEAN_SURFACE_GLSL } from './ocean-shader';
 import { ROCKY_MOON_SURFACE_GLSL } from './rocky-moon-shader';
 import { SUPER_EARTH_SURFACE_GLSL } from './super-earth-shader';
 
@@ -34,6 +36,7 @@ function glslFloat(value: number): string {
 export const PLANET_BAKE_MODE_ALBEDO = 0;
 export const PLANET_BAKE_MODE_NORMAL = 1;
 export const PLANET_BAKE_MODE_MATERIAL = 2;
+export const PLANET_BAKE_MODE_EMISSIVE = 3;
 
 /**
  * The `#version` directive is deliberately NOT part of the shader sources
@@ -83,6 +86,8 @@ uniform int uMode;
 uniform float uIcyMoon;
 uniform float uRockyMoon;
 uniform float uSuperEarth;
+uniform float uLava;
+uniform float uOcean;
 uniform vec2 uTexel;
 
 const float PI = 3.141592653589793;
@@ -187,11 +192,14 @@ float ridged3(vec3 p, uint seed, int octaves) {
 ${ICY_MOON_SURFACE_GLSL}
 ${ROCKY_MOON_SURFACE_GLSL}
 ${SUPER_EARTH_SURFACE_GLSL}
+${LAVA_SURFACE_GLSL}
+${OCEAN_SURFACE_GLSL}
 
 float planetElevation(vec3 p) {
   if (uIcyMoon > 0.5) return icyMoonElevation(p);
   if (uRockyMoon > 0.5) return rockyMoonElevation(p);
   if (uSuperEarth > 0.5) return superEarthElevation(p);
+  if (uLava > 0.5) return lavaElevation(p);
   uint seed = planetSeed();
 
   float warpX = fbm3(vec3(p.x * 1.7 + 11.3, p.y * 1.7, p.z * 1.7), seed ^ 0x1f83d9abu, 3) - 0.5;
@@ -214,10 +222,12 @@ float planetElevation(vec3 p) {
   return clamp(continents + (mountains - 0.5) * uMountainAmplitude * landness, 0.0, 1.0);
 }
 
-vec3 planetAlbedo(float elevation, float sinLatitude) {
+vec3 planetAlbedo(float elevation, float sinLatitude, vec3 p) {
   if (uIcyMoon > 0.5) return icyMoonAlbedo(elevation);
   if (uRockyMoon > 0.5) return rockyMoonAlbedo(elevation);
   if (uSuperEarth > 0.5) return superEarthAlbedo(elevation, sinLatitude);
+  if (uLava > 0.5) return lavaAlbedo(elevation, p);
+  if (uOcean > 0.5) return oceanAlbedo(elevation, p);
   float absLatitude = abs(sinLatitude);
   vec3 color;
 
@@ -242,10 +252,12 @@ vec3 planetAlbedo(float elevation, float sinLatitude) {
   return clamp(vec3(color.r + uHueBias, color.g, color.b - uHueBias), 0.0, 1.0);
 }
 
-vec3 planetMaterial(float elevation, float sinLatitude) {
+vec3 planetMaterial(float elevation, float sinLatitude, vec3 p) {
   if (uIcyMoon > 0.5) return icyMoonMaterial(elevation);
   if (uRockyMoon > 0.5) return rockyMoonMaterial(elevation);
   if (uSuperEarth > 0.5) return superEarthMaterial(elevation, sinLatitude);
+  if (uLava > 0.5) return lavaMaterial(p);
+  if (uOcean > 0.5) return oceanMaterial(elevation);
   float absLatitude = abs(sinLatitude);
 
   // Mirrors planetMaterial in planet-surface.ts.
@@ -265,6 +277,11 @@ vec3 planetMaterial(float elevation, float sinLatitude) {
   metalness = mix(metalness, 0.0, frozen);
 
   return vec3(1.0, clamp(roughness, 0.0, 1.0), clamp(metalness, 0.0, 1.0));
+}
+
+vec3 planetEmissive(vec3 p) {
+  if (uLava > 0.5) return lavaEmissive(p);
+  return vec3(0.0);
 }
 
 vec3 directionFromEquirect(vec2 uv) {
@@ -299,11 +316,16 @@ void main() {
   float elevation = planetElevation(direction);
 
   if (uMode == ${PLANET_BAKE_MODE_MATERIAL}) {
-    fragColor = vec4(planetMaterial(elevation, direction.y), 1.0);
+    fragColor = vec4(planetMaterial(elevation, direction.y, direction), 1.0);
     return;
   }
 
-  fragColor = vec4(planetAlbedo(elevation, direction.y), 1.0);
+  if (uMode == ${PLANET_BAKE_MODE_EMISSIVE}) {
+    fragColor = vec4(planetEmissive(direction), 1.0);
+    return;
+  }
+
+  fragColor = vec4(planetAlbedo(elevation, direction.y, direction), 1.0);
 }
 `;
 
@@ -323,6 +345,8 @@ export interface PlanetShaderUniformValues {
   uIcyMoon: number;
   uRockyMoon: number;
   uSuperEarth: number;
+  uLava: number;
+  uOcean: number;
   uTexel: readonly [number, number];
 }
 
@@ -348,6 +372,8 @@ export function buildPlanetShaderUniforms(
     uIcyMoon: climate.archetype === 'icy-moon' ? 1 : 0,
     uRockyMoon: climate.archetype === 'rocky-moon' ? 1 : 0,
     uSuperEarth: climate.archetype === 'super-earth' ? 1 : 0,
+    uLava: climate.archetype === 'lava' ? 1 : 0,
+    uOcean: climate.archetype === 'ocean' ? 1 : 0,
     uTexel: [1 / width, 1 / height],
   };
 }

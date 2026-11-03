@@ -2,21 +2,21 @@
 
 ## Status and decisions
 
-**Status (handoff 2026-11-02):** G0 and Phases 1–3 complete, verified,
-committed and pushed to `main`. Remaining: Phase 4 (dedicated lava/ocean
-renderers) and the release gate. Work is moving to a faster machine; resume
-from "Resume here" below.
+**Status (2026-11-02):** G0 and Phases 1–3 are complete, verified, committed
+and pushed to `main`. Phase 4 implementation and focused verification are
+complete in the current worktree. The coordinated release gate remains open.
+GitHub Actions run `41545665215` completed with failures; the ship-exterior
+fixture correction is verified locally but still needs CI confirmation. The
+user completed visual validation of the Phase 4 lava/ocean renders and
+confirmed the appearance looks good.
 
-### Resume here (next session)
+### Resume / remaining work
 
-1. Pull `main` and check that the GitHub Actions run for the Phase 3 push is
-   green; fix any CI failures first.
-2. Start Phase 4 (see the Phase 4 section): build the lava renderer first.
-   Keep Earth on its current terran renderer. Ask the user about the
-   exoplanet `ocean` look before building it.
-3. Then run the release gate. Run sequentially: `npm run test:ci`, then the
-   combined Viewer e2e, then a live smoke check against `localhost:3000`.
-   Record the evidence in the log at the end of this document.
+1. Include the ship-exterior fixture correction in CI and confirm the rerun is
+   green before shipping.
+2. Run the remaining combined Viewer e2e and a live smoke check against the
+   intended Forge contract/revision. The full e2e suite takes about 30 minutes
+   and was not run for this focused Phase 4 checkpoint.
 
 Machine note: do not run Vitest and Playwright concurrently on slow
 machines; contention produces flaky failures. Use `--workers=1` for
@@ -24,12 +24,13 @@ Playwright when in doubt.
 
 - [x] Review both supplied handoffs and the affected frontend entry points.
 - [x] Confirm delivery preference: one plan, separate phases, aiming for one implementation session.
-- [x] Confirm this session is documentation-only; do not begin implementation.
+- [x] Initial planning was documentation-only; implementation began after
+      explicit authorization.
 - [x] Confirm inclusion of remaining Viewer attribution work as a third phase.
 - [x] Check runtime OpenAPI availability using cache-busting.
 - [x] Complete the implementation contract-verification gate below.
 - [x] Complete all three implementation phases (Phases 1–3 committed).
-- [ ] Phase 4 (lava/ocean renderers, user follow-up).
+- [x] Phase 4 (lava/ocean renderers, user follow-up; focused checks recorded below).
 - [ ] Combined release verification.
 
 Recommendation: consume the changes in one coordinated change set against one
@@ -244,8 +245,9 @@ combined user-flow validation.
 - [x] Localize new UI/accessible labels in English and Italian.
 - [x] Verify phase tests and record checkpoint evidence.
 
-Exit: all ten planet types render distinctly; unknown types degrade explicitly;
-rings/metadata are correct; 55 Cnc and KOI-351 render every expected unique body.
+Renderer exit: all ten planet types render distinctly; unknown types degrade
+explicitly; rings/metadata are correct; 55 Cnc and KOI-351 render every
+expected unique body. Lava and ocean renderer acceptance is completed in Phase 4.
 
 ### Phase 3 - Remaining Viewer attribution
 
@@ -306,33 +308,50 @@ Implementation notes (Phase 3):
 The Phase 2 audit deferred these: `lava` and `ocean` still use the terran
 fallback and raise a `[celestial-appearance-fallback]` variance toast (for
 example `exo-hd-219134-b`). This phase starts after the Phase 3 commit.
+Implement lava first, then a dedicated ocean renderer for exoplanet ocean
+worlds. Earth (Sol) remains on its current terran renderer.
+Ocean art direction: deep blue global oceans, sparse land, and bright water
+detail. The current ship-exterior gameplay scene is asteroid-only; Phase 4
+must keep the shared rendering path reusable by ship-external-view, but must
+not add planetary display there. Track ship-external scene integration
+separately.
 
-- [ ] Add a lava generator: dark basalt crust with glowing magma cracks and an
+- [x] Add a lava generator: dark basalt crust with glowing magma cracks and an
       emissive night side. Include a CPU generator, a GLSL mirror, and CPU/GPU
       parity tests (same pattern as `super-earth-surface.ts` and
       `super-earth-shader.ts`).
-- [ ] Route `lava` to the new renderer in `celestial-appearance.ts`,
-      `planet-seed.ts`, `planet-texture.ts`, `planet-shader.ts`,
-      `planet-surface-resolver.ts` and `planet-bake.ts`. Bump the generator
-      version.
-- [ ] Ocean: keep Earth (Sol) on its current terran renderer, because Earth
-      is an ocean world. Decide whether exoplanet `ocean` bodies get a
-      dedicated look, or keep terran and stop treating the terran fallback as
-      a variance.
-- [ ] Add a splash picker entry for lava. Add unit tests and Viewer e2e
-      coverage, and confirm that no fallback toast appears for lava bodies.
+- [x] Route `lava` through the appearance resolver, generator/seed, texture,
+      shader, surface resolver, and bake paths. Bump its generator/cache
+      version so existing terran-fallback textures cannot be reused.
+- [x] Add a dedicated procedural ocean renderer for exoplanet `ocean` bodies;
+      keep Earth (Sol) on its existing terran renderer. Cover CPU generation,
+      GLSL parity, appearance routing, texture hints/tints, and cache versioning
+      using the same shared generation/render path.
+- [x] Render both lava and exoplanet-ocean looks in the splash scene/picker and
+      Stellar Viewer (system and planet views). Ensure the selected look is
+      consistent across these surfaces; Earth must remain terran in each
+      applicable view.
+- [x] Keep renderer requests and generated textures scene-agnostic so they can
+      be consumed by ship-external-view; do not add planetary display to its
+      asteroid-only scene in this phase. Track that scene integration as a
+      separate follow-up.
+- [x] Add unit and deterministic e2e coverage for splash and Stellar Viewer,
+      including system-view zoom, lava cracks/night-side emission, ocean
+      appearance, and unchanged Earth rendering. Capture and review visual evidence.
+      Confirm no fallback variance toast appears for either dedicated renderer.
 
 ## Verification matrix
 
-| Area              | Required assertions                                                                                                                                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Paging helper     | Several pages; terminal and empty pages; clamped limit; duplicate IDs across pages; offset beyond total; failure without metadata; malformed/no-progress response; page cap; timeout/cancellation.               |
-| Bootstrap         | More than 100 nearby bodies; page-2 existing body never reseeded; late-page failure/cap never seeds from partial data; disposal/context change ignores late results; post-write reconciliation.                  |
-| Viewer discovery  | Second page; search KOI-351 beyond 50 pc; every filter/sort resets offset; out-of-order replies ignored; repeated load-more clicks safe; server message and retry; accurate totals with local selection.         |
-| Catalog models    | Null/missing HYG ID; stable starId; catalog source/names/counts; metadata survives adapters; stars/bodies deduplicated; unchanged curated/procedural behavior.                                                   |
-| Rendering         | All ten distinct looks at system zoom; unknown placeholder warning and valid siblings; ring geometry/tilt/scale/absence; companion parent; circumbinary labels; extreme separation without non-finite positions. |
-| Attribution       | Approximate paths versus measured values; disputed flags; optional dates; ordered references and collapse; literal `<b>x</b>` label; safe link attributes/schemes; required credits/licenses; A10 off.           |
-| Combined journeys | Mocked 55 Cnc and KOI-351 list-to-scene flow with exact expected unique body IDs, no celestial-body-contract error, metadata and references; live Forge smoke when available.                                    |
+| Area              | Required assertions                                                                                                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Paging helper     | Several pages; terminal and empty pages; clamped limit; duplicate IDs across pages; offset beyond total; failure without metadata; malformed/no-progress response; page cap; timeout/cancellation.                                                                                  |
+| Bootstrap         | More than 100 nearby bodies; page-2 existing body never reseeded; late-page failure/cap never seeds from partial data; disposal/context change ignores late results; post-write reconciliation.                                                                                     |
+| Viewer discovery  | Second page; search KOI-351 beyond 50 pc; every filter/sort resets offset; out-of-order replies ignored; repeated load-more clicks safe; server message and retry; accurate totals with local selection.                                                                            |
+| Catalog models    | Null/missing HYG ID; stable starId; catalog source/names/counts; metadata survives adapters; stars/bodies deduplicated; unchanged curated/procedural behavior.                                                                                                                      |
+| Rendering         | All ten distinct looks at system zoom; unknown placeholder warning and valid siblings; ring geometry/tilt/scale/absence; companion parent; circumbinary labels; extreme separation without non-finite positions.                                                                    |
+| Phase 4 surfaces  | Lava and exoplanet ocean use their dedicated looks in splash and Stellar Viewer (system and planet views); Earth stays terran; no fallback variance toast; shared path remains reusable by ship-external-view, with scene integration tracked separately; visual evidence captured. |
+| Attribution       | Approximate paths versus measured values; disputed flags; optional dates; ordered references and collapse; literal `<b>x</b>` label; safe link attributes/schemes; required credits/licenses; A10 off.                                                                              |
+| Combined journeys | Mocked 55 Cnc and KOI-351 list-to-scene flow with exact expected unique body IDs, no celestial-body-contract error, metadata and references; live Forge smoke when available.                                                                                                       |
 
 Use Vitest, not Jest. Use deterministic socket mocks for Playwright and
 authoritative fixture IDs/readiness, not timing sleeps. Visual acceptance needs
@@ -343,8 +362,8 @@ totals, which differ between document revisions.
 ### Planned commands
 
 Run the smallest phase-relevant groups first; add new helper/renderer/reference
-test files to the corresponding invocation once created. Commands below are
-planned, **not run in this documentation-only session**.
+test files to the corresponding invocation once created. The commands below
+are phase-oriented guidance; actual execution evidence is recorded below.
 
 ```powershell
 # Phase 1: existing impacted unit/service suites plus new traversal tests
@@ -372,12 +391,16 @@ Build is mandatory after template/type changes; TypeScript alone is insufficient
 
 ## Release gate and split-session handoff
 
-- [ ] G0 and all three phases complete; every list caller explicitly classified.
+- [x] G0 and Phases 1–4 complete; every list caller explicitly classified.
 - [ ] Updated mocks include real paging metadata and optional-field absences.
-- [ ] Focused tests, typecheck, Angular build, changed-file lint, combined e2e,
-      and integrated unit regression results recorded.
-- [ ] Visual checks/screenshots confirm distinct archetypes, rings, credits,
-      references, distant-system navigation, and unchanged Sol behavior.
+- [x] Focused tests, typecheck, Angular build, changed-file lint, and
+      integrated unit regression results recorded.
+- [x] User visual validation confirms the Phase 4 lava/ocean looks in splash
+      and Stellar Viewer. The user confirmed the renders look good on
+      2026-11-02; focused E2E also verifies unchanged Sol Earth behavior.
+- [ ] Run the remaining combined Viewer e2e and live smoke checks. Ship-external
+      view remains asteroid-only; shared renderer reuse is maintained, and
+      adding planetary display there is a separate follow-up.
 - [ ] Live smoke checked against the intended Forge contract/revision, or marked
       blocked with a concrete reason; mocked success is not live verification.
 - [ ] No unresolved duplicate-seeding, schema-authority, or attribution blockers.
@@ -393,7 +416,9 @@ no deployment has been requested.
 
 Out of scope: Forge generator changes, cursor/snapshot protocols, total-count
 caching, Sol system-get slimming, sourced Sol rings/future ring bands, optional
-atmospheric tails, and enabling A10 before approval.
+atmospheric tails, enabling A10 before approval, and adding planetary meshes to
+the current asteroid-only ship-exterior scene. Track ship-exterior scene
+integration separately; the shared renderer path remains reusable there.
 
 ## Evidence and blockers log
 
@@ -410,6 +435,8 @@ atmospheric tails, and enabling A10 before approval.
 | 2026-11-02 | Phase 3 (details) | Solar-system details groups planets by type (`planet-<type>` sections, untyped → "Planet"), with a "(likely)" badge for approximate types and planet-type names in the distance view; en/it labels. Details vitest 13/13; `npm test` 2717/2722 in a parallel run under load, and all 4 failed files (110 tests) passed on rerun; typecheck, build, changed-file eslint clean. Playwright `viewer-list`, `viewer-controls-after-target`, `viewer-interactions` 33/34 in parallel, and the failed station-target case passed serially (6/6). | Commit; release gate. |
 | 2026-11-02 | Phase 3 (all categories) | Details page renders every category with a count of 0 when empty; the untyped "Planet" fallback renders only when it has rows. Lava/ocean renderer gap logged as Phase 4. Details vitest 13/13; typecheck, build and eslint clean; Playwright `viewer-interactions`, `viewer-list`, `viewer-controls-after-target` 34/34 (`--workers=1`, run separately from Vitest). | Commit Phase 3; then Phase 4. |
 | 2026-11-02 | Handoff | Phase 3 committed and pushed to `main` together with the Phase 1–2 commits; GitHub Actions validates the push. The session is ending on this machine because it is too slow; resume on a faster machine from "Resume here". | Verify CI; start Phase 4 (lava). |
+| 2026-11-02 | Phase 4 | Added dedicated `lava-v1` basalt/magma emissive and `ocean-v1` deep-blue/sparse-land surfaces, shader parity, bake/cache/resolver routing, and Splash/Viewer integration. `npm run typecheck`, `npm run build`, `npm run lint`, `git diff --check`, and targeted Prettier checks clean. Repo-wide `npm run format:check` still reports five untouched HTML files. Focused Vitest: 7 files / 106 tests passed. First `npm run test:ci` had one 5-second timeout in Saturn splash-standard (221/222 files; 2728/2729 tests); the Saturn file passed 7/7 on rerun, then the full suite passed 222/222 files and 2729/2729 tests. Focused Playwright: 14/14 passed across shader parity (including lava emissive), Splash, Viewer system-zoom/detail, and Sol Earth catalog behavior; lava/ocean screenshots captured and reviewed; no shader/fallback warnings. User visual validation completed 2026-11-02; appearance accepted. Full E2E suite (~30 minutes), combined Viewer e2e, and live smoke not run. | Finish combined release gate; verify CI. |
+| 2026-11-02 | CI follow-up | GitHub Actions run `41545665215` failed after 45.3 minutes: 294 passed, 2 failed, 1 flaky, 1 skipped. Both failures were in `login-after-first-target-completed.spec.ts`: the resumed ship-exterior scene had no selected nearby body because its fixture bodies lacked the canonical `bodyType` and `surfaceArchetype` now required by response validation. Added asteroid classifications to the three fixture bodies. `npm run typecheck` passed; `npx playwright test e2e/tests/login-after-first-target-completed.spec.ts --reporter=line --workers=1` passed 4/4; the CI-flaky Splash failure passed on rerun (2/2 including setup). CI rerun still required; no release-gate signoff yet. | Confirm CI after fixture correction; finish combined Viewer e2e and live smoke. |
 
 Add implementation rows here. For blockers, include the affected task, concrete
 failure or missing schema detail, owner/action needed, and re-verification result.

@@ -122,10 +122,14 @@ describe('planet surface resolver', () => {
 
   it('builds keys that separate archetypes for the same body and tier', () => {
     const rocky = resolvePlanetSurface({ id: 'same-id', bodyType: 'planet', surfaceArchetype: 'rocky' }, 'l0');
+    const lava = resolvePlanetSurface({ id: 'same-id', bodyType: 'planet', surfaceArchetype: 'lava' }, 'l0');
     const ocean = resolvePlanetSurface({ id: 'same-id', bodyType: 'planet', surfaceArchetype: 'ocean' }, 'l0');
 
     expect(rocky?.key).not.toBe(ocean?.key);
-    expect(ocean?.fallbackReason).toContain('ocean');
+    expect(lava).toMatchObject({ archetype: 'lava', generatorVersion: 'lava-v1' });
+    expect(ocean).toMatchObject({ archetype: 'ocean', generatorVersion: 'ocean-v1' });
+    expect(lava?.fallbackReason).toBeUndefined();
+    expect(ocean?.fallbackReason).toBeUndefined();
   });
 
   it('selects the approved Sol assets by exact catalog identity', () => {

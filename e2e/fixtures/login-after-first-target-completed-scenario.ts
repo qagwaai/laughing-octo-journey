@@ -67,6 +67,8 @@ const LOCAL_CELESTIAL_BODIES = [
   { id: 'local-body-3', offsetKm: { x: 7, y: 11, z: 15 } },
 ].map((body) => ({
   id: body.id,
+  bodyType: 'asteroid',
+  surfaceArchetype: 'asteroid',
   state: 'unscanned',
   spatial: {
     solarSystemId: 'sol',

@@ -12,6 +12,7 @@ export interface CatalogSurfaceLoadRequest extends CatalogPlanetSurfaceRequest {
 export interface CatalogPlanetSurfaceResult {
   source: 'catalog';
   albedo: Texture<HTMLImageElement>;
+  emissive?: undefined;
   normal?: Texture<HTMLImageElement>;
   material?: Texture;
   request: CatalogSurfaceLoadRequest;

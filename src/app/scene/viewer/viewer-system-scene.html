@@ -69,8 +69,7 @@
   </ngt-group>
   } @else {
   <ngt-mesh-basic-material [color]="hoveredBodyId() === body.id ? '#ff3b30' : body.color" />
-  }
-  @if (targetedBodyId() === body.id) {
+  } @if (targetedBodyId() === body.id) {
   <app-viewer-target-bracket [radius]="body.radius" />
   }
 </ngt-mesh>
@@ -144,18 +143,29 @@
         [highlighted]="hoveredBodyId() === body.id"
       />
     </ngt-group>
-    } @else {
+    } @else { @let _bodySurface = bodySurfaces().get(body.id);
     <ngt-mesh-standard-material
       [visible]="!dedicatedAtmosphere(body.source)"
-      [map]="bodySurfaces().get(body.id) ?? null"
+      [map]="_bodySurface?.albedo ?? null"
+      [emissiveMap]="_bodySurface?.emissive ?? null"
       [color]="resolveSurfaceColor(body)"
       [roughness]="body.materialRoughness"
       [metalness]="body.materialMetalness"
-      [emissive]="hoveredBodyId() === body.id ? '#8f0000' : isCatalogSurface(body.source) ? '#000000' : body.materialEmissive"
+      [emissive]="
+        hoveredBodyId() === body.id
+          ? '#8f0000'
+          : _bodySurface?.emissive
+            ? '#ffffff'
+            : isCatalogSurface(body.source)
+              ? '#000000'
+              : body.materialEmissive
+      "
       [emissiveIntensity]="
       hoveredBodyId() === body.id
         ? 0.4
-        : body.materialEmissiveIntensity
+        : _bodySurface?.emissive
+          ? 2
+          : body.materialEmissiveIntensity
     "
       [flatShading]="body.geometryKind === 'rock-deformed'"
     />
@@ -172,11 +182,8 @@
     <app-planet-cloud-layer [bodyId]="body.id" [radius]="body.radius" />
     } } }
   </ngt-mesh>
-  } }
-  @if (targetedBodyId() === body.id) {
-  <app-viewer-target-bracket
-    [radius]="targetBracketRadius(body)"
-  />
+  } } @if (targetedBodyId() === body.id) {
+  <app-viewer-target-bracket [radius]="targetBracketRadius(body)" />
   }
 </ngt-group>
 }

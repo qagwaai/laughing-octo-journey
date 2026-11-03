@@ -6,6 +6,8 @@
  * catalog/presentation fields; see docs/procedural-planets-2026-09-28.md.
  */
 import { ICY_MOON_GENERATOR_VERSION } from './icy-moon-surface';
+import { LAVA_GENERATOR_VERSION } from './lava-surface';
+import { OCEAN_GENERATOR_VERSION } from './ocean-surface';
 import { calibrateContinents } from './planet-surface';
 import { ROCKY_MOON_GENERATOR_VERSION } from './rocky-moon-surface';
 import { SUPER_EARTH_GENERATOR_VERSION } from './super-earth-surface';
@@ -18,7 +20,7 @@ export const PLANET_GENERATOR_VERSION = 'terran-v2';
  */
 const climateCache = new Map<string, PlanetClimate>();
 
-export type PlanetArchetype = 'terran' | 'icy-moon' | 'rocky-moon' | 'super-earth';
+export type PlanetArchetype = 'terran' | 'icy-moon' | 'rocky-moon' | 'super-earth' | 'lava' | 'ocean';
 
 export interface PlanetClimate {
   archetype: PlanetArchetype;
@@ -78,6 +80,8 @@ export function derivePlanetClimate(
     'icy-moon': ICY_MOON_GENERATOR_VERSION,
     'rocky-moon': ROCKY_MOON_GENERATOR_VERSION,
     'super-earth': SUPER_EARTH_GENERATOR_VERSION,
+    lava: LAVA_GENERATOR_VERSION,
+    ocean: OCEAN_GENERATOR_VERSION,
   }[archetype];
   const cacheKey = `${version}|${surfaceArchetype}|${archetype}|${bodyId}`;
   const cached = climateCache.get(cacheKey);
@@ -89,18 +93,24 @@ export function derivePlanetClimate(
   const base = {
     archetype,
     seed,
-    waterFraction: archetype === 'terran' ? quantize(lerp(0.45, 0.75, random())) : 0,
+    waterFraction:
+      archetype === 'terran'
+        ? quantize(lerp(0.45, 0.75, random()))
+        : archetype === 'ocean'
+          ? quantize(lerp(0.82, 0.9, random()))
+          : 0,
     iceLatitudeDeg: quantize(lerp(55, 80, random())),
     continentFrequency: quantize(lerp(1.4, 2.6, random())),
     warpStrength: quantize(lerp(0.15, 0.45, random())),
-    mountainAmplitude: quantize(lerp(0.18, 0.38, random())),
+    mountainAmplitude:
+      archetype === 'ocean' ? quantize(lerp(0.08, 0.18, random())) : quantize(lerp(0.18, 0.38, random())),
     aridity: quantize(lerp(0.15, 0.7, random())),
     hueBias: quantize(lerp(-0.06, 0.06, random())),
   };
 
   const climate: PlanetClimate = {
     ...base,
-    ...(archetype === 'terran'
+    ...(archetype === 'terran' || archetype === 'ocean'
       ? calibrateContinents(base, base.waterFraction, base.mountainAmplitude)
       : { seaLevel: 0, oceanSpan: 1, landSpan: 1 }),
   };

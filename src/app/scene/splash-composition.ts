@@ -87,6 +87,7 @@ export function createSplashPlanetMesh(
   albedo: Texture,
   normalMap?: Texture | null,
   materialMap?: Texture | null,
+  emissiveMap?: Texture | null,
 ): Mesh<SphereGeometry, MeshStandardMaterial> {
   return new Mesh(
     new SphereGeometry(4, 48, 32),
@@ -94,6 +95,9 @@ export function createSplashPlanetMesh(
     // a material map is present and let the texture drive water versus land.
     new MeshStandardMaterial({
       map: albedo,
+      emissiveMap: emissiveMap ?? null,
+      emissive: emissiveMap ? '#ffffff' : '#000000',
+      emissiveIntensity: emissiveMap ? 2 : 1,
       normalMap: normalMap ?? null,
       roughnessMap: materialMap ?? null,
       metalnessMap: materialMap ?? null,

@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
-import { BufferGeometry, Color, IcosahedronGeometry, type Texture, Vector3 } from 'three';
+import { BufferGeometry, Color, IcosahedronGeometry, Vector3 } from 'three';
 import { ASTEROID_GENERATOR_VERSION, resolveCelestialAppearance } from '../../model/celestial-appearance';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
@@ -30,6 +30,7 @@ import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-set
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
+import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import {
   isTexturableBody,
   proceduralSurfaceHasClouds,
@@ -1242,21 +1243,21 @@ export class ViewerSystemScene {
   );
 
   /**
-   * Albedo per body id, republished as L0 bakes land. Bodies absent from this
+   * Surfaces per body id, republished as L0 bakes land. Bodies absent from this
    * map keep their flat material colour, which is what every body shows until
    * its texture finishes baking.
    */
-  protected readonly bodySurfaces = computed<ReadonlyMap<string, Texture>>(() => {
+  protected readonly bodySurfaces = computed<ReadonlyMap<string, PlanetSurfaceResult>>(() => {
     // Depend on the cache's published map so this recomputes per completion.
     this.planetTextures.ready();
 
-    const surfaces = new Map<string, Texture>();
+    const surfaces = new Map<string, PlanetSurfaceResult>();
     const giants = this.giantProfiles();
     for (const body of this.rendered()) {
       if (!isTexturableBody(body.source) || giants.has(body.id) || resolveDedicatedAtmosphere(body.source)) continue;
       const baked = this.planetTextures.get(body.source, 'l0', this.store.snapshot.gl);
       if (baked) {
-        surfaces.set(body.id, baked.albedo);
+        surfaces.set(body.id, baked);
       }
     }
     return surfaces;

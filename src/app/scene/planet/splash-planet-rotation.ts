@@ -7,7 +7,7 @@
  *
  * `?splashPlanet=<id>` pins the planet for screenshots, e2e tests and previews.
  * Any id is accepted, so unlisted seeds can be previewed before adding them.
- * ?splashKind=gas-giant|star|icy-moon|rocky-moon|super-earth|sub-neptune|hot-neptune|hot-jupiter|super-jupiter
+ * ?splashKind=gas-giant|star|icy-moon|rocky-moon|lava|ocean|super-earth|sub-neptune|hot-neptune|hot-jupiter|super-jupiter
  * picks the kind for an unlisted id, and
  * ?splashSpectralClass=<class> sets an unlisted star's class.
  *
@@ -32,6 +32,13 @@ export const SPLASH_SPECTRAL_CLASS_QUERY_PARAM = 'splashSpectralClass';
 export const SPLASH_EXOPLANET_KINDS = ['super-earth', 'sub-neptune', 'hot-neptune', 'hot-jupiter', 'super-jupiter'] as const;
 export type SplashExoplanetKind = (typeof SPLASH_EXOPLANET_KINDS)[number];
 
+export const SPLASH_DEDICATED_SURFACE_KINDS = ['lava', 'ocean'] as const;
+export type SplashDedicatedSurfaceKind = (typeof SPLASH_DEDICATED_SURFACE_KINDS)[number];
+
+export function isSplashDedicatedSurfaceKind(value: unknown): value is SplashDedicatedSurfaceKind {
+  return (SPLASH_DEDICATED_SURFACE_KINDS as readonly unknown[]).includes(value);
+}
+
 export function isSplashExoplanetKind(value: unknown): value is SplashExoplanetKind {
   return (SPLASH_EXOPLANET_KINDS as readonly unknown[]).includes(value);
 }
@@ -49,7 +56,8 @@ export type SplashPlanetKind =
   | 'star'
   | 'sol'
   | 'black-hole'
-  | SplashExoplanetKind;
+  | SplashExoplanetKind
+  | SplashDedicatedSurfaceKind;
 
 /** Sol bodies with approved catalog imagery (surface maps or dedicated atmosphere shells). */
 export const SPLASH_SOL_KEYS = ['earth', 'luna', 'mars', 'io', 'venus', 'titan', 'saturn'] as const;
@@ -82,6 +90,8 @@ export function resolveSplashAppearance(entry: SplashPlanetEntry) {
         ? 'gas-giant'
         : entry.kind === 'icy-moon' || entry.kind === 'rocky-moon' || isSplashExoplanetKind(entry.kind)
           ? entry.kind
+          : isSplashDedicatedSurfaceKind(entry.kind)
+            ? entry.kind
           : 'rocky';
   return resolveCelestialAppearance({
     source: 'demo',
@@ -155,10 +165,18 @@ export const SPLASH_EXOPLANETS: readonly SplashPlanetEntry[] = SPLASH_EXOPLANET_
     kind,
   })),
 );
+export const SPLASH_DEDICATED_SURFACES: readonly SplashPlanetEntry[] = SPLASH_DEDICATED_SURFACE_KINDS.flatMap(
+  (kind) =>
+    Array.from({ length: 4 }, (_, index) => ({
+      id: `nova-splash-${kind}-${String(index + 1).padStart(2, '0')}`,
+      kind,
+    })),
+);
 const SPLASH_OPT_IN_BODIES: readonly SplashPlanetEntry[] = [
   ...SPLASH_ICY_MOONS,
   ...SPLASH_ROCKY_MOONS,
   ...SPLASH_EXOPLANETS,
+  ...SPLASH_DEDICATED_SURFACES,
 ];
 export const SPLASH_SELECTABLE_BODIES: readonly SplashPlanetEntry[] = [
   ...SPLASH_PLANET_ROTATION,
@@ -174,6 +192,7 @@ export const SPLASH_PICKER_CATEGORIES = [
   'rocky-moon',
   'gas-giant',
   ...SPLASH_EXOPLANET_KINDS,
+  ...SPLASH_DEDICATED_SURFACE_KINDS,
   'star',
   'sol',
   'black-hole',
@@ -192,6 +211,9 @@ export function splashEntriesForCategory(
   if (category === 'rocky-moon' && rotation === SPLASH_PLANET_ROTATION) return SPLASH_ROCKY_MOONS;
   if (isSplashExoplanetKind(category) && rotation === SPLASH_PLANET_ROTATION) {
     return SPLASH_EXOPLANETS.filter((entry) => entry.kind === category);
+  }
+  if (isSplashDedicatedSurfaceKind(category) && rotation === SPLASH_PLANET_ROTATION) {
+    return SPLASH_DEDICATED_SURFACES.filter((entry) => entry.kind === category);
   }
   if (category === 'black-hole' && rotation === SPLASH_PLANET_ROTATION) {
     return SPLASH_SELECTABLE_BODIES.filter((entry) => entry.kind === 'black-hole');
@@ -221,7 +243,8 @@ function readPinnedKind(params: URLSearchParams): SplashPlanetKind {
     kind === 'star' ||
     kind === 'icy-moon' ||
     kind === 'rocky-moon' ||
-    isSplashExoplanetKind(kind)
+    isSplashExoplanetKind(kind) ||
+    isSplashDedicatedSurfaceKind(kind)
     ? kind
     : 'terran';
 }

@@ -178,6 +178,7 @@ async function renderedSurface(page: import('@playwright/test').Page, name: stri
       color: material.color.getHexString(),
       emissive: material.emissive.getHexString(),
       emissiveIntensity: material.emissiveIntensity,
+      emissiveMapWidth: imageWidth(material.emissiveMap?.image),
       hasTargetBracket: !!component.store.snapshot.scene?.getObjectByName('viewer-target-bracket'),
       source:
         typeof albedoImage === 'object' &&
@@ -662,6 +663,56 @@ async function cloudTextureWidths(page: import('@playwright/test').Page): Promis
 }
 
 test.describe('viewer procedural planet surfaces', () => {
+  for (const archetype of ['lava', 'ocean'] as const) {
+    test(`renders the dedicated ${archetype} surface in overview and focused detail`, async ({ page }, testInfo) => {
+      const problems = collectRenderProblems(page);
+      const { mock } = await setupViewerSceneTest(page);
+      const bodies = SOL_SYSTEM_BODIES.map((body: ViewerBody) =>
+        body.id === 'earth' ? { ...body, surfaceArchetype: archetype, catalogIdentity: null } : body,
+      );
+      await navigateToSystemScene(page, mock, bodies);
+      await waitForSurfacesBaked(page, 3);
+      await expect
+        .poll(() => renderedSurface(page, 'Earth'))
+        .toMatchObject({
+          albedoWidth: 256,
+          emissiveMapWidth: archetype === 'lava' ? 256 : null,
+        });
+      await page.screenshot({ path: testInfo.outputPath(`${archetype}-viewer-system.png`) });
+      await setSystemBodyTarget(page, 'earth');
+      const zoom = page.getByTestId('viewer-zoom-slider').locator('input');
+      await zoom.focus();
+      await zoom.press('Home');
+      await expect(zoom).toHaveValue('0');
+      await expect.poll(() => renderedSurface(page, 'Earth')).toMatchObject({ hasTargetBracket: true });
+      await expect
+        .poll(() => renderedSurface(page, 'Earth'))
+        .toMatchObject({
+          albedoWidth: 256,
+          emissiveMapWidth: archetype === 'lava' ? 256 : null,
+        });
+      await enterPlanetViewViaSceneComponent(page, 'earth');
+      await expect(new PlanetViewPage(page).header).toBeVisible();
+      await waitForSurfacesBaked(page);
+      await expect
+        .poll(() => renderedSurface(page, 'Earth'))
+        .toMatchObject({
+          albedoWidth: 2048,
+          emissiveMapWidth: archetype === 'lava' ? 2048 : null,
+        });
+      await expect.poll(() => cloudTextureWidths(page)).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`${archetype}-viewer-detail.png`) });
+      expect(
+        problems.filter(
+          (text) =>
+            SHADER_FAILURE.test(text) ||
+            text.includes(`No dedicated ${archetype} renderer`) ||
+            text.includes('[celestial-appearance-fallback]'),
+        ),
+      ).toEqual([]);
+    });
+  }
+
   for (const archetype of ['icy-moon', 'rocky-moon'] as const) {
     for (const focused of ['earth', 'luna']) {
       test(`renders ${archetype} overview and ${focused === 'luna' ? 'focused relief' : 'companion moon'} without clouds`, async ({

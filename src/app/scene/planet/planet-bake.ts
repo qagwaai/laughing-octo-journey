@@ -35,6 +35,7 @@ import {
 import {
   buildPlanetShaderUniforms,
   PLANET_BAKE_MODE_ALBEDO,
+  PLANET_BAKE_MODE_EMISSIVE,
   PLANET_BAKE_MODE_MATERIAL,
   PLANET_BAKE_MODE_NORMAL,
   PLANET_FRAGMENT_SHADER,
@@ -45,6 +46,7 @@ export type PlanetBakeSource = 'gpu' | 'cpu';
 
 export interface PlanetBakeResult {
   albedo: Texture;
+  emissive?: Texture;
   normal?: Texture;
   /** Roughness in green, metalness in blue. */
   material?: Texture;
@@ -128,6 +130,8 @@ function renderPlanetPass(
       uIcyMoon: { value: values.uIcyMoon },
       uRockyMoon: { value: values.uRockyMoon },
       uSuperEarth: { value: values.uSuperEarth },
+      uLava: { value: values.uLava },
+      uOcean: { value: values.uOcean },
       uTexel: { value: [values.uTexel[0], values.uTexel[1]] },
     },
   });
@@ -153,6 +157,12 @@ function bakeOnGpu(renderer: WebGLRenderer, climate: PlanetClimate, preset: Plan
   const albedoTarget = renderPlanetPass(renderer, climate, PLANET_BAKE_MODE_ALBEDO, preset.width, preset.height);
   applyAlbedoSettings(albedoTarget.texture);
 
+  let emissiveTarget: WebGLRenderTarget | undefined;
+  if (climate.archetype === 'lava') {
+    emissiveTarget = renderPlanetPass(renderer, climate, PLANET_BAKE_MODE_EMISSIVE, preset.width, preset.height);
+    applyAlbedoSettings(emissiveTarget.texture);
+  }
+
   const detailWidth = Math.max(1, Math.round(preset.width * preset.normalScale));
   const detailHeight = Math.max(1, Math.round(preset.height * preset.normalScale));
 
@@ -170,12 +180,14 @@ function bakeOnGpu(renderer: WebGLRenderer, climate: PlanetClimate, preset: Plan
 
   return {
     albedo: albedoTarget.texture,
+    emissive: emissiveTarget?.texture,
     normal: normalTarget?.texture,
     material: materialTarget?.texture,
     source: 'gpu',
     climate,
     dispose: () => {
       albedoTarget.dispose();
+      emissiveTarget?.dispose();
       normalTarget?.dispose();
       materialTarget?.dispose();
     },
@@ -188,6 +200,13 @@ function bakeOnCpu(climate: PlanetClimate, preset: PlanetLodPreset): PlanetBakeR
   const albedo = new DataTexture(raster.albedo, raster.width, raster.height, RGBAFormat, UnsignedByteType);
   applyAlbedoSettings(albedo);
   albedo.needsUpdate = true;
+
+  let emissive: DataTexture | undefined;
+  if (raster.emissive) {
+    emissive = new DataTexture(raster.emissive, raster.width, raster.height, RGBAFormat, UnsignedByteType);
+    applyAlbedoSettings(emissive);
+    emissive.needsUpdate = true;
+  }
 
   let normal: DataTexture | undefined;
   if (raster.normal && raster.normalWidth && raster.normalHeight) {
@@ -205,12 +224,14 @@ function bakeOnCpu(climate: PlanetClimate, preset: PlanetLodPreset): PlanetBakeR
 
   return {
     albedo,
+    emissive,
     normal,
     material,
     source: 'cpu',
     climate,
     dispose: () => {
       albedo.dispose();
+      emissive?.dispose();
       normal?.dispose();
       material?.dispose();
     },
@@ -223,7 +244,9 @@ export function bakePlanetTextures(options: PlanetBakeOptions): PlanetBakeResult
     options.archetype ??
     (options.surfaceArchetype === 'icy-moon' ||
     options.surfaceArchetype === 'rocky-moon' ||
-    options.surfaceArchetype === 'super-earth'
+    options.surfaceArchetype === 'super-earth' ||
+    options.surfaceArchetype === 'lava' ||
+    options.surfaceArchetype === 'ocean'
       ? options.surfaceArchetype
       : 'terran');
   const climate = derivePlanetClimate(options.bodyId, archetype, options.surfaceArchetype);

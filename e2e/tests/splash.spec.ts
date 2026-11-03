@@ -944,6 +944,38 @@ test('renders the super-earth demo through the baked surface without clouds or s
   ).toEqual([]);
 });
 
+for (const kind of ['lava', 'ocean'] as const) {
+  test(`renders the ${kind} demo through its dedicated baked surface`, async ({ page }, testInfo) => {
+    const problems: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error' || message.type() === 'warning') problems.push(message.text());
+    });
+    page.on('pageerror', (error) => problems.push(error.message));
+    const bodyId = `nova-splash-${kind}-01`;
+    await page.goto(pinnedSplash('/splash(left:intro)', bodyId));
+    const overlay = page.locator('app-splash-overlay section');
+    await expect(overlay).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+    await expect(overlay).toHaveAttribute('data-planet-kind', kind);
+    await expect(page.getByRole('checkbox', { name: 'Terran clouds' })).toHaveCount(0);
+    await expect
+      .poll(() => readSplashPlanetSurface(page, bodyId))
+      .toMatchObject({
+        albedoWidth: 2048,
+        emissiveWidth: kind === 'lava' ? 2048 : null,
+        childCount: 0,
+      });
+    await page.screenshot({ path: testInfo.outputPath(`${kind}-splash.png`) });
+    await expect(page.getByTestId('splash-body-error')).toHaveCount(0);
+    expect(
+      problems.filter(
+        (text) =>
+          /Shader Error|not compiled|WebGLProgram|INVALID_OPERATION/i.test(text) ||
+          text.includes('[celestial-appearance-fallback]'),
+      ),
+    ).toEqual([]);
+  });
+}
+
 test('previews an unlisted body as a gas giant with splashKind', async ({ page }) => {
   await page.goto(`${pinnedSplash('/splash(left:intro)', 'preview-me')}&splashKind=gas-giant`);
   const overlay = page.locator('app-splash-overlay section');
@@ -1054,6 +1086,30 @@ async function readSplashBodyNames(page: import('@playwright/test').Page): Promi
     });
     return names;
   });
+}
+
+async function readSplashPlanetSurface(
+  page: import('@playwright/test').Page,
+  bodyId: string,
+): Promise<{ albedoWidth: number | null; emissiveWidth: number | null; childCount: number } | null> {
+  return page.evaluate((id) => {
+    const ng = (window as unknown as { ng: { getComponent: (el: Element | null) => unknown } }).ng;
+    const canvas = ng.getComponent(document.querySelector('ngt-canvas')) as {
+      store: { snapshot: { scene: Scene } };
+    };
+    const mesh = canvas.store.snapshot.scene.getObjectByName(id) as Mesh | undefined;
+    if (!mesh) return null;
+    const material = mesh.material as MeshStandardMaterial;
+    const width = (texture: MeshStandardMaterial['map']): number | null =>
+      texture?.image && 'width' in texture.image && typeof texture.image.width === 'number'
+        ? texture.image.width
+        : null;
+    return {
+      albedoWidth: width(material.map),
+      emissiveWidth: width(material.emissiveMap),
+      childCount: mesh.children.length,
+    };
+  }, bodyId);
 }
 
 /** Resolves once the scene shows the body named by `data-planet` (procedural terran bodies have no named root). */

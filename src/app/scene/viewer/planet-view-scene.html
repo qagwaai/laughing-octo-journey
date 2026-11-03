@@ -52,12 +52,21 @@
   } @else { @let _selectedSurface = surfaces().get(selected.id);
   <ngt-mesh-standard-material
     [map]="_selectedSurface?.albedo ?? null"
+    [emissiveMap]="_selectedSurface?.emissive ?? null"
     [normalMap]="_selectedSurface?.normal ?? null"
     [roughnessMap]="_selectedSurface?.material ?? null"
     [metalnessMap]="_selectedSurface?.material ?? null"
     [color]="resolveSurfaceTint(selected.id, '#f2f8ff', '#ffffff')"
-    [emissive]="hoveredBodyId() === selected.id ? '#27466a' : isCatalogSurface(selected) ? '#000000' : '#1a2638'"
-    [emissiveIntensity]="hoveredBodyId() === selected.id ? 0.4 : 0.18"
+    [emissive]="
+      hoveredBodyId() === selected.id
+        ? '#27466a'
+        : _selectedSurface?.emissive
+          ? '#ffffff'
+          : isCatalogSurface(selected)
+            ? '#000000'
+            : '#1a2638'
+    "
+    [emissiveIntensity]="hoveredBodyId() === selected.id ? 0.4 : _selectedSurface?.emissive ? 2 : 0.18"
     [roughness]="_selectedSurface?.material ? 1 : 0.72"
     [metalness]="_selectedSurface?.material ? 1 : 0"
     [visible]="!dedicatedAtmosphere(selected)"
@@ -94,9 +103,18 @@
   <ngt-sphere-geometry *args="[moon.radius, 44, 44]" />
   <ngt-mesh-standard-material
     [map]="surfaces().get(moon.id)?.albedo ?? null"
+    [emissiveMap]="surfaces().get(moon.id)?.emissive ?? null"
     [color]="resolveSurfaceTint(moon.id, '#f4f8ff', '#ffffff')"
-    [emissive]="hoveredBodyId() === moon.id ? '#24415f' : isCatalogSurface(moon.body) ? '#000000' : '#151f2d'"
-    [emissiveIntensity]="hoveredBodyId() === moon.id ? 0.32 : 0.14"
+    [emissive]="
+      hoveredBodyId() === moon.id
+        ? '#24415f'
+        : surfaces().get(moon.id)?.emissive
+          ? '#ffffff'
+          : isCatalogSurface(moon.body)
+            ? '#000000'
+            : '#151f2d'
+    "
+    [emissiveIntensity]="hoveredBodyId() === moon.id ? 0.32 : surfaces().get(moon.id)?.emissive ? 2 : 0.14"
     [roughness]="0.78"
     [metalness]="0"
     [visible]="_moonAtmosphere === null"

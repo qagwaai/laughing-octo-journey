@@ -1,7 +1,17 @@
 # Procedural planetary textures: options, decisions, and implementation plan
 
 Date: 2026-09-28
-Status: Stages 1-3 implemented and validated. Sol's approved Earth/Luna/Mars catalog integration is now implemented alongside the procedural fallback; final Stellar Viewer visual acceptance remains on hold. See the [Sol texture plan](./sol-textures-2026-10-08.md) for current gates.
+Status: Stages 1-3 implemented and validated. Sol's approved Earth/Luna/Mars catalog integration is implemented alongside the procedural fallback; its remaining acceptance gates are tracked in the [Sol texture plan](./sol-textures-2026-10-08.md). Phase 4 dedicated lava and exoplanet-ocean renderers are implemented and visually accepted; details and release gates are recorded in the [Forge contract change tracker](./contract-change-2026-11-02.md).
+
+### Phase 4 renderer update (2026-11-02)
+
+The dedicated `lava-v1` and `ocean-v1` procedural renderers replace the
+historical terran fallback for lava and exoplanet-ocean archetypes. They use
+the shared CPU/GLSL generation and bake path and are integrated into Splash
+and Stellar Viewer. Sol Earth retains its approved catalog renderer. The user
+completed visual validation of the lava/ocean appearances and confirmed they
+look good. Combined Viewer E2E, live smoke, and CI confirmation remain
+separate release checks; see the contract tracker.
 
 ## Goal
 
@@ -659,10 +669,10 @@ subsequently marked appearance visual validation complete and authorized the
 separate snapshot-placement adoption, including Chrome DevTools validation.
 `sol-earth`'s `ocean` value is Forge's canonical `surfaceArchetype`, not a
 classification Nova inferred from `planetType`, `visualization.textureKey`,
-or generated water coverage. Nova preserves that value in appearance identity
-and currently routes it through the terran renderer with the notification
-above. The procedural terran appearance may include generated oceans, but
-`ocean` does not select a dedicated ocean renderer yet.
+or generated water coverage. At the time of this 2026-10-04 observation, Nova
+preserved that value in appearance identity and routed it through the terran
+renderer with the notification above. The dedicated exoplanet-ocean renderer
+was added in Phase 4; Sol Earth remains on its approved catalog renderer.
 
 Manual splash checks use a local URL and keep all current splash controls:
 
@@ -682,13 +692,14 @@ Manual splash checks use a local URL and keep all current splash controls:
 5. In Stellar Viewer, use an authorized account and select a system containing
    a star, rocky body, gas giant/ice giant, and asteroid. Confirm color,
    catalog-derived size, star class/luminosity, and existing placement remain
-   sensible. If the system contains `lava`, `ocean`, `rocky-moon`, or
-   `icy-moon`, verify the current terran fallback is visibly reported by the
-   contract-variance toast and that canonical classification is not rewritten.
+   sensible. Lava and exoplanet-ocean bodies should use their dedicated
+   renderers without a fallback variance toast; rocky-moon and icy-moon still
+   use the explicitly reported terran fallback.
 6. Capture screenshots of splash and Viewer plus any toast or console errors,
    and report the URLs/system and body IDs used. Do not share credentials or
-   session keys. No visual equivalence or visual approval is claimed until
-   these checks are completed by the user.
+   session keys. The Phase 4 lava/ocean visual acceptance is recorded above;
+   this earlier checklist's remaining fallback checks concern rocky-moon and
+   icy-moon.
 
 ### Remaining work
 
@@ -697,9 +708,8 @@ display-basis alignment, proportional distances as the default, and the overlay
 toggle retaining compressed overview. Appearance validation was already complete.
 Additional planet-name markers remain deferred.
 
-1. Consider dedicated lava, ocean, rocky-moon, and icy-moon renderers as
-   separate visual work; until implemented, the explicit terran fallback is
-   intentional and observable.
+1. Consider dedicated rocky-moon and icy-moon renderers as separate visual
+   work; lava and exoplanet-ocean renderers are implemented in Phase 4.
 
 #### Snapshot/display-basis validation and user handoff (2026-10-04)
 

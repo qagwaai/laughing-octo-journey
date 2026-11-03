@@ -5,17 +5,30 @@
  * normal map, which halves the noise work compared with independent passes.
  */
 import { icyMoonAlbedo, icyMoonElevation, icyMoonMaterial } from './icy-moon-surface';
+import { lavaAlbedo, lavaEmissive, lavaElevation, lavaMaterial } from './lava-surface';
 import { clamp01 } from './planet-noise';
-import type { PlanetClimate } from './planet-seed';
-import { directionFromEquirect, planetAlbedo, planetElevation, planetMaterial } from './planet-surface';
+import type { PlanetArchetype, PlanetClimate } from './planet-seed';
+import { oceanAlbedo, oceanMaterial } from './ocean-surface';
+import { directionFromEquirect, planetAlbedo, planetElevation, planetMaterial, type Rgb } from './planet-surface';
 import { rockyMoonAlbedo, rockyMoonElevation, rockyMoonMaterial } from './rocky-moon-surface';
 import { superEarthAlbedo, superEarthElevation, superEarthMaterial } from './super-earth-surface';
 
-const SURFACE_MODELS = {
+type PlanetDirection = readonly [number, number, number];
+
+interface PlanetSurfaceModel {
+  elevation(x: number, y: number, z: number, climate: PlanetClimate): number;
+  albedo(elevation: number, sinLatitude: number, climate: PlanetClimate, direction: PlanetDirection): Rgb;
+  material(elevation: number, sinLatitude: number, climate: PlanetClimate, direction: PlanetDirection): Rgb;
+  emissive?: (elevation: number, sinLatitude: number, climate: PlanetClimate, direction: PlanetDirection) => Rgb;
+}
+
+const SURFACE_MODELS: Readonly<Record<PlanetArchetype, PlanetSurfaceModel>> = {
   terran: { elevation: planetElevation, albedo: planetAlbedo, material: planetMaterial },
   'icy-moon': { elevation: icyMoonElevation, albedo: icyMoonAlbedo, material: icyMoonMaterial },
   'rocky-moon': { elevation: rockyMoonElevation, albedo: rockyMoonAlbedo, material: rockyMoonMaterial },
   'super-earth': { elevation: superEarthElevation, albedo: superEarthAlbedo, material: superEarthMaterial },
+  lava: { elevation: lavaElevation, albedo: lavaAlbedo, material: lavaMaterial, emissive: lavaEmissive },
+  ocean: { elevation: planetElevation, albedo: oceanAlbedo, material: oceanMaterial },
 };
 
 export type PlanetLodTier = 'l0' | 'l1';
@@ -40,6 +53,7 @@ export interface PlanetRaster {
   width: number;
   height: number;
   albedo: Uint8ClampedArray;
+  emissive?: Uint8ClampedArray;
   normal?: Uint8ClampedArray;
   material?: Uint8ClampedArray;
   normalWidth?: number;
@@ -57,8 +71,8 @@ function buildElevationGrid(climate: PlanetClimate, width: number, height: numbe
     const v = (y + 0.5) / height;
     for (let x = 0; x < width; x += 1) {
       const u = (x + 0.5) / width;
-      const [dx, dy, dz] = directionFromEquirect(u, v);
-      grid[y * width + x] = SURFACE_MODELS[climate.archetype].elevation(dx, dy, dz, climate);
+      const direction = directionFromEquirect(u, v);
+      grid[y * width + x] = SURFACE_MODELS[climate.archetype].elevation(...direction, climate);
     }
   }
 
@@ -78,11 +92,45 @@ function encodeAlbedo(
     const sinLatitude = Math.sin((0.5 - v) * Math.PI);
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
-      const [r, g, b] = SURFACE_MODELS[climate.archetype].albedo(elevation[index], sinLatitude, climate);
+      const direction = directionFromEquirect((x + 0.5) / width, v);
+      const [r, g, b] = SURFACE_MODELS[climate.archetype].albedo(
+        elevation[index],
+        sinLatitude,
+        climate,
+        direction,
+      );
       const offset = index * 4;
       pixels[offset] = Math.round(r * 255);
       pixels[offset + 1] = Math.round(g * 255);
       pixels[offset + 2] = Math.round(b * 255);
+      pixels[offset + 3] = 255;
+    }
+  }
+
+  return pixels;
+}
+
+function encodeEmissive(
+  climate: PlanetClimate,
+  elevation: Float32Array,
+  width: number,
+  height: number,
+): Uint8ClampedArray | undefined {
+  const emissive = SURFACE_MODELS[climate.archetype].emissive;
+  if (!emissive) return undefined;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+
+  for (let y = 0; y < height; y += 1) {
+    const v = (y + 0.5) / height;
+    const sinLatitude = Math.sin((0.5 - v) * Math.PI);
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const direction = directionFromEquirect((x + 0.5) / width, v);
+      const [r, g, b] = emissive(elevation[index], sinLatitude, climate, direction);
+      const offset = index * 4;
+      pixels[offset] = Math.round(clamp01(r) * 255);
+      pixels[offset + 1] = Math.round(clamp01(g) * 255);
+      pixels[offset + 2] = Math.round(clamp01(b) * 255);
       pixels[offset + 3] = 255;
     }
   }
@@ -107,10 +155,12 @@ function encodeMaterial(
     const sinLatitude = Math.sin((0.5 - v) * Math.PI);
     for (let x = 0; x < width; x += 1) {
       const index = y * width + x;
+      const direction = directionFromEquirect((x + 0.5) / width, v);
       const [ao, roughness, metalness] = SURFACE_MODELS[climate.archetype].material(
         elevation[index],
         sinLatitude,
         climate,
+        direction,
       );
       const offset = index * 4;
       pixels[offset] = Math.round(ao * 255);
@@ -179,6 +229,7 @@ export function rasterizePlanet(climate: PlanetClimate, preset: PlanetLodPreset)
     width,
     height,
     albedo,
+    emissive: encodeEmissive(climate, elevation, width, height),
     signature: signatureOf(albedo),
   };
 
@@ -205,18 +256,30 @@ export function rasterizePlanet(climate: PlanetClimate, preset: PlanetLodPreset)
 
 /** Sampled for the GPU parity comparison, which cannot assert exact equality. */
 export function sampleAlbedoAt(climate: PlanetClimate, u: number, v: number): readonly [number, number, number] {
-  const [dx, dy, dz] = directionFromEquirect(u, v);
+  const direction = directionFromEquirect(u, v);
+  const [, dy] = direction;
   const model = SURFACE_MODELS[climate.archetype];
-  const elevation = model.elevation(dx, dy, dz, climate);
-  const [r, g, b] = model.albedo(elevation, dy, climate);
+  const elevation = model.elevation(...direction, climate);
+  const [r, g, b] = model.albedo(elevation, dy, climate, direction);
   return [clamp01(r), clamp01(g), clamp01(b)];
 }
 
 /** Samples the ORM triple at one equirect coordinate, for parity testing against the shader. */
 export function sampleMaterialAt(climate: PlanetClimate, u: number, v: number): readonly [number, number, number] {
-  const [dx, dy, dz] = directionFromEquirect(u, v);
+  const direction = directionFromEquirect(u, v);
+  const [, dy] = direction;
   const model = SURFACE_MODELS[climate.archetype];
-  const elevation = model.elevation(dx, dy, dz, climate);
-  const [r, g, b] = model.material(elevation, dy, climate);
+  const elevation = model.elevation(...direction, climate);
+  const [r, g, b] = model.material(elevation, dy, climate, direction);
+  return [clamp01(r), clamp01(g), clamp01(b)];
+}
+
+export function sampleEmissiveAt(climate: PlanetClimate, u: number, v: number): readonly [number, number, number] | null {
+  const model = SURFACE_MODELS[climate.archetype];
+  if (!model.emissive) return null;
+  const direction = directionFromEquirect(u, v);
+  const [, dy] = direction;
+  const elevation = model.elevation(...direction, climate);
+  const [r, g, b] = model.emissive(elevation, dy, climate, direction);
   return [clamp01(r), clamp01(g), clamp01(b)];
 }

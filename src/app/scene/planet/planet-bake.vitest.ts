@@ -53,6 +53,36 @@ describe('planet bake capability detection', () => {
 });
 
 describe('planet bake CPU fallback', () => {
+  it('creates and disposes lava emissive maps but omits them for ocean surfaces', () => {
+    const lava = bakePlanetTextures({
+      bodyId: 'lava-bake',
+      surfaceArchetype: 'lava',
+      preset: NORMAL_PRESET,
+    });
+    const emissive = lava.emissive;
+    if (!emissive) throw new Error('Expected lava emissive texture');
+    let activePixels = 0;
+    for (let offset = 0; offset < imageOf(emissive).data.length; offset += 4) {
+      if (imageOf(emissive).data[offset] > 0) activePixels += 1;
+    }
+    const disposeEmissive = vi.spyOn(emissive, 'dispose');
+
+    const ocean = bakePlanetTextures({
+      bodyId: 'ocean-bake',
+      surfaceArchetype: 'ocean',
+      preset: NORMAL_PRESET,
+    });
+    const disposeOceanAlbedo = vi.spyOn(ocean.albedo, 'dispose');
+
+    expect(imageOf(emissive).width).toBe(64);
+    expect(activePixels).toBeGreaterThan(0);
+    expect(ocean.emissive).toBeUndefined();
+    lava.dispose();
+    ocean.dispose();
+    expect(disposeEmissive).toHaveBeenCalledOnce();
+    expect(disposeOceanAlbedo).toHaveBeenCalledOnce();
+  });
+
   it.each(['icy-moon', 'rocky-moon'] as const)(
     'bakes %s albedo, relief and non-metallic material maps and releases them',
     (archetype) => {

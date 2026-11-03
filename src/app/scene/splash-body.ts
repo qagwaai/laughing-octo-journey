@@ -24,6 +24,7 @@ import { isGasGiantSurfaceArchetype } from './gas-giant/body-giant-profile';
 import type { GasGiantPaletteChoice, GasGiantRingChoice } from './gas-giant/gas-giant-settings';
 import { createSplashGasGiant } from './gas-giant/splash-gas-giant';
 import { createSplashPlanetMesh, disposeSplashObject } from './splash-composition';
+import { proceduralSurfaceHasClouds } from './planet/planet-surface-resolver';
 import type { SplashQuality } from './splash-state';
 import { type CatalogPlanetSurfaceResult, loadCatalogSurface } from './planet/catalog-surface-loader';
 import { createTitanHazeTexture, resolveVenusAtmosphereUrl } from './planet/planet-atmosphere';
@@ -138,8 +139,8 @@ export async function createSplashBody(
   const appearance = resolveSplashAppearance(entry);
   if (!appearance.valid) throw new Error('Splash demo has no valid surface archetype.');
   const bake = bakeSplashPlanet(quality, options.renderer, entry.id, appearance.input.surfaceArchetype);
-  const mesh = createSplashPlanetMesh(bake.albedo, bake.normal, bake.material);
-  if (entry.kind === 'icy-moon' || entry.kind === 'rocky-moon' || entry.kind === 'super-earth') {
+  const mesh = createSplashPlanetMesh(bake.albedo, bake.normal, bake.material, bake.emissive);
+  if (!proceduralSurfaceHasClouds(appearance.input.surfaceArchetype)) {
     mesh.name = entry.id;
     return plainBody(entry, mesh, () => bake.dispose());
   }

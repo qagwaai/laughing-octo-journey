@@ -4,6 +4,7 @@ import { rasterizePlanet, sampleAlbedoAt, sampleMaterialAt } from '../../src/app
 import {
   buildPlanetShaderUniforms,
   PLANET_BAKE_MODE_ALBEDO,
+  PLANET_BAKE_MODE_EMISSIVE,
   PLANET_BAKE_MODE_MATERIAL,
   PLANET_BAKE_MODE_NORMAL,
   PLANET_FRAGMENT_SHADER,
@@ -123,6 +124,52 @@ function requestFor(
   };
 }
 
+async function expectGpuBakeMatchesReference(
+  page: import('@playwright/test').Page,
+  bodyId: string,
+  archetype: PlanetArchetype,
+  mode: number,
+): Promise<void> {
+  const climate = derivePlanetClimate(bodyId, archetype);
+  const raster = rasterizePlanet(climate, {
+    width: WIDTH,
+    height: HEIGHT,
+    includeNormal: true,
+    includeMaterial: true,
+    normalScale: 1,
+  });
+  const expected =
+    mode === PLANET_BAKE_MODE_NORMAL
+      ? raster.normal
+      : mode === PLANET_BAKE_MODE_MATERIAL
+        ? raster.material
+        : mode === PLANET_BAKE_MODE_EMISSIVE
+          ? raster.emissive
+          : raster.albedo;
+  if (!expected) throw new Error(`Expected ${archetype} reference map for mode ${mode}`);
+  const pixels = await bakeOnGpu(page, requestFor(bodyId, mode, archetype));
+  let error = 0;
+  let outliers = 0;
+  let channels = 0;
+  // The CPU uses edge texels at the poles; the GPU samples the exact pole.
+  for (let row = 1; row < HEIGHT - 1; row += 1) {
+    for (let column = 0; column < WIDTH; column += 1) {
+      let worst = 0;
+      for (let channel = 0; channel < 3; channel += 1) {
+        const actualOffset = (row * WIDTH + column) * 4 + channel;
+        const expectedOffset = ((HEIGHT - 1 - row) * WIDTH + column) * 4 + channel;
+        const delta = Math.abs(pixels[actualOffset] - expected[expectedOffset]);
+        error += delta;
+        channels += 1;
+        worst = Math.max(worst, delta);
+      }
+      if (worst > OUTLIER_CHANNEL_DELTA) outliers += 1;
+    }
+  }
+  expect(error / channels).toBeLessThan(MEAN_ERROR_LIMIT);
+  expect(outliers / (WIDTH * (HEIGHT - 2))).toBeLessThan(OUTLIER_FRACTION_LIMIT);
+}
+
 test.describe('procedural planet GPU/CPU parity', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('about:blank');
@@ -132,42 +179,22 @@ test.describe('procedural planet GPU/CPU parity', () => {
     for (const mode of [PLANET_BAKE_MODE_ALBEDO, PLANET_BAKE_MODE_NORMAL, PLANET_BAKE_MODE_MATERIAL]) {
       test(`${archetype} GPU bake matches CPU terrain (mode ${mode})`, async ({ page }) => {
         const bodyId = `${archetype}-parity`;
-        const climate = derivePlanetClimate(bodyId, archetype);
-        const raster = rasterizePlanet(climate, {
-          width: WIDTH,
-          height: HEIGHT,
-          includeNormal: true,
-          includeMaterial: true,
-          normalScale: 1,
-        });
-        const expected =
-          mode === PLANET_BAKE_MODE_NORMAL
-            ? raster.normal
-            : mode === PLANET_BAKE_MODE_MATERIAL
-              ? raster.material
-              : raster.albedo;
-        if (!expected) throw new Error(`Expected ${archetype} reference map`);
-        const pixels = await bakeOnGpu(page, requestFor(bodyId, mode, archetype));
-        let error = 0;
-        let outliers = 0;
-        let channels = 0;
-        // The CPU uses edge texels at the poles; the GPU samples the exact pole.
-        for (let row = 1; row < HEIGHT - 1; row += 1) {
-          for (let column = 0; column < WIDTH; column += 1) {
-            let worst = 0;
-            for (let channel = 0; channel < 3; channel += 1) {
-              const actualOffset = (row * WIDTH + column) * 4 + channel;
-              const expectedOffset = ((HEIGHT - 1 - row) * WIDTH + column) * 4 + channel;
-              const delta = Math.abs(pixels[actualOffset] - expected[expectedOffset]);
-              error += delta;
-              channels += 1;
-              worst = Math.max(worst, delta);
-            }
-            if (worst > OUTLIER_CHANNEL_DELTA) outliers += 1;
-          }
-        }
-        expect(error / channels).toBeLessThan(MEAN_ERROR_LIMIT);
-        expect(outliers / (WIDTH * (HEIGHT - 2))).toBeLessThan(OUTLIER_FRACTION_LIMIT);
+        await expectGpuBakeMatchesReference(page, bodyId, archetype, mode);
+      });
+    }
+  }
+
+  for (const archetype of ['lava', 'ocean'] as const) {
+    const modes = [
+      PLANET_BAKE_MODE_ALBEDO,
+      PLANET_BAKE_MODE_NORMAL,
+      PLANET_BAKE_MODE_MATERIAL,
+      ...(archetype === 'lava' ? [PLANET_BAKE_MODE_EMISSIVE] : []),
+    ];
+    for (const mode of modes) {
+      test(`${archetype} GPU bake matches CPU terrain (mode ${mode})`, async ({ page }) => {
+        const bodyId = `${archetype}-parity`;
+        await expectGpuBakeMatchesReference(page, bodyId, archetype, mode);
       });
     }
   }

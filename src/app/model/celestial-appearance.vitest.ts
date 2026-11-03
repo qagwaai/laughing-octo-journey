@@ -4,8 +4,8 @@ import type { CanonicalBodyType, SurfaceArchetype } from './celestial-classifica
 
 const cases: Array<[CanonicalBodyType, SurfaceArchetype, string, string | undefined]> = [
   ['planet', 'rocky', 'terran', undefined],
-  ['planet', 'lava', 'terran', 'lava'],
-  ['planet', 'ocean', 'terran', 'ocean'],
+  ['planet', 'lava', 'lava', undefined],
+  ['planet', 'ocean', 'ocean', undefined],
   ['planet', 'gas-giant', 'gas-giant', undefined],
   ['planet', 'ice-giant', 'gas-giant', undefined],
   ['planet', 'super-earth', 'super-earth', undefined],

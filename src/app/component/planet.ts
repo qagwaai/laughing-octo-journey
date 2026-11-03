@@ -42,6 +42,9 @@ export const PLANET_BAKE_FN = new InjectionToken('PLANET_BAKE_FN', {
 
       <ngt-mesh-standard-material
         [map]="_textures?.albedo ?? null"
+        [emissiveMap]="_textures?.emissive ?? null"
+        [emissive]="_textures?.emissive ? '#ffffff' : '#000000'"
+        [emissiveIntensity]="_textures?.emissive ? 2 : 1"
         [normalMap]="_textures?.normal ?? null"
         [roughnessMap]="_textures?.material ?? null"
         [metalnessMap]="_textures?.material ?? null"
