@@ -104,8 +104,8 @@ test.describe('Viewer — Solar System List', () => {
     await expect(page).toHaveURL(/left:game-main/, { timeout: 10000 });
 
     // Register the response handler but delay the response to catch the loading state
-    let resolveResponse: any;
-    const delayedResponse = new Promise((resolve) => {
+    let resolveResponse!: () => void;
+    const delayedResponse = new Promise<void>((resolve) => {
       resolveResponse = resolve;
     });
 
@@ -126,6 +126,8 @@ test.describe('Viewer — Solar System List', () => {
 
     // Resolve the delayed response
     resolveResponse();
+    await expect(viewerPage.loadingState).toHaveCount(0);
+    await expect(viewerPage.systemItemById('sol')).toBeVisible();
   });
 
   test('shows the empty state without injecting a local Cygnus X-1 entry', async ({ page }) => {

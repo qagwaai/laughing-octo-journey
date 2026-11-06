@@ -1072,6 +1072,11 @@ export const en = {
   },
 
   shipExterior: {
+    keyboard: {
+      viewportLabel: 'Ship flight viewport',
+      active: 'Keyboard controls active',
+      inactive: 'Click or Tab into the viewport to activate keyboard controls',
+    },
     debugDrawer: {
       openButton: 'Debug',
       closeButton: 'Close',

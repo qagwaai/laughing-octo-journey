@@ -2,6 +2,9 @@
   <header class="ship-exterior-bare-scene__toolbar">
     <span class="ship-exterior-bare-scene__title">{{ activeShipTitleLine() }}</span>
     <div class="ship-exterior-bare-scene__toolbar-actions">
+      <span class="ship-exterior-bare-scene__keyboard-status" id="ship-exterior-keyboard-status" role="status">
+        {{ keyboardControlsActive() ? keyboardText.active : keyboardText.inactive }}
+      </span>
       <span
         class="ship-exterior-bare-scene__health"
         [class.ship-exterior-bare-scene__health--green]="performanceHealth() === 'green'"
@@ -52,7 +55,17 @@
     </section>
   }
 
-  <div class="ship-exterior-bare-scene__viewport" #canvasHost>
+  <div
+    class="ship-exterior-bare-scene__viewport"
+    [class.ship-exterior-bare-scene__viewport--keyboard-active]="keyboardControlsActive()"
+    #canvasHost
+    tabindex="0"
+    role="region"
+    [attr.aria-label]="keyboardText.viewportLabel"
+    aria-describedby="ship-exterior-keyboard-status"
+    (focusin)="onViewportFocusIn($event)"
+    (focusout)="onViewportFocusOut($event)"
+  >
     <app-asteroid-scan-detail-panel [sample]="activeScanDetailSample()" />
     @if (sceneEmptyState(); as emptyState) {
       <div class="ship-exterior-bare-scene__empty-state" role="status" aria-live="polite">

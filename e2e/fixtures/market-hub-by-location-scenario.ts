@@ -131,9 +131,7 @@ export function registerDefaultMarketHandler(
 
 export async function openMarketHubWithDefaultData(
   sharedGameShell: GameShellPage,
-  sharedMock: {
-    reset: () => void;
-  } & Pick<SocketIOMock, 'on'>,
+  sharedMock: SocketIOMock,
   onRequest: (request: MarketByLocationRequest) => void,
 ): Promise<void> {
   sharedMock.reset();

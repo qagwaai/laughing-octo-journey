@@ -19,6 +19,8 @@ type HotkeyEntry = { key: string; action: string; state: 'available' | 'disabled
 const scene = (page: Page) => page.locator('.ship-exterior-bare-scene');
 const flightToggle = (page: Page) => page.locator('.ship-exterior-bare-scene__flight-btn');
 const pilotCanvas = (page: Page) => scene(page).locator('canvas.ship-scene-canvas');
+const pilotViewport = (page: Page) => page.getByRole('region', { name: 'Ship flight viewport' });
+const keyboardStatus = (page: Page) => page.locator('.ship-exterior-bare-scene__keyboard-status');
 const hotkeyRow = (page: Page) => page.locator('.ship-exterior-bare-scene__hotkeys');
 const launchToast = (page: Page) => page.locator('.ship-exterior-bare-scene__toast');
 const debugButton = (page: Page) => page.getByRole('button', { name: 'Debug' });
@@ -149,6 +151,130 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     launchRequests.length = 0;
   });
 
+  test('isolates Search typing and releases controls when clicking the left pane after Escape', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await openHotkeyHudScene(page, mock);
+    await new GameShellPage(page).navButton('Viewer').evaluate((button: HTMLButtonElement) => button.click());
+    await page.clock.fastForward(16);
+    await expect(page).toHaveURL(/left:viewer/);
+    const search = page.getByTestId('viewer-search');
+    await expect(search).toBeVisible();
+    await expect(keyboardStatus(page)).toHaveText(/Click or Tab/);
+
+    await page.evaluate(() => {
+      const api = window.__shipExteriorBareSceneTestUtils;
+      const sample = api?.legacy.getAsteroidSamples()[0];
+      if (!api || !sample || !api.legacy.forceTargetAsteroid(sample.id)) {
+        throw new Error('Expected a valid launch target for the focus isolation test.');
+      }
+    });
+    const beforeTyping = await page.evaluate(
+      () => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext()?.flightCurrentLocationKm,
+    );
+    await search.click();
+    await page.keyboard.type('A1 wasd');
+    await page.clock.fastForward(100);
+    await expect(search).toHaveValue('A1 wasd');
+    await expect(search).toBeFocused();
+    await expectHotkeyStates(page, { A: 'disabled', W: 'disabled', '1': 'disabled' });
+    expect(launchRequests).toEqual([]);
+    expect(
+      await page.evaluate(
+        () => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext()?.flightCurrentLocationKm,
+      ),
+    ).toEqual(beforeTyping);
+
+    await capturePilotPointer(page);
+    await expect(keyboardStatus(page)).toHaveText('Keyboard controls active');
+    await page.keyboard.down('KeyW');
+    await page.clock.fastForward(16);
+    await expectHotkeyStates(page, { W: 'pressed' });
+    try {
+      await search.focus();
+      await page.clock.fastForward(16);
+      await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+      await expect(search).toBeFocused();
+      await expect(keyboardStatus(page)).toHaveText(/Click or Tab/);
+      const stopped = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      await page.clock.fastForward(100);
+      const after = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      expect(after?.flightCurrentLocationKm).toEqual(stopped?.flightCurrentLocationKm);
+      expect(after?.flightSpeedKmPerSec).toBe(0);
+    } finally {
+      await page.keyboard.up('KeyW');
+    }
+    await capturePilotPointer(page);
+    await pressEscapeAtInputBoundary(page);
+    await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+    await page.keyboard.down('KeyA');
+    await page.clock.fastForward(16);
+    await expectHotkeyStates(page, { A: 'pressed' });
+    try {
+      await page.locator('#app-left-panel h1').evaluate((heading) => {
+        heading.addEventListener('pointerdown', (event) => event.stopPropagation(), { once: true });
+      });
+      await page.locator('#app-left-panel h1').click();
+      await page.clock.fastForward(16);
+      await expect(keyboardStatus(page)).toHaveText(/Click or Tab/);
+      await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+      await expect(pilotViewport(page)).not.toBeFocused();
+      await expectHotkeyStates(page, { A: 'disabled', '1': 'disabled' });
+      const stopped = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      await page.clock.fastForward(200);
+      const after = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      expect(after?.flightCurrentLocationKm).toEqual(stopped?.flightCurrentLocationKm);
+      expect(after?.flightSpeedKmPerSec).toBe(0);
+      expect(after?.isPaused).toBe(false);
+    } finally {
+      await page.keyboard.up('KeyA');
+    }
+
+    await debugButton(page).evaluate((button: HTMLButtonElement) => button.click());
+    await page.clock.fastForward(16);
+    await expect(debugDrawer(page)).toBeFocused();
+    await search.click();
+    await page.keyboard.press('Escape');
+    await page.clock.fastForward(16);
+    await expect(debugDrawer(page)).toBeVisible();
+    await expect(search).toBeFocused();
+    expect(launchRequests).toEqual([]);
+  });
+
+  test('activates FREE-mode controls with Tab and clears held keys when tabbing out', async ({ page }) => {
+    const mock = new SocketIOMock(page);
+    await openHotkeyHudScene(page, mock);
+    const targetButton = page.getByRole('button', { name: 'TARGET IRON', exact: true });
+    await targetButton.focus();
+    await page.keyboard.press('Tab');
+    await page.clock.fastForward(16);
+    await expect(pilotViewport(page)).toBeFocused();
+    await expect(keyboardStatus(page)).toHaveText('Keyboard controls active');
+    await expect(keyboardStatus(page)).toBeVisible();
+    await expect(pilotViewport(page)).toHaveCSS('outline-width', '2px');
+    await expect(pilotViewport(page)).toHaveCSS('outline-color', 'rgb(132, 233, 255)');
+    await expect.poll(() => page.evaluate(() => document.pointerLockElement === null)).toBe(true);
+    await page.keyboard.down('KeyW');
+    await page.clock.fastForward(100);
+    await expectHotkeyStates(page, { W: 'pressed' });
+    try {
+      await page.keyboard.press('Shift+Tab');
+      await page.clock.fastForward(16);
+      await expect(targetButton).toBeFocused();
+      await expect(keyboardStatus(page)).toHaveText(/Click or Tab/);
+      const stopped = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      await page.clock.fastForward(100);
+      const after = await page.evaluate(() => window.__shipExteriorBareSceneTestUtils?.snapshotActiveContext());
+      expect(after?.flightCurrentLocationKm).toEqual(stopped?.flightCurrentLocationKm);
+      expect(after?.flightSpeedKmPerSec).toBe(0);
+    } finally {
+      await page.keyboard.up('KeyW');
+    }
+    await page.keyboard.press('Tab');
+    await page.clock.fastForward(16);
+    await expect(pilotViewport(page)).toBeFocused();
+    await expectHotkeyStates(page, { W: 'available' });
+  });
+
   test('reflects FREE/CAPTURE availability, press feedback, and launch slot payloads across two rows', async ({
     page,
   }) => {
@@ -161,7 +287,10 @@ test.describe('Ship Exterior — hotkey HUD', () => {
     expect(initialEntries.map((entry) => entry.key)).toEqual([...EXPECTED_HOTKEY_ORDER]);
     expect(initialEntries.map((entry) => entry.key)).not.toContain('F');
 
-    // --- FREE mode: mouse entries usable, ESC unusable, movement usable. ---
+    await expectHotkeyStates(page, { W: 'disabled', A: 'disabled' });
+    await pilotViewport(page).focus();
+    await page.clock.fastForward(16);
+    // --- Focused FREE mode: mouse entries usable, ESC unusable, movement usable. ---
     await expectHotkeyStates(page, {
       'MOUSE HOVER': 'available',
       'RMB HOLD': 'available',
@@ -242,6 +371,8 @@ test.describe('Ship Exterior — hotkey HUD', () => {
       .evaluate((button: HTMLButtonElement) => button.click());
     await page.clock.fastForward(1);
     await expect(debugDrawer(page)).toBeHidden();
+    await pilotViewport(page).focus();
+    await page.clock.fastForward(16);
     await expectHotkeyStates(page, {
       '1': 'available',
       '2': 'disabled',

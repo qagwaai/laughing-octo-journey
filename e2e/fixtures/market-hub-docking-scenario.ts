@@ -60,12 +60,12 @@ export function registerSharedSessionHandlers(mock: SocketIOMock): void {
 
 export async function setupAndOpenMarketHub(
   sharedGameShell: { openMarketHub: () => Promise<void> },
-  sharedMock: { reset: () => void } & Pick<SocketIOMock, 'on'>,
+  sharedMock: SocketIOMock,
   registerMarketHandler: (mock: SocketIOMock) => void,
 ): Promise<void> {
   sharedMock.reset();
   registerSharedSessionHandlers(sharedMock);
-  registerMarketHandler(sharedMock as SocketIOMock);
+  registerMarketHandler(sharedMock);
   await sharedGameShell.openMarketHub();
 }
 

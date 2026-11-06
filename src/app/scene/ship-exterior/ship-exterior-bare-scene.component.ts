@@ -93,7 +93,7 @@ import {
   type ShipExteriorHotkeyBinding,
   type ShipExteriorHotkeyFlashKey,
 } from './ship-exterior-hotkey-bindings';
-import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { isShipExteriorInteractiveTarget, ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
 import { ShipExteriorLaunchController } from './ship-exterior-launch-controller';
 import { collectShipExteriorRouteFeeds } from './ship-exterior-route-feed-adapter';
 import {
@@ -150,6 +150,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   protected readonly showDebugButton = isDevMode();
   protected readonly t = locale.shipExterior.debugDrawer;
   protected readonly emptyStateText = locale.shipExterior.emptyState;
+  protected readonly keyboardText = locale.shipExterior.keyboard;
   /**
    * Overlay shown when the viewport would otherwise render an empty starfield, so the
    * player gets an explanation instead of a blank scene.
@@ -203,6 +204,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private readonly missionPublicationDisposers = new Map<string, () => void>();
 
   readonly canvasHost = viewChild.required<ElementRef<HTMLDivElement>>('canvasHost');
+  readonly keyboardControlsActive = signal(false);
   readonly debugButton = viewChild<ElementRef<HTMLButtonElement>>('debugButton');
   readonly debugDrawer = viewChild<ElementRef<HTMLElement>>('debugDrawer');
   // CHANGE ANCHOR: reactive scene state
@@ -365,6 +367,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     const activeShip = this.sessionService.activeShip();
     return buildShipExteriorHotkeyBindings({
       hasActiveContext: active !== undefined,
+      keyboardControlsActive: this.keyboardControlsActive(),
       flightModeEnabled: active?.flightModeEnabled() ?? false,
       pointerLocked: active?.flightPointerLocked() ?? false,
       rightMouseHeld: this.rightMouseHeld(),
@@ -477,10 +480,10 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       onWindowMouseMove: (event) => this.onWindowMouseMove(event),
       onSocketCorrelationWarning: (event) => this.onSocketCorrelationWarning(event),
       onPointerLockChange: () => this.onPointerLockChange(),
-      onWindowBlur: () => this.releasePilotInput(),
+      onWindowBlur: () => this.deactivateKeyboardControls(true),
       onVisibilityChange: () => {
         if (document.hidden) {
-          this.releasePilotInput();
+          this.deactivateKeyboardControls(true);
         }
       },
     },
@@ -700,7 +703,7 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    this.releasePilotInput();
+    this.deactivateKeyboardControls();
     this.debugDrawerOpen.set(true);
     afterNextRender(() => this.debugDrawer()?.nativeElement.focus(), { injector: this.injector });
   }
@@ -916,6 +919,21 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   }
 
   private onWindowPointerDown(event: PointerEvent): void {
+    const host = this.canvasHost().nativeElement;
+    if (
+      !(event.target instanceof Node) ||
+      !host.contains(event.target) ||
+      isShipExteriorInteractiveTarget(event.target) ||
+      event.composedPath().some(isShipExteriorInteractiveTarget)
+    ) {
+      this.deactivateKeyboardControls(true);
+      return;
+    }
+    if (document.hidden || !document.hasFocus()) {
+      return;
+    }
+    host.focus({ preventScroll: true });
+    this.keyboardControlsActive.set(true);
     const active = this.registry.getActiveContext();
     if (
       !active ||
@@ -963,6 +981,26 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
     this.handledKeyboardEvents.add(event);
 
+    if (event.code === 'Escape' && this.debugDrawerOpen() && this.isDebugDrawerEvent(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeDebugDrawer();
+      return;
+    }
+
+    if (
+      event.defaultPrevented ||
+      !this.keyboardControlsActive() ||
+      event.composedPath().some(isShipExteriorInteractiveTarget) ||
+      isShipExteriorInteractiveTarget(event.target) ||
+      isShipExteriorInteractiveTarget(document.activeElement) ||
+      (!this.hasViewportFocus(document.activeElement) && !this.registry.getActiveContext()?.flightPointerLocked()) ||
+      document.hidden ||
+      !document.hasFocus()
+    ) {
+      return;
+    }
+
     if (event.code === 'Escape') {
       if (this.debugDrawerOpen()) {
         event.preventDefault();
@@ -981,11 +1019,8 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
       return;
     }
 
-    if (document.hidden || !document.hasFocus()) {
-      return;
-    }
     const active = this.registry.getActiveContext();
-    if (!active) {
+    if (!active || active.isPaused()) {
       return;
     }
 
@@ -1018,10 +1053,6 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
     this.handledKeyboardEvents.add(event);
 
-    if (this.isDebugDrawerEvent(event)) {
-      return;
-    }
-
     this.heldHotkeyCodes.update((held) => {
       if (!held.has(event.code)) {
         return held;
@@ -1036,6 +1067,37 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
   private isDebugDrawerEvent(event: KeyboardEvent): boolean {
     const target = event.target;
     return target instanceof Node && (this.debugDrawer()?.nativeElement.contains(target) ?? false);
+  }
+
+  protected onViewportFocusIn(event: FocusEvent): void {
+    if (this.hasViewportFocus(event.target) && !event.composedPath().some(isShipExteriorInteractiveTarget)) {
+      this.keyboardControlsActive.set(true);
+    } else {
+      this.deactivateKeyboardControls();
+    }
+  }
+
+  protected onViewportFocusOut(event: FocusEvent): void {
+    if (!this.hasViewportFocus(event.relatedTarget)) {
+      this.deactivateKeyboardControls();
+    }
+  }
+
+  private hasViewportFocus(target: EventTarget | null): boolean {
+    return (
+      target instanceof Node &&
+      this.canvasHost().nativeElement.contains(target) &&
+      !isShipExteriorInteractiveTarget(target)
+    );
+  }
+
+  private deactivateKeyboardControls(blurViewport = false): void {
+    this.keyboardControlsActive.set(false);
+    this.releasePilotInput();
+    const focused = document.activeElement;
+    if (blurViewport && this.hasViewportFocus(focused) && focused instanceof HTMLElement) {
+      focused.blur();
+    }
   }
 
   private onWindowMouseMove(event: MouseEvent): void {
@@ -1082,7 +1144,13 @@ export default class ShipExteriorBareSceneComponent implements OnInit, AfterView
     }
     if (active?.flightPointerLocked()) {
       // A lock request can finish after blur or a context switch.
-      if (!this.pointerLockRequested || document.hidden || !document.hasFocus() || active.isPaused()) {
+      if (
+        !this.pointerLockRequested ||
+        !this.keyboardControlsActive() ||
+        document.hidden ||
+        !document.hasFocus() ||
+        active.isPaused()
+      ) {
         this.releasePilotInput();
         return;
       }

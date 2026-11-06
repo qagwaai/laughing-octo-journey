@@ -43,6 +43,20 @@ up to 640px wide, with 44px touch buttons. Keyboard users can focus the separato
 and use Left/Right arrows to resize in 5% steps, Home to show all right, and End
 to show all left. Collapsed panes are excluded from keyboard navigation.
 
+### Ship exterior keyboard focus
+
+Click or Tab into the ship flight viewport to activate keyboard controls. A cyan
+viewport border and localized status text indicate ownership; inactive keyboard
+shortcuts are dimmed in the HUD. Clicking the canvas also requests pointer lock.
+Escape releases pointer lock without changing the ship's heading or automatically
+recapturing the pointer.
+
+Clicking outside the viewport (including a non-input area in the left pane), or
+moving focus to a form control, clears held movement and releases pointer lock.
+The scene keeps running. Inputs, textareas, selects, editable content, buttons,
+and links retain their normal keyboard behavior. Escape in the debug drawer
+closes that drawer; Escape in the left pane does not control the ship scene.
+
 ### Strict Dev Server (fail-closed serving)
 
 `npm start` runs `ng serve` through a local wrapper builder,
@@ -64,7 +78,8 @@ successful (stale) bundle to new page loads. The error page auto-reloads every
 
 - `npm run lint` - Lint TypeScript sources (app + e2e + top-level TS configs)
 - `npm run lint:fix` - Apply safe ESLint fixes
-- `npm run typecheck` - Typecheck app and Vitest specs
+- `npm run typecheck` - Typecheck app, Vitest specs, and Playwright fixtures/specs
+- `npm run typecheck:e2e` - Typecheck Playwright fixtures/specs and configuration
 - `npm run typecheck:templates` - Angular template typecheck via `ng build`
 - `npm run format:check` - Prettier check for html/css/json/markdown scope
 - `npm run format:check:ts` - Optional wider TS/JS Prettier check

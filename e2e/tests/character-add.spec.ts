@@ -7,10 +7,12 @@ test.describe('Character Add — from character list', () => {
     const { mock, characterListPage, characterSetupPage } = await setupCharacterAddTest(page);
 
     const emittedEvents: string[] = [];
-    let receivedAddRequest: Record<string, unknown> | null = null;
-    let receivedShipListRequest: Record<string, unknown> | null = null;
-    let receivedShipUpsertRequest: Record<string, unknown> | null = null;
-    let receivedItemUpsertRequest: Record<string, unknown> | null = null;
+    const requests: {
+      add: Record<string, unknown> | null;
+      shipList: Record<string, unknown> | null;
+      shipUpsert: Record<string, unknown> | null;
+      itemUpsert: Record<string, unknown> | null;
+    } = { add: null, shipList: null, shipUpsert: null, itemUpsert: null };
 
     // After creating and returning to list, auto-load should show the newly added
     // character with padded whitespace from server; the list page normalizes display.
@@ -21,7 +23,7 @@ test.describe('Character Add — from character list', () => {
 
     mock.on('character-add-request', (request) => {
       emittedEvents.push('character-add-request');
-      receivedAddRequest = request as Record<string, unknown>;
+      requests.add = request as Record<string, unknown>;
       return {
         event: 'character-add-response',
         data: characterAddResponse('char-new-001', 'Nova Prime'),
@@ -30,7 +32,7 @@ test.describe('Character Add — from character list', () => {
 
     mock.on('ship-list-by-owner-request', (request) => {
       emittedEvents.push('ship-list-by-owner-request');
-      receivedShipListRequest = request as Record<string, unknown>;
+      requests.shipList = request as Record<string, unknown>;
       return {
         event: 'ship-list-by-owner-response',
         data: {
@@ -54,7 +56,7 @@ test.describe('Character Add — from character list', () => {
 
     mock.on('ship-upsert-request', (request) => {
       emittedEvents.push('ship-upsert-request');
-      receivedShipUpsertRequest = request as Record<string, unknown>;
+      requests.shipUpsert = request as Record<string, unknown>;
       return {
         event: 'ship-upsert-response',
         data: {
@@ -76,7 +78,7 @@ test.describe('Character Add — from character list', () => {
 
     mock.on('item-upsert-request', (request) => {
       emittedEvents.push('item-upsert-request');
-      receivedItemUpsertRequest = request as Record<string, unknown>;
+      requests.itemUpsert = request as Record<string, unknown>;
       return {
         event: 'item-upsert-response',
         data: {
@@ -100,18 +102,18 @@ test.describe('Character Add — from character list', () => {
     await characterSetupPage.clickSubmit();
     await expect(page).toHaveURL(/left:character-list/, { timeout: 15000 });
 
-    await expect.poll(() => !!receivedAddRequest).toBe(true);
-    await expect.poll(() => !!receivedShipListRequest).toBe(true);
-    await expect.poll(() => !!receivedShipUpsertRequest).toBe(true);
+    await expect.poll(() => !!requests.add).toBe(true);
+    await expect.poll(() => !!requests.shipList).toBe(true);
+    await expect.poll(() => !!requests.shipUpsert).toBe(true);
 
-    expect(receivedAddRequest).toEqual(
+    expect(requests.add).toEqual(
       expect.objectContaining({
         playerName: TEST_PLAYER,
         characterName: 'Nova Prime',
         sessionKey: 'test-session-key-abc123',
       }),
     );
-    expect(receivedShipListRequest).toEqual(
+    expect(requests.shipList).toEqual(
       expect.objectContaining({
         playerName: TEST_PLAYER,
         sessionKey: 'test-session-key-abc123',
@@ -122,11 +124,12 @@ test.describe('Character Add — from character list', () => {
       }),
     );
 
-    expect(receivedShipUpsertRequest).not.toBeNull();
-    expect(receivedShipUpsertRequest?.['playerName']).toBe(TEST_PLAYER);
-    expect(receivedShipUpsertRequest?.['characterId']).toBe('char-new-001');
-    expect(receivedShipUpsertRequest?.['sessionKey']).toBe('test-session-key-abc123');
-    expect((receivedShipUpsertRequest?.['ship'] as Record<string, unknown>)?.['id']).toBe('starter-ship-001');
+    expect(requests.shipUpsert).toMatchObject({
+      playerName: TEST_PLAYER,
+      characterId: 'char-new-001',
+      sessionKey: 'test-session-key-abc123',
+      ship: { id: 'starter-ship-001' },
+    });
 
     expect(emittedEvents).toEqual(
       expect.arrayContaining(['character-add-request', 'ship-list-by-owner-request', 'ship-upsert-request']),
@@ -135,12 +138,11 @@ test.describe('Character Add — from character list', () => {
     // Item upsert is conditional: it only fires when starter ship inventory
     // does not already include the expendable dart drone.
     if (emittedEvents.includes('item-upsert-request')) {
-      expect(receivedItemUpsertRequest).not.toBeNull();
-      expect(receivedItemUpsertRequest?.['playerName']).toBe(TEST_PLAYER);
-      expect(receivedItemUpsertRequest?.['sessionKey']).toBe('test-session-key-abc123');
-      expect((receivedItemUpsertRequest?.['item'] as Record<string, unknown>)?.['owningCharacterId']).toBe(
-        'char-new-001',
-      );
+      expect(requests.itemUpsert).toMatchObject({
+        playerName: TEST_PLAYER,
+        sessionKey: 'test-session-key-abc123',
+        item: { owningCharacterId: 'char-new-001' },
+      });
     }
 
     await characterListPage.expectCharacterCount(1);

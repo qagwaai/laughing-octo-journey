@@ -117,7 +117,8 @@ test.describe('Viewer — Interaction Behaviors', () => {
         page.evaluate(() => {
           const canvas = document.querySelector('ngt-canvas');
           if (!canvas) return 0;
-          const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+          const ng = window.ng;
+          if (!ng) throw new Error('Angular debug API is unavailable.');
           const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot
             .scene;
           let count = 0;
@@ -192,7 +193,8 @@ test.describe('Viewer — Interaction Behaviors', () => {
       page.evaluate(() => {
         const canvas = document.querySelector('ngt-canvas');
         if (!canvas) return null;
-        const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+        const ng = window.ng;
+        if (!ng) throw new Error('Angular debug API is unavailable.');
         const snapshot = (
           ng.getComponent(canvas) as {
             store: { snapshot: { scene: Object3D | null; camera: Camera } };

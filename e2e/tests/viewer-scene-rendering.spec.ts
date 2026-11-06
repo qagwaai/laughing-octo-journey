@@ -484,7 +484,8 @@ test.describe('Viewer — Scene Rendering', () => {
     const planets = page.getByRole('checkbox', { name: 'planets', exact: true });
     const ships = page.getByRole('checkbox', { name: 'ships', exact: true });
     const renderedBodyNames = () => page.evaluate(() => {
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
       if (!canvas) return [];
       const scene = (ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }).store.snapshot.scene;
@@ -551,7 +552,8 @@ test.describe('Viewer — Scene Rendering', () => {
     await page.getByTestId('viewer-distance-toggle').click();
     await expect(page.getByTestId('viewer-distance-mode')).toContainText('Compressed overview');
     await expect.poll(() => page.evaluate(() => {
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const canvas = document.querySelector('ngt-canvas');
       const host = document.querySelector('app-viewer-scene-page');
       if (!canvas || !host) return false;
@@ -578,7 +580,8 @@ test.describe('Viewer — Scene Rendering', () => {
     })).toBe(true);
     await page.getByTestId('viewer-distance-toggle').click();
     await expect.poll(() => page.evaluate(() => {
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const host = document.querySelector('app-viewer-scene-page');
       const canvas = document.querySelector('ngt-canvas');
       if (!host || !canvas) return false;
@@ -595,7 +598,8 @@ test.describe('Viewer — Scene Rendering', () => {
       });
     })).toBe(true);
     await page.evaluate(() => {
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const component = ng.getComponent(document.querySelector('app-viewer-scene-page')!) as {
         bodies(): ViewerBody[]; onPlanetViewRequest(body: ViewerBody): void;
       };
@@ -603,7 +607,8 @@ test.describe('Viewer — Scene Rendering', () => {
     });
     await expect(page).toHaveURL(/right:planet-view/);
     await expect.poll(() => page.evaluate(() => {
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const canvas = document.querySelector('ngt-canvas');
       const host = document.querySelector('app-planet-view-page');
       if (!canvas || !host) return false;
@@ -735,8 +740,8 @@ test.describe('Viewer — Scene Rendering', () => {
     await gameShell.openViewer();
 
     // Delay the scene response to catch loading state
-    let resolveResponse: any;
-    const delayedResponse = new Promise((resolve) => {
+    let resolveResponse!: () => void;
+    const delayedResponse = new Promise<void>((resolve) => {
       resolveResponse = resolve;
     });
 
@@ -756,8 +761,7 @@ test.describe('Viewer — Scene Rendering', () => {
     // Resolve the delayed response
     resolveResponse();
 
-    // Wait for scene component to become visible
-    await viewerPage.expectSceneRoute();
+    await viewerPage.expectSceneLoaded();
   });
 
   test('maintains system summary across scene navigation', async ({ page }) => {

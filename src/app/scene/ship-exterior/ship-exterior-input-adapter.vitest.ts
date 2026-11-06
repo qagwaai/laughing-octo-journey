@@ -1,5 +1,38 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+import { isShipExteriorInteractiveTarget, ShipExteriorInputAdapter } from './ship-exterior-input-adapter';
+
+describe('isShipExteriorInteractiveTarget', () => {
+  it.each(['input', 'textarea', 'select', 'button'])('protects %s controls', (tag) => {
+    expect(isShipExteriorInteractiveTarget(document.createElement(tag))).toBe(true);
+  });
+
+  it.each(['', 'true', 'plaintext-only'])('protects descendants of contenteditable="%s"', (value) => {
+    const editor = document.createElement('div');
+    editor.setAttribute('contenteditable', value);
+    const child = editor.appendChild(document.createElement('span'));
+    expect(isShipExteriorInteractiveTarget(child)).toBe(true);
+    expect(isShipExteriorInteractiveTarget(child.appendChild(document.createTextNode('A')))).toBe(true);
+  });
+
+  it('protects links, textbox roles and nested button content', () => {
+    const link = document.createElement('a');
+    link.href = '#';
+    const textbox = document.createElement('div');
+    textbox.setAttribute('role', 'textbox');
+    const child = document.createElement('button').appendChild(document.createElement('span'));
+    for (const target of [link, textbox, child]) {
+      expect(isShipExteriorInteractiveTarget(target)).toBe(true);
+    }
+  });
+
+  it('allows non-interactive viewport targets', () => {
+    const element = document.createElement('div');
+    element.setAttribute('contenteditable', 'false');
+    for (const target of [null, window, document.createElement('canvas'), element]) {
+      expect(isShipExteriorInteractiveTarget(target)).toBe(false);
+    }
+  });
+});
 
 describe('ShipExteriorInputAdapter', () => {
   it('attaches all window/document listeners', () => {
@@ -12,7 +45,7 @@ describe('ShipExteriorInputAdapter', () => {
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('blur', fixture.handlers.onWindowBlur);
     expect(fixture.doc.addEventListener).toHaveBeenCalledWith('visibilitychange', fixture.handlers.onVisibilityChange);
 
-    expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
+    expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown, true);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('contextmenu', fixture.handlers.onWindowContextMenu);
     expect(fixture.win.addEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown);
@@ -47,7 +80,7 @@ describe('ShipExteriorInputAdapter', () => {
       fixture.handlers.onVisibilityChange,
     );
 
-    expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown);
+    expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerdown', fixture.handlers.onWindowPointerDown, true);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('pointerup', fixture.handlers.onWindowPointerUp);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('contextmenu', fixture.handlers.onWindowContextMenu);
     expect(fixture.win.removeEventListener).toHaveBeenCalledWith('keydown', fixture.handlers.onWindowKeyDown);

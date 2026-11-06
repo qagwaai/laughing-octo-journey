@@ -977,6 +977,11 @@ export const it: DeepPartial<EnLocale> = {
     },
   },
   shipExterior: {
+    keyboard: {
+      viewportLabel: 'Vista di volo della nave',
+      active: 'Controlli da tastiera attivi',
+      inactive: 'Fai clic o usa Tab per entrare nella vista e attivare i controlli da tastiera',
+    },
     debugDrawer: {
       openButton: 'Debug',
       closeButton: 'Chiudi',

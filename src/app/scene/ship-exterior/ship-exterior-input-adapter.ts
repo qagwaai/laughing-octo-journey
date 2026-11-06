@@ -1,3 +1,16 @@
+export function isShipExteriorInteractiveTarget(target: EventTarget | null): boolean {
+  const element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+  if (!element) {
+    return false;
+  }
+  const editable = element.closest('[contenteditable]');
+  return Boolean(
+    element.closest('input, textarea, select, button, a[href], [role="textbox"]') ||
+      (element instanceof HTMLElement && element.isContentEditable) ||
+      (editable && ['true', '', 'plaintext-only'].includes(editable.getAttribute('contenteditable') ?? 'false')),
+  );
+}
+
 export interface ShipExteriorInputAdapterHandlers {
   onWindowPointerDown: (event: PointerEvent) => void;
   onWindowPointerUp: (event: PointerEvent) => void;
@@ -28,7 +41,8 @@ export class ShipExteriorInputAdapter {
       return;
     }
 
-    this.win.addEventListener('pointerdown', this.handlers.onWindowPointerDown);
+    // Observe pane switches even when a child control stops bubbling.
+    this.win.addEventListener('pointerdown', this.handlers.onWindowPointerDown, true);
     this.win.addEventListener('pointerup', this.handlers.onWindowPointerUp);
     this.win.addEventListener('contextmenu', this.handlers.onWindowContextMenu);
     this.win.addEventListener('keydown', this.handlers.onWindowKeyDown);
@@ -51,7 +65,7 @@ export class ShipExteriorInputAdapter {
       return;
     }
 
-    this.win.removeEventListener('pointerdown', this.handlers.onWindowPointerDown);
+    this.win.removeEventListener('pointerdown', this.handlers.onWindowPointerDown, true);
     this.win.removeEventListener('pointerup', this.handlers.onWindowPointerUp);
     this.win.removeEventListener('contextmenu', this.handlers.onWindowContextMenu);
     this.win.removeEventListener('keydown', this.handlers.onWindowKeyDown);

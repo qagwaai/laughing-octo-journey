@@ -10,6 +10,7 @@ import {
 function createInput(overrides: Partial<ShipExteriorHotkeyBindingsInput> = {}): ShipExteriorHotkeyBindingsInput {
   return {
     hasActiveContext: true,
+    keyboardControlsActive: true,
     flightModeEnabled: true,
     pointerLocked: false,
     rightMouseHeld: false,
@@ -38,6 +39,21 @@ function stateOf(input: ShipExteriorHotkeyBindingsInput, key: ShipExteriorHotkey
 }
 
 describe('buildShipExteriorHotkeyBindings', () => {
+  it('disables keyboard entries without viewport ownership, but preserves mouse scanning', () => {
+    const input = createInput({
+      keyboardControlsActive: false,
+      heldMovementCodes: new Set(['KeyA']),
+      flashedHotkeys: new Set([1, 'ESC']),
+      launchableItems: [{ itemType: 'dart' }],
+      hasValidLaunchTarget: true,
+    });
+    for (const key of ['W', 'A', 'SHIFT', '1', 'ESC'] as const) {
+      expect(stateOf(input, key)).toBe('disabled');
+    }
+    expect(stateOf(input, 'MOUSE HOVER')).toBe('available');
+    expect(stateOf(input, 'RMB HOLD')).toBe('available');
+  });
+
   it('renders a stable, single-row hotkey order without a flight-toggle entry', () => {
     const keys = buildShipExteriorHotkeyBindings(createInput()).map((binding) => binding.key);
 

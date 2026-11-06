@@ -47,12 +47,14 @@ test.describe('Planet details zoom pattern', () => {
         for (const canvas of document.querySelectorAll('ngt-canvas')) {
           const component = ng?.getComponent(canvas) as
             { store?: { snapshot?: { scene?: import('three').Scene } } } | undefined;
-          let state: { palette: string; rings: boolean; polarRatio: number; tilt: number } | null = null;
+          const result: { state: { palette: string; rings: boolean; polarRatio: number; tilt: number } | null } = {
+            state: null,
+          };
           component?.store?.snapshot?.scene?.traverse((object) => {
             const data = object.userData['gasGiant'] as { bodyId: string; palette: string; rings: boolean } | undefined;
             if (data?.bodyId === 'sol-saturn') {
               const planet = object.getObjectByName('gas-giant-planet')!;
-              state = {
+              result.state = {
                 palette: data.palette,
                 rings: data.rings,
                 polarRatio: planet.scale.y,
@@ -60,7 +62,7 @@ test.describe('Planet details zoom pattern', () => {
               };
             }
           });
-          if (state) return state;
+          if (result.state) return result.state;
         }
         return null;
       });

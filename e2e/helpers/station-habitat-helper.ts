@@ -3,7 +3,8 @@ import type { Scene } from 'three';
 
 async function sampleHabitatMotion(page: Page, canvasSelector: string) {
   return page.evaluate(async (selector) => {
-    const api = (window as Window & { ng: { getComponent: (element: Element) => unknown } }).ng;
+    const api = window.ng;
+    if (!api) throw new Error('Angular debug API is unavailable.');
     const canvas = document.querySelector(selector);
     if (!canvas) throw new Error('Station canvas is missing.');
     const component = api.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };

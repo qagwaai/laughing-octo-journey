@@ -74,7 +74,7 @@ async function waitForFlightTelemetryReady(page: Page): Promise<void> {
     await debugButton(page).click();
     await expect(debugDrawer(page)).toBeFocused();
   }
-  await flightToggle(page).focus();
+  await page.getByRole('region', { name: 'Ship flight viewport' }).focus();
   await expect.poll(() => readCoordZ(page), { timeout: 10_000 }).not.toBeNull();
 }
 
@@ -307,6 +307,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       await page.keyboard.up('Shift');
     }
 
+    await debugDrawer(page).focus();
     await page.keyboard.press('Escape');
     await expect(debugDrawer(page)).toBeHidden();
     await flightToggle(page).click();
@@ -318,7 +319,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     await page.evaluate(() => document.exitPointerLock());
   });
 
-  test('integrates WASD movement with always-active pilot controls', async ({ page }) => {
+  test('integrates WASD movement with focused pilot controls', async ({ page }) => {
     const mock = new SocketIOMock(page);
     const gameShell = new GameShellPage(page);
     await mock.setup();
@@ -335,14 +336,14 @@ test.describe('Ship Exterior — flight mode smoke', () => {
     const coordsBeforeEnable = await readCoords(page);
     expect(coordsBeforeEnable).not.toBeNull();
 
-    // Pilot movement is enabled as soon as the exterior scene is ready.
+    // Pilot movement is enabled once the viewport has keyboard focus.
     await expect.poll(() => readCoords(page)).toEqual(coordsBeforeEnable);
 
     // --- Hold W then S; they should drive Z in opposite directions. ---
     const zBaseline = coordsBeforeEnable?.z ?? 0;
 
     await page.keyboard.down('KeyW');
-    let zAfterW: number | null = null;
+    const movement: { zAfterW: number | null } = { zAfterW: null };
     try {
       await expect
         .poll(
@@ -351,7 +352,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
             if (z === null || z === zBaseline) {
               return false;
             }
-            zAfterW = z;
+            movement.zAfterW = z;
             return true;
           },
           { timeout: 5_000 },
@@ -361,6 +362,7 @@ test.describe('Ship Exterior — flight mode smoke', () => {
       await page.keyboard.up('KeyW');
     }
 
+    const zAfterW = movement.zAfterW;
     expect(zAfterW).not.toBeNull();
     if (zAfterW === null) {
       throw new Error('Expected W movement to update Z telemetry.');

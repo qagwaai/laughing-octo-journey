@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 export { openLoginAndWaitForSocket } from '../helpers/auth-helper';
 import { SocketIOMock } from './socket-mock';
 
@@ -20,7 +21,7 @@ export function characterListResponse() {
   };
 }
 
-export async function setupLoginSuccessMock(page: Parameters<SocketIOMock['constructor']>[0]) {
+export async function setupLoginSuccessMock(page: Page) {
   const mock = new SocketIOMock(page);
   await mock.setup();
 

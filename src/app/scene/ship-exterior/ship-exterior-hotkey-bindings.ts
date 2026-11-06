@@ -40,6 +40,8 @@ export type ShipExteriorHotkeyFlashKey = ShipExteriorHotkeyDisplayKey | HotkeySl
 export interface ShipExteriorHotkeyBindingsInput {
   /** Whether a ship scene context is currently active. */
   hasActiveContext: boolean;
+  /** Whether the viewport owns keyboard input. */
+  keyboardControlsActive: boolean;
   /** Whether the active context has flight mode enabled. */
   flightModeEnabled: boolean;
   /** Whether the active context currently holds pointer lock (CAPTURE mode). */
@@ -108,13 +110,14 @@ function resolveLaunchSlotAction(item: ShipExteriorHotkeyLaunchItem | undefined)
  *
  * Mouse entries are only usable in FREE (unlocked) mode, ESC is only usable in
  * CAPTURE (pointer-locked) mode, movement entries require an active flight
- * context, and launch slots require both a payload and a valid target.
+ * context and viewport focus, and launch slots also require a payload and a valid target.
  */
 export function buildShipExteriorHotkeyBindings(
   input: ShipExteriorHotkeyBindingsInput,
 ): readonly ShipExteriorHotkeyBinding[] {
   const mouseFree = input.hasActiveContext && !input.pointerLocked;
-  const movementEnabled = input.hasActiveContext && input.flightModeEnabled;
+  const keyboardEnabled = input.hasActiveContext && input.keyboardControlsActive;
+  const movementEnabled = keyboardEnabled && input.flightModeEnabled;
 
   const movementBindings: ShipExteriorHotkeyBinding[] = MOVEMENT_ENTRIES.map(({ key, codes, action }) => ({
     key,
@@ -128,7 +131,7 @@ export function buildShipExteriorHotkeyBindings(
 
   const launchBindings = SHIP_EXTERIOR_LAUNCH_HOTKEY_SLOTS.map((slot) => {
     const item = input.launchableItems[slot - 1];
-    const available = input.hasActiveContext && input.hasActiveShip && !!item && input.hasValidLaunchTarget;
+    const available = keyboardEnabled && input.hasActiveShip && !!item && input.hasValidLaunchTarget;
     return {
       key: String(slot) as ShipExteriorHotkeyDisplayKey,
       action: resolveLaunchSlotAction(item),
@@ -148,7 +151,13 @@ export function buildShipExteriorHotkeyBindings(
     {
       key: 'ESC',
       action: 'Release controls',
-      state: input.flashedHotkeys.has('ESC') ? 'pressed' : input.pointerLocked ? 'available' : 'disabled',
+      state: !keyboardEnabled
+        ? 'disabled'
+        : input.flashedHotkeys.has('ESC')
+          ? 'pressed'
+          : input.pointerLocked
+            ? 'available'
+            : 'disabled',
     },
     { key: 'Q', action: 'Roll', state: 'disabled' },
     { key: 'E', action: 'Roll', state: 'disabled' },

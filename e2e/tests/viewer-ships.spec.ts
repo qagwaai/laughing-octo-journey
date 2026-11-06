@@ -99,7 +99,8 @@ test('left-click targets a rendered ship and synchronizes its list button', asyn
     page.evaluate((name) => {
       const canvas = document.querySelector('ngt-canvas');
       if (!canvas) throw new Error('Viewer canvas is missing');
-      const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+      const ng = window.ng;
+      if (!ng) throw new Error('Angular debug API is unavailable.');
       const snapshot = (
         ng.getComponent(canvas) as {
           store: { snapshot: { scene: import('three').Object3D; camera: import('three').Camera } };
@@ -281,7 +282,8 @@ test.describe.serial('Viewer — Character Ships', () => {
         sharedPage.evaluate(() => {
           const canvas = document.querySelector('ngt-canvas');
           if (!canvas) return 0;
-          const ng = (window as Window & { ng: { getComponent(element: Element): unknown } }).ng;
+          const ng = window.ng;
+          if (!ng) throw new Error('Angular debug API is unavailable.');
           const scene = (
             ng.getComponent(canvas) as { store: { snapshot: { scene: Object3D | null } } }
           ).store.snapshot.scene;

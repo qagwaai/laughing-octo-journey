@@ -1,6 +1,7 @@
 import { Page } from '@playwright/test';
 
-export type SocketEventHandler = (data: unknown) => { event: string; data: unknown } | null;
+type SocketEventResponse = { event: string; data: unknown } | null;
+export type SocketEventHandler = (data: unknown) => SocketEventResponse | Promise<SocketEventResponse>;
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -277,39 +278,42 @@ export class SocketIOMock {
 
           if (packet.startsWith('42')) {
             // Client emitting a socket.io event
+            let parsed: [string, unknown];
             try {
-              const [eventName, eventData] = JSON.parse(packet.slice(2)) as [string, unknown];
-              if (this.debugEnabled) {
-                console.log(`[socket-mock] client event: ${eventName} data=${JSON.stringify(eventData)}`);
-              }
-              const handler = this.handlers.get(eventName);
-              if (handler) {
-                const response = handler(eventData);
-                if (response !== null) {
-                  const responseData = withPagedListDefaults(
-                    response.event,
-                    withRequestCorrelation(response.data, eventData),
-                    eventData,
-                  );
-                  if (this.debugEnabled) {
-                    console.log(`[socket-mock] auto response: ${response.event}`);
-                  }
-                  this.push(response.event, responseData);
+              parsed = JSON.parse(packet.slice(2)) as [string, unknown];
+            } catch (error) {
+              console.error('[socket-mock] Malformed event packet.', error);
+              continue;
+            }
+            const [eventName, eventData] = parsed;
+            if (this.debugEnabled) {
+              console.log(`[socket-mock] client event: ${eventName} data=${JSON.stringify(eventData)}`);
+            }
+            const handler = this.handlers.get(eventName);
+            if (handler) {
+              const response = await handler(eventData);
+              if (response !== null) {
+                const responseData = withPagedListDefaults(
+                  response.event,
+                  withRequestCorrelation(response.data, eventData),
+                  eventData,
+                );
+                if (this.debugEnabled) {
+                  console.log(`[socket-mock] auto response: ${response.event}`);
                 }
-              } else {
-                const response = buildDefaultResponse(eventName, eventData);
-                if (response !== null) {
-                  const responseData = withRequestCorrelation(response.data, eventData);
-                  if (this.debugEnabled) {
-                    console.log(`[socket-mock] default response: ${response.event}`);
-                  }
-                  this.push(response.event, responseData);
-                } else if (this.debugEnabled) {
-                  console.log(`[socket-mock] no handler registered for event: ${eventName}`);
-                }
+                this.push(response.event, responseData);
               }
-            } catch {
-              // ignore malformed packets
+            } else {
+              const response = buildDefaultResponse(eventName, eventData);
+              if (response !== null) {
+                const responseData = withRequestCorrelation(response.data, eventData);
+                if (this.debugEnabled) {
+                  console.log(`[socket-mock] default response: ${response.event}`);
+                }
+                this.push(response.event, responseData);
+              } else if (this.debugEnabled) {
+                console.log(`[socket-mock] no handler registered for event: ${eventName}`);
+              }
             }
           }
         }

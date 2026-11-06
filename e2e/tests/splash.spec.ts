@@ -302,9 +302,11 @@ test('hides foreground choices for Cygnus X-1 and restores the selected model fo
 test('reports missing HDR support for the Cygnus X-1 prototype without blocking login', async ({ page }) => {
   await page.addInitScript(() => {
     const original = WebGL2RenderingContext.prototype.getExtension;
-    WebGL2RenderingContext.prototype.getExtension = function (name: string) {
-      return name === 'EXT_color_buffer_float' ? null : original.call(this, name);
-    };
+    WebGL2RenderingContext.prototype.getExtension = new Proxy(original, {
+      apply(target, context, args: [string]) {
+        return args[0] === 'EXT_color_buffer_float' ? null : Reflect.apply(target, context, args);
+      },
+    });
   });
   await page.goto(pinnedSplash('/splash(left:login)', 'demo-cygnus-x1'));
   await expect(page.locator('app-splash-overlay section')).toHaveAttribute('data-state', 'error');
@@ -777,7 +779,8 @@ test('loads the market-specific station pair and its isolated static fallback', 
       page.evaluate(() => {
         const canvas = document.querySelector('app-root ngt-canvas');
         if (!canvas) throw new Error('Splash canvas is missing.');
-        const api = (window as Window & { ng: { getComponent: (element: Element) => unknown } }).ng;
+        const api = window.ng;
+        if (!api) throw new Error('Angular debug API is unavailable.');
         const component = api.getComponent(canvas) as {
           store: { snapshot: { scene: Scene; camera: PerspectiveCamera } };
         };
@@ -1110,10 +1113,12 @@ async function readSplashPlanetSurface(
     const mesh = canvas.store.snapshot.scene.getObjectByName(id) as Mesh | undefined;
     if (!mesh) return null;
     const material = mesh.material as MeshStandardMaterial;
-    const width = (texture: MeshStandardMaterial['map']): number | null =>
-      texture?.image && 'width' in texture.image && typeof texture.image.width === 'number'
-        ? texture.image.width
+    const width = (texture: MeshStandardMaterial['map']): number | null => {
+      const image: unknown = texture?.image;
+      return typeof image === 'object' && image !== null && 'width' in image && typeof image.width === 'number'
+        ? image.width
         : null;
+    };
     return {
       albedoWidth: width(material.map),
       emissiveWidth: width(material.emissiveMap),

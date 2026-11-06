@@ -22,6 +22,9 @@ const genericStation: ViewerBody = {
 };
 
 function stationMarket(body: ViewerBody): MarketSummary {
+  const orbit = body.orbitalElements;
+  const anchorBodyId = orbit?.anchorBodyId;
+  if (orbit && !anchorBodyId) throw new Error('Station market orbit must have an anchor body.');
   return {
     marketId: body.id,
     solarSystemId: body.spatial.solarSystemId,
@@ -29,7 +32,7 @@ function stationMarket(body: ViewerBody): MarketSummary {
     siteType: 'station',
     siteName: body.displayName,
     spatial: { ...body.spatial, frame: 'barycentric' },
-    trajectory: body.orbitalElements ? { kind: 'orbital-elements', orbit: body.orbitalElements } : undefined,
+    trajectory: orbit && anchorBodyId ? { kind: 'orbital-elements', orbit: { ...orbit, anchorBodyId } } : undefined,
     priceMultiplier: 1,
     driftPercentPerHour: 0,
     restockIntervalMinutes: 60,
@@ -56,7 +59,8 @@ async function openSystem(page: Page, bodies: ViewerBody[] = [], station = marsS
 
 async function readScene(page: Page) {
   return page.evaluate(() => {
-    const api = (window as Window & { ng: { getComponent: (element: Element) => unknown } }).ng;
+    const api = window.ng;
+    if (!api) throw new Error('Angular debug API is unavailable.');
     const canvas = document.querySelector('app-viewer-scene-page ngt-canvas, app-station-view-page ngt-canvas');
     if (!canvas) throw new Error('Viewer canvas is missing.');
     const component = api.getComponent(canvas) as { store: { snapshot: { scene: Scene; camera: PerspectiveCamera } } };
@@ -66,14 +70,14 @@ async function readScene(page: Page) {
     let hoveredHighlight = false;
     let stationHeightPixels = 0;
     let stationCentered = false;
-    let stationScreen: { x: number; y: number } | null = null;
+    const projection: { stationScreen: { x: number; y: number } | null } = { stationScreen: null };
     scene.traverse((object) => {
       if (object.name === 'dedicated-station-model') {
         models++;
         const center = object.getWorldPosition(object.position.clone()).project(camera);
         const bounds = canvas.getBoundingClientRect();
         stationCentered = Math.hypot(center.x, center.y) < 0.02;
-        stationScreen = {
+        projection.stationScreen = {
           x: bounds.x + ((center.x + 1) * bounds.width) / 2,
           y: bounds.y + ((1 - center.y) * bounds.height) / 2,
         };
@@ -110,7 +114,7 @@ async function readScene(page: Page) {
       marsGenericPresent: !!scene.getObjectByName('Mars Orbital Market'),
       camera: camera.position.toArray(),
       cameraNear: camera.near,
-      stationScreen,
+      stationScreen: projection.stationScreen,
       hoveredHighlight,
       stationHeightPixels,
       stationCentered,

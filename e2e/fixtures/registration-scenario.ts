@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { SocketIOMock } from './socket-mock';
 
 export const REGISTER_RESPONSE = {
@@ -20,7 +21,7 @@ export function characterListResponse(playerName: string) {
   };
 }
 
-export async function setupSuccessfulRegistrationMock(page: Parameters<SocketIOMock['constructor']>[0]) {
+export async function setupSuccessfulRegistrationMock(page: Page) {
   const mock = new SocketIOMock(page);
   await mock.setup();
 

@@ -83,7 +83,7 @@ export function setupLoginHandlers(mock: SocketIOMock) {
   return loginResponse;
 }
 
-export async function loginWithItalianLocale(page: Parameters<SocketIOMock['constructor']>[0], mock: SocketIOMock) {
+export async function loginWithItalianLocale(page: Page, mock: SocketIOMock) {
   const loginResponse = setupLoginHandlers(mock);
   const loginPage = new LoginPage(page);
   await openLoginAndWaitForSocket(page, mock);

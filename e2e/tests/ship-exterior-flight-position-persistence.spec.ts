@@ -54,7 +54,7 @@ async function waitForFlightTelemetryReady(page: Page): Promise<void> {
     await debugButton(page).click();
     await expect(debugDrawer(page)).toBeFocused();
   }
-  await pilotStatus(page).focus();
+  await page.getByRole('region', { name: 'Ship flight viewport' }).focus();
   await expect.poll(() => readCoords(page), { timeout: 10_000 }).not.toBeNull();
 }
 
@@ -62,7 +62,7 @@ async function moveForwardWithPilotControls(
   page: Page,
   coordsBeforeMove: { x: number; y: number; z: number },
 ): Promise<{ x: number; y: number; z: number }> {
-  await pilotStatus(page).focus();
+  await page.getByRole('region', { name: 'Ship flight viewport' }).focus();
   await page.keyboard.down('KeyW');
   let movedCoords: { x: number; y: number; z: number } | null = null;
   try {

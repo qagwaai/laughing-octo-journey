@@ -41,7 +41,7 @@ export function characterBustReadResponse(characterId: string, descriptor: objec
   };
 }
 
-export { characterListResponse, emptyCharacterListResponse };
+export { emptyCharacterListResponse };
 
 /**
  * Ship returned to join paths that hydrate an active ship before routing. Without this,
