@@ -171,7 +171,7 @@ test.describe('Viewer — Solar System List', () => {
     expect(requests.at(-1)).toEqual(expect.objectContaining({ offset: 0, sort: 'name' }));
   });
 
-  test('searches beyond the default distance band after the minimum length', async ({ page }) => {
+  test('searches beyond the default distance band with short queries', async ({ page }) => {
     const koi351 = {
       id: 'exo-koi-351',
       displayName: 'KOI-351',
@@ -197,8 +197,10 @@ test.describe('Viewer — Solar System List', () => {
 
     const search = page.getByTestId('viewer-search');
     await search.fill('KO');
-    await expect(page.getByTestId('viewer-search-hint')).toBeVisible();
+    await expect(page.getByTestId('viewer-search-all-distances')).toBeVisible();
+    await expect.poll(() => requests.at(-1)?.['search']).toBe('KO');
     await search.fill('KOI-351');
+    await expect.poll(() => requests.at(-1)?.['search']).toBe('KOI-351');
     const koiItem = new ViewerPage(page).systemItemById('exo-koi-351');
     await expect(koiItem).toContainText('Kepler-90');
     await expect(koiItem).toContainText('\u2248848.20');
@@ -207,7 +209,7 @@ test.describe('Viewer — Solar System List', () => {
     const searchRequest = requests.at(-1)!;
     expect(searchRequest).toEqual(expect.objectContaining({ search: 'KOI-351', offset: 0 }));
     expect(searchRequest).not.toHaveProperty('maxDistanceParsec');
-    expect(requests.filter((request) => request['search'] === 'KO')).toHaveLength(0);
+    expect(requests.filter((request) => request['search'] === 'KO')).toHaveLength(1);
   });
 
   test('shows contextual data credits, the snapshot date and discovery-first references', async ({

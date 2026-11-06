@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { SolarSystemName } from '../../component/solar-system-name';
 import { locale } from '../../i18n/locale';
 import type { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -57,7 +58,7 @@ function rowGroupKey(row: DetailsRow): string {
   templateUrl: './solar-system-details.html',
   styleUrls: ['./solar-system-details.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GuardedLeftMenu, CharacterShipBadge],
+  imports: [GuardedLeftMenu, CharacterShipBadge, SolarSystemName],
 })
 /**
  * Left-pane details view for a selected solar system. Lists all bodies,

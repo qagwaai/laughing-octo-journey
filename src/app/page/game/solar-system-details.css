@@ -28,6 +28,10 @@
   gap: 1rem;
 }
 
+.page-header > div:first-child {
+  min-width: 0;
+}
+
 .details-back-link {
   display: inline-block;
   margin-bottom: 0.4rem;

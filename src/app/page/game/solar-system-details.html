@@ -6,7 +6,7 @@
         <button type="button" class="details-back-link" (click)="goBackToSystemList()">
           {{ t.game.viewer.detailsBackLabel }}
         </button>
-        <h1>{{ solarSystem()?.displayName ?? '…' }}</h1>
+        <h1>@if (solarSystem(); as system) {<app-solar-system-name [name]="system"></app-solar-system-name>} @else {…}</h1>
       </div>
       <app-character-ship-badge
         [playerName]="playerName()"

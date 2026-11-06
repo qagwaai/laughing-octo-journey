@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, OnDestroy, OnInit
 import { Router } from '@angular/router';
 import { CharacterShipBadge } from '../../component/character-ship-badge';
 import { GuardedLeftMenu } from '../../component/guarded-left-menu';
+import { SolarSystemName } from '../../component/solar-system-name';
 import { locale } from '../../i18n/locale';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { readPagedListPageInfo } from '../../model/paged-list';
@@ -27,7 +28,6 @@ interface ViewerNavigationState {
 export const VIEWER_PAGE_SIZE = 50;
 export const VIEWER_DEFAULT_MAX_DISTANCE_PARSEC = 50;
 export const VIEWER_SEARCH_DEBOUNCE_MS = 300;
-export const VIEWER_SEARCH_MIN_LENGTH = 3;
 export const VIEWER_SOURCE_OPTIONS: readonly SolarSystemSource[] = ['curated', 'procedural', 'exoplanet-catalog'];
 export const VIEWER_SPECTRAL_CLASS_OPTIONS: readonly string[] = ['O', 'B', 'A', 'F', 'G', 'K', 'M'];
 
@@ -49,7 +49,7 @@ interface ViewerListQuery {
   templateUrl: './viewer.html',
   styleUrls: ['./viewer.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [GuardedLeftMenu, CharacterShipBadge],
+  imports: [GuardedLeftMenu, CharacterShipBadge, SolarSystemName],
 })
 /**
  * Left-pane Viewer page. Discovers solar systems through the paged
@@ -68,7 +68,6 @@ export default class ViewerPage implements OnInit, OnDestroy {
   protected readonly t = locale;
   protected readonly sourceOptions = VIEWER_SOURCE_OPTIONS;
   protected readonly spectralClassOptions = VIEWER_SPECTRAL_CLASS_OPTIONS;
-  protected readonly searchMinLength = VIEWER_SEARCH_MIN_LENGTH;
   private router = inject(Router);
   private sessionService = inject(SessionService);
   private solarSystemService = inject(SolarSystemService);
@@ -102,10 +101,6 @@ export default class ViewerPage implements OnInit, OnDestroy {
   protected readonly displayedSolarSystems = computed(() => this.solarSystems());
   protected readonly hasResults = computed(() => this.displayedSolarSystems().length > 0);
   protected readonly isSearchActive = computed(() => this.query().search.length > 0);
-  protected readonly searchTooShort = computed(() => {
-    const length = this.searchText().trim().length;
-    return length > 0 && length < VIEWER_SEARCH_MIN_LENGTH;
-  });
   protected readonly resultCountText = computed(() => {
     const total = this.total();
     if (total === null) {
@@ -234,11 +229,9 @@ export default class ViewerPage implements OnInit, OnDestroy {
   }
 
   private applySearch(): void {
-    const trimmed = this.searchText().trim();
-    if (trimmed.length > 0 && trimmed.length < VIEWER_SEARCH_MIN_LENGTH) {
-      return;
-    }
-    this.updateQuery({ search: trimmed });
+    // Preserve literal query text; the server owns documented substring matching.
+    const text = this.searchText();
+    this.updateQuery({ search: text.trim() ? text : '' });
   }
 
   private updateQuery(patch: Partial<ViewerListQuery>): void {

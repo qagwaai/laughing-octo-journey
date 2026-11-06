@@ -173,7 +173,7 @@ describe('ViewerPage', () => {
       sessionService,
       navigationState: { playerName: 'Pioneer' },
     });
-    const system = { id: 'sol', displayName: 'Sol', source: 'curated' as const };
+    const system = { id: 'sol', displayName: 'Sol', settlementName: null, aliases: [], source: 'curated' as const };
     component['selectSystem'](system);
 
     expect(mockRouter.navigate).toHaveBeenCalled();
@@ -254,23 +254,23 @@ describe('ViewerPage', () => {
       expect(component['resultCountText']()).toBe('3 of 3 systems');
     });
 
-    it('debounces search, enforces the minimum length and searches across all distances', () => {
+    it('debounces short CJK substring searches across all distances without folding', () => {
       const { component } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
       respond(listRequests()[0], { solarSystems: [system('a')], total: 1, offset: 0, limit: 50, hasMore: false });
 
-      component['onSearchInput']('KO');
+      component['onSearchInput']('星');
       vi.advanceTimersByTime(400);
-      expect(listRequests()).toHaveLength(1);
-      expect(component['searchTooShort']()).toBe(true);
-
-      component['onSearchInput']('KOI');
-      component['onSearchInput']('KOI-351');
-      vi.advanceTimersByTime(299);
-      expect(listRequests()).toHaveLength(1);
-      vi.advanceTimersByTime(1);
       expect(listRequests()).toHaveLength(2);
-      const searchRequest = listRequests()[1];
-      expect(searchRequest).toEqual(expect.objectContaining({ search: 'KOI-351', offset: 0 }));
+      expect(listRequests()[1]['search']).toBe('星');
+
+      component['onSearchInput']('星空');
+      component['onSearchInput']('星河');
+      vi.advanceTimersByTime(299);
+      expect(listRequests()).toHaveLength(2);
+      vi.advanceTimersByTime(1);
+      expect(listRequests()).toHaveLength(3);
+      const searchRequest = listRequests()[2];
+      expect(searchRequest).toEqual(expect.objectContaining({ search: '星河', offset: 0 }));
       expect(searchRequest).not.toHaveProperty('maxDistanceParsec');
       expect(searchRequest).not.toHaveProperty('minDistanceParsec');
     });

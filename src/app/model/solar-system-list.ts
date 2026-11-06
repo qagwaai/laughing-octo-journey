@@ -29,7 +29,10 @@ export interface SolarSystemPrimaryStarSummary {
 
 export interface SolarSystemSummary {
   id: string;
+  /** Authoritative label: preserve combined names verbatim, never reconstruct them. */
   displayName: string;
+  settlementName: string | null;
+  aliases: string[];
   /** Scientific designation; `displayName` may be a game name. */
   catalogName?: string | null;
   hygSystemId?: string | null;

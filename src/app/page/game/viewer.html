@@ -27,11 +27,7 @@
             (input)="onSearchInput($any($event.target).value)"
           />
         </label>
-        @if (searchTooShort()) {
-        <p class="viewer-filters__hint" data-testid="viewer-search-hint">
-          {{ t.game.viewer.searchMinLengthHint.replace('{count}', '' + searchMinLength) }}
-        </p>
-        } @else if (isSearchActive()) {
+        @if (isSearchActive()) {
         <p class="viewer-filters__hint" data-testid="viewer-search-all-distances">
           {{ t.game.viewer.searchAllDistancesHint }}
         </p>
@@ -122,12 +118,7 @@
           [attr.data-system-id]="system.id"
         >
           <button type="button" class="solar-system-item__button" (click)="selectSystem(system)">
-            <span class="solar-system-item__name">{{ system.displayName }}</span>
-            @if (system.catalogName && system.catalogName !== system.displayName) {
-            <span class="solar-system-item__catalog" data-testid="viewer-system-catalog-name">
-              {{ system.catalogName }}
-            </span>
-            }
+            <app-solar-system-name class="solar-system-item__name" [name]="system"></app-solar-system-name>
             <span class="solar-system-item__meta">
               <span>
                 <strong>{{ t.game.viewer.distanceParsecLabel }}</strong>

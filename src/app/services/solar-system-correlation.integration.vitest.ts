@@ -102,6 +102,8 @@ describe('solar-system correlation integration', () => {
         {
           id: 'proc-1',
           displayName: 'Proc One',
+          settlementName: null,
+          aliases: [],
           source: 'procedural',
         },
       ],
@@ -118,6 +120,8 @@ describe('solar-system correlation integration', () => {
         {
           id: 'sol',
           displayName: 'Sol',
+          settlementName: null,
+          aliases: [],
           source: 'curated',
         },
       ],

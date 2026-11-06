@@ -187,6 +187,16 @@ export interface SolarSystemGetRequest {
   requestId?: string;
 }
 
+/** Naming fields are independently defined by solar-system-get-response.schema.json. */
+export interface SolarSystemGetSummary
+  extends Omit<SolarSystemSummary, 'displayName' | 'settlementName' | 'catalogName' | 'aliases'> {
+  /** Authoritative combined label; do not reconstruct from secondary fields. */
+  displayName: string;
+  settlementName: string | null;
+  catalogName?: string | null;
+  aliases: string[];
+}
+
 export interface SolarSystemGetResponse {
   success: boolean;
   message: string;
@@ -194,7 +204,7 @@ export interface SolarSystemGetResponse {
   requestIdentity: SolarSystemGetRequestIdentity;
   playerName?: string;
   solarSystemId?: string;
-  solarSystem?: SolarSystemSummary;
+  solarSystem?: SolarSystemGetSummary;
   stars?: CanonicalViewerBody[];
   bodies: CanonicalViewerBody[];
   requestId?: string;
