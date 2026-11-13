@@ -4,6 +4,69 @@
 
 Accepted (initial MVP).
 
+### Diameter resolution and localized measurements: accepted 2026-11-13
+
+The user accepted the diameter and number-formatting changes in the Stellar
+Viewer. The user will commit and push the session changes.
+
+#### Diameter selection
+
+The listing previously read only `physicalCatalog.estimatedDiameterM`, leaving
+valid catalog radii and gameplay diameter estimates undisplayed. The running
+API's referenced physical schemas confirmed the selection order below; this
+investigation did not capture the specific Sirius socket response.
+
+The Bodies & Markets listing, viewer body facts, and inspector use the shared
+physical-catalog resolver for diameter in metres. Selection follows the first
+positive finite value in API order: catalog `meanRadiusKm`, `equatorialRadiusKm`,
+`radiusKm`, `estimatedDiameterM`, then `physical.estimatedDiameterM`. Radii in
+kilometres are multiplied by 2000. Missing or unusable sizes remain unknown:
+the listing and inspector show a dash, and body facts omit diameter.
+Selection does not merge or modify the catalog and gameplay-estimate objects.
+
+`resolveCatalogDiameterM` in
+[physical-catalog.ts](../src/app/model/physical-catalog.ts) reuses the existing
+radius resolver. Zero, negative, and non-finite sizes are not usable measurements;
+conversion overflow also remains unknown.
+
+#### Locale-specific number formatting
+
+Diameter and orbit (semi-major axis) displays use the active app locale for
+grouping and decimal separators, with exactly three decimal places (rounded,
+not truncated). This applies to grouped and distance-sorted listings, viewer
+body facts, and the inspector. Formatting is display-only; units, numeric
+sorting, unknown-value dashes, and approximation indicators are unchanged.
+
+The shared
+[viewer-number-format.ts](../src/app/page/game/viewer-number-format.ts)
+uses cached `Intl.NumberFormat` instances selected by the active app language,
+not the browser's default locale. Examples: English `462,328.203`, Italian
+`462.328,203`; whole values retain three trailing zeros. Missing or non-finite
+numbers display a dash. Body facts continue to omit missing measurements.
+The distance-sorted listing remains orbit-only; no diameter column was added.
+Radius, mass, other orbital elements, scene scaling, and payload values were
+not changed.
+
+#### Validation and handoff
+
+- `npm run test:spec -- src\app\page\game\solar-system-details.vitest.ts src\app\page\game\viewer-scene.vitest.ts src\app\model\physical-catalog.vitest.ts`:
+  passed, 73 tests across three files. Focused cases cover size-source precedence,
+  unit conversion, invalid sizes, English/Italian formatting, rounding, trailing
+  zeros, unknown values, and preserved numeric sorting/source values.
+- `npm run build`: passed, including Angular template compilation and the E2E
+  partition gate (the gate does not execute browser tests).
+- `npm run typecheck:spec`: passed.
+- `npx eslint src\app\page\game\viewer-number-format.ts src\app\page\game\solar-system-details.ts src\app\page\game\solar-system-details.vitest.ts src\app\page\game\viewer-scene.ts src\app\page\game\viewer-scene.vitest.ts`:
+  passed. The diameter resolver, resolver tests, and details facade also passed
+  targeted ESLint before the formatting change.
+- `git diff --check`: passed.
+
+The viewer template has a pre-existing Prettier failure, confirmed against
+`HEAD`; unrelated template reformatting was deliberately excluded. No full
+Vitest suite, Playwright run, or automated live-payload UI verification was
+performed for these changes. No backend contract or seed-data changes are
+required by this frontend fix.
+
 ### Forge-scale group visibility and target indicators: implemented 2026-10-29
 
 The Stellar Viewer now supports per-group visual inclusion controls and a

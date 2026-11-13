@@ -1,5 +1,6 @@
 import type { MarketListByLocationRequest, MarketListByLocationResponse, MarketSummary } from '../../model/market-list';
 import { isCompatibleBodyClassification } from '../../model/celestial-classification';
+import { resolveCatalogDiameterM } from '../../model/physical-catalog';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
@@ -133,7 +134,7 @@ export class SolarSystemDetailsFacade {
         planetType,
         planetTypeLikely: planetType !== null && isLikelyBodyType(b),
         viewerGroup: viewerBodyGroup(b),
-        diameterM: b.physicalCatalog?.estimatedDiameterM ?? null,
+        diameterM: resolveCatalogDiameterM(b.physicalCatalog, b.physical),
         semiMajorAxisKm: b.orbitalElements?.semiMajorAxisKm ?? null,
         isShip: false,
         isActiveShip: false,

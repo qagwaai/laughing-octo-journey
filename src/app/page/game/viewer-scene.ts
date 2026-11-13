@@ -21,6 +21,7 @@ import {
   type ExternalObjectDomain,
 } from '../../model/external-object-descriptor';
 import { isValidShipSpatial } from '../../model/math/spatial';
+import { resolveCatalogDiameterM } from '../../model/physical-catalog';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -48,6 +49,7 @@ import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
+import { formatViewerNumber } from './viewer-number-format';
 import { AstronomyCreditList } from '../public/astronomy-credit-list';
 import {
   catalogSnapshotDate,
@@ -211,6 +213,8 @@ function toForceHeroShip(ship: ShipSummary): ShipSummary {
  */
 export default class ViewerScenePage implements OnDestroy {
   protected readonly t = locale;
+  protected readonly catalogDiameterM = resolveCatalogDiameterM;
+  protected readonly formatNumber = formatViewerNumber;
   protected readonly isDevBuild = !environment.production;
   protected host = inject<ElementRef<HTMLElement>>(ElementRef);
   private router = inject(Router);

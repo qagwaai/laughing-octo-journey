@@ -165,8 +165,8 @@
                     </span>
                   </span>
                 </td>
-                <td class="details-col-num">{{ row.diameterM !== null ? row.diameterM : '—' }}</td>
-                <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
+                <td class="details-col-num">{{ formatNumber(row.diameterM) }}</td>
+                <td class="details-col-num">{{ formatNumber(row.semiMajorAxisKm) }}</td>
               </tr>
               }
             </tbody>
@@ -227,7 +227,7 @@
                 </span>
               </td>
               <td class="details-col-type">{{ rowTypeLabel(row) }}</td>
-              <td class="details-col-num">{{ row.semiMajorAxisKm !== null ? row.semiMajorAxisKm : '—' }}</td>
+              <td class="details-col-num">{{ formatNumber(row.semiMajorAxisKm) }}</td>
             </tr>
             }
           </tbody>

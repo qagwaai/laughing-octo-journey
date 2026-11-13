@@ -68,10 +68,10 @@
         <div class="viewer-body-facts" data-testid="viewer-body-facts">
           @if (body.physicalCatalog?.radiusKm != null) {
           <span>{{ t.game.viewer.planetViewRadiusLabel }}: {{ body.physicalCatalog?.radiusKm }} km</span>
-          } @if (body.physicalCatalog?.estimatedDiameterM != null) {
-          <span>{{ t.game.viewer.detailsColumnDiameter }}: {{ body.physicalCatalog?.estimatedDiameterM }}</span>
+          } @if (catalogDiameterM(body.physicalCatalog, body.physical); as diameterM) {
+          <span>{{ t.game.viewer.detailsColumnDiameter }}: {{ formatNumber(diameterM) }}</span>
           } @if (body.orbitalElements?.semiMajorAxisKm != null) {
-          <span>{{ t.game.viewer.detailsColumnOrbit }}: {{ body.orbitalElements?.semiMajorAxisKm }}</span>
+          <span>{{ t.game.viewer.detailsColumnOrbit }}: {{ formatNumber(body.orbitalElements?.semiMajorAxisKm) }}</span>
           }
         </div>
         } @if (targetBody(); as target) {
@@ -497,7 +497,7 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Diameter (m)</span>
-            <span class="viewer-detail-pane__value">{{ body.physicalCatalog?.estimatedDiameterM ?? '—' }}</span>
+            <span class="viewer-detail-pane__value">{{ formatNumber(catalogDiameterM(body.physicalCatalog, body.physical)) }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Mass (kg)</span>
@@ -516,7 +516,7 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.semiMajorAxisKm')">{{ approximatePrefix(body, 'orbit.semiMajorAxisKm') }}{{ body.orbitalElements?.semiMajorAxisKm ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.semiMajorAxisKm')">{{ approximatePrefix(body, 'orbit.semiMajorAxisKm') }}{{ formatNumber(body.orbitalElements?.semiMajorAxisKm) }}</span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Eccentricity</span>

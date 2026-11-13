@@ -14,6 +14,7 @@ import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { resolveNavigationState } from '../navigation-state';
 import { DETAILS_PLANET_TYPE_ORDER, SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
+import { formatViewerNumber } from './viewer-number-format';
 
 interface TypeGroup {
   type: string;
@@ -67,6 +68,7 @@ function rowGroupKey(row: DetailsRow): string {
  */
 export default class SolarSystemDetailsPage {
   protected readonly t = locale;
+  protected readonly formatNumber = formatViewerNumber;
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private sessionService = inject(SessionService);

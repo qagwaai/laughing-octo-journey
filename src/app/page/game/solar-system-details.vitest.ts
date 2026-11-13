@@ -79,6 +79,47 @@ function setup(bodies: CanonicalViewerBody[] = [], stars: CanonicalViewerBody[] 
 describe('SolarSystemDetailsPage body groups', () => {
   afterEach(() => setActiveLocaleCode('en'));
 
+  it.each([
+    { localeCode: 'en', diameters: ['12,742,000.000', '4,000.000', '—'], orbit: '1,234,567.892', zero: '0.000' },
+    { localeCode: 'it', diameters: ['12.742.000,000', '4.000,000', '—'], orbit: '1.234.567,892', zero: '0,000' },
+  ])('formats diameter and orbit in $localeCode without changing source values or sorting', ({
+    localeCode, diameters, orbit, zero,
+  }) => {
+    setActiveLocaleCode(localeCode);
+    const orbitalElements = {
+      semiMajorAxisKm: 1_234_567.8916,
+      eccentricity: 0,
+      inclinationDeg: 0,
+      longitudeOfAscendingNodeDeg: 0,
+      argumentOfPeriapsisDeg: 0,
+      meanAnomalyAtEpochDeg: 0,
+      orbitalPeriodSec: 1,
+      epoch: '2026-01-01T00:00:00Z',
+    };
+    const bodies = [
+      { ...body('planet', 1), physicalCatalog: { meanRadiusKm: 6_371, estimatedDiameterM: 1 }, orbitalElements },
+      { ...body('planet', 2), physical: { estimatedDiameterM: 4_000 }, orbitalElements: { ...orbitalElements, semiMajorAxisKm: 0 } },
+      { ...body('planet', 3), physicalCatalog: { radiusKm: 0 } },
+    ];
+    const { fixture, component } = setup(bodies);
+    component['toggleSection']('planet-rocky');
+    fixture.detectChanges();
+    const rows: NodeListOf<HTMLTableRowElement> = fixture.nativeElement.querySelectorAll(
+      '[data-testid="details-table-planet-rocky"] tbody tr',
+    );
+    expect(Array.from(rows, (row) => row.cells[1].textContent?.trim())).toEqual(diameters);
+    expect(Array.from(rows, (row) => row.cells[2].textContent?.trim())).toEqual([orbit, zero, '—']);
+    component['setViewMode']('distance');
+    fixture.detectChanges();
+    const distanceRows: NodeListOf<HTMLTableRowElement> = fixture.nativeElement.querySelectorAll(
+      '[data-testid="details-table"] tbody tr',
+    );
+    expect(Array.from(distanceRows, (row) => row.cells[2].textContent?.trim())).toEqual([zero, orbit, '—']);
+    expect(bodies[0].physicalCatalog).toEqual({ meanRadiusKm: 6_371, estimatedDiameterM: 1 });
+    expect(bodies[1].physical).toEqual({ estimatedDiameterM: 4_000 });
+    expect(bodies[0].orbitalElements?.semiMajorAxisKm).toBe(1_234_567.8916);
+  });
+
   it('includes every canonical type in the requested order and preserves distance-view rows', () => {
     const bodies = (['star', 'planet', 'dwarf-planet', 'moon', 'asteroid', 'black-hole', 'tno', 'comet'] as const).map(
       (type, index) => body(type, index),

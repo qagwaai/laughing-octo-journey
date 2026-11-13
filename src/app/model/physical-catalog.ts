@@ -31,6 +31,14 @@ export function resolveCatalogRadiusKm(
   return candidates.map(positiveFinite).find((value) => value !== null) ?? null;
 }
 
+export function resolveCatalogDiameterM(
+  catalog: PhysicalCatalogValues | null | undefined,
+  physical?: Pick<PhysicalState, 'estimatedDiameterM'> | null,
+): number | null {
+  const radiusKm = resolveCatalogRadiusKm(catalog, physical);
+  return radiusKm === null ? null : positiveFinite(radiusKm * 2000);
+}
+
 export function resolveCatalogMassKg(
   catalog: PhysicalCatalogValues | null | undefined,
   physical?: Pick<PhysicalState, 'estimatedMassKg'> | null,

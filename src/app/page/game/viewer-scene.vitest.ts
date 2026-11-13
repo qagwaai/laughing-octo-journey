@@ -2,17 +2,22 @@ import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of } from 'rxjs';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockSessionService,
   createMockSocketService,
   type MockSessionService,
   type MockSocketService,
 } from '../../../testing';
+import { setActiveLocaleCode } from '../../i18n/locale';
 import { MARKET_LIST_BY_LOCATION_REQUEST_EVENT, MARKET_LIST_BY_LOCATION_RESPONSE_EVENT } from '../../model/market-list';
 import { SHIP_LIST_BY_OWNER_REQUEST_EVENT, SHIP_LIST_BY_OWNER_RESPONSE_EVENT } from '../../model/ship-list-by-owner';
 import { SHIP_UPSERT_REQUEST_EVENT } from '../../model/ship-upsert';
-import { SOLAR_SYSTEM_GET_REQUEST_EVENT, SOLAR_SYSTEM_GET_RESPONSE_EVENT } from '../../model/solar-system-get';
+import {
+  SOLAR_SYSTEM_GET_REQUEST_EVENT,
+  SOLAR_SYSTEM_GET_RESPONSE_EVENT,
+  type ViewerBody,
+} from '../../model/solar-system-get';
 import { appLogger } from '../../services/logger';
 import { SessionService } from '../../services/session.service';
 import { SocketService } from '../../services/socket.service';
@@ -62,6 +67,84 @@ function setup(navigationState?: Record<string, unknown>, queryParams?: Record<s
 }
 
 describe('ViewerScenePage', () => {
+  afterEach(() => setActiveLocaleCode('en'));
+
+  it.each([
+    { source: 'catalog radius', physicalCatalog: { meanRadiusKm: 6_371, estimatedDiameterM: 1 }, expected: '12,742,000.000' },
+    { source: 'gameplay diameter', physical: { estimatedDiameterM: 4_000 }, expected: '4,000.000' },
+    { source: 'unknown size', physicalCatalog: { radiusKm: 0 }, expected: null },
+  ])('shows $source consistently in body facts and the inspector', ({ expected, physicalCatalog, physical }) => {
+    const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const body: ViewerBody = {
+      id: 'earth',
+      bodyType: 'planet',
+      displayName: 'Earth',
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      physicalCatalog,
+      physical,
+    };
+    component['bodies'].set([body]);
+    component['isLoading'].set(false);
+    component['onTargetBodyRequest'](body.id);
+    component['inspectTarget']();
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const facts = element.querySelector('[data-testid="viewer-body-facts"]');
+    expect(facts).not.toBeNull();
+    if (expected === null) {
+      expect(facts?.textContent).not.toContain('Diameter');
+    } else {
+      expect(facts?.textContent).toContain(`Diameter (m): ${expected}`);
+    }
+    const diameterRow = Array.from(element.querySelectorAll('.viewer-detail-pane__row')).find(
+      (row) => row.querySelector('.viewer-detail-pane__label')?.textContent?.trim() === 'Diameter (m)',
+    );
+    expect(diameterRow?.querySelector('.viewer-detail-pane__value')?.textContent?.trim()).toBe(expected ?? '—');
+  });
+
+  it.each([
+    { localeCode: 'en', diameter: '462,328.203', orbit: '4,832,768.320' },
+    { localeCode: 'it', diameter: '462.328,203', orbit: '4.832.768,320' },
+  ])('formats diameter and orbit in $localeCode across facts and inspector', ({ localeCode, diameter, orbit }) => {
+    setActiveLocaleCode(localeCode);
+    const { component, fixture } = setup({ playerName: 'Pioneer', solarSystemId: 'sol' });
+    const body: ViewerBody = {
+      id: 'moon',
+      bodyType: 'moon',
+      displayName: 'Moon',
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 0 },
+      physicalCatalog: { estimatedDiameterM: 462_328.20332050323 },
+      orbitalElements: {
+        semiMajorAxisKm: 4_832_768.32044095,
+        eccentricity: 0,
+        inclinationDeg: 0,
+        longitudeOfAscendingNodeDeg: 0,
+        argumentOfPeriapsisDeg: 0,
+        meanAnomalyAtEpochDeg: 0,
+        orbitalPeriodSec: 1,
+        epoch: '2026-01-01T00:00:00Z',
+      },
+    };
+    component['bodies'].set([body]);
+    component['isLoading'].set(false);
+    component['onTargetBodyRequest'](body.id);
+    component['inspectTarget']();
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const facts = element.querySelector('[data-testid="viewer-body-facts"]');
+    expect(facts?.textContent).toContain(diameter);
+    expect(facts?.textContent).toContain(orbit);
+    const inspector = element.querySelector('[data-testid="viewer-body-inspector"]');
+    for (const [label, expected] of [['Diameter (m)', diameter], ['Semi-Major Axis (km)', orbit]]) {
+      const row = Array.from(inspector?.querySelectorAll('.viewer-detail-pane__row') ?? []).find(
+        (entry) => entry.querySelector('.viewer-detail-pane__label')?.textContent?.trim() === label,
+      );
+      expect(row?.querySelector('.viewer-detail-pane__value')?.textContent?.trim()).toBe(expected);
+    }
+    expect(body.physicalCatalog?.estimatedDiameterM).toBe(462_328.20332050323);
+    expect(body.orbitalElements?.semiMajorAxisKm).toBe(4_832_768.32044095);
+  });
+
   const filterBodies = [
     { id: 'sun', bodyType: 'star', displayName: 'Sun' },
     { id: 'earth', bodyType: 'planet', displayName: 'Earth' },
