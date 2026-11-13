@@ -340,6 +340,24 @@ separately.
       appearance, and unchanged Earth rendering. Capture and review visual evidence.
       Confirm no fallback variance toast appears for either dedicated renderer.
 
+### Viewer list presentation follow-up (2026-11-13)
+
+This is a Nova UI refinement only; the Forge request/response contract is
+unchanged.
+
+- The Viewer requests 10 systems per page and retains explicit "Load more"
+  paging. Its result count uses the server's `total`; the default 50-parsec
+  maximum is shown in the count, while all-distance name searches omit that
+  qualifier. The 621 count in the earlier live probe is the matching total
+  within 50 pc, not the full 4,845-system catalog.
+- Compact rows use primary-star color, distance and market-count cues, and
+  distinct source icons with localized accessible names. A valid
+  `catalogSnapshotDate` is shown in the system-name hover title, not as a
+  separate row field.
+- Validation: `npm run test:spec -- src/app/page/game/viewer.vitest.ts`
+  passed (19 tests); `npm run typecheck`, `npm run build`, targeted Prettier
+  checks, and `git diff --check` passed.
+
 ## Verification matrix
 
 | Area              | Required assertions                                                                                                                                                                                                                                                                 |

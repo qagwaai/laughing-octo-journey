@@ -668,6 +668,7 @@ export const it: DeepPartial<EnLocale> = {
       sortNameOption: 'Nome',
       hasPlanetsLabel: 'Solo sistemi con pianeti',
       resultCount: '{shown} di {total} sistemi',
+      resultCountWithinMaxDistance: '{shown} di {total} sistemi entro {maxDistance} parsec',
       loadMoreLabel: 'Carica altri',
       loadingMoreLabel: 'Caricamento...',
       retryLabel: 'Riprova',

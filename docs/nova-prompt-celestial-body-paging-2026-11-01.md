@@ -1,6 +1,7 @@
 # Nova prompt: celestial-body paging (P2)
 
-Status: Ready to hand off. Forge implements offset paging on
+Status: Implemented in Nova; this document is the original handoff record.
+Forge implements offset paging on
 `solar-system-list`, `star-list` and `celestial-body-list` (P2, D68–D74).
 Date: 2026-11-02
 From repo: solid-train (Forge)
@@ -9,6 +10,12 @@ Related:
 [exoplanet-catalog-import-plan-2026-11-01.md](./exoplanet-catalog-import-plan-2026-11-01.md#paging-p2),
 [nova-new-planet-types-2026-11-01.md](./nova-new-planet-types-2026-11-01.md),
 [nova-sol-catalog-attribution-prompt.md](./nova-sol-catalog-attribution-prompt.md)
+
+Nova's Viewer requests 10 systems per page and uses "Load more" for subsequent
+pages. Its default maximum distance is 50 parsecs; name searches span all
+distances. See the [Viewer architecture decision](./viewer-architecture-decision.md)
+for current list behavior and presentation. The implementation guidance below
+records the pre-implementation analysis.
 
 ## Purpose
 

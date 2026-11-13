@@ -118,45 +118,119 @@
           [attr.data-system-id]="system.id"
         >
           <button type="button" class="solar-system-item__button" (click)="selectSystem(system)">
-            <app-solar-system-name class="solar-system-item__name" [name]="system"></app-solar-system-name>
-            <span class="solar-system-item__meta">
-              <span>
-                <strong>{{ t.game.viewer.distanceParsecLabel }}</strong>
-                {{ formatDistance(system.distanceParsec, system.distanceApproximate) }}
+            <span
+              class="solar-system-item__star"
+              [style.--star-color]="primaryStarColor(system)"
+              data-testid="viewer-system-star-marker"
+              aria-hidden="true"
+            ></span>
+            <span class="solar-system-item__content">
+              <span class="solar-system-item__heading">
+                <app-solar-system-name
+                  class="solar-system-item__name"
+                  [name]="system"
+                  [attr.title]="snapshotDateTooltip(system)"
+                ></app-solar-system-name>
+                <span
+                  class="solar-system-item__distance"
+                  [attr.aria-label]="
+                    t.game.viewer.distanceParsecLabel + ' ' + formatDistance(system.distanceParsec, system.distanceApproximate)
+                  "
+                  data-testid="viewer-system-distance"
+                >
+                  {{ formatDistance(system.distanceParsec, system.distanceApproximate) }} @if (system.distanceParsec !==
+                  null && system.distanceParsec !== undefined) {
+                  <span aria-hidden="true">pc</span>
+                  }
+                </span>
               </span>
-              <span>
-                <strong>{{ t.game.viewer.sourceFilterLabel }}</strong>
-                {{ sourceLabel(system.source) }}
+              <span class="solar-system-item__meta">
+                <span class="solar-system-item__markets" data-testid="viewer-system-markets">
+                  <strong>{{ t.game.viewer.marketCountLabel }}</strong>
+                  {{ system.marketCount !== undefined ? system.marketCount : '—' }}
+                </span>
+                <span
+                  class="solar-system-item__source"
+                  [class.solar-system-item__source--curated]="system.source === 'curated'"
+                  [class.solar-system-item__source--procedural]="system.source === 'procedural'"
+                  [class.solar-system-item__source--exoplanet-catalog]="system.source === 'exoplanet-catalog'"
+                  [attr.aria-label]="sourceLabel(system.source)"
+                  [attr.title]="sourceLabel(system.source)"
+                  [attr.data-source]="system.source"
+                  data-testid="viewer-system-source"
+                  role="img"
+                >
+                  @switch (system.source) { @case ('curated') {
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      d="m12 2.8 2.7 5.6 6.2.9-4.5 4.4 1.1 6.2-5.5-2.9-5.5 2.9 1.1-6.2-4.5-4.4 6.2-.9L12 2.8Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  } @case ('procedural') {
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <ellipse
+                      cx="12"
+                      cy="12"
+                      rx="9"
+                      ry="3.7"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      transform="rotate(-35 12 12)"
+                    />
+                    <ellipse
+                      cx="12"
+                      cy="12"
+                      rx="9"
+                      ry="3.7"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      transform="rotate(35 12 12)"
+                    />
+                    <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                  </svg>
+                  } @case ('exoplanet-catalog') {
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <ellipse
+                      cx="12"
+                      cy="12"
+                      rx="10"
+                      ry="4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      transform="rotate(-24 12 12)"
+                    />
+                    <circle cx="12" cy="12" r="4.3" fill="currentColor" />
+                    <path d="M8.2 13.5c2.4 1.5 5.5 1.5 7.7 0" fill="none" stroke="#142138" stroke-width="1" />
+                  </svg>
+                  } }
+                </span>
+                <span>
+                  <strong>{{ t.game.viewer.starCountLabel }}</strong>
+                  {{ system.starCount ?? 1 }}
+                </span>
+                @if (system.primaryStar?.spectralClass) {
+                <span>
+                  <strong>{{ t.game.viewer.primaryStarLabel }}</strong>
+                  {{ system.primaryStar?.spectralClass }}
+                </span>
+                }
+                <span>
+                  <strong>{{ t.game.viewer.planetCountLabel }}</strong>
+                  {{ system.planetCount !== undefined ? system.planetCount : '—' }}
+                </span>
+                <span>
+                  <strong>{{ t.game.viewer.moonCountLabel }}</strong>
+                  {{ system.moonCount !== undefined ? system.moonCount : '—' }}
+                </span>
+                <span>
+                  <strong>{{ t.game.viewer.asteroidCountLabel }}</strong>
+                  {{ system.asteroidCount !== undefined ? system.asteroidCount : '—' }}
+                </span>
               </span>
-              <span>
-                <strong>{{ t.game.viewer.starCountLabel }}</strong>
-                {{ system.starCount ?? 1 }}
-              </span>
-              @if (system.primaryStar?.spectralClass) {
-              <span>
-                <strong>{{ t.game.viewer.primaryStarLabel }}</strong>
-                {{ system.primaryStar?.spectralClass }}
-              </span>
-              }
-              <span>
-                <strong>{{ t.game.viewer.planetCountLabel }}</strong>
-                {{ system.planetCount !== undefined ? system.planetCount : '—' }}
-              </span>
-              <span>
-                <strong>{{ t.game.viewer.moonCountLabel }}</strong>
-                {{ system.moonCount !== undefined ? system.moonCount : '—' }}
-              </span>
-              <span>
-                <strong>{{ t.game.viewer.asteroidCountLabel }}</strong>
-                {{ system.asteroidCount !== undefined ? system.asteroidCount : '—' }}
-              </span>
-              <span>
-                <strong>{{ t.game.viewer.marketCountLabel }}</strong>
-                {{ system.marketCount !== undefined ? system.marketCount : '—' }}
-              </span>
-              @if (snapshotDateOf(system); as date) {
-              <span data-testid="viewer-system-data-as-of">{{ t.game.viewer.dataAsOfLabel.replace('{date}', date) }}</span>
-              }
             </span>
           </button>
         </li>

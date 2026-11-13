@@ -1,7 +1,7 @@
 # Nova prompt: new planet types, rings, and approximate values
 
-Status: Ready to hand off. The contract change shipped in Phase 5 (EX-5.4b),
-and Phase 7 (EX-7.3) confirmed the breakage in a running Nova build.
+Status: Implemented in Nova; this document preserves the original contract
+handoff and Phase 7 observations.
 Date: 2026-11-01 (updated 2026-11-02)
 From repo: solid-train (Forge)
 To repo: laughing-octo-journey (Nova)
@@ -146,7 +146,11 @@ surfaceArchetype for exo-55-cnc-b-c` and renders **0 bodies**. Seen on
   search, filters, or paged browsing. The paging plan (P2) owns the server
   side; Nova needs the list UI. Do **not** simply drop the limit: the full
   list is 3.0 MB and takes about 0.8 s to render as 87,000 DOM nodes (see
-  the plan's Phase 7 findings).
+  the plan's Phase 7 findings). This list-selection limitation was later
+  addressed in Nova: the Viewer requests 10 systems per page, retains "Load
+  more", and name searches span all distances. See the
+  [Viewer architecture decision](./viewer-architecture-decision.md) for the
+  current behavior.
 - **Stars appear twice in `solar-system-get`** (in `stars` and in `bodies`).
   This predates the import, and Nova already dedupes with
   `mergeUniqueViewerBodies`.

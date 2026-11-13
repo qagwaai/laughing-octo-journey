@@ -319,11 +319,23 @@ prefer runtime `http://localhost:3000/openapi.yaml`).
   - `solar-system-list-request` / `solar-system-list-response`
   - `solar-system-get-request` / `solar-system-get-response`
 - The list page issues a `solar-system-list-request` on `ngOnInit` (using the
-  active `playerName` + `sessionKey`) with a default limit of 50 systems and a
-  default 50-parsec radius. Selecting a system navigates the right outlet with
-  the `solarSystemId` and the cached `SolarSystemSummary` payload in the
-  navigation state, allowing the scene host to render summary metadata
+  active `playerName` + `sessionKey`) with a page limit of 10 systems and a
+  default 50-parsec maximum distance. Selecting a system navigates the right
+  outlet with the `solarSystemId` and the cached `SolarSystemSummary` payload
+  in the navigation state, allowing the scene host to render summary metadata
   immediately while the body list streams in.
+- Further pages are requested only when the player selects "Load more"; the
+  page limit remains 10. The result count uses the response's `total`, which
+  reflects the active server-side filters. The default count identifies the
+  maximum-distance bound (for example, "10 of 621 systems within 50 parsecs").
+  Name searches span all distances, so their count does not claim a distance
+  bound.
+- Compact list rows use the primary star's validated `colorHex` as a glow,
+  emphasize distance and market count, and replace source text with distinct
+  curated, procedural, and exoplanet-catalog icons. The icons retain localized
+  accessible names and hover titles. A valid `catalogSnapshotDate` appears as
+  a localized hover title on the system name rather than as a separate row
+  field.
 - `ViewerScenePage` reads navigation state in its constructor, requests
   `solar-system-get-request`, and feeds the resulting `ViewerBody[]` into
   `<app-viewer-system-scene>` via inputs.

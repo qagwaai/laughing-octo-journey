@@ -25,7 +25,7 @@ interface ViewerNavigationState {
   joinCharacter?: PlayerCharacterSummary;
 }
 
-export const VIEWER_PAGE_SIZE = 50;
+export const VIEWER_PAGE_SIZE = 10;
 export const VIEWER_DEFAULT_MAX_DISTANCE_PARSEC = 50;
 export const VIEWER_SEARCH_DEBOUNCE_MS = 300;
 export const VIEWER_SOURCE_OPTIONS: readonly SolarSystemSource[] = ['curated', 'procedural', 'exoplanet-catalog'];
@@ -106,9 +106,16 @@ export default class ViewerPage implements OnInit, OnDestroy {
     if (total === null) {
       return '';
     }
-    return this.t.game.viewer.resultCount
+    const query = this.query();
+    const maxDistance = query.maxDistanceParsec;
+    const resultCount =
+      !query.search && maxDistance !== null
+        ? this.t.game.viewer.resultCountWithinMaxDistance
+        : this.t.game.viewer.resultCount;
+    return resultCount
       .replace('{shown}', String(this.solarSystems().length))
-      .replace('{total}', String(total));
+      .replace('{total}', String(total))
+      .replace('{maxDistance}', maxDistance === null ? '' : String(maxDistance));
   });
 
   /** Incremented for every new query so late replies from superseded queries are ignored. */
@@ -221,11 +228,21 @@ export default class ViewerPage implements OnInit, OnDestroy {
     return catalogSnapshotDate(system);
   }
 
+  protected snapshotDateTooltip(system: SolarSystemSummary): string | null {
+    const date = this.snapshotDateOf(system);
+    return date ? this.t.game.viewer.dataAsOfLabel.replace('{date}', date) : null;
+  }
+
   protected formatDistance(parsecs: number | null | undefined, approximate?: boolean): string {
     if (typeof parsecs !== 'number' || !Number.isFinite(parsecs)) {
       return '—';
     }
     return (approximate ? '≈' : '') + parsecs.toFixed(2);
+  }
+
+  protected primaryStarColor(system: SolarSystemSummary): string {
+    const color = system.primaryStar?.colorHex;
+    return typeof color === 'string' && /^#[\da-f]{6}$/i.test(color.trim()) ? color.trim() : '#b4cfff';
   }
 
   private applySearch(): void {

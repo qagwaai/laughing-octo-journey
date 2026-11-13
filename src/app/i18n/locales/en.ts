@@ -844,6 +844,7 @@ export const en = {
       sortNameOption: 'Name',
       hasPlanetsLabel: 'Only systems with planets',
       resultCount: '{shown} of {total} systems',
+      resultCountWithinMaxDistance: '{shown} of {total} systems within {maxDistance} parsecs',
       loadMoreLabel: 'Load more',
       loadingMoreLabel: 'Loading...',
       retryLabel: 'Retry',

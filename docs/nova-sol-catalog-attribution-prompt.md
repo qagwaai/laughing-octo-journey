@@ -305,6 +305,8 @@ result.
 ## Follow-up
 
 - Confirm the IAU NameExoWorlds reuse terms (A10) and then enable the flag.
-- Paging for the system, star and body lists is in
-  [nova-prompt-celestial-body-paging-2026-11-01.md](./nova-prompt-celestial-body-paging-2026-11-01.md)
-  (P2). Ship it together with this addendum and the new-planet-types prompt.
+- [x] Paging for the system, star and body lists from
+      [nova-prompt-celestial-body-paging-2026-11-01.md](./nova-prompt-celestial-body-paging-2026-11-01.md)
+      (P2) is implemented in Nova.
+- The Viewer list now exposes a valid `catalogSnapshotDate` as a localized
+  hover title on the system name, rather than a separate row field.

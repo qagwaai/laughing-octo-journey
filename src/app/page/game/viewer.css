@@ -51,9 +51,10 @@
 
 .solar-system-item__button {
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.35rem 0.7rem;
   text-align: left;
   padding: 0.6rem 0.8rem;
   border-radius: 6px;
@@ -62,6 +63,45 @@
   color: #e8f2ff;
   cursor: pointer;
   font: inherit;
+}
+
+.solar-system-item__star {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0, var(--star-color) 24%, #142138 78%);
+  box-shadow: 0 0 0.65rem var(--star-color);
+}
+
+.solar-system-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.solar-system-item__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.solar-system-item__name {
+  flex: 1 1 auto;
+}
+
+.solar-system-item__distance {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid rgba(126, 193, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(126, 193, 255, 0.1);
+  color: #e8f2ff;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .solar-system-item__button:hover,
@@ -81,10 +121,48 @@
 
 .solar-system-item__meta {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.3rem 0.65rem;
   flex-wrap: wrap;
   color: #b4cfff;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
+}
+
+.solar-system-item__markets {
+  padding: 0.12rem 0.4rem;
+  border: 1px solid rgba(126, 193, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(126, 193, 255, 0.12);
+  color: #e8f2ff;
+  white-space: nowrap;
+}
+
+.solar-system-item__source {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.solar-system-item__source svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.solar-system-item__source--curated {
+  color: #ffd36b;
+}
+
+.solar-system-item__source--procedural {
+  color: #82d8ff;
+}
+
+.solar-system-item__source--exoplanet-catalog {
+  color: #c7a6ff;
 }
 
 .viewer-filters {

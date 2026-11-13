@@ -62,7 +62,7 @@ describe('ViewerPage', () => {
 
     expect(socketService.emittedEvents[0]?.event).toBe(SOLAR_SYSTEM_LIST_REQUEST_EVENT);
     expect(socketService.emittedEvents[0]?.data).toEqual(
-      expect.objectContaining({ playerName: 'Pioneer', sessionKey: 'test-session-key', limit: 50 }),
+      expect.objectContaining({ playerName: 'Pioneer', sessionKey: 'test-session-key', limit: 10 }),
     );
   });
 
@@ -194,7 +194,7 @@ describe('ViewerPage', () => {
     const listRequest = socketService.emittedEvents.find((entry) => entry.event === SOLAR_SYSTEM_LIST_REQUEST_EVENT)
       ?.data as Record<string, unknown>;
     expect(listRequest).toEqual(
-      expect.objectContaining({ limit: 50, offset: 0, maxDistanceParsec: 50, sort: 'distance' }),
+      expect.objectContaining({ limit: 10, offset: 0, maxDistanceParsec: 50, sort: 'distance' }),
     );
   });
 
@@ -235,12 +235,12 @@ describe('ViewerPage', () => {
         limit: 2,
         hasMore: true,
       });
-      expect(component['resultCountText']()).toBe('2 of 3 systems');
+      expect(component['resultCountText']()).toBe('2 of 3 systems within 50 parsecs');
 
       component['loadMore']();
       component['loadMore']();
       expect(listRequests()).toHaveLength(2);
-      expect(listRequests()[1]).toEqual(expect.objectContaining({ offset: 2, limit: 50 }));
+      expect(listRequests()[1]).toEqual(expect.objectContaining({ offset: 2, limit: 10 }));
 
       respond(listRequests()[1], {
         solarSystems: [system('b'), system('c')],
@@ -251,12 +251,48 @@ describe('ViewerPage', () => {
       });
       expect(component['solarSystems']().map((entry) => entry.id)).toEqual(['a', 'b', 'c']);
       expect(component['hasMore']()).toBe(false);
-      expect(component['resultCountText']()).toBe('3 of 3 systems');
+      expect(component['resultCountText']()).toBe('3 of 3 systems within 50 parsecs');
+    });
+
+    it('uses the active maximum distance and omits it for all-distance searches', () => {
+      const { component } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
+      respond(listRequests()[0], {
+        solarSystems: [system('a')],
+        total: 3,
+        offset: 0,
+        limit: 10,
+        hasMore: false,
+      });
+      expect(component['resultCountText']()).toBe('1 of 3 systems within 50 parsecs');
+
+      component['onMaxDistanceChange']('12.5');
+      const maxDistanceRequest = listRequests()[1];
+      respond(maxDistanceRequest, {
+        solarSystems: [system('a')],
+        total: 1,
+        offset: 0,
+        limit: 10,
+        hasMore: false,
+      });
+      expect(component['resultCountText']()).toBe('1 of 1 systems within 12.5 parsecs');
+
+      component['onSearchInput']('55 Cnc');
+      vi.advanceTimersByTime(300);
+      const searchRequest = listRequests()[2];
+      expect(searchRequest).not.toHaveProperty('maxDistanceParsec');
+      respond(searchRequest, {
+        solarSystems: [system('a')],
+        total: 1,
+        offset: 0,
+        limit: 10,
+        hasMore: false,
+      });
+      expect(component['resultCountText']()).toBe('1 of 1 systems');
     });
 
     it('debounces short CJK substring searches across all distances without folding', () => {
       const { component } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
-      respond(listRequests()[0], { solarSystems: [system('a')], total: 1, offset: 0, limit: 50, hasMore: false });
+      respond(listRequests()[0], { solarSystems: [system('a')], total: 1, offset: 0, limit: 10, hasMore: false });
 
       component['onSearchInput']('星');
       vi.advanceTimersByTime(400);
@@ -304,7 +340,7 @@ describe('ViewerPage', () => {
       respond(staleLoadMore, { solarSystems: [system('stale')], total: 9, offset: 1, limit: 1, hasMore: true });
       expect(component['solarSystems']()).toEqual([]);
 
-      respond(latest, { solarSystems: [system('fresh')], total: 1, offset: 0, limit: 50, hasMore: false });
+      respond(latest, { solarSystems: [system('fresh')], total: 1, offset: 0, limit: 10, hasMore: false });
       expect(component['solarSystems']().map((entry) => entry.id)).toEqual(['fresh']);
     });
 
@@ -324,7 +360,7 @@ describe('ViewerPage', () => {
       expect(component['formatDistance'](848.25, true)).toBe('≈848.25');
     });
 
-    it('shows the catalog snapshot date only on rows that carry one', () => {
+    it('shows the catalog snapshot date on the system name hover title only when available', () => {
       const { fixture } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
       respond(listRequests()[0], {
         solarSystems: [
@@ -333,13 +369,73 @@ describe('ViewerPage', () => {
         ],
         total: 2,
         offset: 0,
-        limit: 50,
+        limit: 10,
         hasMore: false,
       });
       fixture.detectChanges();
-      const dates = fixture.nativeElement.querySelectorAll('[data-testid="viewer-system-data-as-of"]');
-      expect(dates).toHaveLength(1);
-      expect(dates[0].textContent).toContain('Data as of 2026-11-01');
+      const names = fixture.nativeElement.querySelectorAll('.solar-system-item__name');
+      expect(names[0].getAttribute('title')).toBe('Data as of 2026-11-01');
+      expect(names[1].hasAttribute('title')).toBe(false);
+      expect(fixture.nativeElement.querySelector('[data-testid="viewer-system-data-as-of"]')).toBeNull();
+    });
+
+    it('shows primary star color with travel distance and market cues', () => {
+      const { fixture } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
+      respond(listRequests()[0], {
+        solarSystems: [
+          {
+            ...system('sol', 0),
+            primaryStar: { hygId: 'sun', spectralClass: 'G', colorHex: '#ffe680' },
+            marketCount: 14,
+          },
+        ],
+        total: 1,
+        offset: 0,
+        limit: 10,
+        hasMore: false,
+      });
+      fixture.detectChanges();
+
+      const marker = fixture.nativeElement.querySelector(
+        '[data-testid="viewer-system-star-marker"]',
+      ) as HTMLElement;
+      const distance = fixture.nativeElement.querySelector('[data-testid="viewer-system-distance"]') as HTMLElement;
+      const markets = fixture.nativeElement.querySelector('[data-testid="viewer-system-markets"]') as HTMLElement;
+      expect(marker.style.getPropertyValue('--star-color')).toBe('#ffe680');
+      expect(distance.textContent).toContain('0.00');
+      expect(distance.textContent).toContain('pc');
+      expect(markets.textContent).toContain('14');
+    });
+
+    it('uses a distinct accessible icon for each system source', () => {
+      const { fixture } = setup({ socketService, sessionService, navigationState: { playerName: 'Pioneer' } });
+      respond(listRequests()[0], {
+        solarSystems: [
+          { ...system('curated'), source: 'curated' },
+          { ...system('procedural'), source: 'procedural' },
+          { ...system('exoplanet-catalog'), source: 'exoplanet-catalog' },
+        ],
+        total: 3,
+        offset: 0,
+        limit: 10,
+        hasMore: false,
+      });
+      fixture.detectChanges();
+
+      const sourceIcons = Array.from(
+        fixture.nativeElement.querySelectorAll('[data-testid="viewer-system-source"]'),
+      ) as HTMLElement[];
+      expect(sourceIcons.map((icon) => icon.dataset['source'])).toEqual([
+        'curated',
+        'procedural',
+        'exoplanet-catalog',
+      ]);
+      expect(sourceIcons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+        'Curated',
+        'Procedural',
+        'Exoplanet catalog',
+      ]);
+      expect(sourceIcons.every((icon) => icon.querySelector('svg') !== null)).toBe(true);
     });
   });
 
