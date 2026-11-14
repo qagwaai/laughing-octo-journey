@@ -20,7 +20,11 @@ import {
   type SupportedLocaleCode,
 } from '../../i18n/locale';
 import { LoginRequest, LoginResponse } from '../../model/login';
-import { readRememberedPlayerHandle } from '../../model/remembered-player-handle';
+import {
+  clearRememberedPlayerHandle,
+  readRememberedPlayerHandle,
+  writeRememberedPlayerHandle,
+} from '../../model/remembered-player-handle';
 import { AuthService } from '../../services/auth.service';
 import { SessionService } from '../../services/session.service';
 import { resolveNavigationState } from '../navigation-state';
@@ -64,6 +68,7 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
     ],
     password: ['', [Validators.required, Validators.minLength(8)]],
     locale: [this.defaultLocale, [Validators.required]],
+    rememberHandle: [this.rememberedPlayerName !== null],
   });
 
   protected isSubmitting = signal(false);
@@ -93,7 +98,7 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
       return;
     }
 
-    const { playerName, password } = this.loginForm.value;
+    const { playerName, password, rememberHandle } = this.loginForm.value;
     const normalizedPlayerName = playerName?.trim() ?? '';
     const normalizedPassword = password ?? '';
     const normalizedLocale =
@@ -124,6 +129,11 @@ export default class LoginPage implements OnDestroy, AfterViewInit {
     this.unsubscribeResponse = this.authService.login(request, (response: LoginResponse) => {
       this.isSubmitting.set(false);
       if (response.success) {
+        if (rememberHandle === true) {
+          writeRememberedPlayerHandle(request.playerName);
+        } else {
+          clearRememberedPlayerHandle();
+        }
         if (response.sessionKey) {
           this.sessionService.setSessionKey(response.sessionKey);
         }

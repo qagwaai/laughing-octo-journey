@@ -17,6 +17,19 @@ This is a template to get started with Angular Three.
 - Run `npm start` to start the development server.
 - Run `npm run start:host` to bind the development server to all network interfaces, then open `http://<your-computer's-LAN-IP>:4200` from another device on the same network. Allow port 4200 through your firewall if needed; this does not expose the app to the public internet.
 
+### Remember my handle
+
+On Login, **Remember my handle on this device** appears below Password.
+It shares the handle saved by Register and stores only the handle locally in
+this browser, never the password.
+
+- If a saved handle exists, Login prefills it, checks the checkbox, and focuses Password.
+- Otherwise, the checkbox starts unchecked and Player Name receives focus.
+- A successful login with the checkbox checked saves the submitted, trimmed handle.
+- To forget a saved handle, uncheck the checkbox and log in successfully.
+- Failed logins leave the saved handle unchanged.
+- The label and help text are available in English and Italian.
+
 ### Game settings
 
 Open **Settings** (the gear icon immediately above **Logout**) in the operations

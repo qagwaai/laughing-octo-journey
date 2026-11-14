@@ -15,6 +15,8 @@ test.describe('Login', () => {
     await expect(loginPage.localeSelect).toBeVisible();
     await expect(loginPage.playerNameInput).toBeVisible();
     await expect(loginPage.passwordInput).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: 'Remember my handle on this device' })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: 'Remember my handle on this device' })).not.toBeChecked();
     await expect(loginPage.submitButton).toBeVisible();
   });
 
@@ -69,6 +71,8 @@ test.describe('Login', () => {
     await loginPage.goto();
 
     await expect(loginPage.playerNameInput).toHaveValue('RememberedPilot');
+    await expect(page.getByRole('checkbox', { name: 'Remember my handle on this device' })).toBeChecked();
+    await expect(loginPage.passwordInput).toBeEmpty();
     await expect.poll(async () => page.evaluate(() => document.activeElement?.id ?? null)).toBe('password');
   });
 });

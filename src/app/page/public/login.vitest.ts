@@ -78,6 +78,8 @@ describe('LoginPage', () => {
     const { component } = setup({ socketService, sessionService });
 
     expect(component['loginForm'].value.playerName).toBe('RememberedPilot');
+    expect(component['loginForm'].value.rememberHandle).toBe(true);
+    expect(component['loginForm'].value.password).toBe('');
   });
 
   it('should focus password input when remembered player name exists', () => {
@@ -146,6 +148,69 @@ describe('LoginPage', () => {
       component['loginForm'].patchValue({ playerName: 'Pioneer', password: 'password123' });
       component.submit();
     }
+
+    it('should save the submitted handle only after successful login when checked and prefill on return', () => {
+      const { component, fixture } = setup({ socketService, sessionService });
+      const checkbox = fixture.nativeElement.querySelector('#rememberHandle') as HTMLInputElement;
+      expect(checkbox.checked).toBe(false);
+      checkbox.click();
+      component['loginForm'].patchValue({ playerName: '  Pioneer  ', password: 'password123' });
+      component.submit();
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBeNull();
+      component['loginForm'].patchValue({ playerName: 'ChangedPilot', rememberHandle: false });
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful.',
+      } satisfies LoginResponse);
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBe('Pioneer');
+      fixture.destroy();
+      const returning = TestBed.createComponent(LoginPage);
+      returning.detectChanges();
+      expect(returning.componentInstance['loginForm'].value.playerName).toBe('Pioneer');
+      expect(returning.componentInstance['loginForm'].value.password).toBe('');
+      expect(returning.nativeElement.querySelector('#rememberHandle').checked).toBe(true);
+    });
+
+    it('should clear the shared remembered handle after successful login when unchecked', () => {
+      window.localStorage.setItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY, 'OldPilot');
+      const { component, fixture } = setup({ socketService, sessionService });
+      const checkbox = fixture.nativeElement.querySelector('#rememberHandle') as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+      checkbox.click();
+      submitForm(component);
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBe('OldPilot');
+      socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+        success: true,
+        message: 'Login successful.',
+      } satisfies LoginResponse);
+
+      expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBeNull();
+      fixture.destroy();
+      const returning = TestBed.createComponent(LoginPage);
+      returning.detectChanges();
+      expect(returning.componentInstance['loginForm'].value.playerName).toBe('');
+      expect(returning.componentInstance['loginForm'].value.rememberHandle).toBe(false);
+    });
+
+    it.each([true, false])(
+      'should preserve the saved handle after failed login with rememberHandle=%s',
+      (rememberHandle) => {
+        window.localStorage.setItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY, 'OldPilot');
+        const { component } = setup({ socketService, sessionService });
+        component['loginForm'].patchValue({ rememberHandle });
+        submitForm(component);
+        socketService.triggerEvent(LOGIN_RESPONSE_EVENT, {
+          success: false,
+          message: 'Wrong password.',
+          reason: 'PASSWORD_MISMATCH',
+        } satisfies LoginResponse);
+
+        expect(window.localStorage.getItem(REMEMBERED_PLAYER_HANDLE_STORAGE_KEY)).toBe('OldPilot');
+      },
+    );
 
     it('should set successMessage on successful login', () => {
       const { component, mockRouter } = setup({ socketService, sessionService });

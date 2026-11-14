@@ -64,6 +64,37 @@ The `SocketIOMock` fixture (`e2e/fixtures/socket-mock.ts`) is critical for deter
 - Prevents tests from depending on actual backend availability
 - Used via Playwright's `addInitScript` to inject before page load
 
+## Remembered Login Handle
+
+Login and Register share the `auth.rememberedPlayerHandle` localStorage key through
+[`remembered-player-handle.ts`](../src/app/model/remembered-player-handle.ts).
+Login captures the checkbox choice and normalized handle at submission, then saves
+or clears the handle only after a successful response. Failed responses must not
+change the saved handle. Returning to Login prefills the saved handle, checks the
+checkbox, and leaves the password empty.
+
+Regression coverage:
+
+- [`login.vitest.ts`](../src/app/page/public/login.vitest.ts): checkbox binding,
+  save/clear only after success, submitted values retained while awaiting a response,
+  failed-login preservation for both checkbox states, and prefill on return.
+- [`login.spec.ts`](../e2e/tests/login.spec.ts): checkbox visibility/default state,
+  remembered-handle prefill, checked state, empty password, and initial focus.
+- [`registration.vitest.ts`](../src/app/page/public/registration.vitest.ts):
+  existing registration behavior for the shared storage.
+
+### Validation completed (2026-11-14)
+
+- `npm run test:spec -- src\app\page\public\login.vitest.ts src\app\page\public\registration.vitest.ts`
+  — passed, 51 tests.
+- `npx eslint src\app\page\public\login.ts src\app\page\public\login.vitest.ts e2e\tests\login.spec.ts src\app\i18n\locales\en.ts src\app\i18n\locales\it.ts`
+  — passed.
+- `npm run build` — passed, including Angular template compilation.
+- `npm run e2e:spec -- login.spec.ts --project=chromium-auth` — passed, 10 Chromium tests.
+  Use the filename selector on Windows; a backslash-separated path was treated as
+  a regular expression and matched no tests.
+- Manual validation confirmed complete by the user.
+
 ## Test Policy (from `docs/testing-policy.md`)
 
 - Coverage targets defined in policy document

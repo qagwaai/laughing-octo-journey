@@ -212,6 +212,9 @@ export const en = {
       playerNamePlaceholder: 'Your callsign',
       passwordLabel: 'Password',
       passwordPlaceholder: 'Your password',
+      rememberHandleLabel: 'Remember my handle on this device',
+      rememberHandleHint:
+        'Only your handle is stored locally, not your password. Uncheck and log in successfully to forget it.',
       submitLabel: 'Login',
       submittingLabel: 'Logging in...',
       registerLink: 'Need an account? Register here.',
@@ -236,7 +239,7 @@ export const en = {
       playerNameLabel: 'Player Name',
       playerNamePlaceholder: 'Choose your callsign',
       rememberHandleLabel: 'Remember my handle on this device',
-      rememberHandleHint: 'Stored locally on this device. You can change this anytime by re-registering.',
+      rememberHandleHint: 'Stored locally on this device. You can change this on the Login screen.',
       emailLabel: 'Email',
       emailPlaceholder: 'your@email.com',
       passwordLabel: 'Password',

@@ -164,6 +164,9 @@ export const it: DeepPartial<EnLocale> = {
       subtitle: 'Bentornato, Pioneer. Inserisci le credenziali per continuare.',
       localeLabel: 'Lingua',
       localeHint: 'Predefinita dalla lingua del browser/app. Puoi modificarla qui.',
+      rememberHandleLabel: 'Ricorda il mio handle su questo dispositivo',
+      rememberHandleHint:
+        'Viene memorizzato localmente solo il tuo handle, non la password. Deseleziona e accedi con successo per rimuoverlo.',
       submitLabel: 'Accedi',
       submittingLabel: 'Accesso in corso...',
       registerLink: 'Serve un account? Registrati qui.',
@@ -177,7 +180,7 @@ export const it: DeepPartial<EnLocale> = {
       title: 'Registrazione',
       localeLabel: 'Lingua',
       rememberHandleLabel: 'Ricorda il mio handle su questo dispositivo',
-      rememberHandleHint: 'Memorizzato localmente su questo dispositivo.',
+      rememberHandleHint: 'Memorizzato localmente su questo dispositivo. Puoi modificarlo nella schermata di accesso.',
       submitLabel: 'Crea account e accedi',
       submittingLabel: 'Creazione account e accesso in corso...',
       loginLink: 'Hai gia un account? Accedi qui.',
