@@ -5,12 +5,12 @@
 Inspected the served sources on 2026-11-06 UTC. Schemas alone define API fields;
 module version and HTTP validators are source-identification evidence, not Git revisions.
 
-| Exact URL | Revision evidence |
-| --- | --- |
-| http://localhost:3000/openapi/solarsystem/openapi.yaml | info.version `4.0.0`; ETag `W/"6477-1a1ae862613"`; Last-Modified `Fri, 06 Nov 2026 01:43:09 GMT` |
-| http://localhost:3000/openapi/schemas/solar-system-get-response.schema.json | ETag `W/"3821-1a1ae48fb75"`; Last-Modified `Fri, 06 Nov 2026 00:36:20 GMT` |
-| http://localhost:3000/openapi/schemas/solar-system-list-response.schema.json | ETag `W/"1928-1a1ae48fb68"`; Last-Modified `Fri, 06 Nov 2026 00:36:20 GMT` |
-| http://localhost:3000/openapi/schemas/solar-system-list-request.schema.json | ETag `W/"a64-1a1ae862605"`; Last-Modified `Fri, 06 Nov 2026 01:43:09 GMT` |
+| Exact URL                                                                    | Revision evidence                                                                                |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| http://localhost:3000/openapi/solarsystem/openapi.yaml                       | info.version `4.0.0`; ETag `W/"6477-1a1ae862613"`; Last-Modified `Fri, 06 Nov 2026 01:43:09 GMT` |
+| http://localhost:3000/openapi/schemas/solar-system-get-response.schema.json  | ETag `W/"3821-1a1ae48fb75"`; Last-Modified `Fri, 06 Nov 2026 00:36:20 GMT`                       |
+| http://localhost:3000/openapi/schemas/solar-system-list-response.schema.json | ETag `W/"1928-1a1ae48fb68"`; Last-Modified `Fri, 06 Nov 2026 00:36:20 GMT`                       |
+| http://localhost:3000/openapi/schemas/solar-system-list-request.schema.json  | ETag `W/"a64-1a1ae862605"`; Last-Modified `Fri, 06 Nov 2026 01:43:09 GMT`                        |
 
 No Git SHA was supplied. Both response schemas independently require
 `displayName: string`, `settlementName: string | null`, and `aliases: string[]`.
@@ -35,7 +35,8 @@ accent removal, regex interpretation, transliteration or script folding.
   label to verify replacement of navigation-state text by the get response.
 - `displayName` is interpolated verbatim, not parsed, split or reconstructed.
   Null/incomplete structured names do not change it. A supplied nonblank catalog
-  component is secondary only if its exact text is not already in the display label.
+  component is suppressed only when the display label exactly matches the catalog
+  name or the documented `settlementName (catalogName)` combination.
   No partial settlement/catalog pair is manufactured; aliases are search metadata,
   not extra visible labels.
 - `<bdi dir="auto">` and CSS isolation/wrapping preserve source characters, with
@@ -70,11 +71,11 @@ files; broad template formatting was not applied.
 
 Playwright 1.64.1, Windows x64, headless:
 
-| Engine | Version | Evidence |
-| --- | --- | --- |
+| Engine   | Version      | Evidence                                               |
+| -------- | ------------ | ------------------------------------------------------ |
 | Chromium | 156.0.8078.4 | 2 naming tests passed; existing list regression passed |
-| Firefox | 157.0 | 2 naming tests passed |
-| WebKit | 27.2 | 2 naming tests passed |
+| Firefox  | 157.0        | 2 naming tests passed                                  |
+| WebKit   | 27.2         | 2 naming tests passed                                  |
 
 The repository's production Playwright configuration enables Chromium only;
 Firefox/WebKit are supplemental readiness checks in the isolated naming config.
@@ -85,6 +86,16 @@ independent get text, one/two-character CJK, Arabic/Latin and Devanagari/Latin,
 literal aliases/queries, negative accent/transliteration queries, accessible names,
 exact DOM and browser selection text, 90px constrained wrapping with RTL ancestors,
 and details at a 640px viewport.
+
+### 2026-11-14 E2E maintenance
+
+The naming test now constrains the flex item itself to 90px, rather than setting
+a width that flex growth could override. It verifies the separately rendered
+catalog label and complete accessible heading when the intentionally different
+get-response display name does not exactly match the suppression cases above.
+The updated Chromium naming flow passed as part of the five-test focused run
+documented in [Viewer navigation and validation](viewer-architecture-decision.md#ship-hangar-and-viewer-navigation-implemented-2026-11-14).
+The prior Firefox, WebKit, and clipboard evidence was not rerun in this session.
 
 ### Explicit gaps / next steps
 

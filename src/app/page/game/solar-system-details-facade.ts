@@ -27,6 +27,7 @@ export interface DetailsRow {
   shipModel: string | null;
   shipTier: number | null;
   shipStatus: string | null;
+  ship?: ShipSummary;
 }
 
 interface SolarSystemDetailsFacadeDeps {
@@ -230,6 +231,7 @@ export class SolarSystemDetailsFacade {
           shipModel: ship.model ?? null,
           shipTier: ship.tier ?? null,
           shipStatus: ship.status ?? null,
+          ship,
         })),
       );
     });

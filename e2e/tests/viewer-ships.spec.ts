@@ -120,6 +120,67 @@ test('left-click targets a rendered ship and synchronizes its list button', asyn
   await expect(page.getByTestId('viewer-zoom-slider').locator('input')).not.toHaveValue('100');
 });
 
+test('opens an owned ship in the hangar and exterior view from the viewer', async ({ page }) => {
+  const mock = await setupIsolatedViewerShipsSession(page);
+  mock.on('solar-system-get-request', () => ({
+    event: 'solar-system-get-response',
+    data: makeSolarSystemGetResponse(),
+  }));
+  mock.on('ship-list-by-owner-request', () => ({
+    event: 'ship-list-by-owner-response',
+    data: makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
+  }));
+  const viewer = new ViewerPage(page);
+  await new GameShellPage(page).openViewer();
+  await viewer.selectSystem('Sol');
+  await viewer.expectSceneLoaded();
+  await page.getByTestId('viewer-group-ships').uncheck();
+  await page.getByRole('button', { name: /Ships\s+2/ }).click();
+  const shortcut = page.getByRole('button', {
+    name: `Open ${INACTIVE_SHIP.name} in the Ship Hangar and external view.`,
+  });
+  await expect(shortcut).toHaveAttribute('title', `Open ${INACTIVE_SHIP.name} in the Ship Hangar and external view.`);
+  await shortcut.click();
+  await expect(page).toHaveURL(/left:ship-hangar/);
+  await expect(page).toHaveURL(/\/ship-exterior-view/);
+  await expect(page.locator('app-ship-exterior-bare-scene')).toBeVisible();
+  await expect(page.locator('app-ship-hangar-page')).toContainText(INACTIVE_SHIP.name);
+
+  const pendingRequests: Array<{ correlationId: string; requestIdentity: unknown }> = [];
+  mock.on('ship-list-by-owner-request', (request) => {
+    pendingRequests.push(request as { correlationId: string; requestIdentity: unknown });
+    return null;
+  });
+  await page.locator('.ship-item', { hasText: ACTIVE_SHIP.name }).getByRole('button', { name: 'View in Star System' }).click();
+  await expect(page).toHaveURL(/left:solar-system-details\/sol/);
+  await expect(page).toHaveURL(/right:viewer-scene\/sol/);
+  await viewer.expectSceneLoaded();
+  await expect.poll(() => pendingRequests.length).toBeGreaterThanOrEqual(2);
+  for (const request of pendingRequests) {
+    mock.push('ship-list-by-owner-response', {
+      ...makeShipListResponse([ACTIVE_SHIP, INACTIVE_SHIP]),
+      correlationId: request.correlationId,
+      requestIdentity: request.requestIdentity,
+    });
+  }
+  await expect(page.getByTestId('viewer-group-ships')).toBeChecked();
+  const target = page.getByTestId('details-table-ship').locator('tr', { hasText: ACTIVE_SHIP.name })
+    .locator('.details-target-btn');
+  await expect(target).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate((name) => {
+    const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
+    if (!canvas || !window.ng) return false;
+    const snapshot = (window.ng.getComponent(canvas) as {
+      store: { snapshot: { scene: Object3D; camera: import('three').Camera } };
+    }).store.snapshot;
+    const ship = snapshot.scene.getObjectByName(name);
+    if (!ship) return false;
+    const position = ship.getWorldPosition(ship.position.clone());
+    const projected = position.clone().project(snapshot.camera);
+    return Math.hypot(projected.x, projected.y) < 0.02 && snapshot.camera.position.distanceTo(position) < 8;
+  }, ACTIVE_SHIP.name), { timeout: 15_000 }).toBe(true);
+});
+
 test.describe.serial('Viewer — Character Ships', () => {
   test.beforeAll(async ({ browser }) => {
     sharedSession = await setupSharedViewerShipsSession(browser);

@@ -32,27 +32,27 @@ test.describe('Viewer — Solar System List', () => {
     const items = page.locator('.solar-system-item');
     await expect(items).toHaveCount(3);
     await expect(viewerPage.systemItemById('cygnus-x1')).toHaveCount(0);
-    await expect(page.getByTestId('viewer-result-count')).toHaveText('3 of 3 systems');
+    await expect(page.getByTestId('viewer-result-count')).toHaveText('3 of 3 systems within 50 parsecs');
     await expect(page.getByTestId('viewer-load-more')).toHaveCount(0);
 
     // Verify Sol system displays (use specific span selector to avoid ambiguity)
     const solNameSpan = page.locator('.solar-system-item__name:has-text("Sol")');
     await expect(solNameSpan).toBeVisible();
-    const solItemButton = solNameSpan.locator('..');
-    await expect(solItemButton).toContainText('Distance (pc): 0.00');
+    const solItemButton = solNameSpan.locator('xpath=ancestor::button');
+    await expect(solItemButton.getByTestId('viewer-system-distance')).toHaveText('0.00 pc');
     await expect(solItemButton).toContainText('G2V');
 
     // Verify Alpha Centauri system displays (use specific span selector)
     const alphaCentauriNameSpan = page.locator('.solar-system-item__name:has-text("Alpha Centauri")');
     await expect(alphaCentauriNameSpan).toBeVisible();
-    const alphaCentauriItemButton = alphaCentauriNameSpan.locator('..');
-    await expect(alphaCentauriItemButton).toContainText('Distance (pc): 1.30');
+    const alphaCentauriItemButton = alphaCentauriNameSpan.locator('xpath=ancestor::button');
+    await expect(alphaCentauriItemButton.getByTestId('viewer-system-distance')).toHaveText('1.30 pc');
 
     // Verify Sirius system displays (use specific span selector)
     const siriusNameSpan = page.locator('.solar-system-item__name:has-text("Sirius")');
     await expect(siriusNameSpan).toBeVisible();
-    const siriusItemButton = siriusNameSpan.locator('..');
-    await expect(siriusItemButton).toContainText('Distance (pc): 2.60');
+    const siriusItemButton = siriusNameSpan.locator('xpath=ancestor::button');
+    await expect(siriusItemButton.getByTestId('viewer-system-distance')).toHaveText('2.60 pc');
   });
 
   test('displays loading state while fetching solar systems', async ({ page }) => {
@@ -142,7 +142,7 @@ test.describe('Viewer — Solar System List', () => {
   });
 
   test('pages with Load more and resets to offset 0 when a filter changes', async ({ page }) => {
-    const systems = Array.from({ length: 120 }, (_, index) => ({
+    const systems = Array.from({ length: 25 }, (_, index) => ({
       id: `sys-${String(index).padStart(3, '0')}`,
       displayName: `System ${String(index).padStart(3, '0')}`,
       source: 'procedural',
@@ -157,19 +157,19 @@ test.describe('Viewer — Solar System List', () => {
 
     await new GameShellPage(page).openViewer();
     const items = page.locator('.solar-system-item');
-    await expect(items).toHaveCount(50);
-    await expect(page.getByTestId('viewer-result-count')).toHaveText('50 of 120 systems');
+    await expect(items).toHaveCount(10);
+    await expect(page.getByTestId('viewer-result-count')).toHaveText('10 of 25 systems within 50 parsecs');
 
     await page.getByTestId('viewer-load-more').click();
-    await expect(items).toHaveCount(100);
+    await expect(items).toHaveCount(20);
     await page.getByTestId('viewer-load-more').click();
-    await expect(items).toHaveCount(120);
+    await expect(items).toHaveCount(25);
     await expect(page.getByTestId('viewer-load-more')).toHaveCount(0);
-    expect(requests.map((request) => request['offset'])).toEqual([0, 50, 100]);
-    expect(requests[0]).toEqual(expect.objectContaining({ limit: 50, maxDistanceParsec: 50, sort: 'distance' }));
+    expect(requests.map((request) => request['offset'])).toEqual([0, 10, 20]);
+    expect(requests[0]).toEqual(expect.objectContaining({ limit: 10, maxDistanceParsec: 50, sort: 'distance' }));
 
     await page.getByTestId('viewer-sort').selectOption('name');
-    await expect(items).toHaveCount(50);
+    await expect(items).toHaveCount(10);
     expect(requests.at(-1)).toEqual(expect.objectContaining({ offset: 0, sort: 'name' }));
   });
 
@@ -271,7 +271,7 @@ test.describe('Viewer — Solar System List', () => {
 
     await new GameShellPage(page).openViewer();
     const item = new ViewerPage(page).systemItemById('exo-55-cnc');
-    await expect(item.getByTestId('viewer-system-data-as-of')).toHaveText(`Data as of ${snapshotDate}`);
+    await expect(item.locator('app-solar-system-name')).toHaveAttribute('title', `Data as of ${snapshotDate}`);
     await item.getByRole('button').click();
     await expect(page).toHaveURL(/right:viewer-scene\/exo-55-cnc/);
 

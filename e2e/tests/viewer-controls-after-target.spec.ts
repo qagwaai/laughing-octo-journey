@@ -39,7 +39,7 @@ test.describe('Viewer controls after target completion', () => {
     await expect(inspector).toHaveCount(0);
     await page.locator('tr', { hasText: 'Earth' }).first().locator('button.details-target-btn').click();
     await page.mouse.move(2, 2);
-    await expect(page.getByTestId('viewer-body-facts')).toContainText('12742000');
+    await expect(page.getByTestId('viewer-body-facts')).toContainText('Diameter (m): 12,742,000.000');
     const inspect = page.getByTestId('viewer-inspect-target');
     await inspect.click();
     await expect(inspector).toBeVisible();

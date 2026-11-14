@@ -5,8 +5,12 @@ import { of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMockSessionService } from '../../../testing';
 import { setActiveLocaleCode } from '../../i18n/locale';
+import type { ShipSummary } from '../../model/ship-list';
+import type { ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import type { CanonicalViewerBody, SolarSystemGetResponse } from '../../model/solar-system-get';
 import { MarketService } from '../../services/market.service';
+import { MissionNavigationService } from '../../services/mission-navigation';
+import { MissionService } from '../../services/mission.service';
 import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
@@ -36,11 +40,25 @@ function body(bodyType: CanonicalViewerBody['bodyType'], index: number): Canonic
   };
 }
 
-function setup(bodies: CanonicalViewerBody[] = [], stars: CanonicalViewerBody[] = []) {
+function setup(
+  bodies: CanonicalViewerBody[] = [],
+  stars: CanonicalViewerBody[] = [],
+  ships: ShipSummary[] = [],
+  viewerTargetShipId?: string,
+  visibility = new ViewerGroupVisibilityService(),
+) {
+  const session = createMockSessionService('test-session');
+  const character = { id: 'character-1', characterName: 'Nova' };
+  session.setActiveCharacter(character);
+  const router = {
+    getCurrentNavigation: () => ({ extras: { state: { playerName: 'Pioneer', joinCharacter: character, viewerTargetShipId } } }),
+    navigate: vi.fn(),
+  };
   TestBed.configureTestingModule({
     imports: [SolarSystemDetailsPage],
     providers: [
-      { provide: SessionService, useValue: createMockSessionService('test-session') },
+      { provide: SessionService, useValue: session },
+      { provide: ViewerGroupVisibilityService, useValue: visibility },
       {
         provide: SolarSystemService,
         useValue: {
@@ -57,14 +75,22 @@ function setup(bodies: CanonicalViewerBody[] = [], stars: CanonicalViewerBody[] 
         },
       },
       { provide: MarketService, useValue: { listMarketsByLocation: vi.fn() } },
-      { provide: ShipService, useValue: { listShipsByOwner: vi.fn() } },
-      {
-        provide: Router,
-        useValue: {
-          getCurrentNavigation: () => ({ extras: { state: { playerName: 'Pioneer' } } }),
-          navigate: vi.fn(),
-        },
-      },
+      { provide: ShipService, useValue: {
+        listShipsByOwner: vi.fn((_request: unknown, callback: (response: ShipListByOwnerResponse) => void) =>
+          callback({
+            success: true, message: '', correlationId: 'ships',
+            requestIdentity: { operation: 'ship-list-by-owner', entityType: 'ship', containerId: character.id },
+            ships,
+          }),
+        ),
+      } },
+      { provide: MissionService, useValue: { isMissionInProgress: vi.fn().mockReturnValue(false) } },
+      { provide: MissionNavigationService, useValue: {
+        prepareNavigation: vi.fn().mockResolvedValue({
+          missionContext: { missionId: 'first-target', seedPolicy: 'resume' },
+        }),
+      } },
+      { provide: Router, useValue: router },
       { provide: ActivatedRoute, useValue: { paramMap: of({ get: () => 'sol' }) } },
     ],
   });
@@ -73,7 +99,7 @@ function setup(bodies: CanonicalViewerBody[] = [], stars: CanonicalViewerBody[] 
   });
   const fixture = TestBed.createComponent(SolarSystemDetailsPage);
   fixture.detectChanges();
-  return { fixture, component: fixture.componentInstance };
+  return { fixture, component: fixture.componentInstance, session, router, character };
 }
 
 describe('SolarSystemDetailsPage body groups', () => {
@@ -234,6 +260,59 @@ describe('SolarSystemDetailsPage body groups', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="details-table-ship"] .details-col-action')).toBeNull();
   });
 
+  it.each(['type', 'distance'] as const)('opens the selected owned ship from %s view', async (mode) => {
+    const ship = (id: string, solarSystemId: string): ShipSummary => ({
+      id, name: `Ship ${id}`, model: 'Scout', tier: 1,
+      spatial: { solarSystemId, frame: 'barycentric', positionKm: { x: 1, y: 2, z: 3 }, epochMs: 1 },
+      inventory: [],
+    });
+
+    const ships = [ship('one', 'sol'), ship('two', 'sol'), ship('elsewhere', 'other')];
+    const { fixture, component, session, router, character } = setup([body('planet', 1)], [], ships);
+    session.setActiveShip(ships[0]);
+    component['setViewMode'](mode);
+    if (mode === 'type') component['toggleSection']('ship');
+    fixture.detectChanges();
+
+    const buttons: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('.details-exterior-btn');
+    expect(buttons.length).toBe(2);
+    expect(buttons[1].title).toBe('Open Ship two in the Ship Hangar and external view.');
+    expect(buttons[1].getAttribute('aria-label')).toBe(buttons[1].title);
+    expect(fixture.nativeElement.querySelector('[data-testid="details-table-planet-rocky"] .details-exterior-btn')).toBeNull();
+    buttons[1].click();
+    await fixture.whenStable();
+    expect(session.activeShip()).toEqual(ships[1]);
+    expect(router.navigate).toHaveBeenCalledWith(
+      [{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }],
+      {
+        preserveFragment: true,
+        state: {
+          playerName: 'Pioneer', joinCharacter: character, joinShip: ships[1],
+          missionContext: { missionId: 'first-target', seedPolicy: 'resume' },
+        },
+      },
+    );
+    expect(TestBed.inject(ViewerTargetService).targetBodyId()).toBeNull();
+  });
+
+  it('targets the requested ship, reveals its group, and clears that request on later system loads', () => {
+    const visibility = new ViewerGroupVisibilityService();
+    visibility.setGroupIncluded('ships', false);
+    const ship: ShipSummary = {
+      id: 'ship-2', name: 'Drifter', model: 'Scout', tier: 1,
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 0, z: 0 }, epochMs: 1 },
+    };
+    const { fixture, component } = setup([], [], [ship], ship.id, visibility);
+    const target = TestBed.inject(ViewerTargetService);
+    fixture.detectChanges();
+    expect(visibility.isGroupIncluded('ships')).toBe(true);
+    expect(target.targetBodyId()).toBe(ship.id);
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('[data-testid="details-table-ship"] .details-target-btn');
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    component['loadDetails']('other');
+    expect(target.targetBodyId()).toBeNull();
+  });
+
   it('disables targeting hidden groups with localized guidance until the group is enabled', () => {
     const comet = body('comet', 1);
     const { fixture, component } = setup([comet]);
@@ -340,7 +419,7 @@ describe('SolarSystemDetailsPage planet-type sections', () => {
     const element: HTMLElement = fixture.nativeElement;
     expect(
       element.querySelector('[data-testid="details-table-planet-sub-neptune"] [data-testid="details-planet-type-likely"]')
-        ?.textContent,
+        ?.textContent?.trim(),
     ).toBe('(likely)');
     expect(
       element.querySelector('[data-testid="details-table-planet-ice-giant"] [data-testid="details-planet-type-likely"]'),

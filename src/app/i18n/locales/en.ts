@@ -674,6 +674,8 @@ export const en = {
       locationUnavailable: 'Location unavailable',
       shipViewInventoryLabel: 'View Inventory',
       shipExteriorViewLabel: 'View Exterior',
+      shipViewStarSystemLabel: 'View in Star System',
+      starSystemUnavailable: 'A valid ship location is required to view its star system.',
       shipSetActiveLabel: 'Set as Active Ship',
       shipActiveLabel: 'Active Ship',
       errors: {
@@ -1016,6 +1018,7 @@ export const en = {
       detailsErrorPrefix: 'Failed to load bodies:',
       detailsTargetButton: 'Target',
       detailsTargetTooltip: 'Target this object in the Viewer.',
+      detailsShipExteriorTooltip: 'Open {ship} in the Ship Hangar and external view.',
       detailsTargetDisabledTooltip: 'Enable the {group} group in the Viewer to target this object.',
       bodyTargetedLabel: 'Targeted',
       detailsColumnName: 'Name',

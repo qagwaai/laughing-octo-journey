@@ -4,6 +4,51 @@
 
 Accepted (initial MVP).
 
+### Ship Hangar and Viewer navigation: implemented 2026-11-14
+
+- Each owned ship in the selected system has an external-view icon in both
+  grouped and distance-sorted details. Its localized hover text and accessible
+  name identify the ship and destination. The action opens Ship Hangar on the
+  left and ship exterior in the primary scene, selects that ship as active, and
+  uses the same mission-aware navigation as **View Exterior** in the hangar.
+  The shared [navigation service](../src/app/services/ship-exterior-navigation.service.ts)
+  retains valid active-session spatial data when reopening the same ship.
+- Each hangar row offers **View in Star System**. It opens system details on the
+  left and the system viewer on the right, targets that row's ship, and leaves
+  the active ship unchanged. It reveals the ships group if previously hidden
+  and expands its details section. The camera target remains pending until the
+  ship is available in the scene, including when its response arrives late.
+- The return action requires a nonblank ship ID and system ID, barycentric
+  coordinates with finite components, and a position at least 1 km from the
+  origin. It is disabled with localized guidance otherwise. This validates the
+  reported location, not the existence or availability of the system; invalid
+  spatial data may indicate an uninitialized or malformed ship. Existing
+  [viewer repair logic](../src/app/page/game/viewer-data-facade.ts) can attempt
+  a deterministic starter-ship upsert after loading a system.
+- The system-details template's previously reported Prettier failure was fixed.
+
+#### Validation and handoff
+
+- `npm run test:spec -- src/app/page/game/ship-hangar.vitest.ts src/app/page/game/solar-system-details.vitest.ts src/app/page/game/viewer-scene.vitest.ts src/app/scene/viewer/viewer-system-scene.vitest.ts`:
+  passed, 156 tests.
+- `npx playwright test e2e/tests/viewer-ships.spec.ts --grep "opens an owned ship in the hangar" --reporter=line`:
+  passed, including setup. The round trip verifies the hidden-ships case and a
+  delayed ship response, including the target and camera position.
+- `npm run build`, `npm run typecheck`, targeted ESLint, and Prettier checks
+  for the changed HTML/CSS passed.
+- [Actions run 43503424140](https://github.com/qagwaai/laughing-octo-journey/actions/runs/43503424140)
+  recorded five persistent viewer E2E failures and two tests that passed on
+  retry. The five persistent failures were updated for current formatting,
+  paging, tooltip, and naming behavior. The focused command below passed all
+  five tests plus setup; it does not establish a full-suite or new CI result.
+
+  ```powershell
+  npx playwright test e2e/tests/viewer-controls-after-target.spec.ts e2e/tests/viewer-list.spec.ts e2e/tests/viewer-naming.spec.ts --grep "inspects a target in a persistent|loads and displays solar system|pages with Load more|shows contextual data credits|list and get preserve exact" --workers=1 --reporter=line
+  ```
+
+The user intends to commit and push. The full Playwright suite and a new Actions
+run have not been executed for this session.
+
 ### Diameter resolution and localized measurements: accepted 2026-11-13
 
 The user accepted the diameter and number-formatting changes in the Stellar
@@ -61,8 +106,8 @@ not changed.
   targeted ESLint before the formatting change.
 - `git diff --check`: passed.
 
-The viewer template has a pre-existing Prettier failure, confirmed against
-`HEAD`; unrelated template reformatting was deliberately excluded. No full
+At that validation checkpoint, the viewer template had a pre-existing Prettier
+failure, confirmed against `HEAD`; it was fixed in the 2026-11-14 work above. No full
 Vitest suite, Playwright run, or automated live-payload UI verification was
 performed for these changes. No backend contract or seed-data changes are
 required by this frontend fix.

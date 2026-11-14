@@ -82,6 +82,14 @@
   opacity: 1;
 }
 
+.star-system-link:disabled {
+  background: transparent;
+  border-color: rgba(140, 190, 255, 0.35);
+  color: #b4cfff;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
 .dev-tools-note {
   margin: 0.2rem 0 0.75rem;
   color: #b4cfff;

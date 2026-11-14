@@ -8,6 +8,7 @@ import type { PlayerCharacterSummary } from '../../model/character-list';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { MarketService } from '../../services/market.service';
 import { SessionService } from '../../services/session.service';
+import { ShipExteriorNavigationService } from '../../services/ship-exterior-navigation.service';
 import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
@@ -26,6 +27,7 @@ interface SolarSystemDetailsNavigationState {
   playerName?: string;
   joinCharacter?: PlayerCharacterSummary;
   solarSystem?: SolarSystemSummary;
+  viewerTargetShipId?: string;
 }
 
 const TYPE_GROUP_ORDER = [
@@ -75,6 +77,7 @@ export default class SolarSystemDetailsPage {
   private solarSystemService = inject(SolarSystemService);
   private marketService = inject(MarketService);
   private shipService = inject(ShipService);
+  private exteriorNavigation = inject(ShipExteriorNavigationService);
   private viewerTargetService = inject(ViewerTargetService);
   private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
 
@@ -175,6 +178,13 @@ export default class SolarSystemDetailsPage {
 
   private loadDetails(solarSystemId: string): void {
     this.viewerTargetService.clearTarget();
+    const targetShipId = this.navigationState.viewerTargetShipId;
+    this.navigationState = { ...this.navigationState, viewerTargetShipId: undefined };
+    if (targetShipId) {
+      this.viewerGroupVisibility.setGroupIncluded('ships', true);
+      this.expandedTypes.update((current) => new Set([...current, 'ship']));
+      this.viewerTargetService.target(targetShipId);
+    }
     this.detailsFacade.loadDetails(solarSystemId, this.t.game.viewer.detailsErrorPrefix);
   }
 
@@ -201,6 +211,16 @@ export default class SolarSystemDetailsPage {
     const row = this.rows().find((candidate) => candidate.id === id);
     if (!row || !this.isTargetEnabled(row)) return;
     this.viewerTargetService.target(id);
+  }
+
+  protected openShipExterior(row: DetailsRow): void {
+    if (row.ship) {
+      void this.exteriorNavigation.navigate(row.ship, this.playerName(), this.joinCharacter());
+    }
+  }
+
+  protected shipExteriorTooltip(row: DetailsRow): string {
+    return this.t.game.viewer.detailsShipExteriorTooltip.replace('{ship}', row.displayName);
   }
 
   protected isTargetEnabled(row: DetailsRow): boolean {

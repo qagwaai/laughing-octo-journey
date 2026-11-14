@@ -6,7 +6,11 @@
         <button type="button" class="details-back-link" (click)="goBackToSystemList()">
           {{ t.game.viewer.detailsBackLabel }}
         </button>
-        <h1>@if (solarSystem(); as system) {<app-solar-system-name [name]="system"></app-solar-system-name>} @else {…}</h1>
+        <h1>
+          @if (solarSystem(); as system) {
+          <app-solar-system-name [name]="system"></app-solar-system-name>
+          } @else {…}
+        </h1>
       </div>
       <app-character-ship-badge
         [playerName]="playerName()"
@@ -106,6 +110,20 @@
                         </svg>
                       </button>
                     </span>
+                    @if (row.ship) {
+                    <button
+                      type="button"
+                      class="details-exterior-btn"
+                      [attr.aria-label]="shipExteriorTooltip(row)"
+                      [attr.title]="shipExteriorTooltip(row)"
+                      (click)="openShipExterior(row)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M13 5h6v6M19 5l-9 9" />
+                        <path d="M19 14v5H5V5h5" />
+                      </svg>
+                    </button>
+                    }
                     <span class="details-name-target__label">
                       {{ row.displayName }} @if (row.isActiveShip) {
                       <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>
@@ -160,7 +178,9 @@
                     </span>
                     <span class="details-name-target__label">
                       {{ row.displayName }} @if (row.planetTypeLikely) {
-                      <span class="details-likely-badge" data-testid="details-planet-type-likely">({{ t.game.viewer.catalogTypeLikely }})</span>
+                      <span class="details-likely-badge" data-testid="details-planet-type-likely">
+                        ({{ t.game.viewer.catalogTypeLikely }})
+                      </span>
                       }
                     </span>
                   </span>
@@ -217,6 +237,20 @@
                       </svg>
                     </button>
                   </span>
+                  @if (row.ship) {
+                  <button
+                    type="button"
+                    class="details-exterior-btn"
+                    [attr.aria-label]="shipExteriorTooltip(row)"
+                    [attr.title]="shipExteriorTooltip(row)"
+                    (click)="openShipExterior(row)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M13 5h6v6M19 5l-9 9" />
+                      <path d="M19 14v5H5V5h5" />
+                    </svg>
+                  </button>
+                  }
                   <span class="details-name-target__label">
                     {{ row.displayName }} @if (row.isActiveShip) {
                     <span class="details-active-badge">{{ t.game.viewer.detailsActiveShipBadge }}</span>

@@ -1495,8 +1495,15 @@ export class ViewerSystemScene {
     effect(() => {
       const id = this.targetBodyId();
 
-      // Only react to actual target-id transitions.
       if (id === this.lastProcessedTargetBodyId) {
+        return;
+      }
+      if (id && !resolveTargetScenePosition(id, this.rendered(), this.renderedShips())) {
+        this.lastProcessedTargetBodyId = null;
+        this.activeTargetFlightId.set(null);
+        this.targetedBodyId.set(null);
+        this.cameraTween = null;
+        this.setOrbitControlsEnabled(true);
         return;
       }
       this.lastProcessedTargetBodyId = id;

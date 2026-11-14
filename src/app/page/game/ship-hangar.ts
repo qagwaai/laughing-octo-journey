@@ -8,8 +8,6 @@ import { resolveActiveShipSelection } from '../../model/active-ship-selection';
 import { PlayerCharacterSummary } from '../../model/character-list';
 import { type MarketBuyResponse } from '../../model/market-buy';
 import { type MarketListByLocationRequest, type MarketListByLocationResponse } from '../../model/market-list';
-import { type MissionStatus } from '../../model/mission';
-import { FIRST_TARGET_MISSION_ID } from '../../model/mission.locale';
 import {
   coerceShipDamageProfileOrNull,
   coerceShipInventory,
@@ -18,13 +16,12 @@ import {
   coerceShipTier,
   type ShipSummary,
 } from '../../model/ship-list';
-import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { isValidShipSpatial } from '../../model/spatial';
+import { type ShipListByOwnerRequest, type ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { appLogger } from '../../services/logger';
 import { MarketService } from '../../services/market.service';
-import { MissionNavigationService } from '../../services/mission-navigation';
-import { MissionService } from '../../services/mission.service';
 import { SessionService } from '../../services/session.service';
+import { ShipExteriorNavigationService } from '../../services/ship-exterior-navigation.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketLifecycleService } from '../../services/socket-lifecycle.service';
 import {
@@ -58,8 +55,7 @@ export default class ShipHangarPage implements OnDestroy {
   private shipService = inject(ShipService);
   private marketService = inject(MarketService);
   private sessionService = inject(SessionService);
-  private missionService = inject(MissionService);
-  private missionNavigationService = inject(MissionNavigationService);
+  private exteriorNavigation = inject(ShipExteriorNavigationService);
   private navigationState: ShipHangarNavigationState = resolveNavigationState<ShipHangarNavigationState>(this.router);
 
   private normalizeShipId(value: string | undefined | null): string {
@@ -344,13 +340,26 @@ export default class ShipHangarPage implements OnDestroy {
     return this.isShipActive(ship) ? this.t.game.shipHangar.shipActiveLabel : this.t.game.shipHangar.shipSetActiveLabel;
   }
 
-  private getFirstTargetMissionStatus(): MissionStatus | undefined {
-    const missions = this.joinCharacter()?.missions;
-    if (!Array.isArray(missions)) {
-      return undefined;
-    }
+  protected canViewInStarSystem(ship: ShipSummary): boolean {
+    return !!ship.id?.trim() && isValidShipSpatial(ship.spatial) && !!ship.spatial.solarSystemId.trim();
+  }
 
-    return missions.find((mission) => mission.missionId === FIRST_TARGET_MISSION_ID)?.status;
+  protected navigateToStarSystem(ship: ShipSummary): void {
+    if (!this.canViewInStarSystem(ship)) return;
+    const solarSystemId = ship.spatial.solarSystemId.trim();
+    void this.router
+      .navigate([{ outlets: { left: ['solar-system-details', solarSystemId], right: ['viewer-scene', solarSystemId] } }], {
+        preserveFragment: true,
+        state: {
+          playerName: this.playerName(),
+          joinCharacter: this.joinCharacter(),
+          viewerTargetShipId: ship.id,
+        },
+      })
+      .then((navigated) => {
+        if (!navigated) appLogger.warn('Ship star system navigation was cancelled.', { shipId: ship.id, solarSystemId });
+      })
+      .catch((error: unknown) => appLogger.error('Ship star system navigation failed.', { shipId: ship.id, error }));
   }
 
   navigateToShipInventory(ship: ShipSummary): void {
@@ -364,82 +373,8 @@ export default class ShipHangarPage implements OnDestroy {
     });
   }
 
-  /**
-   * Opens exterior view with mission context derived from first-target mission status.
-   * Delegates to MissionNavigationService to build the mission context from the
-   * registered initialization strategy.
-   */
   async navigateToExteriorView(ship: ShipSummary): Promise<void> {
-    const navigationShip = this.resolvePreferredExteriorNavigationShip(ship);
-    this.sessionService.setActiveShip(navigationShip);
-
-    const firstTargetMissionStatus = this.getFirstTargetMissionStatus();
-    const joinCharacter = this.joinCharacter();
-    const playerName = this.playerName();
-    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
-
-    let missionContext;
-    if (joinCharacter && playerName) {
-      const prepared = await this.missionNavigationService.prepareNavigation({
-        missionId: FIRST_TARGET_MISSION_ID,
-        playerName,
-        joinCharacter,
-        sessionKey,
-        missionStatus: firstTargetMissionStatus ?? null,
-      });
-      missionContext = prepared.missionContext;
-    } else {
-      missionContext = {
-        missionId: FIRST_TARGET_MISSION_ID,
-        seedPolicy: 'resume' as const,
-        ...(firstTargetMissionStatus ? { missionStatusHint: firstTargetMissionStatus } : {}),
-      };
-    }
-
-    // For active in-progress first-target missions, surface the damage preset on
-    // the mission context so the cold-boot scan view applies starter damage.
-    if (this.missionService.isMissionInProgress(firstTargetMissionStatus)) {
-      const damagePreset = this.missionService.getMissionDamagePreset(
-        FIRST_TARGET_MISSION_ID,
-        firstTargetMissionStatus ?? null,
-      );
-      if (damagePreset) {
-        missionContext = { ...missionContext, shipDamagePreset: damagePreset };
-      }
-    }
-
-    this.router.navigate([{ outlets: { primary: ['ship-exterior-view'], right: null, left: ['ship-hangar'] } }], {
-      preserveFragment: true,
-      state: {
-        playerName: this.playerName(),
-        joinCharacter: this.joinCharacter(),
-        joinShip: navigationShip,
-        missionContext,
-        ...(firstTargetMissionStatus ? { firstTargetMissionStatus } : {}),
-      },
-    });
-  }
-
-  private resolvePreferredExteriorNavigationShip(ship: ShipSummary): ShipSummary {
-    const activeShip = this.sessionService.activeShip();
-    if (!activeShip) {
-      return ship;
-    }
-
-    const activeShipId = this.normalizeShipId(activeShip.id);
-    const selectedShipId = this.normalizeShipId(ship.id);
-    if (!activeShipId || !selectedShipId || activeShipId !== selectedShipId) {
-      return ship;
-    }
-
-    if (!isValidShipSpatial(activeShip.spatial)) {
-      return ship;
-    }
-
-    return {
-      ...ship,
-      spatial: activeShip.spatial,
-    };
+    await this.exteriorNavigation.navigate(ship, this.playerName(), this.joinCharacter());
   }
 
   navigateToShipSpecs(ship: ShipSummary): void {

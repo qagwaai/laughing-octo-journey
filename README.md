@@ -70,6 +70,20 @@ The scene keeps running. Inputs, textareas, selects, editable content, buttons,
 and links retain their normal keyboard behavior. Escape in the debug drawer
 closes that drawer; Escape in the left pane does not control the ship scene.
 
+### Ship and stellar viewer navigation
+
+In the Stellar Viewer system details, use the external-view icon beside an
+owned ship to open its Ship Hangar and exterior view. This selects that ship as
+the active ship.
+
+In Ship Hangar, **View in Star System** opens the ship's system details and
+targets the ship in the viewer without changing the active ship. The action is
+disabled when the ship ID or usable location is missing or invalid; it does not
+verify that the reported system exists.
+
+See [Viewer navigation and validation](docs/viewer-architecture-decision.md#ship-hangar-and-viewer-navigation-implemented-2026-11-14)
+for the location requirements and implementation details.
+
 ### Strict Dev Server (fail-closed serving)
 
 `npm start` runs `ng serve` through a local wrapper builder,

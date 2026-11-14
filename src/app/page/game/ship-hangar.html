@@ -53,6 +53,20 @@
           <button type="button" class="inventory-link" [disabled]="isShipActive(ship)" (click)="setActiveShip(ship)">
             {{ getSetActiveShipLabel(ship) }}
           </button>
+          <span
+            [attr.title]="!canViewInStarSystem(ship) ? t.game.shipHangar.starSystemUnavailable : null"
+            [attr.tabindex]="!canViewInStarSystem(ship) ? 0 : null"
+          >
+            <button
+              type="button"
+              class="inventory-link star-system-link"
+              [disabled]="!canViewInStarSystem(ship)"
+              [attr.title]="!canViewInStarSystem(ship) ? t.game.shipHangar.starSystemUnavailable : null"
+              (click)="navigateToStarSystem(ship)"
+            >
+              {{ t.game.shipHangar.shipViewStarSystemLabel }}
+            </button>
+          </span>
         </li>
         }
       </ul>

@@ -41,11 +41,13 @@ test.describe('multilingual naming consumer gate (synthetic, authenticated)', ()
       // clipping, ellipsis, or single-line overflow.
       const layout = await item.locator('app-solar-system-name').evaluate((node) => {
         const element = node as HTMLElement;
-        element.style.width = '90px';
+        element.style.flex = '0 0 90px';
+        element.style.maxWidth = '90px';
         element.parentElement!.dir = 'rtl';
         return { width: element.clientWidth, scroll: element.scrollWidth, height: element.clientHeight,
           lineHeight: Number.parseFloat(getComputedStyle(element).lineHeight), text: element.textContent };
       });
+      expect(layout.width).toBeLessThanOrEqual(90);
       expect(layout.scroll).toBeLessThanOrEqual(layout.width + 1);
       if (system.settlementName) expect(layout.height).toBeGreaterThan(layout.lineHeight);
       expect(layout.text).toBe(system.displayName);
@@ -57,12 +59,18 @@ test.describe('multilingual naming consumer gate (synthetic, authenticated)', ()
     // Actual consuming details route, with independent get-response text.
     for (const system of NAMING_SYSTEMS) {
       await page.locator(`[data-system-id="${system.id}"] button`).click();
-      const heading = page.getByRole('heading', { level: 1, name: namingGetSummary(system).displayName, exact: true });
+      const displayName = namingGetSummary(system).displayName;
+      const accessibleName = system.catalogName ? `${displayName} ${system.catalogName}` : displayName;
+      const heading = page.getByRole('heading', { level: 1, name: accessibleName, exact: true });
       await expect(heading).toBeVisible();
       const label = heading.getByTestId('system-display-name');
       expect(await label.textContent()).toBe(namingGetSummary(system).displayName);
       expect(await selectedText(page, label)).toBe(namingGetSummary(system).displayName);
-      await expect(heading.getByTestId('system-catalog-name')).toHaveCount(0);
+      if (system.catalogName) {
+        await expect(heading.getByTestId('system-catalog-name')).toHaveText(system.catalogName);
+      } else {
+        await expect(heading.getByTestId('system-catalog-name')).toHaveCount(0);
+      }
       await expect(label).toHaveAttribute('dir', 'auto');
       expect(await label.evaluate((node) => getComputedStyle(node).unicodeBidi)).toBe('isolate');
       const bounds = await heading.locator('app-solar-system-name').evaluate((node) => {

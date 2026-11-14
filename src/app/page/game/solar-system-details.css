@@ -281,7 +281,8 @@
 
 /* ── Target button ─────────────────────────────────────────────────────── */
 
-.details-target-btn {
+.details-target-btn,
+.details-exterior-btn {
   box-sizing: border-box;
   display: inline-grid;
   width: 2rem;
@@ -299,7 +300,13 @@
     color 120ms;
 }
 
-.details-target-btn svg {
+.details-exterior-btn {
+  margin-inline-start: 0.35rem;
+  flex-shrink: 0;
+}
+
+.details-target-btn svg,
+.details-exterior-btn svg {
   width: 1.15rem;
   height: 1.15rem;
   fill: none;
@@ -314,7 +321,8 @@
   outline-offset: 3px;
 }
 
-.details-target-btn:focus-visible {
+.details-target-btn:focus-visible,
+.details-exterior-btn:focus-visible {
   outline: 2px solid #b4cfff;
   outline-offset: 2px;
 }
@@ -325,7 +333,8 @@
   color: #b4cfff;
 }
 
-.details-target-btn:hover {
+.details-target-btn:hover,
+.details-exterior-btn:hover {
   background: rgba(50, 80, 140, 0.9);
   border-color: rgba(140, 190, 255, 0.7);
   color: #e8f2ff;

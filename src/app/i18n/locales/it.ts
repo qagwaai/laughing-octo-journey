@@ -585,6 +585,8 @@ export const it: DeepPartial<EnLocale> = {
       locationUnavailable: 'Posizione non disponibile',
       shipViewInventoryLabel: 'Vedi inventario',
       shipExteriorViewLabel: 'Vista esterna',
+      shipViewStarSystemLabel: 'Vedi nel sistema stellare',
+      starSystemUnavailable: 'Serve una posizione valida della nave per vedere il suo sistema stellare.',
       shipSetActiveLabel: 'Imposta come nave attiva',
       shipActiveLabel: 'Nave attiva',
       errors: {
@@ -840,6 +842,7 @@ export const it: DeepPartial<EnLocale> = {
       detailsErrorPrefix: 'Caricamento corpi fallito:',
       detailsTargetButton: 'Punta',
       detailsTargetTooltip: 'Punta questo oggetto nel visualizzatore.',
+      detailsShipExteriorTooltip: 'Apri {ship} nell’hangar e nella vista esterna.',
       detailsTargetDisabledTooltip: 'Attiva il gruppo {group} nel visualizzatore per puntare questo oggetto.',
       bodyTargetedLabel: 'Puntato',
       detailsColumnName: 'Nome',

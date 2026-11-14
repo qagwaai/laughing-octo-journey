@@ -63,7 +63,7 @@ function setup(options: {
 
   const mockRouter = {
     getCurrentNavigation: () => (options.navigationState ? { extras: { state: options.navigationState } } : null),
-    navigate: vi.fn(),
+    navigate: vi.fn().mockResolvedValue(true),
   };
 
   options.socketService.connected = options.connected ?? false;
@@ -1071,6 +1071,7 @@ describe('ShipHangarPage', () => {
       sessionService,
       navigationState: { playerName: 'Pioneer', joinCharacter: character },
     });
+
     const ship = {
       id: 's-1',
       name: 'Dart Runner',
@@ -1105,6 +1106,33 @@ describe('ShipHangarPage', () => {
         },
       },
     );
+  });
+
+  it('navigates from each valid ship to its own star system without changing the active ship', () => {
+    const character = { id: 'c-1', characterName: 'Nova' };
+    const { component, fixture, mockRouter } = setup({
+      socketService, sessionService, navigationState: { playerName: 'Pioneer', joinCharacter: character },
+    });
+    const active = { ...createShip('s-1'), model: 'Scout', tier: 1, spatial: { ...createShip('s-1').spatial, frame: 'barycentric' as const } };
+    const other = { ...active, id: 's-2', name: 'Other', spatial: { ...active.spatial, solarSystemId: 'proxima' } };
+    const missingSystem = { ...active, id: 's-3', spatial: { ...active.spatial, solarSystemId: '  ' } };
+    const invalidPosition = { ...active, id: 's-4', spatial: { ...active.spatial, positionKm: { x: 0, y: 0, z: 0 } } };
+    sessionService.setActiveShip(active);
+    component['ships'].set([active, other, missingSystem, invalidPosition]);
+    fixture.detectChanges();
+
+    const buttons: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('.star-system-link');
+    expect(Array.from(buttons, (button) => button.disabled)).toEqual([false, false, true, true]);
+    expect(buttons[2].title).toBe('A valid ship location is required to view its star system.');
+    expect(buttons[2].parentElement?.getAttribute('tabindex')).toBe('0');
+    buttons[2].click();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+    buttons[1].click();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [{ outlets: { left: ['solar-system-details', 'proxima'], right: ['viewer-scene', 'proxima'] } }],
+      { preserveFragment: true, state: { playerName: 'Pioneer', joinCharacter: character, viewerTargetShipId: 's-2' } },
+    );
+    expect(sessionService.activeShip()).toEqual(active);
   });
 
   it('should include cold-boot ship damage preset for in-progress first-target mission', async () => {
