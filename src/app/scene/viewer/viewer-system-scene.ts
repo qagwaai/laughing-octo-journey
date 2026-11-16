@@ -21,6 +21,9 @@ import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
 import { deriveBodyGasGiantProfile } from '../gas-giant/body-giant-profile';
 import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
+import type { SupportedNavigationPositionState } from '../../model/solar-system-get';
+import { ViewerNavigationPreview } from './viewer-navigation-preview';
+import type { NavigationScenePoint } from './viewer-navigation-detour';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import type { StarProfile } from '../../model/star/star-profile';
 import type { GasGiantBandSize } from '../gas-giant/gas-giant-bands';
@@ -1070,6 +1073,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     StationModel,
     ViewerBlackHoleRenderer,
     ViewerTargetBracket,
+    ViewerNavigationPreview,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1104,6 +1108,11 @@ export class ViewerSystemScene {
   ships = input<ShipSummary[]>([]);
   activeShipId = input<string | null>(null);
   distanceMode = input<ViewerDistanceMode>('proportional');
+  navigationState = input<SupportedNavigationPositionState | null>(null);
+  navigationDestinationLabel = input('');
+  navigationCandidateLabel = input('');
+  navigationRoutePoints = input<NavigationScenePoint[] | null>(null);
+  @Output() navigationDetourUnavailableChange = new EventEmitter<boolean>();
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();
   @Output() zoomLevelChange = new EventEmitter<number>();

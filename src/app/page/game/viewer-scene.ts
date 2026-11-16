@@ -35,7 +35,14 @@ import {
   type DescriptorRenderProfile,
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
-import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
+import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
+import {
+  buildNavigationDetour,
+  NAVIGATION_CANDIDATE_MARKER_RADIUS,
+  NAVIGATION_DETOUR_MARGIN,
+  type NavigationDetour,
+  type NavigationScenePoint,
+} from '../../scene/viewer/viewer-navigation-detour';
 import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
@@ -47,6 +54,7 @@ import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
+import { ViewerNavigationPreviewService } from '../../services/viewer-navigation-preview.service';
 import { resolveNavigationState } from '../navigation-state';
 import { ViewerDataFacade } from './viewer-data-facade';
 import { formatViewerNumber } from './viewer-number-format';
@@ -316,6 +324,147 @@ export default class ViewerScenePage implements OnDestroy {
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
   private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
+  private navigationPreviewService = inject(ViewerNavigationPreviewService);
+
+  protected readonly navigationPreview = this.navigationPreviewService.preview.asReadonly();
+  protected readonly projectedNavigationState = computed(() => {
+    const preview = this.navigationPreview();
+    return preview?.status === 'ready' ? preview.state : null;
+  });
+  protected readonly navigationDestinationLabel = computed(() => {
+    const preview = this.navigationPreview();
+    if (preview?.status !== 'ready') return '';
+    return `${this.t.game.viewer.navigationPreviewDestinationLabel}: ${preview.selection.destinationName} — ${preview.state.epochMs} ms`;
+  });
+  protected readonly navigationCandidateLabel = computed(() => {
+    const preview = this.navigationPreview();
+    if (preview?.status !== 'ready' || !preview.selection.candidateBodyId) return '';
+    return `${this.t.game.viewer.navigationPreviewCandidateMarkerLabel}: ${this.navigationCandidateName()} — ${preview.state.epochMs} ms`;
+  });
+  protected readonly navigationDetour = computed<NavigationDetour | null>(() => {
+    const preview = this.navigationPreview();
+    return preview?.status === 'ready' ? buildNavigationDetour(preview.state, this.distanceMode()) : null;
+  });
+  protected readonly navigationRoutePoints = computed(() => {
+    const detour = this.navigationDetour();
+    return detour && detour.status !== 'unavailable' ? detour.points : null;
+  });
+  protected readonly navigationDetour3dUnavailable = signal(false);
+  protected readonly navigationCandidateBodies = computed(() =>
+    this.bodies().filter((body) => ['planet', 'moon'].includes(body.bodyType.trim().toLowerCase())),
+  );
+  protected navigationCandidateName(): string {
+    const candidateId = this.navigationPreview()?.selection.candidateBodyId;
+    if (!candidateId) return '';
+    return this.navigationCandidateBodies().find((body) => body.id === candidateId)?.displayName ?? candidateId;
+  }
+  protected readonly navigationPlot = computed(() => {
+    const preview = this.navigationPreview();
+    if (preview?.status !== 'ready') return null;
+
+    const departure = resolveScenePositionFromSpatialKm(preview.state.departure.positionKm, this.distanceMode());
+    const destination = resolveScenePositionFromSpatialKm(preview.state.destination.positionKm, this.distanceMode());
+    const candidatePosition = preview.state.candidates[0]?.positionKm;
+    const candidate = candidatePosition
+      ? resolveScenePositionFromSpatialKm(candidatePosition, this.distanceMode())
+      : null;
+    const detour = this.navigationDetour();
+    const route = detour && detour.status !== 'unavailable' ? detour.points : null;
+    const markerBounds: NavigationScenePoint[] = candidate ? [
+      [candidate[0] - NAVIGATION_CANDIDATE_MARKER_RADIUS, candidate[1], candidate[2] - NAVIGATION_CANDIDATE_MARKER_RADIUS],
+      [candidate[0] + NAVIGATION_CANDIDATE_MARKER_RADIUS, candidate[1], candidate[2] + NAVIGATION_CANDIDATE_MARKER_RADIUS],
+    ] : [];
+    const positions = [...(route ?? [departure, destination]), ...markerBounds];
+    const minX = Math.min(...positions.map((position) => position[0]));
+    const maxX = Math.max(...positions.map((position) => position[0]));
+    const minY = Math.min(...positions.map((position) => position[2]));
+    const maxY = Math.max(...positions.map((position) => position[2]));
+    const width = 560;
+    const height = 220;
+    const padding = 24;
+    const xRange = Math.max(maxX - minX, 1);
+    const yRange = Math.max(maxY - minY, 1);
+    const scale = Math.min((width - padding * 2) / xRange, (height - padding * 2) / yRange);
+    const plotWidth = xRange * scale;
+    const plotHeight = yRange * scale;
+    const offsetX = (width - plotWidth) / 2;
+    const offsetY = (height - plotHeight) / 2;
+    const project = (position: NavigationScenePoint) => ({
+      x: offsetX + (position[0] - minX) * scale,
+      y: height - offsetY - (position[2] - minY) * scale,
+    });
+    const plotDeparture = project(departure);
+    const plotDestination = project(destination);
+    const plotCandidate = candidate ? project(candidate) : null;
+    const markerRadius = NAVIGATION_CANDIDATE_MARKER_RADIUS * scale;
+    const unavailable = !!plotCandidate && (
+      Math.hypot(plotCandidate.x - plotDeparture.x, plotCandidate.y - plotDeparture.y) <= markerRadius + 8 ||
+      Math.hypot(plotCandidate.x - plotDestination.x, plotCandidate.y - plotDestination.y) <= markerRadius + 10
+    );
+
+    return {
+      departure: plotDeparture,
+      destination: plotDestination,
+      candidate: plotCandidate,
+      unavailable,
+      routePoints: route && !unavailable ? route.map(project).map((point) => `${point.x},${point.y}`).join(' ') : null,
+      routeStrokeWidth: candidate ? Math.min(2.5, NAVIGATION_DETOUR_MARGIN * scale) : 2.5,
+      candidateMarkerStrokeWidth: Math.min(2, NAVIGATION_DETOUR_MARGIN * scale / 2),
+      candidateMarkerSize: candidate ? markerRadius * Math.SQRT2 : 0,
+    };
+  });
+
+  constructor() {
+    effect(() => {
+      const preview = this.navigationPreviewService.preview();
+      if (!preview) return;
+      const activeShip = this.sessionService.activeShip();
+      const position = activeShip?.spatial?.positionKm;
+      const selectedPosition = preview.selection.shipPositionKm;
+      const currentSystemId = this.solarSystemId();
+      if (
+        preview.selection.shipId !== activeShip?.id ||
+        preview.selection.characterId !== this.sessionService.activeCharacter()?.id ||
+        preview.selection.solarSystemId !== currentSystemId ||
+        preview.selection.solarSystemId !== activeShip?.spatial?.solarSystemId ||
+        preview.selection.shipEpochMs !== activeShip?.spatial?.epochMs ||
+        !position ||
+        position.x !== selectedPosition.x ||
+        position.y !== selectedPosition.y ||
+        position.z !== selectedPosition.z
+      ) {
+        this.navigationPreviewService.clear();
+      }
+    });
+  }
+
+  protected navigationHiddenGroups(): string[] {
+    const preview = this.navigationPreview();
+    if (!preview) return [];
+
+    const hidden = new Set<string>();
+    if (!this.viewerGroupVisibility.isGroupIncluded('stations')) hidden.add('stations');
+    const candidateId = preview.selection.candidateBodyId;
+    if (candidateId) {
+      const candidate = this.bodies().find((body) => body.id === candidateId);
+      if (candidate) {
+        const group = viewerBodyGroup(candidate);
+        if (!this.viewerGroupVisibility.isGroupIncluded(group)) hidden.add(group);
+      }
+    }
+    return [...hidden];
+  }
+
+  protected selectNavigationCandidate(event: Event): void {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement) {
+      this.navigationPreviewService.selectCandidate(target.value || null);
+    }
+  }
+
+  protected clearNavigationPreview(): void {
+    this.navigationPreviewService.clear();
+  }
 
   protected readonly effectiveSceneBodies = computed<ViewerBody[]>(() => {
     if (!(this.viewerQaEnabled() && this.forceHeroMode())) {
@@ -442,6 +591,7 @@ export default class ViewerScenePage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.navigationPreviewService.clear();
     this.viewerDataFacade.dispose();
     if (this.planetTransitionTimer !== null) {
       clearTimeout(this.planetTransitionTimer);

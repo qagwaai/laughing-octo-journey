@@ -84,6 +84,13 @@ verify that the reported system exists.
 See [Viewer navigation and validation](docs/viewer-architecture-decision.md#ship-hangar-and-viewer-navigation-implemented-2026-11-14)
 for the location requirements and implementation details.
 
+Station rows also offer **Plan route to...** for the active ship in the same
+system. The preview shows projected markers, a separate hypothetical direct
+distance, and an optional broad illustrative sweep around one candidate.
+It does not move the ship or calculate a gravity assist, travel time, or
+physical clearance. See [Ship navigation implementation and handoff](docs/ship-navigation-2026-11-14.md)
+for the accepted UX, validation results, limitations, and deferred work.
+
 ### Strict Dev Server (fail-closed serving)
 
 `npm start` runs `ng serve` through a local wrapper builder,

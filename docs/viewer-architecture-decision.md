@@ -4,6 +4,38 @@
 
 Accepted (initial MVP).
 
+### Ship navigation preview and candidate sweep: accepted 2026-11-15
+
+- Station-only **Plan route to...** uses the explicitly active ship in the
+  same system. The preview consumes one supported `navigationState`, not
+  ordinary stored mesh positions. It leaves the camera and ship unchanged,
+  shows projected-only markers and the navigation epoch, and handles
+  unsupported/ineligible results, access warnings, and stale selections.
+- The direct-distance display uses only the paired estimate from that same
+  response. It is a hypothetical straight-line endpoint distance, not the
+  length of the displayed candidate path. No speed or duration is shown.
+- Selecting one planet/moon adds the user-accepted broad illustrative sweep
+  around its projected marker. A shared
+  [display-geometry helper](../src/app/scene/viewer/viewer-navigation-detour.ts)
+  supplies both the X-Y plot and
+  [3D overlay](../src/app/scene/viewer/viewer-navigation-preview.ts) after the
+  selected distance-mode mapping. The grey direct reference remains separate.
+- The sweep uses explicitly sampled bowed cubic legs and a tangent arc.
+  Final segments avoid the rendered marker bound; camera projection can
+  suppress the 3D detour with an explicit status. This is visual marker
+  avoidance only, not physical clearance or a calculated gravity assist.
+  Catalog radii are not required and no API change was needed.
+- The user accepted the revised appearance with a live projected-Earth /
+  Pluto Orbital Market screenshot. Focused Vitest coverage passed 70 tests;
+  mocked Playwright passed two tests including setup across both distance
+  modes. Typecheck and targeted lint passed. No production build or full
+  regression suite was rerun for the sweep revision.
+- The session is paused and the user will commit/push. Future timing,
+  assists, fuel, candidate ranking, and travel execution require separate
+  review and authorization. See the
+  [navigation handoff](./ship-navigation-2026-11-14.md) for exact validation
+  commands, limitations, and resumption decisions.
+
 ### Ship Hangar and Viewer navigation: implemented 2026-11-14
 
 - Each owned ship in the selected system has an external-view icon in both

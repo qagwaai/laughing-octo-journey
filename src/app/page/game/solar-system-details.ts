@@ -13,6 +13,7 @@ import { ShipService } from '../../services/ship.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
+import { ViewerNavigationPreviewService } from '../../services/viewer-navigation-preview.service';
 import { resolveNavigationState } from '../navigation-state';
 import { DETAILS_PLANET_TYPE_ORDER, SolarSystemDetailsFacade, type DetailsRow } from './solar-system-details-facade';
 import { formatViewerNumber } from './viewer-number-format';
@@ -80,6 +81,7 @@ export default class SolarSystemDetailsPage {
   private exteriorNavigation = inject(ShipExteriorNavigationService);
   private viewerTargetService = inject(ViewerTargetService);
   private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
+  private navigationPreviewService = inject(ViewerNavigationPreviewService);
 
   private readonly detailsFacade = new SolarSystemDetailsFacade({
     solarSystemService: this.solarSystemService,
@@ -102,6 +104,7 @@ export default class SolarSystemDetailsPage {
   protected playerName = signal<string>(this.navigationState.playerName ?? '');
   protected joinCharacter = signal<PlayerCharacterSummary | null>(this.navigationState.joinCharacter ?? null);
   protected solarSystem = signal<SolarSystemSummary | null>(this.navigationState.solarSystem ?? null);
+  protected activeSystemId = signal<string | null>(this.navigationState.solarSystem?.id ?? null);
 
   private bodyRows = signal<DetailsRow[]>([]);
   private shipRows = signal<DetailsRow[]>([]);
@@ -171,12 +174,15 @@ export default class SolarSystemDetailsPage {
     this.route.paramMap.subscribe((params) => {
       const id = params.get('solarSystemId');
       if (id) {
+        this.activeSystemId.set(id);
         this.loadDetails(id);
       }
     });
   }
 
   private loadDetails(solarSystemId: string): void {
+    this.activeSystemId.set(solarSystemId);
+    this.navigationPreviewService.clear();
     this.viewerTargetService.clearTarget();
     const targetShipId = this.navigationState.viewerTargetShipId;
     this.navigationState = { ...this.navigationState, viewerTargetShipId: undefined };
@@ -213,6 +219,60 @@ export default class SolarSystemDetailsPage {
     this.viewerTargetService.target(id);
   }
 
+  protected isRoutePlanningRow(row: DetailsRow): boolean {
+    const activeShipSystem = this.sessionService.activeShip()?.spatial?.solarSystemId?.trim();
+    return (
+      row.isRouteStation === true &&
+      (!activeShipSystem || activeShipSystem === this.activeSystemId())
+    );
+  }
+
+  protected canPlanRoute(row: DetailsRow): boolean {
+    const activeShip = this.sessionService.activeShip();
+    const systemId = this.activeSystemId()?.trim() ?? '';
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const characterId = this.sessionService.activeCharacter()?.id?.trim() ?? '';
+    return (
+      this.isRoutePlanningRow(row) &&
+      !!row.id.trim() &&
+      !!this.playerName().trim() &&
+      !!sessionKey &&
+      !!characterId &&
+      !!activeShip?.id.trim() &&
+      activeShip.spatial?.solarSystemId?.trim() === systemId &&
+      !!activeShip.spatial?.positionKm &&
+      Number.isFinite(activeShip.spatial.epochMs) &&
+      !!systemId
+    );
+  }
+
+  protected planRouteTooltip(row: DetailsRow): string {
+    if (!this.canPlanRoute(row)) return this.t.game.viewer.detailsPlanRouteUnavailableTooltip;
+    return this.t.game.viewer.detailsPlanRouteTooltip.replace('{station}', row.displayName);
+  }
+
+  protected planRoute(row: DetailsRow): void {
+    const activeShip = this.sessionService.activeShip();
+    const systemId = this.activeSystemId()?.trim() ?? '';
+    const playerName = this.playerName().trim();
+    const sessionKey = this.sessionService.getSessionKey()?.trim() ?? '';
+    const characterId = this.sessionService.activeCharacter()?.id?.trim() ?? '';
+    if (!this.canPlanRoute(row) || !activeShip?.spatial || !systemId) return;
+
+    this.navigationPreviewService.start({
+      playerName,
+      sessionKey,
+      characterId,
+      solarSystemId: systemId,
+      shipId: activeShip.id,
+      shipName: activeShip.name,
+      shipEpochMs: activeShip.spatial.epochMs,
+      shipPositionKm: { ...activeShip.spatial.positionKm },
+      destinationMarketId: row.id,
+      destinationName: row.displayName,
+    });
+  }
+
   protected openShipExterior(row: DetailsRow): void {
     if (row.ship) {
       void this.exteriorNavigation.navigate(row.ship, this.playerName(), this.joinCharacter());
@@ -236,6 +296,7 @@ export default class SolarSystemDetailsPage {
   }
 
   protected goBackToSystemList(): void {
+    this.navigationPreviewService.clear();
     this.viewerTargetService.clearTarget();
     this.router.navigate([{ outlets: { left: ['viewer'] } }], {
       preserveFragment: true,

@@ -176,6 +176,88 @@ export interface ViewerBodyDebrisEntry extends ViewerDebrisEntry {
   id?: string;
 }
 
+export interface NavigationPositionRequest {
+  shipId: string;
+  destinationMarketId: string;
+  candidateBodyId?: string;
+}
+
+export interface NavigationEstimateOptions {
+  scenarioCruiseSpeedKmPerSec?: number;
+}
+
+export interface NavigationPositionVector {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export type NavigationPreviewEligibility =
+  | { status: 'ineligible'; reason: 'KNOWN_INVALID_DESTINATION' | 'KNOWN_INVALID_SOURCE' }
+  | { status: 'eligible-with-warnings'; reason: 'CLEARANCE_UNVERIFIED' };
+
+export interface SupportedNavigationPositionState {
+  status: 'supported';
+  solarSystemId: string;
+  coordinateBasisId: string;
+  epochMs: number;
+  departure: { shipId: string; positionKm: NavigationPositionVector };
+  destination: { marketId: string; positionKm: NavigationPositionVector };
+  candidates: Array<{ bodyId: string; positionKm: NavigationPositionVector }>;
+  previewEligibility: NavigationPreviewEligibility;
+}
+
+export interface UnsupportedNavigationPositionState {
+  status: 'unsupported';
+  reason: string;
+  message: string;
+}
+
+export type NavigationPositionState = SupportedNavigationPositionState | UnsupportedNavigationPositionState;
+
+export interface SupportedNavigationRouteEstimate {
+  status: 'supported';
+  solarSystemId: string;
+  departure: { shipId: string };
+  destination: { marketId: string };
+  coordinateBasisId: string;
+  referenceEpochMs: number;
+  positionEvaluationModelId: string;
+  estimationModelId: string;
+  distanceKm: number;
+  classification: 'hypothetical-not-eta';
+  assumptions: {
+    endpointsFrozen: true;
+    constantScenarioSpeed: true;
+    accelerationBrakingOmitted: true;
+    assistSpeedChangesOmitted: true;
+    movementDuringTripOmitted: true;
+  };
+  warnings: ['CLEARANCE_UNVERIFIED'];
+  duration:
+    | { status: 'unavailable'; reason: 'SCENARIO_SPEED_NOT_SUPPLIED' }
+    | {
+        status: 'estimated';
+        estimatedDurationSec: number;
+        scenarioCruiseSpeedKmPerSec: number;
+        speedProvenance: 'caller-supplied-scenario';
+      };
+}
+
+export interface RejectedNavigationRouteEstimate {
+  status: 'invalid' | 'unsupported' | 'ineligible' | 'failed';
+  reason: string;
+  message: string;
+}
+
+export type NavigationRouteEstimate = SupportedNavigationRouteEstimate | RejectedNavigationRouteEstimate;
+
+export interface PairedNavigationEstimate {
+  success: boolean;
+  association: 'same-response-direct-endpoints';
+  estimate: NavigationRouteEstimate;
+}
+
 export interface SolarSystemGetRequest {
   playerName: string;
   sessionKey: string;
@@ -185,6 +267,8 @@ export interface SolarSystemGetRequest {
   requestIdentity?: SolarSystemGetRequestIdentity;
   asOf?: string;
   requestId?: string;
+  navigation?: NavigationPositionRequest;
+  navigationEstimate?: NavigationEstimateOptions;
 }
 
 /** Naming fields are independently defined by solar-system-get-response.schema.json. */
@@ -207,6 +291,8 @@ export interface SolarSystemGetResponse {
   solarSystem?: SolarSystemGetSummary;
   stars?: CanonicalViewerBody[];
   bodies: CanonicalViewerBody[];
+  navigationState?: NavigationPositionState;
+  navigationEstimate?: PairedNavigationEstimate;
   requestId?: string;
 }
 

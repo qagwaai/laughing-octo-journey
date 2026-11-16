@@ -1,4 +1,14 @@
 <ngt-color *args="['#02060f']" attach="background" />
+@if (navigationState(); as state) {
+<app-viewer-navigation-preview
+  [state]="state"
+  [distanceMode]="distanceMode()"
+  [destinationLabel]="navigationDestinationLabel()"
+  [candidateLabel]="navigationCandidateLabel()"
+  [routePoints]="navigationRoutePoints()"
+  (detourUnavailableChange)="navigationDetourUnavailableChange.emit($event)"
+/>
+}
 <ngt-ambient-light [intensity]="0.15" [color]="starFillColor()" />
 @for (light of starLights(); track light.id) {
 <ngt-point-light

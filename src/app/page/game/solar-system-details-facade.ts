@@ -4,6 +4,7 @@ import { resolveCatalogDiameterM } from '../../model/physical-catalog';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ShipListByOwnerRequest, ShipListByOwnerResponse } from '../../model/ship-list-by-owner';
 import { mergeUniqueViewerBodies, type SolarSystemGetResponse, type ViewerBody } from '../../model/solar-system-get';
+import { isStationBody } from '../../scene/viewer/viewer-formatters';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import { MarketService } from '../../services/market.service';
@@ -15,6 +16,7 @@ export interface DetailsRow {
   id: string;
   displayName: string;
   bodyType: string;
+  isRouteStation?: boolean;
   /** Planet archetype (e.g. hot-jupiter) for planets whose type is known; null/absent otherwise. */
   planetType?: string | null;
   /** True when Forge inferred the planet type rather than reading it from the catalog. */
@@ -132,6 +134,7 @@ export class SolarSystemDetailsFacade {
         id: b.id,
         displayName: b.displayName,
         bodyType: typeof b.bodyType === 'string' && b.bodyType.trim() ? b.bodyType : 'unknown',
+        isRouteStation: isStationBody(b),
         planetType,
         planetTypeLikely: planetType !== null && isLikelyBodyType(b),
         viewerGroup: viewerBodyGroup(b),
@@ -179,6 +182,7 @@ export class SolarSystemDetailsFacade {
         id: m.marketId,
         displayName: m.siteName?.trim() || m.marketName?.trim() || m.marketId,
         bodyType: 'station',
+        isRouteStation: true,
         viewerGroup: 'stations',
         diameterM: null,
         semiMajorAxisKm: m.trajectory?.orbit?.semiMajorAxisKm ?? null,

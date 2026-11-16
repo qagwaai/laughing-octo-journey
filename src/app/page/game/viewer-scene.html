@@ -7,7 +7,148 @@
       <p class="viewer-scene-status" role="alert" data-testid="viewer-scene-error">{{ sceneError() }}</p>
       } @else if (!hasSystem()) {
       <p class="viewer-scene-status" data-testid="viewer-scene-empty">{{ t.game.viewer.sceneEmptyStatus }}</p>
-      } @else {
+      } @else { @if (navigationPreview(); as preview) {
+      <section class="viewer-navigation-preview" data-testid="navigation-preview" aria-live="polite">
+        <header class="viewer-navigation-preview__header">
+          <h2>{{ t.game.viewer.navigationPreviewTitle }}</h2>
+          <button type="button" class="viewer-navigation-preview__clear" (click)="clearNavigationPreview()">
+            {{ t.game.viewer.navigationPreviewClear }}
+          </button>
+        </header>
+        <p>{{ t.game.viewer.navigationPreviewDisclaimer }}</p>
+        @if (preview.status === 'loading') {
+        <p data-testid="navigation-preview-loading">{{ t.game.viewer.navigationPreviewLoading }}</p>
+        } @else if (preview.status === 'unsupported' || preview.status === 'error') {
+        <p role="alert" data-testid="navigation-preview-error">
+          {{ t.game.viewer.navigationPreviewError }} @if (preview.reason) { ({{ preview.reason }}) }
+        </p>
+        } @else if (preview.status === 'ineligible') {
+        <p role="alert" data-testid="navigation-preview-ineligible">{{ t.game.viewer.navigationPreviewIneligible }}</p>
+        } @else {
+        <label class="viewer-navigation-preview__candidate">
+          {{ t.game.viewer.navigationPreviewCandidateSelect }}
+          <select (change)="selectNavigationCandidate($event)">
+            <option value="" [selected]="!preview.selection.candidateBodyId">
+              {{ t.game.viewer.navigationPreviewNoCandidate }}
+            </option>
+            @for (body of navigationCandidateBodies(); track body.id) {
+            <option [value]="body.id" [selected]="body.id === preview.selection.candidateBodyId">
+              {{ body.displayName }}
+            </option>
+            }
+          </select>
+        </label>
+        <p>{{ t.game.viewer.navigationPreviewAccessWarning }}</p>
+        @if (preview.state.previewEligibility.status === 'eligible-with-warnings') {
+        <p class="viewer-navigation-preview__warning" data-testid="navigation-clearance-warning">
+          {{ t.game.viewer.navigationPreviewClearanceWarning }}
+        </p>
+        } @for (group of navigationHiddenGroups(); track group) {
+        <p>{{ t.game.viewer.navigationPreviewHiddenGroup.replace('{group}', group) }}</p>
+        }
+        <p>{{ t.game.viewer.navigationPreviewEpochLabel.replace('{epoch}', preview.state.epochMs.toString()) }}</p>
+        @if (preview.estimate.status === 'ready') {
+        <div class="viewer-navigation-preview__distance" data-testid="navigation-direct-distance">
+          <p>
+            <strong>{{ t.game.viewer.navigationPreviewDistanceLabel }}:</strong>
+            {{ formatNumber(preview.estimate.distanceKm) }} km
+          </p>
+          <p>{{ t.game.viewer.navigationPreviewDistanceDisclaimer }}</p>
+          <p>{{ t.game.viewer.navigationPreviewDurationUnavailable }}</p>
+        </div>
+        } @else {
+        <p
+          class="viewer-navigation-preview__estimate-unavailable"
+          role="status"
+          data-testid="navigation-estimate-unavailable"
+        >
+          {{ t.game.viewer.navigationPreviewEstimateUnavailable }} ({{ preview.estimate.reason }})
+        </p>
+        } @if (preview.selection.candidateBodyId) {
+        <p class="viewer-navigation-preview__candidate-disclaimer" data-testid="navigation-candidate-disclaimer">
+          {{ t.game.viewer.navigationPreviewCandidateDisclaimer }}
+        </p>
+        } @if (navigationDetour()?.status === 'unavailable' || navigationPlot()?.unavailable) {
+        <p
+          class="viewer-navigation-preview__estimate-unavailable"
+          role="status"
+          data-testid="navigation-detour-unavailable"
+        >
+          {{ t.game.viewer.navigationPreviewDetourUnavailable }}
+        </p>
+        } @if (navigationPlot(); as plot) {
+        <svg
+          class="viewer-navigation-preview__plot"
+          viewBox="0 0 560 220"
+          role="img"
+          [attr.aria-label]="t.game.viewer.navigationPreviewPlotLabel"
+        >
+          @if (plot.candidate) {
+          <line
+            class="viewer-navigation-preview__direct-reference"
+            [attr.x1]="plot.departure.x"
+            [attr.y1]="plot.departure.y"
+            [attr.x2]="plot.destination.x"
+            [attr.y2]="plot.destination.y"
+          />
+          } @if (plot.routePoints) {
+          <polyline
+            class="viewer-navigation-preview__route"
+            [attr.points]="plot.routePoints"
+            [style.stroke-width]="plot.routeStrokeWidth"
+          />
+          }
+          <circle
+            class="viewer-navigation-preview__departure"
+            [attr.cx]="plot.departure.x"
+            [attr.cy]="plot.departure.y"
+            r="6"
+          />
+          <circle
+            class="viewer-navigation-preview__destination"
+            [attr.cx]="plot.destination.x"
+            [attr.cy]="plot.destination.y"
+            r="8"
+          />
+          @if (plot.candidate; as candidate) {
+          <rect
+            class="viewer-navigation-preview__candidate-marker"
+            [attr.x]="candidate.x - plot.candidateMarkerSize / 2"
+            [attr.y]="candidate.y - plot.candidateMarkerSize / 2"
+            [attr.width]="plot.candidateMarkerSize"
+            [attr.height]="plot.candidateMarkerSize"
+            [style.stroke-width]="plot.candidateMarkerStrokeWidth"
+            [attr.transform]="'rotate(45 ' + candidate.x + ' ' + candidate.y + ')'"
+          />
+          }
+        </svg>
+        }
+        <p class="viewer-navigation-preview__plot-label">{{ t.game.viewer.navigationPreviewPlotLabel }}</p>
+        @if (navigationDetour()?.status === 'detour' && navigationDetour3dUnavailable()) {
+        <p role="status" data-testid="navigation-detour-3d-unavailable">
+          {{ t.game.viewer.navigationPreviewDetour3dUnavailable }}
+        </p>
+        }
+        <div class="viewer-navigation-preview__legend">
+          <span class="viewer-navigation-preview__legend-departure">
+            {{ t.game.viewer.navigationPreviewDepartureLabel }}: {{ preview.selection.shipName }}
+          </span>
+          <span class="viewer-navigation-preview__legend-destination">
+            {{ t.game.viewer.navigationPreviewDestinationLabel }}: {{ preview.selection.destinationName }}
+          </span>
+          @if (preview.selection.candidateBodyId) {
+          <span class="viewer-navigation-preview__legend-candidate">
+            {{ t.game.viewer.navigationPreviewCandidateMarkerLabel }}: {{ navigationCandidateName() }}
+          </span>
+          <span class="viewer-navigation-preview__legend-direct">
+            {{ t.game.viewer.navigationPreviewDirectReferenceLabel }}
+          </span>
+          <span class="viewer-navigation-preview__legend-route">{{ t.game.viewer.navigationPreviewDetourLabel }}</span>
+          }
+        </div>
+        }
+      </section>
+      }
       <ngt-canvas [stats]="persistentStatsOptions" shadows [camera]="{ position: [0, 3.5, 28], fov: 55 }">
         <app-viewer-system-scene
           *canvasContent
@@ -16,6 +157,11 @@
           [targetBodyId]="sceneInputs().targetBodyId ?? null"
           [zoomLevel]="zoomLevel()"
           [distanceMode]="distanceMode()"
+          [navigationState]="projectedNavigationState()"
+          [navigationDestinationLabel]="navigationDestinationLabel()"
+          [navigationCandidateLabel]="navigationCandidateLabel()"
+          [navigationRoutePoints]="navigationRoutePoints()"
+          (navigationDetourUnavailableChange)="navigationDetour3dUnavailable.set($event)"
           [ships]="sceneInputs().ships ?? []"
           [activeShipId]="sceneInputs().activeShipId ?? null"
           [stationModelAttempt]="stationModelAttempt()"
@@ -40,8 +186,7 @@
         <p class="viewer-info-panel__data-as-of" data-testid="viewer-data-as-of">
           {{ t.game.viewer.dataAsOfLabel.replace('{date}', date) }}
         </p>
-        }
-        @if (hasCygnusX1BlackHole()) {
+        } @if (hasCygnusX1BlackHole()) {
         <p data-testid="viewer-black-hole-layout-note">{{ t.game.viewer.cygnusX1VisualizationNote }}</p>
         } @if (blackHoleRendererError()) {
         <p role="alert" data-testid="viewer-black-hole-renderer-error">{{ t.game.viewer.blackHoleHdrUnsupported }}</p>
@@ -198,9 +343,7 @@
             {{ t.game.viewer.estimatedValueExplanation }}
           </p>
         </details>
-        }
-
-        @if (isDevBuild) {
+        } @if (isDevBuild) {
         <details class="viewer-qa-panel viewer-info-panel__section" data-testid="viewer-qa-panel">
           <summary>{{ t.game.viewer.qaTitle }}</summary>
           <label class="viewer-qa-panel__toggle">
@@ -272,9 +415,10 @@
             <span class="viewer-detail-pane__type">({{ body.bodyType }})</span>
           </h2>
           @if (secondaryCatalogName(body); as catalogName) {
-          <span class="viewer-detail-pane__catalog-name" data-testid="viewer-inspector-catalog-name">{{ catalogName }}</span>
-          }
-          @if (canOpenCloseup(body)) {
+          <span class="viewer-detail-pane__catalog-name" data-testid="viewer-inspector-catalog-name">
+            {{ catalogName }}
+          </span>
+          } @if (canOpenCloseup(body)) {
           <button
             type="button"
             class="viewer-closeup-button"
@@ -328,7 +472,10 @@
               class="viewer-detail-pane__value"
               data-testid="viewer-inspector-rings"
               [attr.title]="areRingsApproximate(body) ? t.game.viewer.catalogRingsEstimated : null"
-            >{{ areRingsApproximate(body) ? approximateMark : '' }}{{ rings.innerRadiusKm }}–{{ rings.outerRadiusKm }} km</span>
+            >
+              {{ areRingsApproximate(body) ? approximateMark : '' }}{{ rings.innerRadiusKm }}–{{ rings.outerRadiusKm }}
+              km
+            </span>
           </div>
           } @if (body.approximateFields?.length) {
           <p class="viewer-detail-pane__note" data-testid="viewer-inspector-approximate-note">
@@ -367,8 +514,7 @@
           </button>
           }
         </details>
-        }
-        @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
+        } @if (viewerQaEnabled() && showEffectiveRenderProfile() && resolveBodyRenderProfile(body); as renderProfile) {
         <details class="viewer-inspector-section" data-testid="viewer-inspector-render">
           <summary>{{ t.game.viewer.inspectorRenderTitle }}</summary>
           <div class="viewer-detail-pane__row">
@@ -421,18 +567,16 @@
           } @if (body.physicalCatalog?.meanRadiusKm != null) {
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionRadiusLabel }}</span>
-            <span
-              class="viewer-detail-pane__value"
-              [attr.title]="approximateTitle(body, 'physical.meanRadiusKm')"
-            >{{ approximatePrefix(body, 'physical.meanRadiusKm') }}{{ body.physicalCatalog?.meanRadiusKm }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'physical.meanRadiusKm')">
+              {{ approximatePrefix(body, 'physical.meanRadiusKm') }}{{ body.physicalCatalog?.meanRadiusKm }}
+            </span>
           </div>
           } @if (body.physicalCatalog?.meanTemperatureK != null) {
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">{{ t.game.viewer.blackHoleCompanionTemperatureLabel }}</span>
-            <span
-              class="viewer-detail-pane__value"
-              [attr.title]="approximateTitle(body, 'physical.meanTemperatureK')"
-            >{{ approximatePrefix(body, 'physical.meanTemperatureK') }}{{ body.physicalCatalog?.meanTemperatureK }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'physical.meanTemperatureK')">
+              {{ approximatePrefix(body, 'physical.meanTemperatureK') }}{{ body.physicalCatalog?.meanTemperatureK }}
+            </span>
           </div>
           } @if (body.blackHoleProperties; as blackHole) {
           <div class="viewer-detail-pane__row">
@@ -485,7 +629,10 @@
             <span
               class="viewer-detail-pane__value"
               [attr.title]="isLikelyBodyType(body) ? t.game.viewer.approximateValueTooltip : null"
-            >{{ body.planetType ?? '—' }}@if (body.planetType && isLikelyBodyType(body)) { ({{ t.game.viewer.catalogTypeLikely }})}</span>
+            >
+              {{ body.planetType ?? '—' }}@if (body.planetType && isLikelyBodyType(body)) { ({{
+              t.game.viewer.catalogTypeLikely }})}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Color</span>
@@ -497,7 +644,9 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Diameter (m)</span>
-            <span class="viewer-detail-pane__value">{{ formatNumber(catalogDiameterM(body.physicalCatalog, body.physical)) }}</span>
+            <span class="viewer-detail-pane__value">
+              {{ formatNumber(catalogDiameterM(body.physicalCatalog, body.physical)) }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Mass (kg)</span>
@@ -516,33 +665,58 @@
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Semi-Major Axis (km)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.semiMajorAxisKm')">{{ approximatePrefix(body, 'orbit.semiMajorAxisKm') }}{{ formatNumber(body.orbitalElements?.semiMajorAxisKm) }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.semiMajorAxisKm')">
+              {{ approximatePrefix(body, 'orbit.semiMajorAxisKm') }}{{
+              formatNumber(body.orbitalElements?.semiMajorAxisKm) }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Eccentricity</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.eccentricity')">{{ approximatePrefix(body, 'orbit.eccentricity') }}{{ body.orbitalElements?.eccentricity ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.eccentricity')">
+              {{ approximatePrefix(body, 'orbit.eccentricity') }}{{ body.orbitalElements?.eccentricity ?? '—' }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Inclination (deg)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.inclinationDeg')">{{ approximatePrefix(body, 'orbit.inclinationDeg') }}{{ body.orbitalElements?.inclinationDeg ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.inclinationDeg')">
+              {{ approximatePrefix(body, 'orbit.inclinationDeg') }}{{ body.orbitalElements?.inclinationDeg ?? '—' }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Longitude Asc. Node (deg)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.longitudeOfAscendingNodeDeg')">
-              {{ approximatePrefix(body, 'orbit.longitudeOfAscendingNodeDeg') }}{{ body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="approximateTitle(body, 'orbit.longitudeOfAscendingNodeDeg')"
+            >
+              {{ approximatePrefix(body, 'orbit.longitudeOfAscendingNodeDeg') }}{{
+              body.orbitalElements?.longitudeOfAscendingNodeDeg ?? '—' }}
             </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Arg. of Periapsis (deg)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.argumentOfPeriapsisDeg')">{{ approximatePrefix(body, 'orbit.argumentOfPeriapsisDeg') }}{{ body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="approximateTitle(body, 'orbit.argumentOfPeriapsisDeg')"
+            >
+              {{ approximatePrefix(body, 'orbit.argumentOfPeriapsisDeg') }}{{
+              body.orbitalElements?.argumentOfPeriapsisDeg ?? '—' }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Mean Anomaly @ Epoch (deg)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.meanAnomalyAtEpochDeg')">{{ approximatePrefix(body, 'orbit.meanAnomalyAtEpochDeg') }}{{ body.orbitalElements?.meanAnomalyAtEpochDeg ?? '—' }}</span>
+            <span
+              class="viewer-detail-pane__value"
+              [attr.title]="approximateTitle(body, 'orbit.meanAnomalyAtEpochDeg')"
+            >
+              {{ approximatePrefix(body, 'orbit.meanAnomalyAtEpochDeg') }}{{ body.orbitalElements?.meanAnomalyAtEpochDeg
+              ?? '—' }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Orbital Period (s)</span>
-            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.orbitalPeriodSec')">{{ approximatePrefix(body, 'orbit.orbitalPeriodSec') }}{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}</span>
+            <span class="viewer-detail-pane__value" [attr.title]="approximateTitle(body, 'orbit.orbitalPeriodSec')">
+              {{ approximatePrefix(body, 'orbit.orbitalPeriodSec') }}{{ body.orbitalElements?.orbitalPeriodSec ?? '—' }}
+            </span>
           </div>
           <div class="viewer-detail-pane__row">
             <span class="viewer-detail-pane__label">Epoch</span>

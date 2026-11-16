@@ -176,6 +176,22 @@
                         </svg>
                       </button>
                     </span>
+                    @if (isRoutePlanningRow(row)) {
+                    <button
+                      type="button"
+                      class="details-target-btn details-route-btn"
+                      [disabled]="!canPlanRoute(row)"
+                      [attr.aria-label]="planRouteTooltip(row)"
+                      [attr.title]="planRouteTooltip(row)"
+                      (click)="planRoute(row)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M4 19 9 5l5 14 6-14" />
+                        <circle cx="4" cy="19" r="1.5" />
+                        <circle cx="20" cy="5" r="1.5" />
+                      </svg>
+                    </button>
+                    }
                     <span class="details-name-target__label">
                       {{ row.displayName }} @if (row.planetTypeLikely) {
                       <span class="details-likely-badge" data-testid="details-planet-type-likely">
@@ -237,6 +253,22 @@
                       </svg>
                     </button>
                   </span>
+                  @if (isRoutePlanningRow(row)) {
+                  <button
+                    type="button"
+                    class="details-target-btn details-route-btn"
+                    [disabled]="!canPlanRoute(row)"
+                    [attr.aria-label]="planRouteTooltip(row)"
+                    [attr.title]="planRouteTooltip(row)"
+                    (click)="planRoute(row)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M4 19 9 5l5 14 6-14" />
+                      <circle cx="4" cy="19" r="1.5" />
+                      <circle cx="20" cy="5" r="1.5" />
+                    </svg>
+                  </button>
+                  }
                   @if (row.ship) {
                   <button
                     type="button"

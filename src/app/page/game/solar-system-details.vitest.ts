@@ -442,3 +442,56 @@ describe('SolarSystemDetailsPage planet-type sections', () => {
     );
   });
 });
+
+describe('SolarSystemDetailsPage route planning affordance', () => {
+  afterEach(() => setActiveLocaleCode('en'));
+
+  it.each(['type', 'distance'] as const)('requests an explicit active-ship preview from %s view', (mode) => {
+    const ship: ShipSummary = {
+      id: 'ship-1',
+      name: 'Scout',
+      model: 'Scout',
+      tier: 1,
+      spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 1, y: 2, z: 3 }, epochMs: 1 },
+      inventory: [],
+    };
+    const { fixture, component, session } = setup([], [], [ship]);
+    component['bodyRows'].set([{
+      id: 'sol-port-meridian',
+      displayName: 'Port Meridian',
+      bodyType: 'station',
+      isRouteStation: true,
+      viewerGroup: 'stations',
+      diameterM: null,
+      semiMajorAxisKm: null,
+      isShip: false,
+      isActiveShip: false,
+      shipModel: null,
+      shipTier: null,
+      shipStatus: null,
+    }]);
+    session.setActiveShip(ship);
+    component['setViewMode'](mode);
+    if (mode === 'type') component['toggleSection']('station');
+    fixture.detectChanges();
+
+    const selector =
+      mode === 'type'
+        ? '[data-testid="details-table-station"] .details-route-btn'
+        : '[data-testid="details-table"] .details-route-btn';
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector(selector);
+    expect(button).not.toBeNull();
+    expect(button.disabled).toBe(false);
+    expect(button.getAttribute('aria-label')).toBe('Plan route to Port Meridian.');
+    button.click();
+
+    expect(TestBed.inject(SolarSystemService).getSolarSystem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        solarSystemId: 'sol',
+        navigation: { shipId: ship.id, destinationMarketId: 'sol-port-meridian' },
+        navigationEstimate: {},
+      }),
+      expect.any(Function),
+    );
+  });
+});

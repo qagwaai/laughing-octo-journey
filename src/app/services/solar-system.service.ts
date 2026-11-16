@@ -101,6 +101,9 @@ function isSolarSystemGetResponseForRequest(
   expectedRequest: SolarSystemGetRequest,
 ): boolean {
   const responseCorrelationId = response.correlationId?.trim() ?? '';
+  if (expectedRequest.navigation && responseCorrelationId !== expectedCorrelationId) {
+    return false;
+  }
   if (responseCorrelationId) {
     if (responseCorrelationId !== expectedCorrelationId) {
       return false;
@@ -218,7 +221,7 @@ export class SolarSystemService {
   /**
    * Retrieves a single solar system (with bodies) via `solar-system-get-request`.
    */
-  getSolarSystem(request: SolarSystemGetRequest, onResponse: (response: SolarSystemGetResponse) => void): void {
+  getSolarSystem(request: SolarSystemGetRequest, onResponse: (response: SolarSystemGetResponse) => void): () => void {
     const requestWithId: SolarSystemGetRequest = {
       ...request,
       requestId: request.requestId ?? this.nextRequestId(),
@@ -279,5 +282,9 @@ export class SolarSystemService {
     });
 
     this.socketService.emit(SOLAR_SYSTEM_GET_REQUEST_EVENT, requestWithCorrelation);
+    return () => {
+      handled = true;
+      unsubscribe();
+    };
   }
 }
