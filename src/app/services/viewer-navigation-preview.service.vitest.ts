@@ -6,6 +6,7 @@ import type {
   SolarSystemGetRequest,
   SolarSystemGetResponse,
   SupportedNavigationPositionState,
+  SupportedNavigationPrediction,
 } from '../model/solar-system-get';
 import { SolarSystemService } from './solar-system.service';
 import { ViewerNavigationPreviewService, type NavigationPreviewSelection } from './viewer-navigation-preview.service';
@@ -23,9 +24,7 @@ const selection: NavigationPreviewSelection = {
   destinationName: 'Port Meridian',
 };
 
-function supportedState(
-  overrides: Partial<SupportedNavigationPositionState> = {},
-): SupportedNavigationPositionState {
+function supportedState(overrides: Partial<SupportedNavigationPositionState> = {}): SupportedNavigationPositionState {
   return {
     status: 'supported',
     solarSystemId: 'sol',
@@ -80,14 +79,64 @@ function supportedEstimate(overrides: Partial<Extract<NavigationRouteEstimate, {
   };
 }
 
-function pairedEstimate(
-  overrides: Partial<PairedNavigationEstimate> = {},
-): PairedNavigationEstimate {
+function pairedEstimate(overrides: Partial<PairedNavigationEstimate> = {}): PairedNavigationEstimate {
   return {
     success: true,
     association: 'same-response-direct-endpoints',
     estimate: supportedEstimate(),
     ...overrides,
+  };
+}
+
+function predictedResponse(speed = 150): SolarSystemGetResponse {
+  const state = supportedState({
+    destination: { marketId: 'market-1', hostBodyId: 'pluto', positionKm: { x: 4, y: 5, z: 6 } },
+    candidates: [{ bodyId: 'moon-1', positionKm: { x: 2, y: 8, z: 3 } }],
+    provenance: {
+      evaluationModelId: 'sol-catalog-kepler-position-v1',
+      sourceRevision: 'a'.repeat(64),
+      positionToleranceKm: 0.001,
+    },
+  });
+  const prediction: SupportedNavigationPrediction = {
+    status: 'supported',
+    solarSystemId: 'sol',
+    coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
+    positionEvaluationModelId: 'sol-catalog-kepler-position-v1',
+    predictionModelId: 'constant-speed-straight-legs-moving-targets-v1',
+    timeScaleId: 'stellar:unix-ms-uniform:v1',
+    sourceRevision: 'a'.repeat(64),
+    classification: 'illustrative-not-eta',
+    scenarioCruiseSpeedKmPerSec: speed,
+    speedProvenance: 'caller-supplied-scenario',
+    departure: { ...state.departure, epochMs: state.epochMs },
+    encounter: {
+      bodyId: 'moon-1',
+      epochMs: state.epochMs + 1000,
+      positionKm: { x: 12, y: 8, z: 3 },
+      convergence: { iterations: 3, residualMs: 0.5 },
+    },
+    arrival: {
+      marketId: 'market-1',
+      hostBodyId: 'pluto',
+      epochMs: state.epochMs + 2000,
+      positionKm: { x: 14, y: 15, z: 6 },
+      hostPositionKm: { x: 14, y: 14, z: 6 },
+      convergence: { iterations: 4, residualMs: 0.1 },
+    },
+    assumptions: {
+      legDistanceStraightLine: true,
+      constantScenarioSpeed: true,
+      accelerationBrakingOmitted: true,
+      gravityAndAssistEffectsOmitted: true,
+      departureFixedAtNavigationEpoch: true,
+      encounterAtBodyCenter: true,
+    },
+    warnings: ['CLEARANCE_UNVERIFIED'],
+  };
+  return {
+    ...response(state),
+    navigationPrediction: { success: true, association: 'same-response-navigation-sources', prediction },
   };
 }
 
@@ -97,15 +146,194 @@ describe('ViewerNavigationPreviewService', () => {
     vi.useRealTimers();
   });
 
-  it('uses the opt-in request and accepts only matching projected positions', () => {
-    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
-      callback(response(supportedState())),
+  it.each([120, 150, 10000])('pairs a prediction at %s km/s without passing speed to the direct estimate', (speed) => {
+    const activeResponse = predictedResponse(speed);
+    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, cb: (response: SolarSystemGetResponse) => void) =>
+      cb(activeResponse),
     );
     TestBed.configureTestingModule({
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }],
+    });
+    const service = TestBed.inject(ViewerNavigationPreviewService);
+    service.start({ ...selection, candidateBodyId: 'moon-1' });
+    expect(service.prediction().status).toBe('idle');
+    service.calculatePrediction(speed);
+    expect(getSolarSystem).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        navigationPrediction: { scenarioCruiseSpeedKmPerSec: speed },
+        navigationEstimate: {},
+        requestIdentity: { operation: 'solar-system-get', entityType: 'solar-system', containerId: 'sol' },
+      }),
+      expect.any(Function),
+    );
+    expect(service.prediction()).toEqual({
+      status: 'ready',
+      prediction: activeResponse.navigationPrediction?.prediction,
+    });
+    expect(service.preview()).toMatchObject({ status: 'ready', estimate: { status: 'ready', distanceKm: 5 } });
+  });
+
+  it.each([
+    'revision',
+    'basis',
+    'model',
+    'timeScale',
+    'departure',
+    'candidate',
+    'host',
+    'epochOrder',
+    'horizon',
+    'coordinates',
+    'convergence',
+    'assumptions',
+    'speed',
+  ])('rejects a mismatched/invalid prediction (%s) while retaining the same-response preview', (mismatch) => {
+    const activeResponse = predictedResponse();
+    const p = activeResponse.navigationPrediction!.prediction;
+    if (p.status !== 'supported') throw new Error('Expected supported fixture');
+    switch (mismatch) {
+      case 'revision':
+        p.sourceRevision = 'b'.repeat(64);
+        break;
+      case 'basis':
+        delete (p as Partial<SupportedNavigationPrediction>).coordinateBasisId;
+        break;
+      case 'model':
+        delete (p as Partial<SupportedNavigationPrediction>).positionEvaluationModelId;
+        break;
+      case 'timeScale':
+        delete (p as Partial<SupportedNavigationPrediction>).timeScaleId;
+        break;
+      case 'departure':
+        p.departure.positionKm = { x: 999, y: 2, z: 3 };
+        break;
+      case 'candidate':
+        p.encounter.bodyId = 'different';
+        break;
+      case 'host':
+        p.arrival.hostBodyId = 'different';
+        break;
+      case 'epochOrder':
+        p.arrival.epochMs = p.departure.epochMs - 1;
+        break;
+      case 'horizon':
+        p.arrival.epochMs = p.departure.epochMs + 315_576_000_001;
+        break;
+      case 'coordinates':
+        p.encounter.positionKm.x = NaN;
+        break;
+      case 'convergence':
+        p.arrival.convergence.residualMs = 2;
+        break;
+      case 'assumptions':
+        delete (p as Partial<SupportedNavigationPrediction>).assumptions;
+        break;
+      case 'speed':
+        p.scenarioCruiseSpeedKmPerSec = 120;
+        break;
+    }
+    TestBed.configureTestingModule({
       providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
+        {
+          provide: SolarSystemService,
+          useValue: {
+            getSolarSystem: (_request: SolarSystemGetRequest, cb: (r: SolarSystemGetResponse) => void) =>
+              cb(activeResponse),
+          },
+        },
       ],
+    });
+    const service = TestBed.inject(ViewerNavigationPreviewService);
+    service.start({ ...selection, candidateBodyId: 'moon-1' });
+    service.calculatePrediction(150);
+    expect(service.prediction()).toMatchObject({ status: 'unavailable', reason: 'PAIRED_PREDICTION_INVALID' });
+    expect(service.preview()?.status).toBe('ready');
+  });
+
+  it('clears superseded predictions on edit, timeout, clear and invalid-session without accepting late replies', () => {
+    vi.useFakeTimers();
+    const callbacks: Array<(r: SolarSystemGetResponse) => void> = [];
+    const cancel = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SolarSystemService,
+          useValue: {
+            getSolarSystem: (_request: SolarSystemGetRequest, cb: (r: SolarSystemGetResponse) => void) => {
+              callbacks.push(cb);
+              return cancel;
+            },
+          },
+        },
+      ],
+    });
+    const service = TestBed.inject(ViewerNavigationPreviewService);
+    service.start({ ...selection, candidateBodyId: 'moon-1' });
+    callbacks[0](predictedResponse());
+    service.calculatePrediction(150);
+    expect(service.prediction().status).toBe('loading');
+    expect(service.preview()?.status).toBe('ready');
+    service.clearPrediction();
+    callbacks[1](predictedResponse());
+    expect(service.prediction().status).toBe('idle');
+    service.calculatePrediction(150);
+    vi.advanceTimersByTime(15_000);
+    expect(service.prediction()).toMatchObject({ status: 'unavailable', reason: 'PREDICTION_TIMEOUT' });
+    callbacks[2](predictedResponse());
+    expect(service.prediction().status).toBe('unavailable');
+    service.calculatePrediction(150);
+    service.invalidateSession();
+    callbacks[3](predictedResponse());
+    expect(service.preview()).toMatchObject({ status: 'error', reason: 'INVALID_SESSION' });
+    expect(service.prediction().status).toBe('idle');
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('replaces an older success with a nested rejection and retains only its paired baseline', () => {
+    let activeResponse = predictedResponse();
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SolarSystemService,
+          useValue: {
+            getSolarSystem: (_request: SolarSystemGetRequest, cb: (r: SolarSystemGetResponse) => void) =>
+              cb(activeResponse),
+          },
+        },
+      ],
+    });
+    const service = TestBed.inject(ViewerNavigationPreviewService);
+    service.start({ ...selection, candidateBodyId: 'moon-1' });
+    service.calculatePrediction(150);
+    expect(service.prediction().status).toBe('ready');
+    activeResponse = {
+      ...predictedResponse(),
+      navigationPrediction: {
+        success: false,
+        association: 'same-response-navigation-sources',
+        prediction: {
+          status: 'unsupported',
+          reason: 'PREDICTION_HORIZON_EXCEEDED',
+          message: 'Prediction horizon exceeded.',
+        },
+      },
+    };
+    service.calculatePrediction(150);
+    expect(service.prediction()).toEqual({
+      status: 'unavailable',
+      reason: 'PREDICTION_HORIZON_EXCEEDED',
+      message: 'Prediction horizon exceeded.',
+    });
+    expect(service.preview()).toMatchObject({ status: 'ready', estimate: { status: 'ready', distanceKm: 5 } });
+  });
+
+  it('uses the opt-in request and accepts only matching projected positions', () => {
+    const getSolarSystem = vi.fn(
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
+        callback(response(supportedState())),
+    );
+    TestBed.configureTestingModule({
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -133,14 +361,12 @@ describe('ViewerNavigationPreviewService', () => {
         candidates: [{ bodyId: 'moon-1', positionKm: { x: 2, y: 8, z: 3 } }],
       }),
     );
-    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
-      callback(activeResponse),
+    const getSolarSystem = vi.fn(
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
+        callback(activeResponse),
     );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -172,14 +398,12 @@ describe('ViewerNavigationPreviewService', () => {
       success: false,
       estimate: { status: 'failed', reason: 'ESTIMATE_NUMERIC_INVALID', message: 'Estimate failed.' },
     });
-    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
-      callback(response(supportedState(), rejected)),
+    const getSolarSystem = vi.fn(
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
+        callback(response(supportedState(), rejected)),
     );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -196,13 +420,11 @@ describe('ViewerNavigationPreviewService', () => {
       pairedEstimate({ estimate: supportedEstimate({ referenceEpochMs: 1_794_694_161_612 }) }),
     );
     const getSolarSystem = vi.fn(
-      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) => callback(activeResponse),
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
+        callback(activeResponse),
     );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -211,20 +433,18 @@ describe('ViewerNavigationPreviewService', () => {
       status: 'ready',
       estimate: { status: 'unavailable', reason: 'PAIRED_ESTIMATE_INVALID' },
     });
-
   });
 
   it('ignores a delayed response after the selection has been replaced', () => {
     const callbacks: Array<(response: SolarSystemGetResponse) => void> = [];
-    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) => {
-      callbacks.push(callback);
-      return vi.fn();
-    });
+    const getSolarSystem = vi.fn(
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) => {
+        callbacks.push(callback);
+        return vi.fn();
+      },
+    );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -248,10 +468,7 @@ describe('ViewerNavigationPreviewService', () => {
     const cancel = vi.fn();
     const getSolarSystem = vi.fn(() => cancel);
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
 
     const preview = TestBed.inject(ViewerNavigationPreviewService);
@@ -263,20 +480,20 @@ describe('ViewerNavigationPreviewService', () => {
 
   it('fails closed for missing eligibility and non-finite projected coordinates', () => {
     let activeResponse = response(supportedState());
-    const getSolarSystem = vi.fn((_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
-      callback(activeResponse),
+    const getSolarSystem = vi.fn(
+      (_request: SolarSystemGetRequest, callback: (response: SolarSystemGetResponse) => void) =>
+        callback(activeResponse),
     );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: SolarSystemService, useValue: { getSolarSystem } },
-        ViewerNavigationPreviewService,
-      ],
+      providers: [{ provide: SolarSystemService, useValue: { getSolarSystem } }, ViewerNavigationPreviewService],
     });
     const preview = TestBed.inject(ViewerNavigationPreviewService);
 
-    activeResponse = response(supportedState({
-      destination: { marketId: 'market-1', positionKm: { x: Number.NaN, y: 1, z: 2 } },
-    }));
+    activeResponse = response(
+      supportedState({
+        destination: { marketId: 'market-1', positionKm: { x: Number.NaN, y: 1, z: 2 } },
+      }),
+    );
     preview.start(selection);
     expect(preview.preview()?.status).toBe('unsupported');
 

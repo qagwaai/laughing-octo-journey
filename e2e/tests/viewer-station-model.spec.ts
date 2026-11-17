@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import type { MarketSummary } from '../../src/app/model/market-list';
-import type { PairedNavigationEstimate, ViewerBody } from '../../src/app/model/solar-system-get';
+import type {
+  PairedNavigationEstimate,
+  PairedNavigationPrediction,
+  SolarSystemGetRequest,
+  SupportedNavigationPositionState,
+  ViewerBody,
+} from '../../src/app/model/solar-system-get';
 import { resolveScenePositionFromSpatialKm } from '../../src/app/scene/viewer/viewer-formatters';
 import { ACTIVE_SHIP, setupViewerSceneTest, solarSystemGetResponse } from '../fixtures/viewer-scene-rendering-scenario';
 import { expectStationHabitatMotion } from '../helpers/station-habitat-helper';
@@ -130,51 +136,64 @@ test('previews navigation detours around the projected candidate marker in both 
   await expect(page.getByText(destinationLabel, { exact: true })).toBeVisible();
   await expect(page.getByText(candidateLabel, { exact: true })).toBeVisible();
   const readProjection = () =>
-    page.evaluate(({ destinationLabel, candidateLabel }) => {
-      const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
-      if (!canvas || !window.ng) return null;
-      const component = window.ng.getComponent(canvas) as {
-        store: { snapshot: { scene: Scene; camera: PerspectiveCamera; size: { width: number; height: number } } };
-      };
-      const scene = component.store.snapshot.scene;
-      const destination = scene.getObjectByName(destinationLabel);
-      const candidate = scene.getObjectByName(candidateLabel);
-      const route = scene.getObjectByName('navigation-preview-route') as import('three').Line | undefined;
-      if (!destination || !candidate || !route) return null;
-      const positions = route.geometry.getAttribute('position');
-      const last = positions.count - 1;
-      const { camera, size } = component.store.snapshot;
-      camera.updateMatrixWorld();
-      const screen = (point: import('three').Vector3) => {
-        point.project(camera);
-        return [point.x * size.width / 2, point.y * size.height / 2];
-      };
-      const mesh = candidate.children.find((child) => (child as Mesh).isMesh) as Mesh;
-      const markerVertices = mesh.geometry.getAttribute('position');
-      const markerScreen = Array.from({ length: markerVertices.count }, (_, index) =>
-        screen(mesh.localToWorld(mesh.position.clone().set(
-          markerVertices.getX(index), markerVertices.getY(index), markerVertices.getZ(index),
-        ))),
-      );
-      return {
-        destination: destination.position.toArray(),
-        candidate: candidate.position.toArray(),
-        endpoint: [positions.getX(last), positions.getY(last), positions.getZ(last)],
-        points: Array.from({ length: positions.count }, (_, index) =>
-          [positions.getX(index), positions.getY(index), positions.getZ(index)]),
-        visible: route.visible,
-        screenPoints: Array.from({ length: positions.count }, (_, index) =>
-          screen(route.localToWorld(route.position.clone().set(
-            positions.getX(index), positions.getY(index), positions.getZ(index),
-          )))),
-        screenBounds: {
-          minX: Math.min(...markerScreen.map((point) => point[0]!)),
-          maxX: Math.max(...markerScreen.map((point) => point[0]!)),
-          minY: Math.min(...markerScreen.map((point) => point[1]!)),
-          maxY: Math.max(...markerScreen.map((point) => point[1]!)),
-        },
-      };
-    }, { destinationLabel, candidateLabel });
+    page.evaluate(
+      ({ destinationLabel, candidateLabel }) => {
+        const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
+        if (!canvas || !window.ng) return null;
+        const component = window.ng.getComponent(canvas) as {
+          store: { snapshot: { scene: Scene; camera: PerspectiveCamera; size: { width: number; height: number } } };
+        };
+        const scene = component.store.snapshot.scene;
+        const destination = scene.getObjectByName(destinationLabel);
+        const candidate = scene.getObjectByName(candidateLabel);
+        const route = scene.getObjectByName('navigation-preview-route') as import('three').Line | undefined;
+        if (!destination || !candidate || !route) return null;
+        const positions = route.geometry.getAttribute('position');
+        const last = positions.count - 1;
+        const { camera, size } = component.store.snapshot;
+        camera.updateMatrixWorld();
+        const screen = (point: import('three').Vector3) => {
+          point.project(camera);
+          return [(point.x * size.width) / 2, (point.y * size.height) / 2];
+        };
+        const mesh = candidate.children.find((child) => (child as Mesh).isMesh) as Mesh;
+        const markerVertices = mesh.geometry.getAttribute('position');
+        const markerScreen = Array.from({ length: markerVertices.count }, (_, index) =>
+          screen(
+            mesh.localToWorld(
+              mesh.position
+                .clone()
+                .set(markerVertices.getX(index), markerVertices.getY(index), markerVertices.getZ(index)),
+            ),
+          ),
+        );
+        return {
+          destination: destination.position.toArray(),
+          candidate: candidate.position.toArray(),
+          endpoint: [positions.getX(last), positions.getY(last), positions.getZ(last)],
+          points: Array.from({ length: positions.count }, (_, index) => [
+            positions.getX(index),
+            positions.getY(index),
+            positions.getZ(index),
+          ]),
+          visible: route.visible,
+          screenPoints: Array.from({ length: positions.count }, (_, index) =>
+            screen(
+              route.localToWorld(
+                route.position.clone().set(positions.getX(index), positions.getY(index), positions.getZ(index)),
+              ),
+            ),
+          ),
+          screenBounds: {
+            minX: Math.min(...markerScreen.map((point) => point[0]!)),
+            maxX: Math.max(...markerScreen.map((point) => point[0]!)),
+            minY: Math.min(...markerScreen.map((point) => point[1]!)),
+            maxY: Math.max(...markerScreen.map((point) => point[1]!)),
+          },
+        };
+      },
+      { destinationLabel, candidateLabel },
+    );
   const routePresent = () =>
     page.evaluate(() => {
       const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
@@ -191,13 +210,17 @@ test('previews navigation detours around the projected candidate marker in both 
     }
     const expectedDestination = resolveScenePositionFromSpatialKm(destinationKm, mode);
     const expectedCandidate = resolveScenePositionFromSpatialKm(candidateKm, mode);
-    await expect.poll(async () => {
-      const projection = await readProjection();
-      if (!projection) return false;
-      return projection.destination.every((value, index) => Math.abs(value - expectedDestination[index]) < 0.0001) &&
-        projection.candidate.every((value, index) => Math.abs(value - expectedCandidate[index]) < 0.0001) &&
-        projection.endpoint.every((value, index) => Math.abs(value - expectedDestination[index]) < 0.0001);
-    }).toBe(true);
+    await expect
+      .poll(async () => {
+        const projection = await readProjection();
+        if (!projection) return false;
+        return (
+          projection.destination.every((value, index) => Math.abs(value - expectedDestination[index]) < 0.0001) &&
+          projection.candidate.every((value, index) => Math.abs(value - expectedCandidate[index]) < 0.0001) &&
+          projection.endpoint.every((value, index) => Math.abs(value - expectedDestination[index]) < 0.0001)
+        );
+      })
+      .toBe(true);
     await expect(panel.getByTestId('navigation-direct-distance')).toContainText('158,113,883.008 km');
     const projection = await readProjection();
     expect(projection).not.toBeNull();
@@ -207,8 +230,8 @@ test('previews navigation detours around the projected candidate marker in both 
         const start = projection.screenPoints[index - 1]!;
         const end = projection.screenPoints[index]!;
         for (let sample = 0; sample <= 100; sample++) {
-          const x = start[0]! + (end[0]! - start[0]!) * sample / 100;
-          const y = start[1]! + (end[1]! - start[1]!) * sample / 100;
+          const x = start[0]! + ((end[0]! - start[0]!) * sample) / 100;
+          const y = start[1]! + ((end[1]! - start[1]!) * sample) / 100;
           const bound = projection.screenBounds;
           expect(x < bound.minX - 2 || x > bound.maxX + 2 || y < bound.minY - 2 || y > bound.maxY + 2).toBe(true);
         }
@@ -223,7 +246,10 @@ test('previews navigation detours around the projected candidate marker in both 
       const marker = svg.querySelector('rect');
       if (!line || !departure || !destination || !marker) throw new Error('Missing navigation plot geometry.');
       return {
-        points: line.getAttribute('points')!.split(' ').map((point) => point.split(',').map(Number)),
+        points: line
+          .getAttribute('points')!
+          .split(' ')
+          .map((point) => point.split(',').map(Number)),
         departure: [Number(departure.getAttribute('cx')), Number(departure.getAttribute('cy'))],
         destination: [Number(destination.getAttribute('cx')), Number(destination.getAttribute('cy'))],
         center: [
@@ -238,30 +264,39 @@ test('previews navigation detours around the projected candidate marker in both 
     const last = projection.points.at(-1)!;
     const scale = (plot.destination[0]! - plot.departure[0]!) / (last[0]! - first[0]!);
     for (const point of plot.points) {
-      expect(projection.points.some((vertex) =>
-        Math.abs(plot.departure[0]! + (vertex[0]! - first[0]!) * scale - point[0]!) < 0.001 &&
-        Math.abs(plot.departure[1]! - (vertex[2]! - first[2]!) * scale - point[1]!) < 0.001,
-      )).toBe(true);
+      expect(
+        projection.points.some(
+          (vertex) =>
+            Math.abs(plot.departure[0]! + (vertex[0]! - first[0]!) * scale - point[0]!) < 0.001 &&
+            Math.abs(plot.departure[1]! - (vertex[2]! - first[2]!) * scale - point[1]!) < 0.001,
+        ),
+      ).toBe(true);
     }
     for (let index = 1; index < plot.points.length; index++) {
       const start = plot.points[index - 1]!;
       const end = plot.points[index]!;
       const dx = end[0]! - start[0]!;
       const dy = end[1]! - start[1]!;
-      const fraction = Math.max(0, Math.min(1,
-        ((plot.center[0]! - start[0]!) * dx + (plot.center[1]! - start[1]!) * dy) / (dx * dx + dy * dy),
-      ));
-      expect(Math.hypot(
-        plot.center[0]! - start[0]! - fraction * dx,
-        plot.center[1]! - start[1]! - fraction * dy,
-      )).toBeGreaterThan(plot.radius);
+      const fraction = Math.max(
+        0,
+        Math.min(1, ((plot.center[0]! - start[0]!) * dx + (plot.center[1]! - start[1]!) * dy) / (dx * dx + dy * dy)),
+      );
+      expect(
+        Math.hypot(plot.center[0]! - start[0]! - fraction * dx, plot.center[1]! - start[1]! - fraction * dy),
+      ).toBeGreaterThan(plot.radius);
     }
-    await test.info().attach(`candidate-detour-${mode}`, { body: await panel.locator('svg').screenshot(), contentType: 'image/png' });
+    await test
+      .info()
+      .attach(`candidate-detour-${mode}`, { body: await panel.locator('svg').screenshot(), contentType: 'image/png' });
   }
   await page.getByTestId('viewer-group-planets').uncheck();
   await page.getByTestId('viewer-group-stations').uncheck();
-  await expect(panel.getByText('The planets object group is hidden; the projected marker is shown separately.')).toBeVisible();
-  await expect(panel.getByText('The stations object group is hidden; the projected marker is shown separately.')).toBeVisible();
+  await expect(
+    panel.getByText('The planets object group is hidden; the projected marker is shown separately.'),
+  ).toBeVisible();
+  await expect(
+    panel.getByText('The stations object group is hidden; the projected marker is shown separately.'),
+  ).toBeVisible();
   await expect.poll(async () => (await readProjection()) !== null).toBe(true);
   await page.getByTestId('viewer-group-planets').check();
   await page.getByTestId('viewer-group-stations').check();
@@ -271,7 +306,9 @@ test('previews navigation detours around the projected candidate marker in both 
   ]);
   await panel.getByLabel('Optional celestial candidate').selectOption('');
   await expect(panel.locator('svg rect.viewer-navigation-preview__candidate-marker')).toHaveCount(0);
-  await expect.poll(async () => (await panel.locator('svg polyline').getAttribute('points'))?.split(' ').length).toBe(2);
+  await expect
+    .poll(async () => (await panel.locator('svg polyline').getAttribute('points'))?.split(' ').length)
+    .toBe(2);
   candidatePosition = { ...ACTIVE_SHIP.spatial.positionKm };
   await panel.getByLabel('Optional celestial candidate').selectOption('sol-mars');
   await expect(panel.getByTestId('navigation-detour-unavailable')).toBeVisible();
@@ -311,6 +348,234 @@ test('previews navigation detours around the projected candidate marker in both 
   await expect(panel).toBeHidden();
   await expect(page.getByText(replacementLabel, { exact: true })).toHaveCount(0);
   await expect.poll(routePresent).toBe(false);
+});
+test('calculates navigation predictions with explicit speed, pending feedback and independent future markers', async ({
+  page,
+}, testInfo) => {
+  const { mock } = await setupViewerSceneTest(page);
+  const candidate: ViewerBody = {
+    id: 'sol-luna',
+    bodyType: 'moon',
+    displayName: 'Luna',
+    spatial: { solarSystemId: 'sol', frame: 'barycentric', positionKm: { x: 0, y: 1, z: 0 }, epochMs: 1 },
+  };
+  const destinationPosition = { x: 200_000_000, y: 50_000_000, z: 0 };
+  const t0 = ACTIVE_SHIP.spatial.epochMs;
+  const revision = 'a'.repeat(64);
+  let pending: { request: SolarSystemGetRequest; state: SupportedNavigationPositionState } | undefined;
+  const predictionRequests: SolarSystemGetRequest[] = [];
+  mock.on('solar-system-get-request', (payload) => {
+    const request = payload as SolarSystemGetRequest;
+    const n = request.navigation;
+    if (!n) return { event: 'solar-system-get-response', data: solarSystemGetResponse([candidate, marsStation]) };
+    const state: SupportedNavigationPositionState = {
+      status: 'supported',
+      solarSystemId: 'sol',
+      coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
+      epochMs: t0,
+      departure: { shipId: ACTIVE_SHIP.id, positionKm: ACTIVE_SHIP.spatial.positionKm },
+      destination: { marketId: marsStation.id, hostBodyId: 'sol-mars', positionKm: destinationPosition },
+      candidates: n.candidateBodyId
+        ? [{ bodyId: n.candidateBodyId, positionKm: { x: 150_000_000, y: 100_000_000, z: 0 } }]
+        : [],
+      provenance: {
+        evaluationModelId: 'sol-catalog-kepler-position-v1',
+        sourceRevision: revision,
+        positionToleranceKm: 0.001,
+      },
+      previewEligibility: { status: 'eligible-with-warnings', reason: 'CLEARANCE_UNVERIFIED' },
+    };
+    if (request.navigationPrediction) {
+      predictionRequests.push(request);
+      pending = { request, state };
+      return null;
+    }
+    return {
+      event: 'solar-system-get-response',
+      data: {
+        ...solarSystemGetResponse([candidate, marsStation]),
+        navigationState: state,
+        navigationEstimate: pairedDistanceEstimate(marsStation.id, 158_113_883.008),
+      },
+    };
+  });
+  mock.on('market-list-by-location-request', () => ({
+    event: 'market-list-by-location-response',
+    data: { success: true, markets: [stationMarket(marsStation)] },
+  }));
+  const respond = (rejection?: boolean) => {
+    if (!pending) throw new Error('Expected pending prediction request.');
+    const { request, state } = pending;
+    const speed = request.navigationPrediction!.scenarioCruiseSpeedKmPerSec;
+    const prediction: PairedNavigationPrediction = rejection
+      ? {
+          success: false,
+          association: 'same-response-navigation-sources',
+          prediction: {
+            status: 'unsupported',
+            reason: 'PREDICTION_HORIZON_EXCEEDED',
+            message: 'Prediction horizon exceeded.',
+          },
+        }
+      : {
+          success: true,
+          association: 'same-response-navigation-sources',
+          prediction: {
+            status: 'supported',
+            solarSystemId: 'sol',
+            coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
+            positionEvaluationModelId: 'sol-catalog-kepler-position-v1',
+            predictionModelId: 'constant-speed-straight-legs-moving-targets-v1',
+            timeScaleId: 'stellar:unix-ms-uniform:v1',
+            sourceRevision: revision,
+            classification: 'illustrative-not-eta',
+            scenarioCruiseSpeedKmPerSec: speed,
+            speedProvenance: 'caller-supplied-scenario',
+            departure: { ...state.departure, epochMs: t0 },
+            encounter: {
+              bodyId: candidate.id,
+              epochMs: t0 + 1_000_000,
+              positionKm: { x: 100_000_000 + speed * 1000, y: 150_000_000, z: 0 },
+              convergence: { iterations: 3, residualMs: 0.2 },
+            },
+            arrival: {
+              marketId: marsStation.id,
+              hostBodyId: 'sol-mars',
+              epochMs: t0 + 2_000_000,
+              positionKm: { x: 200_000_000, y: 80_000_000 + speed * 1000, z: 0 },
+              hostPositionKm: { x: 199_999_000, y: 80_000_000 + speed * 1000, z: 0 },
+              convergence: { iterations: 4, residualMs: 0.3 },
+            },
+            assumptions: {
+              legDistanceStraightLine: true,
+              constantScenarioSpeed: true,
+              accelerationBrakingOmitted: true,
+              gravityAndAssistEffectsOmitted: true,
+              departureFixedAtNavigationEpoch: true,
+              encounterAtBodyCenter: true,
+            },
+            warnings: ['CLEARANCE_UNVERIFIED'],
+          },
+        };
+    mock.push('solar-system-get-response', {
+      ...solarSystemGetResponse([candidate, marsStation]),
+      correlationId: request.correlationId,
+      requestIdentity: request.requestIdentity,
+      navigationState: state,
+      navigationEstimate: pairedDistanceEstimate(marsStation.id, 158_113_883.008),
+      navigationPrediction: prediction,
+    });
+  };
+  await new GameShellPage(page).openViewer();
+  const viewer = new ViewerPage(page);
+  await viewer.selectSystem('Sol');
+  await viewer.expectSceneLoaded();
+  await viewer.switchToDistanceView();
+  await page.getByRole('button', { name: 'Plan route to Mars Orbital Market.' }).click();
+  const panel = page.getByTestId('navigation-preview');
+  const speed = panel.getByLabel('Scenario speed (km/s)');
+  const calculate = panel.getByRole('button', { name: 'Calculate prediction', exact: true });
+  await expect(speed).toHaveValue('');
+  await expect(calculate).toBeDisabled();
+  await panel.getByLabel('Optional celestial candidate').selectOption(candidate.id);
+  await expect(speed).toHaveValue('');
+  await speed.fill('10');
+  await expect(calculate).toBeDisabled();
+  await speed.fill('150');
+  await calculate.click();
+  await expect(panel.getByTestId('navigation-prediction-loading')).toBeVisible();
+  await expect(panel.getByRole('progressbar')).toBeVisible();
+  await expect(panel.getByTestId('navigation-direct-distance')).toContainText('158,113,883.008 km');
+  await expect.poll(() => pending !== undefined).toBe(true);
+  respond();
+  await expect(panel.getByTestId('navigation-prediction-ready')).toBeVisible();
+  await expect(panel.getByTestId('navigation-prediction-ready')).toContainText('not physical UTC or ETA');
+  await panel.getByText('Exact epochs and model details', { exact: true }).click();
+  await expect(panel.getByTestId('navigation-prediction-ready')).toContainText(`${t0 + 1_000_000} ms`);
+  const readGeometry = () =>
+    page.evaluate(() => {
+      const element = document.querySelector('app-viewer-scene-page ngt-canvas');
+      const component =
+        element && (window.ng?.getComponent(element) as { store: { snapshot: { scene: Scene } } } | null);
+      const scene = component?.store.snapshot.scene;
+      const line = scene?.getObjectByName('navigation-prediction-route') as import('three').Line | undefined;
+      const positions = line?.geometry.getAttribute('position');
+      return {
+        hasOldSweep: !!scene?.getObjectByName('navigation-preview-route'),
+        hasDirectReference: !!scene?.getObjectByName('navigation-preview-direct-reference'),
+        first: positions ? [positions.getX(0), positions.getY(0), positions.getZ(0)] : null,
+        last: positions
+          ? [
+              positions.getX(positions.count - 1),
+              positions.getY(positions.count - 1),
+              positions.getZ(positions.count - 1),
+            ]
+          : null,
+      };
+    });
+  for (const mode of ['proportional', 'compressed'] as const) {
+    if (mode === 'compressed') {
+      await page.getByTestId('viewer-distance-mode').locator('summary').click();
+      await page.getByTestId('viewer-distance-toggle').click();
+    }
+    const start = resolveScenePositionFromSpatialKm(ACTIVE_SHIP.spatial.positionKm, mode);
+    const end = resolveScenePositionFromSpatialKm({ x: 200_000_000, y: 80_150_000, z: 0 }, mode);
+    await expect
+      .poll(async () => {
+        const current = await readGeometry();
+        return (
+          !!current.first &&
+          !!current.last &&
+          current.first.every((value, i) => Math.abs(value - start[i]!) < 0.0001) &&
+          current.last.every((value, i) => Math.abs(value - end[i]!) < 0.0001)
+        );
+      })
+      .toBe(true);
+    const geometry = await readGeometry();
+    expect(geometry.hasOldSweep).toBe(false);
+    expect(geometry.hasDirectReference).toBe(true);
+    for (let i = 0; i < 3; i++) {
+      expect(geometry.first![i]).toBeCloseTo(start[i]!, 4);
+      expect(geometry.last![i]).toBeCloseTo(end[i]!, 4);
+    }
+    await expect(panel.locator('svg .viewer-navigation-prediction__candidate')).toHaveCount(1);
+    await expect(panel.locator('svg .viewer-navigation-prediction__arrival')).toHaveCount(1);
+    await panel.locator('svg').scrollIntoViewIfNeeded();
+    await testInfo.attach(`prediction-${mode}`, { body: await panel.screenshot(), contentType: 'image/png' });
+  }
+  for (const value of ['120', '10000']) {
+    pending = undefined;
+    await speed.fill(value);
+    await expect(panel.getByTestId('navigation-prediction-ready')).toHaveCount(0);
+    await calculate.click();
+    await expect.poll(() => pending !== undefined).toBe(true);
+    respond();
+    await expect(panel.getByTestId('navigation-prediction-ready')).toBeVisible();
+    await expect(panel.getByTestId('navigation-direct-distance')).toContainText('158,113,883.008 km');
+  }
+  pending = undefined;
+  await calculate.click();
+  await expect.poll(() => pending !== undefined).toBe(true);
+  respond(true);
+  await expect(panel.getByTestId('navigation-prediction-error')).toContainText('PREDICTION_HORIZON_EXCEEDED');
+  await expect(panel.getByTestId('navigation-prediction-ready')).toHaveCount(0);
+  await expect(panel.locator('svg .viewer-navigation-prediction__route')).toHaveCount(0);
+  await panel.getByTestId('navigation-prediction-error').scrollIntoViewIfNeeded();
+  await testInfo.attach('prediction-rejected', { body: await panel.screenshot(), contentType: 'image/png' });
+  await panel.getByRole('button', { name: 'Clear prediction', exact: true }).click();
+  await expect(speed).toHaveValue('');
+  await expect(panel.locator('svg polyline')).toHaveCount(1);
+  expect(predictionRequests.every((request) => JSON.stringify(request.navigationEstimate) === '{}')).toBe(true);
+  pending = undefined;
+  await speed.fill('150');
+  await calculate.click();
+  await expect.poll(() => pending !== undefined).toBe(true);
+  await speed.fill('120');
+  respond();
+  await expect(panel.getByTestId('navigation-prediction-ready')).toHaveCount(0);
+  await expect(panel.getByTestId('navigation-prediction-loading')).toHaveCount(0);
+  mock.push('invalid-session', { message: 'Session expired.' });
+  await expect(panel.getByTestId('navigation-preview-error')).toContainText('INVALID_SESSION');
 });
 const genericStation: ViewerBody = {
   ...marsStation,

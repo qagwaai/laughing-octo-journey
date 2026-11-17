@@ -22,6 +22,7 @@ import {
 } from '../../model/external-object-descriptor';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import { resolveCatalogDiameterM } from '../../model/physical-catalog';
+import { INVALID_SESSION_EVENT } from '../../model/session';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
@@ -36,14 +37,15 @@ import {
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
 import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
+import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import {
   buildNavigationDetour,
   NAVIGATION_CANDIDATE_MARKER_RADIUS,
   NAVIGATION_DETOUR_MARGIN,
   type NavigationDetour,
+  type NavigationGeometryState,
   type NavigationScenePoint,
 } from '../../scene/viewer/viewer-navigation-detour';
-import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
 import { appLogger } from '../../services/logger';
@@ -52,20 +54,11 @@ import { SessionService } from '../../services/session.service';
 import { ShipService } from '../../services/ship.service';
 import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
-import { ViewerTargetService } from '../../services/viewer-target.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { ViewerNavigationPreviewService } from '../../services/viewer-navigation-preview.service';
+import { ViewerTargetService } from '../../services/viewer-target.service';
 import { resolveNavigationState } from '../navigation-state';
-import { ViewerDataFacade } from './viewer-data-facade';
-import { formatViewerNumber } from './viewer-number-format';
 import { AstronomyCreditList } from '../public/astronomy-credit-list';
-import {
-  catalogSnapshotDate,
-  REFERENCE_COLLAPSE_LIMIT,
-  resolveViewerDataCredits,
-  viewerBodyReferences,
-  visibleBodyReferences,
-} from './viewer-data-attribution';
 import {
   APPROXIMATE_PREFIX,
   approximatePrefix,
@@ -75,6 +68,15 @@ import {
   isLikelyBodyType,
   secondaryCatalogName,
 } from './viewer-body-metadata';
+import {
+  catalogSnapshotDate,
+  REFERENCE_COLLAPSE_LIMIT,
+  resolveViewerDataCredits,
+  viewerBodyReferences,
+  visibleBodyReferences,
+} from './viewer-data-attribution';
+import { ViewerDataFacade } from './viewer-data-facade';
+import { formatViewerNumber } from './viewer-number-format';
 
 interface ViewerSceneNavigationState {
   playerName?: string;
@@ -319,7 +321,9 @@ export default class ViewerScenePage implements OnDestroy {
   protected readonly hasCygnusX1BlackHole = computed(() => this.visibleSceneBodies().some(isCygnusX1BlackHole));
 
   /** True when at least one ship in the active list has missing/invalid spatial state. */
-  protected hasUnknownSpatialShip = computed<boolean>(() => this.visibleSceneShips().some((s) => !isValidShipSpatial(s.spatial)));
+  protected hasUnknownSpatialShip = computed<boolean>(() =>
+    this.visibleSceneShips().some((s) => !isValidShipSpatial(s.spatial)),
+  );
 
   /** Inputs forwarded to `<app-viewer-system-scene *canvasContent />`. */
   private viewerTargetService = inject(ViewerTargetService);
@@ -327,6 +331,39 @@ export default class ViewerScenePage implements OnDestroy {
   private navigationPreviewService = inject(ViewerNavigationPreviewService);
 
   protected readonly navigationPreview = this.navigationPreviewService.preview.asReadonly();
+  protected readonly navigationPrediction = this.navigationPreviewService.prediction.asReadonly();
+  protected readonly predictionSpeed = signal<number | null>(null);
+  protected readonly predictionSpeedValid = computed(() => {
+    const speed = this.predictionSpeed();
+    return speed !== null && Number.isFinite(speed) && speed >= 120 && speed <= 10000;
+  });
+  protected readonly supportedPrediction = computed(() => {
+    const result = this.navigationPrediction();
+    return result.status === 'ready' ? result.prediction : null;
+  });
+  protected readonly predictionGeometryState = computed<NavigationGeometryState | null>(() => {
+    const p = this.supportedPrediction();
+    return p
+      ? {
+          departure: p.departure,
+          destination: p.arrival,
+          candidates: [p.encounter],
+        }
+      : null;
+  });
+  protected readonly predictionDestinationLabel = computed(() => {
+    const p = this.supportedPrediction();
+    const preview = this.navigationPreview();
+    return p && preview
+      ? `${this.t.game.viewer.navigationPredictionArrival}: ${preview.selection.destinationName} — ${this.gameTimeLabel(p.arrival.epochMs)}`
+      : '';
+  });
+  protected readonly predictionCandidateLabel = computed(() => {
+    const p = this.supportedPrediction();
+    return p
+      ? `${this.t.game.viewer.navigationPredictionEncounter}: ${this.navigationCandidateName()} — ${this.gameTimeLabel(p.encounter.epochMs)}`
+      : '';
+  });
   protected readonly projectedNavigationState = computed(() => {
     const preview = this.navigationPreview();
     return preview?.status === 'ready' ? preview.state : null;
@@ -343,13 +380,19 @@ export default class ViewerScenePage implements OnDestroy {
   });
   protected readonly navigationDetour = computed<NavigationDetour | null>(() => {
     const preview = this.navigationPreview();
-    return preview?.status === 'ready' ? buildNavigationDetour(preview.state, this.distanceMode()) : null;
+    if (preview?.status !== 'ready') return null;
+    const predictionState = this.predictionGeometryState();
+    if (predictionState) return buildNavigationDetour(predictionState, this.distanceMode());
+    return this.navigationPrediction().status === 'idle'
+      ? buildNavigationDetour(preview.state, this.distanceMode())
+      : null;
   });
   protected readonly navigationRoutePoints = computed(() => {
     const detour = this.navigationDetour();
     return detour && detour.status !== 'unavailable' ? detour.points : null;
   });
   protected readonly navigationDetour3dUnavailable = signal(false);
+  protected readonly navigationPrediction3dUnavailable = signal(false);
   protected readonly navigationCandidateBodies = computed(() =>
     this.bodies().filter((body) => ['planet', 'moon'].includes(body.bodyType.trim().toLowerCase())),
   );
@@ -364,17 +407,41 @@ export default class ViewerScenePage implements OnDestroy {
 
     const departure = resolveScenePositionFromSpatialKm(preview.state.departure.positionKm, this.distanceMode());
     const destination = resolveScenePositionFromSpatialKm(preview.state.destination.positionKm, this.distanceMode());
-    const candidatePosition = preview.state.candidates[0]?.positionKm;
+    const predictionState = this.predictionGeometryState();
+    const drawState = predictionState ?? preview.state;
+    const routeDestination = resolveScenePositionFromSpatialKm(drawState.destination.positionKm, this.distanceMode());
+    const candidatePosition = drawState.candidates[0]?.positionKm;
     const candidate = candidatePosition
       ? resolveScenePositionFromSpatialKm(candidatePosition, this.distanceMode())
       : null;
     const detour = this.navigationDetour();
     const route = detour && detour.status !== 'unavailable' ? detour.points : null;
-    const markerBounds: NavigationScenePoint[] = candidate ? [
-      [candidate[0] - NAVIGATION_CANDIDATE_MARKER_RADIUS, candidate[1], candidate[2] - NAVIGATION_CANDIDATE_MARKER_RADIUS],
-      [candidate[0] + NAVIGATION_CANDIDATE_MARKER_RADIUS, candidate[1], candidate[2] + NAVIGATION_CANDIDATE_MARKER_RADIUS],
-    ] : [];
-    const positions = [...(route ?? [departure, destination]), ...markerBounds];
+    const markerBounds: NavigationScenePoint[] = candidate
+      ? [
+          [
+            candidate[0] - NAVIGATION_CANDIDATE_MARKER_RADIUS,
+            candidate[1],
+            candidate[2] - NAVIGATION_CANDIDATE_MARKER_RADIUS,
+          ],
+          [
+            candidate[0] + NAVIGATION_CANDIDATE_MARKER_RADIUS,
+            candidate[1],
+            candidate[2] + NAVIGATION_CANDIDATE_MARKER_RADIUS,
+          ],
+        ]
+      : [];
+    const frozenCandidatePosition = preview.state.candidates[0]?.positionKm;
+    const frozenCandidate = frozenCandidatePosition
+      ? resolveScenePositionFromSpatialKm(frozenCandidatePosition, this.distanceMode())
+      : null;
+    const positions = [
+      ...(route ?? []),
+      departure,
+      destination,
+      routeDestination,
+      ...markerBounds,
+      ...(frozenCandidate ? [frozenCandidate] : []),
+    ];
     const minX = Math.min(...positions.map((position) => position[0]));
     const maxX = Math.max(...positions.map((position) => position[0]));
     const minY = Math.min(...positions.map((position) => position[2]));
@@ -395,21 +462,34 @@ export default class ViewerScenePage implements OnDestroy {
     });
     const plotDeparture = project(departure);
     const plotDestination = project(destination);
+    const plotArrival = predictionState ? project(routeDestination) : null;
     const plotCandidate = candidate ? project(candidate) : null;
     const markerRadius = NAVIGATION_CANDIDATE_MARKER_RADIUS * scale;
-    const unavailable = !!plotCandidate && (
-      Math.hypot(plotCandidate.x - plotDeparture.x, plotCandidate.y - plotDeparture.y) <= markerRadius + 8 ||
-      Math.hypot(plotCandidate.x - plotDestination.x, plotCandidate.y - plotDestination.y) <= markerRadius + 10
-    );
+    const unavailable =
+      !!plotCandidate &&
+      (Math.hypot(plotCandidate.x - plotDeparture.x, plotCandidate.y - plotDeparture.y) <= markerRadius + 8 ||
+        Math.hypot(
+          plotCandidate.x - (plotArrival ?? plotDestination).x,
+          plotCandidate.y - (plotArrival ?? plotDestination).y,
+        ) <=
+          markerRadius + 10);
 
     return {
       departure: plotDeparture,
       destination: plotDestination,
       candidate: plotCandidate,
+      frozenCandidate: predictionState && frozenCandidate ? project(frozenCandidate) : null,
+      arrival: plotArrival,
       unavailable,
-      routePoints: route && !unavailable ? route.map(project).map((point) => `${point.x},${point.y}`).join(' ') : null,
+      routePoints:
+        route && !unavailable
+          ? route
+              .map(project)
+              .map((point) => `${point.x},${point.y}`)
+              .join(' ')
+          : null,
       routeStrokeWidth: candidate ? Math.min(2.5, NAVIGATION_DETOUR_MARGIN * scale) : 2.5,
-      candidateMarkerStrokeWidth: Math.min(2, NAVIGATION_DETOUR_MARGIN * scale / 2),
+      candidateMarkerStrokeWidth: Math.min(2, (NAVIGATION_DETOUR_MARGIN * scale) / 2),
       candidateMarkerSize: candidate ? markerRadius * Math.SQRT2 : 0,
     };
   });
@@ -462,7 +542,29 @@ export default class ViewerScenePage implements OnDestroy {
     }
   }
 
+  protected changePredictionSpeed(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.predictionSpeed.set(target.value === '' ? null : target.valueAsNumber);
+    this.navigationPreviewService.clearPrediction();
+  }
+
+  protected calculateNavigationPrediction(): void {
+    const speed = this.predictionSpeed();
+    if (speed !== null) this.navigationPreviewService.calculatePrediction(speed);
+  }
+
+  protected clearNavigationPrediction(): void {
+    this.navigationPreviewService.clearPrediction();
+    this.predictionSpeed.set(null);
+  }
+
+  protected gameTimeLabel(epochMs: number): string {
+    return new Date(epochMs).toISOString();
+  }
+
   protected clearNavigationPreview(): void {
+    this.predictionSpeed.set(null);
     this.navigationPreviewService.clear();
   }
 
@@ -505,7 +607,10 @@ export default class ViewerScenePage implements OnDestroy {
     if (hovered && viewerBodyGroup(hovered) === group) this.hoveredBody.set(null);
     const focused = this.focusedPlanet();
     if (focused && viewerBodyGroup(focused) === group) this.focusedPlanet.set(null);
-    if (!this.targetBody() && !this.visibleSceneShips().some((ship) => ship.id === this.viewerTargetService.targetBodyId())) {
+    if (
+      !this.targetBody() &&
+      !this.visibleSceneShips().some((ship) => ship.id === this.viewerTargetService.targetBodyId())
+    ) {
       this.viewerTargetService.clearTarget();
       this.stationModelStatus.set(null);
     }
@@ -548,8 +653,12 @@ export default class ViewerScenePage implements OnDestroy {
   }));
 
   private planetTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private unsubscribeInvalidSession?: () => void;
 
   ngOnInit(): void {
+    this.unsubscribeInvalidSession = this.socketService.on(INVALID_SESSION_EVENT, () => {
+      this.navigationPreviewService.invalidateSession();
+    });
     // Subscribe to route param changes
     this.route.paramMap.subscribe((params) => {
       const id = params.get('solarSystemId');
@@ -591,6 +700,7 @@ export default class ViewerScenePage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unsubscribeInvalidSession?.();
     this.navigationPreviewService.clear();
     this.viewerDataFacade.dispose();
     if (this.planetTransitionTimer !== null) {

@@ -202,8 +202,9 @@ export interface SupportedNavigationPositionState {
   coordinateBasisId: string;
   epochMs: number;
   departure: { shipId: string; positionKm: NavigationPositionVector };
-  destination: { marketId: string; positionKm: NavigationPositionVector };
+  destination: { marketId: string; hostBodyId?: string; positionKm: NavigationPositionVector };
   candidates: Array<{ bodyId: string; positionKm: NavigationPositionVector }>;
+  provenance?: { evaluationModelId: string; sourceRevision: string; positionToleranceKm: number };
   previewEligibility: NavigationPreviewEligibility;
 }
 
@@ -258,6 +259,58 @@ export interface PairedNavigationEstimate {
   estimate: NavigationRouteEstimate;
 }
 
+export interface NavigationPredictionOptions {
+  scenarioCruiseSpeedKmPerSec: number;
+}
+
+export interface NavigationPredictionConvergence {
+  iterations: number;
+  residualMs: number;
+}
+
+export interface SupportedNavigationPrediction {
+  status: 'supported';
+  solarSystemId: 'sol';
+  coordinateBasisId: 'stellar:sol:catalog-cartesian:v1';
+  positionEvaluationModelId: 'sol-catalog-kepler-position-v1';
+  predictionModelId: 'constant-speed-straight-legs-moving-targets-v1';
+  timeScaleId: 'stellar:unix-ms-uniform:v1';
+  sourceRevision: string;
+  classification: 'illustrative-not-eta';
+  scenarioCruiseSpeedKmPerSec: number;
+  speedProvenance: 'caller-supplied-scenario';
+  departure: { shipId: string; epochMs: number; positionKm: NavigationPositionVector };
+  encounter: {
+    bodyId: string;
+    epochMs: number;
+    positionKm: NavigationPositionVector;
+    convergence: NavigationPredictionConvergence;
+  };
+  arrival: {
+    marketId: string;
+    hostBodyId: string;
+    epochMs: number;
+    positionKm: NavigationPositionVector;
+    hostPositionKm: NavigationPositionVector;
+    convergence: NavigationPredictionConvergence;
+  };
+  assumptions: {
+    legDistanceStraightLine: true;
+    constantScenarioSpeed: true;
+    accelerationBrakingOmitted: true;
+    gravityAndAssistEffectsOmitted: true;
+    departureFixedAtNavigationEpoch: true;
+    encounterAtBodyCenter: true;
+  };
+  warnings: ['CLEARANCE_UNVERIFIED'];
+}
+
+export interface PairedNavigationPrediction {
+  success: boolean;
+  association: 'same-response-navigation-sources';
+  prediction: SupportedNavigationPrediction | RejectedNavigationRouteEstimate;
+}
+
 export interface SolarSystemGetRequest {
   playerName: string;
   sessionKey: string;
@@ -269,11 +322,14 @@ export interface SolarSystemGetRequest {
   requestId?: string;
   navigation?: NavigationPositionRequest;
   navigationEstimate?: NavigationEstimateOptions;
+  navigationPrediction?: NavigationPredictionOptions;
 }
 
 /** Naming fields are independently defined by solar-system-get-response.schema.json. */
-export interface SolarSystemGetSummary
-  extends Omit<SolarSystemSummary, 'displayName' | 'settlementName' | 'catalogName' | 'aliases'> {
+export interface SolarSystemGetSummary extends Omit<
+  SolarSystemSummary,
+  'displayName' | 'settlementName' | 'catalogName' | 'aliases'
+> {
   /** Authoritative combined label; do not reconstruct from secondary fields. */
   displayName: string;
   settlementName: string | null;
@@ -293,6 +349,7 @@ export interface SolarSystemGetResponse {
   bodies: CanonicalViewerBody[];
   navigationState?: NavigationPositionState;
   navigationEstimate?: PairedNavigationEstimate;
+  navigationPrediction?: PairedNavigationPrediction;
   requestId?: string;
 }
 

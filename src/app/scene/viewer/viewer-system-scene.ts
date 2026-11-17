@@ -16,24 +16,22 @@ import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsOrbitControls } from 'angular-three-soba/controls';
 import { BufferGeometry, Color, IcosahedronGeometry, Vector3 } from 'three';
 import { ASTEROID_GENERATOR_VERSION, resolveCelestialAppearance } from '../../model/celestial-appearance';
+import { PLACEHOLDER_BODY_COLOR } from '../../model/celestial-classification';
 import { isValidShipSpatial } from '../../model/math/spatial';
 import type { GasGiantProfile } from '../../model/planet/gas-giant-profile';
-import { deriveBodyGasGiantProfile } from '../gas-giant/body-giant-profile';
 import { coerceShipModel, type ShipSummary } from '../../model/ship-list';
-import type { ViewerBody } from '../../model/solar-system-get';
-import type { SupportedNavigationPositionState } from '../../model/solar-system-get';
-import { ViewerNavigationPreview } from './viewer-navigation-preview';
-import type { NavigationScenePoint } from './viewer-navigation-detour';
+import type { SupportedNavigationPositionState, ViewerBody } from '../../model/solar-system-get';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import type { StarProfile } from '../../model/star/star-profile';
+import { deriveBodyGasGiantProfile } from '../gas-giant/body-giant-profile';
 import type { GasGiantBandSize } from '../gas-giant/gas-giant-bands';
 import { GasGiantBody, type GasGiantMoonInput } from '../gas-giant/gas-giant-body';
 import { isGasGiantBody } from '../gas-giant/gas-giant-classifier';
 import { GasGiantSettings, toProfileOverrides } from '../gas-giant/gas-giant-settings';
+import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import { resolveDedicatedAtmosphere } from '../planet/planet-atmosphere';
 import { PlanetAtmosphereLayer } from '../planet/planet-atmosphere-layer';
 import { PlanetCloudLayer } from '../planet/planet-cloud-layer';
-import type { PlanetSurfaceResult } from '../planet/catalog-surface-loader';
 import {
   isTexturableBody,
   proceduralSurfaceHasClouds,
@@ -55,9 +53,7 @@ import {
   type StarLightInput,
   VIEWER_SCENE_STAR_LIGHT_INTENSITY,
 } from './star-lighting';
-import { PLACEHOLDER_BODY_COLOR } from '../../model/celestial-classification';
 import { ViewerBlackHoleRenderer } from './viewer-black-hole-renderer';
-import { ViewerTargetBracket } from './viewer-target-bracket';
 import { type DescriptorRenderProfile, resolveDescriptorRenderProfile } from './viewer-descriptor-selectors';
 import {
   isGateBody,
@@ -83,7 +79,10 @@ import {
   VIEWER_SCENE_UNKNOWN_SHIP_POSITION,
   type ViewerDistanceMode,
 } from './viewer-formatters';
+import type { NavigationGeometryState, NavigationScenePoint } from './viewer-navigation-detour';
+import { ViewerNavigationPreview } from './viewer-navigation-preview';
 import { ViewerShipMesh } from './viewer-ship-mesh';
+import { ViewerTargetBracket } from './viewer-target-bracket';
 
 type BodyGeometryKind =
   'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus' | 'rock-deformed';
@@ -1112,6 +1111,11 @@ export class ViewerSystemScene {
   navigationDestinationLabel = input('');
   navigationCandidateLabel = input('');
   navigationRoutePoints = input<NavigationScenePoint[] | null>(null);
+  predictionState = input<NavigationGeometryState | null>(null);
+  predictionRoutePoints = input<NavigationScenePoint[] | null>(null);
+  predictionDestinationLabel = input('');
+  predictionCandidateLabel = input('');
+  @Output() predictionDetourUnavailableChange = new EventEmitter<boolean>();
   @Output() navigationDetourUnavailableChange = new EventEmitter<boolean>();
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();
   @Output() focusedPlanetChange = new EventEmitter<ViewerBody | null>();

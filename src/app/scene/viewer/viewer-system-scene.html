@@ -8,6 +8,17 @@
   [routePoints]="navigationRoutePoints()"
   (detourUnavailableChange)="navigationDetourUnavailableChange.emit($event)"
 />
+} @if (predictionState(); as state) {
+<app-viewer-navigation-preview
+  [state]="state"
+  [predictionStyle]="true"
+  [showDirectReference]="false"
+  [distanceMode]="distanceMode()"
+  [destinationLabel]="predictionDestinationLabel()"
+  [candidateLabel]="predictionCandidateLabel()"
+  [routePoints]="predictionRoutePoints()"
+  (detourUnavailableChange)="predictionDetourUnavailableChange.emit($event)"
+/>
 }
 <ngt-ambient-light [intensity]="0.15" [color]="starFillColor()" />
 @for (light of starLights(); track light.id) {

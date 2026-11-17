@@ -135,6 +135,7 @@
   "prettier": {
     "printWidth": 120,
     "singleQuote": true,
+    "endOfLine": "lf",
     "trailingComma": "all",
     "htmlWhitespaceSensitivity": "ignore",
     "plugins": [

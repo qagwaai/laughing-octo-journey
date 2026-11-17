@@ -23,7 +23,9 @@
           {{ t.game.viewer.navigationPreviewError }} @if (preview.reason) { ({{ preview.reason }}) }
         </p>
         } @else if (preview.status === 'ineligible') {
-        <p role="alert" data-testid="navigation-preview-ineligible">{{ t.game.viewer.navigationPreviewIneligible }}</p>
+        <p role="alert" data-testid="navigation-preview-ineligible">
+          {{ t.game.viewer.navigationPreviewIneligible }} ({{ preview.reason }})
+        </p>
         } @else {
         <label class="viewer-navigation-preview__candidate">
           {{ t.game.viewer.navigationPreviewCandidateSelect }}
@@ -38,6 +40,81 @@
             }
           </select>
         </label>
+        <section
+          class="viewer-navigation-prediction"
+          data-testid="navigation-prediction"
+          [attr.aria-busy]="navigationPrediction().status === 'loading'"
+        >
+          <h3>{{ t.game.viewer.navigationPredictionTitle }}</h3>
+          <p>{{ t.game.viewer.navigationPredictionDisclaimer }}</p>
+          <label>
+            {{ t.game.viewer.navigationPredictionSpeed }}
+            <input
+              type="number"
+              min="120"
+              max="10000"
+              step="any"
+              [value]="predictionSpeed() ?? ''"
+              (input)="changePredictionSpeed($event)"
+              aria-describedby="navigation-prediction-speed-help"
+            />
+          </label>
+          <p id="navigation-prediction-speed-help">{{ t.game.viewer.navigationPredictionSpeedHelp }}</p>
+          <div class="viewer-navigation-prediction__actions">
+            <button
+              type="button"
+              class="viewer-navigation-preview__clear"
+              [disabled]="!predictionSpeedValid() || !preview.selection.candidateBodyId || navigationPrediction().status === 'loading'"
+              (click)="calculateNavigationPrediction()"
+            >
+              {{ t.game.viewer.navigationPredictionCalculate }}
+            </button>
+            <button type="button" class="viewer-navigation-preview__clear" (click)="clearNavigationPrediction()">
+              {{ t.game.viewer.navigationPredictionClear }}
+            </button>
+          </div>
+          @if (!preview.selection.candidateBodyId) {
+          <p>{{ t.game.viewer.navigationPredictionCandidateRequired }}</p>
+          } @if (navigationPrediction().status === 'loading') {
+          <div role="status" data-testid="navigation-prediction-loading">
+            <p>{{ t.game.viewer.navigationPredictionLoading }}</p>
+            <progress [attr.aria-label]="t.game.viewer.navigationPredictionLoading"></progress>
+          </div>
+          } @if (navigationPrediction(); as result) { @if (result.status === 'unavailable') {
+          <p role="alert" data-testid="navigation-prediction-error">
+            {{ t.game.viewer.navigationPredictionUnavailable }} ({{ result.reason }}) {{ result.message }}
+          </p>
+          } } @if (supportedPrediction(); as prediction) {
+          <div data-testid="navigation-prediction-ready">
+            <p>{{ t.game.viewer.navigationPredictionTimeHelp }}</p>
+            <dl>
+              <dt>{{ t.game.viewer.navigationPreviewDepartureLabel }}</dt>
+              <dd>{{ gameTimeLabel(prediction.departure.epochMs) }}</dd>
+              <dt>{{ t.game.viewer.navigationPredictionEncounter }}</dt>
+              <dd>{{ navigationCandidateName() }} — {{ gameTimeLabel(prediction.encounter.epochMs) }}</dd>
+              <dt>{{ t.game.viewer.navigationPredictionArrival }}</dt>
+              <dd>{{ preview.selection.destinationName }} — {{ gameTimeLabel(prediction.arrival.epochMs) }}</dd>
+            </dl>
+            <details>
+              <summary>{{ t.game.viewer.navigationPredictionDetails }}</summary>
+              <p>{{ t.game.viewer.navigationPreviewDepartureLabel }}: {{ prediction.departure.epochMs }} ms</p>
+              <p>{{ t.game.viewer.navigationPredictionEncounter }}: {{ prediction.encounter.epochMs }} ms</p>
+              <p>{{ t.game.viewer.navigationPredictionArrival }}: {{ prediction.arrival.epochMs }} ms</p>
+              <p>{{ prediction.timeScaleId }}</p>
+              <p>{{ prediction.predictionModelId }}</p>
+              <p>{{ t.game.viewer.navigationPredictionDiagnostics }}</p>
+              <p>
+                {{ t.game.viewer.navigationPredictionEncounter }}: {{ prediction.encounter.convergence.iterations }} /
+                {{ prediction.encounter.convergence.residualMs }} ms
+              </p>
+              <p>
+                {{ t.game.viewer.navigationPredictionArrival }}: {{ prediction.arrival.convergence.iterations }} / {{
+                prediction.arrival.convergence.residualMs }} ms
+              </p>
+            </details>
+          </div>
+          }
+        </section>
         <p>{{ t.game.viewer.navigationPreviewAccessWarning }}</p>
         @if (preview.state.previewEligibility.status === 'eligible-with-warnings') {
         <p class="viewer-navigation-preview__warning" data-testid="navigation-clearance-warning">
@@ -54,7 +131,10 @@
             {{ formatNumber(preview.estimate.distanceKm) }} km
           </p>
           <p>{{ t.game.viewer.navigationPreviewDistanceDisclaimer }}</p>
-          <p>{{ t.game.viewer.navigationPreviewDurationUnavailable }}</p>
+          <p>
+            {{ navigationPrediction().status === 'idle' ? t.game.viewer.navigationPreviewDurationUnavailable :
+            t.game.viewer.navigationPredictionDirectDuration }}
+          </p>
         </div>
         } @else {
         <p
@@ -94,6 +174,7 @@
           } @if (plot.routePoints) {
           <polyline
             class="viewer-navigation-preview__route"
+            [class.viewer-navigation-prediction__route]="!!supportedPrediction()"
             [attr.points]="plot.routePoints"
             [style.stroke-width]="plot.routeStrokeWidth"
           />
@@ -113,6 +194,7 @@
           @if (plot.candidate; as candidate) {
           <rect
             class="viewer-navigation-preview__candidate-marker"
+            [class.viewer-navigation-prediction__candidate]="!!supportedPrediction()"
             [attr.x]="candidate.x - plot.candidateMarkerSize / 2"
             [attr.y]="candidate.y - plot.candidateMarkerSize / 2"
             [attr.width]="plot.candidateMarkerSize"
@@ -120,11 +202,24 @@
             [style.stroke-width]="plot.candidateMarkerStrokeWidth"
             [attr.transform]="'rotate(45 ' + candidate.x + ' ' + candidate.y + ')'"
           />
+          } @if (plot.frozenCandidate; as marker) {
+          <rect
+            class="viewer-navigation-preview__candidate-marker"
+            [attr.x]="marker.x - plot.candidateMarkerSize / 2"
+            [attr.y]="marker.y - plot.candidateMarkerSize / 2"
+            [attr.width]="plot.candidateMarkerSize"
+            [attr.height]="plot.candidateMarkerSize"
+            [style.stroke-width]="plot.candidateMarkerStrokeWidth"
+            [attr.transform]="'rotate(45 ' + marker.x + ' ' + marker.y + ')'"
+          />
+          } @if (plot.arrival; as marker) {
+          <circle class="viewer-navigation-prediction__arrival" [attr.cx]="marker.x" [attr.cy]="marker.y" r="8" />
           }
         </svg>
         }
         <p class="viewer-navigation-preview__plot-label">{{ t.game.viewer.navigationPreviewPlotLabel }}</p>
-        @if (navigationDetour()?.status === 'detour' && navigationDetour3dUnavailable()) {
+        @if (navigationDetour()?.status === 'detour' && (supportedPrediction() ? navigationPrediction3dUnavailable() :
+        navigationDetour3dUnavailable())) {
         <p role="status" data-testid="navigation-detour-3d-unavailable">
           {{ t.game.viewer.navigationPreviewDetour3dUnavailable }}
         </p>
@@ -143,8 +238,11 @@
           <span class="viewer-navigation-preview__legend-direct">
             {{ t.game.viewer.navigationPreviewDirectReferenceLabel }}
           </span>
+          @if (supportedPrediction()) {
+          <span class="viewer-navigation-prediction__legend">{{ t.game.viewer.navigationPredictionLegend }}</span>
+          } @else if (navigationPrediction().status === 'idle') {
           <span class="viewer-navigation-preview__legend-route">{{ t.game.viewer.navigationPreviewDetourLabel }}</span>
-          }
+          } }
         </div>
         }
       </section>
@@ -160,7 +258,12 @@
           [navigationState]="projectedNavigationState()"
           [navigationDestinationLabel]="navigationDestinationLabel()"
           [navigationCandidateLabel]="navigationCandidateLabel()"
-          [navigationRoutePoints]="navigationRoutePoints()"
+          [navigationRoutePoints]="navigationPrediction().status === 'idle' ? navigationRoutePoints() : null"
+          [predictionState]="predictionGeometryState()"
+          [predictionRoutePoints]="supportedPrediction() ? navigationRoutePoints() : null"
+          [predictionDestinationLabel]="predictionDestinationLabel()"
+          [predictionCandidateLabel]="predictionCandidateLabel()"
+          (predictionDetourUnavailableChange)="navigationPrediction3dUnavailable.set($event)"
           (navigationDetourUnavailableChange)="navigationDetour3dUnavailable.set($event)"
           [ships]="sceneInputs().ships ?? []"
           [activeShipId]="sceneInputs().activeShipId ?? null"

@@ -1,12 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import type {
-  PairedNavigationEstimate,
   NavigationPositionRequest,
   NavigationPositionVector,
-  SupportedNavigationRouteEstimate,
-  SupportedNavigationPositionState,
+  PairedNavigationEstimate,
   SolarSystemGetResponse,
+  SupportedNavigationPositionState,
+  SupportedNavigationRouteEstimate,
 } from '../model/solar-system-get';
+import { getNavigationPrediction, type NavigationPredictionDisplay } from './navigation-prediction-validation';
 import { SolarSystemService } from './solar-system.service';
 
 const SOL_POSITION_BASIS = 'stellar:sol:catalog-cartesian:v1';
@@ -30,8 +31,7 @@ export interface NavigationPreviewSelection {
 type PreviewDisplaySelection = Omit<NavigationPreviewSelection, 'playerName' | 'sessionKey'>;
 
 export type NavigationEstimateDisplay =
-  | { status: 'ready'; distanceKm: number }
-  | { status: 'unavailable'; reason: string };
+  { status: 'ready'; distanceKm: number } | { status: 'unavailable'; reason: string };
 
 export type ViewerNavigationPreview =
   | { status: 'loading'; selection: PreviewDisplaySelection }
@@ -46,12 +46,7 @@ export type ViewerNavigationPreview =
     };
 
 function isValidVector(position: NavigationPositionVector | undefined): position is NavigationPositionVector {
-  return (
-    !!position &&
-    Number.isFinite(position.x) &&
-    Number.isFinite(position.y) &&
-    Number.isFinite(position.z)
-  );
+  return !!position && Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z);
 }
 
 function getNavigationEstimate(
@@ -108,10 +103,7 @@ function isSupportedEstimate(
   );
 }
 
-function isSupportedForSelection(
-  state: SupportedNavigationPositionState,
-  selection: PreviewDisplaySelection,
-): boolean {
+function isSupportedForSelection(state: SupportedNavigationPositionState, selection: PreviewDisplaySelection): boolean {
   if (
     state.solarSystemId !== selection.solarSystemId ||
     state.coordinateBasisId !== SOL_POSITION_BASIS ||
@@ -153,8 +145,10 @@ export class ViewerNavigationPreviewService {
   private timeout: ReturnType<typeof setTimeout> | null = null;
   private selection: NavigationPreviewSelection | null = null;
   readonly preview = signal<ViewerNavigationPreview | null>(null);
+  readonly prediction = signal<NavigationPredictionDisplay>({ status: 'idle' });
 
   start(selection: NavigationPreviewSelection): void {
+    this.prediction.set({ status: 'idle' });
     this.selection = selection;
     this.request(selection);
   }
@@ -165,7 +159,30 @@ export class ViewerNavigationPreviewService {
     if (candidateBodyId) selection.candidateBodyId = candidateBodyId;
     else delete selection.candidateBodyId;
     this.selection = selection;
+    this.prediction.set({ status: 'idle' });
     this.request(selection);
+  }
+
+  calculatePrediction(speed: number): void {
+    if (!this.selection || this.preview()?.status !== 'ready') return;
+    if (!Number.isFinite(speed) || speed < 120 || speed > 10000) {
+      this.clearPrediction();
+      this.prediction.set({ status: 'unavailable', reason: 'SCENARIO_SPEED_INVALID', message: '' });
+      return;
+    }
+    if (!this.selection.candidateBodyId) {
+      this.clearPrediction();
+      this.prediction.set({ status: 'unavailable', reason: 'CANDIDATE_REQUIRED', message: '' });
+      return;
+    }
+    this.prediction.set({ status: 'loading' });
+    this.request(this.selection, speed);
+  }
+
+  clearPrediction(): void {
+    this.requestSequence += 1;
+    this.stopPending();
+    this.prediction.set({ status: 'idle' });
   }
 
   clear(): void {
@@ -173,6 +190,15 @@ export class ViewerNavigationPreviewService {
     this.stopPending();
     this.selection = null;
     this.preview.set(null);
+    this.prediction.set({ status: 'idle' });
+  }
+
+  invalidateSession(): void {
+    const preview = this.preview();
+    this.clear();
+    if (preview) {
+      this.preview.set({ status: 'error', selection: preview.selection, reason: 'INVALID_SESSION' });
+    }
   }
 
   private stopPending(): void {
@@ -182,7 +208,7 @@ export class ViewerNavigationPreviewService {
     this.timeout = null;
   }
 
-  private request(selection: NavigationPreviewSelection): void {
+  private request(selection: NavigationPreviewSelection, predictionSpeed?: number): void {
     this.stopPending();
     const sequence = ++this.requestSequence;
     const displaySelection: PreviewDisplaySelection = {
@@ -196,7 +222,7 @@ export class ViewerNavigationPreviewService {
       destinationName: selection.destinationName,
       candidateBodyId: selection.candidateBodyId,
     };
-    this.preview.set({ status: 'loading', selection: displaySelection });
+    if (predictionSpeed === undefined) this.preview.set({ status: 'loading', selection: displaySelection });
 
     const navigation: NavigationPositionRequest = {
       shipId: selection.shipId,
@@ -207,6 +233,8 @@ export class ViewerNavigationPreviewService {
       if (sequence !== this.requestSequence) return;
       this.stopPending();
       this.requestSequence += 1;
+      this.prediction.set({ status: 'unavailable', reason: 'PREDICTION_TIMEOUT', message: '' });
+      if (predictionSpeed !== undefined) return;
       this.preview.set({ status: 'error', selection: displaySelection });
     }, 15_000);
     const cancel = this.solarSystemService.getSolarSystem(
@@ -216,10 +244,21 @@ export class ViewerNavigationPreviewService {
         solarSystemId: selection.solarSystemId,
         navigation,
         navigationEstimate: {},
+        requestIdentity: {
+          operation: 'solar-system-get',
+          entityType: 'solar-system',
+          containerId: selection.solarSystemId,
+        },
+        ...(predictionSpeed !== undefined
+          ? { navigationPrediction: { scenarioCruiseSpeedKmPerSec: predictionSpeed } }
+          : {}),
       },
-      (response) => this.receiveResponse(sequence, displaySelection, response),
+      (response) => this.receiveResponse(sequence, displaySelection, response, predictionSpeed),
     );
-    if (sequence === this.requestSequence && this.preview()?.status === 'loading') {
+    if (
+      sequence === this.requestSequence &&
+      (this.preview()?.status === 'loading' || this.prediction().status === 'loading')
+    ) {
       this.cancelPending = cancel;
     }
   }
@@ -228,15 +267,18 @@ export class ViewerNavigationPreviewService {
     sequence: number,
     selection: PreviewDisplaySelection,
     response: SolarSystemGetResponse,
+    predictionSpeed?: number,
   ): void {
     if (sequence !== this.requestSequence) return;
     this.stopPending();
     if (!response.success) {
+      this.prediction.set({ status: 'unavailable', reason: 'NAVIGATION_READ_FAILED', message: response.message });
       this.preview.set({ status: 'error', selection, reason: response.message });
       return;
     }
 
     const state = response.navigationState;
+    this.prediction.set({ status: 'idle' });
     if (!state || state.status === 'unsupported') {
       this.preview.set({
         status: 'unsupported',
@@ -258,5 +300,8 @@ export class ViewerNavigationPreviewService {
 
     const estimate = getNavigationEstimate(response.navigationEstimate, state, selection);
     this.preview.set({ status: 'ready', selection, state, estimate });
+    if (predictionSpeed !== undefined) {
+      this.prediction.set(getNavigationPrediction(response.navigationPrediction, state, predictionSpeed));
+    }
   }
 }

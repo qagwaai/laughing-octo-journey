@@ -11,11 +11,11 @@ import {
 import { beforeRender, injectStore, NgtArgs } from 'angular-three';
 import { NgtsHTML } from 'angular-three-soba/misc';
 import { BufferGeometry, Line, LineDashedMaterial, Vector3 } from 'three';
-import type { SupportedNavigationPositionState } from '../../model/solar-system-get';
 import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from './viewer-formatters';
 import {
   NAVIGATION_CANDIDATE_MARKER_RADIUS,
   navigationRouteClearsScreenMarker,
+  type NavigationGeometryState,
   type NavigationScenePoint,
 } from './viewer-navigation-detour';
 
@@ -37,12 +37,17 @@ const DRAW_DURATION_SECONDS = 8;
       <ngt-group [position]="marker" [name]="destinationLabel()">
         <ngt-mesh [renderOrder]="1000">
           <ngt-octahedron-geometry *args="[markerRadius, 0]" />
-          <ngt-mesh-basic-material [color]="'#f7d36b'" [depthTest]="false" />
+          <ngt-mesh-basic-material
+            [color]="predictionStyle() ? '#74f5c2' : '#f7d36b'"
+            [wireframe]="predictionStyle()"
+            [depthTest]="false"
+          />
         </ngt-mesh>
         <ngts-html>
           <div [htmlContent]="{ pointerEvents: 'none', zIndexRange: [1, 1] }">
             <span
-              style="display: block; transform: translate(10px, -100%); color: #f7d36b; background: #101827; padding: 2px 4px; max-width: 16rem"
+              [style.color]="predictionStyle() ? '#74f5c2' : '#f7d36b'"
+              style="display: block; transform: translate(10px, -100%); background: #101827; padding: 2px 4px; max-width: 16rem"
             >
               {{ destinationLabel() }}
             </span>
@@ -54,12 +59,17 @@ const DRAW_DURATION_SECONDS = 8;
       <ngt-group [position]="marker" [name]="candidateLabel()">
         <ngt-mesh [renderOrder]="1000">
           <ngt-octahedron-geometry *args="[markerRadius, 0]" />
-          <ngt-mesh-basic-material [color]="'#ff8eaf'" [wireframe]="true" [depthTest]="false" />
+          <ngt-mesh-basic-material
+            [color]="predictionStyle() ? '#c7a6ff' : '#ff8eaf'"
+            [wireframe]="true"
+            [depthTest]="false"
+          />
         </ngt-mesh>
         <ngts-html>
           <div [htmlContent]="{ pointerEvents: 'none', zIndexRange: [1, 1] }">
             <span
-              style="display: block; transform: translate(10px, 10px); color: #ff8eaf; background: #101827; padding: 2px 4px; max-width: 16rem"
+              [style.color]="predictionStyle() ? '#c7a6ff' : '#ff8eaf'"
+              style="display: block; transform: translate(10px, 10px); background: #101827; padding: 2px 4px; max-width: 16rem"
             >
               {{ candidateLabel() }}
             </span>
@@ -70,7 +80,9 @@ const DRAW_DURATION_SECONDS = 8;
   `,
 })
 export class ViewerNavigationPreview {
-  state = input.required<SupportedNavigationPositionState>();
+  state = input.required<NavigationGeometryState>();
+  predictionStyle = input(false);
+  showDirectReference = input(true);
   routePoints = input<NavigationScenePoint[] | null>(null);
   distanceMode = input<ViewerDistanceMode>('proportional');
   destinationLabel = input.required<string>();
@@ -97,7 +109,7 @@ export class ViewerNavigationPreview {
       const state = this.state();
       const mode = this.distanceMode();
       this.directReference.set(null);
-      if (!state.candidates.length) return;
+      if (!state.candidates.length || !this.showDirectReference()) return;
       const start = new Vector3(...resolveScenePositionFromSpatialKm(state.departure.positionKm, mode));
       const end = new Vector3(...resolveScenePositionFromSpatialKm(state.destination.positionKm, mode));
       const distance = start.distanceTo(end);
@@ -149,14 +161,14 @@ export class ViewerNavigationPreview {
         ? Math.min((totalLength * 0.75) / 96, NAVIGATION_CANDIDATE_MARKER_RADIUS * 1.5)
         : (totalLength * 0.6) / 48;
       const material = new LineDashedMaterial({
-        color: '#8ed8ff',
+        color: this.predictionStyle() ? '#74f5c2' : '#8ed8ff',
         dashSize,
         gapSize: this.candidate() ? dashSize / 3 : (totalLength * 0.4) / 48,
         depthTest: false,
       });
       const line = new Line(geometry, material);
       line.computeLineDistances();
-      line.name = 'navigation-preview-route';
+      line.name = this.predictionStyle() ? 'navigation-prediction-route' : 'navigation-preview-route';
       line.renderOrder = 999;
       line.visible = !this.candidate();
       this.elapsed = 0;

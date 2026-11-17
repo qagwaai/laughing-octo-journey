@@ -4,6 +4,32 @@
 
 Accepted (initial MVP).
 
+### Illustrative moving-target prediction: accepted 2026-11-16
+
+- Phase 2 adds explicit **Calculate prediction** / **Clear prediction** controls.
+  Speed starts blank, requires one selected planet/moon, and must be finite in
+  the inclusive 120–10000 km/s range. It is a scenario assumption, not ship
+  capability. Pending calculations use an indeterminate progress indicator.
+- Consume prediction and navigation state from the same response only,
+  validating association, source revision, basis/model, endpoints, frozen
+  departure, epochs, and diagnostics. Rejections clear future geometry while
+  preserving a valid paired baseline; input changes, timeout, invalid session,
+  and superseded responses cannot revive stale predictions.
+- Green future path/arrival and purple candidate-center markers replace only
+  the blue T0 sweep. Frozen markers, direct reference/distance, ordinary meshes,
+  and camera targeting remain unchanged. The shared display geometry and
+  conservative camera/marker suppression are not physical clearance checks.
+- Display illustrative game time with exact integer epochs/model details.
+  Calendar rendering is not conversion to physical UTC. The constant-speed
+  straight-leg backend timing model does not describe the drawn curve's
+  length, ETA, gravity-assist benefit, safety, fuel use, or travel execution.
+- The owner accepted Phase 2C with no failed review items. Automated evidence
+  was accepted for pending feedback/races too fast to observe live and other
+  documented failure paths. Focused validation passed 94 Vitest tests,
+  three Playwright tests including setup, typecheck, targeted lint, and build.
+  See the [navigation handoff](./ship-navigation-2026-11-14.md) for live results,
+  final formatting/LF checks, evidence boundaries, and deferred Phase 3 scope.
+
 ### Ship navigation preview and candidate sweep: accepted 2026-11-15
 
 - Station-only **Plan route to...** uses the explicitly active ship in the
@@ -30,11 +56,12 @@ Accepted (initial MVP).
   mocked Playwright passed two tests including setup across both distance
   modes. Typecheck and targeted lint passed. No production build or full
   regression suite was rerun for the sweep revision.
-- The session is paused and the user will commit/push. Future timing,
+- At that closeout, the session paused for the user to commit/push. Future timing,
   assists, fuel, candidate ranking, and travel execution require separate
   review and authorization. See the
   [navigation handoff](./ship-navigation-2026-11-14.md) for exact validation
-  commands, limitations, and resumption decisions.
+  commands, limitations, and resumption decisions. The Phase 2 entry above
+  supersedes the earlier timing deferral.
 
 ### Ship Hangar and Viewer navigation: implemented 2026-11-14
 

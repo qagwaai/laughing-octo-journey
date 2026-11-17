@@ -133,7 +133,8 @@ export const it: DeepPartial<EnLocale> = {
       blackHoleSwitchToStandard: 'Carica raggi standard',
       blackHoleSwitchToLow: 'Carica raggi leggeri',
       stellarWindLabel: 'Vento stellare (cinematografico)',
-      stellarWindNote: 'Solo un tenue vento della compagna; bagliore e velocità illustrativi, non una simulazione del plasma visibile o un flusso di trasferimento.',
+      stellarWindNote:
+        'Solo un tenue vento della compagna; bagliore e velocità illustrativi, non una simulazione del plasma visibile o un flusso di trasferimento.',
       blackHoleNote:
         'Studio visivo locale, non una destinazione di viaggio. I modelli in primo piano non vengono mostrati in questa vista. Lente di Schwarzschild non rotante; Cygnus X-1 ruota. Colore del disco, inquadratura della compagna e velocità di animazione sono scelte artistiche, non una vista in scala o a occhio nudo.',
       solBodies: {
@@ -361,7 +362,7 @@ export const it: DeepPartial<EnLocale> = {
       performanceTitle: 'Prestazioni',
       showPerformanceGraphs: 'Mostra i grafici delle prestazioni 3D',
       performanceDescription:
-        'Mostra i grafici delle prestazioni in tutte le scene 3D. La scelta resta attiva dopo l\'accesso, ma non viene salvata e si disattiva quando esci o ricarichi la pagina.',
+        "Mostra i grafici delle prestazioni in tutte le scene 3D. La scelta resta attiva dopo l'accesso, ma non viene salvata e si disattiva quando esci o ricarichi la pagina.",
     },
     logout: {
       title: 'Disconnessione',
@@ -679,7 +680,8 @@ export const it: DeepPartial<EnLocale> = {
       retryLabel: 'Riprova',
       cygnusX1VisualizationNote:
         'Layout solo visivo: entrambe le posizioni di catalogo sono segnaposto al centro del sistema, non coordinate misurate dei componenti né una fase orbitale. La vista con raggi di Schwarzschild è illustrativa; Cygnus X-1 ruota.',
-      blackHoleHdrUnsupported: 'Rendering del buco nero non disponibile: il dispositivo non supporta target colore HDR.',
+      blackHoleHdrUnsupported:
+        'Rendering del buco nero non disponibile: il dispositivo non supporta target colore HDR.',
       blackHoleReferenceDisclaimer:
         'Il raggio di Schwarzschild è un valore di riferimento non rotante, non un confine misurato dell’orizzonte degli eventi o del disco di accrescimento.',
       listLoadingStatus: 'Caricamento sistemi...',
@@ -729,8 +731,10 @@ export const it: DeepPartial<EnLocale> = {
         'Mosaico USGS a colori unito Galileo/Voyager: rapporti cromatici Galileo sovrapposti a immagini monocromatiche a risoluzione superiore. Illuminazione di epoche diverse, copertura irregolare e lacune polari interpolate; non e un’osservazione a colori naturali uniforme. I punti caldi statici e i brevi pennacchi, creati dal progetto, sono illustrativi e non indicano attivita attuale. Non e fornita alcuna mappa normale o del rilievo.',
       atmosphereSourcesTitle: 'Fonti dell’aspetto atmosferico',
       venusAtmosphereCredit: 'Texture Solar System Scope, CC BY 4.0.',
-      saturnAppearanceCredit: 'Aspetto di Saturno creato dal progetto sulla base dei dati di riferimento NASA e NASA PDS.',
-      saturnAppearanceNotes: 'Atmosfera ed esagono polare nord illustrativi; confini degli anelli misurati con profondità ottiche rappresentative. Non rappresenta una specifica osservazione o un orientamento del polo calcolato dalle effemeridi.',
+      saturnAppearanceCredit:
+        'Aspetto di Saturno creato dal progetto sulla base dei dati di riferimento NASA e NASA PDS.',
+      saturnAppearanceNotes:
+        'Atmosfera ed esagono polare nord illustrativi; confini degli anelli misurati con profondità ottiche rappresentative. Non rappresenta una specifica osservazione o un orientamento del polo calcolato dalle effemeridi.',
       venusAtmosphereNotes:
         'Texture stilizzata di nubi in luce visibile. I JPEG originali sono usati senza modifiche; 2K nella panoramica e 4K nel dettaglio. La fonte non identifica i dati NASA derivati per ciascun file.',
       titanAtmosphereCredit: 'Foschia statica originale generata dal progetto; non viene usata alcuna texture esterna.',
@@ -792,7 +796,7 @@ export const it: DeepPartial<EnLocale> = {
         "I tipi di pianeta come super-earth e hot-jupiter sono classificati dal gioco in base a massa, raggio e temperatura; non sono etichette dell'archivio.",
         'Gli anelli degli esopianeti sono procedurali e approssimati. Non sono mai stati osservati anelli di esopianeti.',
         'I nomi di gioco possono differire dai nomi di catalogo; il nome di catalogo è mostrato come etichetta secondaria.',
-        "I pianeti che l'archivio segnala come controversi sono etichettati \"disputed\".",
+        'I pianeti che l\'archivio segnala come controversi sono etichettati "disputed".',
       ],
       estimatedValueExplanation: 'I valori contrassegnati con ≈ sono stimati anziché misurati.',
       referencesTitle: 'Riferimenti',
@@ -854,18 +858,22 @@ export const it: DeepPartial<EnLocale> = {
       navigationPreviewIneligible: 'Questa selezione non è idonea per un’anteprima del percorso.',
       navigationPreviewClearanceWarning: 'Lo spazio libero è sconosciuto; non viene garantita la sicurezza.',
       navigationPreviewAccessWarning: 'La pianificazione non concede accesso alla stazione o permesso di attracco.',
-      navigationPreviewHiddenGroup: 'Il gruppo oggetti {group} è nascosto; il marcatore proiettato viene mostrato separatamente.',
+      navigationPreviewHiddenGroup:
+        'Il gruppo oggetti {group} è nascosto; il marcatore proiettato viene mostrato separatamente.',
       navigationPreviewEpochLabel: 'Proiettato all’epoca {epoch} ms',
       navigationPreviewPlotLabel: 'Proiezione X-Y dell’anteprima geometrica; Z è omesso.',
       navigationPreviewDistanceLabel: 'Distanza ipotetica in linea retta tra gli estremi',
       navigationPreviewDistanceDisclaimer:
         'Solo distanza tra gli estremi: non è la distanza percorsa né la lunghezza di una curva o di un percorso via candidato, e non dimostra raggiungibilità, sicurezza o spazio libero.',
-      navigationPreviewDurationUnavailable: 'La durata non è stimata perché non è stata fornita una velocità di scenario.',
+      navigationPreviewDurationUnavailable:
+        'La durata non è stimata perché non è stata fornita una velocità di scenario.',
       navigationPreviewEstimateUnavailable: 'Stima diretta associata della distanza non disponibile.',
       navigationPreviewDetourUnavailable:
         'Non è possibile disegnare in questa vista un percorso illustrativo attorno al marcatore proiettato del candidato.',
-      navigationPreviewDirectReferenceLabel: 'Linea grigia tratteggiata: riferimento diretto invariato, non il percorso via candidato.',
-      navigationPreviewDetourLabel: 'Linea blu tratteggiata: deviazione illustrativa via candidato, quando disponibile.',
+      navigationPreviewDirectReferenceLabel:
+        'Linea grigia tratteggiata: riferimento diretto invariato, non il percorso via candidato.',
+      navigationPreviewDetourLabel:
+        'Linea blu tratteggiata: deviazione illustrativa via candidato, quando disponibile.',
       navigationPreviewDetour3dUnavailable:
         'Percorso 3D non disponibile da questa angolazione: sovrapposizione al marcatore o geometria tagliata. Ruota o ingrandisci la vista; il grafico X-Y resta invariato.',
       navigationPreviewCandidateSelect: 'Corpo celeste candidato (opzionale)',
@@ -876,6 +884,27 @@ export const it: DeepPartial<EnLocale> = {
       navigationPreviewDepartureLabel: 'Partenza',
       navigationPreviewDestinationLabel: 'Destinazione proiettata',
       navigationPreviewCandidateMarkerLabel: 'Corpo candidato proiettato',
+      navigationPredictionTitle: 'Previsione illustrativa con bersagli in movimento',
+      navigationPredictionDisclaimer:
+        'I segmenti retti servono solo al calcolo temporale. La curva è illustrativa: nessuna ETA, traiettoria di volo, garanzia di spazio libero, raggiungibilità o beneficio gravitazionale.',
+      navigationPredictionSpeed: 'Velocità di scenario (km/s)',
+      navigationPredictionSpeedHelp:
+        'Inserisci esplicitamente 120–10000 km/s. È un’ipotesi di pianificazione, non una capacità della nave.',
+      navigationPredictionCalculate: 'Calcola previsione',
+      navigationPredictionDirectDuration:
+        'Il riferimento diretto non include ipotesi sulla durata. La velocità di scenario si applica solo alla previsione.',
+      navigationPredictionClear: 'Cancella previsione',
+      navigationPredictionCandidateRequired: 'Seleziona un candidato per calcolare una previsione.',
+      navigationPredictionLoading: 'Calcolo della previsione illustrativa...',
+      navigationPredictionUnavailable: 'Previsione non disponibile.',
+      navigationPredictionTimeHelp:
+        'Tempo di gioco illustrativo: etichette di calendario per millisecondi POSIX uniformi, non UTC fisico o ETA.',
+      navigationPredictionEncounter: 'Incontro previsto con il candidato',
+      navigationPredictionArrival: 'Arrivo previsto alla stazione',
+      navigationPredictionDetails: 'Epoche esatte e dettagli del modello',
+      navigationPredictionDiagnostics: 'Diagnostica temporale: iterazioni / residuo (non accuratezza o affidabilità).',
+      navigationPredictionLegend:
+        'Percorso verde tratteggiato / arrivo vuoto: previsione illustrativa. Contorno viola: centro futuro del candidato.',
       bodyTargetedLabel: 'Puntato',
       detailsColumnName: 'Nome',
       detailsColumnType: 'Tipo',

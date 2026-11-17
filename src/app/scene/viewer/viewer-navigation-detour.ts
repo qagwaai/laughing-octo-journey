@@ -3,6 +3,10 @@ import type { SupportedNavigationPositionState } from '../../model/solar-system-
 import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from './viewer-formatters';
 
 export type NavigationScenePoint = [number, number, number];
+export type NavigationGeometryState = Pick<
+  SupportedNavigationPositionState,
+  'departure' | 'destination' | 'candidates'
+>;
 
 export type NavigationDetour =
   | { status: 'direct' | 'detour'; points: NavigationScenePoint[] }
@@ -176,7 +180,7 @@ function withInterpolatedHeight(points: Point2[], startY: number, endY: number):
 }
 
 export function buildNavigationDetour(
-  state: SupportedNavigationPositionState,
+  state: NavigationGeometryState,
   distanceMode: ViewerDistanceMode,
 ): NavigationDetour {
   const start = resolveScenePositionFromSpatialKm(state.departure.positionKm, distanceMode);

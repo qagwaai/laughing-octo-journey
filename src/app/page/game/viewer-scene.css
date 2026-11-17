@@ -169,6 +169,66 @@
   font-size: 0.72rem;
 }
 
+.viewer-navigation-prediction {
+  margin: 0.6rem 0;
+  padding: 0.5rem;
+  border: 1px solid #74f5c2;
+  border-radius: 0.3rem;
+}
+
+.viewer-navigation-prediction h3 {
+  margin: 0 0 0.4rem;
+}
+
+.viewer-navigation-prediction input {
+  width: 7rem;
+  margin-left: 0.4rem;
+  padding: 0.25rem;
+  background: #10233d;
+  color: #e8f2ff;
+  border: 1px solid #6e9dcb;
+}
+
+.viewer-navigation-prediction__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.viewer-navigation-prediction button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.viewer-navigation-prediction progress {
+  width: 100%;
+  accent-color: #74f5c2;
+}
+
+.viewer-navigation-prediction dd {
+  margin-left: 0.6rem;
+  overflow-wrap: anywhere;
+}
+
+.viewer-navigation-preview__route.viewer-navigation-prediction__route {
+  stroke: #74f5c2;
+}
+
+.viewer-navigation-preview__candidate-marker.viewer-navigation-prediction__candidate {
+  fill: none;
+  stroke: #c7a6ff;
+}
+
+.viewer-navigation-prediction__arrival {
+  fill: none;
+  stroke: #74f5c2;
+  stroke-width: 2;
+}
+
+.viewer-navigation-prediction__legend {
+  color: #74f5c2;
+}
+
 .viewer-navigation-preview__legend {
   display: grid;
   gap: 0.2rem;

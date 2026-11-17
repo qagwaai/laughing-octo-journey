@@ -237,6 +237,9 @@ Recovery recipe:
 
 ## Single-Replace Anchor Sizing (Windows / CRLF)
 
+When creating files, ensure they use LF line endings. The `.bat`, `.cmd`, and
+`.ps1` exceptions in `.gitattributes` should remain CRLF.
+
 When `replace_string_in_file` fails with "Could not find matching text to
 replace" but a fresh read of the file shows byte-identical content, the cause
 is almost always a line-ending mismatch: workspace files are CRLF on Windows

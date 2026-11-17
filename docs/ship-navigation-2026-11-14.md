@@ -1,12 +1,53 @@
 # Ship navigation: implementation and handoff
 
-Date: 2026-11-14  
-Updated: 2026-11-15  
+Date: 2026-11-14
+Updated: 2026-11-16
 Status: Phase 1 preview, paired direct distance, and broad candidate sweep
-implemented and accepted by the user. Paused for the evening; the user will
-commit and push. The X-Y plot is retained.
+implemented and accepted. Forge's Phase 2B handoff is approved for consumption.
+Phase 2C frontend implementation and focused/live checks pass; owner accepted
+Phase 2C on 2026-11-16. Phase 2D navigation formatting/LF checks are complete;
+the repository-wide formatting check reports three unrelated HTML files.
+The X-Y plot is retained.
 
-## Session closeout: 2026-11-15
+## Session closeout: 2026-11-16
+
+- Phase 2C is implemented and owner-accepted. One explicitly selected
+  planet/moon and an explicit scenario speed produce illustrative future
+  encounter/arrival positions and game epochs. Frozen T0 markers and the
+  paired direct distance remain separate and unchanged.
+- Owner review reported no failures. Live responses were too fast to observe
+  progress feedback or pending-request races; the owner accepted automated
+  coverage for those cases and the remaining documented failure paths.
+- Phase 2D formatting and LF enforcement were explicitly authorized and
+  completed at closeout. Final command outcomes are recorded at the end of this document.
+  Formatting is limited to this session's navigation files and related docs;
+  unrelated worktree changes are preserved.
+- No commit or push is performed by Nova; the user owns both actions. Include
+  the new prediction-validation service when reviewing/staging navigation
+  changes.
+- Forge owns data/API; Nova owns UI/UX and display geometry. The live OpenAPI
+  and referenced schemas remain the contract authority. Backend internal
+  invariants are supported by Forge's reported tests, not an independent
+  backend code audit from this repository.
+- Resume with a scope-selection form and free-text field before any Phase 3
+  implementation. Future work includes evaluating flyby sides against an
+  agreed objective, assist benefit, route ranking, fuel/engines, and eventual
+  Navigation Computer search. The current counter-clockwise sweep is a
+  display choice, not evidence that either side provides a better assist.
+  Screen-left/right alone is insufficient; relative orbital motion and
+  incoming/outgoing velocities matter. No Phase 3 design or implementation
+  is authorized by this closeout.
+
+| Phase                                                               | Closeout status                                                                                           |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Phase 1: frozen preview, paired direct distance, illustrative sweep | Implemented and visually accepted.                                                                        |
+| Phase 2A: prediction scope and contract design                      | Agreed; implemented contract reviewed for consumption.                                                    |
+| Phase 2B: Forge prediction API                                      | Approved handoff; live authenticated smoke checks passed. Internal invariant tests remain Forge-reported. |
+| Phase 2C: Nova consumption and Viewer review                        | Implemented, validated, and owner-accepted on 2026-11-16.                                                 |
+| Phase 2D: formatting/LF cleanup                                     | Navigation scope complete; three unrelated repository-wide formatting warnings are recorded below.        |
+| Phase 3 and later                                                   | Deferred; scope and approval required before implementation.                                              |
+
+## Historical session closeout: 2026-11-15
 
 - The user visually accepted the broad, flowing candidate sweep and supplied
   a live Viewer screenshot of projected Earth on the route to Pluto Orbital
@@ -787,18 +828,398 @@ the sweep revision. No production build was rerun; the existing development
 server at `http://localhost:4200` compiled and served the browser tests.
 Backend test results elsewhere in this document remain Forge-reported.
 
-## Questions for the next design checkpoint
+## Prior checkpoint questions
 
-Resolved UX decisions: keep the optional single-candidate selector and X-Y
-plot; use separate projected markers even for hidden groups; do not reframe
-the camera; allow planning to inaccessible stations with explicit access and
-docking warnings. The accepted sweep does not change those decisions.
+The following questions were open at the 2026-11-15 closeout and are superseded
+by the Phase 2 scope checkpoint below. The Phase 1 UX decisions remain:
+optional single-candidate selector and X-Y plot; separate projected markers
+even for hidden groups; no camera reframing; and explicit access/docking
+warnings when planning to inaccessible stations.
 
-On resumption, choose the next increment before making changes:
+The next checkpoint is Forge's Phase 2 design proposal. Assist assessment and
+any physical/model policy for claiming assist benefits remain deferred.
 
-1. Should the next milestone prioritize transfer feasibility, player-facing
-   travel pacing, or route comparison? None is authorized by visual acceptance.
-2. If future timing is chosen, what explicit scenario assumptions and
-   failure/horizon policy should be agreed before requesting an OpenAPI change?
-3. If assist assessment is chosen, what physical/model and exclusion-policy
-   requirements must be met before showing any benefit or feasibility claim?
+## Phase 2 scope checkpoint: 2026-11-16
+
+The user selected the following Phase 2 direction. This is a scope decision for
+design refinement, not approval to change OpenAPI or implement.
+
+- Support one player-selected planet or moon candidate at a time.
+- Use the existing versioned Sol Kepler evaluator to predict future candidate
+  encounter and destination arrival positions and their distinct epochs.
+- Require an explicit player-supplied scenario speed, with no default. It is a
+  planning assumption, not a ship capability or measured speed.
+- Present an illustrative encounter path only. Do not present an ETA, route
+  duration, physical clearance, safe/reachable route, gravity-assist benefit,
+  or validated trajectory.
+- Preserve the current direct preview and paired direct endpoint distance as
+  separate, unchanged references. Do not rank candidates or add multiple
+  assists, fuel/engine modeling, or travel execution.
+- Forge owns data/API guarantees; OpenAPI is the contract authority. Nova owns
+  UI/UX and display geometry. Forge should propose the minimum contract needed
+  for this scope and explicit unsupported, invalid-input, horizon, and
+  nonconvergence behavior before implementation is considered.
+
+The longer-term product direction is a tiered Navigation Computer that can
+compare routes against costs such as time and fuel, working toward A*-like
+search. This is future direction, not Phase 2 scope or an approved algorithm.
+Phase 3 and later work remain deferred: assist speed-change/benefit modeling,
+candidate ranking or multiple assists, engine/fuel modeling, and travel
+execution require separate design and approval.
+
+### Original Phase 2 visual validation walkthrough
+
+This checklist is for the user's hands-on review after a Phase 2 design is
+approved and implemented. This original checklist is retained as planning
+history, not a current open acceptance gate. The completed review and its
+live-versus-automated evidence are recorded under Phase 2C below.
+Record the app/API build, selected ship, destination, candidate, scenario
+speed, and any displayed epochs for each run. Keep every review within the
+illustrative-only claims above.
+
+- [ ] Confirm the explicit scenario-speed input has no silent default; missing
+      or invalid input produces clear guidance and no candidate encounter path.
+- [ ] With a supported ship, destination, and one selected candidate, confirm
+      the preview identifies departure, future encounter, and arrival epochs
+      distinctly and visibly labels the candidate path as illustrative.
+- [ ] Confirm the path uses the predicted candidate and destination positions,
+      visibly passes around the selected projected candidate marker, and does
+      not appear to pass through its center.
+- [ ] Inspect both Viewer distance modes and the X-Y plot. Confirm the
+      candidate path and projected endpoints correspond across views, with no
+      path anchored to ordinary stored-position meshes.
+- [ ] Confirm the existing direct reference and paired direct distance remain
+      visible/unchanged and are not replaced by candidate-route geometry or a
+      candidate-route distance.
+- [ ] Change the selected candidate and scenario speed; confirm the displayed
+      result updates to the corresponding prediction and does not retain stale
+      markers, epochs, or paths.
+- [ ] Exercise no candidate, unsupported body/model epoch, out-of-horizon
+      input, nonconvergence, and other documented failure responses. Confirm
+      each has an explicit unavailable/error state and never shows a
+      plausible-looking partial path or success-shaped fallback.
+- [ ] Change ship, system, or destination while a calculation is pending;
+      confirm stale results cannot restore a path for the previous selection.
+- [ ] Confirm no copy or visual implies ETA, faster travel, fuel savings,
+      physical clearance, safety, reachability, or a validated gravity assist.
+- [ ] Capture screenshots of the accepted normal case and each materially
+      different unavailable state; record any confusing labels, overlaps, or
+      inconsistent geometry for Nova before acceptance.
+
+Before Nova implementation, the Forge design must settle scenario-speed units
+and allowed range, prediction/iteration and horizon limits, source-record
+association, epoch time scale and presentation, and exact failure states in
+OpenAPI. The visual walkthrough should be adjusted to the approved contract and
+UI before being used as an acceptance checklist.
+
+### Original Phase 2 contract review gate: 2026-11-16
+
+These are the original review questions, retained for traceability. The
+consumption disposition is recorded below; unchecked historical items must not
+be read as a claim that frontend integration is still blocked.
+
+The provisional Go permits Forge to begin the first implementation. It does
+not pre-approve the modified OpenAPI contract or waive the following review
+items. Resolve and record each item during the Phase 2 contract review before
+Nova integrates against the contract or the Phase 2 gate is accepted.
+
+- [ ] **P1 — epoch display:** Confirm readable epoch labels are shown, never
+      labeled as ETA. The provisional UI choice is a human-readable UTC-style
+      calendar rendering with the exact epoch value available in details.
+      Define this strictly as formatting the uniform POSIX-millisecond value;
+      do not imply UTC is the evaluator's physical time scale or convert the
+      prediction to UTC, TAI, TT, or TDB.
+- [ ] **P2 — identifiers:** Review and freeze `predictionModelId` and
+      `timeScaleId`, including their exact semantics and versioning. The
+      proposed values are `constant-speed-straight-legs-moving-targets-v1`
+      and `stellar:unix-ms-uniform:v1`.
+- [ ] **P3 — diagnostics and host position:** Decide whether to retain
+      convergence diagnostics and `arrival.hostPositionKm`. Define exactly
+      what convergence measures. Document the host position's purpose,
+      coordinate basis, epoch, and relationship to the predicted destination;
+      omit it if it is not needed by the contract or consumer.
+- [ ] **P4 — departure epoch:** Confirm departure remains frozen at the
+      ship's stored navigation epoch; future prediction applies to the
+      candidate and destination.
+- [ ] **P5 — API version:** Confirm that adding these optional fields without
+      changing `info.version` complies with Forge's compatibility/versioning
+      policy.
+- [ ] **Scenario-speed bounds:** Justify the proposed inclusive range
+      `[120, 10000]` km/s as a planning input and confirm it is explicit in the
+      request schema and UI guidance, with no default.
+- [ ] **Contraction bound:** Define how `Vbound` is derived conservatively
+      from the selected Kepler model over the applicable prediction horizon.
+      Verify the `Vbound / speed <= 0.5` precondition is guaranteed by that
+      bound rather than by sparse sampling, and document rejection when a
+      valid bound cannot be established.
+- [ ] **Position semantics:** State that the predicted encounter position is
+      the selected body's center at the returned encounter epoch, not a
+      calculated flyby point. Define how the future destination position is
+      evaluated and how any host position relates to it. Nova must construct
+      the illustrative path around the projected marker, not treat the
+      candidate center as a flyby waypoint.
+- [ ] **Outcomes and invariants:** Review the exact OpenAPI success and
+      rejection schemas, including outer versus nested success semantics,
+      status/reason precedence, and the guarantee that failures contain no
+      partial positions or epochs. Verify the source association, unchanged
+      `navigationState`/`bodies`/`navigationEstimate`, two-capture limit, and
+      second-capture change behavior.
+- [ ] **Read behavior:** Document and verify any request-specific side-effect
+      difference, including the proposed suppression of presence refresh when
+      `navigationPrediction` is requested.
+- [ ] **OpenAPI review:** Compare the implemented `api/openapi.yaml` and
+      referenced schemas against the approved Phase 2A design and review
+      examples, bounds, enums, failure cases, and backward compatibility
+      before accepting the contract.
+- [ ] **Generated artifacts:** Before cleaning generated contract artifacts,
+      inspect their worktree status and preserve pre-existing user changes.
+      Do not run `git checkout -- api/artifacts/contracts` blindly.
+
+Forge may work through these points during implementation, but unresolved
+contract semantics or deviations from the approved design must be surfaced
+for review rather than silently treated as settled.
+
+#### Historical initial implementation gate inspection: 2026-11-16
+
+The live OpenAPI at `http://localhost:3000/openapi.yaml` describes
+`navigation-route-estimate` as an isolated frozen-endpoint direct baseline. It
+explicitly excludes movement prediction and does not provide predicted
+encounter/arrival positions or epochs or associated prediction failure states.
+The illustrative path itself remains Nova-owned display geometry. Phase 2
+frontend implementation is therefore blocked pending Forge's Phase 2 contract
+proposal. No application or OpenAPI implementation was started.
+
+UTC is a provisional readable display choice, not an agreed celestial
+calculation time scale. Spaceflight and celestial-mechanics systems may use
+scales such as TAI, TT, or TDB; the current contract must be checked for the
+meaning of `epochMs` and its relationship to the Kepler evaluator before
+displaying or converting it as UTC. Keep the exact epoch value available in
+details as selected, and ask Forge to specify the authoritative time scale and
+any UTC conversion in the contract.
+
+### Phase 2C implementation and validation: 2026-11-16
+
+The initial contract block above is superseded by Forge's approved Phase 2B
+handoff and the cache-busted live OpenAPI review. The live contract resolves
+prediction-only validation, analytic full-orbit contraction bounds, station
+offset composition, and uniform POSIX/game-time semantics. Internal two-capture
+and persisted-lineage tests remain Forge-reported (87 tests); they were not
+rerun from this frontend repository. This is not a blanket closure of every
+backend audit item in the review gate.
+
+#### Contract-review disposition
+
+| Original concern                      | Consumption decision and evidence                                                                                                                                                                                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1 epoch display; P2 identifiers      | Readable illustrative game-time labels plus exact integer epochs; uniform POSIX/game milliseconds, not physical UTC conversion. Model/time-scale IDs are checked by the consumer.                                                                                                                       |
+| P3 convergence and host position      | Retained. Each leg has independent timing diagnostics; arrival is the station position including its orbital offset, and `hostPositionKm` is the future host center. Never add either offset again.                                                                                                     |
+| P4 frozen departure                   | Accepted. Departure must match the same-response navigation state exactly.                                                                                                                                                                                                                              |
+| P5 API version                        | `info.version` remains 4.0.0. No independent Forge version-policy evidence was supplied; consumption approval is not certification of that internal policy.                                                                                                                                             |
+| Explicit speed and contraction bound  | Inclusive 120–10000 km/s; no default. Reviewed contract documents analytic full-orbit Kepler/parent/station speed bounds and requires each leg's bound/speed ratio to be at most 0.5. Nova does not implement a second timing solver.                                                                   |
+| Position semantics                    | Encounter is the candidate center, not a flyby point. Nova uses separate future markers and illustrative geometry; canonical meshes/T0 positions are unchanged.                                                                                                                                         |
+| Outcomes, source association, OpenAPI | Cache-busted root/module/schema review accepted. Same-response/source/model/identity validation and typed rejection behavior are covered by focused frontend and read-only live checks. No independent-response mixing or partial prediction is accepted.                                               |
+| Read behavior and internal invariants | Live probes used navigation opt-ins only. Two captures, no additional source reads, unchanged existing fields, second-capture rejection, and persisted lineage are supported by Forge's reported isolated tests; frontend probes additionally compared unchanged baseline fields at matching revisions. |
+| Generated artifacts                   | No Forge artifact cleanup was performed from this repository. Preserve pre-existing changes; no blanket revert is authorized.                                                                                                                                                                           |
+
+User-selected UI decisions:
+
+- Explicit **Calculate prediction** and **Clear prediction** controls, with a
+  blank speed input and no default/coercion. Require one selected candidate and
+  a finite speed in the inclusive `[120, 10000]` km/s range.
+- Use an indeterminate progress bar and pending status, not invented percentage
+  progress. Keep the existing baseline visible while calculating; input edits
+  or Clear cancel local consumption and discard superseded replies.
+- Replace only the blue T0 candidate sweep while prediction is active. Keep
+  frozen T0 markers and the grey direct reference/distance separate and
+  unchanged. Green identifies the illustrative future path/arrival; purple
+  identifies the future candidate center.
+- Share the existing marker-avoiding display geometry across the X-Y plot and
+  3D overlay. This reuses presentation geometry, not an orbital/trajectory
+  solver, and never modifies ordinary body/station meshes.
+- Show readable ISO calendar labels as illustrative game time and keep exact
+  integer epochs/model diagnostics in expandable details. Never show an ETA,
+  countdown, curve duration, safety, reachability, or assist-benefit claim.
+
+Prediction consumption requires one same-response supported eligible
+`navigationState`, the expected association, equal source revision/basis/model,
+an identical departure, matching candidate/destination/host identities, valid
+ordered epochs within the contract horizon, finite positions and independently
+bounded convergence diagnostics. Invalid association/data fails closed with
+`PAIRED_PREDICTION_INVALID`. Nested rejection replaces any prior success and
+retains only its same-response baseline; it cannot leave partial prediction
+markers. Timeout, invalid-session, clearing, and superseded requests cannot
+restore old predictions. Backend rejection reason/message is displayed.
+
+#### Verified results
+
+- `npm run test:spec -- src\app\services\viewer-navigation-preview.service.vitest.ts src\app\scene\viewer\viewer-navigation-detour.vitest.ts src\app\page\game\viewer-scene.vitest.ts src\app\services\solar-system.service.vitest.ts`:
+  passed, 94 tests.
+- `npx playwright test viewer-station-model --grep navigation --reporter=line`:
+  passed, 3 tests including mocked authentication setup. Coverage includes the
+  existing Phase 1 path, explicit blank input, pending progress, both speed
+  boundaries, prediction rejection, edits while pending, invalid-session,
+  unchanged direct distance, and future 3D endpoints in both distance modes.
+  Supported plots in both modes and a rejected prediction are attached to the
+  Playwright report.
+- `npm run typecheck`: passed (app, Vitest, and e2e TypeScript).
+- `npm run build`: passed, including Angular templates and the e2e partition gate.
+- `npx eslint src\app\model\solar-system-get.ts src\app\services\navigation-prediction-validation.ts src\app\services\viewer-navigation-preview.service.ts src\app\services\viewer-navigation-preview.service.vitest.ts src\app\scene\viewer\viewer-navigation-detour.ts src\app\scene\viewer\viewer-navigation-preview.ts src\app\scene\viewer\viewer-system-scene.ts src\app\page\game\viewer-scene.ts src\app\i18n\locales\en.ts src\app\i18n\locales\it.ts e2e\tests\viewer-station-model.spec.ts`:
+  passed.
+- `git diff --check`: passed. At this validation checkpoint, no Prettier,
+  formatting pass, commit, backend
+  restart, purchase, world repair, account creation, or live fixture creation
+  was performed.
+
+#### Read-only live smoke test
+
+The user authenticated the existing browser session and selected an existing
+eligible purchased ship. All navigation probes used the navigation opt-in; no
+ordinary system read was deliberately issued for these probes.
+
+| Case                                                                | Observed outcome                                                                                                                                         |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Existing eligible ship, Pluto destination, Luna candidate, 150 km/s | Complete supported prediction consumed by the UI; same-source association verified.                                                                      |
+| 120 and 10000 km/s                                                  | Supported; source revision matched the paired state, and preview/direct estimate were unchanged against the no-prediction response at the same revision. |
+| Speed 10 or missing speed                                           | Nested `invalid / SCENARIO_SPEED_INVALID`; valid preview/direct estimate retained.                                                                       |
+| Missing candidate                                                   | Nested `invalid / CANDIDATE_REQUIRED`; supported zero-candidate preview retained.                                                                        |
+| Extra options key or array options                                  | Nested `invalid / NAVIGATION_REQUEST_INVALID`.                                                                                                           |
+| Earth station destination                                           | `ineligible / KNOWN_INVALID_DESTINATION`; no prediction. UI ineligible state was also inspected.                                                         |
+| Existing alternate legacy ship                                      | `unsupported / BASIS_UNKNOWN` for preview and prediction; no repair attempted.                                                                           |
+
+For the supported 150 km/s example, the direct distance was
+`5553820582.410451` km. The returned integer game epochs were departure
+`1794694161611`, encounter `1795786849729`, and arrival `1832064130116`.
+The 120 and 10000 km/s examples independently reported encounter and arrival
+timing residuals below 1 ms. These are numerical timing checks, not physical
+accuracy or travel-feasibility evidence. Screenshots of the live supported,
+compressed, and ineligible views are retained with the session artifacts.
+Live horizon/nonconvergence/source-change failures were not induced by altering
+the world. Invalid-session was exercised in the mocked browser flow, not by
+revoking the user's live session.
+
+#### Owner visual acceptance: accepted 2026-11-16
+
+Owner review results (2026-11-16), batch 1:
+
+- [x] After Clear prediction, speed is blank and Calculate is disabled; candidate
+      selection does not silently supply a speed.
+- [x] Explicit 150 km/s calculation produces a prediction without moving the
+      ship or changing the camera target.
+- [x] Departure, encounter, and arrival game-time labels are readable; exact
+      integer epochs/model details are available; no ETA/countdown/duration is
+      shown.
+- Pending feedback: not observed by the owner because the live response was
+  too fast. The delayed-response automated browser test passes; this is not
+  recorded as owner visual acceptance of the indicator.
+
+Owner review results (2026-11-16), batch 2:
+
+- [x] Future markers/path are distinguishable from frozen T0 markers in both
+      distance modes; the old blue sweep is absent during prediction.
+- [x] Grey direct reference/distance remain separate and unchanged when
+      recalculating at 120 and 10000 km/s.
+- [x] Both speed boundaries calculate; entering 10 or clearing speed disables
+      Calculate and removes the old prediction without clamping/defaulting.
+- [x] The owner accepts conservative camera/plot suppression with explicit
+      unavailable guidance and normal rotation/zoom recovery where possible.
+
+Owner review results (2026-11-16), final batch:
+
+- [x] Clear prediction removes future geometry/details, blanks speed, restores
+      the Phase 1 sweep when drawable, and preserves the baseline.
+- [x] Candidate/destination replacement removes completed predictions.
+      Pending-request races were too fast for owner observation; the owner
+      accepts the automated stale-response test evidence.
+- [x] Earth Orbital Market is explicitly ineligible with
+      `KNOWN_INVALID_DESTINATION` and no prediction.
+- [x] The owner accepts the recorded automated/live evidence for remaining
+      rejection, timeout, invalid-session, invalid-option, and legacy-lineage
+      cases. No live session revocation or artificial world mutation was needed.
+- [x] With no failures reported, the owner accepts Phase 2C. Progress feedback
+      and pending races are accepted on automated evidence, not claimed as
+      personally observed live behavior.
+
+The following walkthrough is retained as a reference for repeating validation:
+
+1. Plan to Pluto with the existing eligible ship. Select Luna; verify the speed
+   field starts blank on a fresh Viewer page and Calculate is disabled.
+2. Enter 150 km/s explicitly, then Calculate. Inspect pending feedback if the
+   response takes time, readable departure/encounter/arrival labels, and exact
+   epochs under **Exact epochs and model details**.
+3. Scroll inside the preview panel to the X-Y plot. Compare both distance modes:
+   frozen markers/reference remain; green/purple distinguish future geometry.
+   The blue T0 sweep must not remain beside the prediction.
+4. Inspect the 3D overlay by rotating/zooming normally. Existing conservative
+   marker/clipping checks may hide the future 3D curve and show a status instead.
+   In the live proportional Pluto/Luna example the plot's endpoint/marker overlap
+   check suppressed the small-scale plot path. The compressed plot was available,
+   while its 3D curve was suppressed at the tested camera angle. These are
+   presentation limitations, not prediction failures; the owner accepted this
+   behavior during batch 2.
+5. Try 120 and 10000 and recalculate; direct distance stays unchanged for the
+   same source revision. Enter 10 or clear the field: Calculate is disabled
+   with the range guidance, and no older prediction remains.
+6. Clear prediction to restore Phase 1. Change candidate/destination while a
+   request is pending and verify no stale curve appears. Earth station remains
+   explicitly ineligible.
+7. Review the mocked rejection screenshot/report and record any requested
+   visual changes. Owner confirmation was recorded in the final batch above.
+
+Phase 2D formatting/LF checks were subsequently authorized for session closeout.
+All Phase 3 work remains separately gated.
+
+### Phase 2D final formatting and LF checks: 2026-11-16
+
+The authorized formatting pass used the existing Prettier configuration
+(including its import organizer and `endOfLine: lf`) on these 17 navigation
+source/test/documentation files only:
+
+```powershell
+$files = @(
+  'README.md',
+  'docs\ship-navigation-2026-11-14.md',
+  'docs\viewer-architecture-decision.md',
+  'src\app\model\solar-system-get.ts',
+  'src\app\services\navigation-prediction-validation.ts',
+  'src\app\services\viewer-navigation-preview.service.ts',
+  'src\app\services\viewer-navigation-preview.service.vitest.ts',
+  'src\app\scene\viewer\viewer-navigation-detour.ts',
+  'src\app\scene\viewer\viewer-navigation-preview.ts',
+  'src\app\scene\viewer\viewer-system-scene.ts',
+  'src\app\scene\viewer\viewer-system-scene.html',
+  'src\app\page\game\viewer-scene.ts',
+  'src\app\page\game\viewer-scene.html',
+  'src\app\page\game\viewer-scene.css',
+  'src\app\i18n\locales\en.ts',
+  'src\app\i18n\locales\it.ts',
+  'e2e\tests\viewer-station-model.spec.ts'
+)
+npx --no-install prettier --write @files
+npx --no-install prettier --check @files
+```
+
+- Scoped Prettier write/check: passed for all 17 files.
+- `git ls-files --eol`: zero tracked working-tree CRLF/mixed violations outside
+  the `.gitattributes` CRLF exceptions for `.bat`, `.cmd`, and `.ps1`. A separate
+  content check also confirmed LF-only endings in the new, untracked
+  prediction-validation service.
+- `git diff --check`: passed.
+- The focused Vitest command in **Verified results** was rerun after formatting:
+  passed, 94 tests across four files.
+- `npx --no-install playwright test viewer-station-model --grep navigation --reporter=line`:
+  passed, three tests including mocked authentication setup.
+- `npm run build`: passed, including Angular templates and the e2e partition gate.
+- `npm run typecheck`: passed for app, Vitest, and e2e.
+- Scoped ESLint on the 11 TypeScript files listed in **Verified results** was
+  rerun with `npx --no-install eslint`: passed.
+- `npm run format:check`: failed on three unrelated existing files:
+  [asteroid-scan-detail-panel.html](../src/app/component/asteroid-scan-detail-panel.html),
+  [character-profile.html](../src/app/page/game/character-profile.html), and
+  [solar-system-details.html](../src/app/page/game/solar-system-details.html).
+  They were not changed during this navigation cleanup. The global check is
+  not represented as passing.
+
+The README and Viewer architecture decision now describe accepted Phase 2
+behavior and link to this handoff. No full Vitest/Playwright suite or independent
+backend audit was run for closeout. No commit, push, server restart, dependency
+installation, or world-data mutation was performed.
