@@ -22,106 +22,144 @@
             <input type="checkbox" [checked]="ignoreDriveLimits()" (change)="setIgnoreDriveLimits($event)" />
             {{ t.game.viewer.navigationRouteIgnoreDriveLimits }}
           </label>
-          <p>{{ ignoreDriveLimits() ? t.game.viewer.navigationRouteTestProfile : t.game.viewer.navigationRouteDriveProfile }}</p>
+          <p>
+            {{ ignoreDriveLimits() ? t.game.viewer.navigationRouteTestProfile :
+            t.game.viewer.navigationRouteDriveProfile }}
+          </p>
           <p>{{ t.game.viewer.navigationRouteSearchBounds }}</p>
-          <button type="button" class="viewer-navigation-preview__clear"
-            [disabled]="preview.status !== 'ready' || routeSearch().status === 'searching'" (click)="planCalculatedRoute()">
+          <button
+            type="button"
+            class="viewer-navigation-preview__clear"
+            [disabled]="preview.status !== 'ready' || routeSearch().status === 'searching'"
+            (click)="planCalculatedRoute()"
+          >
             {{ t.game.viewer.navigationRoutePlan }}
           </button>
           <p>{{ t.game.viewer.navigationRouteDisclaimer }}</p>
-          @if (routeSearch(); as search) {
-            @if (search.status === 'searching') {
-            <div role="status">
-              <p>{{ t.game.viewer.navigationRouteWorking }}</p>
-              <p>{{ t.game.viewer.navigationRouteProgress.replace('{completed}', search.completed.toString()).replace('{rejected}', search.rejected.toString()) }}</p>
-              <progress [attr.aria-label]="t.game.viewer.navigationRouteWorking"></progress>
-            </div>
-            } @else if (search.status === 'error') {
-            <p role="alert">{{ t.game.viewer.navigationRouteError }} ({{ search.reason }}) {{ search.message }}</p>
-            } @else if (search.status === 'ready') {
-              @if (search.incomplete) { <p role="status">{{ t.game.viewer.navigationRouteIncomplete }}</p> }
-              @if (search.directUnavailable) { <p role="status">{{ t.game.viewer.navigationRouteDirectUnavailable }}</p> }
-              @if (search.rejections.length) {
-              <details>
-                <summary>{{ t.game.viewer.navigationRouteRejected }}</summary>
-                @for (reason of search.rejections; track reason) { <p>{{ reason }}</p> }
-              </details>
-              }
-              @if (!search.choices.length || (search.choices.length === 1 && search.choices[0].kind === 'direct' && !search.choices[0].direct.eligible)) {
-              <p>{{ t.game.viewer.navigationRouteNoEligible }}</p>
-              }
-              <div class="navigation-route-choices" data-testid="navigation-route-choices">
-                @for (item of orderedRouteChoices(); track item.index) {
-                <div class="navigation-route-choice">
-                  <button type="button" class="viewer-navigation-preview__clear navigation-route-choice__button"
-                    [attr.aria-pressed]="search.selected === item.index" (click)="selectCalculatedRoute(item.index)">
-                    @if (item.choice.kind === 'direct') {
-                      {{ t.game.viewer.navigationRouteDirect }}
-                    } @else {
-                      {{ t.game.viewer.navigationRouteFlybys }}:
-                      @for (body of item.choice.route.prefixBodyIds; track body) {
-                        {{ routeBodyName(body) }} ({{ item.choice.route.prefixSides[$index] === 1 ? '+' : '−' }})
-                      }
-                    }
-                  </button>
-                  @if (item.choice.kind === 'direct') {
-                    <span class="navigation-route-choice__distance">{{ formatNumber(item.choice.direct.distanceKm) }} km</span>
-                    <span class="navigation-route-choice__time">{{ routeDuration(item.choice.direct.durationMs) }}</span>
-                    <span class="navigation-route-choice__fuel">{{ formatNumber(item.choice.direct.fuelUnits) }} {{ t.game.viewer.navigationRouteFuel }}</span>
-                  } @else {
-                    <span class="navigation-route-choice__distance">{{ formatNumber(item.choice.route.totalDistanceKm) }} km</span>
-                    <span class="navigation-route-choice__time">{{ routeDuration(item.choice.route.totalDurationMs) }}</span>
-                    <span class="navigation-route-choice__fuel">{{ formatNumber(item.choice.route.fuelUnits) }} {{ t.game.viewer.navigationRouteFuel }}</span>
-                  }
-                  <span class="navigation-route-choice__reasons">@for (reason of item.choice.reasons; track reason) { {{ routeReason(reason) }}. }</span>
-                  @if (item.choice.kind === 'direct' && !item.choice.direct.eligible) {
-                  <span class="navigation-route-choice__ineligible">{{ item.choice.direct.eligibilityReason === 'OUTSIDE_SHIP_LEG_RANGE' ? t.game.viewer.navigationRouteDriveIneligible : t.game.viewer.navigationRouteIneligible }}</span>
-                  }
-                </div>
-                }
-              </div>
-              @if (search.choices[search.selected]; as selected) {
-                @if (selected.kind === 'route') {
-                <p>{{ t.game.viewer.navigationRouteIllustration }}</p>
-                @if (routeIllustrationUnavailable()) { <p role="status">{{ t.game.viewer.navigationRouteIllustrationUnavailable }}</p> }
-                }
-                @let assessment = selected.kind === 'direct' ? selected.direct.hazardAssessment : selected.route.hazardAssessment;
-                <h4>{{ t.game.viewer.navigationRouteWarnings }}</h4>
-                @for (marker of assessment.markers; track $index) {
-                <button type="button" class="viewer-navigation-preview__clear"
-                  (click)="routeMarker.set(routeBodyName(marker.bodyId) + ': ' + routeHazardType(marker.hazardType) + ' — ' + marker.explanation)">
-                  {{ routeBodyName(marker.bodyId) }}: {{ routeHazardType(marker.hazardType) }}
-                </button>
-                }
-                @if (assessment.unresolvedAssessments.length) {
-                <details class="navigation-route-survey">
-                  <summary>
-                    <span class="navigation-route-survey__icon" aria-hidden="true">i</span>
-                    @if (assessment.surveyStatus !== 'complete') {
-                      {{ assessment.surveyStatus === 'unavailable' ? t.game.viewer.navigationRouteSurveyUnavailable : t.game.viewer.navigationRouteSurveyIncomplete }} ·
-                    }
-                    {{ t.game.viewer.navigationRouteUnresolvedCount.replace('{count}', assessment.unresolvedAssessments.length.toString()) }}
-                  </summary>
-                  @for (marker of assessment.unresolvedAssessments; track $index) {
-                  <button type="button" class="viewer-navigation-preview__clear"
-                    (click)="routeMarker.set(routeBodyName(marker.bodyId) + ': ' + marker.reason)">
-                    {{ routeBodyName(marker.bodyId) }}: {{ t.game.viewer.navigationRouteUnresolved }}
-                  </button>
-                  }
-                </details>
-                } @else if (assessment.surveyStatus !== 'complete') {
-                <p class="navigation-route-survey" role="status">
-                  <span class="navigation-route-survey__icon" aria-hidden="true">i</span>
-                  {{ assessment.surveyStatus === 'unavailable' ? t.game.viewer.navigationRouteSurveyUnavailable : t.game.viewer.navigationRouteSurveyIncomplete }}
-                </p>
-                }
-                @if (routeMarker()) { <p role="status">{{ routeMarker() }}</p> }
-              }
+          @if (routeSearch(); as search) { @if (search.status === 'searching') {
+          <div role="status">
+            <p>{{ t.game.viewer.navigationRouteWorking }}</p>
+            <p>
+              {{ t.game.viewer.navigationRouteProgress.replace('{completed}',
+              search.completed.toString()).replace('{rejected}', search.rejected.toString()) }}
+            </p>
+            <progress [attr.aria-label]="t.game.viewer.navigationRouteWorking"></progress>
+          </div>
+          } @else if (search.status === 'error') {
+          <p role="alert">{{ t.game.viewer.navigationRouteError }} ({{ search.reason }}) {{ search.message }}</p>
+          } @else if (search.status === 'ready') { @if (search.incomplete) {
+          <p role="status">{{ t.game.viewer.navigationRouteIncomplete }}</p>
+          } @if (search.directUnavailable) {
+          <p role="status">{{ t.game.viewer.navigationRouteDirectUnavailable }}</p>
+          } @if (search.rejections.length) {
+          <details>
+            <summary>{{ t.game.viewer.navigationRouteRejected }}</summary>
+            @for (reason of search.rejections; track reason) {
+            <p>{{ reason }}</p>
             }
+          </details>
+          } @if (search.unfinishedJobIds.length) {
+          <details>
+            <summary>{{ t.game.viewer.navigationRouteUnfinished }}</summary>
+            @for (jobId of search.unfinishedJobIds; track jobId) {
+            <p>{{ jobId }}</p>
+            }
+          </details>
+          } @if (!search.choices.length || (search.choices.length === 1 && search.choices[0].kind === 'direct' &&
+          !search.choices[0].direct.eligible)) {
+          <p>{{ t.game.viewer.navigationRouteNoEligible }}</p>
           }
+          <div class="navigation-route-choices" data-testid="navigation-route-choices">
+            @for (item of orderedRouteChoices(); track item.index) {
+            <div class="navigation-route-choice">
+              <button
+                type="button"
+                class="viewer-navigation-preview__clear navigation-route-choice__button"
+                [attr.aria-pressed]="search.selected === item.index"
+                (click)="selectCalculatedRoute(item.index)"
+              >
+                @if (item.choice.kind === 'direct') { {{ t.game.viewer.navigationRouteDirect }} } @else { {{
+                t.game.viewer.navigationRouteFlybys }}: @for (body of item.choice.route.prefixBodyIds; track body) { {{
+                routeBodyName(body) }} ({{ item.choice.route.prefixSides[$index] === 1 ? '+' : '−' }}) } }
+              </button>
+              @if (item.choice.kind === 'direct') {
+              <span class="navigation-route-choice__distance">
+                {{ formatNumber(item.choice.direct.distanceKm) }} km
+              </span>
+              <span class="navigation-route-choice__time">{{ routeDuration(item.choice.direct.durationMs) }}</span>
+              <span class="navigation-route-choice__fuel">
+                {{ formatNumber(item.choice.direct.fuelUnits) }} {{ t.game.viewer.navigationRouteFuel }}
+              </span>
+              } @else {
+              <span class="navigation-route-choice__distance">
+                {{ formatNumber(item.choice.route.totalDistanceKm) }} km
+              </span>
+              <span class="navigation-route-choice__time">{{ routeDuration(item.choice.route.totalDurationMs) }}</span>
+              <span class="navigation-route-choice__fuel">
+                {{ formatNumber(item.choice.route.fuelUnits) }} {{ t.game.viewer.navigationRouteFuel }}
+              </span>
+              }
+              <span class="navigation-route-choice__reasons">
+                @for (reason of item.choice.reasons; track reason) { {{ routeReason(reason) }}. }
+              </span>
+              @if (item.choice.kind === 'direct' && !item.choice.direct.eligible) {
+              <span class="navigation-route-choice__ineligible">
+                {{ item.choice.direct.eligibilityReason === 'OUTSIDE_SHIP_LEG_RANGE' ?
+                t.game.viewer.navigationRouteDriveIneligible : t.game.viewer.navigationRouteIneligible }}
+              </span>
+              }
+            </div>
+            }
+          </div>
+          @if (search.choices[search.selected]; as selected) { @if (selected.kind === 'route') {
+          <p>{{ t.game.viewer.navigationRouteIllustration }}</p>
+          @if (routeIllustrationUnavailable()) {
+          <p role="status">{{ t.game.viewer.navigationRouteIllustrationUnavailable }}</p>
+          } } @let assessment = selected.kind === 'direct' ? selected.direct.hazardAssessment :
+          selected.route.hazardAssessment;
+          <h4>{{ t.game.viewer.navigationRouteWarnings }}</h4>
+          @for (marker of assessment.markers; track $index) {
+          <button
+            type="button"
+            class="viewer-navigation-preview__clear"
+            (click)="routeMarker.set(routeBodyName(marker.bodyId) + ': ' + routeHazardType(marker.hazardType) + ' — ' + marker.explanation)"
+          >
+            {{ routeBodyName(marker.bodyId) }}: {{ routeHazardType(marker.hazardType) }}
+          </button>
+          } @if (assessment.unresolvedAssessments.length) {
+          <details class="navigation-route-survey">
+            <summary>
+              <span class="navigation-route-survey__icon" aria-hidden="true">i</span>
+              @if (assessment.surveyStatus !== 'complete') { {{ assessment.surveyStatus === 'unavailable' ?
+              t.game.viewer.navigationRouteSurveyUnavailable : t.game.viewer.navigationRouteSurveyIncomplete }} · } {{
+              t.game.viewer.navigationRouteUnresolvedCount.replace('{count}',
+              assessment.unresolvedAssessments.length.toString()) }}
+            </summary>
+            @for (marker of assessment.unresolvedAssessments; track $index) {
+            <button
+              type="button"
+              class="viewer-navigation-preview__clear"
+              (click)="routeMarker.set(routeBodyName(marker.bodyId) + ': ' + marker.reason)"
+            >
+              {{ routeBodyName(marker.bodyId) }}: {{ t.game.viewer.navigationRouteUnresolved }}
+            </button>
+            }
+          </details>
+          } @else if (assessment.surveyStatus !== 'complete') {
+          <p class="navigation-route-survey" role="status">
+            <span class="navigation-route-survey__icon" aria-hidden="true">i</span>
+            {{ assessment.surveyStatus === 'unavailable' ? t.game.viewer.navigationRouteSurveyUnavailable :
+            t.game.viewer.navigationRouteSurveyIncomplete }}
+          </p>
+          } @if (routeMarker()) {
+          <p role="status">{{ routeMarker() }}</p>
+          } } } }
         </section>
         }
-        <p>{{ t.game.viewer.navigationPreviewDisclaimer }}</p>
+        <p>
+          {{ routeChoices().length ? t.game.viewer.navigationRouteFlightDisclaimer :
+          t.game.viewer.navigationPreviewDisclaimer }}
+        </p>
         @if (preview.status === 'loading') {
         <p data-testid="navigation-preview-loading">{{ t.game.viewer.navigationPreviewLoading }}</p>
         } @else if (preview.status === 'unsupported' || preview.status === 'error') {
@@ -142,7 +180,7 @@
         <p>{{ t.game.viewer.navigationPreviewHiddenGroup.replace('{group}', group) }}</p>
         }
         <p>{{ t.game.viewer.navigationPreviewEpochLabel.replace('{epoch}', preview.state.epochMs.toString()) }}</p>
-        @if (preview.estimate.status === 'ready') {
+        @if (!routeChoices().length) { @if (preview.estimate.status === 'ready') {
         <div class="viewer-navigation-preview__distance" data-testid="navigation-direct-distance">
           <p>
             <strong>{{ t.game.viewer.navigationPreviewDistanceLabel }}:</strong>
@@ -159,7 +197,7 @@
         >
           {{ t.game.viewer.navigationPreviewEstimateUnavailable }} ({{ preview.estimate.reason }})
         </p>
-        } @if (preview.selection.candidateBodyId) {
+        } } @if (preview.selection.candidateBodyId) {
         <p class="viewer-navigation-preview__candidate-disclaimer" data-testid="navigation-candidate-disclaimer">
           {{ t.game.viewer.navigationPreviewCandidateDisclaimer }}
         </p>
@@ -171,8 +209,7 @@
         >
           {{ t.game.viewer.navigationPreviewDetourUnavailable }}
         </p>
-        }
-        @if (navigationDetour()?.status === 'detour' && (supportedPrediction() ? navigationPrediction3dUnavailable() :
+        } @if (navigationDetour()?.status === 'detour' && (supportedPrediction() ? navigationPrediction3dUnavailable() :
         navigationDetour3dUnavailable())) {
         <p role="status" data-testid="navigation-detour-3d-unavailable">
           {{ t.game.viewer.navigationPreviewDetour3dUnavailable }}

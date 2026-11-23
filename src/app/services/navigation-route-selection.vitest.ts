@@ -11,6 +11,9 @@ const assessment = {
 };
 const direct: NavigationDirectReference = {
   status: 'supported',
+  kind: 'direct-reference',
+  departureEpochMs: 1_715_000_000_000,
+  arrivalEpochMs: 1_715_000_000_001,
   target: { kind: 'market', id: 'destination' },
   departurePositionKm: { x: 0, y: 0, z: 0 },
   destinationPositionKm: { x: 1, y: 0, z: 0 },
@@ -36,7 +39,11 @@ function route(jobId: string, distance: number, bodies: string[], eligible = tru
     eligibilityReason: 'WITHIN_PHASE3_BOUNDS',
     navigationMode: 'bounded-preview-100au',
     flightAuthorized: false,
-    driveEligibility: { status: 'not-applicable', reason: 'BOUNDED_PREVIEW_IGNORES_SHIP_DRIVE', flightAuthorized: false },
+    driveEligibility: {
+      status: 'not-applicable',
+      reason: 'BOUNDED_PREVIEW_IGNORES_SHIP_DRIVE',
+      flightAuthorized: false,
+    },
     legs: [],
     totalDistanceKm: distance,
     totalDurationMs: distance,
@@ -55,7 +62,11 @@ describe('selectNavigationRoutes', () => {
       route('e', 40, ['venus']),
     ]);
     expect(choices.map((choice) => (choice.kind === 'direct' ? 'direct' : choice.route.jobId))).toEqual([
-      'direct', 'a', 'b', 'd', 'e',
+      'direct',
+      'a',
+      'b',
+      'd',
+      'e',
     ]);
     expect(choices[1].reasons).toContain('shortest-examined');
     expect(choices[3].reasons).toContain('different-flyby');

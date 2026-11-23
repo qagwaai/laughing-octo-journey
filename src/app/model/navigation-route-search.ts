@@ -13,7 +13,11 @@ export interface NavigationDriveProfile {
 
 export interface NavigationDriveEligibility {
   status: 'eligible' | 'ineligible' | 'unavailable' | 'not-applicable';
-  reason: 'WITHIN_SHIP_LEG_RANGE' | 'OUTSIDE_SHIP_LEG_RANGE' | 'DRIVE_PROFILE_UNAVAILABLE' | 'BOUNDED_PREVIEW_IGNORES_SHIP_DRIVE';
+  reason:
+    | 'WITHIN_SHIP_LEG_RANGE'
+    | 'OUTSIDE_SHIP_LEG_RANGE'
+    | 'DRIVE_PROFILE_UNAVAILABLE'
+    | 'BOUNDED_PREVIEW_IGNORES_SHIP_DRIVE';
   rangeAu?: number;
   rangeKm?: number;
   exceedingLegs?: { legIndex: number; distanceKm: number }[];
@@ -96,7 +100,8 @@ export interface NavigationRouteSuccess {
   target: NavigationRouteTarget;
   targetSide?: NavigationSide;
   eligible: boolean;
-  eligibilityReason: 'WITHIN_PHASE3_BOUNDS' | 'OUTSIDE_HOP_OR_PATH_LIMIT' | 'OUTSIDE_TOTAL_PATH_LIMIT' | 'OUTSIDE_SHIP_LEG_RANGE';
+  eligibilityReason:
+    'WITHIN_PHASE3_BOUNDS' | 'OUTSIDE_HOP_OR_PATH_LIMIT' | 'OUTSIDE_TOTAL_PATH_LIMIT' | 'OUTSIDE_SHIP_LEG_RANGE';
   navigationMode: NavigationRouteMode;
   flightAuthorized: false;
   driveEligibility: NavigationDriveEligibility;
@@ -110,20 +115,30 @@ export interface NavigationRouteSuccess {
 export interface NavigationRouteFailure {
   success: false;
   jobId: string;
-  reason: string;
+  prefixBodyIds: string[];
+  prefixSides: NavigationSide[];
+  target: NavigationRouteTarget;
+  reason: 'OUT_OF_DOMAIN' | 'ENCOUNTER_UNAVAILABLE' | 'TARGET_UNSUPPORTED' | 'NUMERIC_FAILURE';
   message: string;
 }
 
 export interface NavigationDirectReference {
   status: 'supported';
+  kind: 'direct-reference';
   target: { kind: 'market'; id: string };
+  departureEpochMs: number;
+  arrivalEpochMs: number;
   departurePositionKm: NavigationPositionVector;
   destinationPositionKm: NavigationPositionVector;
   distanceKm: number;
   durationMs: number;
   fuelUnits: number;
   eligible: boolean;
-  eligibilityReason: 'WITHIN_PHASE3_BOUNDS' | 'DIRECT_REFERENCE_MAY_EXCEED_HOP_LIMIT' | 'DIRECT_REFERENCE_MAY_EXCEED_PATH_LIMIT' | 'OUTSIDE_SHIP_LEG_RANGE';
+  eligibilityReason:
+    | 'WITHIN_PHASE3_BOUNDS'
+    | 'DIRECT_REFERENCE_MAY_EXCEED_HOP_LIMIT'
+    | 'DIRECT_REFERENCE_MAY_EXCEED_PATH_LIMIT'
+    | 'OUTSIDE_SHIP_LEG_RANGE';
   navigationMode: NavigationRouteMode;
   flightAuthorized: false;
   driveEligibility: NavigationDriveEligibility;
@@ -137,14 +152,14 @@ export interface NavigationRouteCapture {
   shipRevision: string;
   destinationMarketId: string;
   candidateBodyIds: string[];
-  departureEpochMs: number;
+  shipPositionEpochMs: number;
   departurePositionKm: NavigationPositionVector;
   coordinateBasisId: string;
   positionEvaluationModelId: string;
   sourceRevision: string;
   clockGeneration: number;
   clockLineage: string;
-  clockEpochMs: number;
+  searchStartEpochMs: number;
   profileId: NavigationRouteProfileId;
   profileVersion: 'v1';
   navigationMode: NavigationRouteMode;
@@ -153,26 +168,117 @@ export interface NavigationRouteCapture {
   flightAuthorized: false;
 }
 
-export interface NavigationRouteBatchResponse {
-  success: boolean;
+export interface NavigationRouteClock {
+  status: 'supported' | 'paused' | 'unavailable' | 'recovery';
+  epochMs: number | null;
+  timeScaleId: 'stellar:unix-ms-uniform:v1';
+  running: boolean;
+  generation: number;
+  lineage: string;
+  durability: 'durable-mongo-game-state' | 'process-only-unverified';
+}
+
+export interface NavigationRouteBounds {
+  profileId: NavigationRouteProfileId;
+  candidateDiscovery: 'automatic' | 'explicit';
+  candidateBodyCount: number;
+  maxEncounters: 5;
+  maxLegs: 6;
+  maxLegDistanceKm: number | null;
+  maxEligiblePathKm: number;
+  fuelUnitsPerAu: 1;
+  cruiseSpeedKmPerSec: 12466.489225;
+  maxJobs: 32;
+  maxLogicalLegs: 192;
+  maxTimeoutMs: 30000;
+  novaSearchDispatchBudget?: 512;
+  novaOverallTimeoutMs?: 30000;
+  novaSearchBudgetScope?: 'client-owned-not-server-batch-completion';
+}
+
+export interface NavigationRouteSurvey {
+  surveyId: 'sol-hazard-survey-v1';
+  status: 'complete' | 'incomplete' | 'unavailable';
+  approximation: 'coarse-spherical-moving-body-warning-envelope';
+  inventoryBodyIds: string[];
+  profiles: unknown[];
+}
+
+export interface NavigationRouteNumericPrecision {
+  epochUnit: 'uniform-game-millisecond';
+  positionUnit: 'kilometre';
+  distanceUnit: 'kilometre';
+  durationUnit: 'game-millisecond';
+  fuelUnit: 'prototype-fuel-unit-per-AU';
+  distanceRounding: 'IEEE-754-binary64-full-precision-response';
+  epochRounding: 'Math.round-nearest-millisecond';
+  finiteValueRequirement: 'all-output-numbers-must-be-finite';
+}
+
+export interface NavigationRouteCompletion {
+  mode: 'complete' | 'timeout' | 'interrupted' | 'budget-limited';
+  submittedJobCount: number;
+  completedJobCount: number;
+  failedJobCount: number;
+  logicalLegCount: number;
+}
+
+export const NAVIGATION_ROUTE_FAILURE_REASONS = [
+  'invalid_request',
+  'unauthorized',
+  'unsupported_ship_position',
+  'unsupported_target',
+  'clock_unavailable',
+  'clock_recovery_in_progress',
+  'clock_data_inconsistent',
+  'invalid_capture',
+  'capture_expired',
+  'source_changed',
+  'source_association_mismatch',
+  'drive_profile_unavailable',
+  'drive_profile_changed',
+  'direct_target_unsupported',
+  'direct_source_unavailable',
+  'direct_numeric_failure',
+  'navigation_read_failed',
+  'batch_evaluation_failed',
+] as const;
+
+interface NavigationRouteResponseEnvelope {
   message: string;
   correlationId: string | null;
   requestIdentity: { operation: string; entityType: string; containerId: string } | null;
-  failure?: { reason: string; message: string };
+}
+
+export interface NavigationRouteBatchSuccessResponse extends NavigationRouteResponseEnvelope {
+  success: true;
   batch: {
-    status: 'supported' | 'incomplete' | 'failed';
-    capture: NavigationRouteCapture | null;
-    bounds?: {
-      profileId: NavigationRouteCapture['profileId'];
-      maxEligiblePathKm: number;
-      maxLegDistanceKm: number | null;
-    };
-    directReference: NavigationDirectReference | null;
+    status: 'supported' | 'incomplete';
+    capture: NavigationRouteCapture;
+    clock: NavigationRouteClock;
+    bounds: NavigationRouteBounds;
+    directReference: NavigationDirectReference;
     jobs: (NavigationRouteSuccess | NavigationRouteFailure)[];
-    completion?: {
-      mode: 'complete' | 'timeout' | 'interrupted' | 'budget-limited';
-      completedJobCount: number;
-      failedJobCount: number;
-    };
+    hazardSurvey: NavigationRouteSurvey;
+    numericPrecision: NavigationRouteNumericPrecision;
+    completion: NavigationRouteCompletion;
   };
 }
+
+export interface NavigationRouteBatchFailureResponse extends NavigationRouteResponseEnvelope {
+  success: false;
+  failure: { reason: (typeof NAVIGATION_ROUTE_FAILURE_REASONS)[number]; message: string };
+  batch: {
+    status: 'failed';
+    capture: null;
+    clock: null;
+    directReference: null;
+    jobs: [];
+    bounds: null;
+    hazardSurvey: null;
+    numericPrecision: null;
+    completion: null;
+  };
+}
+
+export type NavigationRouteBatchResponse = NavigationRouteBatchSuccessResponse | NavigationRouteBatchFailureResponse;

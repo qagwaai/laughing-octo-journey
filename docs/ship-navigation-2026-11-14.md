@@ -1,5 +1,84 @@
 # Ship navigation: implementation and handoff
 
+## Phase 4 route-consistency checkpoint: 2026-11-23
+
+The current route consumer adopts the corrected in-place Forge contract. See the
+[Phase 4 plan and progress](./navigation-phase4-2026-11-23.md) for owner decisions,
+scope, backend evidence and the remaining foundations.
+
+Capture now separates `shipPositionEpochMs` (saved snapshot) from
+`searchStartEpochMs` (pinned backend search start). Nova validates that direct
+references and every replayed path start at the captured position/time, that
+later legs chain returned endpoints/epochs, and that endpoint distance, duration,
+prototype fuel and the at-most-1-ms rounded timing residual are consistent.
+The advancing response clock does not retime the search.
+
+Forge reports full station-at-arrival endpoint evaluation. Nova renders the
+returned direct/leg geometry rather than substituting the stored Viewer snapshot.
+Source/capture/drive and required-direct failures discard the search and allow
+manual Plan Route; no automatic retry. Terminal job failures mark results
+incomplete without being mislabeled as backend timeout. Unfinished submitted
+job IDs remain available in the dialog. A deadline before any required direct
+reference arrives is an explicit error, not an alternatives-only success.
+
+After the owner reported restarting Forge, Nova fetched the corrected served
+OpenAPI/schemas and ran an authorized invalid unauthenticated navigation request.
+Its `unauthorized` failed-batch response matched the served schema. This verifies
+the exercised error path, not full live numerical-route correctness.
+
+Current focused checks passed:
+
+- Route-search, selection and hazard-clustering Vitest: 51 tests.
+- Angular build, app/spec/e2e typecheck, targeted changed-TypeScript ESLint and
+  `git diff --check`.
+- Mocked Playwright calculated-route, ineligible-preview and destination-change
+  scenarios after the presentation cleanup: four tests including mocked setup.
+
+The browser run reported a port-4200-in-use startup warning; tests passed against
+the reachable existing frontend, subsequently confirmed HTTP 200. No server was
+manually restarted by Nova. No full suite, performance benchmark or actual travel
+is claimed.
+
+Dock-following, application-wide celestial movement, Start Travel and save/pause
+semantics remain separate work.
+
+### Accepted session closeout
+
+The owner accepted the bounded implementation and updated presentation and
+requested session closure on 2026-11-23. The owner handles commits and pushes in
+both repositories; no agent commit/push or new implementation item is authorized.
+
+Signed-in Sol review used the current active ship to Mars Orbital Market:
+
+- Normal mode explicitly failed `drive_profile_unavailable`; no fallback drive
+  assignment or live repair was performed.
+- Preview returned five displayed choices after 512 completed jobs and correctly
+  labeled the search incomplete. A late-attached observer checked seven batches/
+  203 jobs: stable saved vector/epoch and pinned search start, advancing response
+  clock, exact leg chaining, and maximum observed timing residual
+  `0.494140625 ms`. The final five choices passed independent returned-endpoint,
+  duration, fuel and leg-total checks.
+- Survey remained incomplete (378 unresolved assessments for direct; 756 for
+  the selected Phobos two-leg route), with explicit advisories and no flight
+  authorization. No independent celestial ephemeris oracle or full successful
+  normal-mode journey was verified.
+
+The obsolete hypothetical snapshot-distance block now appears only when no
+calculated choices are available, including before planning and after failure.
+English/Italian calculated-route disclaimers acknowledge game time/fuel estimates;
+flight, clearance, docking/access and survey warnings remain. The existing watcher
+reload cleared the live preview, so no extra authenticated request was issued;
+this final presentation change is covered by mocked browser tests.
+
+The initial broader station-model Playwright run had six passes/four failures
+from unrelated ambiguous Target selectors also matching Plan Route buttons.
+Those failures were left unchanged; the focused navigation flows passed.
+See the Phase 4 closeout for final formatting/check results and next-session gates.
+Forge subsequently reported its own handoff/ledger and session-end formatting
+complete, with 46 backend tests, typecheck, OpenAPI validation, lint, formatting
+and whitespace checks passing. Nova's post-format checks also passed. Both agents
+are paused and the owner handles commits/pushes; no next work is authorized.
+
 ## Phase 3 frontend closeout: 2026-11-23
 
 The Viewer can start a bounded Phase 3 route search through the served Forge

@@ -859,14 +859,20 @@ export const it: DeepPartial<EnLocale> = {
       navigationRouteNoEligible: 'Nessun percorso idoneo trovato tra quelli esaminati.',
       navigationRouteError: 'Pianificazione del percorso non riuscita.',
       navigationRouteRejected: 'Alcune valutazioni del percorso sono state respinte:',
-      navigationRouteDisclaimer: 'Le stime sono aiuti di navigazione del gioco, non garanzie di sicurezza o spazio libero.',
+      navigationRouteUnfinished: 'Valutazioni del percorso non completate:',
+      navigationRouteDisclaimer:
+        'Le stime sono aiuti di navigazione del gioco, non garanzie di sicurezza o spazio libero.',
+      navigationRouteFlightDisclaimer:
+        'Non è una traiettoria di volo convalidata. La durata e il carburante calcolati sono stime del gioco; lo spazio libero, la fattibilità del trasferimento e i benefici di un assist gravitazionale non sono convalidati.',
       navigationRouteFuel: 'Carburante',
       navigationRouteDirect: 'Riferimento diretto',
       navigationRouteDirectUnavailable: 'Riferimento diretto non disponibile.',
       navigationRouteIneligible: 'Oltre il limite di 100 UA per il percorso',
       navigationRouteIgnoreDriveLimits: 'Ignora i limiti del motore (solo anteprima)',
-      navigationRouteTestProfile: 'Solo anteprima: limite totale di 100 UA. L’idoneità del motore della nave non viene verificata.',
-      navigationRouteDriveProfile: 'L’autonomia del motore si applica a ogni tratta. Il pianificatore limita inoltre il percorso totale a 100 UA. La pianificazione non autorizza il volo.',
+      navigationRouteTestProfile:
+        'Solo anteprima: limite totale di 100 UA. L’idoneità del motore della nave non viene verificata.',
+      navigationRouteDriveProfile:
+        'L’autonomia del motore si applica a ogni tratta. Il pianificatore limita inoltre il percorso totale a 100 UA. La pianificazione non autorizza il volo.',
       navigationRouteDriveIneligible: 'Oltre l’autonomia per tratta del motore della nave',
       navigationRouteSearchBounds: 'Ricerca: fino a 5 incontri, 6 tratte, 512 valutazioni o 30 secondi; non esaustiva.',
       navigationRouteFlybys: 'Sorvoli',
@@ -885,8 +891,10 @@ export const it: DeepPartial<EnLocale> = {
       navigationRouteNearbyWarnings: '{count} avvisi vicini',
       navigationRouteMarker: 'Seleziona un marcatore di avviso per i dettagli.',
       navigationRouteEncounter: '{body} all’incontro · T+{elapsed}',
-      navigationRouteIllustration: 'Curva blu: solo illustrativa. Tratte verdi tratteggiate: percorso calcolato. Le immagini trasparenti mostrano i corpi all’incontro, con il tempo dalla partenza. I collegamenti puntinati indicano le posizioni memorizzate nel Viewer, non quelle attuali né le orbite.',
-      navigationRouteIllustrationUnavailable: 'La curva illustrativa non è disponibile per questa vista; le tratte calcolate restano visibili.',
+      navigationRouteIllustration:
+        'Curva blu: solo illustrativa. Tratte verdi tratteggiate: percorso calcolato. Le immagini trasparenti mostrano i corpi all’incontro, con il tempo dalla partenza. I collegamenti puntinati indicano le posizioni memorizzate nel Viewer, non quelle attuali né le orbite.',
+      navigationRouteIllustrationUnavailable:
+        'La curva illustrativa non è disponibile per questa vista; le tratte calcolate restano visibili.',
       navigationPreviewDisclaimer:
         'Non è una traiettoria di volo convalidata. Non calcola lo spazio libero, la durata del viaggio, la fattibilità del trasferimento, il consumo di carburante o un assist gravitazionale.',
       navigationPreviewLoading: 'Caricamento delle posizioni proiettate...',
@@ -900,8 +908,7 @@ export const it: DeepPartial<EnLocale> = {
       navigationPreviewDistanceLabel: 'Distanza ipotetica in linea retta tra gli estremi',
       navigationPreviewDistanceDisclaimer:
         'Solo distanza tra gli estremi: non è la distanza percorsa né la lunghezza di una curva o di un percorso via candidato, e non dimostra raggiungibilità, sicurezza o spazio libero.',
-      navigationPreviewDurationUnavailable:
-        'Questa istantanea non stima il tempo di viaggio.',
+      navigationPreviewDurationUnavailable: 'Questa istantanea non stima il tempo di viaggio.',
       navigationPreviewEstimateUnavailable: 'Stima diretta associata della distanza non disponibile.',
       navigationPreviewDetourUnavailable:
         'Non è possibile disegnare in questa vista un percorso illustrativo attorno al marcatore proiettato del candidato.',

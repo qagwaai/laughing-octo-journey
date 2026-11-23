@@ -1033,14 +1033,18 @@ export const en = {
       navigationRouteNoEligible: 'No eligible route was found among the choices examined.',
       navigationRouteError: 'Route planning failed.',
       navigationRouteRejected: 'Some route evaluations were rejected:',
+      navigationRouteUnfinished: 'Unfinished route evaluations:',
       navigationRouteDisclaimer: 'Estimates are game navigation aids, not physical clearance or safety guarantees.',
+      navigationRouteFlightDisclaimer:
+        'Not a validated flight path. Calculated time and fuel are game estimates; clearance, transfer feasibility and gravity-assist benefits are not validated.',
       navigationRouteFuel: 'Fuel',
       navigationRouteDirect: 'Direct reference',
       navigationRouteDirectUnavailable: 'Direct reference unavailable.',
       navigationRouteIneligible: 'Outside the 100 AU route limit',
       navigationRouteIgnoreDriveLimits: 'Ignore drive limits (preview only)',
       navigationRouteTestProfile: 'Preview only: 100 AU total route limit. Ship drive eligibility is not checked.',
-      navigationRouteDriveProfile: 'Ship drive range applies to each leg. The planner also limits the total route to 100 AU. Planning does not authorize flight.',
+      navigationRouteDriveProfile:
+        'Ship drive range applies to each leg. The planner also limits the total route to 100 AU. Planning does not authorize flight.',
       navigationRouteDriveIneligible: 'Outside this ship’s per-leg drive range',
       navigationRouteSearchBounds: 'Search: up to 5 encounters, 6 legs, 512 jobs or 30 seconds; not exhaustive.',
       navigationRouteFlybys: 'Flybys',
@@ -1059,8 +1063,10 @@ export const en = {
       navigationRouteNearbyWarnings: '{count} nearby warnings',
       navigationRouteMarker: 'Select a warning marker for details.',
       navigationRouteEncounter: '{body} at encounter · T+{elapsed}',
-      navigationRouteIllustration: 'Blue curve: illustrative only. Green dashed legs: calculated route. Ghosts show bodies at encounter, with time from route departure. Dotted links connect to stored Viewer snapshots, not current positions or orbital paths.',
-      navigationRouteIllustrationUnavailable: 'The illustrative curve is unavailable for this view; calculated legs remain visible.',
+      navigationRouteIllustration:
+        'Blue curve: illustrative only. Green dashed legs: calculated route. Ghosts show bodies at encounter, with time from route departure. Dotted links connect to stored Viewer snapshots, not current positions or orbital paths.',
+      navigationRouteIllustrationUnavailable:
+        'The illustrative curve is unavailable for this view; calculated legs remain visible.',
       navigationPreviewDisclaimer:
         'Not a validated flight path. It does not calculate clearance, travel time, transfer feasibility, fuel use, or a gravity assist.',
       navigationPreviewLoading: 'Loading projected positions…',

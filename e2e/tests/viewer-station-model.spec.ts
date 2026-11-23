@@ -1,11 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import type { MarketSummary } from '../../src/app/model/market-list';
-import type {
-  PairedNavigationEstimate,
-  SolarSystemGetRequest,
-  ViewerBody,
-} from '../../src/app/model/solar-system-get';
+import type { PairedNavigationEstimate, SolarSystemGetRequest, ViewerBody } from '../../src/app/model/solar-system-get';
 import { ACTIVE_SHIP, setupViewerSceneTest, solarSystemGetResponse } from '../fixtures/viewer-scene-rendering-scenario';
 import { expectStationHabitatMotion } from '../helpers/station-habitat-helper';
 import { GameShellPage } from '../page-objects/game-shell.page';
@@ -61,6 +57,12 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
   };
   const departure = ACTIVE_SHIP.spatial.positionKm;
   const destination = { x: 150000000, y: 0, z: 0 };
+  const searchStartEpochMs = ACTIVE_SHIP.spatial.epochMs + 3_600_000;
+  const cruiseSpeed = 12466.489225;
+  const au = 149597870.7;
+  const directDistance = 14959787071;
+  const directDuration = Math.round((1000 * directDistance) / cruiseSpeed);
+  let batchFailure: 'source_changed' | 'direct_numeric_failure' | null = null;
   const requestedModes: string[] = [];
   const previewRequests: SolarSystemGetRequest[] = [];
   const assessment = {
@@ -69,7 +71,13 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
     unresolvedBodyIds: ['sol-luna', 'sol-phobos'],
     unresolvedAssessments: [
       { bodyId: 'sol-luna', legIndex: 1, epochMs: 1715000000000, positionKm: departure, reason: 'profile_unavailable' },
-      { bodyId: 'sol-phobos', legIndex: 1, epochMs: 1715000000000, positionKm: departure, reason: 'profile_unavailable' },
+      {
+        bodyId: 'sol-phobos',
+        legIndex: 1,
+        epochMs: 1715000000000,
+        positionKm: departure,
+        reason: 'profile_unavailable',
+      },
     ],
     markers: ['surface', 'atmosphere'].map((hazardType) => ({
       bodyId: 'sol-mars',
@@ -127,8 +135,31 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
       }>;
     };
     requestedModes.push(request.navigationMode);
+    if (batchFailure) {
+      return {
+        event: 'navigation-route-edge-batch-response',
+        data: {
+          success: false,
+          message: 'Replan required',
+          correlationId: request.correlationId,
+          requestIdentity: { operation: 'navigation-route-edge-batch', entityType: 'solar-system', containerId: 'sol' },
+          failure: { reason: batchFailure, message: 'Replan required' },
+          batch: {
+            status: 'failed',
+            capture: null,
+            clock: null,
+            directReference: null,
+            jobs: [],
+            bounds: null,
+            hazardSurvey: null,
+            numericPrecision: null,
+            completion: null,
+          },
+        },
+      };
+    }
     const previewOnly = request.navigationMode === 'bounded-preview-100au';
-    const driveProfile = { id: 'drive', name: 'Drive', rangeAu: 0.5, cruiseSpeedAuPerHour: 1, fuelCostPerAu: 1 };
+    const driveProfile = { id: 'drive', name: 'Drive', rangeAu: 2, cruiseSpeedAuPerHour: 1, fuelCostPerAu: 1 };
     const driveEligibility = previewOnly
       ? { status: 'not-applicable', reason: 'BOUNDED_PREVIEW_IGNORES_SHIP_DRIVE', flightAuthorized: false }
       : { status: 'eligible', reason: 'WITHIN_SHIP_LEG_RANGE', flightAuthorized: false };
@@ -136,6 +167,49 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
       const bodyIds = job.target.kind === 'body' ? [...job.prefixBodyIds, job.target.id] : job.prefixBodyIds;
       const sides = job.target.kind === 'body' ? [...job.prefixSides, job.targetSide!] : job.prefixSides;
       const ids = [ACTIVE_SHIP.id, ...bodyIds, ...(job.target.kind === 'market' ? [job.target.id] : [])];
+      let legStart = searchStartEpochMs;
+      let position = departure;
+      const legs = Array.from({ length: job.prefixBodyIds.length + 1 }, (_, index) => {
+        const endpoint =
+          job.target.kind === 'market' && job.prefixBodyIds.length === 0
+            ? { x: departure.x + directDistance, y: departure.y, z: departure.z }
+            : { x: (index + 1) * 200000000, y: 0, z: 0 };
+        const distanceKm = Math.hypot(endpoint.x - position.x, endpoint.y - position.y, endpoint.z - position.z);
+        const durationMs = Math.round((1000 * distanceKm) / cruiseSpeed);
+        const leg = {
+          legIndex: index + 1,
+          fromBodyOrShipId: ids[index],
+          toBodyOrMarketId: ids[index + 1],
+          startPositionKm: position,
+          endPositionKm: endpoint,
+          departureEpochMs: legStart,
+          arrivalEpochMs: legStart + durationMs,
+          distanceKm,
+          durationMs,
+          fuelUnits: distanceKm / au,
+          withinHopLimit: true,
+          ...(!previewOnly ? { withinShipLegRange: distanceKm <= 2 * au, shipLegRangeKm: 2 * au } : {}),
+          ...(index < bodyIds.length
+            ? {
+                encounter: {
+                  bodyId: bodyIds[index],
+                  side: sides[index],
+                  encounterEpochMs: legStart + durationMs,
+                  bodyCenterPositionKm: { ...endpoint, y: -10000 },
+                  waypointPositionKm: endpoint,
+                  offsetKm: { x: 0, y: 10000, z: 0 },
+                  coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
+                  positionEvaluationModelId: 'sol-catalog-kepler-position-v1',
+                  sourceRevision: 'b'.repeat(64),
+                },
+              }
+            : {}),
+        };
+        position = endpoint;
+        legStart += durationMs;
+        return leg;
+      });
+      const exceeds = !previewOnly && legs.some((leg) => leg.distanceKm > 2 * au);
       return {
         success: true,
         jobId: job.jobId,
@@ -144,42 +218,26 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
         sideHistory: bodyIds.map((bodyId, index) => ({ encounterIndex: index + 1, bodyId, side: sides[index] })),
         target: job.target,
         ...(job.target.kind === 'body' ? { targetSide: job.targetSide } : {}),
-        eligible: true,
-        eligibilityReason: 'WITHIN_PHASE3_BOUNDS',
+        eligible: !exceeds && legs.reduce((sum, leg) => sum + leg.distanceKm, 0) <= 100 * au,
+        eligibilityReason: exceeds
+          ? 'OUTSIDE_SHIP_LEG_RANGE'
+          : legs.reduce((sum, leg) => sum + leg.distanceKm, 0) > 100 * au
+            ? 'OUTSIDE_TOTAL_PATH_LIMIT'
+            : 'WITHIN_PHASE3_BOUNDS',
         navigationMode: request.navigationMode,
         flightAuthorized: false,
-        driveEligibility,
-        totalDistanceKm: 1000000,
-        totalDurationMs: 1000,
-        fuelUnits: 1,
+        driveEligibility: exceeds
+          ? {
+              status: 'ineligible',
+              reason: 'OUTSIDE_SHIP_LEG_RANGE',
+              flightAuthorized: false,
+            }
+          : driveEligibility,
+        totalDistanceKm: legs.reduce((sum, leg) => sum + leg.distanceKm, 0),
+        totalDurationMs: legs.reduce((sum, leg) => sum + leg.durationMs, 0),
+        fuelUnits: legs.reduce((sum, leg) => sum + leg.fuelUnits, 0),
         hazardAssessment: assessment,
-        legs: Array.from({ length: job.prefixBodyIds.length + 1 }, (_, index) => ({
-          legIndex: index + 1,
-          fromBodyOrShipId: ids[index],
-          toBodyOrMarketId: ids[index + 1],
-          startPositionKm: { x: index * 200000000, y: 0, z: 0 },
-          endPositionKm: { x: (index + 1) * 200000000, y: 0, z: 0 },
-          departureEpochMs: 1715000000000 + index * 1000,
-          arrivalEpochMs: 1715000001000 + index * 1000,
-          distanceKm: 1000000,
-          durationMs: 1000,
-          fuelUnits: 1,
-          withinHopLimit: true,
-          ...(!previewOnly ? { withinShipLegRange: true, shipLegRangeKm: 74798935.35 } : {}),
-          ...(index < bodyIds.length ? {
-            encounter: {
-              bodyId: bodyIds[index],
-              side: sides[index],
-              encounterEpochMs: 1715000001000 + index * 1000,
-              bodyCenterPositionKm: { x: (index + 1) * 200000000, y: -10000, z: 0 },
-              waypointPositionKm: { x: (index + 1) * 200000000, y: 0, z: 0 },
-              offsetKm: { x: 0, y: 10000, z: 0 },
-              coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
-              positionEvaluationModelId: 'sol-catalog-kepler-position-v1',
-              sourceRevision: 'b'.repeat(64),
-            },
-          } : {}),
-        })),
+        legs,
       };
     });
     return {
@@ -198,14 +256,14 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
             shipRevision: 'c'.repeat(64),
             destinationMarketId: marsStation.id,
             candidateBodyIds: [candidate.id],
-            departureEpochMs: 1715000000000,
+            shipPositionEpochMs: ACTIVE_SHIP.spatial.epochMs,
             departurePositionKm: departure,
             coordinateBasisId: 'stellar:sol:catalog-cartesian:v1',
             positionEvaluationModelId: 'sol-catalog-kepler-position-v1',
             sourceRevision: 'b'.repeat(64),
             clockGeneration: 1,
             clockLineage: 'clock',
-            clockEpochMs: 1715000000000,
+            searchStartEpochMs,
             profileId: request.profileId,
             profileVersion: 'v1',
             navigationMode: request.navigationMode,
@@ -213,30 +271,78 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
             driveProfileRevision: 'd'.repeat(64),
             flightAuthorized: false,
           },
+          clock: {
+            status: 'supported',
+            epochMs: searchStartEpochMs + requestedModes.length * 1000,
+            timeScaleId: 'stellar:unix-ms-uniform:v1',
+            running: true,
+            generation: 1,
+            lineage: 'clock',
+            durability: 'durable-mongo-game-state',
+          },
           bounds: {
             profileId: request.profileId,
             maxEligiblePathKm: 14959787070,
             maxLegDistanceKm: null,
+            candidateDiscovery: 'automatic',
+            candidateBodyCount: 1,
+            maxEncounters: 5,
+            maxLegs: 6,
+            fuelUnitsPerAu: 1,
+            cruiseSpeedKmPerSec: cruiseSpeed,
+            maxJobs: 32,
+            maxLogicalLegs: 192,
+            maxTimeoutMs: 30000,
           },
           directReference: {
             status: 'supported',
+            kind: 'direct-reference',
+            departureEpochMs: searchStartEpochMs,
+            arrivalEpochMs: searchStartEpochMs + directDuration,
             target: { kind: 'market', id: marsStation.id },
             departurePositionKm: departure,
-            destinationPositionKm: destination,
-            distanceKm: 14959787071,
-            durationMs: 1000000,
-            fuelUnits: 2,
+            destinationPositionKm: { x: departure.x + directDistance, y: departure.y, z: departure.z },
+            distanceKm: directDistance,
+            durationMs: directDuration,
+            fuelUnits: directDistance / au,
             eligible: false,
             eligibilityReason: previewOnly ? 'DIRECT_REFERENCE_MAY_EXCEED_PATH_LIMIT' : 'OUTSIDE_SHIP_LEG_RANGE',
             navigationMode: request.navigationMode,
             flightAuthorized: false,
-            driveEligibility: previewOnly ? driveEligibility : {
-              status: 'ineligible', reason: 'OUTSIDE_SHIP_LEG_RANGE', flightAuthorized: false,
-            },
+            driveEligibility: previewOnly
+              ? driveEligibility
+              : {
+                  status: 'ineligible',
+                  reason: 'OUTSIDE_SHIP_LEG_RANGE',
+                  flightAuthorized: false,
+                },
             hazardAssessment: assessment,
           },
           jobs,
-          completion: { mode: 'complete', completedJobCount: jobs.length, failedJobCount: 0 },
+          hazardSurvey: {
+            surveyId: 'sol-hazard-survey-v1',
+            status: 'incomplete',
+            approximation: 'coarse-spherical-moving-body-warning-envelope',
+            inventoryBodyIds: ['sol-mars'],
+            profiles: [],
+          },
+          numericPrecision: {
+            epochUnit: 'uniform-game-millisecond',
+            positionUnit: 'kilometre',
+            distanceUnit: 'kilometre',
+            durationUnit: 'game-millisecond',
+            fuelUnit: 'prototype-fuel-unit-per-AU',
+            distanceRounding: 'IEEE-754-binary64-full-precision-response',
+            epochRounding: 'Math.round-nearest-millisecond',
+            finiteValueRequirement: 'all-output-numbers-must-be-finite',
+          },
+          completion: {
+            mode: 'complete',
+            submittedJobCount: request.jobs.length,
+            completedJobCount: jobs.length,
+            failedJobCount: 0,
+            logicalLegCount: jobs.reduce((sum, job) => sum + job.prefixBodyIds.length + 1, 0),
+          },
         },
       },
     };
@@ -254,9 +360,15 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
   const ignoreLimits = search.getByLabel('Ignore drive limits (preview only)');
   await expect(ignoreLimits).not.toBeChecked();
   await expect(search.getByText('Ship drive range applies to each leg.', { exact: false })).toBeVisible();
+  await expect(panel.getByTestId('navigation-direct-distance')).toBeVisible();
+  await expect(panel.getByText('This snapshot does not estimate travel time.', { exact: true })).toBeVisible();
   await search.getByRole('button', { name: 'Plan Route', exact: true }).click();
   await expect(search.getByRole('button', { name: 'Direct reference', exact: true })).toBeVisible();
   await expect(search.getByText('Outside this ship’s per-leg drive range')).toBeVisible();
+  await expect(panel.getByTestId('navigation-direct-distance')).toHaveCount(0);
+  await expect(panel.getByText('Calculated time and fuel are game estimates', { exact: false })).toBeVisible();
+  await expect(panel.getByText('It does not calculate clearance, travel time', { exact: false })).toHaveCount(0);
+  await expect(panel.getByTestId('navigation-clearance-warning')).toBeVisible();
   await ignoreLimits.check();
   await expect(search.getByText('Ship drive eligibility is not checked.', { exact: false })).toBeVisible();
   await expect(search.getByText('Outside the 100 AU route limit')).toBeVisible();
@@ -268,17 +380,25 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
     'Direct reference',
   ]);
   for (const width of [540, 400, 280]) {
-    await panel.evaluate((element, value) => { element.style.width = `${value}px`; }, width);
-    const layout = await rows.evaluateAll((elements) => elements.map((row) => {
-      const cells = [...row.querySelectorAll<HTMLElement>(
-        '.navigation-route-choice__distance, .navigation-route-choice__time, .navigation-route-choice__fuel',
-      )];
-      return {
-        left: cells.map((cell) => cell.getBoundingClientRect().left),
-        overflow: [...row.querySelectorAll<HTMLElement>(':scope > *')].some((cell) => cell.scrollWidth > cell.clientWidth + 1),
-        rowOverflow: row.scrollWidth > row.clientWidth + 1,
-      };
-    }));
+    await panel.evaluate((element, value) => {
+      element.style.width = `${value}px`;
+    }, width);
+    const layout = await rows.evaluateAll((elements) =>
+      elements.map((row) => {
+        const cells = [
+          ...row.querySelectorAll<HTMLElement>(
+            '.navigation-route-choice__distance, .navigation-route-choice__time, .navigation-route-choice__fuel',
+          ),
+        ];
+        return {
+          left: cells.map((cell) => cell.getBoundingClientRect().left),
+          overflow: [...row.querySelectorAll<HTMLElement>(':scope > *')].some(
+            (cell) => cell.scrollWidth > cell.clientWidth + 1,
+          ),
+          rowOverflow: row.scrollWidth > row.clientWidth + 1,
+        };
+      }),
+    );
     expect(layout).toHaveLength(3);
     for (const row of layout) {
       expect(row.left).toHaveLength(3);
@@ -286,7 +406,9 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
       expect(row.overflow || row.rowOverflow).toBe(false);
     }
   }
-  await panel.evaluate((element) => { element.style.width = ''; });
+  await panel.evaluate((element) => {
+    element.style.width = '';
+  });
   expect(requestedModes).toContain('ship-drive-normal');
   expect(requestedModes).toContain('bounded-preview-100au');
   await search.getByRole('button', { name: 'Flybys: Mars (−)' }).click();
@@ -295,27 +417,33 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
   expect(previewRequests[0].navigation?.candidateBodyId).toBeUndefined();
   expect(previewRequests[0].navigationPrediction).toBeUndefined();
   await expect(search.getByText('Dotted links connect to stored Viewer snapshots', { exact: false })).toBeVisible();
-  await expect(page.getByText('Mars at encounter · T+1 s')).toBeVisible();
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
-      if (!canvas || !window.ng) return false;
-      const component = window.ng.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
-      const scene = component.store.snapshot.scene;
-      const marker = scene.getObjectByName('navigation-route-ghost-1-sol-mars');
-      const link = scene.getObjectByName('navigation-route-ghost-link-1') as import('three').Line | undefined;
-      const curve = scene.getObjectByName('navigation-route-illustration') as import('three').Line | undefined;
-      const linkPoints = link?.geometry.getAttribute('position');
-      return !!scene.getObjectByName('navigation-route-direct-reference') &&
-        !!scene.getObjectByName('navigation-route-selected') &&
-        !!curve && curve.geometry.drawRange.count === curve.geometry.getAttribute('position').count &&
-        !!linkPoints && Math.abs(linkPoints.getX(0) - (100000000 / 149597870.7) * 5) < 0.00001 &&
-        Math.abs(linkPoints.getX(1) - (200000000 / 149597870.7) * 5) < 0.00001 &&
-        !!marker &&
-        Math.abs(marker.position.x - (200000000 / 149597870.7) * 5) < 0.00001 &&
-        Math.abs(marker.position.z - (-10000 / 149597870.7) * 5) < 0.00001;
-    }),
-  ).toBe(true);
+  await expect(page.getByText('Mars at encounter · T+3.3 h')).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
+        if (!canvas || !window.ng) return false;
+        const component = window.ng.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+        const scene = component.store.snapshot.scene;
+        const marker = scene.getObjectByName('navigation-route-ghost-1-sol-mars');
+        const link = scene.getObjectByName('navigation-route-ghost-link-1') as import('three').Line | undefined;
+        const curve = scene.getObjectByName('navigation-route-illustration') as import('three').Line | undefined;
+        const linkPoints = link?.geometry.getAttribute('position');
+        return (
+          !!scene.getObjectByName('navigation-route-direct-reference') &&
+          !!scene.getObjectByName('navigation-route-selected') &&
+          !!curve &&
+          curve.geometry.drawRange.count === curve.geometry.getAttribute('position').count &&
+          !!linkPoints &&
+          Math.abs(linkPoints.getX(0) - (100000000 / 149597870.7) * 5) < 0.00001 &&
+          Math.abs(linkPoints.getX(1) - (200000000 / 149597870.7) * 5) < 0.00001 &&
+          !!marker &&
+          Math.abs(marker.position.x - (200000000 / 149597870.7) * 5) < 0.00001 &&
+          Math.abs(marker.position.z - (-10000 / 149597870.7) * 5) < 0.00001
+        );
+      }),
+    )
+    .toBe(true);
   await search.getByRole('button', { name: 'Mars: Atmosphere' }).click();
   await expect(search.getByText('Mars: Atmosphere — Advisory warning')).toBeVisible();
   await expect(search.getByText('Survey incomplete')).toBeVisible();
@@ -326,28 +454,56 @@ test('plans and selects calculated routes with advisory markers', async ({ page 
   await expect(warningBadge).toBeVisible();
   await expect(warningBadge).toHaveCSS('background-color', 'rgb(229, 163, 35)');
   await warningBadge.click({ timeout: 5000 });
-  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText('Mars: Surface — Advisory warning');
-  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText('Mars: Atmosphere — Advisory warning');
+  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText(
+    'Mars: Surface — Advisory warning',
+  );
+  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText(
+    'Mars: Atmosphere — Advisory warning',
+  );
   await search.getByRole('button', { name: 'Mars: Surface' }).click();
   await expect(search.getByRole('status')).toHaveText('Mars: Surface — Advisory warning');
   await warningBadge.focus();
   await page.keyboard.press('Enter');
-  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText('Mars: Surface — Advisory warning');
-  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText('Mars: Atmosphere — Advisory warning');
+  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText(
+    'Mars: Surface — Advisory warning',
+  );
+  await expect(search.getByRole('status').filter({ hasText: '2 nearby warnings' })).toContainText(
+    'Mars: Atmosphere — Advisory warning',
+  );
   await expect(page.getByRole('button', { name: /unresolved assessments \(midpoint/ })).toHaveCount(0);
   await page.getByTestId('viewer-group-planets').uncheck();
-  await expect.poll(() => page.evaluate(() => {
-    const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
-    if (!canvas || !window.ng) return false;
-    const component = window.ng.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
-    const scene = component.store.snapshot.scene;
-    return !!scene.getObjectByName('navigation-route-ghost-1-sol-mars') &&
-      !scene.getObjectByName('navigation-route-ghost-link-1');
-  })).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const canvas = document.querySelector('app-viewer-scene-page ngt-canvas');
+        if (!canvas || !window.ng) return false;
+        const component = window.ng.getComponent(canvas) as { store: { snapshot: { scene: Scene } } };
+        const scene = component.store.snapshot.scene;
+        return (
+          !!scene.getObjectByName('navigation-route-ghost-1-sol-mars') &&
+          !scene.getObjectByName('navigation-route-ghost-link-1')
+        );
+      }),
+    )
+    .toBe(true);
   await search.getByRole('button', { name: 'Direct reference', exact: true }).click();
-  await expect(page.getByText(/at encounter · T\+1 s/)).toHaveCount(0);
+  await expect(page.getByText(/at encounter · T\+3.3 h/)).toHaveCount(0);
   await ignoreLimits.uncheck();
   await expect(search.getByText('Outside this ship’s per-leg drive range')).toBeVisible();
+  await page.clock.install();
+  for (const reason of ['source_changed', 'direct_numeric_failure'] as const) {
+    batchFailure = reason;
+    await search.getByRole('button', { name: 'Plan Route', exact: true }).click();
+    await expect(search.getByRole('alert')).toContainText(reason);
+    await expect(search.locator('.navigation-route-choice')).toHaveCount(0);
+    await expect(panel.getByTestId('navigation-direct-distance')).toBeVisible();
+    await expect(panel.getByText('This snapshot does not estimate travel time.', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Calculated time and fuel are game estimates', { exact: false })).toHaveCount(0);
+    const requestCount = requestedModes.length;
+    await page.clock.fastForward(60_000);
+    expect(requestedModes).toHaveLength(requestCount);
+    await expect(search.getByRole('button', { name: 'Plan Route', exact: true })).toBeEnabled();
+  }
 });
 
 test('blocks route planning for an ineligible navigation preview', async ({ page }) => {
@@ -434,7 +590,9 @@ test('clears the previous A-to-B preview when changing destinations', async ({ p
   await page.getByRole('button', { name: 'Plan route to Mars Orbital Market.' }).click();
   const panel = page.getByTestId('navigation-preview');
   await expect(panel.getByTestId('navigation-direct-distance')).toContainText('158,113,883.008 km');
-  await expect(panel.getByTestId('navigation-direct-distance')).toContainText('This snapshot does not estimate travel time.');
+  await expect(panel.getByTestId('navigation-direct-distance')).toContainText(
+    'This snapshot does not estimate travel time.',
+  );
   const destinationLabel = 'Projected destination: Mars Orbital Market — 1715000000000 ms';
   await expect(page.getByText(destinationLabel, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Plan route to Other Mars Station.' }).click();
