@@ -147,6 +147,10 @@ export class ViewerNavigationPreviewService {
   readonly preview = signal<ViewerNavigationPreview | null>(null);
   readonly prediction = signal<NavigationPredictionDisplay>({ status: 'idle' });
 
+  getPlanningSelection(): NavigationPreviewSelection | null {
+    return this.selection;
+  }
+
   start(selection: NavigationPreviewSelection): void {
     this.prediction.set({ status: 'idle' });
     this.selection = selection;

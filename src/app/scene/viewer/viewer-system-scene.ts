@@ -81,8 +81,10 @@ import {
 } from './viewer-formatters';
 import type { NavigationGeometryState, NavigationScenePoint } from './viewer-navigation-detour';
 import { ViewerNavigationPreview } from './viewer-navigation-preview';
+import { ViewerNavigationRoute } from './viewer-navigation-route';
 import { ViewerShipMesh } from './viewer-ship-mesh';
 import { ViewerTargetBracket } from './viewer-target-bracket';
+import type { NavigationRouteChoice } from '../../services/navigation-route-selection';
 
 type BodyGeometryKind =
   'sphere' | 'box' | 'icosahedron' | 'octahedron' | 'capsule' | 'cylinder' | 'torus' | 'rock-deformed';
@@ -1073,6 +1075,7 @@ const SYSTEM_VIEW_GIANT_TEXTURE_SIZE: GasGiantBandSize = { width: 512, height: 2
     ViewerBlackHoleRenderer,
     ViewerTargetBracket,
     ViewerNavigationPreview,
+    ViewerNavigationRoute,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1115,6 +1118,10 @@ export class ViewerSystemScene {
   predictionRoutePoints = input<NavigationScenePoint[] | null>(null);
   predictionDestinationLabel = input('');
   predictionCandidateLabel = input('');
+  routeChoices = input<NavigationRouteChoice[]>([]);
+  selectedRoute = input(0);
+  @Output() routeMarkerSelected = new EventEmitter<string>();
+  @Output() routeIllustrationUnavailableChange = new EventEmitter<boolean>();
   @Output() predictionDetourUnavailableChange = new EventEmitter<boolean>();
   @Output() navigationDetourUnavailableChange = new EventEmitter<boolean>();
   @Output() hoveredBodyChange = new EventEmitter<ViewerBody | null>();

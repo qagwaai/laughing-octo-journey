@@ -25,6 +25,7 @@ import { resolveCatalogDiameterM } from '../../model/physical-catalog';
 import { INVALID_SESSION_EVENT } from '../../model/session';
 import type { ShipSummary } from '../../model/ship-list';
 import type { ViewerBody } from '../../model/solar-system-get';
+import type { NavigationHazardMarker } from '../../model/navigation-route-search';
 import type { SolarSystemSummary } from '../../model/solar-system-list';
 import { PlanetSurfaceProgress } from '../../scene/planet/planet-surface-progress';
 import type { StationModelStatus } from '../../scene/station/station-model';
@@ -36,15 +37,12 @@ import {
   type DescriptorRenderProfile,
   type GateApproachMetadata,
 } from '../../scene/viewer/viewer-descriptor-selectors';
-import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
+import type { ViewerDistanceMode } from '../../scene/viewer/viewer-formatters';
 import { viewerBodyGroup } from '../../scene/viewer/viewer-item-groups';
 import {
   buildNavigationDetour,
-  NAVIGATION_CANDIDATE_MARKER_RADIUS,
-  NAVIGATION_DETOUR_MARGIN,
   type NavigationDetour,
   type NavigationGeometryState,
-  type NavigationScenePoint,
 } from '../../scene/viewer/viewer-navigation-detour';
 import type { ViewerSystemSceneInputs } from '../../scene/viewer/viewer-system-scene';
 import { ViewerSystemScene } from '../../scene/viewer/viewer-system-scene';
@@ -56,6 +54,8 @@ import { SocketService } from '../../services/socket.service';
 import { SolarSystemService } from '../../services/solar-system.service';
 import { ViewerGroupVisibilityService } from '../../services/viewer-group-visibility.service';
 import { ViewerNavigationPreviewService } from '../../services/viewer-navigation-preview.service';
+import { NavigationRouteSearchService } from '../../services/navigation-route-search.service';
+import type { NavigationSelectionReason } from '../../services/navigation-route-selection';
 import { ViewerTargetService } from '../../services/viewer-target.service';
 import { resolveNavigationState } from '../navigation-state';
 import { AstronomyCreditList } from '../public/astronomy-credit-list';
@@ -329,14 +329,30 @@ export default class ViewerScenePage implements OnDestroy {
   private viewerTargetService = inject(ViewerTargetService);
   private viewerGroupVisibility = inject(ViewerGroupVisibilityService);
   private navigationPreviewService = inject(ViewerNavigationPreviewService);
+  private readonly routeSearchService = inject(NavigationRouteSearchService);
+  private routeSelectionKey = '';
 
   protected readonly navigationPreview = this.navigationPreviewService.preview.asReadonly();
-  protected readonly navigationPrediction = this.navigationPreviewService.prediction.asReadonly();
-  protected readonly predictionSpeed = signal<number | null>(null);
-  protected readonly predictionSpeedValid = computed(() => {
-    const speed = this.predictionSpeed();
-    return speed !== null && Number.isFinite(speed) && speed >= 120 && speed <= 10000;
+  protected readonly routeSearch = this.routeSearchService.state.asReadonly();
+  protected readonly ignoreDriveLimits = signal(false);
+  protected readonly routeMarker = signal('');
+  protected readonly routeIllustrationUnavailable = signal(false);
+  protected readonly routeChoices = computed(() => {
+    const state = this.routeSearch();
+    return state.status === 'ready' ? state.choices : [];
   });
+  protected readonly selectedRouteIndex = computed(() => {
+    const state = this.routeSearch();
+    return state.status === 'ready' ? state.selected : 0;
+  });
+  protected readonly orderedRouteChoices = computed(() =>
+    this.routeChoices().map((choice, index) => ({ choice, index })).sort((a, b) => {
+      const metric = (item: typeof a): number =>
+        item.choice.kind === 'direct' ? item.choice.direct.durationMs : item.choice.route.totalDurationMs;
+      return metric(a) - metric(b) || a.index - b.index;
+    }),
+  );
+  protected readonly navigationPrediction = this.navigationPreviewService.prediction.asReadonly();
   protected readonly supportedPrediction = computed(() => {
     const result = this.navigationPrediction();
     return result.status === 'ready' ? result.prediction : null;
@@ -401,100 +417,18 @@ export default class ViewerScenePage implements OnDestroy {
     if (!candidateId) return '';
     return this.navigationCandidateBodies().find((body) => body.id === candidateId)?.displayName ?? candidateId;
   }
-  protected readonly navigationPlot = computed(() => {
-    const preview = this.navigationPreview();
-    if (preview?.status !== 'ready') return null;
-
-    const departure = resolveScenePositionFromSpatialKm(preview.state.departure.positionKm, this.distanceMode());
-    const destination = resolveScenePositionFromSpatialKm(preview.state.destination.positionKm, this.distanceMode());
-    const predictionState = this.predictionGeometryState();
-    const drawState = predictionState ?? preview.state;
-    const routeDestination = resolveScenePositionFromSpatialKm(drawState.destination.positionKm, this.distanceMode());
-    const candidatePosition = drawState.candidates[0]?.positionKm;
-    const candidate = candidatePosition
-      ? resolveScenePositionFromSpatialKm(candidatePosition, this.distanceMode())
-      : null;
-    const detour = this.navigationDetour();
-    const route = detour && detour.status !== 'unavailable' ? detour.points : null;
-    const markerBounds: NavigationScenePoint[] = candidate
-      ? [
-          [
-            candidate[0] - NAVIGATION_CANDIDATE_MARKER_RADIUS,
-            candidate[1],
-            candidate[2] - NAVIGATION_CANDIDATE_MARKER_RADIUS,
-          ],
-          [
-            candidate[0] + NAVIGATION_CANDIDATE_MARKER_RADIUS,
-            candidate[1],
-            candidate[2] + NAVIGATION_CANDIDATE_MARKER_RADIUS,
-          ],
-        ]
-      : [];
-    const frozenCandidatePosition = preview.state.candidates[0]?.positionKm;
-    const frozenCandidate = frozenCandidatePosition
-      ? resolveScenePositionFromSpatialKm(frozenCandidatePosition, this.distanceMode())
-      : null;
-    const positions = [
-      ...(route ?? []),
-      departure,
-      destination,
-      routeDestination,
-      ...markerBounds,
-      ...(frozenCandidate ? [frozenCandidate] : []),
-    ];
-    const minX = Math.min(...positions.map((position) => position[0]));
-    const maxX = Math.max(...positions.map((position) => position[0]));
-    const minY = Math.min(...positions.map((position) => position[2]));
-    const maxY = Math.max(...positions.map((position) => position[2]));
-    const width = 560;
-    const height = 220;
-    const padding = 24;
-    const xRange = Math.max(maxX - minX, 1);
-    const yRange = Math.max(maxY - minY, 1);
-    const scale = Math.min((width - padding * 2) / xRange, (height - padding * 2) / yRange);
-    const plotWidth = xRange * scale;
-    const plotHeight = yRange * scale;
-    const offsetX = (width - plotWidth) / 2;
-    const offsetY = (height - plotHeight) / 2;
-    const project = (position: NavigationScenePoint) => ({
-      x: offsetX + (position[0] - minX) * scale,
-      y: height - offsetY - (position[2] - minY) * scale,
-    });
-    const plotDeparture = project(departure);
-    const plotDestination = project(destination);
-    const plotArrival = predictionState ? project(routeDestination) : null;
-    const plotCandidate = candidate ? project(candidate) : null;
-    const markerRadius = NAVIGATION_CANDIDATE_MARKER_RADIUS * scale;
-    const unavailable =
-      !!plotCandidate &&
-      (Math.hypot(plotCandidate.x - plotDeparture.x, plotCandidate.y - plotDeparture.y) <= markerRadius + 8 ||
-        Math.hypot(
-          plotCandidate.x - (plotArrival ?? plotDestination).x,
-          plotCandidate.y - (plotArrival ?? plotDestination).y,
-        ) <=
-          markerRadius + 10);
-
-    return {
-      departure: plotDeparture,
-      destination: plotDestination,
-      candidate: plotCandidate,
-      frozenCandidate: predictionState && frozenCandidate ? project(frozenCandidate) : null,
-      arrival: plotArrival,
-      unavailable,
-      routePoints:
-        route && !unavailable
-          ? route
-              .map(project)
-              .map((point) => `${point.x},${point.y}`)
-              .join(' ')
-          : null,
-      routeStrokeWidth: candidate ? Math.min(2.5, NAVIGATION_DETOUR_MARGIN * scale) : 2.5,
-      candidateMarkerStrokeWidth: Math.min(2, (NAVIGATION_DETOUR_MARGIN * scale) / 2),
-      candidateMarkerSize: candidate ? markerRadius * Math.SQRT2 : 0,
-    };
-  });
-
   constructor() {
+    effect(() => {
+      const preview = this.navigationPreview();
+      const key = preview
+        ? `${preview.selection.characterId}\0${preview.selection.shipId}\0${preview.selection.solarSystemId}\0${preview.selection.destinationMarketId}`
+        : '';
+      if (key !== this.routeSelectionKey) {
+        this.routeSelectionKey = key;
+        untracked(() => this.routeSearchService.clear());
+        this.routeMarker.set('');
+      }
+    });
     effect(() => {
       const preview = this.navigationPreviewService.preview();
       if (!preview) return;
@@ -518,6 +452,59 @@ export default class ViewerScenePage implements OnDestroy {
     });
   }
 
+  protected planCalculatedRoute(): void {
+    const selection = this.navigationPreviewService.getPlanningSelection();
+    if (this.navigationPreviewService.preview()?.status === 'ready' && selection?.solarSystemId === 'sol') {
+      this.routeMarker.set('');
+      this.routeSearchService.start(
+        selection,
+        this.ignoreDriveLimits() ? 'bounded-preview-100au' : 'ship-drive-normal',
+      );
+    }
+  }
+
+  protected setIgnoreDriveLimits(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const hadSearch = this.routeSearch().status !== 'idle';
+    this.ignoreDriveLimits.set(target.checked);
+    this.routeSearchService.clear();
+    this.routeMarker.set('');
+    if (hadSearch) this.planCalculatedRoute();
+  }
+
+  protected selectCalculatedRoute(index: number): void {
+    this.routeMarker.set('');
+    this.routeSearchService.select(index);
+  }
+
+  protected routeReason(reason: NavigationSelectionReason): string {
+    switch (reason) {
+      case 'direct': return this.t.game.viewer.navigationRouteDirect;
+      case 'shortest-examined': return this.t.game.viewer.navigationRouteShortest;
+      case 'low-cost': return this.t.game.viewer.navigationRouteLowCost;
+      case 'different-flyby': return this.t.game.viewer.navigationRouteDiversity;
+    }
+  }
+
+  protected routeBodyName(bodyId: string): string {
+    return this.bodies().find((body) => body.id === bodyId)?.displayName ?? bodyId;
+  }
+
+  protected routeHazardType(type: NavigationHazardMarker['hazardType']): string {
+    switch (type) {
+      case 'surface': return this.t.game.viewer.navigationRouteSurface;
+      case 'atmosphere': return this.t.game.viewer.navigationRouteAtmosphere;
+      case 'ring': return this.t.game.viewer.navigationRouteRing;
+    }
+  }
+
+  protected routeDuration(durationMs: number): string {
+    const hours = durationMs / 3_600_000;
+    const days = Math.floor(hours / 24);
+    return days ? `${days} d ${this.formatNumber(hours % 24)} h` : `${this.formatNumber(hours)} h`;
+  }
+
   protected navigationHiddenGroups(): string[] {
     const preview = this.navigationPreview();
     if (!preview) return [];
@@ -535,36 +522,11 @@ export default class ViewerScenePage implements OnDestroy {
     return [...hidden];
   }
 
-  protected selectNavigationCandidate(event: Event): void {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement) {
-      this.navigationPreviewService.selectCandidate(target.value || null);
-    }
-  }
-
-  protected changePredictionSpeed(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    this.predictionSpeed.set(target.value === '' ? null : target.valueAsNumber);
-    this.navigationPreviewService.clearPrediction();
-  }
-
-  protected calculateNavigationPrediction(): void {
-    const speed = this.predictionSpeed();
-    if (speed !== null) this.navigationPreviewService.calculatePrediction(speed);
-  }
-
-  protected clearNavigationPrediction(): void {
-    this.navigationPreviewService.clearPrediction();
-    this.predictionSpeed.set(null);
-  }
-
   protected gameTimeLabel(epochMs: number): string {
     return new Date(epochMs).toISOString();
   }
 
   protected clearNavigationPreview(): void {
-    this.predictionSpeed.set(null);
     this.navigationPreviewService.clear();
   }
 
@@ -657,6 +619,7 @@ export default class ViewerScenePage implements OnDestroy {
 
   ngOnInit(): void {
     this.unsubscribeInvalidSession = this.socketService.on(INVALID_SESSION_EVENT, () => {
+      this.routeSearchService.clear();
       this.navigationPreviewService.invalidateSession();
     });
     // Subscribe to route param changes
@@ -701,6 +664,7 @@ export default class ViewerScenePage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.unsubscribeInvalidSession?.();
+    this.routeSearchService.clear();
     this.navigationPreviewService.clear();
     this.viewerDataFacade.dispose();
     if (this.planetTransitionTimer !== null) {

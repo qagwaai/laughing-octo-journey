@@ -1,15 +1,99 @@
 # Ship navigation: implementation and handoff
 
+## Phase 3 frontend closeout: 2026-11-23
+
+The Viewer can start a bounded Phase 3 route search through the served Forge
+edge-batch contract. It compares up to five complete choices, including the
+direct reference when available, and draws the selected calculated legs and
+selectable advisory markers. Search stops after 512 dispatched jobs or 30 seconds;
+incomplete results and backend rejections are disclosed. Existing Phase 2
+preview and prediction remain separate.
+
+On 2026-11-23 the owner chose to remove the redundant X-Y plot from the
+dialog and the manual candidate/scenario-speed prediction controls. The 3D
+Viewer navigation overlays and their warnings remain, as do automatic flyby
+choices in the route search. Phase 2 service support remains available.
+The Time/Fuel ordering control was also removed: the fixed speed and fuel
+per distance do not currently provide meaningful alternatives. Choices
+remain ordered by time, with both time and fuel estimates displayed.
+Route choices use aligned, responsive columns for easier comparison.
+
+The unchecked mode uses the selected ship's captured `driveProfile.rangeAu`
+as a maximum for each leg, without a separate drive-imposed total-route range.
+The "Ignore drive limits" checkbox switches to a preview that ignores that
+range. Both modes use the 100 AU total planner bound without a separate hop
+cap; neither authorizes flight. Switching modes discards the old search and
+replans if a search was already started. Fuel and life support are future
+concerns, and the six-leg and 100 AU bounds are not ship capabilities.
+
+Planning requires a supported, eligible-with-warnings navigation preview.
+Body-target results must echo the requested target side and include that target
+in the side history; market-target histories contain only prefix encounters.
+Unresolved assessments remain individually available in a neutral survey
+summary and are not drawn as hazards. Advisory warnings use amber badges at
+their returned positions; overlapping on-screen badges are clustered, and the
+cluster's anchor represents its first warning rather than an exact shared
+location. Compressed distance mapping may place a badge away from the displayed
+straight leg; proportional mapping preserves alignment. These markers remain
+advisory and do not establish physical clearance.
+
+Translucent encounter ghosts use the server-provided body center at each leg's
+arrival epoch and show elapsed time from route departure. A dotted link connects
+the ghost to the visible stored Viewer snapshot when available; it is not an
+orbital path or a current-position claim. The selected route's green straight
+legs are the assessed geometry; the animated blue sweep is a separate, purely
+illustrative display and is not timed or hazard-assessed. Ghosts are enlarged
+for visibility. When a sweep cannot be drawn, the Viewer reports that
+limitation and retains the calculated legs. The owner accepted this ghost
+presentation as the approach on 2026-11-22.
+
+Focused mocked browser and Vitest checks pass. An authorized live Mars route
+search returned five choices in approximately seven seconds with an incomplete
+survey; the direct route had 378 unresolved assessments. This single example
+does not validate the live survey or establish representative performance. After
+Forge's station-orbit migration, an authorized legacy-profile Earth search
+showed an outside-hop direct reference and no eligible route among those examined.
+An authorized test-profile Earth search subsequently returned an eligible
+1.176 AU direct reference and flyby choices; the bounded search was incomplete.
+
+### Validation and handoff
+
+The final focused checks on 2026-11-23 passed:
+
+- `npm run test:spec -- src/app/scene/viewer/viewer-route-hazard-clusters.vitest.ts src/app/services/navigation-route-search.service.vitest.ts`: 27 tests.
+- `npx playwright test e2e/tests/viewer-station-model.spec.ts -g "plans and selects calculated routes" --reporter=line`: passed, including setup; exercises mouse and keyboard interaction with an unobstructed cluster and access to individual dialog warnings.
+- `npm run build`, `npm run typecheck`, targeted ESLint for the route renderer, clustering files and Playwright spec, and `git diff --check`: passed.
+
+These are focused results, not a full-suite or new CI result. Forge reported
+its own route/drive, Phase 2, ship-list, typecheck and OpenAPI checks; Nova did
+not independently run those backend tests. The served OpenAPI and referenced
+schemas are the contract authority. The historical
+[Phase 3 plan](./ship-navigation-phase3-plan-2026-11-21.md) and
+[implementation prompt](./ship-navigation-phase3-implementation-prompt.md)
+record earlier proposals, not the current contract.
+
+Prettier checks passed for the four navigation documents and changed Viewer
+CSS. Both changed Viewer HTML templates failed the check; their committed
+versions also fail it. They were not reformatted wholesale as part of this
+documentation closeout.
+
+Future flight execution must separately authorize and revalidate the route;
+these planning results do not move a ship or certify physical safety. The
+user owns the Nova and Forge commits and pushes. The user also controls any
+Forge restart needed to serve the committed contract.
+
+### Historical Phase 1/2 status
+
 Date: 2026-11-14
-Updated: 2026-11-16
-Status: Phase 1 preview, paired direct distance, and broad candidate sweep
+Updated at that closeout: 2026-11-16
+Status at that closeout: Phase 1 preview, paired direct distance, and broad candidate sweep
 implemented and accepted. Forge's Phase 2B handoff is approved for consumption.
 Phase 2C frontend implementation and focused/live checks pass; owner accepted
 Phase 2C on 2026-11-16. Phase 2D navigation formatting/LF checks are complete;
 the repository-wide formatting check reports three unrelated HTML files.
-The X-Y plot is retained.
+The X-Y plot was retained at that closeout and removed on 2026-11-23.
 
-## Session closeout: 2026-11-16
+## Historical session closeout: 2026-11-16
 
 - Phase 2C is implemented and owner-accepted. One explicitly selected
   planet/moon and an explicit scenario speed produce illustrative future

@@ -1,4 +1,15 @@
 <ngt-color *args="['#02060f']" attach="background" />
+@if (routeChoices().length) {
+<app-viewer-navigation-route
+  [choices]="routeChoices()"
+  [selected]="selectedRoute()"
+  [distanceMode]="distanceMode()"
+  [bodies]="nonStars()"
+  [surfaces]="bodySurfaces()"
+  (markerSelected)="routeMarkerSelected.emit($event)"
+  (illustrationUnavailableChange)="routeIllustrationUnavailableChange.emit($event)"
+/>
+}
 @if (navigationState(); as state) {
 <app-viewer-navigation-preview
   [state]="state"

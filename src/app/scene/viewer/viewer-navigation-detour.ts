@@ -1,4 +1,5 @@
 import { Vector3, type Camera } from 'three';
+import type { NavigationRouteLeg } from '../../model/navigation-route-search';
 import type { SupportedNavigationPositionState } from '../../model/solar-system-get';
 import { resolveScenePositionFromSpatialKm, type ViewerDistanceMode } from './viewer-formatters';
 
@@ -182,6 +183,7 @@ function withInterpolatedHeight(points: Point2[], startY: number, endY: number):
 export function buildNavigationDetour(
   state: NavigationGeometryState,
   distanceMode: ViewerDistanceMode,
+  clockwise = false,
 ): NavigationDetour {
   const start = resolveScenePositionFromSpatialKm(state.departure.positionKm, distanceMode);
   const end = resolveScenePositionFromSpatialKm(state.destination.positionKm, distanceMode);
@@ -198,9 +200,10 @@ export function buildNavigationDetour(
   }
 
   // The Viewer rotates canonical X-Y into scene X-Z; scene Y is height.
-  const start2 = { x: start[0], y: start[2] };
-  const end2 = { x: end[0], y: end[2] };
   const center = { x: centerPosition[0], y: centerPosition[2] };
+  const mirrorX = (x: number) => clockwise ? 2 * center.x - x : x;
+  const start2 = { x: mirrorX(start[0]), y: start[2] };
+  const end2 = { x: mirrorX(end[0]), y: end[2] };
   if (distance(start2, end2) <= GEOMETRY_EPSILON) {
     return { status: 'unavailable', reason: 'DETOUR_UNAVAILABLE' };
   }
@@ -216,7 +219,7 @@ export function buildNavigationDetour(
     return { status: 'unavailable', reason: 'DETOUR_UNAVAILABLE' };
   }
 
-  const points = withInterpolatedHeight(path.points, start[1], end[1]);
+  const points = withInterpolatedHeight(path.points.map((point) => ({ x: mirrorX(point.x), y: point.y })), start[1], end[1]);
   if (
     points.length < 3 ||
     points.some((point) => !point.every(Number.isFinite)) ||
@@ -227,6 +230,45 @@ export function buildNavigationDetour(
   }
 
   return { status: 'detour', points };
+}
+
+export function buildCalculatedRouteIllustration(
+  legs: NavigationRouteLeg[],
+  distanceMode: ViewerDistanceMode,
+): NavigationScenePoint[] | null {
+  const encounters = legs.filter((leg) => leg.encounter);
+  if (!encounters.length || encounters.length !== legs.length - 1) return null;
+
+  const midpoint = (a: NavigationRouteLeg['endPositionKm'], b: NavigationRouteLeg['endPositionKm']) => ({
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+    z: (a.z + b.z) / 2,
+  });
+  const points: NavigationScenePoint[] = [];
+  for (let index = 0; index < encounters.length; index++) {
+    const leg = encounters[index]!;
+    const encounter = leg.encounter!;
+    const start = index === 0
+      ? legs[0]!.startPositionKm
+      : midpoint(encounters[index - 1]!.endPositionKm, leg.endPositionKm);
+    const end = index === encounters.length - 1
+      ? legs[legs.length - 1]!.endPositionKm
+      : midpoint(leg.endPositionKm, encounters[index + 1]!.endPositionKm);
+    const state: NavigationGeometryState = {
+      departure: { shipId: leg.fromBodyOrShipId, positionKm: start },
+      destination: { marketId: leg.toBodyOrMarketId, positionKm: end },
+      candidates: [{ bodyId: encounter.bodyId, positionKm: encounter.bodyCenterPositionKm }],
+    };
+    const variants = [buildNavigationDetour(state, distanceMode), buildNavigationDetour(state, distanceMode, true)]
+      .filter((route): route is Extract<NavigationDetour, { status: 'direct' | 'detour' }> => route.status === 'detour');
+    if (!variants.length) return null;
+    const waypoint = new Vector3(...resolveScenePositionFromSpatialKm(encounter.waypointPositionKm, distanceMode));
+    const nearest = (route: typeof variants[number]) =>
+      Math.min(...route.points.map((point) => new Vector3(...point).distanceToSquared(waypoint)));
+    variants.sort((a, b) => nearest(a) - nearest(b));
+    points.push(...(index ? variants[0]!.points.slice(1) : variants[0]!.points));
+  }
+  return points;
 }
 
 export function navigationRouteClearsScreenMarker(

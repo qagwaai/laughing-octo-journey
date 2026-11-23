@@ -4,10 +4,77 @@ import type { SupportedNavigationPositionState } from '../../model/solar-system-
 import { resolveScenePositionFromSpatialKm } from './viewer-formatters';
 import {
   buildNavigationDetour,
+  buildCalculatedRouteIllustration,
   NAVIGATION_CANDIDATE_MARKER_RADIUS,
   NAVIGATION_DETOUR_MARGIN,
   navigationRouteClearsScreenMarker,
 } from './viewer-navigation-detour';
+import type { NavigationRouteLeg } from '../../model/navigation-route-search';
+
+describe('buildCalculatedRouteIllustration', () => {
+  const first: NavigationRouteLeg = {
+    legIndex: 1, fromBodyOrShipId: 'ship', toBodyOrMarketId: 'mars',
+    startPositionKm: { x: -200_000_000, y: 0, z: 0 },
+    endPositionKm: { x: 0, y: 10_000, z: 0 },
+    departureEpochMs: 1, arrivalEpochMs: 2, distanceKm: 1, durationMs: 1, fuelUnits: 1, withinHopLimit: true,
+    encounter: {
+      bodyId: 'mars', side: 1, encounterEpochMs: 2,
+      bodyCenterPositionKm: { x: 0, y: 0, z: 0 },
+      waypointPositionKm: { x: 0, y: 10_000, z: 0 },
+      offsetKm: { x: 0, y: 10_000, z: 0 },
+      coordinateBasisId: 'basis', positionEvaluationModelId: 'model', sourceRevision: 'revision',
+    },
+  };
+  const last: NavigationRouteLeg = {
+    ...first, legIndex: 2, fromBodyOrShipId: 'mars', toBodyOrMarketId: 'market',
+    startPositionKm: first.endPositionKm, endPositionKm: { x: 200_000_000, y: 0, z: 0 }, encounter: undefined,
+  };
+
+  it.each(['proportional', 'compressed'] as const)(
+    'renders a sweep around the timed center in %s mode',
+    (mode) => {
+      const points = buildCalculatedRouteIllustration([first, last], mode);
+      expect(points).not.toBeNull();
+      expect(points![0]).toEqual(resolveScenePositionFromSpatialKm(first.startPositionKm, mode));
+      expect(points!.at(-1)).toEqual(resolveScenePositionFromSpatialKm(last.endPositionKm, mode));
+      expect(points!.length).toBeGreaterThan(10);
+      expect(points!.some((point) => Math.abs(point[2]) > 0.4)).toBe(true);
+    },
+  );
+
+  it('does not invent a center when encounter data is missing', () => {
+    expect(buildCalculatedRouteIllustration([{ ...first, encounter: undefined }, last], 'proportional')).toBeNull();
+  });
+
+  it('joins sweeps for multiple timed encounters in order', () => {
+    const second: NavigationRouteLeg = {
+      ...first,
+      legIndex: 2,
+      fromBodyOrShipId: 'mars',
+      toBodyOrMarketId: 'earth',
+      startPositionKm: first.endPositionKm,
+      endPositionKm: { x: 300_000_000, y: 10_000, z: 0 },
+      encounter: {
+        ...first.encounter!,
+        bodyId: 'earth',
+        bodyCenterPositionKm: { x: 300_000_000, y: 0, z: 0 },
+        waypointPositionKm: { x: 300_000_000, y: 10_000, z: 0 },
+      },
+    };
+    const destination = {
+      ...last,
+      legIndex: 3,
+      fromBodyOrShipId: 'earth',
+      startPositionKm: second.endPositionKm,
+      endPositionKm: { x: 500_000_000, y: 0, z: 0 },
+    };
+    const points = buildCalculatedRouteIllustration([first, second, destination], 'proportional');
+    expect(points).not.toBeNull();
+    expect(points![0]).toEqual(resolveScenePositionFromSpatialKm(first.startPositionKm, 'proportional'));
+    expect(points!.at(-1)).toEqual(resolveScenePositionFromSpatialKm(destination.endPositionKm, 'proportional'));
+    expect(points!.length).toBeGreaterThan(100);
+  });
+});
 
 const state: SupportedNavigationPositionState = {
   status: 'supported',

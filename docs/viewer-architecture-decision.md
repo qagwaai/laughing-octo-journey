@@ -4,6 +4,18 @@
 
 Accepted (initial MVP).
 
+### Phase 3 route planning: 2026-11-23
+
+The Viewer now offers server-evaluated route choices, per-leg ship-drive
+planning and a bounded "Ignore drive limits" preview. Selected routes use
+assessed straight legs, encounter-time ghost bodies and a separate illustrative
+curve. Advisory badges cluster overlapping warnings; unresolved assessments
+remain in the dialog. Neither planning mode authorizes flight or establishes
+physical safety. See the [navigation handoff](./ship-navigation-2026-11-14.md#phase-3-frontend-closeout-2026-11-23)
+for current behavior, limitations and validation. The Phase 1/2 entries below
+describe their historical closeouts; the manual candidate and scenario-speed
+controls and the X-Y plot have since been removed from the dialog.
+
 ### Illustrative moving-target prediction: accepted 2026-11-16
 
 - Phase 2 adds explicit **Calculate prediction** / **Clear prediction** controls.
@@ -43,9 +55,9 @@ Accepted (initial MVP).
 - Selecting one planet/moon adds the user-accepted broad illustrative sweep
   around its projected marker. A shared
   [display-geometry helper](../src/app/scene/viewer/viewer-navigation-detour.ts)
-  supplies both the X-Y plot and
-  [3D overlay](../src/app/scene/viewer/viewer-navigation-preview.ts) after the
-  selected distance-mode mapping. The grey direct reference remains separate.
+  supplies the [3D overlay](../src/app/scene/viewer/viewer-navigation-preview.ts)
+  after the selected distance-mode mapping. The dialog's X-Y plot was removed
+  on 2026-11-23. The grey direct reference remains separate.
 - The sweep uses explicitly sampled bowed cubic legs and a tangent arc.
   Final segments avoid the rendered marker bound; camera projection can
   suppress the 3D detour with an explicit status. This is visual marker
